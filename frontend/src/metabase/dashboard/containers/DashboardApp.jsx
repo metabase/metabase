@@ -18,7 +18,12 @@ import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
-import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
+import {
+  getIsNavbarOpen,
+  setErrorPage,
+  setCollectionId,
+  clearBreadcrumbs,
+} from "metabase/redux/app";
 
 import {
   getIsEditing,
@@ -96,13 +101,21 @@ const mapDispatchToProps = {
   fetchDatabaseMetadata,
   setErrorPage,
   onChangeLocation: push,
+  setCollectionId,
+  clearBreadcrumbs,
 };
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
   const options = parseHashOptions(window.location.hash);
 
-  const { isRunning, isLoadingComplete, dashboard } = props;
+  const {
+    isRunning,
+    isLoadingComplete,
+    dashboard,
+    setCollectionId,
+    clearBreadcrumbs,
+  } = props;
 
   const [editingOnLoad] = useState(options.edit);
   const [addCardOnLoad] = useState(options.add && parseInt(options.add));
@@ -119,6 +132,15 @@ const DashboardApp = props => {
     timer: 15000,
     onTimeout,
   });
+
+  const collectionId = dashboard?.collection_id;
+
+  useEffect(() => {
+    if (collectionId) {
+      setCollectionId(collectionId);
+      return () => clearBreadcrumbs();
+    }
+  }, [collectionId, setCollectionId, clearBreadcrumbs]);
 
   const [requestPermission, showNotification] = useWebNotification();
 
