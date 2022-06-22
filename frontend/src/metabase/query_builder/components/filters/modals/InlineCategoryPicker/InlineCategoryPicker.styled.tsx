@@ -10,7 +10,7 @@ export const Loading = styled(LoadingSpinner)`
 `;
 
 export const PickerContainer = styled.div`
-  grid-column: span 3;
+  grid-column: span 2;
   margin: ${space(2)} 0;
   padding-bottom: ${space(2)};
   font-weight: bold;

@@ -1,18 +1,38 @@
 import { popover, restore } from "__support__/e2e/cypress";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
 const MODEL_NAME = "Orders";
+
+const PIVOT_QUESTION_DETAILS = {
+  name: "Pivot table",
+  display: "pivot",
+  query: {
+    "source-table": ORDERS_ID,
+    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    aggregation: [["count"]],
+  },
+  visualization_settings: {
+    "table.pivot_column": "CREATED_AT",
+    "table.cell_column": "count",
+    "pivot_table.column_split": {
+      rows: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      columns: [],
+      values: [["aggregation", 0]],
+    },
+  },
+};
 
 describe("scenarios > collection pinned items overview", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    cy.intercept("POST", `/api/card/*/query`).as("getCardQuery");
-    cy.intercept("GET", "/api/collection/*/items?pinned_state=is_pinned*").as(
-      "getPinnedItems",
-    );
+    cy.intercept("POST", `/api/card/**/query`).as("getCardQuery");
+    cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
   });
 
   it("should be able to pin a dashboard", () => {
@@ -39,6 +59,21 @@ describe("scenarios > collection pinned items overview", () => {
       cy.findByText("18,760").should("be.visible");
       cy.findByText(QUESTION_NAME).click();
       cy.url().should("include", "/question/2");
+    });
+  });
+
+  it("should be able to pin a pivot table", () => {
+    cy.createQuestion(PIVOT_QUESTION_DETAILS).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+    });
+
+    openRootCollection();
+    cy.wait("@getCardQuery");
+
+    getPinnedSection().within(() => {
+      cy.findByText(PIVOT_QUESTION_DETAILS.name).should("be.visible");
+      cy.findByText("Created At: Month").should("be.visible");
+      cy.findByText("Count").should("be.visible");
     });
   });
 
