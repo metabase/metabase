@@ -5,7 +5,6 @@
             [clojure.string :as str]
             [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase.mbql.schema :as mbql.s]
             [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -331,16 +330,16 @@
 
 (def Parameter
   "Schema for a valid Parameter.
-
-  We're not using [[metabase.mbql.schema/Parameter]] for this because there are some differences
-  between the parameters we store on dashboard/card and the parameter that are being used in MBQL.
-
-  One example is on card the
-  in "
-  (with-api-error-message (merge mbql.s/Parameter
-                           {;; Allow blank name and slug #15279
-                            (s/optional-key :name)      s/Str
-                            (s/optional-key :slug)      s/Str})
+  We're not using [metabase.mbql.schema/Parameter] here because this Parameter is meant to be used for
+  Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
+  (with-api-error-message {:id                         NonBlankString
+                           :type                       NonBlankString
+                           ;; Allow blank name and slug #15279
+                           (s/optional-key :name)      s/Str
+                           (s/optional-key :slug)      s/Str
+                           (s/optional-key :default)   s/Any
+                           (s/optional-key :sectionId) NonBlankString
+                           s/Keyword                   s/Any}
     (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping
