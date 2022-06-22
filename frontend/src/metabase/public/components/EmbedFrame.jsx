@@ -43,13 +43,13 @@ class EmbedFrame extends Component {
     } = this.props;
     const { innerScroll } = this.state;
 
-    const { bordered, titled, theme, hide_parameters, show_download_button } = {
+    const { bordered, titled, theme, hide_parameters, hide_download_button } = {
       ...DEFAULT_OPTIONS,
       ...parseHashOptions(location.hash),
     };
     const showFooter =
       !MetabaseSettings.hideEmbedBranding() ||
-      (show_download_button && actionButtons);
+      (!hide_download_button && actionButtons);
 
     const name = titled ? this.props.name : null;
 

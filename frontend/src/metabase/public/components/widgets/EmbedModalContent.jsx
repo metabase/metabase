@@ -50,7 +50,6 @@ class EmbedModalContent extends Component {
     };
     if (props.canWhitelabel) {
       displayOptions.font = MetabaseSettings.get("application-font");
-      displayOptions.show_download_button = true;
     }
     this.state = {
       pane: "preview",

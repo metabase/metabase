@@ -99,13 +99,13 @@ const DisplayOptionsPane = ({
               >{t`Enable users to download data from this embed?`}</ToggleLabel>
               <Toggle
                 id={toggleId}
-                aria-checked={displayOptions.show_download_button}
+                aria-checked={!displayOptions.hide_download_button}
                 role="switch"
-                value={displayOptions.show_download_button}
+                value={!displayOptions.hide_download_button}
                 onChange={isEnabled => {
                   onChangeDisplayOptions({
                     ...displayOptions,
-                    show_download_button: isEnabled,
+                    hide_download_button: !isEnabled ? true : null,
                   });
                 }}
               />
