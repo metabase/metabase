@@ -8,7 +8,7 @@ import {
   startNewQuestion,
   visualize,
   openQuestionActions,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import {
   questionInfoButton,
   rightSidebar,

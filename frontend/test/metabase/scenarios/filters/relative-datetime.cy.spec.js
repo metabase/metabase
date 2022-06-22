@@ -5,7 +5,7 @@ import {
   sidebar,
   popover,
   openOrdersTable,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const STARTING_FROM_UNITS = [
   "minutes",

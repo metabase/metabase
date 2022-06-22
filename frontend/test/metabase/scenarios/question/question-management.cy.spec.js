@@ -5,7 +5,7 @@ import {
   popover,
   openQuestionActions,
   questionInfoButton,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { onlyOn } from "@cypress/skip-test";
 

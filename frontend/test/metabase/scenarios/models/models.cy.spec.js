@@ -13,7 +13,7 @@ import {
   startNewQuestion,
   openQuestionActions,
   closeQuestionActions,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import { questionInfoButton } from "../../../__support__/e2e/helpers/e2e-ui-elements-helpers";

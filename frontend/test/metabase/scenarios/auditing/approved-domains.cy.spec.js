@@ -6,7 +6,7 @@ import {
   sidebar,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const allowedDomain = "metabase.test";
 const deniedDomain = "metabase.example";

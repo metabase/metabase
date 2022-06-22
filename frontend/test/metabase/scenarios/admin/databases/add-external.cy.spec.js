@@ -1,4 +1,4 @@
-import { restore, typeAndBlurUsingLabel } from "__support__/e2e/cypress";
+import { restore, typeAndBlurUsingLabel } from "__support__/e2e/helpers";
 
 describe("admin > database > add > external databases", () => {
   beforeEach(() => {

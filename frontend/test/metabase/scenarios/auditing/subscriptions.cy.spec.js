@@ -4,7 +4,7 @@ import {
   modal,
   popover,
 } from "__support__/e2e/helpers/e2e-ui-elements-helpers";
-import { describeEE } from "__support__/e2e/cypress";
+import { describeEE } from "__support__/e2e/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 

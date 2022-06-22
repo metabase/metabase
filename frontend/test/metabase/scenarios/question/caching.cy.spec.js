@@ -6,7 +6,7 @@ import {
   questionInfoButton,
   rightSidebar,
   popover,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describeEE("scenarios > question > caching", () => {
   beforeEach(() => {
