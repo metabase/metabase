@@ -1057,8 +1057,56 @@
                    :model                   "card"
                    :has_required_parameters true}]
                  (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
-                   (dissoc item :id)))))))))
+                   (dissoc item :id)))))))
 
+    (testing "has_required_parameters of a card"
+      (testing "can be false"
+        (mt/with-temp Card [card {:name "Business Card"
+                                  :dataset_query {:native {:template-tags {:param0 {:required true, :default 0}
+                                                                           :param1 {:required true}
+                                                                           :param2 {:required false}}}}}]
+          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
+                   [{:name                    "Business Card"
+                     :description             nil
+                     :collection_position     nil
+                     :collection_preview      true
+                     :display                 "table"
+                     :moderated_status        nil
+                     :entity_id               (:entity_id card)
+                     :model                   "card"
+                     :has_required_parameters false}
+                    {:name            "Crowberto Corv's Personal Collection"
+                     :description     nil
+                     :model           "collection"
+                     :authority_level nil
+                     :entity_id       (:entity_id collection)
+                     :can_write       true}])
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+                   (dissoc item :id))))))
+
+      (testing "is true if all required parameters have defaults"
+        (mt/with-temp Card [card {:name "Business Card"
+                                  :dataset_query {:native {:template-tags {:param0 {:required true, :default 0}
+                                                                           :param1 {:required true, :default 1}
+                                                                           :param2 {:required false}}}}}]
+          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
+                   [{:name                    "Business Card"
+                     :description             nil
+                     :collection_position     nil
+                     :collection_preview      true
+                     :display                 "table"
+                     :moderated_status        nil
+                     :entity_id               (:entity_id card)
+                     :model                   "card"
+                     :has_required_parameters true}
+                    {:name            "Crowberto Corv's Personal Collection"
+                     :description     nil
+                     :model           "collection"
+                     :authority_level nil
+                     :entity_id       (:entity_id collection)
+                     :can_write       true}])
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+                   (dissoc item :id)))))))))
 
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
 
