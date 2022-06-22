@@ -330,13 +330,14 @@
 
 (def Parameter
   "Schema for a valid Parameter."
-  (with-api-error-message {:id                       NonBlankString
-                           :type                     NonBlankString
+  (with-api-error-message {:id                         NonBlankString
+                           :type                       NonBlankString
                            ;; Allow blank name and slug #15279
-                           (s/optional-key :name)    s/Str
-                           (s/optional-key :slug)    s/Str
-                           (s/optional-key :default) s/Any
-                           s/Keyword                 s/Any}
+                           (s/optional-key :name)      s/Str
+                           (s/optional-key :slug)      s/Str
+                           (s/optional-key :default)   s/Any
+                           (s/optional-key :sectionId) s/Str
+                           s/Keyword                   s/Any}
     (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping
