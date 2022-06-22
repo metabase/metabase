@@ -610,6 +610,7 @@ function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
                     updateSettings({
                       type: clickBehavior.type,
                       action: action.id,
+                      emitter_id: clickBehavior.emitter_id,
                     })
                   }
                 />

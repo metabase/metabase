@@ -182,7 +182,7 @@ export default ({ question, clicked }) => {
 };
 
 function getParametersForNativeAction(
-  parameterMapping,
+  parameterMapping = {},
   { data, extraData, clickBehavior },
 ) {
   const action = extraData.actions[clickBehavior.action];
