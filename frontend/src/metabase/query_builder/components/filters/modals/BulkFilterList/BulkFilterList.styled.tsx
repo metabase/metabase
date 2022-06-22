@@ -8,18 +8,14 @@ export const ListRoot = styled.div`
 `;
 
 export const ListRow = styled.div`
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   padding: 0.375rem 0;
 `;
 
 export const ListRowLabel = styled(Ellipsified)`
-  flex: 1 1 0;
-  margin: 0.625rem 1rem 0.625rem 0;
+  padding: 0.625rem 1rem 0.625rem 0;
   color: ${color("black")};
   line-height: 1rem;
   font-weight: bold;
-`;
-
-export const ListRowContent = styled.div`
-  flex: 1 1 0;
 `;

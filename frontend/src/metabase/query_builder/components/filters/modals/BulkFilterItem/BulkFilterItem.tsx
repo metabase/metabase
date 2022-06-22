@@ -7,6 +7,8 @@ import { isBoolean } from "metabase/lib/schema_metadata";
 
 import { BooleanPickerCheckbox } from "metabase/query_builder/components/filters/pickers/BooleanPicker";
 import { BulkFilterSelect } from "../BulkFilterSelect";
+import { InlineCategoryPicker } from "../InlineCategoryPicker";
+import { SEMANTIC_FIELD_FILTERS, BASE_FIELD_FILTERS } from "./constants";
 
 export interface BulkFilterItemProps {
   query: StructuredQuery;
@@ -25,9 +27,21 @@ export const BulkFilterItem = ({
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterItemProps): JSX.Element => {
-  const fieldType = useMemo(() => dimension.field().base_type ?? "", [
-    dimension,
-  ]);
+  const fieldType = useMemo(() => {
+    const field = dimension.field();
+
+    if (BASE_FIELD_FILTERS.includes(field.base_type ?? "")) {
+      return field.base_type;
+    }
+
+    if (field.has_field_values === "list") {
+      return "type/Category";
+    }
+
+    if (SEMANTIC_FIELD_FILTERS.includes(field.semantic_type ?? "")) {
+      return field.semantic_type;
+    }
+  }, [dimension]);
 
   const newFilter = useMemo(() => getNewFilter(query, dimension), [
     query,
@@ -53,6 +67,17 @@ export const BulkFilterItem = ({
         <BooleanPickerCheckbox
           filter={filter ?? newFilter}
           onFilterChange={handleChange}
+        />
+      );
+    case "type/Category":
+      return (
+        <InlineCategoryPicker
+          query={query}
+          filter={filter}
+          newFilter={newFilter}
+          dimension={dimension}
+          onChange={handleChange}
+          onClear={handleClear}
         />
       );
     default:
