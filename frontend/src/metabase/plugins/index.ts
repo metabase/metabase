@@ -188,5 +188,4 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
 export const PLUGIN_MODEL_PERSISTENCE = {
   isModelLevelPersistenceEnabled: () => false,
   ModelCacheControl: PluginPlaceholder as any,
-  ModelCacheManagementSection: PluginPlaceholder as any,
 };
