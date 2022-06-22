@@ -6,13 +6,16 @@ import {
   openNativeEditor,
 } from "__support__/e2e/cypress";
 
+import { USER_GROUPS } from "__support__/e2e/cypress_data";
+
+const { ALL_USERS_GROUP } = USER_GROUPS;
+
 describeEE("scenarios > question > snippets", () => {
   beforeEach(() => {
     restore();
   });
 
-  // Please uncomment "normal" user when #21581 gets fixed
-  ["admin" /*"normal"*/].forEach(user => {
+  ["admin", "normal"].forEach(user => {
     it(`${user} user can create a snippet (metabase#21581)`, () => {
       cy.intercept("POST", "/api/native-query-snippet").as("snippetCreated");
 
@@ -119,6 +122,7 @@ describeEE("scenarios > question > snippets", () => {
       openNativeEditor();
       cy.icon("snippet").click();
 
+      // Edit permissions for a snippet folder
       cy.findByTestId("sidebar-right").within(() => {
         cy.findByText("Snippet Folder")
           .next()
@@ -128,21 +132,21 @@ describeEE("scenarios > question > snippets", () => {
 
       cy.findByText("Change permissions").click();
 
-      // Update permissions for "All users"
+      // Update permissions for "All users" and let them only "View" this folder
       modal().within(() => {
-        cy.findByTestId("permission-table")
-          .find(".Icon-close")
-          .first()
+        getPermissionsForUserGroup("All Users")
+          .should("contain", "Curate")
           .click();
       });
 
-      cy.findAllByRole("option")
+      popover()
         .contains("View")
         .click();
       cy.button("Save").click();
 
       cy.wait("@updatePermissions");
 
+      // Now let's do the sanity check for the top level (root) snippet permissions and make sure nothing changed there
       cy.findByText("Snippets")
         .parent()
         .next()
@@ -152,16 +156,23 @@ describeEE("scenarios > question > snippets", () => {
 
       // UI check
       modal().within(() => {
-        cy.icon("eye").should("not.exist");
+        getPermissionsForUserGroup("All Users").should("contain", "Curate");
       });
 
       // API check
       cy.get("@updatePermissions").then(intercept => {
         const { groups } = intercept.response.body;
-        const allUsers = groups["1"];
+        const allUsers = groups[ALL_USERS_GROUP];
 
-        expect(allUsers.root).to.equal("none");
+        expect(allUsers.root).to.equal("write");
       });
     });
   });
 });
+
+function getPermissionsForUserGroup(userGroup) {
+  return cy
+    .findByText(userGroup)
+    .closest("tr")
+    .find("[data-testid=permissions-select]");
+}
