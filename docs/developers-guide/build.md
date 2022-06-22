@@ -143,6 +143,8 @@ The “official” branch of Metabase is called `master`, and other feature deve
    ```
    yarn build-hot
    ```
+   
+If you're having trouble with this step, make sure you are using the LTS version of [Node.js (http://nodejs.org/)](http://nodejs.org/).
 
 {:start="11"}
 11. In your web browser of choice, navigate to [localhost:3000](http://localhost:3000), where you should see Metabase!

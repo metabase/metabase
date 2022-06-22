@@ -284,6 +284,14 @@ class QuestionInner {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
+  cacheTTL(): number | null {
+    return this._card?.cache_ttl;
+  }
+
+  setCacheTTL(cache) {
+    return this.setCard(assoc(this.card(), "cache_ttl", cache));
+  }
+
   /**
    * returns whether this question is a model
    * @returns boolean
@@ -861,8 +869,12 @@ class QuestionInner {
     return this.setCard(card);
   }
 
-  description(): string | null | undefined {
+  description(): string | null {
     return this._card && this._card.description;
+  }
+
+  setDescription(description) {
+    return this.setCard(assoc(this.card(), "description", description));
   }
 
   lastEditInfo() {
