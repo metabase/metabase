@@ -64,6 +64,17 @@
                                         [:= :card.is_write true]
                                         (when database
                                           [:= :card.database_id database])]})
+                     (map (fn [card]
+                            (let [disabled (or (:archived card)
+                                               (-> card
+                                                   (:db_settings)
+                                                   (json/decode true)
+                                                   :database-enable-actions
+                                                   boolean
+                                                   not))]
+                              (-> card
+                                  (assoc ::disabled disabled)
+                                  (dissoc :db_settings)))))
                      (db/do-post-select 'Card))
           cards-by-action-id (m/index-by :action_id cards)]
       (keep (fn [action]
@@ -72,9 +83,8 @@
                     (merge
                       {:name card-name
                        :description description
-                       :disabled (or (:archived card)
-                                     (-> card (:db_settings) (json/decode true) :database-enable-actions boolean not))
-                       :card (dissoc card :db_settings)}
+                       :disabled (::disabled card)
+                       :card (dissoc card ::disabled)}
                       (select-keys card [:parameters :parameter_mappings])))))
             actions))))
 
@@ -106,7 +116,7 @@
   [emitters]
   ;; emitters apparently might actually be `[nil]` (not 100% sure why) so just make sure we're not doing anything dumb
   ;; if this is the case.
-  (if-let [emitter-ids (filter some? (map :id emitters))]
+  (if-let [emitter-ids (seq (filter some? (map :id emitters)))]
     (let [emitter-actions (db/select 'EmitterAction :emitter_id [:in emitter-ids])
           action-id-by-emitter-id (into {} (map (juxt :emitter_id :action_id) emitter-actions))
           actions (m/index-by :id (select-actions nil :id [:in (map :action_id emitter-actions)]))]
