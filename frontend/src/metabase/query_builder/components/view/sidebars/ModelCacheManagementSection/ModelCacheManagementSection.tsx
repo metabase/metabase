@@ -29,9 +29,6 @@ type LoaderRenderProps = {
 };
 
 function getStatusMessage(job: ModelCacheRefreshStatus) {
-  if (job.state === "off") {
-    return t`Caching is turned off`;
-  }
   if (job.state === "error") {
     return t`Failed to update model cache`;
   }
