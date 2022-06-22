@@ -3,10 +3,14 @@ import React, { useMemo, useCallback } from "react";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { isBoolean } from "metabase/lib/schema_metadata";
+import { isBoolean, isString } from "metabase/lib/schema_metadata";
 
 import { BooleanPickerCheckbox } from "metabase/query_builder/components/filters/pickers/BooleanPicker";
 import { BulkFilterSelect } from "../BulkFilterSelect";
+import { InlineCategoryPicker } from "../InlineCategoryPicker";
+import { InlineValuePicker } from "../InlineValuePicker";
+
+import { FIELD_PRIORITY } from "./constants";
 
 export interface BulkFilterItemProps {
   query: StructuredQuery;
@@ -25,9 +29,19 @@ export const BulkFilterItem = ({
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterItemProps): JSX.Element => {
-  const fieldType = useMemo(() => dimension.field().base_type ?? "", [
-    dimension,
-  ]);
+  const fieldType = useMemo(() => {
+    const field = dimension.field();
+
+    const relevantFieldType = FIELD_PRIORITY.find(fieldProperty =>
+      [field.semantic_type, field.base_type, field.has_field_values].includes(
+        fieldProperty,
+      ),
+    );
+
+    if (relevantFieldType) {
+      return relevantFieldType;
+    }
+  }, [dimension]);
 
   const newFilter = useMemo(() => getNewFilter(query, dimension), [
     query,
@@ -55,6 +69,28 @@ export const BulkFilterItem = ({
           onFilterChange={handleChange}
         />
       );
+    case "type/Category":
+    case "list":
+      return (
+        <InlineCategoryPicker
+          query={query}
+          filter={filter}
+          newFilter={newFilter}
+          dimension={dimension}
+          onChange={handleChange}
+          onClear={handleClear}
+        />
+      );
+    case "type/PK":
+    case "type/FK":
+    case "type/Text":
+      return (
+        <InlineValuePicker
+          filter={filter ?? newFilter}
+          field={dimension.field()}
+          handleChange={handleChange}
+        />
+      );
     default:
       return (
         <BulkFilterSelect
@@ -69,10 +105,17 @@ export const BulkFilterItem = ({
 };
 
 const getNewFilter = (query: StructuredQuery, dimension: Dimension): Filter => {
-  const filter = new Filter([], null, dimension.query() ?? query);
-  const isBooleanField = isBoolean(dimension.field());
+  let filter = new Filter([], null, dimension.query() ?? query);
+  const field = dimension.field();
+  const isBooleanField = isBoolean(field);
 
-  return filter.setDimension(dimension.mbql(), {
+  filter = filter.setDimension(dimension.mbql(), {
     useDefaultOperator: !isBooleanField,
   });
+
+  const isTextField = isString(field) && field.has_field_values !== "list";
+  if (isTextField) {
+    filter = filter.setOperator("contains");
+  }
+  return filter;
 };

@@ -62,6 +62,7 @@ export const QuestionCacheSection = ({
                 placeholder="24"
                 value={cacheTTL || ""}
                 onChange={handleChange}
+                data-testid="question-cache-ttl-input"
               />
               {t`hours`}
             </Text>
