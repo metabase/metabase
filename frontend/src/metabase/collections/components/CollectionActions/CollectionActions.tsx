@@ -144,6 +144,12 @@ const CollectionMenu = ({
       link: `${url}/archive`,
       event: `${ANALYTICS_CONTEXT};Menu;Archive Collection`,
     });
+    items.push({
+      title: t`Move`,
+      icon: "move",
+      link: `${url}/move`,
+      event: `${ANALYTICS_CONTEXT};Menu;Move Collection`,
+    });
   }
 
   if (isAdmin && !isPersonal && !isPersonalCollectionChild) {
