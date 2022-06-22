@@ -59,16 +59,6 @@ const DatabaseEditAppSidebar = ({
                 successText={t`Sync triggered!`}
               />
             </li>
-            <li>
-              <ActionButton
-                actionFn={() => dismissSyncSpinner(database.id)}
-                className="Button Button--dismissSyncSpinner"
-                normalText={t`Dismiss sync spinner manually`}
-                activeText={t`Dismissing…`}
-                failedText={t`Failed to dismiss sync spinner`}
-                successText={t`Sync spinners dismissed!`}
-              />
-            </li>
             <li className="mt2">
               <ActionButton
                 actionFn={() => rescanDatabaseFields(database.id)}
@@ -79,6 +69,18 @@ const DatabaseEditAppSidebar = ({
                 successText={t`Scan triggered!`}
               />
             </li>
+            {database["initial_sync_status"] !== "complete" && (
+              <li className="mt2">
+                <ActionButton
+                  actionFn={() => dismissSyncSpinner(database.id)}
+                  className="Button Button--dismissSyncSpinner"
+                  normalText={t`Dismiss sync spinner manually`}
+                  activeText={t`Dismissing…`}
+                  failedText={t`Failed to dismiss sync spinner`}
+                  successText={t`Sync spinners dismissed!`}
+                />
+              </li>
+            )}
             {isModelPersistenceEnabled && database.supportsPersistence() && (
               <li className="mt2">
                 {database.isPersisted() ? (
