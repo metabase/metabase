@@ -5,9 +5,7 @@ import { popover } from "__support__/e2e/cypress";
  * @param {"question" | "dashboard" | "collection"} type
  */
 export function openNewCollectionItemFlowFor(type) {
-  cy.findByTestId("collection-menu").within(() => {
-    cy.icon("add").click();
-  });
+  cy.findByText("New").click();
   popover()
     .findByText(new RegExp(type, "i"))
     .click();

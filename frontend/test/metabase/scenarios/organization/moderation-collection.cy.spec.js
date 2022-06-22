@@ -129,7 +129,9 @@ describeEE("collections types", () => {
     cy.visit("/collection/root");
 
     openCollection("Your personal collection");
-    cy.icon("pencil").should("not.exist");
+    cy.findByTestId("collection-menu").within(() => {
+      cy.icon("ellipsis").should("not.exist");
+    });
 
     openNewCollectionItemFlowFor("collection");
     modal().within(() => {
@@ -276,7 +278,7 @@ function openCollection(collectionName) {
 }
 
 function editCollection() {
-  cy.icon("pencil").click();
+  cy.findByTestId("collection-menu").within(() => cy.icon("ellipsis").click());
   cy.findByText("Edit this collection").click();
 }
 

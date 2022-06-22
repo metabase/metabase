@@ -492,7 +492,9 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.wait("@createTimeline");
       cy.icon("close").click();
 
-      cy.icon("pencil").click();
+      cy.findByTestId("collection-menu").within(() => {
+        cy.icon("ellipsis").click();
+      });
       cy.findByText("Edit this collection").click();
       cy.findByLabelText("Name")
         .clear()
