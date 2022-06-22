@@ -814,13 +814,12 @@
   "Manually set the initial sync status of the `Database` and corresponding
   tables to be `complete` (see #20863)"
   [id]
-  ;; just wrap this in a future so it happens async
+  ;; manual full sync needs to be async, but this is a simple update of `Database`
   (let [db     (add-tables (api/write-check (Database id)))
         tables (:tables db)]
-    (future
-      (sync-util/set-initial-database-sync-complete! db)
-      (for [table tables]
-        (sync-util/set-initial-table-sync-complete!))))
+    (sync-util/set-initial-database-sync-complete! db)
+    (for [table tables]
+      (sync-util/set-initial-table-sync-complete!)))
   {:status :ok})
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
