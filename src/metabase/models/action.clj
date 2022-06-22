@@ -1,5 +1,6 @@
 (ns metabase.models.action
-  (:require [medley.core :as m]
+  (:require [cheshire.core :as json]
+            [medley.core :as m]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -51,26 +52,64 @@
                               :response_handle :json
                               :error_handle :json})}))
 
+(defn- normalize-query-actions [database actions]
+  (when (seq actions)
+    (let [cards (->> (db/query {:select [:card.*
+                                         [:db.settings :db_settings]
+                                         :query_action.action_id]
+                                :from [[(db/resolve-model 'Card) :card]]
+                                :join [QueryAction [:= :query_action.card_id :card.id]
+                                       [(db/resolve-model 'Database) :db] [:= :card.database_id :db.id]]
+                                :where [:and
+                                        [:= :card.is_write true]
+                                        (when database
+                                          [:= :card.database_id database])]})
+                     (db/do-post-select 'Card))
+          cards-by-action-id (m/index-by :action_id cards)]
+      (keep (fn [action]
+              (let [{card-name :name :keys [description] :as card} (get cards-by-action-id (:id action))]
+                (-> action
+                    (merge
+                      {:name card-name
+                       :description description
+                       :disabled (or (:archived card)
+                                     (-> card (:db_settings) (json/decode true) :database-enable-actions boolean not))
+                       :card (dissoc card :db_settings)}
+                      (select-keys card [:parameters :parameter_mappings])))))
+            actions))))
+
+(defn- normalize-http-actions [actions]
+  (when (seq actions)
+    (let [http-actions (db/select HTTPAction :action_id [:in (map :id actions)])
+          http-actions-by-action-id (m/index-by :action_id http-actions)]
+      (map (fn [action]
+             (let [http-action (get http-actions-by-action-id (:id action))]
+               (-> action
+                   (merge
+                     {:disabled false}
+                     (select-keys http-action [:name :description :template])
+                     (select-keys (:template http-action) [:parameters :parameter_mappings])))))
+           actions))))
+
+(defn select-actions
+  "Select Actions and fill in sub type information.
+   `options` is passed to `db/select` `& options` arg"
+  [database & options]
+  (let [{:keys [query http]} (group-by :type (apply db/select Action options))
+        query-actions (normalize-query-actions database query)
+        http-actions (normalize-http-actions http)]
+    (sort-by :updated_at (concat query-actions http-actions))))
+
 (defn action
   "Hydrates Action from Emitter"
   {:batched-hydrate :action}
   [emitters]
   ;; emitters apparently might actually be `[nil]` (not 100% sure why) so just make sure we're not doing anything dumb
   ;; if this is the case.
-  (let [emitter-ids (filter some? (map :id emitters))
-        actions     (when (seq emitter-ids)
-                      (->> {:select [:emitter_action.emitter_id
-                                     :query_action.card_id
-                                     :http_action.template
-                                     :action.type]
-                            :from   [[Action :action]]
-                            ;; Will need to change if we stop being 1:1
-                            :join   [:emitter_action             [:= :emitter_action.action_id :action.id]
-                                     [QueryAction :query_action] [:= :query_action.action_id :action.id]
-                                     [HTTPAction :http_action]   [:= :http_action.action_id :action.id]]
-                            :where  [:in :emitter_action.emitter_id emitter-ids]}
-                           db/query
-                           (db/do-post-select Action)
-                           (m/index-by :emitter_id)))]
-    (for [{emitter-id :id, :as emitter} emitters]
-      (some-> emitter (assoc :action (get actions emitter-id))))))
+  (if-let [emitter-ids (filter some? (map :id emitters))]
+    (let [emitter-actions (db/select 'EmitterAction :emitter_id [:in emitter-ids])
+          action-id-by-emitter-id (into {} (map (juxt :emitter_id :action_id) emitter-actions))
+          actions (m/index-by :id (select-actions nil :id [:in (map :action_id emitter-actions)]))]
+      (for [{emitter-id :id, :as emitter} emitters]
+        (some-> emitter (assoc :action (get actions (get action-id-by-emitter-id emitter-id))))))
+    emitters))

@@ -349,7 +349,7 @@
                                       :dashboard_id (u/the-id dashboard)})
         (testing "admin sees emitters"
           (is (partial=
-               {:emitters [{:action {:type "row" :card {:name "Test Write Card"}}}]}
+               {:emitters [{:action {:type "query" :card {:name "Test Write Card"}}}]}
                (dashboard-response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id dashboard)))))))
         (testing "non-admin does not see emitters"
           (is (nil?
