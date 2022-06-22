@@ -156,7 +156,7 @@
 ;;; - `(ingest-one ingestable meta-map)` ingests a single entity into memory, returning it as a map.
 ;;;
 ;;; This two-stage design avoids needing all the data in memory at once, where that's practical with the underlying
-;;; some storage media (eg. files).
+;;; storage media (eg. files).
 ;;;
 ;;; Loading:
 ;;; Loading tries to find corresponding entities in the destination appdb by `entity_id` or `identity-hash`, and update

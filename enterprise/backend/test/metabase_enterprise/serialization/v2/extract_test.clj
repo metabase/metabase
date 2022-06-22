@@ -1,7 +1,7 @@
 (ns metabase-enterprise.serialization.v2.extract-test
   (:require [clojure.test :refer :all]
             [metabase-enterprise.serialization.test-util :as ts]
-            [metabase-enterprise.serialization.v2.extract :as sut]
+            [metabase-enterprise.serialization.v2.extract :as extract]
             [metabase.models :refer [Collection User]]
             [metabase.models.serialization.base :as serdes.base]))
 
@@ -60,12 +60,12 @@
                                                set))]
           (testing "no user specified"
             (is (= #{coll-eid child-eid}
-                   (collections (sut/extract-metabase nil)))))
+                   (collections (extract/extract-metabase nil)))))
 
           (testing "valid user specified"
             (is (= #{coll-eid child-eid pc-eid}
-                   (collections (sut/extract-metabase {:user mark-id})))))
+                   (collections (extract/extract-metabase {:user mark-id})))))
 
           (testing "invalid user specified"
             (is (= #{coll-eid child-eid}
-                   (collections (sut/extract-metabase {:user 218921}))))))))))
+                   (collections (extract/extract-metabase {:user 218921}))))))))))
