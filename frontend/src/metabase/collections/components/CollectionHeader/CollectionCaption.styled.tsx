@@ -17,5 +17,5 @@ export const CaptionDescription = styled.div`
   font-size: 1rem;
   line-height: 1.5rem;
   padding-top: 1.15rem;
-  max-width: 400px;
+  max-width: 25rem;
 `;
