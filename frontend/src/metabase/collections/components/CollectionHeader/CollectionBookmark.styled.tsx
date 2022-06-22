@@ -17,14 +17,15 @@ const shrinkKeyframes = keyframes`
 
 export interface BookmarkIconProps {
   isBookmarked: boolean;
-  isChanged: boolean;
+  isAnimating: boolean;
+  onAnimationEnd: () => void;
 }
 
 export const BookmarkIcon = styled(Icon)<BookmarkIconProps>`
   color: ${props => (props.isBookmarked ? color("brand") : "")};
   animation-name: ${props =>
     props.isBookmarked ? expandKeyframes : shrinkKeyframes};
-  animation-play-state: ${props => (props.isChanged ? "running" : "paused")};
+  animation-play-state: ${props => (props.isAnimating ? "running" : "paused")};
   animation-duration: 0.3s;
   animation-timing-function: linear;
 `;

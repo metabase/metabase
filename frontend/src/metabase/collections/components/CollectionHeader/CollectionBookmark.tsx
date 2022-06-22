@@ -20,7 +20,7 @@ const CollectionBookmark = ({
   onCreateBookmark,
   onDeleteBookmark,
 }: CollectionBookmarkProps): JSX.Element | null => {
-  const [isChanged, setIsChanged] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   const isRoot = isRootCollection(collection);
 
   const handleClick = useCallback(() => {
@@ -30,8 +30,12 @@ const CollectionBookmark = ({
       onCreateBookmark(collection);
     }
 
-    setIsChanged(true);
+    setIsAnimating(true);
   }, [collection, isBookmarked, onCreateBookmark, onDeleteBookmark]);
+
+  const handleAnimationEnd = useCallback(() => {
+    setIsAnimating(false);
+  }, []);
 
   if (isRoot) {
     return null;
@@ -47,7 +51,8 @@ const CollectionBookmark = ({
           name="bookmark"
           size={20}
           isBookmarked={isBookmarked}
-          isChanged={isChanged}
+          isAnimating={isAnimating}
+          onAnimationEnd={handleAnimationEnd}
         />
       </IconWrapper>
     </Tooltip>
