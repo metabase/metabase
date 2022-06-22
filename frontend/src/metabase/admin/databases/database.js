@@ -34,6 +34,8 @@ export const PERSIST_DATABASE = "metabase/admin/databases/PERSIST_DATABASE";
 export const UNPERSIST_DATABASE = "metabase/admin/databases/UNPERSIST_DATABASE";
 export const SYNC_DATABASE_SCHEMA =
   "metabase/admin/databases/SYNC_DATABASE_SCHEMA";
+export const DISMISS_SYNC_SPINNER =
+  "metabase/admin/databases/DISMISS_SYNC_SPINNER";
 export const RESCAN_DATABASE_FIELDS =
   "metabase/admin/databases/RESCAN_DATABASE_FIELDS";
 export const DISCARD_SAVED_FIELD_VALUES =
@@ -247,6 +249,19 @@ export const syncDatabaseSchema = createThunkAction(
         return call;
       } catch (error) {
         console.log("error syncing database", error);
+      }
+    };
+  },
+);
+
+export const dismissSyncSpinner = createThunkAction(
+  DISMISS_SYNC_SPINNER,
+  function(databaseId) {
+    return async function(dispatch, getState) {
+      try {
+        console.log("spinning away...");
+      } catch (error) {
+        console.log("error dismissing sync spinner for database", error);
       }
     };
   },

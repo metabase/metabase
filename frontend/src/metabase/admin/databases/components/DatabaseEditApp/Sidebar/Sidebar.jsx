@@ -14,6 +14,7 @@ const propTypes = {
   database: PropTypes.object.isRequired,
   deleteDatabase: PropTypes.func.isRequired,
   syncDatabaseSchema: PropTypes.func.isRequired,
+  dismissSyncSpinner: PropTypes.func.isRequired,
   rescanDatabaseFields: PropTypes.func.isRequired,
   discardSavedFieldValues: PropTypes.func.isRequired,
   persistDatabase: PropTypes.func.isRequired,
@@ -26,6 +27,7 @@ const DatabaseEditAppSidebar = ({
   database,
   deleteDatabase,
   syncDatabaseSchema,
+  dismissSyncSpinner,
   rescanDatabaseFields,
   discardSavedFieldValues,
   persistDatabase,
@@ -55,6 +57,16 @@ const DatabaseEditAppSidebar = ({
                 activeText={t`Starting…`}
                 failedText={t`Failed to sync`}
                 successText={t`Sync triggered!`}
+              />
+            </li>
+            <li>
+              <ActionButton
+                actionFn={() => dismissSyncSpinner(database.id)}
+                className="Button Button--dismissSyncSpinner"
+                normalText={t`Dismiss sync spinner manually`}
+                activeText={t`Dismissing…`}
+                failedText={t`Failed to dismissed`}
+                successText={t`Sync spinners dismissed!`}
               />
             </li>
             <li className="mt2">
