@@ -57,9 +57,9 @@
     (let [cards (->> (db/query {:select [:card.*
                                          [:db.settings :db_settings]
                                          :query_action.action_id]
-                                :from [[(db/resolve-model 'Card) :card]]
-                                :join [QueryAction [:= :query_action.card_id :card.id]
-                                       [(db/resolve-model 'Database) :db] [:= :card.database_id :db.id]]
+                                :from [[:report_card :card]]
+                                :join [:query_action [:= :query_action.card_id :card.id]
+                                       [:metabase_database :db] [:= :card.database_id :db.id]]
                                 :where [:and
                                         [:= :card.is_write true]
                                         (when database
