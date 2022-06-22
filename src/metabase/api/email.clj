@@ -68,6 +68,13 @@
              (name (mb-to-smtp-settings k))
              (str/upper-case v))])))
 
+(defn- parse-from-comma-delimited-list [s]
+  (->> (str/split s #",")
+       (map str/trim)))
+
+(defn- serialize-to-comma-delimited-list [ss]
+  (str/join ", " ss))
+
 (api/defendpoint PUT "/"
   "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
@@ -75,6 +82,7 @@
   (validation/check-has-application-permission :setting)
   (let [settings (-> settings
                      (select-keys (keys mb-to-smtp-settings))
+                     (update :email-reply-to #(some-> % parse-from-comma-delimited-list))
                      (set/rename-keys mb-to-smtp-settings))
         settings (cond-> settings
                    (string? (:port settings))     (update :port #(Long/parseLong ^String %))
@@ -82,11 +90,12 @@
         response (email/test-smtp-connection settings)]
     (if-not (::email/error response)
       ;; test was good, save our settings
-      (assoc (setting/set-many! (set/rename-keys response (set/map-invert mb-to-smtp-settings)))
-             :with-corrections  (let [[_ corrections] (data/diff settings response)]
-                                  (-> corrections
-                                      (set/rename-keys (set/map-invert mb-to-smtp-settings))
-                                      humanize-email-corrections)))
+      (-> (setting/set-many! (set/rename-keys response (set/map-invert mb-to-smtp-settings)))
+          (update :email-reply-to #(some-> % serialize-to-comma-delimited-list))
+          (assoc :with-corrections (let [[_ corrections] (data/diff settings response)]
+                                     (-> corrections
+                                         (set/rename-keys (set/map-invert mb-to-smtp-settings))
+                                         humanize-email-corrections))))
       ;; test failed, return response message
       {:status 400
        :body   (humanize-error-messages response)})))

@@ -34,7 +34,10 @@
    :email-smtp-password "gobble gobble"
    :email-from-address  "eating@hungry.com"
    :email-from-name     "Eating"
-   :email-reply-to      ["reply-to@hungry.com"]})
+   :email-reply-to      ["reply-to@hungry.com" "reply-to-too@hungry.com"]})
+
+(def ^:private default-email-settings-request-body
+  (assoc default-email-settings :email-reply-to "reply-to@hungry.com, reply-to-too@hungry.com"))
 
 (deftest test-email-settings-test
   (testing "POST /api/email/test -- send a test email"
@@ -63,8 +66,8 @@
     ;; Settings types) -- make sure our API endpoints still work if you pass in the value as a String rather than an
     ;; integer.
     (doseq [:let         [original-values (email-settings)]
-            body         [default-email-settings
-                          (update default-email-settings :email-smtp-port str)]
+            body         [default-email-settings-request-body
+                          (update default-email-settings-request-body :email-smtp-port str)]
             ;; test what happens on both a successful and an unsuccessful connection.
             [success? f] {true  (fn [thunk]
                                   (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
@@ -79,7 +82,7 @@
                (testing "API request"
                  (testing (format "\nRequest body =\n%s" (u/pprint-to-str body))
                    (if success?
-                     (is (= (-> default-email-settings
+                     (is (= (-> default-email-settings-request-body
                                 (assoc :with-corrections {})
                                 (update :email-smtp-security name))
                             (mt/user-http-request :crowberto :put 200 "email" body)))
@@ -97,14 +100,14 @@
     (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
                                  email-smtp-password email-from-address email-from-name email-reply-to]
       (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
-        (is (= (-> default-email-settings
+        (is (= (-> default-email-settings-request-body
                    (assoc :with-corrections {})
                    (update :email-smtp-security name))
-               (mt/user-http-request :crowberto :put 200 "email" default-email-settings)))
+               (mt/user-http-request :crowberto :put 200 "email" default-email-settings-request-body)))
         (let [new-email-settings (email-settings)]
           (is (nil? (mt/user-http-request :crowberto :delete 204 "email")))
           (is (= default-email-settings
-                new-email-settings))
+                 new-email-settings))
           (is (= {:email-smtp-host     nil
                   :email-smtp-port     nil
                   :email-smtp-security :none
