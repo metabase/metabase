@@ -214,4 +214,56 @@ describe("user > settings", () => {
       cy.findByLabelText("Email").should("not.exist");
     });
   });
+
+  describe("when user is authenticated via JWT", () => {
+    beforeEach(() => {
+      cy.server();
+      cy.route(
+        "GET",
+        "/api/user/current",
+        Object.assign({}, CURRENT_USER, {
+          sso_source: "jwt",
+        }),
+      ).as("getUser");
+
+      cy.visit("/account/profile");
+      cy.wait("@getUser");
+    });
+
+    it("should hide change password tab", () => {
+      cy.findByText("Password").should("not.exist");
+    });
+
+    it("should hide first name, last name, and email input (metabase#23298)", () => {
+      cy.findByLabelText("First name").should("not.exist");
+      cy.findByLabelText("Last name").should("not.exist");
+      cy.findByLabelText("Email").should("not.exist");
+    });
+  });
+
+  describe("when user is authenticated via SAML", () => {
+    beforeEach(() => {
+      cy.server();
+      cy.route(
+        "GET",
+        "/api/user/current",
+        Object.assign({}, CURRENT_USER, {
+          sso_source: "saml",
+        }),
+      ).as("getUser");
+
+      cy.visit("/account/profile");
+      cy.wait("@getUser");
+    });
+
+    it("should hide change password tab", () => {
+      cy.findByText("Password").should("not.exist");
+    });
+
+    it("should hide first name, last name, and email input (metabase#23298)", () => {
+      cy.findByLabelText("First name").should("not.exist");
+      cy.findByLabelText("Last name").should("not.exist");
+      cy.findByLabelText("Email").should("not.exist");
+    });
+  });
 });

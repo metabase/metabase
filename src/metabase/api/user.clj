@@ -205,6 +205,15 @@
             (t/offset-date-time))]
     (assoc user :first_login ts)))
 
+(defn- maybe-add-sso-source
+  "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
+  [{:keys [id] :as user}]
+  (if (premium-features/enable-advanced-permissions?)
+    (let [{:keys [sso_source]}
+          (db/select-one [User :sso_source] :id id)]
+      (assoc user :sso_source sso_source))
+    user))
+
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
@@ -212,7 +221,8 @@
       (hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
       add-has-question-and-dashboard
       add-first-login
-      maybe-add-advanced-permissions))
+      maybe-add-advanced-permissions
+      maybe-add-sso-source))
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
