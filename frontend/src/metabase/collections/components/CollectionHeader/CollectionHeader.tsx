@@ -4,7 +4,7 @@ import CollectionCaption from "./CollectionCaption";
 import CollectionBookmark from "./CollectionBookmark";
 import CollectionMenu from "./CollectionMenu";
 import CollectionTimeline from "./CollectionTimeline";
-import { HeaderRoot } from "./CollectionHeader.styled";
+import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 
 export interface CollectionHeaderProps {
   collection: Collection;
@@ -26,7 +26,7 @@ const CollectionHeader = ({
   return (
     <HeaderRoot>
       <CollectionCaption collection={collection} />
-      <div>
+      <HeaderActions data-testid="collection-menu">
         <CollectionBookmark
           collection={collection}
           isBookmarked={isBookmarked}
@@ -39,7 +39,7 @@ const CollectionHeader = ({
           isAdmin={isAdmin}
           isPersonalCollectionChild={isPersonalCollectionChild}
         />
-      </div>
+      </HeaderActions>
     </HeaderRoot>
   );
 };

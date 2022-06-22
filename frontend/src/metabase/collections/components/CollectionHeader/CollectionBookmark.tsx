@@ -1,12 +1,11 @@
 import React, { useCallback, useState } from "react";
 import { t } from "ttag";
+import { color } from "metabase/lib/colors";
+import { IconWrapper } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { isRootCollection } from "metabase/collections/utils";
 import { Collection } from "metabase-types/api";
-import {
-  BookmarkIcon,
-  BookmarkIconContainer,
-} from "./CollectionBookmark.styled";
+import { BookmarkIcon } from "./CollectionBookmark.styled";
 
 export interface CollectionBookmarkProps {
   collection: Collection;
@@ -40,14 +39,17 @@ const CollectionBookmark = ({
 
   return (
     <Tooltip tooltip={isBookmarked ? t`Remove from bookmarks` : t`Bookmark`}>
-      <BookmarkIconContainer isBookmarked={isBookmarked} onClick={handleClick}>
+      <IconWrapper
+        hover={{ color: isBookmarked ? color("brand") : color("text-dark") }}
+        onClick={handleClick}
+      >
         <BookmarkIcon
           name="bookmark"
           size={20}
           isBookmarked={isBookmarked}
           isChanged={isChanged}
         />
-      </BookmarkIconContainer>
+      </IconWrapper>
     </Tooltip>
   );
 };

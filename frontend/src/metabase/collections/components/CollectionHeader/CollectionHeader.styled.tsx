@@ -14,3 +14,9 @@ export const HeaderRoot = styled.div`
     padding-top: ${space(1)};
   }
 `;
+
+export const HeaderActions = styled.div`
+  display: flex;
+  margin-top: ${space(1)};
+  align-self: start;
+`;

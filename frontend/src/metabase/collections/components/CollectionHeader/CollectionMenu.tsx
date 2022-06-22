@@ -27,16 +27,16 @@ const CollectionMenu = ({
 
   if (!isRoot) {
     items.push({
-      title: t`Archive`,
-      icon: "view_archive",
-      link: `${url}/archive`,
-      event: `${ANALYTICS_CONTEXT};Menu;Archive Collection`,
-    });
-    items.push({
       title: t`Move`,
       icon: "move",
       link: `${url}/move`,
       event: `${ANALYTICS_CONTEXT};Menu;Move Collection`,
+    });
+    items.push({
+      title: t`Archive`,
+      icon: "view_archive",
+      link: `${url}/archive`,
+      event: `${ANALYTICS_CONTEXT};Menu;Archive Collection`,
     });
   }
 
