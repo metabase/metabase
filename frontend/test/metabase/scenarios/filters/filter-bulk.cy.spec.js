@@ -8,7 +8,7 @@ import {
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const rawQuestionDetails = {
   dataset_query: {
@@ -16,6 +16,26 @@ const rawQuestionDetails = {
     type: "query",
     query: {
       "source-table": ORDERS_ID,
+    },
+  },
+};
+
+const peopleQuestion = {
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": PEOPLE_ID,
+    },
+  },
+};
+
+const productsQuestion = {
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": PRODUCTS_ID,
     },
   },
 };
@@ -136,15 +156,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     modal().within(() => {
       cy.findByText("Product").click();
-      cy.findByLabelText("Category").click();
-    });
-
-    popover().within(() => {
-      cy.findByText("Gadget").click();
-      cy.button("Add filter").click();
-    });
-
-    modal().within(() => {
+      cy.findByLabelText("Gadget").click();
       cy.button("Apply").click();
       cy.wait("@dataset");
     });
@@ -399,6 +411,111 @@ describe("scenarios > filters > bulk filtering", () => {
         // there should be no filter so the X should not populate
         cy.get(".Icon-close").should("not.exist");
       });
+    });
+  });
+
+  describe("category filters", () => {
+    beforeEach(() => {
+      visitQuestionAdhoc(peopleQuestion);
+      openFilterModal();
+    });
+
+    it("should show inline category picker for referral source", () => {
+      modal().within(() => {
+        cy.findByText("Affiliate").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Source is Affiliate").should("be.visible");
+      cy.findByText("Showing 506 rows").should("be.visible");
+    });
+
+    it("should not show inline category picker for state", () => {
+      modal().within(() => {
+        cy.findByLabelText("State").click();
+      });
+
+      popover().within(() => {
+        cy.findByText("AZ").click();
+        cy.button("Add filter").click();
+      });
+
+      modal().within(() => {
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("State is AZ").should("be.visible");
+      cy.findByText("Showing 20 rows").should("be.visible");
+    });
+  });
+
+  describe("key filters", () => {
+    beforeEach(() => {
+      visitQuestionAdhoc(rawQuestionDetails);
+      openFilterModal();
+    });
+
+    it("filters by primary keys", () => {
+      modal().within(() => {
+        cy.findByLabelText("ID").within(() => {
+          cy.findByPlaceholderText("Enter an ID").type("17, 18");
+        });
+        cy.button("Apply").click();
+      });
+
+      cy.findByText("Showing 2 rows").should("be.visible");
+      cy.findByText("131.68").should("be.visible"); // total for order id 17
+      cy.findByText("123.99").should("be.visible"); // total for order id 18
+    });
+
+    it("filters by a foreign key", () => {
+      modal().within(() => {
+        cy.findByLabelText("Product ID").within(() => {
+          cy.findByPlaceholderText("Enter an ID").type("65");
+        });
+        cy.button("Apply").click();
+      });
+
+      cy.findByText("Showing 107 rows").should("be.visible");
+    });
+  });
+
+  describe("text filters", () => {
+    beforeEach(() => {
+      visitQuestionAdhoc(productsQuestion);
+      openFilterModal();
+    });
+
+    it("adds a contains text filter", () => {
+      modal().within(() => {
+        cy.findByLabelText("Title").within(() => {
+          cy.findByPlaceholderText("Enter some text").type("Marble");
+        });
+        cy.button("Apply").click();
+      });
+      cy.findByText("Showing 17 rows").should("be.visible");
+    });
+
+    it("adds an ends with text filter", () => {
+      modal().within(() => {
+        cy.findByLabelText("Title").within(() => {
+          cy.findByText("Contains").click();
+        });
+      });
+
+      popover().within(() => {
+        cy.findByText("Ends with").click();
+      });
+
+      modal().within(() => {
+        cy.findByLabelText("Title").within(() => {
+          cy.findByPlaceholderText("Enter some text").type("Hat");
+        });
+        cy.button("Apply").click();
+      });
+      cy.findByText("Showing 12 rows").should("be.visible");
     });
   });
 });

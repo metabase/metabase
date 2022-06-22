@@ -26,10 +26,6 @@ export const ViewHeaderLeftSubHeading = styled(ViewSubHeading)`
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-
-  &:not(:empty) {
-    margin-top: ${space(0)};
-  }
 `;
 
 export const AdHocViewHeading = styled(ViewHeading)`
