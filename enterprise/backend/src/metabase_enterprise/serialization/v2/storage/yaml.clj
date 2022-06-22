@@ -17,13 +17,23 @@
         path [root-dir type basename]]
     (spit-yaml path (dissoc entity :serdes/meta))))
 
+(defn- store-settings! [{:keys [root-dir]} settings]
+  (let [as-map (into (sorted-map)
+                     (for [{:keys [key value]} settings]
+                       [key value]))]
+    (spit-yaml [root-dir "settings.yaml"] as-map)))
+
 (defmethod storage/store-all! :yaml [stream opts]
   (when-not (or (string? (:root-dir opts))
                 (instance? java.io.File (:root-dir opts)))
     (throw (ex-info ":yaml storage requires the :root-dir option to be a string or File"
                     {:opts opts})))
-  (doseq [entity stream]
-    (store-entity! opts entity)))
+  (let [settings (atom [])]
+    (doseq [entity stream]
+      (if (-> entity :serdes/meta :type (= "Setting"))
+        (swap! settings conj entity)
+        (store-entity! opts entity)))
+    (store-settings! opts @settings)))
 
 (comment
   (storage/store-all! (metabase-enterprise.serialization.v2.extract/extract-metabase {})
