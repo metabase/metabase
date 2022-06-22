@@ -1,8 +1,7 @@
 (ns metabase-enterprise.serialization.v2.storage.yaml
   (:require [clojure.java.io :as io]
             [metabase-enterprise.serialization.v2.storage :as storage]
-            [yaml.core :as yaml]
-            [yaml.writer :as y.writer]))
+            [yaml.core :as yaml]))
 
 (defn- spit-yaml
   [path obj]
@@ -39,3 +38,9 @@
   (storage/store-all! (metabase-enterprise.serialization.v2.extract/extract-metabase {})
                       {:storage/target :yaml
                        :root-dir "/home/braden/mb/metabase/dump"}))
+
+(defn store!
+  "Helper for storing a serialized database to a tree of YAML files."
+  [stream root-dir]
+  (storage/store-all! stream {:storage/target :yaml
+                              :root-dir       root-dir}))
