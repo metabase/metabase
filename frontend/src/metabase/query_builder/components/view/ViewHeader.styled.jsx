@@ -41,9 +41,6 @@ export const SaveButton = styled(Link)`
   border-radius: 8px;
   background-color: ${color("bg-white")};
 
-  margin-left: 0.5rem;
-  border-left: 1px solid ${color("border")};
-
   :hover {
     background-color: ${color("bg-light")};
   }
