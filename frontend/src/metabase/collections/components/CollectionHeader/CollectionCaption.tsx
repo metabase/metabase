@@ -2,9 +2,9 @@ import React from "react";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { Collection } from "metabase-types/api";
 import {
-  CollectionTitleContainer,
-  CollectionTitle,
-  CollectionDescription,
+  CaptionContainer,
+  CaptionTitle,
+  CaptionDescription,
 } from "./CollectionCaption.styled";
 
 export interface CollectionCaptionProps {
@@ -16,17 +16,17 @@ const CollectionCaption = ({
 }: CollectionCaptionProps): JSX.Element => {
   return (
     <div>
-      <CollectionTitleContainer>
+      <CaptionContainer>
         <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
           collection={collection}
           size={24}
         />
-        <CollectionTitle data-testid="collection-name-heading">
+        <CaptionTitle data-testid="collection-name-heading">
           {collection.name}
-        </CollectionTitle>
-      </CollectionTitleContainer>
+        </CaptionTitle>
+      </CaptionContainer>
       {collection.description && (
-        <CollectionDescription>{collection.description}</CollectionDescription>
+        <CaptionDescription>{collection.description}</CaptionDescription>
       )}
     </div>
   );

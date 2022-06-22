@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import Tooltip from "metabase/components/Tooltip";
+import { isRootCollection } from "metabase/collections/utils";
 import { Collection } from "metabase-types/api";
 import {
   BookmarkIcon,
@@ -9,7 +10,6 @@ import {
 
 export interface CollectionBookmarkProps {
   collection: Collection;
-  isRoot: boolean;
   isBookmarked: boolean;
   onCreateBookmark: (collection: Collection) => void;
   onDeleteBookmark: (collection: Collection) => void;
@@ -17,12 +17,12 @@ export interface CollectionBookmarkProps {
 
 const CollectionBookmark = ({
   collection,
-  isRoot,
   isBookmarked,
   onCreateBookmark,
   onDeleteBookmark,
 }: CollectionBookmarkProps): JSX.Element | null => {
   const [isChanged, setIsChanged] = useState(false);
+  const isRoot = isRootCollection(collection);
 
   const handleClick = useCallback(() => {
     if (isBookmarked) {
