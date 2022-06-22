@@ -38,3 +38,16 @@
 .Theme--night.EmbedFrame .enable-dots .dc-tooltip circle.dot {
   fill: currentColor;
 }
+
+.Theme--transparent.EmbedFrame {
+  background-color: transparent;
+}
+
+.Theme--transparent .EmbedFrame-header,
+.Theme--transparent .EmbedFrame-footer {
+  background-color: transparent;
+}
+
+.Theme--transparent.EmbedFrame .DashCard .Card {
+  background-color: transparent;
+}

@@ -25,6 +25,7 @@ export default ComposedComponent =>
       state = {
         isFullscreen: false,
         isNightMode: false,
+        isTransparent: false,
 
         refreshPeriod: null,
 
@@ -66,7 +67,8 @@ export default ComposedComponent =>
             ? null
             : options.refresh,
         );
-        this.setNightMode(options.theme === "night" || options.night); // DEPRECATED: options.night
+        this.setNightMode(options.theme === "night");
+        this.setTransparent(options.theme === "transparent");
         this.setFullscreen(options.fullscreen);
         this.setHideParameters(options.hide_parameters);
       };
@@ -84,7 +86,12 @@ export default ComposedComponent =>
         };
         setValue("refresh", this.state.refreshPeriod);
         setValue("fullscreen", this.state.isFullscreen);
-        setValue("theme", this.state.isNightMode ? "night" : null);
+        const theme = this.state.isNightMode
+          ? "night"
+          : this.state.isTransparent
+          ? "transparent"
+          : null;
+        setValue("theme", theme);
 
         delete options.night; // DEPRECATED: options.night
 
@@ -130,6 +137,10 @@ export default ComposedComponent =>
       setNightMode = isNightMode => {
         isNightMode = !!isNightMode;
         this.setState({ isNightMode });
+      };
+
+      setTransparent = isTransparent => {
+        this.setState({ isTransparent });
       };
 
       setFullscreen = async (isFullscreen, browserFullscreen = true) => {
