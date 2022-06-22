@@ -1,7 +1,8 @@
 (ns metabase.models.action
-  (:require [cheshire.core :as json]
-            [medley.core :as m]
+  (:require [medley.core :as m]
+            [metabase.models.interface :as mi]
             [metabase.util :as u]
+            [metabase.util.encryption :as encryption]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -68,7 +69,8 @@
                             (let [disabled (or (:archived card)
                                                (-> card
                                                    (:db_settings)
-                                                   (json/decode true)
+                                                   encryption/maybe-decrypt
+                                                   mi/json-out-with-keywordization
                                                    :database-enable-actions
                                                    boolean
                                                    not))]
