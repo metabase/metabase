@@ -259,7 +259,7 @@ export const dismissSyncSpinner = createThunkAction(
   function(databaseId) {
     return async function(dispatch, getState) {
       try {
-        console.log("spinning away...");
+        await MetabaseApi.db_dismiss_sync_spinner({ dbId: databaseId });
       } catch (error) {
         console.log("error dismissing sync spinner for database", error);
       }

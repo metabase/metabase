@@ -32,6 +32,7 @@
             [metabase.sync.field-values :as field-values]
             [metabase.sync.schedules :as sync.schedules]
             [metabase.sync.sync-metadata :as sync-metadata]
+            [metabase.sync.util :as sync-util]
             [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.util :as u]
             [metabase.util.cron :as u.cron]
@@ -807,6 +808,19 @@
     (future
       (sync-metadata/sync-db-metadata! db)
       (analyze/analyze-db! db)))
+  {:status :ok})
+
+(api/defendpoint POST "/:id/dismiss_spinner"
+  "Manually set the initial sync status of the `Database` and corresponding
+  tables to be `complete` (see #20863)"
+  [id]
+  ;; just wrap this in a future so it happens async
+  (let [db     (add-tables (api/write-check (Database id)))
+        tables (:tables db)]
+    (future
+      (sync-util/set-initial-database-sync-complete! db)
+      (for [table tables]
+        (sync-util/set-initial-table-sync-complete!))))
   {:status :ok})
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
