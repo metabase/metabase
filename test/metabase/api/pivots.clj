@@ -6,7 +6,9 @@
   []
   (disj (mt/normal-drivers-with-feature :expressions :left-join)
         ;; Disable on Redshift due to OutOfMemory issue (see #18834)
-        :redshift))
+        :redshift
+        ;; Disable on ocient due to lack of FK support
+        :ocient))
 
 (defn pivot-query
   "A basic pivot table query"

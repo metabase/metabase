@@ -40,6 +40,7 @@ export function getEngineLogo(engine) {
     case "mongo":
     case "mysql":
     case "oracle":
+    case "ocient":
     case "postgres":
     case "presto":
     case "redshift":

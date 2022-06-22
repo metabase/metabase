@@ -1,0 +1,29 @@
+# Complete list of options here: https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference
+info:
+  name: Metabase Ocient Driver
+  version: 1.0.0
+  description: Allows Metabase to connect to Ocient databases.
+
+driver:
+  name: ocient
+  display-name: Ocient
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - host
+    - merge:
+        - port
+        - default: 4050
+    - merge:
+        - dbname
+        - name: db
+          display-name: Database name
+          placeholder: DATABASE NAME
+    - user
+    - password
+  connection-properties-include-tunnel-config: false
+init:
+  - step: load-namespace
+    namespace: metabase.driver.ocient
+  - step: register-jdbc-driver
+    class: com.ocient.jdbc.JDBCDriver
