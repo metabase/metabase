@@ -27,13 +27,13 @@ const CollectionHeader = ({
     <HeaderRoot>
       <CollectionCaption collection={collection} />
       <HeaderActions data-testid="collection-menu">
+        <CollectionTimeline collection={collection} />
         <CollectionBookmark
           collection={collection}
           isBookmarked={isBookmarked}
           onCreateBookmark={onCreateBookmark}
           onDeleteBookmark={onDeleteBookmark}
         />
-        <CollectionTimeline collection={collection} />
         <CollectionMenu
           collection={collection}
           isAdmin={isAdmin}
