@@ -63,19 +63,19 @@
     :else (let [ingested (serdes.ingest/ingest-one ingestion meta-map)
                 model    (db/resolve-model (symbol type))
                 deps     (serdes.base/serdes-dependencies ingested)
-                ctx'     (-> ctx
+                ctx      (-> ctx
                              (update :expanding conj id)
                              (load-deps deps)
                              (update :seen conj id)
                              (update :expanding disj id))
                 pk       (serdes.base/load-one!
                            ingested
-                           (or (get-in ctx' [:local (name model) :by-entity-id id])
-                               (get-in ctx' [:local (name model) :by-identity-hash id])))]
-            (assoc-in ctx' [:local
-                            (name model)
-                            (if (serdes.base/entity-id? id) :by-entity-id :by-identity-hash)
-                            id]
+                           (or (get-in ctx [:local (name model) :by-entity-id id])
+                               (get-in ctx [:local (name model) :by-identity-hash id])))]
+            (assoc-in ctx [:local
+                           (name model)
+                           (if (serdes.base/entity-id? id) :by-entity-id :by-identity-hash)
+                           id]
                       pk))))
 
 (defn load-metabase

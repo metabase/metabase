@@ -234,7 +234,7 @@
      (serdes.hash/identity-hash (db/select-one model pk key)) ; TODO This sucks for identity-hash!
      key]))
 
-(defn- ingested-type
+(defn- ingested-model
   "The dispatch function for several of the load multimethods: dispatching on the type of the incoming entity."
   [ingested]
   (-> ingested :serdes/meta :type))
@@ -245,7 +245,7 @@
 
   Keyed on the model name.
   Default implementation returns an empty vector, so only models that have dependencies need to implement this."
-  ingested-type)
+  ingested-model)
 
 (defmethod serdes-dependencies :default [_]
   [])
@@ -259,7 +259,7 @@
 
   By default, this just calls [[load-xform-basics]].
   If you override this, call [[load-xform-basics]] as well."
-  ingested-type)
+  ingested-model)
 
 (defn load-xform-basics
   "Performs the usual steps for an incoming entity:
@@ -296,6 +296,8 @@
         ]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
     ; Using the two-argument form of [[db/update!]] that takes the model and a HoneySQL form for the actual update.
+    ; It works differently from the more typical `(db/update! 'Model id updates...)` form: this form doesn't run any of
+    ; the pre-update magic, it just updates the database directly.
     (db/update! (symbol model-name) {:where [:= pk id] :set ingested})
     pk))
 
@@ -332,10 +334,10 @@
 
   Returns the primary key of the updated or inserted entity."
   (fn [ingested _]
-    (ingested-type ingested)))
+    (ingested-model ingested)))
 
 (defmethod load-one! :default [ingested maybe-local-id]
-  (let [model    (ingested-type ingested)
+  (let [model    (ingested-model ingested)
         pkey     (models/primary-key (db/resolve-model (symbol model)))
         adjusted (load-xform ingested)]
     (if (nil? maybe-local-id)
