@@ -65,7 +65,7 @@ const DatabaseEditAppSidebar = ({
                 className="Button Button--dismissSyncSpinner"
                 normalText={t`Dismiss sync spinner manually`}
                 activeText={t`Dismissing…`}
-                failedText={t`Failed to dismissed`}
+                failedText={t`Failed to dismiss sync spinner`}
                 successText={t`Sync spinners dismissed!`}
               />
             </li>
