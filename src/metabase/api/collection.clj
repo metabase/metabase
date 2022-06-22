@@ -293,10 +293,16 @@
     (not (zero? v))
     v))
 
+(defn- has-required-parameters? [card-id]
+  (if-let [template-tags (-> (Card card-id) :dataset_query :native :template-tags)]
+    (every? #(or (not (:required %)) (:default %)) (vals template-tags))
+    true))
+
 (defn- post-process-card-row [row]
   (-> row
       (dissoc :authority_level :icon :personal_owner_id)
-      (update :collection_preview bit->boolean)))
+      (update :collection_preview bit->boolean)
+      (assoc :has_required_parameters (has-required-parameters? (:id row)))))
 
 (defmethod post-process-collection-children :card
   [_ rows]

@@ -418,15 +418,16 @@
                                            :moderator_id        user-id
                                            :most_recent         true}]]
         (is (= (mt/obj->json->obj
-                [{:id                  card-id
-                  :name                (:name card)
-                  :collection_position nil
-                  :collection_preview  true
-                  :display             "table"
-                  :description         nil
-                  :entity_id           (:entity_id card)
-                  :moderated_status    "verified"
-                  :model               "card"}])
+                [{:id                      card-id
+                  :name                    (:name card)
+                  :collection_position     nil
+                  :collection_preview      true
+                  :display                 "table"
+                  :description             nil
+                  :entity_id               (:entity_id card)
+                  :moderated_status        "verified"
+                  :model                   "card"
+                  :has_required_parameters true}])
                (mt/obj->json->obj
                 (:data (mt/user-http-request :crowberto :get 200
                                              (str "collection/" (u/the-id collection) "/items"))))))))
@@ -466,11 +467,12 @@
       (mt/with-temp Collection [collection {:name "Debt Collection"}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-some-children-of-collection collection
-          (is (= (map default-item [{:name "Acme Products", :model "pulse", :entity_id true}
-                                    {:name "Birthday Card", :description nil, :model "card",
-                                     :collection_preview false, :display "table", :entity_id true}
-                                    {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true}
-                                    {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id true}])
+          (is (= (-> (mapv default-item [{:name "Acme Products", :model "pulse", :entity_id true}
+                                         {:name "Birthday Card", :description nil, :model "card",
+                                          :collection_preview false, :display "table", :entity_id true}
+                                         {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true}
+                                         {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id true}])
+                     (assoc-in [1 :has_required_parameters] true))
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
 
@@ -480,16 +482,17 @@
           (with-some-children-of-collection collection
             (is (= ()
                    (mt/boolean-ids-and-timestamps
-                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=no_models"))))))
+                    (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=no_models"))))))
             (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard"))))))
-            (is (= [(default-item {:name "Birthday Card", :description nil, :model "card",
-                                   :collection_preview false, :display "table", :entity_id true})
+            (is (= [(-> {:name "Birthday Card", :description nil, :model "card",
+                         :collection_preview false, :display "table", :entity_id true}
+                        default-item
+                        (assoc :has_required_parameters true))
                     (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))))))
-
 
     (testing "Let's make sure the `archived` option works."
       (mt/with-temp Collection [collection {:name "Art Collection"}]
@@ -934,8 +937,10 @@
 (deftest fetch-root-items-collection-test
   (testing "GET /api/collection/root/items"
     (testing "Make sure you can see everything for Users that can see everything"
-      (is (= [(default-item {:name "Birthday Card", :description nil, :model "card",
-                             :collection_preview false, :display "table"})
+      (is (= [(-> {:name "Birthday Card", :description nil, :model "card",
+                   :collection_preview false, :display "table"}
+                  default-item
+                  (assoc :has_required_parameters true))
               (collection-item "Crowberto Corv's Personal Collection")
               (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
               (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
@@ -978,8 +983,10 @@
             (mt/with-temp* [PermissionsGroup           [group]
                             PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
               (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-              (is (= [(default-item {:name "Birthday Card", :description nil, :model "card",
-                                     :collection_preview false, :display "table"})
+              (is (= [(-> {:name "Birthday Card", :description nil, :model "card",
+                           :collection_preview false, :display "table"}
+                          default-item
+                          (assoc :has_required_parameters true))
                       (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
                       (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
                       (collection-item "Rasta Toucan's Personal Collection")]
@@ -1040,14 +1047,15 @@
 
       (testing "Can we look for `archived` stuff with this endpoint?"
         (mt/with-temp Card [card {:name "Business Card", :archived true}]
-          (is (= [{:name                "Business Card"
-                   :description         nil
-                   :collection_position nil
-                   :collection_preview  true
-                   :display             "table"
-                   :moderated_status    nil
-                   :entity_id           (:entity_id card)
-                   :model               "card"}]
+          (is (= [{:name                    "Business Card"
+                   :description             nil
+                   :collection_position     nil
+                   :collection_preview      true
+                   :display                 "table"
+                   :moderated_status        nil
+                   :entity_id               (:entity_id card)
+                   :model                   "card"
+                   :has_required_parameters true}]
                  (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
                    (dissoc item :id)))))))))
 
