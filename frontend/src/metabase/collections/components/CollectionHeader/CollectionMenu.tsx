@@ -27,18 +27,26 @@ const CollectionMenu = ({
   const canWrite = collection.can_write;
 
   if (!isRoot && !isPersonal && canWrite) {
-    items.push({
-      title: t`Move`,
-      icon: "move",
-      link: `${url}/move`,
-      event: `${ANALYTICS_CONTEXT};Menu;Move Collection`,
-    });
-    items.push({
-      title: t`Archive`,
-      icon: "view_archive",
-      link: `${url}/archive`,
-      event: `${ANALYTICS_CONTEXT};Menu;Archive Collection`,
-    });
+    items.push(
+      {
+        title: t`Edit this collection`,
+        icon: "edit_document",
+        link: `${url}/edit`,
+        event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Collection Click`,
+      },
+      {
+        title: t`Move`,
+        icon: "move",
+        link: `${url}/move`,
+        event: `${ANALYTICS_CONTEXT};Edit Menu;Move Collection`,
+      },
+      {
+        title: t`Archive`,
+        icon: "view_archive",
+        link: `${url}/archive`,
+        event: `${ANALYTICS_CONTEXT};Edit Menu;Archive Collection`,
+      },
+    );
   }
 
   if (isAdmin && !isPersonal && !isPersonalCollectionChild) {
@@ -46,7 +54,7 @@ const CollectionMenu = ({
       title: t`Edit permissions`,
       icon: "lock",
       link: `${url}/permissions`,
-      event: `${ANALYTICS_CONTEXT};Menu;Edit Permissions`,
+      event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Permissions`,
     });
   }
 
