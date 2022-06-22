@@ -315,7 +315,9 @@ function createAndOpenOfficialCollection({ name }) {
     setOfficial();
     cy.button("Create").click();
   });
-  cy.findByText(name).click();
+  navigationSidebar().within(() => {
+    cy.findByText(name).click();
+  });
 }
 
 function changeCollectionTypeTo(type) {
