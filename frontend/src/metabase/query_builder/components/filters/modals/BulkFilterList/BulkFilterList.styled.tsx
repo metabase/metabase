@@ -9,7 +9,7 @@ export const ListRoot = styled.div`
 
 export const ListRow = styled.div`
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr 2fr;
   padding: 0.375rem 0;
 `;
 
