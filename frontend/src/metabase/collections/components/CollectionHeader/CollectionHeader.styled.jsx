@@ -1,9 +1,5 @@
 import styled from "@emotion/styled";
-
-import { color } from "metabase/lib/colors";
 import { breakpointMinSmall, space } from "metabase/styled-components/theme";
-
-import Icon from "metabase/components/Icon";
 
 export const Container = styled.div`
   display: flex;
@@ -18,27 +14,6 @@ export const Container = styled.div`
     padding-top: ${space(1)};
   }
 `;
-
-export const MenuContainer = styled.div`
-  display: flex;
-  margin-top: ${space(1)};
-  align-self: start;
-`;
-
-export const DescriptionTooltipIcon = styled(Icon)`
-  color: ${color("bg-dark")};
-  margin-left: ${space(1)};
-  margin-right: ${space(1)};
-  margin-top: ${space(0)};
-
-  &:hover {
-    color: ${color("brand")};
-  }
-`;
-
-DescriptionTooltipIcon.defaultProps = {
-  name: "info",
-};
 
 export const DescriptionHeading = styled.div`
   font-size: 1rem;
