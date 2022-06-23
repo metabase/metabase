@@ -70,7 +70,7 @@ function Tooltip({
   offset,
   isEnabled,
   isOpen,
-  preventOverflow,
+  preventOverflow = false,
   maxWidth = 200,
 }: TooltipProps) {
   const visible = isOpen != null ? isOpen : undefined;
