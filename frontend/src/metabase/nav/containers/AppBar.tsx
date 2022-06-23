@@ -6,12 +6,12 @@ import { withRouter } from "react-router";
 
 import Tooltip from "metabase/components/Tooltip";
 import LogoIcon from "metabase/components/LogoIcon";
-
 import SearchBar from "metabase/nav/components/SearchBar";
 import SidebarButton from "metabase/nav/components/SidebarButton";
 import NewItemButton from "metabase/nav/components/NewItemButton";
 import PathBreadcrumbs from "../components/PathBreadcrumbs/PathBreadcrumbs";
 
+import { CollectionId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import { getIsNavbarOpen, closeNavbar, toggleNavbar } from "metabase/redux/app";
@@ -41,7 +41,7 @@ type Props = {
   isNavBarVisible: boolean;
   isSearchVisible: boolean;
   isNewButtonVisible: boolean;
-  collectionId: string;
+  collectionId?: CollectionId;
   showBreadcrumb: boolean;
   toggleNavbar: () => void;
   closeNavbar: () => void;

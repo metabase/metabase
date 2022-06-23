@@ -101,6 +101,9 @@ export default class Filter extends MBQLClause {
         return false;
       }
 
+      if (!this.operatorName()) {
+        return false;
+      }
       const operator = this.operator();
 
       if (operator) {

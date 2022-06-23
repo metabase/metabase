@@ -184,6 +184,13 @@
     (with-advanced-permissions user)
     user))
 
+(defn- maybe-add-sso-source
+  "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
+  [{:keys [id] :as user}]
+  (if (premium-features/enable-sso?)
+    (assoc user :sso_source (db/select-one-field :sso_source User :id id))
+    user))
+
 (defn- add-has-question-and-dashboard
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard."
   [user]
@@ -212,7 +219,8 @@
       (hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
       add-has-question-and-dashboard
       add-first-login
-      maybe-add-advanced-permissions))
+      maybe-add-advanced-permissions
+      maybe-add-sso-source))
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
