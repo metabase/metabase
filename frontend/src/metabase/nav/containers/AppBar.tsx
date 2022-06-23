@@ -4,14 +4,15 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 
+import Collections from "metabase/entities/collections";
 import Tooltip from "metabase/components/Tooltip";
 import LogoIcon from "metabase/components/LogoIcon";
-
 import SearchBar from "metabase/nav/components/SearchBar";
 import SidebarButton from "metabase/nav/components/SidebarButton";
 import NewItemButton from "metabase/nav/components/NewItemButton";
 import PathBreadcrumbs from "../components/PathBreadcrumbs/PathBreadcrumbs";
 
+import { CollectionId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import { getIsNavbarOpen, closeNavbar, toggleNavbar } from "metabase/redux/app";
@@ -41,19 +42,24 @@ type Props = {
   isNavBarVisible: boolean;
   isSearchVisible: boolean;
   isNewButtonVisible: boolean;
-  collectionId: string;
+  sidebarCollectionId?: CollectionId;
   showBreadcrumb: boolean;
+  breadcrumbCollectionId?: CollectionId;
   toggleNavbar: () => void;
   closeNavbar: () => void;
 };
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: State, props: Props) {
   return {
     isNavBarOpen: getIsNavbarOpen(state),
     isSearchVisible: getIsSearchVisible(state),
     isNewButtonVisible: getIsNewButtonVisible(state),
-    collectionId: getBreadcrumbCollectionId(state),
+    sidebarCollectionId: Collections.selectors.getInitialCollectionId(
+      state,
+      props,
+    ),
     showBreadcrumb: getShowBreadcumb(state),
+    breadcrumbCollectionId: getBreadcrumbCollectionId(state),
   };
 }
 
@@ -75,8 +81,9 @@ function AppBar({
   isNavBarVisible,
   isSearchVisible,
   isNewButtonVisible,
-  collectionId,
+  sidebarCollectionId,
   showBreadcrumb,
+  breadcrumbCollectionId,
   toggleNavbar,
   closeNavbar,
 }: Props) {
@@ -129,7 +136,7 @@ function AppBar({
         )}
         {showBreadcrumb && (
           <PathBreadcrumbsContainer isVisible={!isNavBarOpen}>
-            <PathBreadcrumbs collectionId={collectionId} />
+            <PathBreadcrumbs collectionId={breadcrumbCollectionId} />
           </PathBreadcrumbsContainer>
         )}
       </LeftContainer>
@@ -150,7 +157,9 @@ function AppBar({
               </SearchBarContent>
             </SearchBarContainer>
           )}
-          {isNewButtonVisible && <NewItemButton />}
+          {isNewButtonVisible && (
+            <NewItemButton collectionId={sidebarCollectionId} />
+          )}
         </RightContainer>
       )}
     </AppBarRoot>
