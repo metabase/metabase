@@ -85,7 +85,6 @@
                          {:error-code (:error body)
                           :message    message
                           :response   body})]
-    (tap> body)
     (when (and invalid-token? *send-token-error-emails?*)
       ;; Check `slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token.
       ;; We should send an email if `slack-token-valid?` is `true` or `nil` (i.e. a pre-existing bot integration is
