@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "ttag";
 
 import {
   PLUGIN_MODERATION,
@@ -13,7 +14,7 @@ import QuestionActivityTimeline from "metabase/query_builder/components/Question
 import Question from "metabase-lib/lib/Question";
 import { Card } from "metabase-types/types/Card";
 
-import EditableText from "../../EditableText";
+import EditableText from "metabase/core/components/EditableText";
 import { Root, ContentSection } from "./QuestionInfoSidebar.styled";
 
 interface QuestionInfoSidebarProps {
@@ -48,9 +49,9 @@ export const QuestionInfoSidebar = ({
     <Root>
       <ContentSection>
         <EditableText
-          initialValue={description}
+          value={description}
+          placeholder={t`Description`}
           onChange={handleSave}
-          placeholder="Description"
         />
         <PLUGIN_MODERATION.QuestionModerationSection question={question} />
       </ContentSection>

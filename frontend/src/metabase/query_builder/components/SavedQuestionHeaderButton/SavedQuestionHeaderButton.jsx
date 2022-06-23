@@ -1,15 +1,12 @@
 import React from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
-
 import { PLUGIN_MODERATION } from "metabase/plugins";
-
 import { color } from "metabase/lib/colors";
-
-import EditableText from "../EditableText";
 import {
   HeaderRoot,
   HeaderReviewIcon,
+  HeaderTitle,
 } from "./SavedQuestionHeaderButton.styled";
 
 SavedQuestionHeaderButton.propTypes = {
@@ -28,11 +25,10 @@ function SavedQuestionHeaderButton({ className, question, onSave }) {
 
   return (
     <HeaderRoot>
-      <EditableText
-        initialValue={question.displayName()}
-        onChange={onSave}
-        submitOnEnter
+      <HeaderTitle
+        value={question.displayName()}
         placeholder={t`A nice title`}
+        onChange={onSave}
         data-testid="saved-question-header-title"
       />
       {reviewIconName && (

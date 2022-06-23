@@ -3,6 +3,7 @@ import { color } from "metabase/lib/colors";
 
 export const EditableTextRoot = styled.div`
   position: relative;
+  color: ${color("text-dark")};
   padding: 0.25rem;
   border: 1px solid transparent;
 
@@ -26,6 +27,7 @@ export const EditableTextArea = styled.textarea`
   height: 100%;
   min-height: 0;
   padding: inherit;
+  color: inherit;
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;

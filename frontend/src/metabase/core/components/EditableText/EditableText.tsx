@@ -19,7 +19,7 @@ export type EditableTextAttributes = Omit<
 >;
 
 export interface EditableTextProps extends EditableTextAttributes {
-  value?: string;
+  value?: string | null;
   placeholder?: string;
   isMultiline?: boolean;
   onChange?: (value: string) => void;
@@ -27,7 +27,7 @@ export interface EditableTextProps extends EditableTextAttributes {
 
 const EditableText = forwardRef(function EditableText(
   {
-    value: valueText = "",
+    value,
     placeholder,
     isMultiline = false,
     onChange,
@@ -35,6 +35,7 @@ const EditableText = forwardRef(function EditableText(
   }: EditableTextProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const valueText = value ?? "";
   const [inputText, setInputText] = useState(valueText);
   const [isFocused, setIsFocused] = useState(false);
   const displayText = isFocused ? inputText : valueText;
