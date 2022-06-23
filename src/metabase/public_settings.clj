@@ -292,6 +292,12 @@
   :type       :boolean
   :default    true)
 
+(defsetting application-colors-migrated
+  "Stores whether the `application-colors` setting has been migrated to 0.44 expectations"
+  :visibility :internal
+  :type :boolean
+  :default false)
+
 (defsetting application-colors
   (deferred-tru
    (str "These are the primary colors used in charts and throughout Metabase. "
@@ -300,14 +306,17 @@
   :type       :json
   :default    {}
   :getter (fn []
-            (let [{:keys [accent0 brand summarize accent1 filter accent7] :as current-colors} (setting/get-value-of-type :json :application-colors)
-                  new-colors (cond-> current-colors
-                         (and brand (not accent0))     (assoc :accent0 brand)
-                         (and accent1 (not summarize)) (assoc :summarize accent1)
-                         (and accent7 (not filter))    (assoc :filter accent7))]
-              (when-not (= current-colors new-colors)
-                (setting/set-value-of-type! :json :application-colors new-colors))
-              new-colors)))
+            (let [current-colors (setting/get-value-of-type :json :application-colors)]
+              (if (application-colors-migrated)
+                current-colors
+                (let [{:keys [accent0 brand summarize accent1 filter accent7]} current-colors
+                      new-colors (cond-> current-colors
+                                   (and brand (not accent0))     (assoc :accent0 brand)
+                                   (and accent1 (not summarize)) (assoc :summarize accent1)
+                                   (and accent7 (not filter))    (assoc :filter accent7))]
+                  (setting/set-value-of-type! :json :application-colors new-colors)
+                  (application-colors-migrated! true)
+                  new-colors)))))
 
 (defsetting application-font
   (deferred-tru
