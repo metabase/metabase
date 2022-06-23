@@ -16,7 +16,6 @@
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
-            [metabase.test.data.interface :as tx]
             [metabase.test.util :as tu]
             [metabase.test.util.timezone :as test.tz]
             [metabase.util :as u]
@@ -855,37 +854,3 @@
            (let [t         [:absolute-datetime #t "2022-04-22T18:27:00-08:00"]
                  hsql-form (sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk t 3 :month)]
              (sql.qp/format-honeysql :bigquery-cloud-sdk hsql-form))))))
-
-(tx/defdataset text-coerced-to-date
-  [["coerced_dates"
-    [{:field-name "field_date_time", :base-type :type/Text, :coercion-strategy :Coercion/ISO8601->DateTime}
-     {:field-name "field_date",      :base-type :type/Text, :coercion-strategy :Coercion/ISO8601->Date}
-     {:field-name "field_time",      :base-type :type/Text, :coercion-strategy :Coercion/ISO8601->Time}]
-    [["2008-05-26T03:22:17" "2008-05-26" "03:22:17.357"]]]])
-
-(deftest coercion-strategy-test
-  (mt/test-driver :bigquery-cloud-sdk
-    (testing "Date/time coercions work"
-      (mt/dataset text-coerced-to-date
-        (let [query (mt/mbql-query coerced_dates
-                      {:fields [$field_date_time $field_date $field_time]
-                       :limit 1})]
-          (is (sql= '{:select
-                      [CAST
-                       (v3_text_coerced_to_date.coerced_dates.field_date_time AS timestamp)
-                       AS
-                       field_date_time,
-                       CAST
-                       (v3_text_coerced_to_date.coerced_dates.field_date AS date)
-                       AS
-                       field_date,
-                       CAST
-                       (v3_text_coerced_to_date.coerced_dates.field_time AS time)
-                       AS
-                       field_time],
-                      :from [v3_text_coerced_to_date.coerced_dates],
-                      :limit [1]}
-                    query))
-          (mt/with-native-query-testing-context query
-            (is (= [["2008-05-26T03:22:17Z" "2008-05-26T00:00:00Z" "03:22:17.357Z"]]
-                   (mt/rows (qp/process-query query))))))))))
