@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.v2.storage.yaml-test
+(ns metabase-enterprise.serialization.v2.yaml-test
   (:require [clojure.java.io :as io]
             [clojure.test :refer :all]
             [metabase-enterprise.serialization.test-util :as ts]
