@@ -65,8 +65,7 @@ const EditableText = forwardRef(function EditableText(
   );
 
   return (
-    <EditableTextRoot ref={ref} {...props}>
-      <EditableTextContent>{inputValue}&nbsp;</EditableTextContent>
+    <EditableTextRoot {...props} ref={ref} data-value={inputValue}>
       <EditableTextArea
         value={inputValue}
         placeholder={placeholder}

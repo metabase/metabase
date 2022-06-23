@@ -99,7 +99,7 @@ describe("QuestionDetailsSidebarPanel", () => {
       describe(type, () => {
         it("displays description", () => {
           setup({ question: getObject({ description: "Foo bar" }) });
-          expect(screen.getByDisplayValue("Foo bar")).toBeInTheDocument();
+          expect(screen.queryByText("Foo bar")).toBeInTheDocument();
         });
       });
     });

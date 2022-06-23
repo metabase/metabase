@@ -5,7 +5,6 @@ import {
   popover,
   openQuestionActions,
   questionInfoButton,
-  getQuestionTitle,
 } from "__support__/e2e/cypress";
 
 import { onlyOn } from "@cypress/skip-test";
@@ -37,7 +36,7 @@ describe("managing question from the question's details sidebar", () => {
 
             it("should be able to edit question details (metabase#11719-1)", () => {
               // cy.skipOn(user === "nodata");
-              getQuestionTitle()
+              cy.findByTestId("saved-question-header-title")
                 .click()
                 .type("1")
                 .blur();

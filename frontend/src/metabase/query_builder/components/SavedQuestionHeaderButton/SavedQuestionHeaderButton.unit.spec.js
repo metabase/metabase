@@ -24,11 +24,11 @@ describe("SavedQuestionHeaderButton", () => {
   });
 
   it("renders the name of the question", () => {
-    expect(screen.getByDisplayValue("foo")).toBeInTheDocument();
+    expect(screen.getByText("foo")).toBeInTheDocument();
   });
 
   it("is updateable", () => {
-    const title = screen.getByRole("textbox");
+    const title = screen.getByTestId("saved-question-header-title");
     userEvent.type(title, "1");
     title.blur();
 

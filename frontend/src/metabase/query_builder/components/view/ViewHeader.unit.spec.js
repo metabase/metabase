@@ -359,7 +359,7 @@ describe("ViewHeader", () => {
 
         it("opens details sidebar on question name click", () => {
           const { onSave } = setup({ question });
-          const title = screen.getByRole("textbox");
+          const title = screen.getByTestId("saved-question-header-title");
           userEvent.type(title, "New Title");
           fireEvent.blur(title);
           expect(onSave).toHaveBeenCalled();

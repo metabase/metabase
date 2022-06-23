@@ -11,13 +11,16 @@ export const EditableTextRoot = styled.div`
   &:focus-within {
     border-color: ${color("border")};
   }
+
+  &:after {
+    content: attr(data-value);
+    visibility: hidden;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
 `;
 
-export const EditableTextContent = styled.div`
-  visibility: hidden;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-`;
+export const EditableTextContent = styled.div``;
 
 export const EditableTextArea = styled.textarea`
   position: absolute;
