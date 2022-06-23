@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "lodash";
 import { getIn } from "icepick";
-import { t } from "ttag";
 
 import {
   getDashcards,
@@ -99,12 +98,7 @@ function DataAppContextProvider({
       format: (text: string) => text,
     };
 
-    value.format = (text: string) => {
-      if (!isLoaded) {
-        return t`Loading…`;
-      }
-      return formatDataAppString(text, value);
-    };
+    value.format = (text: string) => formatDataAppString(text, value);
 
     return value;
   }, [dataContext, isLoaded]);

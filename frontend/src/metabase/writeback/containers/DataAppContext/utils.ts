@@ -1,5 +1,6 @@
 import _ from "lodash";
 import { getIn } from "icepick";
+import { t } from "ttag";
 
 import { Dataset } from "metabase-types/types/Dataset";
 
@@ -66,8 +67,9 @@ export function formatDataAppString(
   let formattedText = text;
   const path = getContextPath(parameterAccessor);
   const parameter = getIn(context, path);
-  if (parameter) {
-    formattedText = formattedText.replace(parameterAccessor, parameter.value);
-  }
+  formattedText = formattedText.replace(
+    parameterAccessor,
+    parameter?.value ? parameter.value : t`Loading…`,
+  );
   return formatDataAppString(formattedText, context);
 }
