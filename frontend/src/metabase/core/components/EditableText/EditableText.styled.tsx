@@ -20,8 +20,6 @@ export const EditableTextRoot = styled.div`
   }
 `;
 
-export const EditableTextContent = styled.div``;
-
 export const EditableTextArea = styled.textarea`
   position: absolute;
   top: 0;

@@ -7,11 +7,7 @@ import React, {
   useCallback,
   useState,
 } from "react";
-import {
-  EditableTextArea,
-  EditableTextContent,
-  EditableTextRoot,
-} from "./EditableText.styled";
+import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 
 export type EditableTextAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
