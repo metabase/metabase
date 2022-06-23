@@ -1,8 +1,8 @@
 ---
-title: Creating Custom Segments and Metrics
+title: Creating custom segments and metrics
 ---
 
-# Creating Custom Segments and Metrics
+# Creating custom segments and metrics
 
 Metabase allows you to create your own segments and metrics so you can quickly and easily reference them in the query builder. Just head over to the **Admin Panel** and select **Data Model** from the top menu.
 

@@ -5,6 +5,7 @@ import { t } from "ttag";
 import moment from "moment";
 
 import { getUser } from "metabase/selectors/user";
+import { getFullName } from "metabase/lib/user";
 import { TextButton } from "metabase/components/Button.styled";
 import Tooltip from "metabase/components/Tooltip";
 import DateTime from "metabase/components/DateTime";
@@ -33,9 +34,7 @@ LastEditInfoLabel.propTypes = {
 };
 
 function formatEditorName(lastEditInfo) {
-  const name = [lastEditInfo.first_name, lastEditInfo.last_name]
-    .join(" ")
-    .trim();
+  const name = getFullName(lastEditInfo);
 
   return name || lastEditInfo.email;
 }

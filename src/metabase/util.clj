@@ -983,3 +983,14 @@
   "Generates a random NanoID string. Usually these are used for the entity_id field of various models."
   []
   (nano-id))
+
+(defn pick-first
+  "Returns a pair [match others] where match is the first element of `coll` for which `pred` returns
+  a truthy value and others is a sequence of the other elements of `coll` with the order preserved.
+  Returns nil if no element satisfies `pred`."
+  [pred coll]
+  (loop [xs (seq coll), prefix []]
+    (when-let [[x & xs] xs]
+      (if (pred x)
+        [x (concat prefix xs)]
+        (recur xs (conj prefix x))))))

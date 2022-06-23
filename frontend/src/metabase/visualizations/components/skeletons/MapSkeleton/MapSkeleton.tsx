@@ -3,18 +3,18 @@ import SkeletonCaption from "../SkeletonCaption";
 import { SkeletonImage, SkeletonRoot } from "./MapSkeleton.styled";
 
 export interface MapSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  displayName?: string | null;
+  name?: string | null;
   description?: string | null;
 }
 
 const MapSkeleton = ({
-  displayName,
+  name,
   description,
   ...props
 }: MapSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
-      <SkeletonCaption name={displayName} description={description} />
+      <SkeletonCaption name={name} description={description} />
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 242 157"

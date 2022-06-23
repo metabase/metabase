@@ -375,12 +375,12 @@
                                                                   :parameters [{:name    "Category"
                                                                                 :slug    "category"
                                                                                 :id      "_MBQL_CATEGORY_"
-                                                                                :type    :category
+                                                                                :type    "category"
                                                                                 :default ["Doohickey"]}
                                                                                {:name    "SQL Category"
                                                                                 :slug    "sql_category"
                                                                                 :id      "_SQL_CATEGORY_"
-                                                                                :type    :category
+                                                                                :type    "category"
                                                                                 :default ["Gizmo"]}]}]
         (testing "MBQL query"
           (mt/with-temp* [Card [{mbql-card-id :id} {:name          "Orders"

@@ -71,17 +71,38 @@
   type of the parameter has to agree with the type of the template tag as well. This variable controls whether or not
   this constraint is enforced.
 
+  In 0.44.0+ explicit parameters can be defined on MBQL cards as well. Parameters supplied in a request must correspond
+  by ID to parameters defined explicitly on the card and have an appropriate type, unless this variable is `true`.
+
   Normally, when running a query in the context of a /Card/, this is `false`, and the constraint is enforced. By
   binding this to a truthy value you can disable the checks. Currently this is only done
   by [[metabase.query-processor.dashboard]], which does its own parameter validation before handing off to the code
   here."
   false)
 
-(defn- card-template-tag-parameters
-  "Template tag parameters that have been specified for the query for Card with `card-id`, if any, returned as a map in
+(defn- card-parameters
+  "Parameters on provided Card, returned as a map with the format
+
+    {\"parameter_id\" :parameter-type ...}
+
+  This allows the expected type of a request parameter targeting a field on an MBQL query to be quickly looked up by ID.
+  Excludes parameters that do not have IDs."
+  [{parameters :parameters}]
+  (into {} (comp
+            (map (juxt :id :type))
+            (remove (comp nil? first)))
+          parameters))
+
+(defn- card-template-tags
+  "Template tags that have been specified for the query in the provided Card, if any, returned as a map in
   the format
 
-    {\"template_tag_parameter_name\" :parameter-type, ...}
+    {\"template_tag_name\" :parameter-type,
+     \"template_tag_id\"   :parameter-type
+     ...}
+
+  This allows the expected type of a request parameter targeting a template tag to be quickly looked up by *either*
+  name or ID.
 
   Template tag parameter name is the name of the parameter as it appears in the query, e.g. `{{id}}` has the `:name`
   `\"id\"`.
@@ -89,23 +110,22 @@
   Parameter type in this case is something like `:string` or `:number` or `:date/month-year`; parameters passed in as
   parameters to the API request must be allowed for this type (i.e. `:string/=` is allowed for a `:string` parameter,
   but `:number/=` is not)."
-  [card-id]
-  (let [query (api/check-404 (db/select-one-field :dataset_query Card :id card-id))]
-    (into
-     {}
-     (comp
-      (map (fn [[param-name {widget-type :widget-type, tag-type :type}]]
-             ;; Field Filter parameters have a `:type` of `:dimension` and the widget type that should be used is
-             ;; specified by `:widget-type`. Non-Field-filter parameters just have `:type`. So prefer
-             ;; `:widget-type` if available but fall back to `:type` if not.
-             (cond
-               (= tag-type :dimension)
-               [param-name widget-type]
-
-               (contains? mbql.s/raw-value-template-tag-types tag-type)
-               [param-name tag-type])))
-      (filter some?))
-     (get-in query [:native :template-tags]))))
+  [{query :dataset_query}]
+  (into
+   {}
+   (comp
+    (mapcat
+     (fn [[param-name {widget-type :widget-type, tag-type :type, id :id}]]
+       ;; Field Filter parameters have a `:type` of `:dimension` and the widget type that should be used is
+       ;; specified by `:widget-type`. Non-Field-filter parameters just have `:type`. So prefer
+       ;; `:widget-type` if available but fall back to `:type` if not.
+       (let [param-type (cond
+                          (= tag-type :dimension) widget-type
+                          (contains? mbql.s/raw-value-template-tag-types tag-type) tag-type)]
+         [[id param-type]
+          [param-name param-type]])))
+    (filter some?))
+   (get-in query [:native :template-tags])))
 
 (defn- allowed-parameter-type-for-template-tag-widget-type? [parameter-type widget-type]
   (when-let [allowed-template-tag-types (get-in mbql.s/parameter-types [parameter-type :allowed-for])]
@@ -150,19 +170,41 @@
 
 (s/defn ^:private validate-card-parameters
   "Unless [[*allow-arbitrary-mbql-parameters*]] is truthy, check to make all supplied `parameters` actually match up
-  with template tags in the query for Card with `card-id`."
-  [card-id :- su/IntGreaterThanZero parameters :- mbql.s/ParameterList]
+  with `parameters` defined on the Card with `card-id`, or template tags on the query."
+  [card-id :- su/IntGreaterThanZero request-parameters :- mbql.s/ParameterList]
   (when-not *allow-arbitrary-mbql-parameters*
-    (let [template-tags (card-template-tag-parameters card-id)]
-      (doseq [request-parameter parameters
-              :let              [parameter-name (infer-parameter-name request-parameter)]]
-        (let [matching-widget-type (or (get template-tags parameter-name)
-                                       (throw (ex-info (tru "Invalid parameter: Card {0} does not have a template tag named {1}."
-                                                            card-id
-                                                            (pr-str parameter-name))
-                                                       {:type               qp.error-type/invalid-parameter
-                                                        :invalid-parameter  request-parameter
-                                                        :allowed-parameters (keys template-tags)})))]
+    (let [card                   (api/check-404 (db/select-one [Card :dataset_query :parameters] :id card-id))
+          types-on-template-tags (card-template-tags card)
+          types-on-parameters    (card-parameters card)]
+      (doseq [request-parameter request-parameters
+              :let              [parameter-id   (:id request-parameter)
+                                 parameter-name (infer-parameter-name request-parameter)]]
+        (let [matching-widget-type
+              (if (seq types-on-parameters)
+                ;; If (non-template tag) parameters are defined on the card, request parameters should target them by
+                ;; ID, rather than targeting template tags directly (even if they also exist)
+                (or (get types-on-parameters parameter-id)
+                    (throw (ex-info (if parameter-id
+                                     (tru "Invalid parameter: Card {0} does not have a parameter with the ID {1}."
+                                          card-id
+                                          (pr-str parameter-id))
+                                     (tru "Invalid parameter: missing id"))
+                                    {:type               qp.error-type/invalid-parameter
+                                     :invalid-parameter  request-parameter
+                                     :allowed-parameters (keys types-on-parameters)})))
+                (or
+                 ;; Use ID preferentially, but fallback to name if ID is not present, as a safety net in case request
+                 ;; parameters are malformed. Only need to do this for parameters targeting template tags since card
+                 ;; parameters should always be targeted by ID.
+                 (get types-on-template-tags parameter-id)
+                 (get types-on-template-tags parameter-name)
+                 (throw (ex-info (tru "Invalid parameter: Card {0} does not have a template tag with the ID {1} or name {2}."
+                                      card-id
+                                      (pr-str parameter-id)
+                                      (pr-str parameter-name))
+                                 {:type               qp.error-type/invalid-parameter
+                                  :invalid-parameter  request-parameter
+                                  :allowed-parameters (keys types-on-template-tags)}))))]
           ;; now make sure the type agrees as well
           (check-allowed-parameter-value-type parameter-name matching-widget-type (:type request-parameter)))))))
 

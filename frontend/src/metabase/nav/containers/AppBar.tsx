@@ -9,7 +9,7 @@ import LogoIcon from "metabase/components/LogoIcon";
 
 import SearchBar from "metabase/nav/components/SearchBar";
 import SidebarButton from "metabase/nav/components/SidebarButton";
-import NewButton from "metabase/nav/containers/NewButton";
+import NewItemButton from "metabase/nav/components/NewItemButton";
 import PathBreadcrumbs from "../components/PathBreadcrumbs/PathBreadcrumbs";
 
 import { State } from "metabase-types/store";
@@ -150,7 +150,7 @@ function AppBar({
               </SearchBarContent>
             </SearchBarContainer>
           )}
-          {isNewButtonVisible && <NewButton />}
+          {isNewButtonVisible && <NewItemButton />}
         </RightContainer>
       )}
     </AppBarRoot>

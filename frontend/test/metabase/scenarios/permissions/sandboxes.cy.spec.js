@@ -56,7 +56,7 @@ describeEE("formatting > sandboxes", () => {
       cy.findByText("Invite someone").click();
       cy.findByPlaceholderText("Johnny").type("John");
       cy.findByPlaceholderText("Appleseed").type("Smith");
-      cy.findByPlaceholderText("youlooknicetoday@email.com").type(
+      cy.findByPlaceholderText("nicetoseeyou@email.com").type(
         "john@smith.test",
       );
       cy.findByText("Add an attribute").click();

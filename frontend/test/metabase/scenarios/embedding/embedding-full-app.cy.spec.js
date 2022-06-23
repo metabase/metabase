@@ -55,6 +55,7 @@ describe("scenarios > embedding > full app", () => {
       visitQuestionUrl({ url: "/question/1" });
 
       cy.findByTestId("qb-header").should("be.visible");
+      cy.findByTestId("qb-header-left-side").realHover();
       cy.findByText(/Edited/).should("be.visible");
 
       cy.icon("refresh").should("be.visible");
