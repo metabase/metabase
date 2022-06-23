@@ -1,13 +1,8 @@
 import React from "react";
 import { t } from "ttag";
-import { CollectionId } from "metabase-types/api";
 import { NewButton, NewButtonText, NewMenu } from "./NewItemButton.styled";
 
-export interface NewItemButtonProps {
-  collectionId?: CollectionId;
-}
-
-const NewItemButton = ({ collectionId }: NewItemButtonProps) => {
+const NewItemButton = () => {
   return (
     <NewMenu
       trigger={
@@ -20,7 +15,6 @@ const NewItemButton = ({ collectionId }: NewItemButtonProps) => {
           <NewButtonText>{t`New`}</NewButtonText>
         </NewButton>
       }
-      collectionId={collectionId}
       analyticsContext={"NavBar"}
     />
   );

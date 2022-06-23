@@ -4,7 +4,6 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 
-import Collections from "metabase/entities/collections";
 import Tooltip from "metabase/components/Tooltip";
 import LogoIcon from "metabase/components/LogoIcon";
 import SearchBar from "metabase/nav/components/SearchBar";
@@ -42,24 +41,19 @@ type Props = {
   isNavBarVisible: boolean;
   isSearchVisible: boolean;
   isNewButtonVisible: boolean;
-  sidebarCollectionId?: CollectionId;
+  collectionId?: CollectionId;
   showBreadcrumb: boolean;
-  breadcrumbCollectionId?: CollectionId;
   toggleNavbar: () => void;
   closeNavbar: () => void;
 };
 
-function mapStateToProps(state: State, props: Props) {
+function mapStateToProps(state: State) {
   return {
     isNavBarOpen: getIsNavbarOpen(state),
     isSearchVisible: getIsSearchVisible(state),
     isNewButtonVisible: getIsNewButtonVisible(state),
-    sidebarCollectionId: Collections.selectors.getInitialCollectionId(
-      state,
-      props,
-    ),
+    collectionId: getBreadcrumbCollectionId(state),
     showBreadcrumb: getShowBreadcumb(state),
-    breadcrumbCollectionId: getBreadcrumbCollectionId(state),
   };
 }
 
@@ -81,9 +75,8 @@ function AppBar({
   isNavBarVisible,
   isSearchVisible,
   isNewButtonVisible,
-  sidebarCollectionId,
+  collectionId,
   showBreadcrumb,
-  breadcrumbCollectionId,
   toggleNavbar,
   closeNavbar,
 }: Props) {
@@ -136,7 +129,7 @@ function AppBar({
         )}
         {showBreadcrumb && (
           <PathBreadcrumbsContainer isVisible={!isNavBarOpen}>
-            <PathBreadcrumbs collectionId={breadcrumbCollectionId} />
+            <PathBreadcrumbs collectionId={collectionId} />
           </PathBreadcrumbsContainer>
         )}
       </LeftContainer>
@@ -157,9 +150,7 @@ function AppBar({
               </SearchBarContent>
             </SearchBarContainer>
           )}
-          {isNewButtonVisible && (
-            <NewItemButton collectionId={sidebarCollectionId} />
-          )}
+          {isNewButtonVisible && <NewItemButton />}
         </RightContainer>
       )}
     </AppBarRoot>
