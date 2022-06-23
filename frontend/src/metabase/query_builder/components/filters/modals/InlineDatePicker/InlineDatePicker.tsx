@@ -65,12 +65,14 @@ export function InlineDatePicker({
     [onClear],
   );
 
+  const shouldShowShortcutOptions = !filter || selectedFilterIndex !== null;
+
   return (
     <OptionContainer
       data-testid="date-picker"
       aria-label={dimension?.field()?.displayName()}
     >
-      {(!filter || selectedFilterIndex !== null) &&
+      {shouldShowShortcutOptions &&
         DATE_SHORTCUT_OPTIONS.map(({ displayName, init }, index) => (
           <OptionButton
             key={displayName}

@@ -5,7 +5,7 @@ import { color, alpha } from "metabase/lib/colors";
 import Button from "metabase/core/components/Button";
 
 export const OptionContainer = styled.div`
-  grid-column: span 2 / span 2;
+  grid-column: span 2;
   margin: ${space(2)} 0;
   padding-bottom: ${space(2)};
   font-weight: bold;
@@ -19,13 +19,13 @@ type OptionButtonProps = {
 
 export const OptionButton = styled(Button)<OptionButtonProps>`
   border-color: ${({ selected }) =>
-    selected ? color("brand") : color("border")}
+    selected ? color("brand") : color("border")};
   border-radius: ${space(1)};
   margin-right: ${space(1)};
   margin-bottom: ${space(1)};
 
-  background-color: ${({ selected, primaryColor = color("brand") }) =>
-    selected ? alpha(primaryColor, 0.3) : color("white")};
+  background-color: ${({ selected }) =>
+    selected ? alpha("brand", 0.3) : color("white")};
   color: ${({ selected, primaryColor = color("brand") }) =>
     selected ? primaryColor : color("text-dark")};
 
@@ -33,8 +33,8 @@ export const OptionButton = styled(Button)<OptionButtonProps>`
   padding-bottom: ${space(1)};
 
   &:hover {
-    background-color: ${({ selected, primaryColor = color("brand") }) =>
-      selected ? alpha(primaryColor, 0.3) : color("white")};
+    background-color: ${({ selected }) =>
+      selected ? alpha("brand", 0.3) : color("white")};
     border-color: ${color("brand")};
   }
 `;
