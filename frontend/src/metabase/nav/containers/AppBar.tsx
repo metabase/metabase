@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, ReactNode } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -18,8 +18,9 @@ import { getIsNavbarOpen, closeNavbar, toggleNavbar } from "metabase/redux/app";
 import {
   getIsNewButtonVisible,
   getIsSearchVisible,
-  getBreadcrumbCollectionId,
+  getCollectionId,
   getShowBreadcumb,
+  RouterProps,
 } from "metabase/selectors/app";
 import { isMac } from "metabase/lib/browser";
 import { isSmallScreen } from "metabase/lib/dom";
@@ -47,13 +48,13 @@ type Props = {
   closeNavbar: () => void;
 };
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: State, props: RouterProps) {
   return {
     isNavBarOpen: getIsNavbarOpen(state),
     isSearchVisible: getIsSearchVisible(state),
     isNewButtonVisible: getIsNewButtonVisible(state),
-    collectionId: getBreadcrumbCollectionId(state),
-    showBreadcrumb: getShowBreadcumb(state),
+    collectionId: getCollectionId(state),
+    showBreadcrumb: getShowBreadcumb(state, props),
   };
 }
 
@@ -76,9 +77,9 @@ function AppBar({
   isSearchVisible,
   isNewButtonVisible,
   collectionId,
-  showBreadcrumb,
   toggleNavbar,
   closeNavbar,
+  showBreadcrumb,
 }: Props) {
   const [isSearchActive, setSearchActive] = useState(false);
 
