@@ -202,7 +202,8 @@
                          ;; must look up "metabase_files" and find the id below
                          :id slack-id,
                          :type "channel"}]]
-      (tu/with-temporary-setting-values [slack/slack-cached-channels-and-usernames
+      (tu/with-temporary-setting-values [slack/slack-app-token "slack-configured?"
+                                         slack/slack-cached-channels-and-usernames
                                          {:version slack/slack-channels-and-usernames-version
                                           :channels channel-info}]
         (with-redefs [slack/POST (fn [endpoint payload]
@@ -235,17 +236,6 @@
       (testing "Returns the slack internal id if found"
         (is (= "slack-id"
                (f "needle" {:version  slack/slack-channels-and-usernames-version
-                            :channels [{:display-name "#other1"
-                                        :name         "other1"
-                                        :type         "channel"
-                                        :id           "CR65C4ZJVIW"}
-                                       {:display-name "#needle"
-                                        :name         "needle"
-                                        :type         "channel"
-                                        :id           "slack-id"}]}))))
-      (testing "If version doesn't match up returns original"
-        (is (= "needle"
-               (f "needle" {:version  (inc slack/slack-channels-and-usernames-version)
                             :channels [{:display-name "#other1"
                                         :name         "other1"
                                         :type         "channel"

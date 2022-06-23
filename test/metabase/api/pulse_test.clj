@@ -975,6 +975,8 @@
       (mt/with-temporary-setting-values [slack/slack-channels-and-usernames-last-updated
                                          (t/zoned-date-time)
 
+                                         slack/slack-app-token "test-token"
+
                                          slack/slack-cached-channels-and-usernames
                                          {:version slack/slack-channels-and-usernames-version
                                           :channels [{:type "channel"
