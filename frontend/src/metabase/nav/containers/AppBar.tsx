@@ -11,8 +11,11 @@ import SearchBar from "metabase/nav/components/SearchBar";
 import SidebarButton from "metabase/nav/components/SidebarButton";
 import NewItemButton from "metabase/nav/components/NewItemButton";
 import PathBreadcrumbs from "../components/PathBreadcrumbs/PathBreadcrumbs";
+import ProfileLink from "metabase/nav/components/ProfileLink";
+import { ProfileLinkContainer } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 
 import { State } from "metabase-types/store";
+import { User } from "metabase-types/api";
 
 import { getIsNavbarOpen, closeNavbar, toggleNavbar } from "metabase/redux/app";
 import {
@@ -22,8 +25,9 @@ import {
   getShowBreadcumb,
 } from "metabase/selectors/app";
 import { isMac } from "metabase/lib/browser";
-import { isSmallScreen } from "metabase/lib/dom";
+import { IFRAMED, isSmallScreen } from "metabase/lib/dom";
 
+import { logout } from "metabase/auth/actions";
 import {
   AppBarRoot,
   LogoLink,
@@ -35,6 +39,7 @@ import {
   SidebarButtonContainer,
   PathBreadcrumbsContainer,
 } from "./AppBar.styled";
+import { getUser } from "metabase/selectors/user";
 
 type Props = {
   isNavBarOpen: boolean;
@@ -45,10 +50,13 @@ type Props = {
   showBreadcrumb: boolean;
   toggleNavbar: () => void;
   closeNavbar: () => void;
+  currentUser: User;
+  logout: () => void;
 };
 
 function mapStateToProps(state: State) {
   return {
+    currentUser: getUser(state),
     isNavBarOpen: getIsNavbarOpen(state),
     isSearchVisible: getIsSearchVisible(state),
     isNewButtonVisible: getIsNewButtonVisible(state),
@@ -60,6 +68,7 @@ function mapStateToProps(state: State) {
 const mapDispatchToProps = {
   toggleNavbar,
   closeNavbar,
+  logout,
 };
 
 function HomepageLink({ handleClick }: { handleClick: () => void }) {
@@ -79,6 +88,8 @@ function AppBar({
   showBreadcrumb,
   toggleNavbar,
   closeNavbar,
+  currentUser,
+  logout,
 }: Props) {
   const [isSearchActive, setSearchActive] = useState(false);
 
@@ -151,6 +162,11 @@ function AppBar({
             </SearchBarContainer>
           )}
           {isNewButtonVisible && <NewItemButton />}
+          {!IFRAMED && (
+            <ProfileLinkContainer>
+              <ProfileLink user={currentUser} handleLogout={logout} />
+            </ProfileLinkContainer>
+          )}
         </RightContainer>
       )}
     </AppBarRoot>

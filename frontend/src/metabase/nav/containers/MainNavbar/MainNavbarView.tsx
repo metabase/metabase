@@ -3,12 +3,9 @@ import { t } from "ttag";
 
 import { BookmarksType, Collection, User } from "metabase-types/api";
 
-import Link from "metabase/core/components/Link";
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-
-import ProfileLink from "metabase/nav/components/ProfileLink";
 
 import {
   getCollectionIcon,
@@ -27,7 +24,6 @@ import {
   CollectionsMoreIcon,
   CollectionMenuList,
   HomePageLink,
-  ProfileLinkContainer,
   SidebarContentRoot,
   SidebarHeading,
   SidebarSection,
@@ -67,7 +63,6 @@ const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
 function MainNavbarView({
   isAdmin,
-  isOpen,
   currentUser,
   bookmarks,
   collections,
@@ -77,7 +72,6 @@ function MainNavbarView({
   reorderBookmarks,
   handleCreateNewCollection,
   handleCloseNavbar,
-  handleLogout,
 }: Props) {
   const isNonEntityLinkSelected = selectedItem.type === "non-entity";
   const isCollectionSelected =
@@ -167,15 +161,6 @@ function MainNavbarView({
           )}
         </ul>
       </div>
-      {!IFRAMED && (
-        <ProfileLinkContainer isOpen={isOpen}>
-          <ProfileLink
-            user={currentUser}
-            handleCloseNavbar={onItemSelect}
-            handleLogout={handleLogout}
-          />
-        </ProfileLinkContainer>
-      )}
     </SidebarContentRoot>
   );
 }
