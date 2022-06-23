@@ -29,7 +29,6 @@ function SavedQuestionHeaderButton({ className, question, onSave }) {
         initialValue={question.displayName()}
         placeholder={t`A nice title`}
         onChange={onSave}
-        data-testid="saved-question-header-title"
       />
       {reviewIconName && (
         <HeaderReviewIcon

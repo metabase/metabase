@@ -15,6 +15,7 @@ import {
   startNewQuestion,
   openQuestionActions,
   closeQuestionActions,
+  getQuestionTitle,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -375,7 +376,7 @@ describe("scenarios > models", () => {
       cy.visit("/model/1");
       cy.wait("@dataset");
 
-      cy.findByTestId("saved-question-header-title")
+      getQuestionTitle()
         .clear()
         .type("M1")
         .blur();

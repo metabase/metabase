@@ -66,6 +66,10 @@ export function filterWidget() {
   return cy.get("fieldset");
 }
 
+export const getQuestionTitle = () => {
+  return cy.findByTestId("qb-header-left-side").findByRole("textbox");
+};
+
 export const openQuestionActions = () => {
   cy.findByTestId("question-action-buttons-container").within(() => {
     cy.icon("ellipsis").click();
