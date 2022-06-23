@@ -167,9 +167,9 @@
   "Transformation from slack's api representation of a channel to our own."
   [channel]
   {:display-name (str \# (:name channel))
-   :name (:name channel)
-   :id   (:id channel)
-   :type "channel"})
+   :name         (:name channel)
+   :id           (:id channel)
+   :type         "channel"})
 
 (defn conversations-list
   "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages).
@@ -302,10 +302,10 @@
   (POST "conversations.join" {:form-params {:channel channel-id}}))
 
 (defn- maybe-lookup-id
-  "Slack requires the slack app to be in the channel that we post all of our attachments to. Recent changes to
-  \"conversations.join\" api requires that we use the internal slack id rather than the common name. This makes a lot
-  of sense to ensure we continue to operate despite channel renames. Attempt to look up the channel-id in the version
-  2 list of channels to obtain the internal id. Fallback to using the current channel-id."
+  "Slack requires the slack app to be in the channel that we post all of our attachments to. Slack changed (around June
+  2022 #23229) the \"conversations.join\" api to require the internal slack id rather than the common name. This makes
+  a lot of sense to ensure we continue to operate despite channel renames. Attempt to look up the channel-id in the
+  version 2 list of channels to obtain the internal id. Fallback to using the current channel-id."
   [channel-id cached-channels]
   (let [name->id    (into {} (comp (filter (comp #{"channel"} :type))
                                    (map (juxt :name :id)))
