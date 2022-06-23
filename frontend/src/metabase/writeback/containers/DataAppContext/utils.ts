@@ -3,7 +3,11 @@ import { getIn } from "icepick";
 
 import { Dataset } from "metabase-types/types/Dataset";
 
-import { DataAppContextType, FormattedObjectDetail } from "./DataAppContext";
+import {
+  DataAppContextType,
+  FormattedObjectDetail,
+  FormattedListInfo,
+} from "./DataAppContext";
 
 export function turnRawDataIntoObjectDetail({ data }: Dataset) {
   const objectDetail: FormattedObjectDetail = {};
@@ -23,6 +27,16 @@ export function turnRawDataIntoObjectDetail({ data }: Dataset) {
   });
 
   return objectDetail;
+}
+
+export function turnRawDataIntoListInfo({
+  row_count,
+}: Dataset): FormattedListInfo {
+  return {
+    rowCount: {
+      value: row_count,
+    },
+  };
 }
 
 // Accessor string looks like "{{ data.user.name }}"

@@ -13,7 +13,12 @@ type ObjectDetailField = {
 
 export type FormattedObjectDetail = Record<FieldName, ObjectDetailField>;
 
-export type DataContextType = Record<CardName, FormattedObjectDetail>;
+export type FormattedListInfo = { rowCount: { value?: number } };
+
+export type DataContextType = Record<
+  CardName,
+  FormattedObjectDetail | FormattedListInfo
+>;
 
 export type DataAppContextType = {
   data: DataContextType;

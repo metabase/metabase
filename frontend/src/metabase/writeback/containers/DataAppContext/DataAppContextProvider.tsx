@@ -20,7 +20,11 @@ import {
   DataAppContextType,
   DataContextType,
 } from "./DataAppContext";
-import { formatDataAppString, turnRawDataIntoObjectDetail } from "./utils";
+import {
+  formatDataAppString,
+  turnRawDataIntoObjectDetail,
+  turnRawDataIntoListInfo,
+} from "./utils";
 
 interface DataAppContextProviderOwnProps {
   children: React.ReactNode;
@@ -57,6 +61,15 @@ function DataAppContextProvider({
     [dashCards],
   );
 
+  const listsAndTables = useMemo(
+    () =>
+      Object.values(dashCards).filter(dashCard => {
+        const { display } = dashCard.card;
+        return display === "table" || display === "list";
+      }),
+    [dashCards],
+  );
+
   const dataContext = useMemo(() => {
     const context: DataContextType = {};
 
@@ -68,8 +81,16 @@ function DataAppContextProvider({
       }
     });
 
+    listsAndTables.forEach(dashCard => {
+      const formattedCardName = _.camelCase(dashCard.card.name);
+      const data = getIn(dashCardData, [dashCard.id, dashCard.card.id]);
+      if (data) {
+        context[formattedCardName] = turnRawDataIntoListInfo(data);
+      }
+    });
+
     return context;
-  }, [objectDetails, dashCardData]);
+  }, [objectDetails, listsAndTables, dashCardData]);
 
   const context: DataAppContextType = useMemo(() => {
     const value: DataAppContextType = {
