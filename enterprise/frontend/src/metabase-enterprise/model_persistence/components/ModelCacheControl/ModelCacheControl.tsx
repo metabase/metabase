@@ -31,8 +31,7 @@ function ModelCacheControl({
   ...props
 }: ModelCacheControlProps) {
   const [isLoading, setLoading] = useState(false);
-  const isPersisted = model.isPersisted();
-  const label = isPersisted ? t`Unpersist model` : t`Persist model`;
+  const label = model.isPersisted() ? t`Unpersist model` : t`Persist model`;
 
   const handleClick = useCallback(async () => {
     const id = model.id();
