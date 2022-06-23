@@ -271,6 +271,12 @@
   :type    :integer
   :default 10)
 
+(defsetting notification-link-base-url
+  (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
+  :visibility :internal
+  :type       :string
+  :enabled?   premium-features/hide-embed-branding?)
+
 (defsetting deprecation-notice-version
   (deferred-tru "Metabase version for which a notice about usage of deprecated features has been shown.")
   :visibility :admin)
@@ -279,23 +285,27 @@
   (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
   :visibility :public
   :type       :string
+  :enabled?   premium-features/enable-whitelabeling?
   :default    "Metabase")
 
 (defsetting loading-message
   (deferred-tru "Message to show while a query is running.")
   :visibility :public
+  :enabled?   premium-features/enable-whitelabeling?
   :type       :keyword)
 
 (defsetting show-metabot
   (deferred-tru "Enables Metabot character on the home page")
   :visibility :public
   :type       :boolean
+  :enabled?   premium-features/enable-whitelabeling?
   :default    true)
 
 (defsetting application-colors-migrated
   "Stores whether the `application-colors` setting has been migrated to 0.44 expectations"
   :visibility :internal
-  :type :boolean
+  :type       :boolean
+  :enabled?   premium-features/enable-whitelabeling?
   :default false)
 
 (defsetting application-colors
@@ -304,6 +314,7 @@
         "You might need to refresh your browser to see your changes take effect."))
   :visibility :public
   :type       :json
+  :enabled?   premium-features/enable-whitelabeling?
   :default    {}
   :getter (fn []
             (let [current-colors (setting/get-value-of-type :json :application-colors)]
@@ -325,6 +336,7 @@
   :visibility :public
   :type       :string
   :default    "Lato"
+  :enabled?   premium-features/enable-whitelabeling?
   :setter (fn [new-value]
               (when new-value
                 (when-not (u.fonts/available-font? new-value)
@@ -334,23 +346,25 @@
 (defn application-color
   "The primary color, a.k.a. brand color"
   []
-  (or (:brand (setting/get-value-of-type :json :application-colors)) "#509EE3"))
+  (or (:brand (application-colors)) "#509EE3"))
 
 (defn secondary-chart-color
   "The first 'Additional chart color'"
   []
-  (or (:accent3 (setting/get-value-of-type :json :application-colors)) "#EF8C8C"))
+  (or (:accent3 (application-colors)) "#EF8C8C"))
 
 (defsetting application-logo-url
   (deferred-tru "For best results, use an SVG file with a transparent background.")
   :visibility :public
   :type       :string
+  :enabled?   premium-features/enable-whitelabeling?
   :default    "app/assets/img/logo.svg")
 
 (defsetting application-favicon-url
   (deferred-tru "The url or image that you want to use as the favicon.")
   :visibility :public
   :type       :string
+  :enabled?   premium-features/enable-whitelabeling?
   :default    "app/assets/img/favicon.ico")
 
 (defsetting enable-password-login

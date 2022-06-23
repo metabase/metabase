@@ -5,12 +5,18 @@ import { popover } from "__support__/e2e/cypress";
  * @param {"question" | "dashboard" | "collection"} type
  */
 export function openNewCollectionItemFlowFor(type) {
-  cy.findByTestId("collection-menu").within(() => {
-    cy.icon("add").click();
-  });
+  cy.findByText("New").click();
   popover()
     .findByText(new RegExp(type, "i"))
     .click();
+}
+
+export function getCollectionActions() {
+  return cy.findByTestId("collection-menu");
+}
+
+export function openCollectionMenu() {
+  getCollectionActions().within(() => cy.icon("ellipsis").click());
 }
 
 export function getSidebarSectionTitle(name) {

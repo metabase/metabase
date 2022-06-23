@@ -171,7 +171,7 @@
 (deftest validate-card-parameters-test
   (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})
                                      :parameters [{:id   "_DATE_"
-                                                   :type :date/single
+                                                   :type "date/single"
                                                    :name "Date"
                                                    :slug "DATE"}]}]
     (testing "API request should fail if request parameter does not contain ID"
@@ -181,7 +181,7 @@
                     s/Keyword           s/Any}
                    (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
                                          {:parameters [{:name  "date"
-                                                        :type  :date/single
+                                                        :type  "date/single"
                                                         :value "2016-01-01"}]}))))
 
     (testing "API request should fail if request parameter ID does not exist on the card"
@@ -192,12 +192,12 @@
                    (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
                                          {:parameters [{:id    "_FAKE_"
                                                         :name  "date"
-                                                        :type  :date/single
+                                                        :type  "date/single"
                                                         :value "2016-01-01"}]}))))
 
     (testing "Happy path -- API request should succeed if request parameter correlates to a card parameter by ID"
       (is (= [1000]
              (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
                                                  {:parameters [{:id    "_DATE_"
-                                                                :type  :date/single
+                                                                :type  "date/single"
                                                                 :value "2016-01-01"}]})))))))

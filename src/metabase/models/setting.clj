@@ -81,6 +81,7 @@
             [environ.core :as env]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
@@ -132,6 +133,8 @@
   Primarily used in test to disable retired setting check."
   false)
 
+(declare admin-writable-site-wide-settings get-value-of-type set-value-of-type!)
+
 (models/defmodel Setting
   "The model that underlies [[defsetting]]."
   :setting)
@@ -145,7 +148,15 @@
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:key])})
 
-(declare get-value-of-type)
+(defmethod serdes.base/extract-all "Setting" [_model _opts]
+  (for [{:keys [key value]} (admin-writable-site-wide-settings
+                              :getter (partial get-value-of-type :string))]
+    {:serdes/meta {:type "Setting" :id (name key)}
+     :key key
+     :value value}))
+
+(defmethod serdes.base/load-one! "Setting" [{:keys [key value]} _]
+  (set-value-of-type! :string key value))
 
 (def ^:private Type
   (s/pred (fn [a-type]
@@ -226,7 +237,10 @@
    ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
    ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
    ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
-   :on-change   (s/maybe clojure.lang.IFn)})
+   :on-change   (s/maybe clojure.lang.IFn)
+
+   ;; optional fn called whether to allow the getter to return a value. Useful for ensuring premium settings are not available to
+   :enabled?    (s/maybe clojure.lang.IFn)})
 
 (defonce ^:private registered-settings
   (atom {}))
@@ -524,12 +538,14 @@
   looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
   if any."
   [setting-definition-or-name]
-  (let [{:keys [cache? getter]} (resolve-setting setting-definition-or-name)
-        disable-cache?          (not cache?)]
-    (if (= *disable-cache* disable-cache?)
-      (getter)
-      (binding [*disable-cache* disable-cache?]
-        (getter)))))
+  (let [{:keys [cache? getter enabled? default]} (resolve-setting setting-definition-or-name)
+        disable-cache?                           (not cache?)]
+    (if (or (nil? enabled?) (enabled?))
+      (if (= *disable-cache* disable-cache?)
+        (getter)
+        (binding [*disable-cache* disable-cache?]
+          (getter)))
+      default)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -744,7 +760,8 @@
                  :cache?         true
                  :database-local :never
                  :user-local     :never
-                 :deprecated     nil}
+                 :deprecated     nil
+                 :enabled?       nil}
                 (dissoc setting :name :type :default)))
       (s/validate SettingDefinition <>)
       (validate-default-value-for-type <>)
