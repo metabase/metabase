@@ -31,8 +31,7 @@
           (let [response (mt/user-http-request :crowberto :put 400 "slack/settings" {:slack-app-token "fake-token"})]
             (is (= {:slack-app-token "invalid token"} (:errors response)))
             (is (= nil (slack/slack-app-token)))
-            (is (= {:version  slack/slack-channels-and-usernames-version
-                    :channels []}
+            (is (= {:channels []}
                    (slack/slack-cached-channels-and-usernames)))))))
 
     (testing "The Slack files channel setting can be set by an admin, and the leading # is stripped if it is present"
@@ -61,8 +60,7 @@
         ;; The files channel is reset to its default value
         (is (= "metabase_files" (slack/slack-files-channel)))
         ;; The cache is empty, and its last-updated value is reset to its default value
-        (is (= {:version  slack/slack-channels-and-usernames-version
-                :channels []}
+        (is (= {:channels []}
                (slack/slack-cached-channels-and-usernames)))
         (is (= @#'slack/zoned-time-epoch (slack/slack-channels-and-usernames-last-updated)))))
 

@@ -182,23 +182,6 @@
                         #(->> % :channels (map channel-transform))
                         params)))
 
-(def slack-channels-and-usernames-version
-  "Version of the results we store. Currently it is 2 which has the following shape
-  {:version 2
-   :channels channel*}
-  Each channel is a user or channel.
-  User:
-  {:display-name string
-   :name         string
-   :id           string
-   :type         \"user\"}
-  Channel:
-  {:display-name string
-   :name         string
-   :id           string
-   :type         \"channel\"}"
-  2)
-
 (defn channel-exists?
   "Returns true if the channel it exists."
   [channel-name]
@@ -250,8 +233,7 @@
   "Clear the Slack channels cache, and reset its last-updated timestamp to its default value (the Unix epoch)."
   []
   (slack-channels-and-usernames-last-updated! zoned-time-epoch)
-  (slack-cached-channels-and-usernames! {:version  slack-channels-and-usernames-version
-                                         :channels []}))
+  (slack-cached-channels-and-usernames! {:channels []}))
 
 (defn refresh-channels-and-usernames!
   "Refreshes users and conversations in slack-cache. finds both in parallel, sets
@@ -261,8 +243,7 @@
     (log/info "Refreshing slack channels and usernames.")
     (let [users (future (vec (users-list)))
           conversations (future (vec (conversations-list)))]
-      (slack-cached-channels-and-usernames! {:version slack-channels-and-usernames-version
-                                             :channels (concat @conversations @users)})
+      (slack-cached-channels-and-usernames! {:channels (concat @conversations @users)})
       (slack-channels-and-usernames-last-updated! (t/zoned-date-time)))))
 
 (defn refresh-channels-and-usernames-when-needed!
@@ -305,7 +286,7 @@
   "Slack requires the slack app to be in the channel that we post all of our attachments to. Slack changed (around June
   2022 #23229) the \"conversations.join\" api to require the internal slack id rather than the common name. This makes
   a lot of sense to ensure we continue to operate despite channel renames. Attempt to look up the channel-id in the
-  version 2 list of channels to obtain the internal id. Fallback to using the current channel-id."
+  list of channels to obtain the internal id. Fallback to using the current channel-id."
   [channel-id cached-channels]
   (let [name->id    (into {} (comp (filter (comp #{"channel"} :type))
                                    (map (juxt :name :id)))

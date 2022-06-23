@@ -149,15 +149,13 @@
     (testing "Should be able to get the files-channel from the cache (if it exists)"
       (tu/with-temporary-setting-values [slack-files-channel "general"
                                          slack-cached-channels-and-usernames
-                                         {:version slack/slack-channels-and-usernames-version
-                                          :channels (mapv (fn [c] {:name c :id c})
+                                         {:channels (mapv (fn [c] {:name c :id c})
                                                           ["general" "random" "off-topic"
                                                            "cooking" "john" "james" "jordan"])}]
         (is (= "general" (slack/files-channel))))
       (tu/with-temporary-setting-values [slack-files-channel "not_in_the_cache"
                                          slack-cached-channels-and-usernames
-                                         {:version slack/slack-channels-and-usernames-version
-                                          :channels [{:name "general" :id "C0G9QKBBL"}]}]
+                                         {:channels [{:name "general" :id "C0G9QKBBL"}]}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Slack channel named.*is missing.*"
@@ -204,8 +202,7 @@
                          :type "channel"}]]
       (tu/with-temporary-setting-values [slack/slack-app-token "slack-configured?"
                                          slack/slack-cached-channels-and-usernames
-                                         {:version slack/slack-channels-and-usernames-version
-                                          :channels channel-info}]
+                                         {:channels channel-info}]
         (with-redefs [slack/POST (fn [endpoint payload]
                                    (case endpoint
                                      "files.upload"
@@ -224,8 +221,7 @@
     (testing "On new v2 shape"
       (testing "Returns original if not found"
         (is (= "needle"
-               (f "needle" {:version slack/slack-channels-and-usernames-version
-                            :channels [{:display-name "#other1"
+               (f "needle" {:channels [{:display-name "#other1"
                                         :name         "other1"
                                         :type         "channel"
                                         :id           "CR65C4ZJVIW"}
@@ -235,8 +231,7 @@
                                         :id           "C87LQNL0Y23"}]}))))
       (testing "Returns the slack internal id if found"
         (is (= "slack-id"
-               (f "needle" {:version  slack/slack-channels-and-usernames-version
-                            :channels [{:display-name "#other1"
+               (f "needle" {:channels [{:display-name "#other1"
                                         :name         "other1"
                                         :type         "channel"
                                         :id           "CR65C4ZJVIW"}

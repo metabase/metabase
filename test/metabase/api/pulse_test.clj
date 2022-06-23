@@ -978,8 +978,7 @@
                                          slack/slack-app-token "test-token"
 
                                          slack/slack-cached-channels-and-usernames
-                                         {:version slack/slack-channels-and-usernames-version
-                                          :channels [{:type "channel"
+                                         {:channels [{:type "channel"
                                                       :name "foo"
                                                       :display-name "#foo"
                                                       :id "CAAS3DD9XND"}
