@@ -41,7 +41,10 @@ What type of [SQL variable][sql-variable-def] are you using?
 
 ## Are you still stuck?
 
-If you can’t solve your problem using the troubleshooting guides, search or ask the [Metabase community][discourse].
+If you can’t solve your problem using the troubleshooting guides:
+
+- Search or ask the [Metabase community][discourse].
+- Search for [known bugs or limitations][known-issues].
 
 [debugging-aggregations]: /learn/debugging-sql/sql-logic.html#aggregated-results-counts-sums-etc-are-wrong
 [debugging-duplicated-data]: /learn/debugging-sql/sql-logic-duplicated-data.html
