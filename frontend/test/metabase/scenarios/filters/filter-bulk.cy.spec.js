@@ -491,7 +491,7 @@ describe("scenarios > filters > bulk filtering", () => {
     it("adds a contains text filter", () => {
       modal().within(() => {
         cy.findByLabelText("Title").within(() => {
-          cy.findByPlaceholderText("Enter some text").type("Marble");
+          cy.findByPlaceholderText("Search by Title").type("Marble");
         });
         cy.button("Apply").click();
       });
@@ -511,7 +511,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
       modal().within(() => {
         cy.findByLabelText("Title").within(() => {
-          cy.findByPlaceholderText("Enter some text").type("Hat");
+          cy.findByPlaceholderText("Search by Title").type("Hat");
         });
         cy.button("Apply").click();
       });
