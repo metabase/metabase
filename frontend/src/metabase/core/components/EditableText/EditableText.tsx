@@ -1,4 +1,12 @@
-import React, { ChangeEvent, forwardRef, HTMLAttributes, Ref } from "react";
+import React, {
+  ChangeEvent,
+  KeyboardEvent,
+  forwardRef,
+  HTMLAttributes,
+  Ref,
+  useCallback,
+  useState,
+} from "react";
 import {
   EditableTextArea,
   EditableTextContent,
@@ -13,20 +21,66 @@ export type EditableTextAttributes = Omit<
 export interface EditableTextProps extends EditableTextAttributes {
   value?: string;
   placeholder?: string;
-  onChange?: (event: ChangeEvent<HTMLTextAreaElement>) => void;
+  isMultiline?: boolean;
+  onChange?: (value: string) => void;
 }
 
 const EditableText = forwardRef(function EditableText(
-  { value, placeholder, onChange, ...props }: EditableTextProps,
+  {
+    value: valueText = "",
+    placeholder,
+    isMultiline,
+    onChange,
+    ...props
+  }: EditableTextProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const [inputText, setInputText] = useState(valueText);
+  const [isFocused, setIsFocused] = useState(false);
+  const displayText = isFocused ? inputText : valueText;
+
+  const handleFocus = useCallback(() => {
+    setIsFocused(true);
+    setInputText(valueText);
+  }, [valueText]);
+
+  const handleBlur = useCallback(() => {
+    setIsFocused(false);
+
+    if (inputText !== valueText) {
+      onChange?.(inputText);
+    }
+  }, [valueText, inputText, onChange]);
+
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      setInputText(event.currentTarget.value);
+    },
+    [],
+  );
+
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key === "Escape") {
+        setInputText(valueText);
+      } else if (event.key === "Enter" && !isMultiline) {
+        event.preventDefault();
+        event.currentTarget.blur();
+      }
+    },
+    [valueText, isMultiline],
+  );
+
   return (
     <EditableTextRoot ref={ref} {...props}>
-      <EditableTextContent>{value} </EditableTextContent>
+      <EditableTextContent>{displayText} </EditableTextContent>
       <EditableTextArea
-        value={value}
+        value={displayText}
         placeholder={placeholder}
-        onChange={onChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
       />
     </EditableTextRoot>
   );
