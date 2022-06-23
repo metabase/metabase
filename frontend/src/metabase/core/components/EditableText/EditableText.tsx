@@ -23,6 +23,7 @@ export interface EditableTextProps extends EditableTextAttributes {
   placeholder?: string;
   isMultiline?: boolean;
   onChange?: (value: string) => void;
+  "data-testid"?: string;
 }
 
 const EditableText = forwardRef(function EditableText(
@@ -31,6 +32,7 @@ const EditableText = forwardRef(function EditableText(
     placeholder,
     isMultiline = false,
     onChange,
+    "data-testid": dataTestId,
     ...props
   }: EditableTextProps,
   ref: Ref<HTMLDivElement>,
@@ -65,10 +67,11 @@ const EditableText = forwardRef(function EditableText(
   );
 
   return (
-    <EditableTextRoot {...props} ref={ref} data-value={inputValue}>
+    <EditableTextRoot {...props} ref={ref} data-value={`${inputValue}\u00A0`}>
       <EditableTextArea
         value={inputValue}
         placeholder={placeholder}
+        data-testid={dataTestId}
         onBlur={handleBlur}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
