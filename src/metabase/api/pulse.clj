@@ -169,7 +169,7 @@
                              [:slack :fields 0 :options]
                              (->> (slack/slack-cached-channels-and-usernames)
                                   :channels
-                                  (map :name)))
+                                  (map :display-name)))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
