@@ -1,16 +1,18 @@
 (ns metabase-enterprise.serialization.v2.ingest.yaml
   (:require [clojure.java.io :as io]
             [metabase-enterprise.serialization.v2.ingest :as ingest]
-            [yaml.core :as yaml]))
+            [yaml.core :as yaml])
+  (:import java.io.File))
 
-(defmulti ^:private build-metas (fn [file] (.getName file)))
+(defmulti ^:private build-metas
+  (fn [^File file] (.getName file)))
 
 (defmethod build-metas "settings.yaml" [file]
   (let [settings (yaml/from-file file)]
     (for [[k _] settings]
       {:type "Setting" :id (name k)})))
 
-(defmethod build-metas :default [file]
+(defmethod build-metas :default [^File file]
   (let [model-name   (-> file .getParentFile .getName)
         [_ id label] (re-matches #"^([A-Za-z0-9_-]+)(?:\+(.*))?.yaml$" (.getName file))]
     [(cond-> {:type model-name :id id}
@@ -24,10 +26,10 @@
         yaml/from-file
         (assoc :serdes/meta meta-map))))
 
-(deftype YamlIngestion [root-dir settings]
+(deftype YamlIngestion [^File root-dir settings]
   ingest/Ingestable
   (ingest-list [_]
-    (eduction (comp (filter #(.isFile %))
+    (eduction (comp (filter (fn [^File f] (.isFile f)))
                     (mapcat build-metas))
               (file-seq root-dir)))
   (ingest-one [_ {:keys [type id] :as meta-map}]
@@ -40,8 +42,3 @@
   [[metabase-enterprise.serialization.v2.storage.yaml]]."
   [root-dir]
   (->YamlIngestion (io/file root-dir) (yaml/from-file (io/file root-dir "settings.yaml"))))
-
-(comment
-  (ingest/ingest-one (ingest-yaml (io/file "/home/braden/mb/metabase/dump"))
-                     {:type "Setting" :id "loading-message"})
-  )

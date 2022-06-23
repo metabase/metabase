@@ -34,11 +34,6 @@
         (store-entity! opts entity)))
     (store-settings! opts @settings)))
 
-(comment
-  (storage/store-all! (metabase-enterprise.serialization.v2.extract/extract-metabase {})
-                      {:storage/target :yaml
-                       :root-dir "/home/braden/mb/metabase/dump"}))
-
 (defn store!
   "Helper for storing a serialized database to a tree of YAML files."
   [stream root-dir]

@@ -11,8 +11,8 @@
             [reifyhealth.specmonstah.core :as rs]
             [yaml.core :as yaml]))
 
-(defn- file-set [file]
-  (->> file
+(defn- dir->file-set [dir]
+  (->> dir
        .listFiles
        (filter #(.isFile %))
        (map #(.getName %))
@@ -29,10 +29,10 @@
           (storage.yaml/store! export dump-dir)
           (testing "the right files in the right places"
             (is (= #{parent-filename child-filename}
-                   (file-set (io/file dump-dir "Collection")))
+                   (dir->file-set (io/file dump-dir "Collection")))
                 "Entities go in subdirectories")
             (is (= #{"settings.yaml"}
-                   (file-set (io/file dump-dir)))
+                   (dir->file-set (io/file dump-dir)))
                 "A few top-level files are expected"))
 
           (testing "the Collections properly exported"
@@ -94,7 +94,7 @@
         (testing "storage"
           (storage.yaml/store! (seq extraction) dump-dir)
           (testing "for Collections"
-            (is (= 100 (count (file-set (io/file dump-dir "Collection")))))
+            (is (= 100 (count (dir->file-set (io/file dump-dir "Collection")))))
             (doseq [{:keys [entity_id slug] :as coll} (vals (get entities "Collection"))
                     :let [filename (str entity_id "+" slug ".yaml")]]
               (is (= (dissoc coll :serdes/meta)
