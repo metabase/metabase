@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
-import { ValidationError } from "metabase-lib/lib/ValidationError";
+import ValidationError from "metabase-lib/lib/ValidationError";
 
 import {
   QueryValidationErrorRoot,
