@@ -7,6 +7,7 @@
             [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
             [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
             [metabase.models.collection :refer [Collection]]
+            [metabase.util.date-2 :as u.date]
             [metabase.test.generate :as test-gen]
             [reifyhealth.specmonstah.core :as rs]
             [yaml.core :as yaml]))
@@ -19,7 +20,7 @@
        set))
 
 (deftest basic-dump-test
-  (ts/with-random-dump-dir [dump-dir]
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (ts/with-empty-h2-app-db
       (ts/with-temp-dpc [Collection [parent {:name "Some Collection"}]
                          Collection [child  {:name "Child Collection" :location (format "/%d/" (:id parent))}]]
@@ -47,7 +48,7 @@
                    (yaml/from-file (io/file dump-dir "Collection" child-filename))))))))))
 
 (deftest basic-ingest-test
-  (ts/with-random-dump-dir [dump-dir]
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (io/make-parents dump-dir "Collection" "fake") ; Prepare the right directories.
     (spit (io/file dump-dir "settings.yaml")
           (yaml/generate-string {:some-key "with string value"
@@ -81,9 +82,10 @@
                  (ingest/ingest-one ingestable meta-map))))))))
 
 (deftest e2e-storage-ingestion-test
-  (ts/with-random-dump-dir [dump-dir]
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (ts/with-empty-h2-app-db
-      (test-gen/insert! {:collection [[100 {:refs {:personal_owner_id ::rs/omit}}]]})
+      (test-gen/insert! {:collection [[100 {:refs {:personal_owner_id ::rs/omit}}]]
+                         :database   [[10]]})
       (let [extraction (into [] (extract/extract-metabase {}))
             entities   (reduce (fn [m {{:keys [model id]} :serdes/meta :as entity}]
                                  (assoc-in m [model id] entity))
@@ -98,6 +100,16 @@
                     :let [filename (str entity_id "+" slug ".yaml")]]
               (is (= (dissoc coll :serdes/meta)
                      (yaml/from-file (io/file dump-dir "Collection" filename))))))
+
+          (testing "for Databases"
+            (is (= 10 (count (dir->file-set (io/file dump-dir "Database")))))
+            (doseq [{:keys [name] :as coll} (vals (get entities "Database"))
+                    :let [filename (str name ".yaml")]]
+              (is (= (-> coll
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Database" filename))))))
 
           (testing "for settings"
             (is (= (into {} (for [{:keys [key value]} (vals (get entities "Setting"))]

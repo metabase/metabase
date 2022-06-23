@@ -70,7 +70,7 @@
 
 (deftest mode-update-remove-cards-test
   (testing "--mode update should remove Cards in a Dashboard if they're gone from the serialized YAML (#20786)"
-    (ts/with-random-dump-dir [dump-dir]
+    (ts/with-random-dump-dir [dump-dir "serialization"]
       (let [dashboard-yaml-filename (str dump-dir "/collections/root/dashboards/Dashboard.yaml")]
         (ts/with-source-and-dest-dbs
           (testing "create 2 questions in the source and add them to a dashboard"

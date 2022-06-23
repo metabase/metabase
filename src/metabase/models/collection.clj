@@ -925,7 +925,7 @@
   ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.
   ;; Also transform :personal_owner_id from a database ID to the email string, if it's defined.
   ;; Use the :slug as the human-readable label.
-  [_ coll]
+  [_ _ coll]
   (let [parent       (some-> coll
                              :id
                              Collection

@@ -1,44 +1,61 @@
 (ns metabase-enterprise.serialization.v2.ingest.yaml
   (:require [clojure.java.io :as io]
             [metabase-enterprise.serialization.v2.ingest :as ingest]
-            [yaml.core :as yaml])
-  (:import java.io.File))
+            [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
+            [metabase.util.date-2 :as u.date]
+            [yaml.core :as yaml]
+            [yaml.reader :as y.reader])
+  (:import java.io.File
+           java.time.temporal.Temporal))
 
-(defmulti ^:private build-metas
-  (fn [^File file] (.getName file)))
+(extend-type Temporal y.reader/YAMLReader
+  (decode [data]
+    (u.date/parse data)))
 
-(defmethod build-metas "settings.yaml" [file]
+(defn- build-settings [file]
   (let [settings (yaml/from-file file)]
     (for [[k _] settings]
-      {:model "Setting" :id (name k)})))
+      ; We return a hierarchy of 1 item, the setting itself.
+      [{:model "Setting" :id (name k)}])))
 
-(defmethod build-metas :default [^File file]
-  (let [model-name   (-> file .getParentFile .getName)
-        [_ id label] (re-matches #"^([A-Za-z0-9_-]+)(?:\+(.*))?.yaml$" (.getName file))]
-    [(cond-> {:model model-name :id id}
-       label (assoc :label label))]))
 
-(defn- ingest-entity [root-dir {:keys [model id label] :as meta-map}]
-  (let [filename (if label
-                   (str id "+" label ".yaml")
-                   (str id ".yaml"))]
-    (-> (io/file root-dir model filename)
-        yaml/from-file
-        (assoc :serdes/meta meta-map))))
+(defn- build-metas [^File root-dir ^File file]
+  (let [path-parts (u.yaml/path-split root-dir file)]
+    (if (= ["settings.yaml"] path-parts)
+      (build-settings file)
+      [(u.yaml/path->hierarchy path-parts)])))
+
+(defn- read-timestamps [entity]
+  (->> (keys entity)
+       (filter #(.endsWith (name %) "_at"))
+       (reduce #(update %1 %2 u.date/parse) entity)))
+
+(defn- ingest-entity [root-dir hierarchy]
+  (-> (u.yaml/hierarchy->file root-dir hierarchy)
+      yaml/from-file
+      (assoc :serdes/meta (last hierarchy))
+      (read-timestamps)))
 
 (deftype YamlIngestion [^File root-dir settings]
   ingest/Ingestable
   (ingest-list [_]
     (eduction (comp (filter (fn [^File f] (.isFile f)))
-                    (mapcat build-metas))
+                    (mapcat (partial build-metas root-dir)))
               (file-seq root-dir)))
-  (ingest-one [_ {:keys [model id] :as meta-map}]
-    (if (= "Setting" model)
-      {:serdes/meta meta-map :key (keyword id) :value (get settings (keyword id))}
-      (ingest-entity  root-dir meta-map))))
+
+  (ingest-one [_ meta-maps]
+    (let [{:keys [model id]} (first meta-maps)]
+      (if (and (= 1 (count meta-maps))
+               (= "Setting" model))
+        {:serdes/meta (first meta-maps) :key (keyword id) :value (get settings (keyword id))}
+        (ingest-entity root-dir meta-maps)))))
 
 (defn ingest-yaml
   "Creates a new Ingestable on a directory of YAML files, as created by
   [[metabase-enterprise.serialization.v2.storage.yaml]]."
   [root-dir]
   (->YamlIngestion (io/file root-dir) (yaml/from-file (io/file root-dir "settings.yaml"))))
+
+(comment
+  (into [] (ingest/ingest-list (ingest-yaml (io/file "/tmp/serdesv2-EHDVDKJCFOTQTVXCJJMD"))))
+  )

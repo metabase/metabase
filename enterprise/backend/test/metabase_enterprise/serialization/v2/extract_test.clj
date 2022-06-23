@@ -27,7 +27,7 @@
                                                         :personal_owner_id mark-id}]]
 
       (testing "a top-level collection is extracted correctly"
-        (let [ser (serdes.base/extract-one "Collection" (select-one "Collection" [:= :id coll-id]))]
+        (let [ser (serdes.base/extract-one "Collection" {} (select-one "Collection" [:= :id coll-id]))]
           (is (= {:model "Collection" :id coll-eid :label coll-slug} (:serdes/meta ser)))
           (is (not (contains? ser :location)))
           (is (not (contains? ser :id)))
@@ -36,7 +36,7 @@
           (is (nil? (:parent_id ser)))))
 
       (testing "a nested collection is extracted with the right parent_id"
-        (let [ser (serdes.base/extract-one "Collection" (select-one "Collection" [:= :id child-id]))]
+        (let [ser (serdes.base/extract-one "Collection" {} (select-one "Collection" [:= :id child-id]))]
           (is (= {:model "Collection" :id child-eid :label child-slug} (:serdes/meta ser)))
           (is (not (contains? ser :location)))
           (is (not (contains? ser :id)))
@@ -44,7 +44,7 @@
           (is (nil? (:personal_owner_id ser)))))
 
       (testing "personal collections are extracted with email as key"
-        (let [ser (serdes.base/extract-one "Collection" (select-one "Collection" [:= :id pc-id]))]
+        (let [ser (serdes.base/extract-one "Collection" {} (select-one "Collection" [:= :id pc-id]))]
           (is (= {:model "Collection" :id pc-eid :label pc-slug} (:serdes/meta ser)))
           (is (not (contains? ser :location)))
           (is (not (contains? ser :id)))

@@ -11,6 +11,7 @@
             [metabase.models.metric :refer [Metric retrieve-metrics]]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.segment :refer [retrieve-segments Segment]]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -230,3 +231,23 @@
    (fn [table-id]
      {:pre [(integer? table-id)]}
      (db/select-one-field :db_id Table, :id table-id))))
+
+;;; ------------------------------------------------- Serialization -------------------------------------------------
+(defmethod serdes.base/serdes-dependencies "Table" [table]
+  [(serdes.base/serdes-entity-id "Database" (database table))])
+
+(defmethod serdes.base/serdes-hierarchy "Table" [table]
+  (let [db-id (serdes.base/serdes-entity-id "Database" (database table))]
+    (prn table)
+    (into [] (concat [{:model "Database" :id db-id}]
+                     (when (:schema table)
+                       [{:model "Schema" :id (:schema table)}])
+                     [{:model "Table" :id (:name table)}]))))
+
+(defmethod serdes.base/serdes-entity-id "Table" [_ {:keys [name]}]
+  name)
+
+;; Fake "Schema" for serialization purposes.
+(defmethod serdes.base/serdes-entity-id "Schema" [_ e]
+  (prn "schema EID")
+  nil)

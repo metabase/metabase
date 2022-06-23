@@ -49,6 +49,15 @@
 ;;; The storage system might transform that stream in some arbitrary way. Storage is a dead end - it should perform side
 ;;; effects like writing to the disk or network, and return nothing.
 
+(defmulti serdes-entity-id
+  "Given the model name and an entity, returns its entity ID.
+  By default this is a column, `:entity_id`.
+  Models that have a different portable ID should override this."
+  (fn [model-name _] model-name))
+
+(defmethod serdes-entity-id :default [_ {:keys [entity_id]}]
+  entity_id)
+
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
   `(extract-all \"ModelName\" {opts...})`
@@ -86,6 +95,7 @@
 
 (defmulti extract-one
   "Extracts a single entity retrieved from the database into a portable map with `:serdes/meta` attached.
+  `(extract-one \"ModelName\" opts entity)`
 
   The default implementation uses the model name as the `:model` and either `:entity_id` or
   [[serdes.hash/identity-hash]] as the `:id`. It also strips off the database's numeric primary key.
@@ -101,10 +111,10 @@
   When overriding this, [[extract-one-basics]] is probably a useful starting point.
 
   Keyed by the model name of the entity, the first argument."
-  (fn [model _] model))
+  (fn [model _ _] model))
 
 (defmethod extract-all :default [model opts]
-  (eduction (map (partial extract-one model))
+  (eduction (map (partial extract-one model opts))
             (extract-query model opts)))
 
 (defn raw-reducible-query
@@ -118,8 +128,16 @@
    (db/reducible-query (merge {:select [:*] :from [(symbol model-name)]}
                               honeysql-form))))
 
+(defn- model-name->table
+  "The model name is not necessarily the table name. This pulls the table name from the Toucan model."
+  [model-name]
+  (-> model-name
+      symbol
+      db/resolve-model
+      :table))
+
 (defmethod extract-query :default [model-name _]
-  (raw-reducible-query model-name))
+  (raw-reducible-query (model-name->table model-name)))
 
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:
@@ -133,11 +151,11 @@
         pk    (models/primary-key model)]
     (-> entity
         (assoc :serdes/meta {:model model-name
-                             :id    (or (:entity_id entity)
+                             :id    (or (serdes-entity-id model-name entity)
                                         (serdes.hash/identity-hash (model (get entity pk))))})
         (dissoc pk))))
 
-(defmethod extract-one :default [model-name entity]
+(defmethod extract-one :default [model-name _opts entity]
   (extract-one-basics model-name entity))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -203,6 +221,35 @@
 ;;;
 ;;; Many of the multimethods are keyed on the `:model` field.
 
+(defn- ingested-model
+  "The dispatch function for several of the load multimethods: dispatching on the model of the incoming entity."
+  [ingested]
+  (-> ingested :serdes/meta :model))
+
+(defmulti serdes-hierarchy
+  "Given an exported entity, returns a vector giving its *hierarchy*.
+  `(serdes-hierarchy entity)`
+
+  The hierarchy is a list of `:serdes/meta` maps, root first and this entity itself last.
+  The default hierarchy is no nesting - just this entity's own `:serdes/meta` in a list by itself.
+
+  Some entities are naturally nested inside others. For example, fields belong in tables, which belong in databases.
+  Further, since these use eg. column names as entity IDs, they can collide if all the fields get poured into one
+  namespace.
+  Finally, it's often useful to delete the databases from an export, since the receiving end has its own different, but
+  compatible, database definitions. (For example, staging and prod instances of Metabase.) It's convenient for human
+  understanding and editing to group fields under tables under databases.
+
+  Therefore we provide an abstract hierarchy on the entities, which will generally be stored in a directory hierarchy.
+  (This is not strictly required - for a different medium like protobufs the hierarchy might be encoded some other way.)
+
+  The hierarchy is reconstructed by ingestion and used as the key to read entities with `ingest-one`, and to match
+  against existing entities."
+  ingested-model)
+
+(defmethod serdes-hierarchy :default [{meta-map :serdes/meta}]
+  [meta-map])
+
 (defmulti load-prescan-all
   "Returns a reducible stream of `[entity_id identity-hash primary-key]` triples for the entire table.
 
@@ -216,8 +263,8 @@
   "Converts a database entity into a `[entity_id identity-hash primary-key]` triple for the deserialization machinery.
   Called with the Toucan model (*not* this entity), and the JDBC map for the entity in question.
 
-  Defaults to using a literal `:entity_id` column. For models with a different entity ID (eg. a Table's name, a
-  Setting's key), override this method.
+  This uses [[serdes-entity-id]] to get the portable ID for this model, which might be nil. Prefer overriding that
+  method if you only need to change the entity ID.
 
   Keyed on the model name."
   (fn [model _] (name model)))
@@ -225,19 +272,17 @@
 (defmethod load-prescan-all :default [model-name]
   (let [model (db/resolve-model (symbol model-name))]
     (eduction (map (partial load-prescan-one model))
-              (raw-reducible-query model-name))))
+              (raw-reducible-query (:table model)))))
 
 (defmethod load-prescan-one :default [model entity]
   (let [pk  (models/primary-key model)
-        key (get entity pk)]
-    [(:entity_id entity)
-     (serdes.hash/identity-hash (db/select-one model pk key)) ; TODO This sucks for identity-hash!
-     key]))
-
-(defn- ingested-model
-  "The dispatch function for several of the load multimethods: dispatching on the model of the incoming entity."
-  [ingested]
-  (-> ingested :serdes/meta :model))
+        key (get entity pk)
+        eid (serdes-entity-id (name model) entity)
+        ih  (serdes.hash/identity-hash (model key))]
+    {:hierarchy (serdes-hierarchy (assoc entity :serdes/meta {:model (name model) :id (or eid ih)}))
+     :entity_id eid
+     :identity-hash ih
+     :primary-key key}))
 
 (defmulti serdes-dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each

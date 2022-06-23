@@ -1,20 +1,25 @@
 (ns metabase-enterprise.serialization.v2.storage.yaml
   (:require [clojure.java.io :as io]
             [metabase-enterprise.serialization.v2.storage :as storage]
-            [yaml.core :as yaml]))
+            [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.util.date-2 :as u.date]
+            [yaml.core :as yaml]
+            [yaml.writer :as y.writer])
+  (:import java.time.temporal.Temporal))
+
+(extend-type Temporal y.writer/YAMLWriter
+  (encode [data]
+    (u.date/format data)))
 
 (defn- spit-yaml
   [path obj]
   (apply io/make-parents path)
   (spit (apply io/file path) (yaml/generate-string obj :dumper-options {:flow-style :block})))
 
-(defn- store-entity! [{:keys [root-dir]} {{:keys [id model label]} :serdes/meta :as entity}]
-  (let [basename (if (nil? label)
-                   (str id ".yaml")
-                   ;; + is a legal, unescaped character on all common filesystems, but not `identity-hash` or NanoID!
-                   (str id "+" label ".yaml"))
-        path [root-dir model basename]]
-    (spit-yaml path (dissoc entity :serdes/meta))))
+(defn- store-entity! [{:keys [root-dir]} entity]
+  (spit-yaml (u.yaml/hierarchy->file root-dir (serdes.base/serdes-hierarchy entity))
+             (dissoc entity :serdes/meta)))
 
 (defn- store-settings! [{:keys [root-dir]} settings]
   (let [as-map (into (sorted-map)
