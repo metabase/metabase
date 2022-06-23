@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.models
-    :refer [Action
-            Card
+    :refer [Card
             CardEmitter
             Dashboard
             Database
@@ -27,14 +26,10 @@
                                                                                         :display-name "ID"
                                                                                         :type         :number
                                                                                         :required     true}}}}
-                                       :is_write      true}]
-                  Action [{action-id :id} {:type :row}]]
-    ;; this is tied to the Card and Action above and will get cascade deleted. We can't use `with-temp*` for them
-    ;; because it doesn't seem to work with tables with compound PKs
-    (db/insert! QueryAction {:action_id action-id
-                             :card_id   card-id})
-    (f {:query-action-card-id card-id
-        :action-id            action-id})))
+                                       :is_write      true}]]
+    (let [action-id (db/select-one-field :action_id QueryAction :card_id card-id)]
+      (f {:query-action-card-id card-id
+          :action-id            action-id}))))
 
 (defn- do-with-card-emitter [{:keys [action-id], :as context} f]
   (mt/with-temp* [Card    [{emitter-card-id :id}]
@@ -70,7 +65,7 @@
             (let [expected-response {:id                 su/IntGreaterThanZero
                                      :parameter_mappings (s/eq nil)
                                      :action_id          (s/eq action-id)
-                                     :action             {:type     (s/eq "row")
+                                     :action             {:type     (s/eq      "query")
                                                           :card     {:id       (s/eq query-action-card-id)
                                                                      s/Keyword s/Any}
                                                           s/Keyword s/Any}

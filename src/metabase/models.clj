@@ -90,7 +90,7 @@
          view-log/keep-me)
 
 (p/import-vars
- [action Action QueryAction]
+ [action Action HTTPAction QueryAction]
  [activity Activity]
  [bookmark CardBookmark]
  [bookmark DashboardBookmark]

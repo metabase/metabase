@@ -8,7 +8,7 @@
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
             [metabase.actions :as actions]
-            [metabase.api.actions :as api.actions]
+            [metabase.api.action :as api.action]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.api.dataset :as api.dataset]
@@ -283,7 +283,7 @@
                              {:status-code 400})))
            (when-let [database-id (:database (some :dataset_query [card-updates card-before-update]))]
              ;; make sure Actions are allowed for the Card's query's Database
-             (api.actions/do-check-actions-enabled database-id nil))
+             (api.action/do-check-actions-enabled database-id nil))
            (catch Throwable e
              (let [message (tru "Cannot mark Saved Question as ''is_write'': {0}" (ex-message e))]
                (throw (ex-info message

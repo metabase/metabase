@@ -738,7 +738,7 @@
                                  :card_id (u/the-id read-card)})
         (testing "admin sees emitters"
           (is (partial=
-               {:emitters [{:action {:type "row" :card {:name "Test Write Card"}}}]}
+               {:emitters [{:action {:type "query" :card {:name "Test Write Card"}}}]}
                (mt/user-http-request :crowberto :get 200 (format "card/%d" (u/the-id read-card))))))
         (testing "non-admin does not see emitters"
           (is (nil?

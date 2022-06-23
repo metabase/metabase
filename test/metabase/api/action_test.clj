@@ -1,9 +1,9 @@
-(ns metabase.api.actions-test
+(ns metabase.api.action-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.actions.test-util :as actions.test-util]
-   [metabase.api.actions :as api.actions]
+   [metabase.api.action :as api.action]
    [metabase.driver :as driver]
    [metabase.models.database :refer [Database]]
    [metabase.models.table :refer [Table]]
@@ -11,30 +11,30 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
-(comment api.actions/keep-me)
+(comment api.action/keep-me)
 
 (defn- mock-requests []
-  [{:action       "actions/row/create"
+  [{:action       "action/row/create"
     :request-body (assoc (mt/mbql-query categories) :create-row {:name "created_row"})
     :expect-fn    (fn [result]
                     ;; check that we return the entire row:
                     (is (= "created_row" (get-in result [:created-row :name])))
                     (is (= (set [:name :id])
                            (set (keys (:created-row result))))))}
-   {:action       "actions/row/update"
+   {:action       "action/row/update"
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
                          :update_row {:name "updated_row"})
     :expected     {:rows-updated [1]}}
-   {:action       "actions/row/delete"
+   {:action       "action/row/delete"
     :request-body (mt/mbql-query categories {:filter [:= $id 1]})
     :expected     {:rows-deleted [1]}}
-   {:action       "actions/row/update"
+   {:action       "action/row/update"
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 10]})
                          :update_row {:name "new-category-name"})
     :expected     {:rows-updated [1]}}])
 
 (defn- row-action? [action]
-  (str/starts-with? action "actions/row"))
+  (str/starts-with? action "action/row"))
 
 (deftest happy-path-test
   (testing "Make sure it's possible to use known actions end-to-end if preconditions are satisfied"
@@ -79,7 +79,7 @@
       (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
         (testing "Should return a 400 when deleting the row violates a foreign key constraint"
           (let [request-body (mt/mbql-query categories {:filter [:= $id 22]})]
-            (mt/user-http-request :crowberto :post 400 "actions/row/delete" request-body))))))
+            (mt/user-http-request :crowberto :post 400 "action/row/delete" request-body))))))
 
 (deftest feature-flags-test
   (testing "Disable endpoints unless both global and Database feature flags are enabled"
@@ -118,7 +118,7 @@
                                         db-id)}
                       ;; TODO -- not sure what the actual shape of this API is supposed to look like. We'll have to
                       ;; update this test when the PR to support row insertion is in.
-                      (mt/user-http-request :crowberto :post 400 "actions/table/insert"
+                      (mt/user-http-request :crowberto :post 400 "action/table/insert"
                                             {:database db-id
                                              :table-id table-id
                                              :values   {:name "Toucannery"}})))))))
@@ -140,7 +140,7 @@
                                                     :update_row {:existing-col "new-value"})]
         (is (< 1 (count (mt/rows (qp/process-query query-that-returns-more-than-one)))))
         (doseq [{:keys [action]} (mock-requests)
-                :when (not= action "actions/row/create")] ;; the query in create is not used to select values to act upopn.
+                :when (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
           (is (re= #"Sorry, this would affect \d+ rows, but you can only act on 1"
                    (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one)))))))))
 
@@ -149,7 +149,7 @@
     (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
       (testing "404 for unknown Row action"
         (is (= "Unknown row action \"fake\"."
-               (:message (mt/user-http-request :crowberto :post 404 "actions/row/fake" (mt/mbql-query categories {:filter [:= $id 1]})))))))))
+               (:message (mt/user-http-request :crowberto :post 404 "action/row/fake" (mt/mbql-query categories {:filter [:= $id 1]})))))))))
 
 (deftest four-oh-four-test
   (mt/with-temporary-setting-values [experimental-enable-actions true]
