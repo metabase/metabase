@@ -19,7 +19,7 @@ export type EditableTextAttributes = Omit<
 >;
 
 export interface EditableTextProps extends EditableTextAttributes {
-  value?: string | null;
+  initialValue?: string | null;
   placeholder?: string;
   isMultiline?: boolean;
   onChange?: (value: string) => void;
@@ -27,7 +27,7 @@ export interface EditableTextProps extends EditableTextAttributes {
 
 const EditableText = forwardRef(function EditableText(
   {
-    value,
+    initialValue,
     placeholder,
     isMultiline = false,
     onChange,
@@ -35,27 +35,19 @@ const EditableText = forwardRef(function EditableText(
   }: EditableTextProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const valueText = value ?? "";
-  const [inputText, setInputText] = useState(valueText);
-  const [isFocused, setIsFocused] = useState(false);
-  const displayText = isFocused ? inputText : valueText;
-
-  const handleFocus = useCallback(() => {
-    setIsFocused(true);
-    setInputText(valueText);
-  }, [valueText]);
+  const [inputValue, setInputValue] = useState(initialValue ?? "");
+  const [submitValue, setSubmitValue] = useState(initialValue ?? "");
 
   const handleBlur = useCallback(() => {
-    setIsFocused(false);
-
-    if (inputText !== valueText) {
-      onChange?.(inputText);
+    if (inputValue !== submitValue) {
+      setSubmitValue(inputValue);
+      onChange?.(inputValue);
     }
-  }, [valueText, inputText, onChange]);
+  }, [inputValue, submitValue, onChange]);
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
-      setInputText(event.currentTarget.value);
+      setInputValue(event.currentTarget.value);
     },
     [],
   );
@@ -63,22 +55,21 @@ const EditableText = forwardRef(function EditableText(
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Escape") {
-        setInputText(valueText);
+        setInputValue(submitValue);
       } else if (event.key === "Enter" && !isMultiline) {
         event.preventDefault();
         event.currentTarget.blur();
       }
     },
-    [valueText, isMultiline],
+    [submitValue, isMultiline],
   );
 
   return (
     <EditableTextRoot ref={ref} {...props}>
-      <EditableTextContent>{displayText}&nbsp;</EditableTextContent>
+      <EditableTextContent>{inputValue}&nbsp;</EditableTextContent>
       <EditableTextArea
-        value={displayText}
+        value={inputValue}
         placeholder={placeholder}
-        onFocus={handleFocus}
         onBlur={handleBlur}
         onChange={handleChange}
         onKeyDown={handleKeyDown}

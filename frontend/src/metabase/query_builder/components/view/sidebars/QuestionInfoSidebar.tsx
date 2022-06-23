@@ -49,8 +49,9 @@ export const QuestionInfoSidebar = ({
     <Root>
       <ContentSection>
         <EditableText
-          value={description}
+          initialValue={description}
           placeholder={t`Description`}
+          isMultiline
           onChange={handleSave}
         />
         <PLUGIN_MODERATION.QuestionModerationSection question={question} />
