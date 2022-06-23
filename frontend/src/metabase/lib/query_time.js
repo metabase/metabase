@@ -684,22 +684,13 @@ export const EXCLUDE_OPTIONS = {
     ];
   },
   [EXCLUDE_UNITS["hours"]]: () => {
-    const now = moment()
-      .utc()
-      .minutes(0)
-      .seconds(0)
-      .milliseconds(0);
     const func = hour => {
-      const date = now.hour(hour);
-      const displayName = date.format("h A");
+      const displayName = hour.toString();
       return {
         displayName,
-        value: date.toISOString(),
-        serialized: date.format("H"),
-        test: value =>
-          moment(value)
-            .utc()
-            .format("h A") === displayName,
+        value: hour,
+        serialized: hour.toString(),
+        test: value => value.toString() === displayName,
       };
     };
     return [_.range(0, 12).map(func), _.range(12, 24).map(func)];
