@@ -7,6 +7,8 @@ import styles from "./Text.css";
 import cx from "classnames";
 import { t } from "ttag";
 
+import { DataAppContextConsumer } from "metabase/writeback/containers/DataAppContext";
+
 const getSettingsStyle = settings => ({
   "align-center": settings["text.align_horizontal"] === "center",
   "align-end": settings["text.align_horizontal"] === "right",
@@ -141,26 +143,32 @@ export default class Text extends Component {
     }
 
     return (
-      <div
-        className={cx(className, styles.Text, {
-          // if the card is not showing a background
-          // we should adjust the left padding
-          // to help align the titles with the wrapper
-          pl0: !settings["dashcard.background"],
-          "Text--single-row": isSingleRow,
-        })}
-      >
-        <ReactMarkdown
-          remarkPlugins={REMARK_PLUGINS}
-          className={cx(
-            "full flex-full flex flex-column text-card-markdown",
-            styles["text-card-markdown"],
-            getSettingsStyle(settings),
-          )}
-        >
-          {settings.text}
-        </ReactMarkdown>
-      </div>
+      <DataAppContextConsumer>
+        {dataAppContext => {
+          return (
+            <div
+              className={cx(className, styles.Text, {
+                // if the card is not showing a background
+                // we should adjust the left padding
+                // to help align the titles with the wrapper
+                pl0: !settings["dashcard.background"],
+                "Text--single-row": isSingleRow,
+              })}
+            >
+              <ReactMarkdown
+                remarkPlugins={REMARK_PLUGINS}
+                className={cx(
+                  "full flex-full flex flex-column text-card-markdown",
+                  styles["text-card-markdown"],
+                  getSettingsStyle(settings),
+                )}
+              >
+                {dataAppContext.format(settings.text)}
+              </ReactMarkdown>
+            </div>
+          );
+        }}
+      </DataAppContextConsumer>
     );
   }
 }
