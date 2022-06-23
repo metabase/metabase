@@ -108,19 +108,32 @@
 
 
 (defn take-by-length
-  "Returns a transducer that takes a collection and returns a collection where the total length of all items in list is less than `max-length`."
-  [max-length]
-  (fn [rf]
-    (let [current-length (volatile! 0)]
-      (fn
-        ([] (rf))
-        ([result]
-         (rf result))
-        ([result input]
-         (vswap! current-length + (count (str input)))
-         (if (< @current-length max-length)
-           (rf result input)
-           (reduced result)))))))
+  "Like `take` but condition by the total length of elements.
+  Returns a stateful transducer when no collection is provided.
+
+    ;; (take-by-length 6 [\"Dog\" \"Cat\" \"Crocodile\"])
+    ;; => [\"Dog\" \"Cat\"]"
+  ([max-length]
+   (fn [rf]
+     (let [current-length (volatile! 0)]
+       (fn
+         ([] (rf))
+         ([result]
+          (rf result))
+         ([result input]
+          (vswap! current-length + (count (str input)))
+          (if (< @current-length max-length)
+            (rf result input)
+            (reduced result)))))))
+
+  ([max-length coll]
+   (lazy-seq
+     (when-let [s (seq coll)]
+       (let [f          (first s)
+             new-length (- max-length (count (str f)))]
+         (when-not (neg? new-length)
+           (cons f (take-by-length new-length
+                                   (rest s)))))))))
 
 (defn distinct-values
   "Fetch a sequence of distinct values for `field` that are below the [[total-max-length]] threshold. If the values are
@@ -137,19 +150,21 @@
   [field]
   (classloader/require 'metabase.db.metadata-queries)
   (try
-    (let [distinct-values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)
-          values          (into [] (take-by-length total-max-length) distinct-values)]
-      {:values          values
+    (let [distinct-values         ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)
+          limited-distinct-values (take-by-length total-max-length distinct-values)]
+      {:values          limited-distinct-values
        ;; has_more_values=true means the list of values we return is a subset of all possible values.
-       ;; has_more_values=true when:
-       ;; 1. the number of distinct values of this field exceeded [[metabase.db.metadata-queries/absolute-max-distinct-values-limit]]
-       ;;    -> thus the list we stored in [[FieldValues]] is just a subset of all possible values
-       ;; 2. the total legnth of all values exceeded [[total-max-length]]
-       ;;    -> in this case we only returns a sublist
-       :has_more_values (or (> (count distinct-values)
-                               (count values))
-                            (= (count distinct-values)
-                               @(resolve 'metabase.db.metadata-queries/absolute-max-distinct-values-limit)))})
+       :has_more_values (or
+                          ;; If the `distinct-values` has more elements than `limited-distinct-values`
+                          ;; it means the the `distinct-values` has exceeded our [[total-max-length]] limits.
+                          (> (count distinct-values)
+                             (count limited-distinct-values))
+                          ;; [[metabase.db.metadata-queries/field-distinct-values]] runs a query
+                          ;; with limit = [[metabase.db.metadata-queries/absolute-max-distinct-values-limit]].
+                          ;; So, if the returned `distinct-values` has length equal to that exact limit,
+                          ;; we assume the returned values is just a subset of what we have in DB.
+                          (= (count distinct-values)
+                             @(resolve 'metabase.db.metadata-queries/absolute-max-distinct-values-limit)))})
     (catch Throwable e
       (log/error e (trs "Error fetching field values"))
       nil)))
@@ -168,7 +183,6 @@
    it; otherwise create a new FieldValues object with the newly fetched values. Returns whether the field values were
    created/updated/deleted as a result of this call."
   [field & [human-readable-values]]
-  (classloader/require 'metabase.db.metadata-queries)
   (let [field-values                     (FieldValues :field_id (u/the-id field))
         {:keys [values has_more_values]} (distinct-values field)
         field-name                       (or (:name field) (:id field))]
