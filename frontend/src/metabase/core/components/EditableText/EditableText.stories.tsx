@@ -24,6 +24,13 @@ Default.args = {
   placeholder: "Enter title",
 };
 
+export const Multiline = Template.bind({});
+Multiline.args = {
+  value: "Question",
+  placeholder: "Enter title",
+  isMultiline: true,
+};
+
 export const WithMaxWidth = Template.bind({});
 WithMaxWidth.args = {
   value: "Question",
