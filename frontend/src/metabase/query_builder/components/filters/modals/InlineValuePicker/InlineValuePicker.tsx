@@ -52,8 +52,8 @@ export function InlineValuePicker({
         onChange={changeArguments}
         className="input"
         fields={[field]}
+        multi={!!filter?.operator()?.multi}
         showOptionsInPopover
-        multi
       />
     </ValuesPickerContainer>
   );
