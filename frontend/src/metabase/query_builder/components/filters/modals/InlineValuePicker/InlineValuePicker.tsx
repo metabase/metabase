@@ -34,6 +34,9 @@ export function InlineValuePicker({
   );
 
   const filterOperators = field.filterOperators(filter.operatorName());
+  const hideArgumentSelector = ["is-null", "not-null", "empty", "not-empty"].includes(
+    filter.operatorName(),
+  );
 
   return (
     <ValuesPickerContainer
@@ -45,16 +48,18 @@ export function InlineValuePicker({
         operators={filterOperators}
         onOperatorChange={changeOperator}
       />
-      <ArgumentSelector
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore: this component doesn't have types or propTypes
-        value={filter.arguments()}
-        onChange={changeArguments}
-        className="input"
-        fields={[field]}
-        multi={!!filter?.operator()?.multi}
-        showOptionsInPopover
-      />
+      {!hideArgumentSelector && (
+        <ArgumentSelector
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore: this component doesn't have types or propTypes
+          value={filter.arguments()}
+          onChange={changeArguments}
+          className="input"
+          fields={[field]}
+          disableSearch
+          multi={!!filter?.operator()?.multi}
+        />
+      )}
     </ValuesPickerContainer>
   );
 }
