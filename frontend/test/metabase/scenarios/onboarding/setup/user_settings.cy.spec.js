@@ -64,8 +64,7 @@ describe("user > settings", () => {
   });
 
   it("should update the user without fetching memberships", () => {
-    cy.server();
-    cy.route("GET", "/api/permissions/membership").as("membership");
+    cy.intercept("GET", "/api/permissions/membership").as("membership");
     cy.visit("/account/profile");
     cy.findByDisplayValue(first_name)
       .click()
@@ -82,8 +81,7 @@ describe("user > settings", () => {
   });
 
   it("should have a change password tab", () => {
-    cy.server();
-    cy.route("GET", "/api/user/current").as("getUser");
+    cy.intercept("GET", "/api/user/current").as("getUser");
 
     cy.visit("/account/profile");
     cy.wait("@getUser");
@@ -171,8 +169,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via ldap", () => {
     beforeEach(() => {
-      cy.server();
-      cy.route(
+      cy.intercept(
         "GET",
         "/api/user/current",
         Object.assign({}, CURRENT_USER, {
@@ -191,8 +188,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via google", () => {
     beforeEach(() => {
-      cy.server();
-      cy.route(
+      cy.intercept(
         "GET",
         "/api/user/current",
         Object.assign({}, CURRENT_USER, {
@@ -217,8 +213,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via JWT", () => {
     beforeEach(() => {
-      cy.server();
-      cy.route(
+      cy.intercept(
         "GET",
         "/api/user/current",
         Object.assign({}, CURRENT_USER, {
@@ -243,8 +238,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via SAML", () => {
     beforeEach(() => {
-      cy.server();
-      cy.route(
+      cy.intercept(
         "GET",
         "/api/user/current",
         Object.assign({}, CURRENT_USER, {
