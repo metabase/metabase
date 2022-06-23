@@ -3,6 +3,7 @@ import { color } from "metabase/lib/colors";
 
 export const EditableTextRoot = styled.div`
   position: relative;
+  padding: 0.25rem;
   border: 1px solid transparent;
 
   &:hover,
@@ -24,7 +25,7 @@ export const EditableTextArea = styled.textarea`
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: 0;
+  padding: inherit;
   cursor: pointer;
   border: none;
   resize: none;

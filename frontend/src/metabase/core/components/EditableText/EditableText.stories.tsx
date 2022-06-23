@@ -23,3 +23,10 @@ Default.args = {
   value: "Question",
   placeholder: "Enter title",
 };
+
+export const WithMaxWidth = Template.bind({});
+WithMaxWidth.args = {
+  value: "Question",
+  placeholder: "Enter title",
+  style: { maxWidth: 500 },
+};
