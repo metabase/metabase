@@ -329,16 +329,26 @@
     (deferred-tru "value must be a valid JSON string.")))
 
 (def Parameter
-  "Schema for a valid Parameter."
-  (with-api-error-message {:id       NonBlankString
-                           s/Keyword s/Any}
-    (deferred-tru "parameter must be a map with String :id key")))
+  "Schema for a valid Parameter.
+  We're not using [metabase.mbql.schema/Parameter] here because this Parameter is meant to be used for
+  Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
+  (with-api-error-message {:id                         NonBlankString
+                           :type                       NonBlankString
+                           ;; Allow blank name and slug #15279
+                           (s/optional-key :name)      s/Str
+                           (s/optional-key :slug)      s/Str
+                           (s/optional-key :default)   s/Any
+                           (s/optional-key :sectionId) NonBlankString
+                           s/Keyword                   s/Any}
+    (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping
   "Schema for a valid Parameter Mapping"
-  (with-api-error-message {:parameter_id       NonBlankString
-                           s/Keyword s/Any}
-    (deferred-tru "parameter mapping must be a String :parameter_id key")))
+  (with-api-error-message {:parameter_id             NonBlankString
+                           :target                   s/Any
+                           (s/optional-key :card_id) IntGreaterThanZero
+                           s/Keyword                 s/Any}
+    (deferred-tru "parameter_mapping must be a map with :parameter_id and :target keys")))
 
 (def EmbeddingParams
   "Schema for a valid map of embedding params."

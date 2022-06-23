@@ -1126,7 +1126,7 @@
                                                                           :parameters       [{:name      "Name"
                                                                                               :slug      "name"
                                                                                               :id        "_name_"
-                                                                                              :type      :string/=
+                                                                                              :type      "string/="
                                                                                               :sectionId "string"}]}]
 
                             DashboardCard [{dashcard-id :id, :as dashcard} {:card_id            card-id
