@@ -7,6 +7,9 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { delay } from "metabase/lib/promise";
 import { CardApi } from "metabase/services";
 
+import Databases from "metabase/entities/databases";
+
+import Database from "metabase-lib/lib/metadata/Database";
 import Question from "metabase-lib/lib/Question";
 
 import { SpinnerContainer } from "./ModelCacheControl.styled";
@@ -16,6 +19,10 @@ interface ModelCacheControlProps {
   size?: number;
   onChange?: (isPersisted: boolean) => void;
 }
+
+type DatabaseEntityLoaderProps = {
+  database?: Database;
+};
 
 function ModelCacheControl({
   model,
@@ -46,14 +53,28 @@ function ModelCacheControl({
     }
   }, [model, onChange]);
 
-  return isLoading ? (
-    <SpinnerContainer>
-      <LoadingSpinner size={size} />
-    </SpinnerContainer>
-  ) : (
-    <Button {...props} icon="database" onClick={handleClick} iconSize={size}>
-      {tooltip}
-    </Button>
+  return (
+    <Databases.Loader id={model.databaseId()} loadingAndErrorWrapper={false}>
+      {({ database }: DatabaseEntityLoaderProps) => {
+        if (!database || !database["can-manage"]) {
+          return null;
+        }
+        return isLoading ? (
+          <SpinnerContainer>
+            <LoadingSpinner size={size} />
+          </SpinnerContainer>
+        ) : (
+          <Button
+            {...props}
+            icon="database"
+            onClick={handleClick}
+            iconSize={size}
+          >
+            {tooltip}
+          </Button>
+        );
+      }}
+    </Databases.Loader>
   );
 }
 
