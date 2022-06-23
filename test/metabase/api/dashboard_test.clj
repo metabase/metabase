@@ -114,7 +114,7 @@
            (mt/user-http-request :rasta :post 400 "dashboard" {})))
 
     (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                      "Each parameter must be a map with String :id key")}}
+                                      "Each parameter must be a map with :id and :type keys")}}
            (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
                                                                    :parameters "abc"})))))
 

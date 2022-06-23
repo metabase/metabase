@@ -348,4 +348,4 @@
        ;; do things like automatically set the `is_superuser` flag for a User
        (doseq [group-id to-add]
          (db/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
-      true))
+    true))
