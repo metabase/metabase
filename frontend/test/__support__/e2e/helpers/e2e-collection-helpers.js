@@ -11,6 +11,14 @@ export function openNewCollectionItemFlowFor(type) {
     .click();
 }
 
+export function getCollectionActions() {
+  return cy.findByTestId("collection-menu");
+}
+
+export function openCollectionMenu() {
+  getCollectionActions().within(() => cy.icon("ellipsis").click());
+}
+
 export function getSidebarSectionTitle(name) {
   return cy.findAllByRole("heading", { name });
 }

@@ -1,11 +1,7 @@
-import React, { useCallback, useState } from "react";
-import { t } from "ttag";
-import { color } from "metabase/lib/colors";
-import { IconWrapper } from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import React, { useCallback } from "react";
+import BookmarkToggle from "metabase/components/BookmarkToggle";
 import { isRootCollection } from "metabase/collections/utils";
 import { Collection } from "metabase-types/api";
-import { BookmarkIcon } from "./CollectionBookmark.styled";
 
 export interface CollectionBookmarkProps {
   collection: Collection;
@@ -20,42 +16,26 @@ const CollectionBookmark = ({
   onCreateBookmark,
   onDeleteBookmark,
 }: CollectionBookmarkProps): JSX.Element | null => {
-  const [isAnimating, setIsAnimating] = useState(false);
   const isRoot = isRootCollection(collection);
 
-  const handleClick = useCallback(() => {
-    if (isBookmarked) {
-      onDeleteBookmark(collection);
-    } else {
-      onCreateBookmark(collection);
-    }
+  const handleCreateBookmark = useCallback(() => {
+    onCreateBookmark(collection);
+  }, [collection, onCreateBookmark]);
 
-    setIsAnimating(true);
-  }, [collection, isBookmarked, onCreateBookmark, onDeleteBookmark]);
-
-  const handleAnimationEnd = useCallback(() => {
-    setIsAnimating(false);
-  }, []);
+  const handleDeleteBookmark = useCallback(() => {
+    onDeleteBookmark(collection);
+  }, [collection, onDeleteBookmark]);
 
   if (isRoot) {
     return null;
   }
 
   return (
-    <Tooltip tooltip={isBookmarked ? t`Remove from bookmarks` : t`Bookmark`}>
-      <IconWrapper
-        hover={{ color: isBookmarked ? color("brand") : color("text-dark") }}
-        onClick={handleClick}
-      >
-        <BookmarkIcon
-          name="bookmark"
-          size={20}
-          isBookmarked={isBookmarked}
-          isAnimating={isAnimating}
-          onAnimationEnd={handleAnimationEnd}
-        />
-      </IconWrapper>
-    </Tooltip>
+    <BookmarkToggle
+      isBookmarked={isBookmarked}
+      onCreateBookmark={handleCreateBookmark}
+      onDeleteBookmark={handleDeleteBookmark}
+    />
   );
 };
 

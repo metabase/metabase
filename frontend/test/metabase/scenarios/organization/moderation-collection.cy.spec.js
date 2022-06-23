@@ -7,6 +7,7 @@ import {
   appBar,
   navigationSidebar,
   closeNavigationSidebar,
+  getCollectionActions,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -129,7 +130,7 @@ describeEE("collections types", () => {
     cy.visit("/collection/root");
 
     openCollection("Your personal collection");
-    cy.findByTestId("collection-menu").within(() => {
+    getCollectionActions().within(() => {
       cy.icon("ellipsis").should("not.exist");
     });
 
