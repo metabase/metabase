@@ -107,38 +107,42 @@ export default class Text extends Component {
 
     if (isEditing) {
       return (
-        <div
-          className={cx(className, styles.Text, {
-            [styles.padded]: !isPreviewing,
-          })}
-        >
-          {isPreviewing ? (
-            <ReactMarkdown
-              remarkPlugins={REMARK_PLUGINS}
-              className={cx(
-                "full flex-full flex flex-column text-card-markdown",
-                styles["text-card-markdown"],
-                getSettingsStyle(settings),
-              )}
+        <DataAppContextConsumer>
+          {dataAppContext => (
+            <div
+              className={cx(className, styles.Text, {
+                [styles.padded]: !isPreviewing,
+              })}
             >
-              {settings.text}
-            </ReactMarkdown>
-          ) : (
-            <textarea
-              className={cx(
-                "full flex-full flex flex-column bg-light bordered drag-disabled",
-                styles["text-card-textarea"],
+              {isPreviewing ? (
+                <ReactMarkdown
+                  remarkPlugins={REMARK_PLUGINS}
+                  className={cx(
+                    "full flex-full flex flex-column text-card-markdown",
+                    styles["text-card-markdown"],
+                    getSettingsStyle(settings),
+                  )}
+                >
+                  {dataAppContext.format(settings.text)}
+                </ReactMarkdown>
+              ) : (
+                <textarea
+                  className={cx(
+                    "full flex-full flex flex-column bg-light bordered drag-disabled",
+                    styles["text-card-textarea"],
+                  )}
+                  name="text"
+                  placeholder={t`Write here, and use Markdown if you'd like`}
+                  value={settings.text}
+                  onChange={e => this.handleTextChange(e.target.value)}
+                  // Prevents text cards from dragging when you actually want to select text
+                  // See: https://github.com/metabase/metabase/issues/17039
+                  onMouseDown={this.preventDragging}
+                />
               )}
-              name="text"
-              placeholder={t`Write here, and use Markdown if you'd like`}
-              value={settings.text}
-              onChange={e => this.handleTextChange(e.target.value)}
-              // Prevents text cards from dragging when you actually want to select text
-              // See: https://github.com/metabase/metabase/issues/17039
-              onMouseDown={this.preventDragging}
-            />
+            </div>
           )}
-        </div>
+        </DataAppContextConsumer>
       );
     }
 
