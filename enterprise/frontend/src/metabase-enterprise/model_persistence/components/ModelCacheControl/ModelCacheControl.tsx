@@ -32,7 +32,7 @@ function ModelCacheControl({
 }: ModelCacheControlProps) {
   const [isLoading, setLoading] = useState(false);
   const isPersisted = model.isPersisted();
-  const tooltip = isPersisted ? t`Unpersist model` : t`Persist model`;
+  const label = isPersisted ? t`Unpersist model` : t`Persist model`;
 
   const handleClick = useCallback(async () => {
     const id = model.id();
@@ -70,7 +70,7 @@ function ModelCacheControl({
             onClick={handleClick}
             iconSize={size}
           >
-            {tooltip}
+            {label}
           </Button>
         );
       }}
