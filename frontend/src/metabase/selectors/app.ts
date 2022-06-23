@@ -27,7 +27,7 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
 ];
 
 export const getRouterPath = (state: State, props: RouterProps) => {
-  return props?.location.pathname;
+  return props.location.pathname;
 };
 
 export const getRouterHash = (state: State, props: RouterProps) => {
