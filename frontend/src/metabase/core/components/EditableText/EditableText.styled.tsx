@@ -26,6 +26,9 @@ export const EditableTextArea = styled.textarea`
   height: 100%;
   min-height: 0;
   padding: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
   cursor: pointer;
   border: none;
   resize: none;
