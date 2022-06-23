@@ -30,14 +30,16 @@ describe("scenarios > embedding > code snippets", () => {
       .should("match", JS_CODE({ isEE }));
 
     // hide download button for pro/enterprise users metabase#23477
-    cy.findByLabelText(
-      "Enable users to download data from this embed?",
-    ).click();
+    if (isEE) {
+      cy.findByLabelText(
+        "Enable users to download data from this embed?",
+      ).click();
 
-    cy.get(".ace_content")
-      .first()
-      .invoke("text")
-      .should("match", JS_CODE({ isEE, hideDownloadButton: true }));
+      cy.get(".ace_content")
+        .first()
+        .invoke("text")
+        .should("match", JS_CODE({ isEE, hideDownloadButton: true }));
+    }
 
     cy.get(".ace_content")
       .last()
