@@ -48,10 +48,3 @@ If you're dealing with something that has suddenly disappeared or stopped workin
 > Click **Sort** and select the thumbs up emoji (👍) to view the most highly requested features.
 
 5. If you find a feature request that matches what you want to do, leave a thumbs up or comment to help the team prioritize it.
-
-
-
-
-
-
-
