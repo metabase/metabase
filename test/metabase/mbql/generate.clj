@@ -81,8 +81,9 @@
 (defn random-query []
   (rand-nth (gens/sample (query-generator (mt/id)))))
 
-(defn test-random-query []
+(defn test-random-query-noshrink []
   (let [query (random-query)]
     (mt/with-native-query-testing-context query
       (t/is (some? (mt/rows
                     (qp/process-query query)))))))
+

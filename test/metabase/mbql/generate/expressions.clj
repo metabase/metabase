@@ -20,7 +20,7 @@
    (n-ary-expression-generator operator arg-generator 1))
   ([operator arg-generator min-card]
   (gens/let [members (gen/vector arg-generator min-card 5)]
-    (vec (flatten [operator members])))))
+    (vec (concat [operator] members)))))
 
 (defn comparison-generator
   [comparand-generator]
