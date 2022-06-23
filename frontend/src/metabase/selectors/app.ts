@@ -1,11 +1,15 @@
 import { Location } from "history";
 import { createSelector } from "reselect";
 import { getUser } from "metabase/selectors/user";
-import { getIsEditing as getIsEditingDashboard } from "metabase/dashboard/selectors";
+import {
+  getIsEditing as getIsEditingDashboard,
+  getDashboard,
+} from "metabase/dashboard/selectors";
+import { getQuestion } from "metabase/query_builder/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { State } from "metabase-types/store";
 
-interface RouterProps {
+export interface RouterProps {
   location: Location;
 }
 
@@ -16,9 +20,14 @@ const EMBEDDED_PATHS_WITH_NAVBAR = [
   /^\/collection\/.*/,
   /^\/archive/,
 ];
+const PATHS_WITH_COLLECTION_BREADCRUMBS = [
+  /\/question\//,
+  /\/model\//,
+  /\/dashboard\//,
+];
 
 export const getRouterPath = (state: State, props: RouterProps) => {
-  return props.location.pathname;
+  return props?.location.pathname;
 };
 
 export const getRouterHash = (state: State, props: RouterProps) => {
@@ -107,7 +116,12 @@ export const getErrorMessage = (state: State) => {
   return errorPage?.data?.message || errorPage?.data;
 };
 
-export const getBreadcrumbCollectionId = (state: State) =>
-  state.app.breadcrumbs.collectionId;
+export const getShowBreadcumb = createSelector([getRouterPath], path =>
+  PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
+);
 
-export const getShowBreadcumb = (state: State) => state.app.breadcrumbs.show;
+export const getCollectionId = createSelector(
+  [getQuestion, getDashboard],
+  (question, dashboard) =>
+    question ? question.collectionId() : dashboard?.collection_id,
+);
