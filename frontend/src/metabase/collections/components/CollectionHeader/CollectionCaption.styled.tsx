@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import EditableText from "metabase/core/components/EditableText";
 
 export const CaptionContainer = styled.div`
   display: flex;
@@ -6,16 +7,13 @@ export const CaptionContainer = styled.div`
   gap: 0.5rem;
 `;
 
-export const CaptionTitle = styled.h1`
+export const CaptionTitle = styled(EditableText)`
   font-weight: 900;
-  word-break: break-word;
-  word-wrap: anywhere;
-  overflow-wrap: anywhere;
 `;
 
-export const CaptionDescription = styled.div`
+export const CaptionDescription = styled(EditableText)`
   font-size: 1rem;
   line-height: 1.5rem;
-  padding-top: 1.15rem;
+  margin-top: 1.15rem;
   max-width: 25rem;
 `;
