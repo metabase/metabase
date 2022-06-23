@@ -73,13 +73,10 @@ const EditableText = forwardRef(function EditableText(
 
   return (
     <EditableTextRoot ref={ref} {...props}>
-      <EditableTextContent isMultiline={isMultiline}>
-        {displayText}&nbsp;
-      </EditableTextContent>
+      <EditableTextContent>{displayText}&nbsp;</EditableTextContent>
       <EditableTextArea
         value={displayText}
         placeholder={placeholder}
-        wrap={isMultiline ? "" : "off"}
         onFocus={handleFocus}
         onBlur={handleBlur}
         onChange={handleChange}

@@ -12,15 +12,10 @@ export const EditableTextRoot = styled.div`
   }
 `;
 
-export interface isMultilineProps {
-  isMultiline: boolean;
-}
-
-export const EditableTextContent = styled.div<isMultilineProps>`
+export const EditableTextContent = styled.div`
   visibility: hidden;
-  overflow: ${props => (props.isMultiline ? "" : "hidden")};
-  white-space: ${props => (props.isMultiline ? "pre-wrap" : "nowrap")};
-  word-wrap: ${props => (props.isMultiline ? "break-word" : "")};
+  white-space: pre-wrap;
+  word-wrap: break-word;
 `;
 
 export const EditableTextArea = styled.textarea`
