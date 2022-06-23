@@ -21,7 +21,6 @@ import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import { PremiumEmbeddingLinkWidget } from "./components/widgets/PremiumEmbeddingLinkWidget";
-import PersistedModelAnchorTimeWidget from "./components/widgets/PersistedModelAnchorTimeWidget";
 import PersistedModelRefreshIntervalWidget from "./components/widgets/PersistedModelRefreshIntervalWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
@@ -58,8 +57,6 @@ function updateSectionsWithPlugins(sections) {
     return sections;
   }
 }
-
-const CACHING_MIN_REFRESH_HOURS_FOR_ANCHOR_TIME_SETTING = 6;
 
 const SECTIONS = updateSectionsWithPlugins({
   setup: {
@@ -556,26 +553,6 @@ const SECTIONS = updateSectionsWithPlugins({
         onChanged: (oldHours, hours) =>
           PersistedModelsApi.setRefreshInterval({ hours }),
       },
-      {
-        key: "persisted-model-refresh-anchor-time",
-        display_name: t`Anchoring time`,
-        disableDefaultUpdate: true,
-        widget: PersistedModelAnchorTimeWidget,
-        getHidden: settings => {
-          if (!settings["persisted-models-enabled"]) {
-            return true;
-          }
-          const DEFAULT_REFRESH_INTERVAL = 6;
-          const refreshInterval =
-            settings["persisted-model-refresh-interval-hours"] ||
-            DEFAULT_REFRESH_INTERVAL;
-          return (
-            refreshInterval < CACHING_MIN_REFRESH_HOURS_FOR_ANCHOR_TIME_SETTING
-          );
-        },
-        onChanged: (oldAnchor, anchor) =>
-          PersistedModelsApi.setRefreshInterval({ anchor }),
-      },
     ],
   },
 });
@@ -624,7 +601,7 @@ export const getSections = createSelector(
         continue;
       }
 
-      const settings = section.settings.map(function (setting) {
+      const settings = section.settings.map(function(setting) {
         const apiSetting =
           settingsByKey[setting.key] && settingsByKey[setting.key][0];
 
