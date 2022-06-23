@@ -53,6 +53,8 @@
                               :response_handle :json
                               :error_handle :json})}))
 
+(def ^:private encrypted-json-out (comp mi/json-out-with-keywordization encryption/maybe-decrypt))
+
 (defn- normalize-query-actions [database actions]
   (when (seq actions)
     (let [cards (->> (db/query {:select [:card.*
@@ -69,8 +71,7 @@
                             (let [disabled (or (:archived card)
                                                (-> card
                                                    (:db_settings)
-                                                   encryption/maybe-decrypt
-                                                   mi/json-out-with-keywordization
+                                                   encrypted-json-out
                                                    :database-enable-actions
                                                    boolean
                                                    not))]
