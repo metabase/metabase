@@ -396,8 +396,8 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Showing 0 rows").should("be.visible");
     });
 
-    // this gets flaky when run with the whole suite :-(
-    it.skip("can add a date range filter", () => {
+    // if this gets flaky, disable, it's an issue with internal state in the datepicker component
+    it("can add a date range filter", () => {
       modal().within(() => {
         cy.findByLabelText("Created At").within(() => {
           cy.findByLabelText("more options").click();
@@ -410,7 +410,7 @@ describe("scenarios > filters > bulk filtering", () => {
         cy.get("input")
           .eq(0)
           .clear()
-          .type("01/01/2017");
+          .type("01/01/2017", { delay: 0 });
 
         cy.findByText("Add filter").click();
       });
