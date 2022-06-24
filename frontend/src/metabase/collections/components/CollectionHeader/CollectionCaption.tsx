@@ -1,12 +1,16 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+import {
+  isPersonalCollection,
+  isRootCollection,
+} from "metabase/collections/utils";
 import { Collection } from "metabase-types/api";
 import {
-  CaptionTitleContainer,
-  CaptionTitle,
   CaptionDescription,
   CaptionRoot,
+  CaptionTitle,
+  CaptionTitleContainer,
 } from "./CollectionCaption.styled";
 
 export interface CollectionCaptionProps {
@@ -23,6 +27,10 @@ const CollectionCaption = ({
   onChangeName,
   onChangeDescription,
 }: CollectionCaptionProps): JSX.Element => {
+  const isRoot = isRootCollection(collection);
+  const isPersonal = isPersonalCollection(collection);
+  const isEditable = !isRoot && !isPersonal && collection.can_write;
+
   const handleChangeName = useCallback(
     (name: string) => {
       onChangeName(collection, name);
@@ -48,19 +56,22 @@ const CollectionCaption = ({
           key={collection.id}
           initialValue={collection.name}
           placeholder={t`Add title`}
+          isDisabled={!isEditable}
           data-testid="collection-name-heading"
           onChange={handleChangeName}
         />
       </CaptionTitleContainer>
-      <CaptionDescription
-        key={collection.id}
-        initialValue={collection.description}
-        placeholder={t`Add description`}
-        isVisible={Boolean(collection.description)}
-        isOptional
-        isMultiline
-        onChange={handleChangeDescription}
-      />
+      {isEditable && (
+        <CaptionDescription
+          key={collection.id}
+          initialValue={collection.description}
+          placeholder={t`Add description`}
+          isVisible={Boolean(collection.description)}
+          isOptional
+          isMultiline
+          onChange={handleChangeDescription}
+        />
+      )}
     </CaptionRoot>
   );
 };

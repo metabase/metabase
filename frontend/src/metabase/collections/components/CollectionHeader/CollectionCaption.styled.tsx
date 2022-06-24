@@ -19,13 +19,15 @@ export interface CaptionDescriptionProps {
 export const CaptionDescription = styled(EditableText)<CaptionDescriptionProps>`
   opacity: ${props => (props.isVisible ? 1 : 0)};
   max-width: 25rem;
-  transition: opacity 400ms ease;
+  transition: opacity 400ms ease 1s;
 `;
 
 export const CaptionRoot = styled.div`
-  &:hover {
+  &:hover,
+  &:focus-within {
     ${CaptionDescription} {
       opacity: 1;
+      transition-delay: 0s;
     }
   }
 `;
