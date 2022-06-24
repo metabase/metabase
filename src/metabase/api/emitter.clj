@@ -1,18 +1,26 @@
 (ns metabase.api.emitter
-  (:require
-   [compojure.core :refer [DELETE POST PUT]]
-   [metabase.actions :as actions]
-   [metabase.api.common :as api]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.models
-    :refer [CardEmitter DashboardEmitter Emitter EmitterAction]]
-   [metabase.query-processor.writeback :as qp.writeback]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+  (:require [cheshire.core :as json]
+            [clj-http.client :as http]
+            [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [metabase.actions.http-action :as http-action]
+
+            [compojure.core :refer [DELETE POST PUT]]
+            [metabase.actions :as actions]
+            [metabase.api.common :as api]
+            [metabase.driver.common.parameters :as params]
+            [metabase.driver.common.parameters.parse :as params.parse]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.models
+             :refer [CardEmitter DashboardEmitter Emitter EmitterAction]]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.writeback :as qp.writeback]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (defn- emitter
   "Fetch the Emitter with `emitter-id` and extra info from FK-related tables for custom Emitter execution purposes."
@@ -75,15 +83,37 @@
                   s/Keyword s/Any}}
       (su/with-api-error-message "map of parameter name or ID -> map of parameter `:value` and `:type` of the value")))
 
+(defn execute-http-emitter!
+  [emitter parameters]
+  (let [#_#_
+        parameters {"action_id" {"value" 95, "type" "number/="}
+                    "session_id" {"value" "8c2df5e8-bfc9-4c96-b1df-bd61bf92b7af"}
+                    "foo" {"value" 10}}
+        #_#_
+        emitter {:action {:template {:method "GET"
+                                     :url "http://localhost:3000/api/action/{{action_id}}[[?{{foo}}]]"
+                                     :headers "{\"Cookie\": \"metabase.SESSION={{session_id}}\"}"}
+                          :response_handle ".status"
+                          :error_handle nil}}
+
+        params->value  (into {} (map (juxt key (comp #(get % "value") val)) parameters))]
+    (http-action/execute-http-action! (:action emitter) params->value)))
+
 (api/defendpoint POST "/:id/execute"
   "Execute a custom emitter."
   [id :as {{:keys [parameters]} :body}]
   {parameters (s/maybe CustomActionParametersMap)}
   (let [emitter (api/check-404 (emitter id))]
-    (or (get-in emitter [:action :card])
-        (throw (ex-info (tru "No Query Action found for Emitter {0}. Only Query Actions are supported at this point in time."
-                             id)
-                        {:status-code 400, :emitter emitter})))
-    (qp.writeback/execute-query-emitter! emitter parameters)))
+    (case (get-in emitter [:action :type])
+      :query
+      (do
+        (or (get-in emitter [:action :card])
+            (throw (ex-info (tru "No Query Action found for Emitter {0}. Only Query Actions are supported at this point in time."
+                                 id)
+                            {:status-code 400, :emitter emitter})))
+        (qp.writeback/execute-query-emitter! emitter parameters))
+
+      :http
+      (execute-http-emitter! emitter parameters))))
 
 (api/define-routes actions/+check-actions-enabled api/+check-superuser)
