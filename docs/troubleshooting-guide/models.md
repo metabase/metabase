@@ -6,12 +6,12 @@ title: Troubleshooting models
 
 What kind of problem are you having with your [model][model-docs]?
 
-- [Cannot create a model](#cannot-create-a-model).
-- [Cannot edit or save changes to a model](#cannot-edit-or-save-changes-to-a-model).
+- [Can't create a model](#cant-create-a-model).
+- [Can't edit or save changes to a model](#cant-edit-or-save-changes-to-a-model).
 - [Model performance is poor](#model-performance-is-poor).
 - [Model doesn't work with data sandboxing][troubleshooting-sandboxing].
 
-## Cannot create a model
+## Can't create a model
 
 If you don't see [the model button][model-button-image] (three squares):
 
@@ -20,7 +20,7 @@ If you don't see [the model button][model-button-image] (three squares):
 3. Ask your Metabase admin to clear the proxy cache (if you're using one).
 4. Ask your Metabase admin if [nested queries are enabled][nested-query-settings-docs] under **Admin** > **Settings** > **General**.
 
-## Cannot edit or save changes to a model
+## Can't edit or save changes to a model
 
 If your changes to a model's metadata or underlying question aren't showing up:
 
