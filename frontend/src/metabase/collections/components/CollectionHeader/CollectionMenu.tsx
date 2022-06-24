@@ -47,12 +47,6 @@ const CollectionMenu = ({
   if (!isRoot && !isPersonal && canWrite) {
     items.push(
       {
-        title: t`Edit this collection`,
-        icon: "edit_document",
-        link: `${url}/edit`,
-        event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Collection Click`,
-      },
-      {
         title: t`Move`,
         icon: "move",
         link: `${url}/move`,
