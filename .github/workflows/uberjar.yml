@@ -9,10 +9,6 @@ on:
     - ".**"
     - "test*"
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build:
     name: Build MB ${{ matrix.edition }}
