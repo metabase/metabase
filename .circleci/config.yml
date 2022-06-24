@@ -1266,8 +1266,6 @@ workflows:
               folder:
                 [
                   "admin",
-                  "filters",
-                  "onboarding",
                   "visualizations",
                 ]
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
