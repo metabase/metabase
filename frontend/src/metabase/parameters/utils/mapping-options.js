@@ -7,6 +7,8 @@ import {
   getTagOperatorFilterForParameter,
   variableFilterForParameter,
 } from "./filters";
+//
+import { tag_names } from "cljs/metabase.shared.util.parameters";
 
 function buildStructuredQuerySectionOptions(section) {
   return section.items.map(({ dimension }) => ({
@@ -39,15 +41,30 @@ function buildVariableOption(variable) {
   };
 }
 
-export function getParameterMappingOptions(metadata, parameter = null, card) {
-  const options = [];
+function buildTextTagOption(tagName) {
+  return {
+    name: tagName,
+    icon: "string",
+    isForeign: false,
+    target: ["text-tag", tagName],
+  };
+}
+
+// TODO update more callsites?
+export function getParameterMappingOptions(
+  metadata,
+  parameter = null,
+  card,
+  dashcard = null,
+) {
   if (card.display === "text") {
-    // text cards don't have parameters
-    return [];
+    const tagNames = tag_names(dashcard.visualization_settings.text || "");
+    return tagNames ? tagNames.map(buildTextTagOption) : [];
   }
 
   const question = new Question(card, metadata);
   const query = question.query();
+  const options = [];
 
   if (question.isStructured()) {
     options.push(

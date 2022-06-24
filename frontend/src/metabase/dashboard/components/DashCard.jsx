@@ -233,6 +233,8 @@ export default class DashCard extends Component {
           isDashboard
           dispatch={this.props.dispatch}
           dashboard={dashboard}
+          dashcard={dashcard}
+          parameterValues={parameterValues}
           parameterValuesBySlug={parameterValuesBySlug}
           isEditing={isEditing}
           isPreviewing={this.state.isPreviewingCard}
@@ -255,7 +257,7 @@ export default class DashCard extends Component {
             this.props.onUpdateVisualizationSettings
           }
           replacementContent={
-            (clickBehaviorSidebarDashcard != null || isEditingParameter) &&
+            clickBehaviorSidebarDashcard != null &&
             isVirtualDashCard(dashcard) ? (
               <div className="flex full-height align-center justify-center">
                 <h4 className="text-medium">{t`Text card`}</h4>

@@ -10,6 +10,7 @@ import ParameterTargetList from "metabase/parameters/components/ParameterTargetL
 import { isVariableTarget } from "metabase/parameters/utils/targets";
 import { isDateParameter } from "metabase/parameters/utils/parameter-type";
 import { getMetadata } from "metabase/selectors/metadata";
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import Question from "metabase-lib/lib/Question";
 
 import {
@@ -85,10 +86,16 @@ function DashCardCardParameterMapper({
     [card.id, dashcard.id, editingParameter.id, setParameterMapping],
   );
 
+  const isVirtual = isVirtualDashCard(dashcard);
+
   const hasPermissionsToMap = useMemo(() => {
-    const question = new Question(card, metadata);
-    return question.query().isEditable();
-  }, [card, metadata]);
+    if (isVirtual) {
+      return true;
+    } else {
+      const question = new Question(card, metadata);
+      return question.query().isEditable();
+    }
+  }, [card, metadata, isVirtual]);
 
   const { variant, tooltip, buttonText, buttonIcon } = useMemo(() => {
     if (!hasPermissionsToMap) {
@@ -98,11 +105,18 @@ function DashCardCardParameterMapper({
         text: null,
         buttonIcon: <KeyIcon />,
       };
-    } else if (isDisabled) {
+    } else if (isDisabled && !isVirtual) {
       return {
         variant: "disabled",
         tooltip: t`This card doesn't have any fields or parameters that can be mapped to this parameter type.`,
         buttonText: t`No valid fields`,
+        buttonIcon: null,
+      };
+    } else if (isDisabled && isVirtual) {
+      return {
+        variant: "disabled",
+        tooltip: t`This text card doesn't have any tags that can be linked to parameters.`,
+        buttonText: t`No valid tags`,
         buttonIcon: null,
       };
     } else if (selectedMappingOption) {
@@ -132,12 +146,15 @@ function DashCardCardParameterMapper({
     isDisabled,
     selectedMappingOption,
     handleChangeTarget,
+    isVirtual,
   ]);
 
   return (
     <Container>
       {hasSeries && <CardLabel>{card.name}</CardLabel>}
-      <Header>{t`Column to filter on`}</Header>
+      <Header>
+        {isVirtual ? t`Tag to substitute` : t`Column to filter on`}
+      </Header>
       <Tooltip tooltip={tooltip}>
         <TippyPopover
           visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}

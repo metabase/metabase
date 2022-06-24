@@ -7,6 +7,8 @@ import styles from "./Text.css";
 import cx from "classnames";
 import { t } from "ttag";
 
+import { substitute_tags } from "cljs/metabase.shared.util.parameters";
+
 const getSettingsStyle = settings => ({
   "align-center": settings["text.align_horizontal"] === "center",
   "align-end": settings["text.align_horizontal"] === "right",
@@ -94,9 +96,37 @@ export default class Text extends Component {
   preventDragging = e => e.stopPropagation();
 
   render() {
-    const { className, gridSize, settings, isEditing, isPreviewing } =
-      this.props;
+    const {
+      className,
+      dashboard,
+      dashcard,
+      gridSize,
+      settings,
+      isEditing,
+      isPreviewing,
+      parameterValues,
+    } = this.props;
     const isSingleRow = gridSize && gridSize.height === 1;
+
+    let parametersByTag = {};
+    if (dashcard && dashcard.parameter_mappings) {
+      parametersByTag = dashcard.parameter_mappings.reduce((acc, mapping) => {
+        const tagId = mapping.target[1];
+        const parameter = dashboard.parameters.find(
+          p => p.id === mapping.parameter_id,
+        );
+        if (parameter) {
+          const parameterValue = parameterValues[parameter.id];
+          return {
+            ...acc,
+            [tagId]: { ...parameter, value: parameterValue },
+          };
+        } else {
+          return acc;
+        }
+      }, {});
+    }
+    const textWithParams = substitute_tags(settings["text"], parametersByTag);
 
     if (isEditing) {
       return (
@@ -114,7 +144,7 @@ export default class Text extends Component {
                 getSettingsStyle(settings),
               )}
             >
-              {settings.text}
+              {textWithParams}
             </ReactMarkdown>
           ) : (
             <textarea
@@ -153,7 +183,7 @@ export default class Text extends Component {
             getSettingsStyle(settings),
           )}
         >
-          {settings.text}
+          {textWithParams}
         </ReactMarkdown>
       </div>
     );
