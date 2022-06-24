@@ -68,7 +68,7 @@
                       Dashboard [{dashboard-id :id} {:parameters [{:name    "category"
                                                                    :slug    "category"
                                                                    :id      "abc123"
-                                                                   :type    :string/=
+                                                                   :type    "string/="
                                                                    :default ["Widget"]}]}]
                       DashboardCard [{dashcard-id :id} {:dashboard_id       dashboard-id
                                                         :card_id            card-id
@@ -99,13 +99,13 @@
                                                                        {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
                                                                         :name         "filter"
                                                                         :display-name "Filter"
-                                                                        :type         :text
+                                                                        :type         "text"
                                                                         :required     true
                                                                         :default      "Foo"}}}}}]
                       Dashboard [{dashboard-id :id} {:parameters [{:name    "Text"
                                                                    :slug    "text"
                                                                    :id      "5791ff38"
-                                                                   :type    :string/=
+                                                                   :type    "string/="
                                                                    :default "Bar"}]}]
                       DashboardCard [{dashcard-id :id} {:dashboard_id       dashboard-id
                                                         :card_id            card-id
@@ -133,11 +133,11 @@
                       Dashboard [{dashboard-id :id} {:parameters [{:name "Category (DashCard 1)"
                                                                    :slug "category_1"
                                                                    :id   "CATEGORY_1"
-                                                                   :type :string/=}
+                                                                   :type "string/="}
                                                                   {:name    "Category (DashCard 2)"
                                                                    :slug    "category_2"
                                                                    :id      "CATEGORY_2"
-                                                                   :type    :string/=}]}]
+                                                                   :type    "string/="}]}]
                       DashboardCard [{dashcard-1-id :id} {:card_id            card-id
                                                           :dashboard_id       dashboard-id
                                                           :parameter_mappings [{:parameter_id "CATEGORY_1"
@@ -187,7 +187,7 @@
                         Dashboard     [{dashboard-id :id} {:parameters [{:name      "Text"
                                                                          :slug      "text"
                                                                          :id        "_text_"
-                                                                         :type      :string/=
+                                                                         :type      "string/="
                                                                          :sectionId "string"
                                                                          :default   ["Doohickey"]}]}]
                         DashboardCard [{dashcard-id :id} {:parameter_mappings     [{:parameter_id "_text_"
@@ -211,7 +211,7 @@
                                                      :parameters [{:name    "Category"
                                                                    :slug    "category"
                                                                    :id      "_CATEGORY_"
-                                                                   :type    :category
+                                                                   :type    "category"
                                                                    :default ["Doohickey"]}]}]
                       DashboardCard [{dashcard-id :id} {:parameter_mappings [{:parameter_id "_CATEGORY_"
                                                                               :card_id      card-id
@@ -232,5 +232,5 @@
                                           :parameters [{:name    "Category"
                                                         :slug    "category"
                                                         :id      "_CATEGORY_"
-                                                        :type    :category
+                                                        :type    "category"
                                                         :default ["Gizmo"]}])))))))))

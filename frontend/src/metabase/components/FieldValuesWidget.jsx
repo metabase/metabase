@@ -321,7 +321,7 @@ class FieldValuesWidgetInner extends Component {
             optionsStyle={!parameter ? { maxHeight: "none" } : {}}
             // end forwarded props
             options={options}
-            valueKey={0}
+            valueKey="0"
             valueRenderer={valueRenderer}
             optionRenderer={optionRenderer}
             layoutRenderer={layoutRenderer}

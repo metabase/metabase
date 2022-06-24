@@ -98,42 +98,49 @@ function PinnedItemOverview({
       )}
 
       {dashboardItems.length > 0 && (
-        <Grid>
-          {dashboardItems.map(item => (
-            <div key={item.id} className="relative">
-              <PinnedItemSortDropTarget
-                isFrontTarget
-                itemModel="dashboard"
-                pinIndex={item.collection_position}
-                enableDropTargetBackground={false}
-              />
-              <ItemDragSource item={item} collection={collection}>
-                <div>
-                  <PinnedItemCard
-                    bookmarks={bookmarks}
-                    createBookmark={createBookmark}
-                    deleteBookmark={deleteBookmark}
-                    item={item}
-                    collection={collection}
-                    onCopy={onCopy}
-                    onMove={onMove}
-                  />
-                </div>
-              </ItemDragSource>
-              <PinnedItemSortDropTarget
-                isBackTarget
-                itemModel="dashboard"
-                pinIndex={item.collection_position}
-                enableDropTargetBackground={false}
-              />
-            </div>
-          ))}
-        </Grid>
+        <div>
+          <SectionHeader hasTopMargin={cardItems.length > 0}>
+            <h3>{t`Dashboards`}</h3>
+          </SectionHeader>
+          <Grid>
+            {dashboardItems.map(item => (
+              <div key={item.id} className="relative">
+                <PinnedItemSortDropTarget
+                  isFrontTarget
+                  itemModel="dashboard"
+                  pinIndex={item.collection_position}
+                  enableDropTargetBackground={false}
+                />
+                <ItemDragSource item={item} collection={collection}>
+                  <div>
+                    <PinnedItemCard
+                      bookmarks={bookmarks}
+                      createBookmark={createBookmark}
+                      deleteBookmark={deleteBookmark}
+                      item={item}
+                      collection={collection}
+                      onCopy={onCopy}
+                      onMove={onMove}
+                    />
+                  </div>
+                </ItemDragSource>
+                <PinnedItemSortDropTarget
+                  isBackTarget
+                  itemModel="dashboard"
+                  pinIndex={item.collection_position}
+                  enableDropTargetBackground={false}
+                />
+              </div>
+            ))}
+          </Grid>
+        </div>
       )}
 
       {dataModelItems.length > 0 && (
         <div>
-          <SectionHeader>
+          <SectionHeader
+            hasTopMargin={cardItems.length > 0 || dashboardItems.length > 0}
+          >
             <h3>{t`Useful data`}</h3>
             <SectionSubHeader>
               {isRootCollection(collection)

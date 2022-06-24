@@ -13,6 +13,7 @@ const collection = {
   can_write: true,
   id: 1,
   name: "Collection Foo",
+  description: null,
   archived: false,
 };
 

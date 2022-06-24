@@ -892,7 +892,7 @@
                     Dashboard [{dashboard-id :id} {:parameters [{:name    "X"
                                                                  :slug    "x"
                                                                  :id      "__X__"
-                                                                 :type    :category
+                                                                 :type    "category"
                                                                  :default 3}]}]
                     DashboardCard [_ {:card_id            card-id
                                       :dashboard_id       dashboard-id

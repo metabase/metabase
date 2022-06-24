@@ -216,6 +216,42 @@ describe("scenarios > question > native", () => {
     cy.get("@sidebar").contains(/added/i);
   });
 
+  it("should recognize template tags and save them as parameters", () => {
+    openNativeEditor().type(
+      "select * from PRODUCTS where CATEGORY={{cat}} and RATING >= {{stars}}",
+      {
+        parseSpecialCharSequences: false,
+      },
+    );
+    cy.get("input[placeholder*='Cat']").type("Gizmo");
+    cy.get("input[placeholder*='Stars']").type("3");
+
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset");
+
+    cy.contains("Save").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Name").type("SQL Products");
+      cy.findByText("Save").click();
+
+      // parameters[] should reflect the template tags
+      cy.wait("@card").should(xhr => {
+        const requestBody = xhr.request?.body;
+        expect(requestBody?.parameters?.length).to.equal(2);
+      });
+    });
+    cy.findByText("Not now").click();
+
+    // Now load the question again and parameters[] should still be there
+    cy.intercept("GET", "/api/card/4").as("cardQuestion");
+    cy.visit("/question/4?cat=Gizmo&stars=3");
+    cy.wait("@cardQuestion").should(xhr => {
+      const responseBody = xhr.response?.body;
+      expect(responseBody?.parameters?.length).to.equal(2);
+    });
+  });
+
   it("should link correctly from the variables sidebar (metabase#16212)", () => {
     cy.createNativeQuestion({
       name: "test-question",

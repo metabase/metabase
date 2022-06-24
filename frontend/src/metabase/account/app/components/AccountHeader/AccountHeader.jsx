@@ -2,12 +2,14 @@ import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
-import { PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS } from "metabase/plugins";
+import { getFullName } from "metabase/lib/user";
+import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
 import {
   AccountHeaderRoot,
   HeaderAvatar,
   HeaderSection,
   HeaderTitle,
+  HeaderSubtitle,
 } from "./AccountHeader.styled";
 
 const propTypes = {
@@ -18,7 +20,7 @@ const propTypes = {
 
 const AccountHeader = ({ user, path, onChangeLocation }) => {
   const hasPasswordChange = useMemo(
-    () => PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.every(f => f(user)),
+    () => PLUGIN_IS_PASSWORD_USER.every(predicate => predicate(user)),
     [user],
   );
 
@@ -34,11 +36,14 @@ const AccountHeader = ({ user, path, onChangeLocation }) => {
     [hasPasswordChange],
   );
 
+  const userFullName = getFullName(user);
+
   return (
-    <AccountHeaderRoot>
+    <AccountHeaderRoot data-testid="account-header">
       <HeaderSection>
         <HeaderAvatar user={user} />
-        <HeaderTitle>{t`Account settings`}</HeaderTitle>
+        {userFullName && <HeaderTitle>{userFullName}</HeaderTitle>}
+        <HeaderSubtitle>{user.email}</HeaderSubtitle>
       </HeaderSection>
       <Radio
         value={path}

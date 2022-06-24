@@ -3,7 +3,7 @@ import { updateIn } from "icepick";
 
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
-  PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS,
+  PLUGIN_IS_PASSWORD_USER,
 } from "metabase/plugins";
 
 import SettingsLdapForm from "metabase/admin/settings/components/SettingsLdapForm";
@@ -124,4 +124,4 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
   }),
 );
 
-PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(user => !user.ldap_auth);
+PLUGIN_IS_PASSWORD_USER.push(user => !user.ldap_auth);

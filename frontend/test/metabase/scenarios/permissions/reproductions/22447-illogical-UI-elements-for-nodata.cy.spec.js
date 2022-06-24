@@ -33,10 +33,7 @@ describe("UI elements that make no sense for users without data permissions (met
     });
 
     cy.visit("/collection/root");
-
-    cy.get("main")
-      .find(".Icon-add")
-      .click();
+    cy.findByText("New").click();
 
     popover()
       .should("contain", "Dashboard")
@@ -70,10 +67,7 @@ describe("UI elements that make no sense for users without data permissions (met
       cy.icon("refresh").should("not.exist");
     });
     cy.visit("/collection/root");
-
-    cy.get("main")
-      .find(".Icon-add")
-      .click();
+    cy.findByText("New").click();
 
     popover()
       .should("contain", "Dashboard")

@@ -45,7 +45,7 @@ const PinnedQuestionLoader = ({
   return (
     <Questions.Loader id={id} loadingAndErrorWrapper={false}>
       {({ loading, question: card }: QuestionLoaderProps) => {
-        if (loading) {
+        if (loading || !card.dataset_query) {
           return children({ loading: true });
         }
 
