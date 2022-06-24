@@ -19,6 +19,7 @@ export interface EditableTextProps extends EditableTextAttributes {
   placeholder?: string;
   isOptional?: boolean;
   isMultiline?: boolean;
+  isDisabled?: boolean;
   onChange?: (value: string) => void;
   "data-testid"?: string;
 }
@@ -29,6 +30,7 @@ const EditableText = forwardRef(function EditableText(
     placeholder,
     isOptional = false,
     isMultiline = false,
+    isDisabled = false,
     onChange,
     "data-testid": dataTestId,
     ...props
@@ -68,10 +70,16 @@ const EditableText = forwardRef(function EditableText(
   );
 
   return (
-    <EditableTextRoot {...props} ref={ref} data-value={`${displayValue}\u00A0`}>
+    <EditableTextRoot
+      {...props}
+      ref={ref}
+      isDisabled={isDisabled}
+      data-value={`${displayValue}\u00A0`}
+    >
       <EditableTextArea
         value={inputValue}
         placeholder={placeholder}
+        disabled={isDisabled}
         data-testid={dataTestId}
         onBlur={handleBlur}
         onChange={handleChange}
