@@ -76,9 +76,9 @@ describe("personal collections", () => {
         .click();
 
       // It should be possible to edit sub-collections' details, but not its permissions
+      cy.findByDisplayValue("Foo").should("be.enabled");
       openCollectionMenu();
       popover().within(() => {
-        cy.findByText("Edit this collection").should("be.visible");
         cy.findByText("Edit permissions").should("not.exist");
       });
 
@@ -130,31 +130,13 @@ describe("personal collections", () => {
           cy.get("@sidebar")
             .findByText("Bar")
             .click();
-          openCollectionMenu();
-          /**
-           * We're testing a few things here:
-           *  1. editing collection's title
-           *  2. editing collection's description and
-           *  3. moving that collection within personal collection
-           *  4. archiving the collection within personal collection (metabase#15343)
-           */
-          popover().within(() => cy.findByText("Edit this collection").click());
-          modal().within(() => {
-            cy.findByLabelText("Name") /* [1] */
-              .click()
-              .type("1");
+          cy.findByPlaceholderText("Add title")
+            .type("1")
+            .blur();
+          cy.findByPlaceholderText("Add description")
+            .type("ex-bar")
+            .blur();
 
-            cy.findByLabelText("Description") /* [2] */
-              .click()
-              .type("ex-bar", { delay: 0 });
-            cy.findByTestId("select-button").click();
-          });
-          popover()
-            .findByText("My personal collection") /* [3] */
-            .click();
-          cy.button("Update").click();
-          // Clicking on "Foo" would've closed it and would hide its sub-collections (if there were any).
-          // By doing this, we're making sure "Bar" lives at the same level as "Foo"
           cy.get("@sidebar")
             .findByText("Foo")
             .click();
