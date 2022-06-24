@@ -51,7 +51,11 @@ describe("visual tests > dashboard > fullscreen", () => {
   });
 
   it("renders in day mode and night mode", () => {
-    cy.icon("expand").click();
+    cy.get("main header").within(() => {
+      cy.icon("ellipsis").click();
+    });
+
+    cy.findAllByText("Enter fullscreen").click();
 
     cy.icon("moon");
 
@@ -62,5 +66,7 @@ describe("visual tests > dashboard > fullscreen", () => {
     cy.icon("sun");
 
     cy.percySnapshot("night");
+
+    cy.icon("contract").click();
   });
 });

@@ -4,12 +4,12 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
-import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
 import Icon from "metabase/components/Icon";
 import MetabaseSettings from "metabase/lib/settings";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
 import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
 import Tooltip from "metabase/components/Tooltip";
+import Button from "metabase/core/components/Button";
 
 import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
 
@@ -25,11 +25,11 @@ export const getDashboardActions = (
     isNightMode,
     isPublic = false,
     onNightModeChange,
-    onFullscreenChange,
     refreshPeriod,
     setRefreshElapsedHook,
     onRefreshPeriodChange,
     onSharingClick,
+    onFullscreenChange,
   },
 ) => {
   const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
@@ -136,24 +136,20 @@ export const getDashboardActions = (
     );
   }
 
-  if (!isEditing && !isEmpty) {
+  if (!isEditing && !isEmpty && isFullscreen) {
     // option click to enter fullscreen without making the browser go fullscreen
     buttons.push(
-      <Tooltip
-        key="fullscreen"
-        tooltip={isFullscreen ? t`Exit fullscreen` : t`Enter fullscreen`}
-      >
+      <Tooltip key="fullscreen" tooltip={t`Exit fullscreen`}>
         <span
           data-metabase-event={"Dashboard;Fullscreen Mode;" + !isFullscreen}
         >
-          <DashboardHeaderButton
+          <Button
             onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
-          >
-            <FullscreenIcon
-              className="text-brand-hover"
-              isFullscreen={isFullscreen}
-            />
-          </DashboardHeaderButton>
+            borderless
+            icon="contract"
+            iconSize={16}
+            onlyIcon
+          />
         </span>
       </Tooltip>,
     );

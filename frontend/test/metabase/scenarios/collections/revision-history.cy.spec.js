@@ -107,6 +107,7 @@ describe("revision history", () => {
               cy.findByText("This dashboard is looking empty.");
 
               // Should be able to revert back again
+              openRevisionHistory();
               cy.findByText("Revision history").click();
               clickRevert("rearranged the cards");
 
