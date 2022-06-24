@@ -47,16 +47,14 @@ const CollectionCaption = ({
           onChange={handleChangeName}
         />
       </CaptionContainer>
-      {collection.description && (
-        <CaptionDescription
-          key={collection.id}
-          initialValue={collection.description}
-          placeholder={t`Description`}
-          isOptional
-          isMultiline
-          onChange={handleChangeDescription}
-        />
-      )}
+      <CaptionDescription
+        key={collection.id}
+        initialValue={collection.description}
+        placeholder={t`Description`}
+        isOptional
+        isMultiline
+        onChange={handleChangeDescription}
+      />
     </div>
   );
 };
