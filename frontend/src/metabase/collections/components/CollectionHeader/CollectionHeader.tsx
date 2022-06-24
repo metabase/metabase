@@ -12,6 +12,7 @@ export interface CollectionHeaderProps {
   isBookmarked: boolean;
   isPersonalCollectionChild: boolean;
   onChangeName: (collection: Collection, name: string) => void;
+  onChangeDescription: (collection: Collection, description: string) => void;
   onCreateBookmark: (collection: Collection) => void;
   onDeleteBookmark: (collection: Collection) => void;
 }
@@ -22,12 +23,17 @@ const CollectionHeader = ({
   isBookmarked,
   isPersonalCollectionChild,
   onChangeName,
+  onChangeDescription,
   onCreateBookmark,
   onDeleteBookmark,
 }: CollectionHeaderProps): JSX.Element => {
   return (
     <HeaderRoot>
-      <CollectionCaption collection={collection} onChangeName={onChangeName} />
+      <CollectionCaption
+        collection={collection}
+        onChangeName={onChangeName}
+        onChangeDescription={onChangeDescription}
+      />
       <HeaderActions data-testid="collection-menu">
         <CollectionTimeline collection={collection} />
         <CollectionBookmark

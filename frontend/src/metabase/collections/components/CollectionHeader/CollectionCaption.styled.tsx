@@ -12,9 +12,8 @@ export const CaptionTitle = styled(EditableText)`
   font-weight: 900;
 `;
 
-export const CaptionDescription = styled.div`
+export const CaptionDescription = styled(EditableText)`
   font-size: 1rem;
   line-height: 1.5rem;
-  margin-top: 1.15rem;
   max-width: 25rem;
 `;
