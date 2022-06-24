@@ -101,12 +101,12 @@ const AUTHORITY_LEVEL_REGULAR = {
 };
 
 export const PLUGIN_COLLECTIONS = {
-  authorityLevelFormFields: [],
-  isRegularCollection: (_: Collection | Bookmark) => true,
-  REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
+  REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
+  isRegularCollection: (_: Collection | Bookmark) => true,
+  getAuthorityLevelFormFields: () => [],
 };
 
 export const PLUGIN_COLLECTION_COMPONENTS = {

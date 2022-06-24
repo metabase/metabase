@@ -19,7 +19,7 @@ PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
 
 PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
 
-PLUGIN_COLLECTIONS.authorityLevelFormFields = [
+PLUGIN_COLLECTIONS.getAuthorityLevelFormFields = () => [
   {
     name: "authority_level",
     title: t`Collection type`,
