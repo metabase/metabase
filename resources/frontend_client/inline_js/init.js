@@ -68,7 +68,6 @@ function poll() {
               progressElement.value = newValue;
             }
 
-            console.log("🚀", health.progress, newValue);
             const minutesRemaining = Math.ceil((100 - newValue) / 20);
             const pluralizedMinute =
               minutesRemaining > 1 ? "minutes" : "minute";
