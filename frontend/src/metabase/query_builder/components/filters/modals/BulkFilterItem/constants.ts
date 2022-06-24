@@ -4,6 +4,8 @@ export const FIELD_PRIORITY = [
   "type/DateTimeWithLocalTZ",
   "type/DateTimeWithZoneOffset",
   "type/DateTimeWithZoneID",
+  "type/Integer",
+  "type/Float",
   "type/Boolean",
   "list",
   "type/Category",

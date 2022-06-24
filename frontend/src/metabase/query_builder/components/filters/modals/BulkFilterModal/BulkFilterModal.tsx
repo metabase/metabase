@@ -22,6 +22,8 @@ import {
   ModalTitle,
 } from "./BulkFilterModal.styled";
 
+import { handleEmptyBetweens } from "./utils";
+
 export interface BulkFilterModalProps {
   question: Question;
   onClose?: () => void;
@@ -66,7 +68,8 @@ const BulkFilterModal = ({
   }, [query]);
 
   const handleApplyQuery = useCallback(() => {
-    query.clean().update(undefined, { run: true });
+    const preCleanedQuery = handleEmptyBetweens(query);
+    preCleanedQuery.clean().update(undefined, { run: true });
     onClose?.();
   }, [query, onClose]);
 
