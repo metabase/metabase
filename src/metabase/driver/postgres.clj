@@ -467,24 +467,22 @@
    (keyword "timestamp with timezone")    :type/DateTime
    (keyword "timestamp without timezone") :type/DateTime})
 
-(def base-type->sql-type
-  "Mapping from base-types to postgres sql-types to e.g. be used for casting."
-  {:type/BigInteger          "BIGINT"
-   :type/Boolean             "BOOL"
-   :type/Date                "DATE"
-   :type/DateTime            "TIMESTAMP"
-   :type/DateTimeWithTZ      "TIMESTAMP WITH TIME ZONE"
-   :type/DateTimeWithLocalTZ "TIMESTAMP WITH TIME ZONE"
-   :type/Decimal             "DECIMAL"
-   :type/Float               "FLOAT"
-   :type/Integer             "INTEGER"
-   :type/IPAddress           "INET"
-   :type/Text                "TEXT"
-   :type/Time                "TIME"
-   :type/TimeWithTZ          "TIME WITH TIME ZONE"
-   :type/UUID                "UUID"})
 
-(doseq [[base-type db-type] base-type->sql-type]
+(doseq [[base-type db-type]
+        {:type/BigInteger          "BIGINT"
+         :type/Boolean             "BOOL"
+         :type/Date                "DATE"
+         :type/DateTime            "TIMESTAMP"
+         :type/DateTimeWithTZ      "TIMESTAMP WITH TIME ZONE"
+         :type/DateTimeWithLocalTZ "TIMESTAMP WITH TIME ZONE"
+         :type/Decimal             "DECIMAL"
+         :type/Float               "FLOAT"
+         :type/Integer             "INTEGER"
+         :type/IPAddress           "INET"
+         :type/Text                "TEXT"
+         :type/Time                "TIME"
+         :type/TimeWithTZ          "TIME WITH TIME ZONE"
+         :type/UUID                "UUID"}]
   ;; todo: we get DB types in the metadata, let's persist these in model metadata
   (defmethod ddl.i/field-base-type->sql-type [:postgres base-type] [_ _] db-type))
 

@@ -4,7 +4,6 @@
             [honeysql.format :as hformat]
             [medley.core :as m]
             [metabase.actions :as actions]
-            [metabase.driver.postgres :as postgres]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.table :as table :refer [Table]]
@@ -87,6 +86,23 @@
                     :status-code status-code}
                    more-info))))
 
+(def base-type->sql-type
+  "Mapping from base-types to postgres sql-types to e.g. be used for casting."
+  {:type/BigInteger          "BIGINT"
+   :type/Boolean             "BOOL"
+   :type/Date                "DATE"
+   :type/DateTime            "TIMESTAMP"
+   :type/DateTimeWithTZ      "TIMESTAMP WITH TIME ZONE"
+   :type/DateTimeWithLocalTZ "TIMESTAMP WITH TIME ZONE"
+   :type/Decimal             "DECIMAL"
+   :type/Float               "FLOAT"
+   :type/Integer             "INTEGER"
+   :type/IPAddress           "INET"
+   :type/Text                "TEXT"
+   :type/Time                "TIME"
+   :type/TimeWithTZ          "TIME WITH TIME ZONE"
+   :type/UUID                "UUID"})
+
 (defn- cast-values
   "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
   uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
@@ -96,7 +112,7 @@
                                   (:fields (first (table/with-fields (db/select Table :id table-id)))))]
     (m/map-kv-vals (fn [col value]
                      (let [{base-type :base_type :as field} (get column->field col)]
-                       (if-let [sql-type (postgres/base-type->sql-type base-type)]
+                       (if-let [sql-type (base-type->sql-type base-type)]
                          (hx/cast sql-type value)
                          (try
                            (metabase.driver.sql.query-processor/->honeysql :postgres [:value value field])
