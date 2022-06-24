@@ -46,7 +46,10 @@ describe("metabase > scenarios > navbar > new menu", () => {
       cy.findByText("Create").click();
     });
 
-    cy.get("h1").should("have.text", "Test collection");
+    cy.findByTestId("collection-name-heading").should(
+      "have.text",
+      "Test collection",
+    );
   });
 
   it("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
