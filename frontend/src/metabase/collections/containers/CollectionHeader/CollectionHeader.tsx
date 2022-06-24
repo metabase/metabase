@@ -6,6 +6,8 @@ import CollectionHeader from "../../components/CollectionHeader";
 const mapDispatchToProps = {
   onChangeName: (collection: Collection, name: string) =>
     Collections.actions.update(collection, { name }),
+  onChangeDescription: (collection: Collection, description: string) =>
+    Collections.actions.update(collection, { description }),
 };
 
 export default connect(null, mapDispatchToProps)(CollectionHeader);

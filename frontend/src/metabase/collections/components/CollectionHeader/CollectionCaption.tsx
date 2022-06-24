@@ -1,4 +1,5 @@
 import React, { useCallback } from "react";
+import { t } from "ttag";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { Collection } from "metabase-types/api";
 import {
@@ -50,6 +51,7 @@ const CollectionCaption = ({
         <CaptionDescription
           key={collection.id}
           initialValue={collection.description}
+          placeholder={t`Description`}
           isOptional
           isMultiline
           onChange={handleChangeDescription}

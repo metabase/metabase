@@ -13,7 +13,5 @@ export const CaptionTitle = styled(EditableText)`
 `;
 
 export const CaptionDescription = styled(EditableText)`
-  font-size: 1rem;
-  line-height: 1.5rem;
   max-width: 25rem;
 `;
