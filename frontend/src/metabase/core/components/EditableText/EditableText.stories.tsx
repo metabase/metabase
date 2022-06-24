@@ -1,6 +1,5 @@
 import React from "react";
 import { ComponentStory } from "@storybook/react";
-import { useArgs } from "@storybook/client-api";
 import EditableText from "./EditableText";
 
 export default {
@@ -9,31 +8,25 @@ export default {
 };
 
 const Template: ComponentStory<typeof EditableText> = args => {
-  const [{ value }, updateArgs] = useArgs();
-
-  const handleChange = (value?: string) => {
-    updateArgs({ value });
-  };
-
-  return <EditableText {...args} value={value} onChange={handleChange} />;
+  return <EditableText {...args} />;
 };
 
 export const Default = Template.bind({});
 Default.args = {
-  value: "Question",
+  initialValue: "Question",
   placeholder: "Enter title",
 };
 
 export const Multiline = Template.bind({});
 Multiline.args = {
-  value: "Question",
+  initialValue: "Question",
   placeholder: "Enter title",
   isMultiline: true,
 };
 
 export const WithMaxWidth = Template.bind({});
 WithMaxWidth.args = {
-  value: "Question",
+  initialValue: "Question",
   placeholder: "Enter title",
   style: { maxWidth: 500 },
 };

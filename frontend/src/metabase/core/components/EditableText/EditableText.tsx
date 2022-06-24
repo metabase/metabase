@@ -15,8 +15,9 @@ export type EditableTextAttributes = Omit<
 >;
 
 export interface EditableTextProps extends EditableTextAttributes {
-  value?: string | null;
+  initialValue?: string | null;
   placeholder?: string;
+  isOptional?: boolean;
   isMultiline?: boolean;
   onChange?: (value: string) => void;
   "data-testid"?: string;
@@ -24,8 +25,9 @@ export interface EditableTextProps extends EditableTextAttributes {
 
 const EditableText = forwardRef(function EditableText(
   {
-    value,
+    initialValue,
     placeholder,
+    isOptional = false,
     isMultiline = false,
     onChange,
     "data-testid": dataTestId,
@@ -33,25 +35,22 @@ const EditableText = forwardRef(function EditableText(
   }: EditableTextProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const valueText = value ?? "";
-  const [isFocused, setIsFocused] = useState(false);
-  const [inputText, setInputText] = useState(valueText);
-  const displayText = isFocused ? inputText : valueText;
-  const placeholderText = displayText ? displayText : placeholder;
-
-  const handleFocus = useCallback(() => {
-    setInputText(valueText);
-    setIsFocused(true);
-  }, [valueText]);
+  const [inputValue, setInputValue] = useState(initialValue ?? "");
+  const [submitValue, setSubmitValue] = useState(initialValue ?? "");
+  const displayValue = inputValue ? inputValue : placeholder;
 
   const handleBlur = useCallback(() => {
-    onChange?.(inputText);
-    setIsFocused(false);
-  }, [inputText, onChange]);
+    if (!isOptional && !inputValue) {
+      setInputValue(submitValue);
+    } else if (inputValue !== submitValue) {
+      setSubmitValue(inputValue);
+      onChange?.(inputValue);
+    }
+  }, [inputValue, submitValue, isOptional, onChange]);
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
-      setInputText(event.currentTarget.value);
+      setInputValue(event.currentTarget.value);
     },
     [],
   );
@@ -59,26 +58,21 @@ const EditableText = forwardRef(function EditableText(
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Escape") {
-        setInputText(valueText);
+        setInputValue(submitValue);
       } else if (event.key === "Enter" && !isMultiline) {
         event.preventDefault();
         event.currentTarget.blur();
       }
     },
-    [valueText, isMultiline],
+    [submitValue, isMultiline],
   );
 
   return (
-    <EditableTextRoot
-      {...props}
-      ref={ref}
-      data-value={`${placeholderText}\u00A0`}
-    >
+    <EditableTextRoot {...props} ref={ref} data-value={`${displayValue}\u00A0`}>
       <EditableTextArea
-        value={displayText}
+        value={inputValue}
         placeholder={placeholder}
         data-testid={dataTestId}
-        onFocus={handleFocus}
         onBlur={handleBlur}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
