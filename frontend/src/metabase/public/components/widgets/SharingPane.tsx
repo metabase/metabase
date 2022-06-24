@@ -12,17 +12,25 @@ import cx from "classnames";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { Description, Header, OptionHeader } from "./SharingPane.styled";
 
+type Resource = {
+  dashboard?: number;
+  question?: number;
+  public_uuid?: string;
+};
+
+type Extension = string | null;
+
 interface SharingPaneProps {
-  resource: any;
-  resourceType: any;
-  onCreatePublicLink: any;
-  onDisablePublicLink: any;
-  extensions: any;
-  getPublicUrl: any;
-  onChangeEmbedType: any;
-  isAdmin: any;
-  isPublicSharingEnabled: any;
-  isApplicationEmbeddingEnabled: any;
+  resource: Resource;
+  resourceType: string;
+  onCreatePublicLink: () => void;
+  onDisablePublicLink: () => void;
+  extensions: string[];
+  getPublicUrl: (resource: Resource, extension?: Extension) => void;
+  onChangeEmbedType: (embedType: string) => void;
+  isAdmin: boolean;
+  isPublicSharingEnabled: boolean;
+  isApplicationEmbeddingEnabled: boolean;
 }
 
 export default function SharingPane({
@@ -37,7 +45,7 @@ export default function SharingPane({
   isPublicSharingEnabled,
   isApplicationEmbeddingEnabled,
 }: SharingPaneProps) {
-  const [extensionState, setExtension] = useState(null);
+  const [extensionState, setExtension] = useState<Extension>(null);
 
   const publicLink = getPublicUrl(resource, extensionState);
   const iframeSource = getPublicEmbedHTML(getPublicUrl(resource));
