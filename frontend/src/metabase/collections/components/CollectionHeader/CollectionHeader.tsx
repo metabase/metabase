@@ -12,7 +12,10 @@ export interface CollectionHeaderProps {
   isBookmarked: boolean;
   isPersonalCollectionChild: boolean;
   onChangeName: (collection: Collection, name: string) => void;
-  onChangeDescription: (collection: Collection, description: string) => void;
+  onChangeDescription: (
+    collection: Collection,
+    description: string | null,
+  ) => void;
   onCreateBookmark: (collection: Collection) => void;
   onDeleteBookmark: (collection: Collection) => void;
 }

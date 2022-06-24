@@ -3,15 +3,19 @@ import { t } from "ttag";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { Collection } from "metabase-types/api";
 import {
-  CaptionContainer,
+  CaptionTitleContainer,
   CaptionTitle,
   CaptionDescription,
+  CaptionRoot,
 } from "./CollectionCaption.styled";
 
 export interface CollectionCaptionProps {
   collection: Collection;
   onChangeName: (collection: Collection, name: string) => void;
-  onChangeDescription: (collection: Collection, description: string) => void;
+  onChangeDescription: (
+    collection: Collection,
+    description: string | null,
+  ) => void;
 }
 
 const CollectionCaption = ({
@@ -28,14 +32,14 @@ const CollectionCaption = ({
 
   const handleChangeDescription = useCallback(
     (description: string) => {
-      onChangeDescription(collection, description);
+      onChangeDescription(collection, description ? description : null);
     },
     [collection, onChangeDescription],
   );
 
   return (
-    <div>
-      <CaptionContainer>
+    <CaptionRoot>
+      <CaptionTitleContainer>
         <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
           collection={collection}
           size={24}
@@ -43,19 +47,21 @@ const CollectionCaption = ({
         <CaptionTitle
           key={collection.id}
           initialValue={collection.name}
+          placeholder={t`Add title`}
           data-testid="collection-name-heading"
           onChange={handleChangeName}
         />
-      </CaptionContainer>
+      </CaptionTitleContainer>
       <CaptionDescription
         key={collection.id}
         initialValue={collection.description}
-        placeholder={t`Description`}
+        placeholder={t`Add description`}
+        isVisible={Boolean(collection.description)}
         isOptional
         isMultiline
         onChange={handleChangeDescription}
       />
-    </div>
+    </CaptionRoot>
   );
 };
 
