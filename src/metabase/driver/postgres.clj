@@ -468,6 +468,7 @@
    (keyword "timestamp without timezone") :type/DateTime})
 
 (def base-type->sql-type
+  "Mapping from base-types to postgres sql-types to e.g. be used for casting."
   {:type/BigInteger          "BIGINT"
    :type/Boolean             "BOOL"
    :type/Date                "DATE"
