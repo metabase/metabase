@@ -83,14 +83,6 @@ const CONTENT_TYPE = [
     value: "application/json",
     label: "JSON",
   },
-  {
-    value: "text/plain",
-    label: "Text",
-  },
-  {
-    value: "application/x-www-form-urlencoded",
-    label: "Form",
-  },
 ];
 
 export default CreateActionPage;

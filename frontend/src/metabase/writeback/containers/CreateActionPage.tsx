@@ -8,11 +8,17 @@ import CreateHttpAction from "metabase/writeback/components/CreateAction/CreateH
 type Props = {};
 
 const CreateActionPage: React.FC<Props> = props => {
+  const [actionName, setActionName] = React.useState<string>("New Action");
   const [actionType, setActionType] = React.useState<ActionType>("http");
 
   return (
     <div className="flex flex-col h-full">
-      <Header actionType={actionType} setActionType={setActionType} />
+      <Header
+        actionName={actionName}
+        setActionName={setActionName}
+        actionType={actionType}
+        setActionType={setActionType}
+      />
       <div className="flex-grow bg-white">
         <CreateAction actionType={actionType} />
       </div>
