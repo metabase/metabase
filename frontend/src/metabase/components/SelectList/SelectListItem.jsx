@@ -14,8 +14,7 @@ const iconPropType = PropTypes.oneOfType([
 
 const propTypes = {
   ...BaseSelectListItem.propTypes,
-  icon: iconPropType.isRequired,
-  iconColor: PropTypes.string,
+  icon: iconPropType,
   rightIcon: iconPropType,
 };
 
@@ -28,9 +27,14 @@ export function SelectListItem(props) {
     : { name: rightIcon };
 
   return (
-    <BaseSelectListItem as={ItemRoot} {...props}>
-      <ItemIcon color="brand" {...iconProps} />
-      <ItemTitle>{name}</ItemTitle>
+    <BaseSelectListItem
+      as={ItemRoot}
+      {...props}
+      hasLeftIcon={!!icon}
+      hasRightIcon={!!rightIcon}
+    >
+      {icon && <ItemIcon color="brand" {...iconProps} />}
+      <ItemTitle data-testid="option-text">{name}</ItemTitle>
       {rightIconProps.name && <ItemIcon {...rightIconProps} />}
     </BaseSelectListItem>
   );

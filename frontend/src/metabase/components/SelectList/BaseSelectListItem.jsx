@@ -25,6 +25,7 @@ export function BaseSelectListItem({
   className,
   as = BaseItemRoot,
   children,
+  ...rest
 }) {
   const ref = useScrollOnMount();
   const Root = as;
@@ -38,6 +39,7 @@ export function BaseSelectListItem({
       onClick={() => onSelect(id)}
       onKeyDown={e => e.key === "Enter" && onSelect(id)}
       className={className}
+      {...rest}
     >
       {children}
     </Root>
