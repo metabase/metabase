@@ -11,9 +11,7 @@ If you can't find or solve your problem using the [troubleshooting guides](./ind
 
 ## How to find a known bug
 
-You may be encountering a bug if your work in Metabase is crashing, missing, or not being saved.
-
-If you think something is missing or behaving oddly, but you've never been able to do it before, try [searching for a product limitation](#how-to-find-a-known-product-limitation) instead.
+If your work in Metabase is crashing, missing, or not being saved, you might have found a bug.
 
 1. Go to [Metabase Github issues page](https://github.com/metabase/metabase/issues).
 
@@ -27,15 +25,13 @@ If you think something is missing or behaving oddly, but you've never been able 
 
 > Click **Sort** and select the thumbs up emoji (👍) to view the most commonly encountered bugs.
 
-5. If you find an existing bug that matches your problem, leave a thumbs up or comment to help the team prioritize it.
+5. If you find an existing bug that matches your problem, add a thumbs up emoji to help the team prioritize it.
 
 6. If you can't find your problem, and you're sure that it's not a [product limitation](#how-to-find-a-known-product-limitation), you can [create a new bug report](./bugs.html).
 
 ## How to find a known product limitation
 
-You may be encountering a product limitation if the functionality you're looking for doesn't exist.
-
-If you're dealing with something that has suddenly disappeared or stopped working, try [searching for a bug](#how-to-find-a-known-bug) instead.
+If the functionality you're looking for simply doesn't exist (i.e., it hasn't suddenly gone missing), you might be running into a product limitation.
 
 1. Go to [Metabase Github issues page](https://github.com/metabase/metabase/issues).
 
@@ -47,4 +43,6 @@ If you're dealing with something that has suddenly disappeared or stopped workin
 
 > Click **Sort** and select the thumbs up emoji (👍) to view the most highly requested features.
 
-5. If you find a feature request that matches what you want to do, leave a thumbs up or comment to help the team prioritize it.
+5. If you find a feature request that matches what you want to do, add a thumbs up emoji to help the team prioritize it.
+
+6. If a feature request doesn't exist, and your issue isn't [caused by a known bug](#how-to-find-a-known-bug), you can [submit a new feature request](./requesting-new-features.html).

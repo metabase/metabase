@@ -33,5 +33,5 @@ Note: the more honest and specific you are here the more we will take you seriou
 
 Add any other context or screenshots about the feature request here.
 
-[github-issues]: https://github.com/metabase/metabase/labels/Type%3ANew%20Feature
+[github-issues]: ./known-issues.html
 [feature-request]: https://github.com/metabase/metabase/issues/new?assignees=&labels=.Needs+Triage%2C+Type%3ANew+Feature&template=feature_request.md
