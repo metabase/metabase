@@ -134,7 +134,6 @@
                          (assoc :delete []))
         rows-deleted (try (first (jdbc/execute! conn (hformat/format delete-hsql)))
                           (catch Exception e
-                            
                             (throw
                              (ex-info "Delete action error." (assoc (parse-error driver conn e) :status-code 400)))))]
     (if (= rows-deleted 1)
