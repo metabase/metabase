@@ -219,7 +219,7 @@ export default ComposedComponent =>
             {...this.props}
             {...this.state}
             isNightMode={this.state.theme === "night"}
-            hideNightModeToggle={this.state.theme === "transparent"}
+            hasNightModeToggle={this.state.theme !== "transparent"}
             setRefreshElapsedHook={this.setRefreshElapsedHook}
             loadDashboardParams={this.loadDashboardParams}
             updateDashboardParams={this.updateDashboardParams}
