@@ -192,7 +192,7 @@ function SavedQuestionLeftSide(props) {
 
   const onHeaderChange = useCallback(
     name => {
-      if (name !== question.displayName()) {
+      if (name && name !== question.displayName()) {
         onSave(question.setDisplayName(name).card());
       }
     },
