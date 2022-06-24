@@ -48,7 +48,7 @@ export function InlineValuePicker({
   const isBetween =
     filter.operatorName() === "between" &&
     filter?.operator()?.fields.length === 2;
-  const filterArguments = filter.arguments();
+  const filterArguments = filter.arguments() ?? [];
 
   return (
     <ValuesPickerContainer
@@ -75,6 +75,7 @@ export function InlineValuePicker({
       {isBetween && (
         <BetweenContainer>
           <NumberInput
+            placeholder={t`min`}
             value={filterArguments[0] ?? ""}
             onChange={e =>
               changeArguments([e.target.value, filterArguments[1]])
@@ -83,7 +84,8 @@ export function InlineValuePicker({
           />
           <NumberSeparator>{t`and`}</NumberSeparator>
           <NumberInput
-            value={filter.arguments()[1] ?? ""}
+            placeholder={t`max`}
+            value={filterArguments[1] ?? ""}
             onChange={e =>
               changeArguments([filterArguments[0], e.target.value])
             }

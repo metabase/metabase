@@ -275,4 +275,27 @@ describe("InlineValuePicker", () => {
     // reads commas as part of the input instead of token separators
     expect(lastCall[2]).toEqual("foo,bar,");
   });
+
+  it("shows multiple inputs for between filters", async () => {
+    const testFilter = new Filter(
+      ["between", ["field", pkField.id, null], 14, 74],
+      null,
+      query,
+    );
+    const changeSpy = jest.fn();
+
+    render(
+      <Provider store={store}>
+        <InlineValuePicker
+          filter={testFilter}
+          field={pkField}
+          handleChange={changeSpy}
+        />
+      </Provider>,
+    );
+
+    screen.getByText("Between");
+    screen.getByPlaceholderText("min");
+    screen.getByPlaceholderText("max");
+  });
 });
