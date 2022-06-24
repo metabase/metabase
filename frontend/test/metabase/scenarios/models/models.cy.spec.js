@@ -381,7 +381,7 @@ describe("scenarios > models", () => {
 
       questionInfoButton().click();
 
-      cy.findByPlaceholderText("Description")
+      cy.findByPlaceholderText("Add description")
         .type("foo")
         .blur();
       cy.wait("@updateCard");
