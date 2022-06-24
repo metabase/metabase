@@ -49,7 +49,7 @@ export const QuestionInfoSidebar = ({
     <Root>
       <ContentSection>
         <EditableText
-          value={description}
+          initialValue={description}
           placeholder={t`Description`}
           isOptional
           isMultiline
