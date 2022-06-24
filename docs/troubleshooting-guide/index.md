@@ -41,6 +41,9 @@ Problems, their causes, how to detect them, and how to fix them.
 - [The dates and times in my questions and charts are wrong][incorrect-times].
 - [My dashboard filters don't work][filters].
 - [My dashboard's linked filters don't work][linked-filters].
+
+### Models
+
 - [My model doesn't work][models].
 
 ### Email and alerts

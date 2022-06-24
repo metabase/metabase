@@ -53,7 +53,7 @@ If you want to improve the performance of a model, you can make optimizations at
 If you can’t solve your problem using the troubleshooting guides:
 
 - Search or ask the [Metabase community][discourse].
-- Search for [known bugs or limitations][known-issues] using the label [`Querying/Models`][known-issues-models].
+- Search for [known model issues][known-issues-models] using the label `Querying/Models`. For more information, go to [How to find a known bug or limitation][known-issues].
 
 [analytics-database-learn]: /learn/administration/making-dashboards-faster.html#consider-a-database-optimized-for-analytics
 [denormalize-data-learn]: /learn/administration/making-dashboards-faster.html#denormalize-data
