@@ -1,22 +1,18 @@
 (ns metabase.driver.sql-jdbc.actions
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [honeysql.format :as hformat]
             [medley.core :as m]
             [metabase.actions :as actions]
+            [metabase.driver.postgres :as postgres]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.store :as qp.store]
-            [metabase.util.i18n :refer [tru]]))
-
-(defn- check-one-row-affected [conn query raw-hsql]
-  (let [select-hsql     (-> raw-hsql (assoc :select [[:%count.* :row-count]]))
-        row-count       (:row_count (first (jdbc/query conn (hformat/format select-hsql))) 0)]
-    (when-not (= row-count 1)
-      (throw (ex-info (tru "Sorry, this would affect {0} rows, but you can only act on 1" row-count)
-                      {:query       query
-                       :sql         select-hsql
-                       :status-code 400})))))
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [tru]]
+            [toucan.db :as db]))
 
 (defn- constraint->columns [conn constraint-name]
   (->> ["select column_name from information_schema.constraint_column_usage where constraint_name = ?" constraint-name]
@@ -73,7 +69,8 @@
 (defn- parse-error
   "Returns errors in a way that indicates which column had the problem. Can be used to highlight errors in forms."
   [driver conn e]
-  (let [message (ex-message e)
+  (let [message (or (ex-message e)
+                    (pr-str e))
         errors (->> message
                     (parse-sql-error driver conn))]
     (if errors
@@ -90,42 +87,75 @@
                     :status-code status-code}
                    more-info))))
 
+(defn- cast-values
+  "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
+  uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
+  types that do not need casting like integer or string."
+  [column->value table-id]
+  (let [column->field (m/index-by (comp keyword #(str/replace % "_" "-") :name)
+                                  (:fields (first (table/with-fields (db/select Table :id table-id)))))]
+    (m/map-kv-vals (fn [col value]
+                     (let [{base-type :base_type :as field} (get column->field col)]
+                       (if-let [sql-type (postgres/base-type->sql-type base-type)]
+                         (hx/cast sql-type value)
+                         (try
+                           (metabase.driver.sql.query-processor/->honeysql :postgres [:value value field])
+                           (catch Exception e
+                             (throw (ex-info (str "column cast failed: " col)
+                                             {:column col
+                                              :original-ex (ex-message e)
+                                              :status-code 400})))))))
+                   column->value)))
+
 (defmethod actions/row-action! [:delete :sql-jdbc]
   [_action driver {database-id :database :as query}]
-  (let [conn        (sql-jdbc.conn/db->pooled-connection-spec database-id)
-        raw-hsql    (qp.store/with-store
-                      (try
-                        (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
-                        (sql.qp/mbql->honeysql driver query)
-                        (catch Exception e
-                          (catch-throw e 404))))
-        _           (check-one-row-affected conn query raw-hsql)
-        delete-hsql (-> raw-hsql
-                        (dissoc :select)
-                        (assoc :delete []))]
-    {:rows-deleted (try (jdbc/execute! conn (hformat/format delete-hsql))
-                        (catch Exception e
-                          (throw
-                           (ex-info "Delete action error." (assoc (parse-error driver conn e) :status-code 400)))))}))
+  (let [conn         (sql-jdbc.conn/db->pooled-connection-spec database-id)
+        raw-hsql     (qp.store/with-store
+                       (try
+                         (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
+                         (sql.qp/mbql->honeysql driver query)
+                         (catch Exception e
+                           (catch-throw e 404))))
+        delete-hsql  (-> raw-hsql
+                         (dissoc :select)
+                         (assoc :delete []))
+        rows-deleted (try (first (jdbc/execute! conn (hformat/format delete-hsql)))
+                          (catch Exception e
+                            (throw
+                             (ex-info "Delete action error." (assoc (parse-error driver conn e) :status-code 400)))))]
+    (if (-> rows-deleted (= 1))
+      {:rows-deleted 1}
+      (do (jdbc/db-set-rollback-only! conn)
+          (throw (ex-info (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted)
+                          {:query       query
+                           :sql         (hformat/format delete-hsql)
+                           :status-code 400}))))))
 
 (defmethod actions/row-action! [:update :sql-jdbc]
   [_action driver {database-id :database :keys [update-row] :as query}]
-  (let [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)
-        raw-hsql        (qp.store/with-store
-                          (try
-                            (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
-                            (sql.qp/mbql->honeysql driver query)
-                            (catch Exception e
-                              (catch-throw e 404))))]
-    (check-one-row-affected conn query raw-hsql)
-    (let [target-table (first (:from raw-hsql))
-          update-hsql (-> raw-hsql
-                          (select-keys [:where])
-                          (assoc :update target-table :set update-row))]
-      {:rows-updated (try (jdbc/execute! conn (hformat/format update-hsql))
+  (let [conn     (sql-jdbc.conn/db->pooled-connection-spec database-id)
+        raw-hsql (qp.store/with-store
+                   (try
+                     (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
+                     (sql.qp/mbql->honeysql driver query)
+                     (catch Exception e
+                       (catch-throw e 404))))
+        target-table (first (:from raw-hsql))
+        update-hsql  (-> raw-hsql
+                         (select-keys [:where])
+                         (assoc :update target-table
+                                :set (cast-values update-row (get-in query [:query :source-table]))))
+        rows-updated (try (first (jdbc/execute! conn (hformat/format update-hsql)))
                           (catch Exception e
                             (throw
-                             (ex-info "Update action error." (assoc (parse-error driver conn e) :status-code 400)))))})))
+                             (ex-info "Update action error." (assoc (parse-error driver conn e) :status-code 400)))))]
+    (if (-> rows-updated (= 1))
+      {:rows-updated rows-updated}
+      (do (jdbc/db-set-rollback-only! conn)
+          (throw (ex-info (tru "Sorry, this would affect {0} rows, but you can only act on 1" rows-updated)
+                          {:query       query
+                           :sql         (hformat/format update-hsql)
+                           :status-code 400}))))))
 
 (defmethod actions/row-action! [:create :sql-jdbc]
   [_action driver {database-id :database :keys [create-row] :as query}]
@@ -138,13 +168,11 @@
                           (catch-throw e 404))))
         create-hsql (-> raw-hsql
                         (assoc :insert-into (first (:from raw-hsql)))
-                        (assoc :values [create-row])
+                        (assoc :values [(cast-values create-row (get-in query [:query :source-table]))])
                         (dissoc :select :from))]
     {:created-row
      (if (= driver :postgres)
-       ;; postgres is happy with "returning *", However:
-       ;; for mysql: to return all the columns we must add them to the column list and provide default values in the VALUES clause.
-       ;; for h2: I don't see an easy way to do it, so for those two, just use select *.
+       ;; postgres is happy with "returning *", but mysql and h2 aren't so just use select *.
        (let [pg-create-hsql (-> create-hsql (assoc :returning [:*]))
              raw-sql        (hformat/format pg-create-hsql)]
          (try (jdbc/execute! conn raw-sql {:return-keys true})
@@ -165,10 +193,3 @@
                                   :driver     driver
                                   :raw-hsql   raw-hsql
                                   :create-sql create-hsql}))))}))
-
-;; TODO -- will need to parse the values in case they're not integers or strings.
-#_(metabase.driver.sql.query-processor/->honeysql :postgres
-                                                  [:value
-                                                   "232333d9-1434-4b1e-973d-4536d1dc8411"
-                                                   {:base_type :type/UUID
-                                                    :database_type "uuid"}])
