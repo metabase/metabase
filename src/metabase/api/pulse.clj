@@ -167,7 +167,9 @@
                    (future (slack/refresh-channels-and-usernames-when-needed!))
                    (assoc-in chan-types
                              [:slack :fields 0 :options]
-                             (slack/slack-cached-channels-and-usernames))
+                             (->> (slack/slack-cached-channels-and-usernames)
+                                  :channels
+                                  (map :display-name)))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
