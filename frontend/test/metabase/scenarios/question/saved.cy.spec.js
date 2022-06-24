@@ -130,7 +130,7 @@ describe("scenarios > question > saved", () => {
     rightSidebar().within(() => {
       cy.findByText("History");
 
-      cy.findByPlaceholderText("Description")
+      cy.findByPlaceholderText("Add description")
         .type("This is a question")
         .blur();
 

@@ -49,7 +49,7 @@ describe("managing question from the question's details sidebar", () => {
 
               questionInfoButton().click();
 
-              cy.findByPlaceholderText("Description")
+              cy.findByPlaceholderText("Add description")
                 .type("foo", { delay: 0 })
                 .blur();
 

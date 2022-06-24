@@ -27,7 +27,7 @@ describe("issue 17910", () => {
     questionInfoButton().click();
 
     rightSidebar().within(() => {
-      cy.findAllByPlaceholderText("Description")
+      cy.findAllByPlaceholderText("Add description")
         .type("A description")
         .blur();
       cy.findByText("History");
