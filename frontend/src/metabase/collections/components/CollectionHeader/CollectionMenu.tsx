@@ -29,19 +29,22 @@ const CollectionMenu = ({
   const isPersonal = isPersonalCollection(collection);
   const canWrite = collection.can_write;
 
-  if (isAdmin && !isPersonal && !isPersonalCollectionChild) {
+  if (isAdmin && !isRoot && !isPersonal && !isPersonalCollectionChild) {
     items.push(
       ...PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems(
         collection,
         onUpdateCollection,
       ),
-      {
-        title: t`Edit permissions`,
-        icon: "lock",
-        link: `${url}/permissions`,
-        event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Permissions`,
-      },
     );
+  }
+
+  if (isAdmin && !isPersonal && !isPersonalCollectionChild) {
+    items.push({
+      title: t`Edit permissions`,
+      icon: "lock",
+      link: `${url}/permissions`,
+      event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Permissions`,
+    });
   }
 
   if (!isRoot && !isPersonal && canWrite) {
