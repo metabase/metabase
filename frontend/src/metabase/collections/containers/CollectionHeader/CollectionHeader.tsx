@@ -4,10 +4,8 @@ import { Collection } from "metabase-types/api";
 import CollectionHeader from "../../components/CollectionHeader";
 
 const mapDispatchToProps = {
-  onChangeName: (collection: Collection, name: string) =>
-    Collections.actions.update(collection, { name }),
-  onChangeDescription: (collection: Collection, description: string | null) =>
-    Collections.actions.update(collection, { description }),
+  onUpdateCollection: (collection: Collection, values: Partial<Collection>) =>
+    Collections.actions.update(collection, values),
 };
 
 export default connect(null, mapDispatchToProps)(CollectionHeader);

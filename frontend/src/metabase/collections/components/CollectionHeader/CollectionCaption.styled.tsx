@@ -20,6 +20,10 @@ export const CaptionDescription = styled(EditableText)<CaptionDescriptionProps>`
   opacity: ${props => (props.isVisible ? 1 : 0)};
   max-width: 25rem;
   transition: opacity 400ms ease 1s;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
 `;
 
 export const CaptionRoot = styled.div`
