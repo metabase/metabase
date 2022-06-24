@@ -8,12 +8,12 @@
   (apply io/make-parents path)
   (spit (apply io/file path) (yaml/generate-string obj :dumper-options {:flow-style :block})))
 
-(defn- store-entity! [{:keys [root-dir]} {{:keys [id type label]} :serdes/meta :as entity}]
+(defn- store-entity! [{:keys [root-dir]} {{:keys [id model label]} :serdes/meta :as entity}]
   (let [basename (if (nil? label)
                    (str id ".yaml")
-                   ; + is a legal, unescaped character on all common filesystems, but not `identity-hash` or NanoID!
+                   ;; + is a legal, unescaped character on all common filesystems, but not `identity-hash` or NanoID!
                    (str id "+" label ".yaml"))
-        path [root-dir type basename]]
+        path [root-dir model basename]]
     (spit-yaml path (dissoc entity :serdes/meta))))
 
 (defn- store-settings! [{:keys [root-dir]} settings]
@@ -29,7 +29,7 @@
                     {:opts opts})))
   (let [settings (atom [])]
     (doseq [entity stream]
-      (if (-> entity :serdes/meta :type (= "Setting"))
+      (if (-> entity :serdes/meta :model (= "Setting"))
         (swap! settings conj entity)
         (store-entity! opts entity)))
     (store-settings! opts @settings)))

@@ -10,19 +10,19 @@
 (defmethod build-metas "settings.yaml" [file]
   (let [settings (yaml/from-file file)]
     (for [[k _] settings]
-      {:type "Setting" :id (name k)})))
+      {:model "Setting" :id (name k)})))
 
 (defmethod build-metas :default [^File file]
   (let [model-name   (-> file .getParentFile .getName)
         [_ id label] (re-matches #"^([A-Za-z0-9_-]+)(?:\+(.*))?.yaml$" (.getName file))]
-    [(cond-> {:type model-name :id id}
+    [(cond-> {:model model-name :id id}
        label (assoc :label label))]))
 
-(defn- ingest-entity [root-dir {:keys [type id label] :as meta-map}]
+(defn- ingest-entity [root-dir {:keys [model id label] :as meta-map}]
   (let [filename (if label
                    (str id "+" label ".yaml")
                    (str id ".yaml"))]
-    (-> (io/file root-dir type filename)
+    (-> (io/file root-dir model filename)
         yaml/from-file
         (assoc :serdes/meta meta-map))))
 
@@ -32,8 +32,8 @@
     (eduction (comp (filter (fn [^File f] (.isFile f)))
                     (mapcat build-metas))
               (file-seq root-dir)))
-  (ingest-one [_ {:keys [type id] :as meta-map}]
-    (if (= "Setting" type)
+  (ingest-one [_ {:keys [model id] :as meta-map}]
+    (if (= "Setting" model)
       {:serdes/meta meta-map :key (keyword id) :value (get settings (keyword id))}
       (ingest-entity  root-dir meta-map))))
 

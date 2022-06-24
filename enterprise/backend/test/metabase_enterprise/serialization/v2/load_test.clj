@@ -9,16 +9,16 @@
             [toucan.db :as db]))
 
 (defn- ingestion-in-memory [extractions]
-  (let [mapped (into {} (for [{{:keys [type id]} :serdes/meta :as m} (into [] extractions)]
-                          [[type id] m]))]
+  (let [mapped (into {} (for [{{:keys [model id]} :serdes/meta :as m} (into [] extractions)]
+                          [[model id] m]))]
     (reify
       serdes.ingest/Ingestable
       (ingest-list [_]
         (eduction (map :serdes/meta) (vals mapped)))
-      (ingest-one [_ {:keys [type id]}]
-        (or (get mapped [type id])
-            (throw (ex-info (format "Unknown ingestion target: %s %s" type id)
-                            {:type type :id id :world mapped})))))))
+      (ingest-one [_ {:keys [model id]}]
+        (or (get mapped [model id])
+            (throw (ex-info (format "Unknown ingestion target: %s %s" model id)
+                            {:model model :id id :world mapped})))))))
 
 ;;; WARNING for test authors: [[extract/extract-metabase]] returns a lazy reducible value. To make sure you don't
 ;;; confound your tests with data from your dev appdb, remember to eagerly
@@ -33,8 +33,8 @@
           (ts/with-source-db
             (ts/create! Collection :name "Basic Collection" :entity_id eid1)
             (reset! serialized (into [] (serdes.extract/extract-metabase {})))
-            (is (some (fn [{{:keys [type id]} :serdes/meta}]
-                        (and (= type "Collection") (= id eid1)))
+            (is (some (fn [{{:keys [model id]} :serdes/meta}]
+                        (and (= model "Collection") (= id eid1)))
                       @serialized))))
 
         (testing "loading into an empty database succeeds"
@@ -113,7 +113,7 @@
                    (serdes.hash/identity-hash @c2b)}
                  (->> @serialized
                       (map :serdes/meta)
-                      (filter #(= "Collection" (:type %)))
+                      (filter #(= "Collection" (:model %)))
                       (map :id)
                       set))))
 

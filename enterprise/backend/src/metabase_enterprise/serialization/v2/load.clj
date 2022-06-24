@@ -56,12 +56,12 @@
   [[metabase.models.serialization.base/load-one!]] and its various overridable parts, which see.
 
   Circular dependencies are not allowed, and are detected and thrown as an error."
-  [{:keys [expanding ingestion seen] :as ctx} {:keys [id type] :as meta-map}]
+  [{:keys [expanding ingestion seen] :as ctx} {id :id model-name :model :as meta-map}]
   (cond
-    (expanding id) (throw (ex-info (format "Circular dependency on %s %s" type id) {}))
+    (expanding id) (throw (ex-info (format "Circular dependency on %s %s" model-name id) {}))
     (seen id)      ctx ; Already been done, just skip it.
     :else (let [ingested (serdes.ingest/ingest-one ingestion meta-map)
-                model    (db/resolve-model (symbol type))
+                model    (db/resolve-model (symbol model-name))
                 deps     (serdes.base/serdes-dependencies ingested)
                 ctx      (-> ctx
                              (update :expanding conj id)

@@ -60,11 +60,11 @@
 
     (let [ingestable (ingest.yaml/ingest-yaml dump-dir)
           meta-maps  (into [] (ingest/ingest-list ingestable))
-          exp-files  {{:type "Collection" :id "fake-id" :label "the_label"} {:some "made up" :data "here"}
-                      {:type "Collection" :id "no-label"}                   {:some "other" :data "in this one"}
-                      {:type "Setting" :id "some-key"}                      {:key :some-key :value "with string value"}
-                      {:type "Setting" :id "another-key"}                   {:key :another-key :value 7}
-                      {:type "Setting" :id "blank-key"}                     {:key :blank-key :value nil}}]
+          exp-files  {{:model "Collection" :id "fake-id" :label "the_label"} {:some "made up" :data "here"}
+                      {:model "Collection" :id "no-label"}                   {:some "other" :data "in this one"}
+                      {:model "Setting" :id "some-key"}                      {:key :some-key :value "with string value"}
+                      {:model "Setting" :id "another-key"}                   {:key :another-key :value 7}
+                      {:model "Setting" :id "blank-key"}                     {:key :blank-key :value nil}}]
       (testing "the right set of file is returned by ingest-list"
         (is (= (set (keys exp-files))
                (set meta-maps))))
@@ -83,11 +83,10 @@
 (deftest e2e-storage-ingestion-test
   (ts/with-random-dump-dir [dump-dir]
     (ts/with-empty-h2-app-db
-      ;(test-gen/generate-horror-show!)
       (test-gen/insert! {:collection [[100 {:refs {:personal_owner_id ::rs/omit}}]]})
       (let [extraction (into [] (extract/extract-metabase {}))
-            entities   (reduce (fn [m {{:keys [type id]} :serdes/meta :as entity}]
-                                 (assoc-in m [type id] entity))
+            entities   (reduce (fn [m {{:keys [model id]} :serdes/meta :as entity}]
+                                 (assoc-in m [model id] entity))
                                {} extraction)]
         (is (= 100 (-> entities (get "Collection") vals count)))
 
