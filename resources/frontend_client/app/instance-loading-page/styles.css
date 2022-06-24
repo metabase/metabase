@@ -21,17 +21,18 @@ a {
 
 h1 {
   font-size: 56px;
+  font-weight: 700;
   margin-bottom: 30px;
 }
 
 h2 {
   font-size: 14px;
-  font-weight: normal;
+  font-weight: 400;
   line-height: 1.8em;
   margin-bottom: 60px;
 }
 
-div#left-side {
+#left-side {
   border-right: 1px solid #F0F0F0;
   float: left;
   min-height: calc(100vh - 80px);
@@ -40,15 +41,18 @@ div#left-side {
   width: 50%;
 }
 
-div#left-container {
+#left-container {
   padding: 0 172px;
+  margin: 0 auto;
+  max-width: 758px;
 }
 
-div#right-side {
+#right-side {
   align-items: center;
   display: flex;
   flex-direction: column;
   float: right;
+  margin-top: -110px;
   min-height: calc(100vh - 80px);
   justify-content: center;
   position: relative;
@@ -61,38 +65,44 @@ header {
   display: flex;
   justify-content: space-between;
   padding: 20px;
+  position: relative;
+  z-index: 2;
 }
 
 #store-link {
   color: #509EE3;
   display: flex;
-  font-weight: 700;
   align-items: center;
+  font-weight: 700;
 }
 
 #store-link > img {
-  margin-right: 20px;
+  margin-right: 14px;
   width: 20px;
 }
 
-nav > a {
-  margin-left: 30px;
+nav a {
+  font-weight: 500;
+  margin-left: 60px;
   margin-right: 10px;
 }
 
 progress[value] {
   -webkit-appearance: none;
   appearance: none;
+  border: 1px solid #509EE3;
+  border-radius: 8px;
+  height: 8px;
   width: 100%;
-  height: 4px;
 }
 
 progress[value]::-webkit-progress-bar {
-  background-color: #DBE9FA;
+  background-color: white;
   border-radius: 8px;
 }
 
 progress[value]::-webkit-progress-value {
+  background-color: green;
   background-color: #4A90E2;
   border-radius: 8px;
 }
@@ -101,12 +111,17 @@ progress[value]::-webkit-progress-value {
   margin-top: 25px;
 }
 
-#heading {
-  font-size: 16px;
+.heading {
+  box-shadow: 0px 5px 6px rgba(80, 158, 227, 0.16), 0px 12px 24px rgba(148, 154, 171, 0.08);
+  border-radius: 8px;
+  font-size: 14px;
   letter-spacing: 0;
   line-height: 30px;
-  margin-top: 50px;
+  margin-top: -90px;
+  padding: 4px 20px;
   text-align: center;
+  opacity: 1;
+  transition: opacity 800ms cubic-bezier(.165,.84,.44,1);
 }
 
 #status {
@@ -115,8 +130,11 @@ progress[value]::-webkit-progress-value {
   color: #949AAB;
 }
 
-#animation {
-  transition: opacity 300ms cubic-bezier(.165,.84,.44,1);
+.animation {
+  max-width: 100%;
+  mix-blend-mode: multiply;
+  opacity: 1;
+  transition: opacity 800ms cubic-bezier(.165,.84,.44,1);
   width: 600px;
 }
 
@@ -131,3 +149,29 @@ progress[value]::-webkit-progress-value {
   width: 100%;
 }
 
+@media screen and (max-width: 72em) {
+  #left-side {
+    border-bottom: 1px solid #F0F0F0;
+    min-height: 0;
+    padding: 80px 0 80px;
+    width: 100%;
+  }
+
+  #left-container {
+    max-width: 410px;
+    padding: 0;
+  }
+
+  #right-side {
+    min-height: 0;
+    width: 100%;
+  }
+
+  .animation {
+    max-width: 80%;
+  }
+
+  #heading {
+    margin-bottom: 60px;
+  }
+}

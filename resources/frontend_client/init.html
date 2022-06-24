@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8">
     <title>Metabase</title>
-    <link rel="stylesheet" href="./inline_js/init.css">
+    <link rel="stylesheet" href="app/instance-loading-page/styles.css">
   </head>
 
   <body>
     <header>
       <a href="https://store.metabase.com" id="store-link">
-        <img src="./inline_js/metabase-logo.svg" />
+        <img src="app/instance-loading-page/img/metabase-logo.svg" />
         Metabase Store
       </a>
 
@@ -35,10 +35,10 @@
     </div>
 
     <div id="right-side">
-      <img src="inline_js/1.gif" id="animation" />
-      <p id="heading">Make decisions with data — no SQL required</p>
+      <img src="app/instance-loading-page/img/1.gif" id="animation" class="animation" />
+      <p id="heading" class="heading">Make decisions with data — no SQL required</p>
     </div>
 
-    <script type="text/javascript" src="./inline_js/init.js"></script>
+    <script type="text/javascript">{{{initJS}}}</script>
   </body>
 </html>
