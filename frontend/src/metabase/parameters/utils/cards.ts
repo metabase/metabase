@@ -59,7 +59,33 @@ export function getTemplateTagParameters(
     .map(getTemplateTagParameter);
 }
 
-export function getTemplateTagsForParameters(card: Card) {
+export function getSnippetsTemplateTags(card: Card, snippets: any[]) {
+  if (
+    Array.isArray(snippets) &&
+    card &&
+    card.dataset_query &&
+    card.dataset_query.type === "native"
+  ) {
+    const queryText = card.dataset_query.native.query;
+    const expandedQueryText = snippets.reduce((text, snippet) => {
+      const { name, content } = snippet;
+      let interpolated = text;
+      const marker = "{{snippet: " + name + "}}";
+      for (;;) {
+        const previous = interpolated;
+        interpolated = interpolated.replace(marker, content);
+        if (previous === interpolated) {
+          break;
+        }
+      }
+      return interpolated;
+    }, queryText);
+  }
+
+  return [];
+}
+
+export function getTemplateTagsForParameters(card: Card, snippets = null) {
   const templateTags: TemplateTag[] =
     card &&
     card.dataset_query &&
@@ -67,6 +93,10 @@ export function getTemplateTagsForParameters(card: Card) {
     card.dataset_query.native["template-tags"]
       ? Object.values(card.dataset_query.native["template-tags"])
       : [];
+
+  if (snippets) {
+    getSnippetsTemplateTags(card, snippets);
+  }
 
   return templateTags.filter(
     // this should only return template tags that define a parameter of the card

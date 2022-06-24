@@ -21,6 +21,7 @@ import { loadMetadataForQueries } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import Questions from "metabase/entities/questions";
+import Snippets from "metabase/entities/snippets";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 import Question from "metabase-lib/lib/Question";
@@ -315,7 +316,12 @@ export const updateQuestion = (
     const newDatasetQuery = newQuestion.query().datasetQuery();
     // Sync card's parameters with the template tags;
     if (newDatasetQuery.type === "native") {
-      const templateTags = getTemplateTagsForParameters(newQuestion.card());
+      await dispatch(Snippets.actions.fetchList());
+      const snippets = Snippets.selectors.getList(getState());
+      const templateTags = getTemplateTagsForParameters(
+        newQuestion.card(),
+        snippets,
+      );
       const parameters = getTemplateTagParameters(templateTags);
       newQuestion = newQuestion.setParameters(parameters);
     }
