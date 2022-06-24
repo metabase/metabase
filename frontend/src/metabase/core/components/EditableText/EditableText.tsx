@@ -45,11 +45,9 @@ const EditableText = forwardRef(function EditableText(
   }, [valueText]);
 
   const handleBlur = useCallback(() => {
-    if (inputText !== valueText) {
-      onChange?.(inputText);
-    }
+    onChange?.(inputText);
     setIsFocused(false);
-  }, [inputText, valueText, onChange]);
+  }, [inputText, onChange]);
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
