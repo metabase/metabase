@@ -25,22 +25,27 @@ If you don't see [the model button][model-button-image] (three squares):
 If your changes to a model's metadata or underlying question aren't showing up:
 
 1. Refresh your browser to confirm you're not viewing cached results.
-2. Search for [known bugs or limitations][known-issues] using the label [`Querying/Models`][known-issues-models].
+2. Search for [known model issues][known-issues-models] using the label `Querying/Models`. For more information, go to [How to find a known bug or limitation][known-issues].
 
-## Model performance is poor.
+## Model performance is poor
 
 1. Optimize the underlying saved question or SQL query.
-  - [Ask for less data][limit-data-learn].
-  - For models that use SQL questions, [look for bottlenecks using SQL EXPLAIN][sql-explain-learn].
+
+    - [Ask for less data][limit-data-learn].
+    - For models that use SQL questions, [look for bottlenecks using SQL EXPLAIN][sql-explain-learn].
+
 2. Optimize your database schemas.
-  - [Aggregate data ahead of time with summary tables][summary-tables-learn].
-  - [Index frequently queried columns][indexes-learn].
-  - [Denormalize your data][denormalize-data-learn].
-  - [Materialize views][materialize-views-learn].
-  - [Pull data out of JSON and slot its keys into columns][flatten-json-learn].
+
+    - [Aggregate data ahead of time with summary tables][summary-tables-learn].
+    - [Index frequently queried columns][indexes-learn].
+    - [Denormalize your data][denormalize-data-learn].
+    - [Materialize views][materialize-views-learn].
+    - [Pull data out of JSON and slot its keys into columns][flatten-json-learn].
+
 3. Optimize your data warehouse(s) or database(s).
-  - [Replicate your database][replicate-database-learn].
-  - [Consider a database optimized for analytics][analytics-database-learn].
+
+    - [Replicate your database][replicate-database-learn].
+    - [Consider a database optimized for analytics][analytics-database-learn].
 
 **Explanation**
 
