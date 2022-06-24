@@ -17,6 +17,7 @@ export type EditableTextAttributes = Omit<
 export interface EditableTextProps extends EditableTextAttributes {
   initialValue?: string | null;
   placeholder?: string;
+  isOptional?: boolean;
   isMultiline?: boolean;
   onChange?: (value: string) => void;
   "data-testid"?: string;
@@ -26,6 +27,7 @@ const EditableText = forwardRef(function EditableText(
   {
     initialValue,
     placeholder,
+    isOptional = false,
     isMultiline = false,
     onChange,
     "data-testid": dataTestId,
@@ -35,13 +37,16 @@ const EditableText = forwardRef(function EditableText(
 ) {
   const [inputValue, setInputValue] = useState(initialValue ?? "");
   const [submitValue, setSubmitValue] = useState(initialValue ?? "");
+  const displayValue = inputValue ? inputValue : placeholder;
 
   const handleBlur = useCallback(() => {
-    if (inputValue !== submitValue) {
+    if (!isOptional && !inputValue) {
+      setInputValue(submitValue);
+    } else if (inputValue !== submitValue) {
       setSubmitValue(inputValue);
       onChange?.(inputValue);
     }
-  }, [inputValue, submitValue, onChange]);
+  }, [inputValue, submitValue, isOptional, onChange]);
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -63,7 +68,7 @@ const EditableText = forwardRef(function EditableText(
   );
 
   return (
-    <EditableTextRoot {...props} ref={ref} data-value={`${inputValue}\u00A0`}>
+    <EditableTextRoot {...props} ref={ref} data-value={`${displayValue}\u00A0`}>
       <EditableTextArea
         value={inputValue}
         placeholder={placeholder}
