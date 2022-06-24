@@ -79,17 +79,19 @@ function Tooltip({
   const targetProps = getTargetProps(reference, children);
 
   const popperOptions = useMemo(
-    () => ({
-      modifiers: [
-        {
-          name: "preventOverflow",
-          enabled: preventOverflow,
-          options: {
-            altAxis: true,
-          },
-        },
-      ],
-    }),
+    () =>
+      preventOverflow
+        ? {
+            modifiers: [
+              {
+                name: "preventOverflow",
+                options: {
+                  altAxis: true,
+                },
+              },
+            ],
+          }
+        : undefined,
     [preventOverflow],
   );
 
