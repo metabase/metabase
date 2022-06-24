@@ -14,7 +14,6 @@ import {
   HeaderButton,
   FilterHeaderContainer,
   FilterHeaderButton,
-  IconHeaderButton,
 } from "./ViewHeader.styled";
 
 import { color } from "metabase/lib/colors";
@@ -164,20 +163,12 @@ export function QuestionFilterWidget({
         large
         labelBreakpoint="sm"
         color={color("filter")}
-        active={isShowingFilterSidebar}
-        onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}
-        data-metabase-event="View Mode; Open Filter Widget"
+        onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
+        aria-label={t`Show more filters`}
+        data-metabase-event="View Mode; Open Filter Modal"
       >
         {t`Filter`}
       </HeaderButton>
-      <IconHeaderButton
-        large
-        labelBreakpoint="sm"
-        color={color("filter")}
-        icon="ellipsis"
-        aria-label={t`Show more filters`}
-        onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
-      />
     </ButtonGroup>
   );
 }
