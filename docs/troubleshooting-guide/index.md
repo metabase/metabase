@@ -41,6 +41,7 @@ Problems, their causes, how to detect them, and how to fix them.
 - [The dates and times in my questions and charts are wrong][incorrect-times].
 - [My dashboard filters don't work][filters].
 - [My dashboard's linked filters don't work][linked-filters].
+- [My model doesn't work][models].
 
 ### Email and alerts
 
@@ -103,6 +104,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [learn]: https://www.metabase.com/learn
 [linked-filters]: ./linked-filters.html
 [login]: ./cant-log-in.html
+[models]: ./models.html
 [not-sending-email]: ./cant-send-email.html
 [permissions]: ./permissions.html
 [proxies]: ./proxies.html
