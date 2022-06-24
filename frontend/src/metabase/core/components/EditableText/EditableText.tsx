@@ -37,6 +37,7 @@ const EditableText = forwardRef(function EditableText(
   const [isFocused, setIsFocused] = useState(false);
   const [inputText, setInputText] = useState(valueText);
   const displayText = isFocused ? inputText : valueText;
+  const placeholderText = displayText ? displayText : placeholder;
 
   const handleFocus = useCallback(() => {
     setInputText(valueText);
@@ -70,7 +71,11 @@ const EditableText = forwardRef(function EditableText(
   );
 
   return (
-    <EditableTextRoot {...props} ref={ref} data-value={`${displayText}\u00A0`}>
+    <EditableTextRoot
+      {...props}
+      ref={ref}
+      data-value={`${placeholderText}\u00A0`}
+    >
       <EditableTextArea
         value={displayText}
         placeholder={placeholder}
