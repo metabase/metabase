@@ -1,7 +1,9 @@
 (ns metabase.mbql.generate
   (:require
    [clojure.test :as t]
+   [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gens]
+   [clojure.test.check.properties :as prop]
    [metabase.mbql.generate.aggregations :as gen.aggregations]
    [metabase.mbql.generate.common :as gen.common]
    [metabase.mbql.generate.data :as gen.data]
@@ -26,6 +28,10 @@
                                           [direction field]))
                   1000))
 
+(defn breakout-for-aggregations [aggregations]
+  ;; TODO breakout selection from deep within agg list
+  (gens/return nil))
+
 (defn inner-query-generator [field-generator]
   (gens/let [expressions (gens/one-of [(gens/return nil)
                                        (gen.expressions/expressions-map-generator field-generator)])]
@@ -44,7 +50,7 @@
               field-expr-ag-generator (gens/one-of (filter some? [field-expr-generator
                                                                   ag-refs-generator]))]
           (gens/let [breakout (gens/one-of [(gens/return nil)
-                                            (fields-generator field-expr-generator)])
+                                            (breakout-for-aggregations aggregations)])
                      m (gen.common/optional-map-generator
                         { ;; TODO -- fields should exclude stuff in breakout.
                          :fields   (gens/let [fields (fields-generator field-expr-generator)]
@@ -87,3 +93,7 @@
       (t/is (some? (mt/rows
                     (qp/process-query query)))))))
 
+(defspec exercise-queries
+  (prop/for-all
+    [query (query-generator (mt/id))]
+    (qp/process-query query)))

@@ -57,8 +57,8 @@
   (gens/such-that
    seq
    (gen.common/optional-map-generator
-    {:name         gens/string
-     :display-name (gens/such-that seq gens/string)})
+    {:name         (gen.common/nonblank-string)
+     :display-name (gens/such-that seq (gen.common/nonblank-string))})
    1000))
 
 (defn wrapped-aggregation-generator [field-generator]
