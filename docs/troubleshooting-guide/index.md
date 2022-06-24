@@ -52,7 +52,8 @@ Problems, their causes, how to detect them, and how to fix them.
 
 ## Think you found a bug?
 
-Let us know by [filing a bug report][bugs].
+- [How to find known bugs or limitations][known-issues].
+- [Filing a bug report][bugs].
 
 ## Feature requests
 
@@ -97,6 +98,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [firefox]: https://developer.mozilla.org/en-US/docs/Tools/Web_Console/Opening_the_Web_Console
 [forum]: https://discourse.metabase.com/
 [incorrect-times]: ./timezones.html
+[known-issues]: ./known-issues.html
 [ldap]: ./ldap.html
 [learn]: https://www.metabase.com/learn
 [linked-filters]: ./linked-filters.html

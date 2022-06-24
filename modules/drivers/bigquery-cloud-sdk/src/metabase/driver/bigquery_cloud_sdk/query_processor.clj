@@ -722,3 +722,15 @@
                                                                (if (instance? java.time.temporal.Temporal arg)
                                                                  (->temporal-type field-temporal-type arg)
                                                                  arg)))))))
+
+(defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->DateTime]
+  [_driver _semantic_type expr]
+  (hx/->timestamp expr))
+
+(defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->Date]
+  [_driver _semantic_type expr]
+  (hx/->date expr))
+
+(defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->Time]
+  [_driver _semantic_type expr]
+  (hx/->time expr))
