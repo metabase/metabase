@@ -62,7 +62,6 @@ import {
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   SET_DOCUMENT_TITLE_TIMEOUT_ID,
-  API_UPDATE_QUESTION_STARTED,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -353,7 +352,6 @@ export const card = handleActions(
     [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.card },
     [API_CREATE_QUESTION]: { next: (state, { payload }) => payload },
     [API_UPDATE_QUESTION]: { next: (state, { payload }) => payload },
-    [API_UPDATE_QUESTION_STARTED]: { next: (state, { payload }) => payload },
 
     [CANCEL_DATASET_CHANGES]: { next: (state, { payload }) => payload.card },
 
@@ -413,9 +411,6 @@ export const originalCard = handleActions(
       next: (state, { payload }) => Utils.copy(payload),
     },
     [API_UPDATE_QUESTION]: {
-      next: (state, { payload }) => Utils.copy(payload),
-    },
-    [API_UPDATE_QUESTION_STARTED]: {
       next: (state, { payload }) => Utils.copy(payload),
     },
   },
