@@ -6,6 +6,7 @@ import React, {
   Ref,
   useCallback,
   useState,
+  useLayoutEffect,
 } from "react";
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 
@@ -34,19 +35,10 @@ const EditableText = forwardRef(function EditableText(
   ref: Ref<HTMLDivElement>,
 ) {
   const valueText = value ?? "";
-  const [isFocused, setIsFocused] = useState(false);
   const [inputText, setInputText] = useState(valueText);
-  const displayText = isFocused ? inputText : valueText;
-  const placeholderText = displayText ? displayText : placeholder;
-
-  const handleFocus = useCallback(() => {
-    setInputText(valueText);
-    setIsFocused(true);
-  }, [valueText]);
 
   const handleBlur = useCallback(() => {
     onChange?.(inputText);
-    setIsFocused(false);
   }, [inputText, onChange]);
 
   const handleChange = useCallback(
@@ -68,17 +60,16 @@ const EditableText = forwardRef(function EditableText(
     [valueText, isMultiline],
   );
 
+  useLayoutEffect(() => {
+    setInputText(valueText);
+  }, [valueText]);
+
   return (
-    <EditableTextRoot
-      {...props}
-      ref={ref}
-      data-value={`${placeholderText}\u00A0`}
-    >
+    <EditableTextRoot {...props} ref={ref} data-value={`${inputText}\u00A0`}>
       <EditableTextArea
-        value={displayText}
+        value={inputText}
         placeholder={placeholder}
         data-testid={dataTestId}
-        onFocus={handleFocus}
         onBlur={handleBlur}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
