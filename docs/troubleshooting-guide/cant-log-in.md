@@ -104,6 +104,7 @@ If you can’t solve your problem using the troubleshooting guides:
 [how-to-reset-admin-password]: ../administration-guide/04-managing-users.html#resetting-the-admin-password
 [how-to-reset-password]: ../administration-guide/04-managing-users.html#resetting-someones-password
 [incorrect-metabase-url]: #are-you-using-the-right-url-for-your-metabase
+[known-issues]: ./known-issues.html
 [ldap-docs]: ../administration-guide/10-single-sign-on.html#enabling-ldap-authentication
 [metabase-cloud-login]: #troubleshooting-metabase-cloud-logins
 [metabase-idp]: #troubleshooting-metabase-logins

@@ -52,6 +52,7 @@ If you can’t solve your problem using the troubleshooting guides:
 [debugging-sql-logic]: /learn/debugging-sql/sql-logic.html
 [debugging-sql-syntax]: /learn/debugging-sql/sql-syntax.html
 [discourse]: https://discourse.metabase.com/
+[known-issues]: ./known-issues.html
 [sql-editor]: /glossary/native_query_editor.html
 [sql-variable-def]: /glossary/variable.html#example-variable-in-metabase
 [sql-variable-type]: /learn/sql-questions/sql-variables.html#the-different-types-of-variables-available-for-native-sql-queries
