@@ -8,10 +8,11 @@ export const CaptionContainer = styled.div`
 `;
 
 export const CaptionTitle = styled(EditableText)`
+  font-size: 1.75rem;
   font-weight: 900;
 `;
 
-export const CaptionDescription = styled(EditableText)`
+export const CaptionDescription = styled.div`
   font-size: 1rem;
   line-height: 1.5rem;
   margin-top: 1.15rem;

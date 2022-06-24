@@ -10,26 +10,17 @@ import {
 export interface CollectionCaptionProps {
   collection: Collection;
   onChangeName: (collection: Collection, name: string) => void;
-  onChangeDescription: (collection: Collection, description: string) => void;
 }
 
 const CollectionCaption = ({
   collection,
   onChangeName,
-  onChangeDescription,
 }: CollectionCaptionProps): JSX.Element => {
   const handleChangeName = useCallback(
     (name: string) => {
       onChangeName(collection, name);
     },
     [collection, onChangeName],
-  );
-
-  const handleChangeDescription = useCallback(
-    (description: string) => {
-      onChangeDescription(collection, description);
-    },
-    [collection, onChangeDescription],
   );
 
   return (
@@ -46,11 +37,7 @@ const CollectionCaption = ({
         />
       </CaptionContainer>
       {collection.description && (
-        <CaptionDescription
-          initialValue={collection.description}
-          isMultiline
-          onChange={handleChangeDescription}
-        />
+        <CaptionDescription>{collection.description}</CaptionDescription>
       )}
     </div>
   );
