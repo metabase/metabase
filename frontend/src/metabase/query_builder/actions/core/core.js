@@ -425,10 +425,14 @@ export const apiCreateQuestion = question => {
 };
 
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
+export const API_UPDATE_QUESTION_STARTED =
+  "metabase/qb/API_UPDATE_QUESTION_STARTED";
 export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
   return async (dispatch, getState) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
+
+    dispatch.action(API_UPDATE_QUESTION_STARTED, question.card());
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
