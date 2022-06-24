@@ -8,6 +8,7 @@ const content = [
 const animation = document.getElementById("animation");
 const heading = document.getElementById("heading");
 const progressElement = document.getElementById("progress");
+const statusElement = document.getElementById("status");
 
 const fadeTimeInMilliseconds = 1000;
 let counter = 0;
@@ -67,10 +68,12 @@ function poll() {
               progressElement.value = newValue;
             }
 
-            const minutesRemaining = Math.floor((100 - newValue) / 20);
+            console.log("🚀", health.progress, newValue);
+            const minutesRemaining = Math.ceil((100 - newValue) / 20);
             const pluralizedMinute =
               minutesRemaining > 1 ? "minutes" : "minute";
-            status.innerHTML = minutesRemaining + " " + pluralizedMinute + "…";
+            statusElement.innerHTML =
+              minutesRemaining + " " + pluralizedMinute + "…";
           }
         } catch (e) {}
         setTimeout(poll, 500);
