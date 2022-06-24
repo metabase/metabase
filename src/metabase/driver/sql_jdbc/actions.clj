@@ -56,7 +56,9 @@
   of maps with a :column and :message key indicating what went wrong."
   (fn [driver _conn _message] driver))
 
-(defmethod parse-sql-error :default [driver & _args] (throw (ex-info "not implemented for driver." {:driver driver})))
+(defmethod parse-sql-error :default
+  [_driver _conn e]
+  {:message (pr-str e)})
 
 (defmethod parse-sql-error :postgres
   [_driver conn message]
@@ -120,7 +122,7 @@
                                               :status-code 400})))))))
                    column->value)))
 
-(defmethod actions/row-action! [:delete :postgres]
+(defmethod actions/row-action! [:delete :sql-jdbc]
   [_action driver {database-id :database :as query}]
   (let [conn         (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql     (qp.store/with-store
@@ -144,7 +146,7 @@
                            :sql         (hformat/format delete-hsql)
                            :status-code 400}))))))
 
-(defmethod actions/row-action! [:update :postgres]
+(defmethod actions/row-action! [:update :sql-jdbc]
   [_action driver {database-id :database :keys [update-row] :as query}]
   (let [conn     (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql (qp.store/with-store
@@ -170,7 +172,7 @@
                            :sql         (hformat/format update-hsql)
                            :status-code 400}))))))
 
-(defmethod actions/row-action! [:create :postgres]
+(defmethod actions/row-action! [:create :sql-jdbc]
   [_action driver {database-id :database :keys [create-row] :as query}]
   (let [conn        (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql    (qp.store/with-store
