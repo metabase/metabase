@@ -304,12 +304,20 @@ class QuestionInner {
     return this._card && this._card.persisted;
   }
 
+  isAction() {
+    return this._card && this._card.is_write;
+  }
+
   setPersisted(isPersisted) {
     return this.setCard(assoc(this.card(), "persisted", isPersisted));
   }
 
   setDataset(dataset) {
     return this.setCard(assoc(this.card(), "dataset", dataset));
+  }
+
+  setIsAction(isAction) {
+    return this.setCard(assoc(this.card(), "is_write", isAction));
   }
 
   // locking the display prevents auto-selection
