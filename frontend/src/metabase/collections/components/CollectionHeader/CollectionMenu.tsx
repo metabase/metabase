@@ -38,6 +38,15 @@ const CollectionMenu = ({
     );
   }
 
+  if (isAdmin && !isPersonal && !isPersonalCollectionChild) {
+    items.push({
+      title: t`Edit permissions`,
+      icon: "lock",
+      link: `${url}/permissions`,
+      event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Permissions`,
+    });
+  }
+
   if (!isRoot && !isPersonal && canWrite) {
     items.push(
       {
@@ -59,15 +68,6 @@ const CollectionMenu = ({
         event: `${ANALYTICS_CONTEXT};Edit Menu;Archive Collection`,
       },
     );
-  }
-
-  if (isAdmin && !isPersonal && !isPersonalCollectionChild) {
-    items.push({
-      title: t`Edit permissions`,
-      icon: "lock",
-      link: `${url}/permissions`,
-      event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Permissions`,
-    });
   }
 
   if (items.length > 0) {
