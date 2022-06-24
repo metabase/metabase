@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { SelectList } from "metabase/components/select-list";
+import SelectList from "metabase/components/SelectList";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
 export const SavedQuestionListRoot = styled(SelectList)`

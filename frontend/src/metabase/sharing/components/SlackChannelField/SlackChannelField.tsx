@@ -1,11 +1,8 @@
 import React, { useState } from "react";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import AutocompleteInput from "metabase/core/components/AutocompleteInput";
-
-const getPrivateChannelWarning = () =>
-  t`In order to send subscriptions and alerts to private Slack channels, you must first add the Metabase bot to them.`;
+import { Channel, ChannelSpec } from "metabase-types/api";
 
 const CHANNEL_FIELD_NAME = "channel";
 const CHANNEL_PREFIX = "#";
@@ -13,23 +10,35 @@ const USER_PREFIX = "@";
 
 const ALLOWED_PREFIXES = [CHANNEL_PREFIX, USER_PREFIX];
 
-function SlackChannelField({ channel, channelSpec, onChannelPropertyChange }) {
-  const [warning, setWarning] = useState(null);
+interface SlackChannelFieldProps {
+  channel: Channel;
+  channelSpec: ChannelSpec;
+  onChannelPropertyChange: any;
+}
+
+const SlackChannelField = ({
+  channel,
+  channelSpec,
+  onChannelPropertyChange,
+}: SlackChannelFieldProps) => {
+  const [hasPrivateChannelWarning, setHasPrivateChannelWarning] = useState(
+    false,
+  );
 
   const channelField = channelSpec.fields.find(
     field => field.name === CHANNEL_FIELD_NAME,
   );
   const value = channel?.details?.[CHANNEL_FIELD_NAME] ?? "";
 
-  const updateChannel = value =>
+  const updateChannel = (value: string) =>
     onChannelPropertyChange("details", {
       ...channel.details,
       [CHANNEL_FIELD_NAME]: value,
     });
 
-  const handleChange = value => {
+  const handleChange = (value: string) => {
     updateChannel(value);
-    setWarning(null);
+    setHasPrivateChannelWarning(false);
   };
 
   const handleBlur = () => {
@@ -44,33 +53,26 @@ function SlackChannelField({ channel, channelSpec, onChannelPropertyChange }) {
     }
 
     const isPrivate =
-      value.trim().length > 0 && !channelField.options.includes(value);
+      value.trim().length > 0 && !channelField?.options?.includes(value);
 
-    if (isPrivate) {
-      setWarning(getPrivateChannelWarning());
-    }
+    setHasPrivateChannelWarning(isPrivate);
   };
 
   return (
     <div>
-      <span className="block text-bold pb2">{channelField.displayName}</span>
+      <span className="block text-bold pb2">{channelField?.displayName}</span>
       <AutocompleteInput
-        isFullWidth
         placeholder={t`Pick a user or channel...`}
         value={value}
-        options={channelField.options}
+        options={channelField?.options}
         onBlur={handleBlur}
         onChange={handleChange}
       />
-      {warning && <div className="mt1">{warning}</div>}
+      {hasPrivateChannelWarning && (
+        <div className="mt1">{t`In order to send subscriptions and alerts to private Slack channels, you must first add the Metabase bot to them.`}</div>
+      )}
     </div>
   );
-}
-
-SlackChannelField.propTypes = {
-  channel: PropTypes.object.isRequired,
-  channelSpec: PropTypes.object.isRequired,
-  onChannelPropertyChange: PropTypes.func.isRequired,
 };
 
 export default SlackChannelField;
