@@ -8,21 +8,21 @@ What kind of problem are you having with your [model][model-docs]?
 
 - [Cannot create a model](#cannot-create-a-model).
 - [Cannot edit or save changes to a model](#cannot-edit-or-save-changes-to-a-model).
-- [Model performance is poor](#model-performance-is-poor)
+- [Model performance is poor](#model-performance-is-poor).
 - [Model doesn't work with data sandboxing][troubleshooting-sandboxing].
 
 ## Cannot create a model
 
 If you don't see [the model button][model-button-image] (three squares):
 
-1. Check if you're using a Metabase version that's 0.42.0 or greater from the **gear icon** > About Metabase.
+1. Check if you're using a Metabase version that's 0.42.0 or greater from the **gear icon** > **About Metabase**.
 2. Clear your browser cache.
 3. Ask your Metabase admin to clear the proxy cache (if you're using one).
 4. Ask your Metabase admin if [nested queries are enabled][nested-query-settings-docs] under **Admin** > **Settings** > **General**.
 
 ## Cannot edit or save changes to a model
 
-If the changes to a model's metadata or underlying question aren't showing up when you use the model:
+If your changes to a model's metadata or underlying question aren't showing up:
 
 1. Refresh your browser to confirm you're not viewing cached results.
 2. Search for [known bugs or limitations][known-issues] using the label [`Querying/Models`][known-issues-models].
@@ -40,9 +40,9 @@ If the changes to a model's metadata or underlying question aren't showing up wh
   - [Pull data out of JSON and slot its keys into columns][flatten-json-learn].
 3. Optimize your data warehouse(s) or database(s).
   - [Replicate your database][replicate-database-learn].
-  - [Consider a database specific to analytics][analytics-database-learn].
+  - [Consider a database optimized for analytics][analytics-database-learn].
 
-**Explanation*+**
+**Explanation**
 
 Models are a type of saved question, so they will only perform as fast as the original question or SQL query.
 
@@ -57,11 +57,12 @@ If you can’t solve your problem using the troubleshooting guides:
 
 [analytics-database-learn]: /learn/administration/making-dashboards-faster.html#consider-a-database-optimized-for-analytics
 [denormalize-data-learn]: /learn/administration/making-dashboards-faster.html#denormalize-data
+[discourse]: https://discourse.metabase.com/
 [flatten-json-learn]: /learn/administration/making-dashboards-faster.html#pull-data-out-of-json-and-slot-its-keys-into-columns
 [indexes-learn]: /learn/administration/making-dashboards-faster.html#index-frequently-queried-columns
 [known-issues]: ./known-issues.html
 [known-issues-models]: https://github.com/metabase/metabase/labels/Querying%2FModels
-[limit-data-learn]: learn/administration/making-dashboards-faster.html#ask-for-less-data
+[limit-data-learn]: /learn/administration/making-dashboards-faster.html#ask-for-less-data
 [materialize-views-learn]: /learn/administration/making-dashboards-faster.html#materialize-views-create-new-tables-to-store-query-results
 [model-button-image]: /learn/images/models/model-icon.png
 [model-docs]: ../users-guide/models.html
