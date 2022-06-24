@@ -3,9 +3,11 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST]]
             [honeysql.helpers :as hh]
+            [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.driver.ddl.interface :as ddl.i]
+            [metabase.email.messages :as messages]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.database :refer [Database]]
@@ -155,5 +157,17 @@
            (public-settings/persisted-models-enabled! true)
            (throw e))))
   api/generic-204-no-content)
+
+(api/defendpoint POST "/test-failure-email"
+  "Temporary endpoint to send a failure email"
+  []
+  (let [persisted-infos-by-db-id (->> (hydrate (PersistedInfo) [:card :collection] :database)
+                                      (map #(assoc % :error "CREATE TABLE permission denied in database 'tempdb'."))
+                                      (group-by :database_id))]
+    (doseq [[db-id persisted-infos] persisted-infos-by-db-id]
+      (messages/send-persistent-model-error-email!
+        db-id
+        persisted-infos
+        (rand-nth ["Manual" "Scheduled"])))))
 
 (api/define-routes)
