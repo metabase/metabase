@@ -90,7 +90,9 @@ describe("ModelCacheManagementSection", () => {
 
   it("displays 'creating' state correctly", async () => {
     await setup({ state: "creating" });
-    expect(screen.getByText("Queued")).toBeInTheDocument();
+    expect(
+      screen.getByText("Waiting to create the first model cache"),
+    ).toBeInTheDocument();
     expect(screen.queryByLabelText("refresh icon")).not.toBeInTheDocument();
   });
 
