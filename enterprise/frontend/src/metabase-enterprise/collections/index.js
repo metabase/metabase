@@ -19,6 +19,32 @@ PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
 
 PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
 
+PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (collection, onUpdate) => {
+  if (isRegularCollection(collection)) {
+    return [
+      {
+        title: `Make collection official`,
+        icon: OFFICIAL_COLLECTION.icon,
+        action: () =>
+          onUpdate(collection, {
+            authority_level: OFFICIAL_COLLECTION.type,
+          }),
+      },
+    ];
+  } else {
+    return [
+      {
+        title: "Make collection regular",
+        icon: REGULAR_COLLECTION.icon,
+        action: () =>
+          onUpdate(collection, {
+            authority_level: REGULAR_COLLECTION.type,
+          }),
+      },
+    ];
+  }
+};
+
 PLUGIN_COLLECTIONS.getAuthorityLevelFormFields = () => [
   {
     name: "authority_level",

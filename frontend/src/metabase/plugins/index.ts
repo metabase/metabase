@@ -107,6 +107,10 @@ export const PLUGIN_COLLECTIONS = {
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   isRegularCollection: (_: Collection | Bookmark) => true,
   getAuthorityLevelFormFields: () => [],
+  getAuthorityLevelMenuItems: (
+    _collection: Collection,
+    _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
+  ) => [],
 };
 
 export const PLUGIN_COLLECTION_COMPONENTS = {

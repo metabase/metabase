@@ -15,17 +15,12 @@ import {
 
 export interface CollectionCaptionProps {
   collection: Collection;
-  onChangeName: (collection: Collection, name: string) => void;
-  onChangeDescription: (
-    collection: Collection,
-    description: string | null,
-  ) => void;
+  onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }
 
 const CollectionCaption = ({
   collection,
-  onChangeName,
-  onChangeDescription,
+  onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
   const isRoot = isRootCollection(collection);
   const isPersonal = isPersonalCollection(collection);
@@ -33,16 +28,16 @@ const CollectionCaption = ({
 
   const handleChangeName = useCallback(
     (name: string) => {
-      onChangeName(collection, name);
+      onUpdateCollection(collection, { name });
     },
-    [collection, onChangeName],
+    [collection, onUpdateCollection],
   );
 
   const handleChangeDescription = useCallback(
     (description: string) => {
-      onChangeDescription(collection, description ? description : null);
+      onUpdateCollection(collection, { description: description || null });
     },
-    [collection, onChangeDescription],
+    [collection, onUpdateCollection],
   );
 
   return (

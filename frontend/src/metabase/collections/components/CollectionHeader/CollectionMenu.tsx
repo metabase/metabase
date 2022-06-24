@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import EntityMenu from "metabase/components/EntityMenu";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
@@ -13,18 +14,29 @@ export interface CollectionMenuProps {
   collection: Collection;
   isAdmin: boolean;
   isPersonalCollectionChild: boolean;
+  onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }
 
 const CollectionMenu = ({
   collection,
   isAdmin,
   isPersonalCollectionChild,
+  onUpdateCollection,
 }: CollectionMenuProps): JSX.Element | null => {
   const items = [];
   const url = Urls.collection(collection);
   const isRoot = isRootCollection(collection);
   const isPersonal = isPersonalCollection(collection);
   const canWrite = collection.can_write;
+
+  if (isAdmin && !isPersonal && !isPersonalCollectionChild) {
+    items.push(
+      ...PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems(
+        collection,
+        onUpdateCollection,
+      ),
+    );
+  }
 
   if (!isRoot && !isPersonal && canWrite) {
     items.push(
