@@ -425,17 +425,10 @@ export const apiCreateQuestion = question => {
 };
 
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
-export const apiUpdateQuestion = (
-  question,
-  { rerunQuery = false, optimisticUpdate = false } = {},
-) => {
+export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
   return async (dispatch, getState) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
-
-    if (optimisticUpdate) {
-      await question.reduxUpdate(dispatch);
-    }
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());

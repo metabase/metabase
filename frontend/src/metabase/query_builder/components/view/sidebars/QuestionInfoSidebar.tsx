@@ -19,11 +19,7 @@ import { Root, ContentSection } from "./QuestionInfoSidebar.styled";
 
 interface QuestionInfoSidebarProps {
   question: Question;
-  onSave: (card: Card, options?: QuestionUpdateOptions) => Promise<Question>;
-}
-
-interface QuestionUpdateOptions {
-  optimisticUpdate?: boolean;
+  onSave: (card: Card) => Promise<Question>;
 }
 
 export const QuestionInfoSidebar = ({
@@ -39,9 +35,7 @@ export const QuestionInfoSidebar = ({
 
   const handleSave = (description: string | null) => {
     if (question.description() !== description) {
-      onSave(question.setDescription(description).card(), {
-        optimisticUpdate: true,
-      });
+      onSave(question.setDescription(description).card());
     }
   };
 

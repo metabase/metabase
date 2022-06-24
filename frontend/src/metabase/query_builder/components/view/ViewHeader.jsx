@@ -193,9 +193,7 @@ function SavedQuestionLeftSide(props) {
   const onHeaderChange = useCallback(
     name => {
       if (name !== question.displayName()) {
-        onSave(question.setDisplayName(name).card(), {
-          optimisticUpdate: true,
-        });
+        onSave(question.setDisplayName(name).card());
       }
     },
     [question, onSave],
