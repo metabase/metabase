@@ -9,6 +9,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
 import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
 import Tooltip from "metabase/components/Tooltip";
+import Button from "metabase/core/components/Button";
 
 import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
 
@@ -28,6 +29,7 @@ export const getDashboardActions = (
     setRefreshElapsedHook,
     onRefreshPeriodChange,
     onSharingClick,
+    onFullscreenChange,
   },
 ) => {
   const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
@@ -129,6 +131,25 @@ export const getDashboardActions = (
               onClick={() => onNightModeChange(!isNightMode)}
             />
           </DashboardHeaderButton>
+        </span>
+      </Tooltip>,
+    );
+  }
+
+  if (!isEditing && !isEmpty && isFullscreen) {
+    // option click to enter fullscreen without making the browser go fullscreen
+    buttons.push(
+      <Tooltip key="fullscreen" tooltip={t`Exit fullscreen`}>
+        <span
+          data-metabase-event={"Dashboard;Fullscreen Mode;" + !isFullscreen}
+        >
+          <Button
+            onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
+            borderless
+            icon="contract"
+            iconSize={16}
+            onlyIcon
+          />
         </span>
       </Tooltip>,
     );
