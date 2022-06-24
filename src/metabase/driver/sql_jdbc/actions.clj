@@ -56,7 +56,7 @@
   of maps with a :column and :message key indicating what went wrong."
   (fn [driver _conn _message] driver))
 
-(defmethod parse-sql-error :default [& _args] (throw "not implemented."))
+(defmethod parse-sql-error :default [driver & _args] (throw (ex-info "not implemented for driver." {:driver driver})))
 
 (defmethod parse-sql-error :postgres
   [_driver conn message]
@@ -68,16 +68,13 @@
 (defn- parse-error
   "Returns errors in a way that indicates which column had the problem. Can be used to highlight errors in forms."
   [driver conn e]
-  (let [message (or (ex-message e)
-                    (pr-str e))
-        errors (->> message
-                    (parse-sql-error driver conn))]
-    (if errors
-      {:errors
-       (->> errors
-            (m/index-by :column)
-            (m/map-vals :message))}
-      {:message message})))
+  (let [message (ex-message e)]
+    (if-let [errors (and message
+                         (parse-sql-error driver conn message))]
+      {:errors (->> errors
+                    (m/index-by :column)
+                    (m/map-vals :message))}
+      {:message (or message (pr-str e))})))
 
 (defn- catch-throw [e status-code & [more-info]]
   (throw
@@ -123,7 +120,7 @@
                                               :status-code 400})))))))
                    column->value)))
 
-(defmethod actions/row-action! [:delete :sql-jdbc]
+(defmethod actions/row-action! [:delete :postgres]
   [_action driver {database-id :database :as query}]
   (let [conn         (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql     (qp.store/with-store
@@ -137,17 +134,18 @@
                          (assoc :delete []))
         rows-deleted (try (first (jdbc/execute! conn (hformat/format delete-hsql)))
                           (catch Exception e
+                            
                             (throw
                              (ex-info "Delete action error." (assoc (parse-error driver conn e) :status-code 400)))))]
-    (if (-> rows-deleted (= 1))
-      {:rows-deleted 1}
+    (if (= rows-deleted 1)
+      {:rows-deleted [1]}
       (do (jdbc/db-set-rollback-only! conn)
           (throw (ex-info (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted)
                           {:query       query
                            :sql         (hformat/format delete-hsql)
                            :status-code 400}))))))
 
-(defmethod actions/row-action! [:update :sql-jdbc]
+(defmethod actions/row-action! [:update :postgres]
   [_action driver {database-id :database :keys [update-row] :as query}]
   (let [conn     (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql (qp.store/with-store
@@ -165,15 +163,15 @@
                           (catch Exception e
                             (throw
                              (ex-info "Update action error." (assoc (parse-error driver conn e) :status-code 400)))))]
-    (if (-> rows-updated (= 1))
-      {:rows-updated rows-updated}
+    (if (= rows-updated 1)
+      {:rows-updated [1]}
       (do (jdbc/db-set-rollback-only! conn)
-          (throw (ex-info (tru "Sorry, this would affect {0} rows, but you can only act on 1" rows-updated)
+          (throw (ex-info (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated)
                           {:query       query
                            :sql         (hformat/format update-hsql)
                            :status-code 400}))))))
 
-(defmethod actions/row-action! [:create :sql-jdbc]
+(defmethod actions/row-action! [:create :postgres]
   [_action driver {database-id :database :keys [create-row] :as query}]
   (let [conn        (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql    (qp.store/with-store
