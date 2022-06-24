@@ -49,7 +49,7 @@ export const QuestionInfoSidebar = ({
     <Root>
       <ContentSection>
         <EditableText
-          initialValue={description}
+          value={description}
           placeholder={t`Description`}
           isMultiline
           onChange={handleSave}

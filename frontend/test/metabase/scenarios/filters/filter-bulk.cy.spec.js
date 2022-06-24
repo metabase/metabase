@@ -368,20 +368,40 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("can add a date shortcut filter", () => {
       modal().within(() => {
-        cy.findByLabelText("Created At").click();
+        cy.findByText("Today").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
       });
-      cy.findByText("Today").click();
 
-      cy.findByLabelText("Created At").within(() => {
-        cy.findByText("Today").should("be.visible");
-      });
-      // make sure select popover is closed
-      cy.findByText("Yesterday").should("not.exist");
+      cy.findByText("Created At Today").should("be.visible");
+      cy.findByText("Showing 0 rows").should("be.visible");
     });
 
+    it("can add a date shortcut filter from the popover", () => {
+      modal().within(() => {
+        cy.findByLabelText("Created At").within(() => {
+          cy.findByLabelText("more options").click();
+        });
+      });
+
+      cy.findByText("Last 3 Months").click();
+
+      modal().within(() => {
+        cy.findByText("Previous 3 Months");
+        cy.findByText("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Created At Previous 3 Months").should("be.visible");
+      cy.findByText("Showing 0 rows").should("be.visible");
+    });
+
+    // if this gets flaky, disable, it's an issue with internal state in the datepicker component
     it("can add a date range filter", () => {
       modal().within(() => {
-        cy.findByLabelText("Created At").click();
+        cy.findByLabelText("Created At").within(() => {
+          cy.findByLabelText("more options").click();
+        });
       });
       cy.findByText("Specific dates...").click();
       cy.findByText("Before").click();
@@ -390,14 +410,24 @@ describe("scenarios > filters > bulk filtering", () => {
         cy.get("input")
           .eq(0)
           .clear()
-          .type("01/01/2018");
+          .type("01/01/2017", { delay: 0 });
 
         cy.findByText("Add filter").click();
       });
 
-      cy.findByLabelText("Created At").within(() => {
-        cy.findByText("is before January 1, 2018").should("be.visible");
+      modal().within(() => {
+        cy.findByLabelText("Created At").within(() => {
+          cy.findByText("is before January 1, 2017").should("be.visible");
+        });
+
+        cy.findByText("Apply").click();
+        cy.wait("@dataset");
       });
+
+      cy.findByText("Created At is before January 1, 2017").should(
+        "be.visible",
+      );
+      cy.findByText("Showing 744 rows").should("be.visible");
     });
 
     it.skip("Bug repro: can cancel adding date filter", () => {

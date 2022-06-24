@@ -25,7 +25,7 @@ function getDateTimeField(field: Field, bucketing?: string) {
 
 type Option = {
   displayName: string;
-  init: (filter: any) => any[];
+  init: (filter: Filter) => any;
 };
 
 const DAY_OPTIONS: Option[] = [
@@ -132,6 +132,12 @@ const MISC_OPTIONS: Option[] = [
     init: filter => ["!=", getDateTimeField(filter[1])],
   },
 ];
+
+export const OPTIONS = {
+  DAY_OPTIONS,
+  MONTH_OPTIONS,
+  MISC_OPTIONS,
+};
 
 type Props = {
   className?: string;

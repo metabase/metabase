@@ -26,6 +26,11 @@ import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+import {
+  getTemplateTagsForParameters,
+  getTemplateTagParameters,
+} from "metabase/parameters/utils/cards";
+
 import { trackNewQuestionSaved } from "../../analytics";
 import {
   getCard,
@@ -307,6 +312,14 @@ export const updateQuestion = (
       );
     }
 
+    const newDatasetQuery = newQuestion.query().datasetQuery();
+    // Sync card's parameters with the template tags;
+    if (newDatasetQuery.type === "native") {
+      const templateTags = getTemplateTagsForParameters(newQuestion.card());
+      const parameters = getTemplateTagParameters(templateTags);
+      newQuestion = newQuestion.setParameters(parameters);
+    }
+
     // Replace the current question with a new one
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
@@ -412,10 +425,14 @@ export const apiCreateQuestion = question => {
 };
 
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
+export const API_UPDATE_QUESTION_STARTED =
+  "metabase/qb/API_UPDATE_QUESTION_STARTED";
 export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
   return async (dispatch, getState) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
+
+    dispatch.action(API_UPDATE_QUESTION_STARTED, question.card());
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());

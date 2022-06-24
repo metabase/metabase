@@ -1355,6 +1355,10 @@ export default class Question extends memoizeClass<QuestionInner>(
       dataset_query,
     };
 
+    if (type === "native") {
+      card = assocIn(card, ["parameters"], []);
+    }
+
     if (tableId != null) {
       card = assocIn(card, ["dataset_query", "query", "source-table"], tableId);
     }
