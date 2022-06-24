@@ -34,7 +34,7 @@ PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (collection, onUpdate) => {
   } else {
     return [
       {
-        title: "Make collection regular",
+        title: "Make collection unofficial",
         icon: REGULAR_COLLECTION.icon,
         action: () =>
           onUpdate(collection, {
