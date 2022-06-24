@@ -85,7 +85,8 @@
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (ts/with-empty-h2-app-db
       (test-gen/insert! {:collection [[100 {:refs {:personal_owner_id ::rs/omit}}]]
-                         :database   [[10]]})
+                         :database   [[10]]
+                         :table      [[100]]})
       (let [extraction (into [] (extract/extract-metabase {}))
             entities   (reduce (fn [m {{:keys [model id]} :serdes/meta :as entity}]
                                  (assoc-in m [model id] entity))
@@ -110,6 +111,16 @@
                          (update :created_at u.date/format)
                          (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Database" filename))))))
+
+          (testing "for Tables"
+            (is (= 100 (count (dir->file-set (io/file dump-dir "Table")))))
+            (doseq [{:keys [name] :as coll} (vals (get entities "Table"))
+                    :let [filename (str name ".yaml")]]
+              (is (= (-> coll
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Table" filename))))))
 
           (testing "for settings"
             (is (= (into {} (for [{:keys [key value]} (vals (get entities "Setting"))]

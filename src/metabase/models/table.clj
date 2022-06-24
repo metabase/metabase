@@ -209,6 +209,24 @@
         {:order-by       field-order-rule}))
     tables))
 
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defmethod serdes.base/serdes-entity-id "Table" [_ {:keys [db_id name schema] :or {schema "default_schema"}}]
+  (str (db/select-one-field :name 'Database :id db_id) "/" schema "/" name))
+
+(defmethod serdes.base/extract-one "Table"
+  [_ _ {:keys [db_id] :as table}]
+  (-> (serdes.base/extract-one-basics "Table" table)
+      (assoc :db_id (db/select-one-field :name 'Database :id db_id))))
+
+(defmethod serdes.base/load-xform "Table"
+  [{:keys [db_id] :as table}]
+  (-> (serdes.base/load-xform-basics table)
+      (assoc :db_id (db/select-one-field :id 'Database :name db_id))))
+
+(defmethod serdes.base/serdes-dependencies "Table"
+  [{:keys [db_id]}]
+  [db_id])
 
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
 
