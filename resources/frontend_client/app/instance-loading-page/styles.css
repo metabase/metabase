@@ -35,7 +35,7 @@ h2 {
 #left-side {
   border-right: 1px solid #F0F0F0;
   float: left;
-  min-height: calc(100vh - 80px);
+  min-height: 100vh;
   justify-content: center;
   padding: 200px 0;
   width: 50%;
@@ -53,7 +53,7 @@ h2 {
   flex-direction: column;
   float: right;
   margin-top: -110px;
-  min-height: calc(100vh - 80px);
+  min-height: 100vh;
   justify-content: center;
   position: relative;
   width: 50%;
