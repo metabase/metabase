@@ -4,7 +4,7 @@ import {
   mockSessionProperty,
   modal,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describeEE("scenarios > dashboard > caching", () => {
   beforeEach(() => {

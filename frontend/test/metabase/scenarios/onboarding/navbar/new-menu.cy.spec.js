@@ -4,7 +4,7 @@ import {
   modal,
   startNewQuestion,
   getCollectionIdFromSlug,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("metabase > scenarios > navbar > new menu", () => {
   beforeEach(() => {

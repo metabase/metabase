@@ -1,4 +1,4 @@
-import { restore, visitDashboard, popover } from "__support__/e2e/cypress";
+import { restore, visitDashboard, popover } from "__support__/e2e/helpers";
 
 const nativeQuestionDetails = {
   name: "13816_Q1",

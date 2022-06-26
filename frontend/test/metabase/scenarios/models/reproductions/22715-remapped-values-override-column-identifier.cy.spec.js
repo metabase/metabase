@@ -3,7 +3,7 @@ import {
   visitQuestion,
   popover,
   filter,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe.skip("filtering based on the remapped column name should result in a correct query (metabase#22715)", () => {
   beforeEach(() => {

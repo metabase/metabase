@@ -6,7 +6,7 @@ import {
   sidebar,
   visitQuestion,
   POPOVER_ELEMENT,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("11914, 18978, 18977", () => {
   beforeEach(() => {

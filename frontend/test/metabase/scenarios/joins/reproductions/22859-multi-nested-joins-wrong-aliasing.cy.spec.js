@@ -4,7 +4,7 @@ import {
   visualize,
   startNewQuestion,
   openOrdersTable,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 

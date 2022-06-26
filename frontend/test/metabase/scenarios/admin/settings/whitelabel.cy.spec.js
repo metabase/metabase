@@ -1,4 +1,4 @@
-import { describeEE, restore } from "__support__/e2e/cypress";
+import { describeEE, restore } from "__support__/e2e/helpers";
 
 function checkFavicon() {
   cy.request("/api/setting/application-favicon-url")
