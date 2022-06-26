@@ -468,10 +468,6 @@ jobs:
       - create-checksum-file:
           filename: .FRONTEND-CHECKSUMS
           find-args: ". -type f '(' -name '*.js' -or -name '*.jsx' -or -name '*.ts' -or -name '*.tsx' -or -name '*.cljc' -or -name '*.cljs' -or -name '*.json' -or -name yarn.lock -or -name sample-dataset.db.mv.db ')' ! -path '*/frontend/test/*'"
-      # .E2E-TESTS-CHECKSUMS is every `*.cy.spes.js` file as well as e2e support JavaScript files
-      - create-checksum-file:
-          filename: .E2E-TESTS-CHECKSUMS
-          find-args: "./frontend/test/ -name '*.cy.*' -or -type f -path '*/__support__/e2e/*'"
       # .MODULES-CHECKSUMS is every Clojure source file in the modules/ directory as well as plugin manifests
       - create-checksum-file:
           filename: .MODULES-CHECKSUMS
