@@ -408,44 +408,6 @@ commands:
       - store_test_results:
           path: /home/circleci/metabase/metabase/target/junit
 
-  run-yarn-command:
-    parameters:
-      command-name:
-        type: string
-      command:
-        type: string
-      before-steps:
-        type: steps
-        default: []
-      after-steps:
-        type: steps
-        default: []
-      skip-when-no-change:
-        type: boolean
-        default: false
-    steps:
-      - when:
-          condition: << parameters.skip-when-no-change >>
-          steps:
-            - run-on-change:
-                checksum: '{{ checksum ".FRONTEND-CHECKSUMS" }}'
-                steps:
-                  - steps: << parameters.before-steps >>
-                  - run:
-                      name: << parameters.command-name >>
-                      command: yarn << parameters.command >>
-                      no_output_timeout: 15m
-                  - steps: << parameters.after-steps >>
-      - unless:
-          condition: << parameters.skip-when-no-change >>
-          steps:
-            - steps: << parameters.before-steps >>
-            - run:
-                name: << parameters.command-name >>
-                command: yarn << parameters.command >>
-                no_output_timeout: 15m
-            - steps: << parameters.after-steps >>
-
   wait-for-port:
     parameters:
       port:
@@ -547,9 +509,6 @@ jobs:
               echo 'This is a release or master branch; using cache-busting prefix'
                 echo '<< pipeline.id >>' > .CACHE-PREFIX
             fi
-      - run-yarn-command:
-          command-name: Create static visualization js bundle
-          command: build-static-viz
       - run:
           name: Make SSL certificates for Mongo available
           command: >-
