@@ -263,9 +263,6 @@ cache-key-backend-deps: &CacheKeyBackendDeps
   # compile those as part of this step. FIXME
   key: v5-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}
 
-cache-key-frontend-deps: &CacheKeyFrontendDeps
-  key: v5-{{ checksum ".CACHE-PREFIX" }}-fe-deps-{{ checksum "yarn.lock" }}
-
 # Key used for implementation of run-on-change -- this is the cache key that contains the .SUCCESS dummy file
 # By default the key ALWAYS includes the name of the test job itself ($CIRCLE_STAGE) so you don't need to add that yourself.
 cache-key-run-on-change: &CacheKeyRunOnChange
@@ -315,12 +312,6 @@ commands:
       - restore_cache:
           name: Restore cached backend dependencies
           <<: *CacheKeyBackendDeps
-
-  restore-fe-deps-cache:
-    steps:
-      - restore_cache:
-          name: Restore cached frontend dependencies
-          <<: *CacheKeyFrontendDeps
 
   # run-on-change lets you only run steps if changes have happened to relevant files since the last time it was run
   # successfully. Uses a cache key to record successful runs -- cache key should be unique for job and relevant source
@@ -475,7 +466,6 @@ commands:
             - run-on-change:
                 checksum: '{{ checksum ".FRONTEND-CHECKSUMS" }}'
                 steps:
-                  - restore-fe-deps-cache
                   - steps: << parameters.before-steps >>
                   - run:
                       name: << parameters.command-name >>
@@ -485,7 +475,6 @@ commands:
       - unless:
           condition: << parameters.skip-when-no-change >>
           steps:
-            - restore-fe-deps-cache
             - steps: << parameters.before-steps >>
             - run:
                 name: << parameters.command-name >>
@@ -762,28 +751,6 @@ jobs:
 #                                                       FRONTEND                                                       #
 ########################################################################################################################
 
-  fe-deps:
-    executor: builder
-    steps:
-      - attach-workspace
-      # This step is *really* slow, so we can skip it if yarn.lock hasn't changed since last time we ran it
-      - run-on-change:
-          checksum: '{{ checksum "yarn.lock" }}'
-          steps:
-            - restore-fe-deps-cache
-            - run:
-                name: Run yarn to install deps
-                command: rm -rf node_modules/ && yarn --frozen-lockfile;
-                no_output_timeout: 15m
-            - save_cache:
-                name: Cache frontend dependencies
-                <<: *CacheKeyFrontendDeps
-                paths:
-                  - /home/circleci/.yarn
-                  - /home/circleci/.yarn-cache
-                  - /home/circleci/metabase/metabase/node_modules
-                  - /home/circleci/.cache/Cypress
-
   # Unlike the other build-uberjar steps, this step should be run once overall and the results can be shared between
   # OSS and EE uberjars.
   build-uberjar-drivers:
@@ -834,7 +801,6 @@ jobs:
       - run-on-change:
           checksum: '{{ checksum ".FRONTEND-CHECKSUMS" }}'
           steps:
-            - restore-fe-deps-cache
             - restore-be-deps-cache
             - run:
                 name: Build frontend
@@ -1151,8 +1117,6 @@ workflows:
 
       - build-uberjar-frontend:
           name: build-uberjar-frontend-<< matrix.edition >>
-          requires:
-            - fe-deps
           <<: *Matrix
 
       - build-uberjar:
@@ -1161,12 +1125,3 @@ workflows:
             - build-uberjar-drivers-<< matrix.edition >>
             - build-uberjar-frontend-<< matrix.edition >>
           <<: *Matrix
-
-      - fe-deps:
-          requires:
-            - checkout
-          filters:
-            branches:
-              ignore:
-                - master
-                - release-**
