@@ -1,4 +1,4 @@
-import { restore, popover, navigationSidebar } from "__support__/e2e/cypress";
+import { restore, popover, navigationSidebar } from "__support__/e2e/helpers";
 import { USERS, SAMPLE_DB_TABLES } from "__support__/e2e/cypress_data";
 
 import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";

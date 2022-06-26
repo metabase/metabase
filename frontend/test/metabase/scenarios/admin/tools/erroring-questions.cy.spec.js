@@ -1,4 +1,4 @@
-import { restore, describeEE } from "__support__/e2e/cypress";
+import { restore, describeEE } from "__support__/e2e/helpers";
 
 const TOOLS_ERRORS_URL = "/admin/tools/errors";
 

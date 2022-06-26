@@ -4,7 +4,7 @@ import {
   visualize,
   restore,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const CC_NAME = "C-States";
 const PG_DB_NAME = "QA Postgres12";

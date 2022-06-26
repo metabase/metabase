@@ -1,4 +1,4 @@
-import { restore, describeEE } from "__support__/e2e/cypress";
+import { restore, describeEE } from "__support__/e2e/helpers";
 
 // Define colors that we use for whitelabeling
 // If rbg values exist, it's because we explicit test those

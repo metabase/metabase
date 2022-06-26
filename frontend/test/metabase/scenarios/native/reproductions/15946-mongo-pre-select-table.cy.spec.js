@@ -1,4 +1,4 @@
-import { restore, modal, startNewQuestion } from "__support__/e2e/cypress";
+import { restore, modal, startNewQuestion } from "__support__/e2e/helpers";
 
 const MONGO_DB_NAME = "QA Mongo4";
 

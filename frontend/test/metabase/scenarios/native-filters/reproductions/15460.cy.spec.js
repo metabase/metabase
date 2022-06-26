@@ -3,7 +3,7 @@ import {
   popover,
   filterWidget,
   visitQuestionAdhoc,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 

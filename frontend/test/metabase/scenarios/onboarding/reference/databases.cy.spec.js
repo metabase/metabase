@@ -1,4 +1,4 @@
-import { popover, restore, startNewQuestion } from "__support__/e2e/cypress";
+import { popover, restore, startNewQuestion } from "__support__/e2e/helpers";
 
 describe("scenarios > reference > databases", () => {
   beforeEach(() => {

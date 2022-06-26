@@ -1,4 +1,4 @@
-import { restore, modal, openNativeEditor } from "__support__/e2e/cypress";
+import { restore, modal, openNativeEditor } from "__support__/e2e/helpers";
 import {
   openDetailsSidebar,
   getDetailsSidebarActions,

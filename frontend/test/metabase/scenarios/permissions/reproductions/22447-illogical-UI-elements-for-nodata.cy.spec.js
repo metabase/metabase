@@ -1,4 +1,4 @@
-import { restore, visitQuestion, isEE, popover } from "__support__/e2e/cypress";
+import { restore, visitQuestion, isEE, popover } from "__support__/e2e/helpers";
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;

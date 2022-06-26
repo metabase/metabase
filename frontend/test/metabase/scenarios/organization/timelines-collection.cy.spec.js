@@ -5,7 +5,7 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   restore,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("scenarios > organization > timelines > collection", () => {
   beforeEach(() => {

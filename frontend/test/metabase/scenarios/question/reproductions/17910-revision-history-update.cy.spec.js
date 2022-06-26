@@ -1,4 +1,4 @@
-import { restore, openOrdersTable, modal } from "__support__/e2e/cypress";
+import { restore, openOrdersTable, modal } from "__support__/e2e/helpers";
 
 describe("issue 17910", () => {
   beforeEach(() => {

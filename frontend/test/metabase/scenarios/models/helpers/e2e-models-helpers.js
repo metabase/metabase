@@ -1,4 +1,4 @@
-import { popover, modal } from "__support__/e2e/cypress";
+import { popover, modal } from "__support__/e2e/helpers";
 
 export function assertQuestionIsBasedOnModel({
   questionName,

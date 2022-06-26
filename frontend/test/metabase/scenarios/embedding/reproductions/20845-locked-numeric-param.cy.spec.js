@@ -1,4 +1,4 @@
-import { restore, visitEmbeddedPage } from "__support__/e2e/cypress";
+import { restore, visitEmbeddedPage } from "__support__/e2e/helpers";
 
 const defaultFilterValues = [undefined, "10"];
 

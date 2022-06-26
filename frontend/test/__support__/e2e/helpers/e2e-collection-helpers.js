@@ -1,4 +1,4 @@
-import { popover } from "__support__/e2e/cypress";
+import { popover } from "__support__/e2e/helpers";
 
 /**
  * Clicks the "+" icon on the collection page and selects one of the menu options

@@ -1,4 +1,4 @@
-import { restore, runNativeQuery, summarize } from "__support__/e2e/cypress";
+import { restore, runNativeQuery, summarize } from "__support__/e2e/helpers";
 
 import {
   selectFromDropdown,

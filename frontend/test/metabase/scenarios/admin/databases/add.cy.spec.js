@@ -4,7 +4,7 @@ import {
   describeEE,
   mockSessionProperty,
   isEE,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 function typeField(label, value) {
   cy.findByLabelText(label)

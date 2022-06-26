@@ -6,7 +6,7 @@ import {
   appBar,
   navigationSidebar,
   openNativeEditor,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 

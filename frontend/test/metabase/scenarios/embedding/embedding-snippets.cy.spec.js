@@ -1,4 +1,4 @@
-import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
+import { restore, popover, visitDashboard } from "__support__/e2e/helpers";
 
 import { JS_CODE, IFRAME_CODE } from "./embedding-snippets";
 

@@ -4,7 +4,7 @@ import {
   openNavigationSidebar,
   sidebar,
   visitQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
 
 describe("scenarios > question > bookmarks", () => {

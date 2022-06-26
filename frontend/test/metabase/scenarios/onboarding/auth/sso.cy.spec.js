@@ -2,7 +2,7 @@ import {
   describeEE,
   restore,
   mockCurrentUserProperty,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
