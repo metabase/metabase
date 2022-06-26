@@ -504,15 +504,6 @@ commands:
             while ! nc -z localhost << parameters.port >>; do sleep 0.1; done
           no_output_timeout: 15m
 
-  wait-for-databases:
-    steps:
-      - wait-for-port:
-          port: 3306 # mysql
-      - wait-for-port:
-          port: 5432 # postgres
-      - wait-for-port:
-          port: 27017 # mongo
-
   fetch-jdbc-driver:
     parameters:
       source:
@@ -1255,8 +1246,6 @@ workflows:
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
           qa-db: true
-          before-steps:
-            - wait-for-databases
 
       - fe-tests-cypress:
           matrix:
@@ -1268,6 +1257,3 @@ workflows:
           cypress-group: e2e-tests-<< matrix.edition >>
           grep: "grepTags=@OSS,grepFilterSpecs=true"
           qa-db: true
-          before-steps:
-            - wait-for-databases
-
