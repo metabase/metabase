@@ -201,17 +201,6 @@ jobs:
         jar xf target/uberjar/metabase.jar version.properties
         mv version.properties resources/
     - name: Percy Test
-      run: |
-        CHANGED_SPECS=$(git diff --name-only origin/${{ github.base_ref }} origin/${{ github.head_ref }})
-        CYPRESS_SPECS=$(echo "$CHANGED_SPECS" | grep "metabase/scenarios")
-
-        if [ "$CHANGED_SPECS" == "" ]; then
-          echo "No files have been changed";
-        elif [ "$CHANGED_SPECS" == "$CYPRESS_SPECS" ]; then
-          echo "Not running Percy because the only changed files are Cypress E2E specs";
-        else
-          echo "Run Percy visual tests";
-          yarn run test-visual-run
-        fi
+      run: yarn run test-visual-run
       env:
         PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
