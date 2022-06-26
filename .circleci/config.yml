@@ -6,21 +6,11 @@ version: 2.1
 
 executors:
   # CircleCI base Node + Headless browsers + Clojure CLI - big one
-  # Maildev runs by default with all Cypress tests
 
   builder:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-
-  tester:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-node-browsers
-      - image: maildev/maildev:1.1.0
-      - image: metabase/qa-databases:postgres-sample-12
-      - image: metabase/qa-databases:mongo-sample-4.0
-      - image: metabase/qa-databases:mysql-sample-8
 
   # Java 11 tests also test Metabase with the at-rest encryption enabled. See
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
