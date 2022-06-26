@@ -9,7 +9,7 @@ on:
       - "docs/**"
       - "**.md"
       - ".circleci/**"
-      - "**unit.spec.js"
+      - "**.unit.spec.*"
 
 jobs:
 
