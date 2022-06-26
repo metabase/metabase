@@ -235,7 +235,7 @@ default_parameters: &Params
     enum: ["oss", "ee"]
     default: "oss"
 
-# .BACKEND-CHECKSUMS, .FRONTEND-CHECKSUMS, and .MODULE-CHECKSUMS are created during the checkout step; see that step
+# .BACKEND-CHECKSUMS and .MODULE-CHECKSUMS are created during the checkout step; see that step
 # for exact details as to what they contain.
 #
 # To support cache busting, we create a file named .CACHE-PREFIX in the checkout step and use its checksum as the
@@ -245,7 +245,7 @@ default_parameters: &Params
 
 ### Deps Keys ###
 
-# Why don't we use fallback keys for backend/frontend deps? We used to, but it allowed the cache to grow
+# Why don't we use fallback keys for backend deps? We used to, but it allowed the cache to grow
 # uncontrollably since old deps would continue to accumulate. Restoring big caches is really slow in Circle. It's
 # actually faster to recreate the deps cache from scratch whenever we need to which keeps the size down.
 cache-key-backend-deps: &CacheKeyBackendDeps
@@ -464,10 +464,6 @@ jobs:
       - create-checksum-file:
           filename: .SCRIPTS-DEPS-CHECKSUMS
           find-args: "bin -type f -name 'deps.edn'"
-      # .FRONTEND-CHECKSUMS is every JavaScript source file as well as dependency files like yarn.lock (sans all frontend test files)
-      - create-checksum-file:
-          filename: .FRONTEND-CHECKSUMS
-          find-args: ". -type f '(' -name '*.js' -or -name '*.jsx' -or -name '*.ts' -or -name '*.tsx' -or -name '*.cljc' -or -name '*.cljs' -or -name '*.json' -or -name yarn.lock -or -name sample-dataset.db.mv.db ')' ! -path '*/frontend/test/*'"
       # .MODULES-CHECKSUMS is every Clojure source file in the modules/ directory as well as plugin manifests
       - create-checksum-file:
           filename: .MODULES-CHECKSUMS
