@@ -159,6 +159,7 @@ jobs:
         if-no-files-found: ignore
 
   visual-regression-tests:
+    if: env.PERCY_TOKEN != null && ${{ github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     needs: build
@@ -214,4 +215,4 @@ jobs:
         fi
       env:
         PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
-      if: env.PERCY_TOKEN != null && ${{ github.ref == 'refs/heads/master' }}
+
