@@ -969,17 +969,28 @@
 (deftest form-input-test
   (testing "GET /api/pulse/form_input"
     (testing "Check that Slack channels come back when configured"
-      (mt/with-temporary-setting-values [slack-token nil
-                                         slack-app-token "something"]
-        (with-redefs [slack/conversations-list (constantly ["#foo" "#two" "#general"])
-                      slack/users-list         (constantly ["@bar" "@baz"])]
-          ;; set the cache to these values
-          (slack/slack-cached-channels-and-usernames (concat (slack/conversations-list) (slack/users-list)))
-          ;; don't let the cache refresh itself (it will refetch if it is too old)
-          (slack/slack-channels-and-usernames-last-updated (t/zoned-date-time))
-          (is (= [{:name "channel", :type "select", :displayName "Post to", :options ["#foo" "#two" "#general" "@bar" "@baz"], :required true}]
-                 (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
-                     (get-in [:channels :slack :fields])))))))
+      (mt/with-temporary-setting-values [slack/slack-channels-and-usernames-last-updated
+                                         (t/zoned-date-time)
+
+                                         slack/slack-app-token "test-token"
+
+                                         slack/slack-cached-channels-and-usernames
+                                         {:channels [{:type "channel"
+                                                      :name "foo"
+                                                      :display-name "#foo"
+                                                      :id "CAAS3DD9XND"}
+                                                     {:type "channel"
+                                                      :name "general"
+                                                      :display-name "#general"
+                                                      :id "C3MJRZ9EUVA"}
+                                                     {:type "user"
+                                                      :name "user1"
+                                                      :id "U1DYU9W3WZ2"
+                                                      :display-name "@user1"}]}]
+        (is (= [{:name "channel", :type "select", :displayName "Post to",
+                 :options ["#foo" "#general" "@user1"], :required true}]
+               (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
+                   (get-in [:channels :slack :fields]))))))
 
     (testing "When slack is not configured, `form_input` returns no channels"
       (mt/with-temporary-setting-values [slack-token nil
