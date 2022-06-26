@@ -297,10 +297,6 @@ cache-key-frontend: &CacheKeyFrontend
 cache-key-uberjar: &CacheKeyUberjar
   key: v5-{{ checksum ".CACHE-PREFIX" }}-uberjar-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
 
-cache-key-snowplow-deps: &CacheKeySnowplowDeps
-  key: v5-{{ checksum ".CACHE-PREFIX" }}-snowplow-deps
-
-
 ########################################################################################################################
 #                                                       COMMANDS                                                       #
 ########################################################################################################################
@@ -325,12 +321,6 @@ commands:
       - restore_cache:
           name: Restore cached frontend dependencies
           <<: *CacheKeyFrontendDeps
-
-  restore-snowplow-deps-cache:
-    steps:
-      - restore_cache:
-          name: Restore Snowplow Micro JAR
-          <<: *CacheKeySnowplowDeps
 
   # run-on-change lets you only run steps if changes have happened to relevant files since the last time it was run
   # successfully. Uses a cache key to record successful runs -- cache key should be unique for job and relevant source
@@ -548,16 +538,6 @@ commands:
           name: Run command
           command: << parameters.command >>
 
-  run-snowplow-micro:
-    steps:
-      - restore-snowplow-deps-cache
-      - run:
-          name: Run Snowplow Micro
-          command: |
-            java -cp snowplow-micro.jar:snowplow com.snowplowanalytics.snowplow.micro.Main --collector-config snowplow/micro.conf --iglu snowplow/iglu.json
-          background: true
-      - wait-for-port:
-          port: 9090
 
 jobs:
 
@@ -951,9 +931,6 @@ jobs:
       qa-db:
         type: boolean
         default: false
-      snowplow:
-        type: boolean
-        default: false
       before-steps:
         type: steps
         default: []
@@ -964,7 +941,6 @@ jobs:
       CYPRESS_GROUP:  << parameters.cypress-group >>
       QA_DB_ENABLED: << parameters.qa-db >>
       DISPLAY: ""
-      MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
     steps:
       - attach-workspace
       - run:
@@ -992,33 +968,6 @@ jobs:
                       path: /home/circleci/metabase/metabase/cypress
                   - store_test_results:
                       path: cypress/results
-
-########################################################################################################################
-#                                                       SNOWPLOW                                                       #
-########################################################################################################################
-
-  snowplow-deps:
-    executor: builder
-    steps:
-      - attach-workspace
-      - restore-snowplow-deps-cache
-      - run:
-          name: Check if Snowplow Micro JAR exists
-          command: |
-            if [ -f snowplow-micro.jar ]; then
-                echo 'snowplow-micro.jar is present, skipping the rest of the job.'
-                circleci-agent step halt
-            fi
-      - run:
-          name: Download Snowplow Micro JAR
-          command: |
-            wget --output-document=snowplow-micro.jar $SNOWPLOW_MICRO_JAR
-          no_output_timeout: 15m
-      - save_cache:
-          name: Cache Snowplow Micro JAR
-          <<: *CacheKeySnowplowDeps
-          paths:
-            - /home/circleci/metabase/metabase/snowplow-micro.jar
 
 ########################################################################################################################
 #                                                      WORKFLOWS                                                       #
@@ -1303,13 +1252,10 @@ workflows:
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - snowplow-deps
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
           qa-db: true
-          snowplow: true
           before-steps:
-            - run-snowplow-micro
             - wait-for-databases
 
       - fe-tests-cypress:
@@ -1319,20 +1265,9 @@ workflows:
           name: e2e-tests-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - snowplow-deps
           cypress-group: e2e-tests-<< matrix.edition >>
           grep: "grepTags=@OSS,grepFilterSpecs=true"
           qa-db: true
-          snowplow: true
           before-steps:
-            - run-snowplow-micro
             - wait-for-databases
 
-      - snowplow-deps:
-          requires:
-            - checkout
-          filters:
-            branches:
-              ignore:
-                - master
-                - release-**
