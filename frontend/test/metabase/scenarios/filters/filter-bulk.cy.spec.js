@@ -125,28 +125,14 @@ describe("scenarios > filters > bulk filtering", () => {
 
     modal().within(() => {
       cy.findByText("Summaries").click();
-      cy.findByLabelText("Count").click();
-    });
 
-    popover().within(() => {
-      cy.findByText("Equal to").click();
-    });
+      cy.findByPlaceholderText("min").type("500");
 
-    popover()
-      .eq(1)
-      .within(() => cy.findByText("Greater than").click());
-
-    popover().within(() => {
-      cy.findByPlaceholderText("Enter a number").type("500");
-      cy.button("Add filter").click();
-    });
-
-    modal().within(() => {
       cy.button("Apply").click();
       cy.wait("@dataset");
     });
 
-    cy.findByText("Count is greater than 500").should("be.visible");
+    cy.findByText("Count is greater than or equal to 500").should("be.visible");
     cy.findByText("Showing 21 rows").should("be.visible");
   });
 
@@ -569,6 +555,58 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       cy.findByText("Title is 2 selections").should("be.visible");
       cy.findByText("Showing 2 rows").should("be.visible");
+    });
+  });
+
+  describe("number filters", () => {
+    beforeEach(() => {
+      visitQuestionAdhoc(productsQuestion);
+      openFilterModal();
+    });
+
+    it("applies a between filter", () => {
+      modal().within(() => {
+        cy.findByLabelText("Price").within(() => {
+          cy.findByPlaceholderText("min").type("50");
+          cy.findByPlaceholderText("max").type("80");
+        });
+        cy.button("Apply").click();
+      });
+      cy.findByText("Price between 50 80").should("be.visible");
+      cy.findByText("Showing 72 rows").should("be.visible");
+    });
+
+    it("applies a greater than filter", () => {
+      modal().within(() => {
+        cy.findByLabelText("Price").within(() => {
+          cy.findByTestId("select-button").click();
+        });
+      });
+
+      popover().within(() => {
+        cy.findByText("Greater than").click();
+      });
+
+      modal().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("50");
+        cy.button("Apply").click();
+      });
+
+      cy.findByText("Price is greater than 50").should("be.visible");
+      cy.findByText("Showing 106 rows").should("be.visible");
+    });
+
+    it("infers a <= filter from an invalid between filter", () => {
+      modal().within(() => {
+        cy.findByLabelText("Price").within(() => {
+          cy.findByPlaceholderText("max").type("50");
+        });
+
+        cy.button("Apply").click();
+      });
+
+      cy.findByText("Price is less than or equal to 50").should("be.visible");
+      cy.findByText("Showing 94 rows").should("be.visible");
     });
   });
 });
