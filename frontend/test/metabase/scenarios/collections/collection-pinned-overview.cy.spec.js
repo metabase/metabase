@@ -55,7 +55,9 @@ describe("scenarios > collection pinned items overview", () => {
   it("should be able to pin a dashboard", () => {
     openRootCollection();
     openUnpinnedItemMenu(DASHBOARD_NAME);
-    popover().within(() => cy.findByText("Pin this").click());
+    popover()
+      .findByText("Pin this")
+      .click();
     cy.wait("@getPinnedItems");
 
     getPinnedSection().within(() => {
@@ -69,7 +71,9 @@ describe("scenarios > collection pinned items overview", () => {
   it("should be able to pin a question", () => {
     openRootCollection();
     openUnpinnedItemMenu(QUESTION_NAME);
-    popover().within(() => cy.findByText("Pin this").click());
+    popover()
+      .findByText("Pin this")
+      .click();
     cy.wait(["@getPinnedItems", "@getCardQuery"]);
 
     getPinnedSection().within(() => {
@@ -99,7 +103,9 @@ describe("scenarios > collection pinned items overview", () => {
 
     openRootCollection();
     openUnpinnedItemMenu(MODEL_NAME);
-    popover().within(() => cy.findByText("Pin this").click());
+    popover()
+      .findByText("Pin this")
+      .click();
     cy.wait("@getPinnedItems");
 
     getPinnedSection().within(() => {
@@ -115,7 +121,9 @@ describe("scenarios > collection pinned items overview", () => {
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
-    popover().within(() => cy.findByText("Unpin").click());
+    popover()
+      .findByText("Unpin")
+      .click();
     cy.wait("@getPinnedItems");
 
     getPinnedSection().should("not.exist");
@@ -126,7 +134,9 @@ describe("scenarios > collection pinned items overview", () => {
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
-    popover().within(() => cy.findByText("Move").click());
+    popover()
+      .findByText("Move")
+      .click();
 
     cy.findByText(`Move "${DASHBOARD_NAME}"?`).should("be.visible");
   });
@@ -136,7 +146,9 @@ describe("scenarios > collection pinned items overview", () => {
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
-    popover().within(() => cy.findByText("Duplicate").click());
+    popover()
+      .findByText("Duplicate")
+      .click();
 
     cy.findByText(`Duplicate "${DASHBOARD_NAME}"`).should("be.visible");
   });
@@ -146,7 +158,9 @@ describe("scenarios > collection pinned items overview", () => {
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
-    popover().within(() => cy.findByText("Archive").click());
+    popover()
+      .findByText("Archive")
+      .click();
     cy.wait("@getPinnedItems");
 
     getPinnedSection().should("not.exist");
@@ -158,7 +172,9 @@ describe("scenarios > collection pinned items overview", () => {
 
     openRootCollection();
     openPinnedItemMenu(QUESTION_NAME);
-    popover().within(() => cy.findByText("Don’t show visualization").click());
+    popover()
+      .findByText("Don’t show visualization")
+      .click();
     cy.wait("@getPinnedItems");
 
     getPinnedSection().within(() => {
@@ -177,7 +193,9 @@ describe("scenarios > collection pinned items overview", () => {
 
     openRootCollection();
     openPinnedItemMenu(QUESTION_NAME);
-    popover().within(() => cy.findByText("Show visualization").click());
+    popover()
+      .findByText("Show visualization")
+      .click();
     cy.wait(["@getPinnedItems", "@getCardQuery"]);
 
     getPinnedSection().within(() => {
