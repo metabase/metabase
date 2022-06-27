@@ -48,8 +48,14 @@ export const BaseItemRoot = styled.li`
   }
 `;
 
+const getGridTemplateColumns = (hasLeftIcon, hasRightIcon) =>
+  `${hasLeftIcon ? "min-content" : ""} 1fr ${
+    hasRightIcon ? "min-content" : ""
+  }`;
+
 export const ItemRoot = styled(BaseItemRoot)`
   display: grid;
-  grid-template-columns: min-content 1fr min-content;
+  grid-template-columns: ${props =>
+    getGridTemplateColumns(props.hasLeftIcon, props.hasRightIcon)};
   gap: 0.5rem;
 `;

@@ -1,4 +1,4 @@
-import { restore, describeEE, visitQuestion } from "__support__/e2e/cypress";
+import { restore, describeEE, visitQuestion } from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 const { normal } = USERS;

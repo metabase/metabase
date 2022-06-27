@@ -11,7 +11,6 @@ import Icon from "metabase/components/Icon";
 import Heading from "./Heading";
 import Toggle from "metabase/core/components/Toggle";
 import CaveatMessage from "./CaveatMessage";
-import ChannelFields from "./ChannelFields";
 import SchedulePicker from "metabase/components/SchedulePicker";
 import DefaultParametersSection from "./DefaultParametersSection";
 import Sidebar from "metabase/dashboard/components/Sidebar";
@@ -71,13 +70,6 @@ function _AddEditEmailSidebar({
             }
           />
         </div>
-        {channelSpec.fields && (
-          <ChannelFields
-            channel={channel}
-            channelSpec={channelSpec}
-            onChannelPropertyChange={onChannelPropertyChange}
-          />
-        )}
         <SchedulePicker
           schedule={_.pick(
             channel,

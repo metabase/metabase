@@ -1,4 +1,4 @@
-import { restore, visitDashboard } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
 
 describe("scenarios > dashboard > visualization options", () => {
   beforeEach(() => {

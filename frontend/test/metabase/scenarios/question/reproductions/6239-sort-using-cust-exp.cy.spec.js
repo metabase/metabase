@@ -4,7 +4,7 @@ import {
   restore,
   visualize,
   summarize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("issue 6239", () => {
   beforeEach(() => {

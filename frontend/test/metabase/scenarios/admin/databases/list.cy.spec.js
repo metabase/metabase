@@ -1,4 +1,4 @@
-import { restore, describeEE, isOSS } from "__support__/e2e/cypress";
+import { restore, describeEE, isOSS } from "__support__/e2e/helpers";
 
 describe("scenarios > admin > databases > list", () => {
   beforeEach(() => {

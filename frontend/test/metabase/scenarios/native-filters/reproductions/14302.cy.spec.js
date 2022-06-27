@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 const priceFilter = {
   id: "39b51ccd-47a7-9df6-a1c5-371918352c79",

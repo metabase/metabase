@@ -721,23 +721,25 @@
 
 (deftest we-should-be-able-to-get-values-for-a-field-referenced-by-a-card
   (mt/with-temp Card [card (mbql-card-referencing :venues :name)]
-    (is (= {:values   [["20th Century Cafe"]
-                       ["25°"]
-                       ["33 Taps"]
-                       ["800 Degrees Neapolitan Pizzeria"]
-                       ["BCD Tofu House"]]
-            :field_id (mt/id :venues :name)}
+    (is (= {:values          [["20th Century Cafe"]
+                              ["25°"]
+                              ["33 Taps"]
+                              ["800 Degrees Neapolitan Pizzeria"]
+                              ["BCD Tofu House"]]
+            :field_id        (mt/id :venues :name)
+            :has_more_values false}
            (mt/derecordize (-> (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))
                                (update :values (partial take 5))))))))
 
 (deftest sql-param-field-references-should-work-just-as-well-as-mbql-field-referenced
   (mt/with-temp Card [card (sql-card-referencing-venue-name)]
-    (is (= {:values   [["20th Century Cafe"]
-                       ["25°"]
-                       ["33 Taps"]
-                       ["800 Degrees Neapolitan Pizzeria"]
-                       ["BCD Tofu House"]]
-            :field_id (mt/id :venues :name)}
+    (is (= {:values          [["20th Century Cafe"]
+                              ["25°"]
+                              ["33 Taps"]
+                              ["800 Degrees Neapolitan Pizzeria"]
+                              ["BCD Tofu House"]]
+            :field_id        (mt/id :venues :name)
+            :has_more_values false}
            (mt/derecordize (-> (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))
                                (update :values (partial take 5))))))))
 
@@ -774,12 +776,13 @@
 
 
 (deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
-  (is (= {:values   [["20th Century Cafe"]
-                     ["25°"]
-                     ["33 Taps"]
-                     ["800 Degrees Neapolitan Pizzeria"]
-                     ["BCD Tofu House"]]
-          :field_id (mt/id :venues :name)}
+  (is (= {:values          [["20th Century Cafe"]
+                            ["25°"]
+                            ["33 Taps"]
+                            ["800 Degrees Neapolitan Pizzeria"]
+                            ["BCD Tofu House"]]
+          :field_id        (mt/id :venues :name)
+          :has_more_values false}
          (with-sharing-enabled-and-temp-card-referencing :venues :name [card]
            (-> (client/client :get 200 (field-values-url card (mt/id :venues :name)))
                (update :values (partial take 5)))))))
@@ -818,12 +821,13 @@
 
 (deftest should-be-able-to-use-it-when-everything-is-g2g
   (with-sharing-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
-    (is (= {:values   [["20th Century Cafe"]
-                       ["25°"]
-                       ["33 Taps"]
-                       ["800 Degrees Neapolitan Pizzeria"]
-                       ["BCD Tofu House"]]
-            :field_id (mt/id :venues :name)}
+    (is (= {:values          [["20th Century Cafe"]
+                              ["25°"]
+                              ["33 Taps"]
+                              ["800 Degrees Neapolitan Pizzeria"]
+                              ["BCD Tofu House"]]
+            :field_id        (mt/id :venues :name)
+            :has_more_values false}
            (-> (client/client :get 200 (field-values-url dashboard (mt/id :venues :name)))
                (update :values (partial take 5)))))))
 

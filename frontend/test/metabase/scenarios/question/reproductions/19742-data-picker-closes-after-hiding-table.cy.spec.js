@@ -2,7 +2,7 @@ import {
   restore,
   popover,
   openNavigationSidebar,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("issue 19742", () => {
   beforeEach(() => {

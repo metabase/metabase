@@ -1,4 +1,4 @@
-import { popover, restore, visitDashboard } from "__support__/e2e/cypress";
+import { popover, restore, visitDashboard } from "__support__/e2e/helpers";
 
 describe("scenarios > home > homepage", () => {
   beforeEach(() => {
