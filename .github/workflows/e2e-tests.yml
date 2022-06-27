@@ -60,6 +60,7 @@ jobs:
         java-version: [11]
         edition: [ee]
         folder:
+          - "admin"
           - "binning"
           - "collections"
           - "custom-column"
@@ -77,6 +78,7 @@ jobs:
           - "permissions"
           - "question"
           - "sharing"
+          - "visualizations"
         include:
           - edition: oss
             java-version: 11
