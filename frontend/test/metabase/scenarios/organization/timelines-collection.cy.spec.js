@@ -3,9 +3,10 @@ import {
   enableTracking,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
+  openCollectionMenu,
   resetSnowplow,
   restore,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("scenarios > organization > timelines > collection", () => {
   beforeEach(() => {
@@ -492,7 +493,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.wait("@createTimeline");
       cy.icon("close").click();
 
-      cy.icon("pencil").click();
+      openCollectionMenu();
       cy.findByText("Edit this collection").click();
       cy.findByLabelText("Name")
         .clear()

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, ReactNode } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -6,23 +6,23 @@ import { withRouter } from "react-router";
 
 import Tooltip from "metabase/components/Tooltip";
 import LogoIcon from "metabase/components/LogoIcon";
-
 import SearchBar from "metabase/nav/components/SearchBar";
 import SidebarButton from "metabase/nav/components/SidebarButton";
 import NewItemButton from "metabase/nav/components/NewItemButton";
 import PathBreadcrumbs from "metabase/nav/components/PathBreadcrumbs";
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
-import { User } from "metabase-types/api";
+import { CollectionId, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import { getIsNavbarOpen, closeNavbar, toggleNavbar } from "metabase/redux/app";
 import {
   getIsNewButtonVisible,
   getIsSearchVisible,
-  getBreadcrumbCollectionId,
+  getCollectionId,
   getShowBreadcumb,
   getIsProfileLinkVisible,
+  RouterProps,
 } from "metabase/selectors/app";
 import { isMac } from "metabase/lib/browser";
 import { isSmallScreen } from "metabase/lib/dom";
@@ -49,22 +49,22 @@ interface Props {
   isSearchVisible: boolean;
   isNewButtonVisible: boolean;
   isProfileLinkVisible: boolean;
-  collectionId: string;
+  collectionId?: CollectionId;
   showBreadcrumb: boolean;
   toggleNavbar: () => void;
   closeNavbar: () => void;
   logout: () => void;
 }
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: State, props: RouterProps) {
   return {
     currentUser: getUser(state),
     isNavBarOpen: getIsNavbarOpen(state),
     isSearchVisible: getIsSearchVisible(state),
     isNewButtonVisible: getIsNewButtonVisible(state),
     isProfileLinkVisible: getIsProfileLinkVisible(state),
-    collectionId: getBreadcrumbCollectionId(state),
-    showBreadcrumb: getShowBreadcumb(state),
+    collectionId: getCollectionId(state),
+    showBreadcrumb: getShowBreadcumb(state, props),
   };
 }
 
@@ -90,9 +90,9 @@ function AppBar({
   isNewButtonVisible,
   isProfileLinkVisible,
   collectionId,
-  showBreadcrumb,
   toggleNavbar,
   closeNavbar,
+  showBreadcrumb,
   logout,
 }: Props) {
   const [isSearchActive, setSearchActive] = useState(false);

@@ -4,7 +4,7 @@ import {
   saveDashboard,
   visitQuestion,
   questionInfoButton,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { onlyOn } from "@cypress/skip-test";
 
@@ -107,6 +107,7 @@ describe("revision history", () => {
               cy.findByText("This dashboard is looking empty.");
 
               // Should be able to revert back again
+              openRevisionHistory();
               cy.findByText("Revision history").click();
               clickRevert("rearranged the cards");
 

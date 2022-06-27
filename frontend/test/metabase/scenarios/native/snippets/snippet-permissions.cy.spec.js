@@ -4,7 +4,7 @@ import {
   popover,
   describeEE,
   openNativeEditor,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 

@@ -7,7 +7,8 @@ import {
   getCollectionIdFromSlug,
   openNavigationSidebar,
   closeNavigationSidebar,
-} from "__support__/e2e/cypress";
+  openCollectionMenu,
+} from "__support__/e2e/helpers";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -471,7 +472,7 @@ function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
 }
 
 function moveOpenedCollectionTo(newParent) {
-  cy.icon("pencil").click();
+  openCollectionMenu();
   cy.findByTextEnsureVisible("Edit this collection").click();
 
   // Open the select dropdown menu

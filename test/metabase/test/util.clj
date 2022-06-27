@@ -733,7 +733,7 @@
       (let [card-count-before (db/count Card)
             card-name         (random-name)]
         (with-model-cleanup [Card]
-          (db/insert! Card (-> other-card (dissoc :id) (assoc :name card-name)))
+          (db/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
           (testing "Card count should have increased by one"
             (is (= (inc card-count-before)
                    (db/count Card))))

@@ -3,7 +3,7 @@ import {
   popover,
   visualize,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 

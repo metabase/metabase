@@ -1,4 +1,4 @@
-import { restore, openReviewsTable, modal } from "__support__/e2e/cypress";
+import { restore, openReviewsTable, modal } from "__support__/e2e/helpers";
 
 describe("visual tests > visualizations > table", () => {
   beforeEach(() => {

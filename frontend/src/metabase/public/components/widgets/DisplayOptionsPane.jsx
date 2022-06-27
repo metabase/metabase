@@ -23,6 +23,7 @@ import {
 const THEME_OPTIONS = [
   { name: t`Light`, value: null },
   { name: t`Dark`, value: "night" },
+  { name: t`Transparent`, value: "transparent" },
 ];
 
 const mapStateToProps = state => ({

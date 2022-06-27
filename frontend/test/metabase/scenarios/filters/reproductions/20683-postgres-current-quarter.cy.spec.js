@@ -1,4 +1,4 @@
-import { restore, visualize } from "__support__/e2e/cypress";
+import { restore, visualize } from "__support__/e2e/helpers";
 
 describe("issue 20683", () => {
   beforeEach(() => {

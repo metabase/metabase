@@ -6,7 +6,8 @@ import {
   appBar,
   navigationSidebar,
   openNativeEditor,
-} from "__support__/e2e/cypress";
+  openCollectionMenu,
+} from "__support__/e2e/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
@@ -222,9 +223,8 @@ describe("collection permissions", () => {
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
                     });
 
-                    cy.icon("pencil").click();
-
-                    cy.findByText("Archive this collection").click();
+                    openCollectionMenu();
+                    popover().within(() => cy.findByText("Archive").click());
                     cy.get(".Modal")
                       .findByText("Archive")
                       .click();
@@ -314,8 +314,8 @@ describe("collection permissions", () => {
                         collection => collection.slug === "third_collection",
                       );
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
-                      cy.icon("pencil").click();
-                      cy.findByText("Archive this collection").click();
+                      openCollectionMenu();
+                      popover().within(() => cy.findByText("Archive").click());
                       cy.get(".Modal")
                         .findByText("Cancel")
                         .click();

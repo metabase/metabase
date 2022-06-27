@@ -3,7 +3,7 @@ import {
   popover,
   selectDashboardFilter,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 function filterDashboard(suggests = true) {
   visitDashboard(1);

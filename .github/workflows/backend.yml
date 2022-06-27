@@ -44,7 +44,7 @@ jobs:
   be-tests:
     runs-on: ubuntu-20.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
