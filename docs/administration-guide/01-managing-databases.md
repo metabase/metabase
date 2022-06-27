@@ -121,7 +121,7 @@ Some databases allow you to append options to the connection string Metabase wil
 
 ## Testing a database connection
 
-As you're setting up your database(s) with Metabase, check if each 
+As you're setting up your database(s) with Metabase, you can check if each component is working as expected: 
 
 - [Server status](#checking-the-server-status)
 - [Server access](#checking-your-server-access)
@@ -159,8 +159,7 @@ psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
 
 ### Testing the connection status
 
-1. Run a native `SELECT 1` query to verify the connection to the data warehouse.
-2. If the sync process has completed, can you ask a [native question](https://www.metabase.com/docs/latest/users-guide/writing-sql.html) to verify that you are able to use the database?
+Go to the [SQL editor](../users-guide/writing-sql.html) and run a `SELECT 1` query to verify the connection to the data warehouse.
 
 ## Re-scanning a single table or field
 
