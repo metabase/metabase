@@ -1,13 +1,9 @@
 import React from "react";
 import { useToggle } from "metabase/hooks/use-toggle";
-
 import Icon from "metabase/components/Icon";
-import Collection from "metabase/entities/collections";
+import Collections from "metabase/entities/collections";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import {
-  Collection as CollectionType,
-  CollectionId,
-} from "metabase-types/api/collection";
+import { Collection, CollectionId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import {
@@ -17,7 +13,7 @@ import {
 } from "./PathBreadcrumbs.styled";
 
 interface Props {
-  collection: CollectionType;
+  collection: Collection;
   collectionId: CollectionId;
 }
 
@@ -74,7 +70,7 @@ const PathBreadcrumbs = ({ collection }: Props) => {
   );
 };
 
-export default Collection.load({
+export default Collections.load({
   id: (_state: State, props: Props) => props.collectionId || "root",
   wrapped: true,
   loadingAndErrorWrapper: false,
