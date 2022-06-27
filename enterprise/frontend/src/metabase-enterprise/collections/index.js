@@ -65,10 +65,6 @@ PLUGIN_COLLECTIONS.getAuthorityLevelFormFields = () => [
       },
     ],
   },
-  {
-    name: "update_collection_tree_authority_level",
-    type: "hidden",
-  },
 ];
 
 PLUGIN_FORM_WIDGETS.collectionAuthorityLevel = FormCollectionAuthorityLevel;
