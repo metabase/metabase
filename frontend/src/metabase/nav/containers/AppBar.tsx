@@ -10,7 +10,7 @@ import LogoIcon from "metabase/components/LogoIcon";
 import SearchBar from "metabase/nav/components/SearchBar";
 import SidebarButton from "metabase/nav/components/SidebarButton";
 import NewItemButton from "metabase/nav/components/NewItemButton";
-import PathBreadcrumbs from "../components/PathBreadcrumbs/PathBreadcrumbs";
+import PathBreadcrumbs from "metabase/nav/components/PathBreadcrumbs";
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
 import { User } from "metabase-types/api";
