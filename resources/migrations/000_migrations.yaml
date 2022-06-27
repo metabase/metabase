@@ -12104,6 +12104,20 @@ databaseChangeLog:
             columnName: last_name
             columnDataType: varchar(254)
   - changeSet:
+      id: v44.00-029
+      author: qnkhuat
+      comment: Added 0.44.0 - Add has_more_values to metabase_fieldvalues
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: has_more_values
+                  type: boolean
+                  remarks: true if the stored values list is a subset of all possible values
+                  defaultValueBoolean: false
+
+  - changeSet:
       id: v44.00-030
       author: snoe
       comment: Added 0.44.0 - Add database_required to metabase_field
@@ -12170,20 +12184,6 @@ databaseChangeLog:
             tableName: http_action
             columnNames: action_id
             constraintName: pk_http_action
-
-  - changeSet:
-      id: v44.00-029
-      author: qnkhuat
-      comment: Added 0.44.0 - Add has_more_values to metabase_fieldvalues
-      changes:
-        - addColumn:
-            tableName: metabase_fieldvalues
-            columns:
-              - column:
-                  name: has_more_values
-                  type: boolean
-                  remarks: true if the stored values list is a subset of all possible values
-                  defaultValueBoolean: false
 
   - changeSet:
       id: v44.00-033
