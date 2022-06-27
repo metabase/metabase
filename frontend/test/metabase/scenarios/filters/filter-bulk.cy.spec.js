@@ -105,7 +105,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     popover().within(() => {
-      cy.findByPlaceholderText("Search the list").type("21");
+      cy.findByPlaceholderText("Search the list").type("20");
       cy.findByText("20").click();
       cy.button("Add filter").click();
     });
