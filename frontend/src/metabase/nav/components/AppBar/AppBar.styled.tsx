@@ -49,10 +49,9 @@ export const LogoLink = styled(Link)`
 
 export const SidebarButtonContainer = styled.div`
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 0.625rem;
+  left: 0.9375rem;
   opacity: 0;
-  transform: translate(-50%, -50%);
   transition: opacity 0.3s;
 `;
 
