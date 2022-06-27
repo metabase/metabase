@@ -1,4 +1,4 @@
-import { restore, popover, openOrdersTable } from "__support__/e2e/cypress";
+import { restore, popover, openOrdersTable } from "__support__/e2e/helpers";
 
 describe("issue 17712", () => {
   beforeEach(() => {

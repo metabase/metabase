@@ -68,6 +68,10 @@ export const SortingIcon = styled(Icon)`
   margin-left: 4px;
 `;
 
+export const DescriptionIcon = styled(Icon)`
+  color: ${color("text-medium")};
+`;
+
 SortingIcon.defaultProps = {
   size: 8,
 };

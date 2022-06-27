@@ -1,4 +1,4 @@
-import { restore, visitDashboard } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -13,6 +13,8 @@ const parameter = {
   id: "ad1c877e",
   type: "category",
 };
+
+const MOBILE_WIDTH = 375; // iPhone SE
 
 describe(`visual tests > dashboard > parameters widget`, () => {
   const parametersShort = new Array(5).fill(parameter);
@@ -40,13 +42,14 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         cy.editDashboardCard(card, updatedSize);
 
         visitDashboard(dashboard_id);
+
+        cy.findByText("test question");
+        cy.findByText("Rustic Paper Wallet");
       });
     });
 
     describe(`desktop`, () => {
       it("is sticky in view mode", () => {
-        cy.findByText("test question");
-
         cy.get("main")
           .scrollTo(0, 264)
           .then(() => {
@@ -61,8 +64,6 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
 
       it("is sticky in edit mode", () => {
-        cy.findByText("test question");
-
         cy.icon("pencil").click();
 
         cy.findByTestId("dashboard-parameters-and-cards")
@@ -81,14 +82,12 @@ describe(`visual tests > dashboard > parameters widget`, () => {
 
     describe(`mobile`, () => {
       it("is sticky in view mode", () => {
-        cy.findByText("test question");
-
-        cy.viewport(375, 667); // iPhone SE
+        cy.viewport(MOBILE_WIDTH, 667);
 
         cy.get("main")
           .scrollTo(0, 264)
           .then(() => {
-            cy.percySnapshot();
+            cy.percySnapshot(null, { widths: [MOBILE_WIDTH] });
           });
 
         cy.findByTestId("dashboard-parameters-widget-container").should(
@@ -99,16 +98,14 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
 
       it("is sticky in edit mode", () => {
-        cy.findByText("test question");
-
-        cy.viewport(375, 667); // iPhone SE
+        cy.viewport(MOBILE_WIDTH, 667);
 
         cy.icon("pencil").click();
 
         cy.findByTestId("dashboard-parameters-and-cards")
           .scrollTo(0, 464)
           .then(() => {
-            cy.percySnapshot();
+            cy.percySnapshot(null, { widths: [MOBILE_WIDTH] });
           });
 
         cy.findByTestId("edit-dashboard-parameters-widget-container").should(
@@ -142,13 +139,13 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         cy.editDashboardCard(card, updatedSize);
 
         visitDashboard(dashboard_id);
+        cy.findByText("test question");
+        cy.findByText("Rustic Paper Wallet");
       });
     });
 
     describe(`desktop`, () => {
       it("is sticky in view mode", () => {
-        cy.findByText("test question");
-
         cy.get("main")
           .scrollTo(0, 264)
           .then(() => {
@@ -183,14 +180,12 @@ describe(`visual tests > dashboard > parameters widget`, () => {
 
     describe(`mobile`, () => {
       it("is not sticky in view mode", () => {
-        cy.findByText("test question");
-
-        cy.viewport(375, 667); // iPhone SE
+        cy.viewport(MOBILE_WIDTH, 667);
 
         cy.get("main")
           .scrollTo(0, 264)
           .then(() => {
-            cy.percySnapshot();
+            cy.percySnapshot(null, { widths: [MOBILE_WIDTH] });
           });
 
         cy.findByTestId("dashboard-parameters-widget-container").should(
@@ -201,16 +196,14 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
 
       it("is not sticky in edit mode", () => {
-        cy.findByText("test question");
-
-        cy.viewport(375, 667); // iPhone SE
+        cy.viewport(MOBILE_WIDTH, 667);
 
         cy.icon("pencil").click();
 
         cy.findByTestId("dashboard-parameters-and-cards")
           .scrollTo(0, 464)
           .then(() => {
-            cy.percySnapshot();
+            cy.percySnapshot(null, { widths: [MOBILE_WIDTH] });
           });
 
         cy.findByTestId("edit-dashboard-parameters-widget-container").should(

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
-import { SelectList } from "metabase/components/select-list";
+import SelectList from "metabase/components/SelectList";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 

@@ -22,10 +22,11 @@ export type UnsavedCard<Query = DatasetQuery> = {
 export type SavedCard<Query = DatasetQuery> = UnsavedCard<Query> & {
   id: CardId;
   name: string;
-  description?: string;
+  description?: string | null;
   dataset?: boolean;
   can_write: boolean;
   public_uuid: string;
+  cache_ttl?: number | null;
   archived?: boolean;
 
   // Only for native queries

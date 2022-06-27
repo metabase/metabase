@@ -15,3 +15,4 @@ export * from "./permissions";
 export * from "./question";
 export * from "./dataset";
 export * from "./models";
+export * from "./notifications";

@@ -12,7 +12,6 @@ import Modal from "metabase/components/Modal";
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import AddToDashSelectDashModal from "metabase/containers/AddToDashSelectDashModal";
-import EditQuestionInfoModal from "metabase/query_builder/components/view/EditQuestionInfoModal";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal";
@@ -200,14 +199,6 @@ class QueryModals extends React.Component {
     ) : modal === MODAL_TYPES.ARCHIVE ? (
       <Modal onClose={onCloseModal}>
         <ArchiveQuestionModal question={question} onClose={onCloseModal} />
-      </Modal>
-    ) : modal === MODAL_TYPES.EDIT ? (
-      <Modal onClose={onCloseModal}>
-        <EditQuestionInfoModal
-          question={question}
-          onClose={onCloseModal}
-          onSave={card => this.props.onSave(card, false)}
-        />
       </Modal>
     ) : modal === MODAL_TYPES.EMBED ? (
       <Modal full onClose={onCloseModal}>

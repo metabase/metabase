@@ -97,7 +97,8 @@ export type SettingName =
   | "premium-embedding-token"
   | "metabase-store-managed"
   | "application-font"
-  | "available-fonts";
+  | "available-fonts"
+  | "enable-query-caching";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 

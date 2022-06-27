@@ -13,12 +13,14 @@ import Tooltip from "metabase/components/Tooltip";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 
 import { color } from "metabase/lib/colors";
+import { getFullName } from "metabase/lib/user";
 
 import {
   ItemCell,
   EntityIconCheckBox,
   ItemLink,
   TableItemSecondaryField,
+  DescriptionIcon,
 } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
@@ -81,7 +83,7 @@ export function BaseTableItem({
 
     const icon = { name: item.getIcon().name };
     if (item.model === "card") {
-      icon.color = color("bg-dark");
+      icon.color = color("text-light");
     }
 
     // Table row can be wrapped with ItemDragSource,
@@ -116,8 +118,16 @@ export function BaseTableItem({
           <ItemLink {...linkProps} to={item.getUrl()}>
             <EntityItem.Name name={item.name} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
+              size={16}
               status={item.moderated_status}
             />
+            {item.description && (
+              <DescriptionIcon
+                name="info"
+                size={16}
+                tooltip={item.description}
+              />
+            )}
           </ItemLink>
         </ItemCell>
         <ItemCell data-testid={`${testId}-last-edited-by`}>
@@ -181,9 +191,7 @@ function getLastEditedBy(lastEditInfo) {
     return "";
   }
 
-  const name = [lastEditInfo.first_name, lastEditInfo.last_name]
-    .join(" ")
-    .trim();
+  const name = getFullName(lastEditInfo);
   return name || lastEditInfo.email;
 }
 

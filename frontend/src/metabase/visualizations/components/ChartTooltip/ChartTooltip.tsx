@@ -51,6 +51,7 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
 
   return target ? (
     <Tooltip
+      preventOverflow
       reference={target}
       isOpen={isOpen}
       tooltip={tooltip}
