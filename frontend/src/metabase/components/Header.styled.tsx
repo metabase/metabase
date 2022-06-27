@@ -1,16 +1,32 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
+import Button from "metabase/core/components/Button";
 
 import { color } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
+  breakpointMaxMedium,
 } from "metabase/styled-components/theme";
 
-export const HeaderRoot = styled.div`
+interface TypeForItemsThatRespondToNavBarOpen {
+  isNavBarOpen: boolean;
+}
+
+export const HeaderRoot = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
+
+  ${breakpointMaxMedium} {
+    ${props =>
+      props.isNavBarOpen &&
+      css`
+        flex-direction: column;
+        align-items: baseline;
+      `}
+  }
 
   ${breakpointMaxSmall} {
     flex-direction: column;
@@ -58,7 +74,9 @@ export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
   }
 `;
 
-export const HeaderButtonsContainer = styled.div`
+export const HeaderButtonsContainer = styled.div<
+  TypeForItemsThatRespondToNavBarOpen
+>`
   display: flex;
   align-items: center;
   color: ${color("text-dark")};
@@ -67,15 +85,42 @@ export const HeaderButtonsContainer = styled.div`
     margin-left: auto;
   }
 
+  ${breakpointMaxMedium} {
+    ${props =>
+      props.isNavBarOpen &&
+      css`
+        width: 100%;
+        margin-bottom: 6px;
+      `}
+  }
+
   ${breakpointMaxSmall} {
     width: 100%;
     margin-bottom: 6px;
   }
+
+  ${Button.Root} {
+    padding: 0.5rem 0.75rem;
+    &:hover {
+      color: ${color("brand")};
+    }
+  }
 `;
 
-export const HeaderButtonSection = styled.div`
+export const HeaderButtonSection = styled.div<
+  TypeForItemsThatRespondToNavBarOpen
+>`
   display: flex;
   align-items: center;
+
+  ${breakpointMaxMedium} {
+    ${props =>
+      props.isNavBarOpen &&
+      css`
+        width: 100%;
+        justify-content: space-between;
+      `}
+  }
 
   ${breakpointMaxSmall} {
     width: 100%;

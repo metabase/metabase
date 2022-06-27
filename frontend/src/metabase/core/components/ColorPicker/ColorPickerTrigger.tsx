@@ -26,7 +26,7 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
     <TriggerContainer {...props} ref={ref}>
       <ColorPill color={value} isAuto={isAuto} onClick={onClick} />
       <ColorInput
-        value={value}
+        value={!isAuto ? value : undefined}
         placeholder={placeholder}
         fullWidth
         onChange={onChange}

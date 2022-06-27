@@ -14,6 +14,7 @@
             [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Table Timeline TimelineEvent ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
+            [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision :refer [Revision]]
@@ -43,16 +44,21 @@
   (-> (mt/run-mbql-query venues {:aggregation [[:count]]}) :data :cols first :base_type))
 
 (def card-defaults
+  "The default card params."
   {:archived            false
    :collection_id       nil
    :collection_position nil
+   :collection_preview  true
    :dataset_query       {}
    :dataset             false
    :description         nil
    :display             "scalar"
    :enable_embedding    false
+   :entity_id           nil
    :embedding_params    nil
    :made_public_by_id   nil
+   :parameters          []
+   :parameter_mappings  []
    :moderation_reviews  ()
    :public_uuid         nil
    :query_type          nil
@@ -306,18 +312,25 @@
           (mt/with-model-cleanup [Card]
             (let [card (assoc (card-with-name-and-query (mt/random-name)
                                                         (mbql-count-query (mt/id) (mt/id :venues)))
-                              :collection_id (u/the-id collection))]
+                              :collection_id      (u/the-id collection)
+                              :parameters         [{:id "abc123", :name "test", :type "date"}]
+                              :parameter_mappings [{:parameter_id "abc123", :card_id 10,
+                                                    :target [:dimension [:template-tags "category"]]}])]
               (is (= (merge
                       card-defaults
                       {:name                   (:name card)
                        :collection_id          true
                        :collection             true
                        :creator_id             (mt/user->id :rasta)
+                       :parameters             [{:id "abc123", :name "test", :type "date"}]
+                       :parameter_mappings     [{:parameter_id "abc123", :card_id 10,
+                                                 :target ["dimension" ["template-tags" "category"]]}]
                        :dataset_query          true
                        :query_type             "query"
                        :visualization_settings {:global {:title nil}}
                        :database_id            true
                        :table_id               true
+                       :entity_id              true
                        :can_write              true
                        :dashboard_count        0
                        :result_metadata        true
@@ -337,12 +350,23 @@
                          (update :collection_id integer?)
                          (update :dataset_query map?)
                          (update :collection map?)
+                         (update :entity_id string?)
                          (update :result_metadata (partial every? map?))
                          (update :creator dissoc :is_qbnewb)
                          (update :last-edit-info (fn [edit-info]
                                                    (-> edit-info
                                                        (update :id boolean)
                                                        (update :timestamp boolean))))))))))))))
+
+(deftest create-card-validation-test
+  (testing "POST /api/card"
+   (is (= {:errors {:visualization_settings "value must be a map."}}
+          (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
+
+   (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
+                                     "Each parameter must be a map with :id and :type keys")}}
+          (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
+                                                             :parameters             "abc"})))))
 
 (deftest save-empty-card-test
   (testing "POST /api/card"
@@ -641,7 +665,7 @@
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
           (is (= (merge
                   card-defaults
-                  (select-keys card [:id :name :created_at :updated_at])
+                  (select-keys card [:id :name :entity_id :created_at :updated_at])
                   {:dashboard_count        0
                    :creator_id             (mt/user->id :rasta)
                    :creator                (merge
@@ -754,6 +778,50 @@
       (is (= ""
              (db/select-one-field :description Card :id (u/the-id card)))))))
 
+(deftest update-card-parameters-test
+  (testing "PUT /api/card/:id"
+    (mt/with-temp Card [card]
+      (testing "successfully update with valid parameters"
+        (is (partial= {:parameters [{:id   "random-id"
+                                     :type "number"}]}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameters [{:id   "random-id"
+                                                           :type "number"}]})))))
+
+    (mt/with-temp Card [card {:parameters [{:id   "random-id"
+                                            :type "number"}]}]
+      (testing "nil parameters will no-op"
+        (is (partial= {:parameters [{:id   "random-id"
+                                     :type "number"}]}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameters nil}))))
+      (testing "an empty list will remove parameters"
+        (is (partial= {:parameters []}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameters []})))))))
+
+(deftest update-card-parameter-mappings-test
+  (testing "PUT /api/card/:id"
+    (mt/with-temp Card [card]
+      (testing "successfully update with valid parameter_mappings"
+        (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
+                                             :target ["dimension" ["template-tags" "category"]]}]}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
+                                                                   :target ["dimension" ["template-tags" "category"]]}]})))))
+
+    (mt/with-temp Card [card {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
+                                                    :target ["dimension" ["template-tags" "category"]]}]}]
+      (testing "nil parameters will no-op"
+        (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
+                                             :target ["dimension" ["template-tags" "category"]]}]}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameters nil}))))
+      (testing "an empty list will remove parameter_mappings"
+        (is (partial= {:parameter_mappings []}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameter_mappings []})))))))
+
 (deftest update-embedding-params-test
   (testing "PUT /api/card/:id"
     (mt/with-temp Card [card]
@@ -782,6 +850,14 @@
                             {:collection_position 1})
       (is (= 1
              (db/select-one-field :collection_position Card :id (u/the-id card)))))))
+
+(deftest can-we-change-the-collection-preview-flag-of-a-card-
+  (mt/with-temp Card [card]
+    (with-cards-in-writeable-collection card
+      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                            {:collection_preview false})
+      (is (= false
+             (db/select-one-field :collection_preview Card :id (u/the-id card)))))))
 
 (deftest ---and-unset--unpin--it-as-well-
   (mt/with-temp Card [card {:collection_position 1}]
@@ -1771,6 +1847,167 @@
                                                                :model "card" :archived "false")))
                   (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
                                                                :model "card" :archived "false"))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           PARAMETER VALUES ENDPOINTS                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- do-with-param-values-fixtures
+  [query-type card-values f]
+  {:pre [(#{:native :query} query-type)]}
+  (mt/with-temp* [Card [card]]
+    (let [card-defaults
+          (if (= query-type :query)
+            ;; notebook query with parameters are fields
+            {:database_id   (mt/id)
+             :table_id      (mt/id :venues)
+             :dataset_query (mt/mbql-query venues)
+             :parameters [{:name "Category Name"
+                           :slug "category_name"
+                           :id   "_CATEGORY_NAME_"
+                           :type "category"}
+                          {:name "Category ID"
+                           :slug "category_id"
+                           :id   "_CATEGORY_ID_"
+                           :type "category"}]
+             :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                   :card_id      (:id card)
+                                   :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
+                                  {:parameter_id "_CATEGORY_ID_"
+                                   :card_id      (:id card)
+                                   :target       [:dimension (mt/$ids venues $category_id)]}]}
+            ;; native query with parameters are template tags
+            {:database_id (mt/id)
+             :query_type :native
+             :dataset_query {:database (mt/id)
+                             :type     :native
+                             :native
+                             {:query         (str "SELECT * FROM VENUES WHERE {{category}} and {{category_id}};")
+                              :template-tags {"category"      {:id           "c7fcf1fa"
+                                                               :name         "category"
+                                                               :display-name "Category"
+                                                               :type         :dimension
+                                                               :dimension    [:field (mt/$ids venues $category_id->categories.name) nil]
+                                                               :widget-type  :string/=}
+                                              "category_id"   {:id           "a3cd3f3b"
+                                                               :name         "category_id"
+                                                               :display-name "Category"
+                                                               :type         :dimension
+                                                               :dimension    [:field (mt/$ids venues $category_id) nil]
+                                                               :widget-type  :number/=}}}}
+
+             :parameters [{:name "Category_name"
+                           :slug "category_name"
+                           :id   "_CATEGORY_NAME_"
+                           :type "category"}
+                          {:name "Category ID"
+                           :slug "category_id"
+                           :id   "_CATEGORY_ID_"
+                           :type "category"}]
+             :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                   :card_id      (:id card)
+                                   :target       [:template-tag {:id "c7fcf1fa"}]}
+                                  {:parameter_id "_CATEGORY_ID_"
+                                   :card_id      (:id card)
+                                   :target       [:template-tag {:id "a3cd3f3b"}]}]})]
+      (db/update! Card (:id card)
+                  (merge card-defaults card-values)))
+    (f {:card       card
+        :param-ids {:category-name "_CATEGORY_NAME_"
+                    :category-id   "_CATEGORY_ID_"}})))
+
+(defmacro ^:private with-param-values-fixtures
+  "Create a query and its parameters."
+  {:style/indent 2}
+  [query-type [binding card-values] & body]
+  `(do-with-param-values-fixtures ~query-type ~card-values (fn [~binding] ~@body)))
+
+(defn- param-values-values-url [card-or-id param-id]
+  (format "card/%d/params/%s/values" (u/the-id card-or-id) (name param-id)))
+
+(defn- param-values-search-url [card-or-id param-id query]
+  (str (format "card/%d/params/%s/search/" (u/the-id card-or-id) (name param-id))
+       query))
+
+(deftest param-values-test
+  (testing "GET /api/card/:id/params/:param-id/values"
+    (doseq [query-type [:query :native]]
+      (testing (format "With %s question" (name query-type))
+        (with-param-values-fixtures query-type [{:keys [card param-ids]}]
+          (testing "Show me names of categories"
+            (is (= ["African" "American" "Artisan"]
+                   (take 3 (mt/user-http-request :rasta :get 200 (param-values-values-url
+                                                                   card
+                                                                   (:category-name param-ids))))))))
+
+        (testing "Should require perms for the Card"
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp Collection [collection]
+              (with-param-values-fixtures query-type [{:keys [card param-ids]} {:collection_id (:id collection)}]
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :get 403 (param-values-values-url
+                                                               card
+                                                               (:category-name param-ids)))))))))
+
+        (testing "should check perms for the Fields in question"
+          (mt/with-temp-copy-of-db
+            (with-param-values-fixtures query-type [{:keys [card param-ids]}]
+              (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 (param-values-values-url
+                                                             card
+                                                             (:category-name param-ids))))))))))))
+
+(deftest param-values-search-test
+  (testing "GET /api/card/:id/params/:param-id/search/:query"
+    (doseq [query-type [:native :query]]
+      (testing (format "With %s question" (name query-type))
+        (with-param-values-fixtures :query [{:keys [card param-ids]}]
+          (let [url (param-values-search-url card (:category-name param-ids) "bar")]
+            (testing (str "\n" url)
+              (testing "\nShow me names of categories that include 'bar' (case-insensitive)"
+                (is (= ["Bar" "Gay Bar" "Juice Bar"]
+                       (take 3 (mt/user-http-request :rasta :get 200 url)))))))
+
+          (let [url (param-values-search-url card (:category-name param-ids) "house")]
+            (testing "\nShow me names of categories that include 'house' that have expensive venues (price = 4)"
+              (is (= ["Steakhouse"]
+                     (take 3 (mt/user-http-request :rasta :get 200 url))))))
+
+          (testing "Should require a non-empty query"
+            (doseq [query [nil
+                           ""
+                           "   "
+                           "\n"]]
+              (let [url (param-values-search-url card (:category-name param-ids) query)]
+                (is (= "API endpoint does not exist."
+                       (mt/user-http-request :rasta :get 404 url)))))))
+
+        (testing "Should require perms for the card"
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp Collection [collection]
+              (with-param-values-fixtures :query [{:keys [card param-ids]} {:collection_id (:id collection)}]
+                (let [url (param-values-search-url card (:category-name param-ids) "s")]
+                  (testing (str "\n url")
+                    (is (= "You don't have permissions to do that."
+                           (mt/user-http-request :rasta :get 403 url)))))))))))))
+
+(deftest param-values-human-readable-values-remapping-test
+  (testing "Get param values for Fields that have Human-Readable values\n"
+    (doseq [query-type [:native :query]]
+      (testing (format "With %s question" (name query-type))
+        (chain-filter-test/with-human-readable-values-remapping
+          (with-param-values-fixtures query-type [{:keys [card param-ids]}]
+            (testing "GET /api/card/:id/params/:param-id/values"
+              (let [url (param-values-values-url card (:category-id param-ids))]
+                (is (= [[2 "American"]
+                        [3 "Artisan"]]
+                       (take 2 (mt/user-http-request :rasta :get 200 url))))))
+
+            (testing "GET /api/card/:id/params/:param-id/search/:query"
+              (let [url (param-values-search-url card (:category-id param-ids) "house")]
+                (is (= [[67 "Steakhouse"]]
+                       (take 1 (mt/user-http-request :rasta :get 200 url))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUBLIC SHARING ENDPOINTS                                            |

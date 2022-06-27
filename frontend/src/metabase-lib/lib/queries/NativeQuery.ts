@@ -25,8 +25,9 @@ import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
 import Variable, { TemplateTagVariable } from "../Variable";
+import { createTemplateTag } from "metabase-lib/lib/queries/TemplateTag";
 import DimensionOptions from "../DimensionOptions";
-import { ValidationError } from "metabase-lib/lib/ValidationError";
+import ValidationError from "metabase-lib/lib/ValidationError";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
@@ -281,6 +282,10 @@ export default class NativeQuery extends AtomicQuery {
     return Object.values(this.templateTagsMap());
   }
 
+  hasSnippets() {
+    return this.templateTags().some(t => t.type === "snippet");
+  }
+
   templateTagsWithoutSnippets(): TemplateTag[] {
     return this.templateTags().filter(t => t.type !== "snippet");
   }
@@ -418,21 +423,7 @@ export default class NativeQuery extends AtomicQuery {
    */
   _getUpdatedTemplateTags(queryText: string): TemplateTags {
     if (queryText && this.supportsNativeParameters()) {
-      let tags = [];
-      // look for variable usage in the query (like '{{varname}}').  we only allow alphanumeric characters for the variable name
-      // a variable name can optionally end with :start or :end which is not considered part of the actual variable name
-      // expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
-      // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
-      // variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
-      let match;
-      const re = /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_\.]+?|#[0-9]*)\s*\}\}/g;
-
-      while ((match = re.exec(queryText)) != null) {
-        tags.push(match[1]);
-      }
-
-      // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
-      tags = _.uniq(tags);
+      const tags = recognizeTemplateTags(queryText);
       const existingTemplateTags = this.templateTagsMap();
       const existingTags = Object.keys(existingTemplateTags);
 
@@ -472,12 +463,7 @@ export default class NativeQuery extends AtomicQuery {
 
           // create new vars
           for (const tagName of newTags) {
-            templateTags[tagName] = {
-              id: Utils.uuid(),
-              name: tagName,
-              "display-name": humanize(tagName),
-              type: "text",
-            };
+            templateTags[tagName] = createTemplateTag(tagName);
 
             // parse card ID from tag name for card query template tags
             if (isCardQueryName(tagName)) {
@@ -528,4 +514,22 @@ export default class NativeQuery extends AtomicQuery {
         };
       });
   }
+}
+
+// look for variable usage in the query (like '{{varname}}').  we only allow alphanumeric characters for the variable name
+// a variable name can optionally end with :start or :end which is not considered part of the actual variable name
+// expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
+// anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
+// variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
+export function recognizeTemplateTags(queryText: string): string[] {
+  const tagNames = [];
+  let match;
+  const re = /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_\.]+?|#[0-9]*)\s*\}\}/g;
+
+  while ((match = re.exec(queryText)) != null) {
+    tagNames.push(match[1]);
+  }
+
+  // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
+  return _.uniq(tagNames);
 }

@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { updateIn } from "icepick";
+import { assoc, updateIn } from "icepick";
 
 import { createAction } from "redux-actions";
 
@@ -16,6 +16,11 @@ import {
 
 import { updateQuestion } from "./core";
 import { SET_UI_CONTROLS } from "./ui";
+
+import {
+  getTemplateTagsForParameters,
+  getTemplateTagParameters,
+} from "metabase/parameters/utils/cards";
 
 export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
@@ -124,7 +129,7 @@ export const setTemplateTag = createThunkAction(
       }
 
       // we need to preserve the order of the keys to avoid UI jumps
-      return updateIn(
+      const updatedTagsCard = updateIn(
         updatedCard,
         ["dataset_query", "native", "template-tags"],
         tags => {
@@ -136,6 +141,12 @@ export const setTemplateTag = createThunkAction(
               : templateTag;
           return { ...tags, [name]: newTag };
         },
+      );
+
+      return assoc(
+        updatedTagsCard,
+        "parameters",
+        getTemplateTagParameters(getTemplateTagsForParameters(updatedTagsCard)),
       );
     };
   },

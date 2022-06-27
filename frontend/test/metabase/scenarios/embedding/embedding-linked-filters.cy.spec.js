@@ -3,7 +3,7 @@ import {
   visitEmbeddedPage,
   filterWidget,
   popover,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import {
   nativeQuestionDetails,

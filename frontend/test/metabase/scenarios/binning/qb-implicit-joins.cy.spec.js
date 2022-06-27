@@ -4,7 +4,7 @@ import {
   visualize,
   summarize,
   visitQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 /**
  * The list of issues this spec covers:

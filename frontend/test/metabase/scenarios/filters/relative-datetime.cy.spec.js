@@ -5,7 +5,7 @@ import {
   sidebar,
   popover,
   openOrdersTable,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const STARTING_FROM_UNITS = [
   "minutes",
@@ -79,8 +79,6 @@ describe("scenarios > question > relative-datetime", () => {
 
       cy.findByTextEnsureVisible("Created At").click();
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
       popover().within(() => {
         cy.findByText("Filter by this column").click();
         cy.icon("chevronleft").should("not.exist");
@@ -98,7 +96,40 @@ describe("scenarios > question > relative-datetime", () => {
     });
   });
 
+  function assertOptions(expectedOptions) {
+    cy.findAllByRole("option").each(($option, index) => {
+      cy.wrap($option).should("have.text", expectedOptions[index]);
+    });
+  }
+
   describe("basic functionality", () => {
+    it("starting from should contain units only equal or greater than the filter unit", () => {
+      openOrdersTable();
+
+      cy.findByTextEnsureVisible("Created At").click();
+      popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByText("Relative dates...").click();
+      });
+
+      addStartingFrom();
+
+      cy.findByTestId("starting-from-unit").click();
+
+      assertOptions([
+        "days ago",
+        "weeks ago",
+        "months ago",
+        "quarters ago",
+        "years ago",
+      ]);
+
+      setRelativeDatetimeUnit("quarters");
+      cy.findByTestId("starting-from-unit").click();
+
+      assertOptions(["quarters ago", "years ago"]);
+    });
+
     it("should go back to shortcuts view", () => {
       openOrdersTable();
 
@@ -117,7 +148,6 @@ describe("scenarios > question > relative-datetime", () => {
     it("current filters should work (metabase#21977)", () => {
       openOrdersTable();
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
       cy.findByTextEnsureVisible("Created At").click();
       popover().within(() => {
         cy.findByText("Filter by this column").click();
@@ -182,23 +212,21 @@ describe("scenarios > question > relative-datetime", () => {
     it("should allow changing values with starting from (metabase#22227)", () => {
       openOrdersTable();
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
       openCreatedAt("Past");
       addStartingFrom();
       setRelativeDatetimeUnit("months");
       setRelativeDatetimeValue(1);
       popover().within(() => {
-        cy.findByText("Add filter").click();
+        cy.button("Add filter").click();
       });
       cy.wait("@dataset");
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
       cy.findByTextEnsureVisible(
         "Created At Previous Month, starting 7 months ago",
       ).click();
       setRelativeDatetimeValue(3);
       popover().within(() => {
-        cy.findByText("Update filter").click();
+        cy.button("Update filter").click();
       });
       cy.wait("@dataset");
 
@@ -207,9 +235,10 @@ describe("scenarios > question > relative-datetime", () => {
       ).click();
       setStartingFromValue(30);
       popover().within(() => {
-        cy.findByText("Update filter").click();
+        cy.button("Update filter").click();
       });
       cy.wait("@dataset");
+
       cy.findByTextEnsureVisible(
         "Created At Previous 3 Months, starting 30 months ago",
       );
@@ -217,8 +246,6 @@ describe("scenarios > question > relative-datetime", () => {
 
     it("starting from option should set correct sign (metabase#22228)", () => {
       openOrdersTable();
-
-      cy.intercept("POST", "/api/dataset").as("dataset");
 
       openCreatedAt("Next");
       addStartingFrom();
@@ -285,9 +312,9 @@ const setRelativeDatetimeUnit = unit => {
 };
 
 const setRelativeDatetimeValue = value => {
-  cy.findAllByTestId("relative-datetime-value")
+  cy.findByTestId("relative-datetime-value")
+    .click()
     .clear()
-    .clear() // Included twice because it's buggy sometimes
     .type(value)
     .blur();
 };
@@ -300,9 +327,9 @@ const setStartingFromUnit = unit => {
 };
 
 const setStartingFromValue = value => {
-  cy.findAllByTestId("starting-from-value")
+  cy.findByTestId("starting-from-value")
+    .click()
     .clear()
-    .clear() // Included twice because it's buggy sometimes
     .type(value)
     .blur();
 };

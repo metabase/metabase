@@ -11637,6 +11637,292 @@ databaseChangeLog:
             columnName: creator_id
             columnDataType: int
 
+  # v44.00-002 through -011 add entity_id columns to several internal entities.
+  # These are fixed-width string fields populated with a random 21-character
+  # NanoID value, and used by the serialization system to de-duplicate entities
+  # in a portable way. See the serialization design doc in the design repo.
+  - changeSet:
+      id: v44.00-002
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: metric
+  - changeSet:
+      id: v44.00-003
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: segment
+  - changeSet:
+      id: v44.00-004
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: collection
+  - changeSet:
+      id: v44.00-005
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_dashboard
+  - changeSet:
+      id: v44.00-006
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: dimension
+  - changeSet:
+      id: v44.00-007
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse
+  - changeSet:
+      id: v44.00-008
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_card
+  - changeSet:
+      id: v44.00-009
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: native_query_snippet
+  - changeSet:
+      id: v44.00-010
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: timeline
+  - changeSet:
+      id: v44.00-011
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_dashboardcard
+  - changeSet:
+      id: v44.00-023
+      author: qnkhuat
+      comment: Added 0.44.0 - Add parameters to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: parameters
+                  type: ${text.type}
+                  remarks: List of parameter associated to a card
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+  - changeSet:
+      id: v44.00-024
+      author: qnkhuat
+      comment: Added 0.44.0 - Add parameters to report_card
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${text.type}
+            columnName: parameters
+            defaultNullValue: '[]'
+            tableName: report_card
+
+  - changeSet:
+      id: v44.00-025
+      author: qnkhuat
+      comment: Added 0.44.0 - Add parameter_mappings to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: parameter_mappings
+                  type: ${text.type}
+                  remarks: List of parameter associated to a card
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+  - changeSet:
+      id: v44.00-026
+      author: qnkhuat
+      comment: Added 0.44.0 - Add parameter_mappings to report_card
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${text.type}
+            columnName: parameter_mappings
+            defaultNullValue: '[]'
+            tableName: report_card
+
+  - changeSet:
+      id: v44.00-027
+      author: adam-james
+      comment: Added 0.44.0. Drop NOT NULL constraint for core_user.first_name
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: first_name
+            columnDataType: varchar(254)
+  - changeSet:
+      id: v44.00-028
+      author: adam-james
+      comment: Added 0.44.0. Drop NOT NULL constraint for core_user.last_name
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: last_name
+            columnDataType: varchar(254)
+
+  - changeSet:
+      id: v44.00-029
+      author: qnkhuat
+      comment: Added 0.44.0 - Add has_more_values to metabase_fieldvalues
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: has_more_values
+                  type: boolean
+                  remarks: true if the stored values list is a subset of all possible values
+                  defaultValueBoolean: false
+
+  - changeSet:
+      id: v44.00-033
+      author: qnkhuat
+      comment: >-
+        Added 0.43.0. Grant the 'All Users' Permissions Group readwrite perms for the Root Snippets Collection.
+      preConditions:
+        - onFail: MARK_RAN
+          # HACK: only run this on new instances (#21940)
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*) AS user_count FROM core_user
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT
+                all_users_group.id AS group_id,
+                '/collection/namespace/snippets/root/' AS object
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users_group
+              LEFT JOIN permissions p
+                      ON all_users_group.id = p.group_id
+                    AND p.object = '/collection/namespace/snippets/root/'
+              WHERE p.object IS NULL;
+
+  - changeSet:
+      id: v44.00-038
+      author: metamben
+      comment: Added 0.44.0 - Add collection_preview to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: collection_preview
+                  type: boolean
+                  remarks: Indicating whether the card should be visualized in the collection preview
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -9,13 +9,13 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
 import { t } from "ttag";
 import { PermissionsApi, SettingsApi } from "metabase/services";
-import { isSpecialGroup } from "metabase/lib/groups";
+import { isDefaultGroup } from "metabase/lib/groups";
 
 import _ from "underscore";
 
 import SettingToggle from "./SettingToggle";
 
-const groupIsMappable = group => !isSpecialGroup(group);
+const groupIsMappable = group => !isDefaultGroup(group);
 
 export default class GroupMappingsWidget extends React.Component {
   constructor(props, context) {

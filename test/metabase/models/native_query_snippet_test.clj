@@ -1,6 +1,7 @@
 (ns metabase.models.native-query-snippet-test
   (:require [clojure.test :refer :all]
             [metabase.models :refer [Collection NativeQuerySnippet]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.test :as mt]
             [toucan.db :as db]))
 
@@ -56,3 +57,11 @@
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
              (db/update! NativeQuerySnippet snippet-id :collection_id dest-collection-id)))))))
+
+(deftest identity-hash-test
+  (testing "Native query snippet hashes are composed of the name and the collection's hash"
+    (mt/with-temp* [Collection         [coll    {:name "field-db" :namespace :snippets :location "/"}]
+                    NativeQuerySnippet [snippet {:name "my snippet" :collection_id (:id coll)}]]
+      (is (= "0e4562b1"
+             (serdes.hash/raw-hash ["my snippet" (serdes.hash/identity-hash coll)])
+             (serdes.hash/identity-hash snippet))))))

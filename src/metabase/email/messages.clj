@@ -124,8 +124,8 @@
         message-body (stencil/render-file "metabase/email/new_user_invite"
                                           (merge (common-context)
                                                  {:emailType     "new_user_invite"
-                                                  :invitedName   (:first_name invited)
-                                                  :invitorName   (:first_name invitor)
+                                                  :invitedName   (or (:first_name invited) (:email invited))
+                                                  :invitorName   (or (:first_name invitor) (:email invitor))
                                                   :invitorEmail  (:email invitor)
                                                   :company       company
                                                   :joinUrl       join-url
@@ -162,7 +162,7 @@
      :message      (stencil/render-file "metabase/email/user_joined_notification"
                                         (merge (common-context)
                                                {:logoHeader        true
-                                                :joinedUserName    (:first_name new-user)
+                                                :joinedUserName    (or (:first_name new-user) (:email new-user))
                                                 :joinedViaSSO      google-auth?
                                                 :joinedUserEmail   (:email new-user)
                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?

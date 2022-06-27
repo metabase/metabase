@@ -1,4 +1,4 @@
-import { popover } from "__support__/e2e/cypress";
+import { popover } from "__support__/e2e/helpers";
 
 export function openColumnOptions(column) {
   cy.findByText(column).click();

@@ -2,8 +2,7 @@ import React from "react";
 import { render, screen } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 
-import {
-  ValidationError,
+import ValidationError, {
   VALIDATION_ERROR_TYPES,
 } from "metabase-lib/lib/ValidationError";
 

@@ -1,3 +1,7 @@
+---
+title: My linked filters don't work
+---
+
 # My linked filters don't work
 
 You have created a [linked filter][linked-filter-gloss] so that (for example) if a dashboard contains both a "State" and a "City" filter, the "City" filter only shows cities in the state selected by the "State" filter. However:

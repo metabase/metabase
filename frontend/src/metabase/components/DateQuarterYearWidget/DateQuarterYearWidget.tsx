@@ -43,11 +43,6 @@ class DateQuarterYearWidget extends React.Component<Props, State> {
     }
   }
 
-  static format = (value: string) => {
-    const m = moment(value, "[Q]Q-YYYY");
-    return m.isValid() ? m.format("[Q]Q, YYYY") : "";
-  };
-
   componentWillUnmount() {
     const { quarter, year } = this.state;
     if (quarter != null && year != null) {

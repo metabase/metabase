@@ -10,7 +10,7 @@ import {
   modal,
   openNewCollectionItemFlowFor,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -29,9 +29,8 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should create new dashboard and navigate to it from the nav bar and from the root collection (metabase#20638)", () => {
-    // Create dashboard
     cy.visit("/");
-    cy.icon("add").click();
+    cy.findByText("New").click();
     cy.findByText("Dashboard").click();
 
     createDashboardUsingUI("Dash A", "Desc A");

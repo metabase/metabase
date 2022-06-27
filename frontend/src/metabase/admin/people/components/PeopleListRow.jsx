@@ -5,6 +5,7 @@ import moment from "moment";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
+import { getFullName } from "metabase/lib/user";
 import * as Urls from "metabase/lib/urls";
 
 import EntityMenu from "metabase/components/EntityMenu";
@@ -47,7 +48,7 @@ const PeopleListRow = ({
             user={user}
           />
         </span>{" "}
-        <span className="ml2 text-bold">{user.common_name}</span>
+        <span className="ml2 text-bold">{getName(user)}</span>
       </td>
       <td>
         {user.google_auth ? (
@@ -126,5 +127,20 @@ const PeopleListRow = ({
     </tr>
   );
 };
+
+/**
+ *
+ * @param {import("metabase-types/api").User} user
+ * @returns {string}
+ */
+function getName(user) {
+  const name = getFullName(user);
+
+  if (!name) {
+    return "-";
+  }
+
+  return name;
+}
 
 export default PeopleListRow;

@@ -1,3 +1,7 @@
+---
+title: Fixing permissions issues
+---
+
 # Fixing permissions issues
 
 This troubleshooting guide has you covered if you've [connected your database][connecting-database] to Metabase, set up [groups][groups] for new people, and granted [data permissions][data-permissions] and [collection permissions][setting-collection-permissions] to those groups, but:

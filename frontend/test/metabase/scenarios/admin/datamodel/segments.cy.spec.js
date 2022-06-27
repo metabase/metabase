@@ -1,5 +1,5 @@
 // Ported from `segments.e2e.spec.js`
-import { restore, popover, modal } from "__support__/e2e/cypress";
+import { restore, popover, modal } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 

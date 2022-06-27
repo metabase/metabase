@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -14,6 +14,7 @@ import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
@@ -32,10 +33,10 @@ import QuestionFilters, {
   QuestionFilterWidget,
 } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
+import QuestionActions from "../QuestionActions";
 import NativeQueryButton from "./NativeQueryButton";
 import {
   AdHocViewHeading,
-  DatasetHeaderButtonContainer,
   SaveButton,
   SavedQuestionHeaderButtonContainer,
   ViewHeaderMainLeftContentContainer,
@@ -44,6 +45,7 @@ import {
   ViewSubHeaderRoot,
   StyledLastEditInfoLabel,
   StyledQuestionDataSource,
+  SavedQuestionLeftSideRoot,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -77,7 +79,6 @@ const viewTitleHeaderPropTypes = {
   onCloseFilter: PropTypes.func,
   onOpenQuestionDetails: PropTypes.func,
   onCloseQuestionDetails: PropTypes.func,
-  onOpenQuestionHistory: PropTypes.func,
 
   isPreviewable: PropTypes.bool,
   isPreviewing: PropTypes.bool,
@@ -129,9 +130,7 @@ export function ViewTitleHeader(props) {
         style={style}
         data-testid="qb-header"
       >
-        {isDataset ? (
-          <DatasetLeftSide {...props} />
-        ) : isSaved ? (
+        {isSaved ? (
           <SavedQuestionLeftSide {...props} />
         ) : (
           <AhHocQuestionLeftSide
@@ -167,9 +166,8 @@ SavedQuestionLeftSide.propTypes = {
   isObjectDetail: PropTypes.bool,
   isAdditionalInfoVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
-  onOpenQuestionDetails: PropTypes.func.isRequired,
-  onCloseQuestionDetails: PropTypes.func.isRequired,
-  onOpenQuestionHistory: PropTypes.func.isRequired,
+  onOpenQuestionInfo: PropTypes.func.isRequired,
+  onSave: PropTypes.func,
 };
 
 function SavedQuestionLeftSide(props) {
@@ -177,42 +175,42 @@ function SavedQuestionLeftSide(props) {
     question,
     isObjectDetail,
     isAdditionalInfoVisible,
-    isShowingQuestionDetailsSidebar,
-    onOpenQuestionDetails,
-    onCloseQuestionDetails,
-    onOpenQuestionHistory,
+    onOpenQuestionInfo,
+    onSave,
   } = props;
+
+  const [showSubHeader, setShowSubHeader] = useState(true);
+
+  useOnMount(() => {
+    const timerId = setTimeout(() => {
+      setShowSubHeader(false);
+    }, 4000);
+    return () => clearTimeout(timerId);
+  });
 
   const hasLastEditInfo = question.lastEditInfo() != null;
 
-  const onHeaderClick = useCallback(() => {
-    if (isShowingQuestionDetailsSidebar) {
-      onCloseQuestionDetails();
-    } else {
-      onOpenQuestionDetails({ closeOtherSidebars: true });
-    }
-  }, [
-    isShowingQuestionDetailsSidebar,
-    onOpenQuestionDetails,
-    onCloseQuestionDetails,
-  ]);
+  const onHeaderChange = useCallback(
+    name => {
+      if (name && name !== question.displayName()) {
+        onSave(question.setDisplayName(name).card());
+      }
+    },
+    [question, onSave],
+  );
 
   return (
-    <div>
+    <SavedQuestionLeftSideRoot
+      data-testid="qb-header-left-side"
+      showSubHeader={showSubHeader}
+    >
       <ViewHeaderMainLeftContentContainer>
         <SavedQuestionHeaderButtonContainer>
           <SavedQuestionHeaderButton
             question={question}
-            isActive={isShowingQuestionDetailsSidebar}
-            onClick={onHeaderClick}
+            onSave={onHeaderChange}
           />
         </SavedQuestionHeaderButtonContainer>
-        {hasLastEditInfo && isAdditionalInfoVisible && (
-          <StyledLastEditInfoLabel
-            item={question.card()}
-            onClick={onOpenQuestionHistory}
-          />
-        )}
       </ViewHeaderMainLeftContentContainer>
       {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
@@ -223,9 +221,15 @@ function SavedQuestionLeftSide(props) {
               subHead
             />
           )}
+          {hasLastEditInfo && isAdditionalInfoVisible && (
+            <StyledLastEditInfoLabel
+              item={question.card()}
+              onClick={onOpenQuestionInfo}
+            />
+          )}
         </ViewHeaderLeftSubHeading>
       )}
-    </div>
+    </SavedQuestionLeftSideRoot>
   );
 }
 
@@ -235,6 +239,7 @@ AhHocQuestionLeftSide.propTypes = {
   isNative: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
   isSummarized: PropTypes.bool,
+  onOpenModal: PropTypes.func,
 };
 
 function AhHocQuestionLeftSide(props) {
@@ -244,11 +249,14 @@ function AhHocQuestionLeftSide(props) {
     isNative,
     isObjectDetail,
     isSummarized,
+    onOpenModal,
   } = props;
+
+  const handleTitleClick = () => onOpenModal(MODAL_TYPES.SAVE);
   return (
     <div>
       <ViewHeaderMainLeftContentContainer>
-        <AdHocViewHeading>
+        <AdHocViewHeading color="medium">
           {isNative ? (
             t`New question`
           ) : (
@@ -256,6 +264,7 @@ function AhHocQuestionLeftSide(props) {
               question={question}
               originalQuestion={originalQuestion}
               isObjectDetail={isObjectDetail}
+              onClick={handleTitleClick}
             />
           )}
         </AdHocViewHeading>
@@ -277,65 +286,6 @@ function AhHocQuestionLeftSide(props) {
           />
         )}
       </ViewHeaderLeftSubHeading>
-    </div>
-  );
-}
-
-DatasetLeftSide.propTypes = {
-  question: PropTypes.object.isRequired,
-  isAdditionalInfoVisible: PropTypes.bool,
-  isShowingQuestionDetailsSidebar: PropTypes.bool,
-  onOpenQuestionDetails: PropTypes.func.isRequired,
-  onCloseQuestionDetails: PropTypes.func.isRequired,
-};
-
-function DatasetLeftSide(props) {
-  const {
-    question,
-    isAdditionalInfoVisible,
-    isShowingQuestionDetailsSidebar,
-    onOpenQuestionDetails,
-    onCloseQuestionDetails,
-  } = props;
-
-  const onHeaderClick = useCallback(() => {
-    if (isShowingQuestionDetailsSidebar) {
-      onCloseQuestionDetails();
-    } else {
-      onOpenQuestionDetails({ closeOtherSidebars: true });
-    }
-  }, [
-    isShowingQuestionDetailsSidebar,
-    onOpenQuestionDetails,
-    onCloseQuestionDetails,
-  ]);
-
-  return (
-    <div>
-      <ViewHeaderMainLeftContentContainer>
-        <AdHocViewHeading>
-          <HeadBreadcrumbs
-            divider="/"
-            parts={[
-              ...(isAdditionalInfoVisible
-                ? [
-                    <DatasetCollectionBadge
-                      key="collection"
-                      dataset={question}
-                    />,
-                  ]
-                : []),
-              <DatasetHeaderButtonContainer key="dataset-header-button">
-                <SavedQuestionHeaderButton
-                  question={question}
-                  isActive={isShowingQuestionDetailsSidebar}
-                  onClick={onHeaderClick}
-                />
-              </DatasetHeaderButtonContainer>,
-            ]}
-          />
-        </AdHocViewHeading>
-      </ViewHeaderMainLeftContentContainer>
     </div>
   );
 }
@@ -378,9 +328,16 @@ ViewTitleHeaderRightSide.propTypes = {
   onEditSummary: PropTypes.func,
   onCloseSummary: PropTypes.func,
   setQueryBuilderMode: PropTypes.func,
+  turnDatasetIntoQuestion: PropTypes.func,
   areFiltersExpanded: PropTypes.bool,
   onExpandFilters: PropTypes.func,
   onCollapseFilters: PropTypes.func,
+  isBookmarked: PropTypes.bool,
+  toggleBookmark: PropTypes.func,
+  onOpenQuestionInfo: PropTypes.func,
+  onCloseQuestionInfo: PropTypes.func,
+  isShowingQuestionInfoSidebar: PropTypes.bool,
+  onModelPersistenceChange: PropTypes.bool,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -388,6 +345,8 @@ function ViewTitleHeaderRightSide(props) {
     question,
     result,
     queryBuilderMode,
+    isBookmarked,
+    toggleBookmark,
     isSaved,
     isDataset,
     isNative,
@@ -409,17 +368,24 @@ function ViewTitleHeaderRightSide(props) {
     onEditSummary,
     onCloseSummary,
     setQueryBuilderMode,
+    turnDatasetIntoQuestion,
     areFiltersExpanded,
     onExpandFilters,
     onCollapseFilters,
+    isShowingQuestionInfoSidebar,
+    onCloseQuestionInfo,
+    onOpenQuestionInfo,
+    onModelPersistenceChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const query = question.query();
   const isReadOnlyQuery = query.readOnly();
   const canEditQuery = !isReadOnlyQuery;
   const canRunAdhocQueries = !isReadOnlyQuery;
+  const canNest = query.canNest();
   const hasExploreResultsLink =
     isNative &&
+    canNest &&
     isSaved &&
     canRunAdhocQueries &&
     MetabaseSettings.get("enable-nested-queries");
@@ -437,29 +403,19 @@ function ViewTitleHeaderRightSide(props) {
 
   const hasNewRowButton = isWritebackEnabled && !isNative && query.isRaw();
 
+  const handleInfoClick = useCallback(() => {
+    if (isShowingQuestionInfoSidebar) {
+      onCloseQuestionInfo();
+    } else {
+      onOpenQuestionInfo();
+    }
+  }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
+
   return (
     <div
       className="ml-auto flex align-center"
       data-testid="qb-header-action-panel"
     >
-      {hasSaveButton && (
-        <SaveButton
-          disabled={!question.canRun() || !canEditQuery}
-          tooltip={{
-            tooltip: t`You don't have permission to save this question.`,
-            isEnabled: !canEditQuery,
-            placement: "left",
-          }}
-          data-metabase-event={
-            isShowingNotebook
-              ? `Notebook Mode; Click Save`
-              : `View Mode; Click Save`
-          }
-          onClick={() => onOpenModal("save")}
-        >
-          {t`Save`}
-        </SaveButton>
-      )}
       {QuestionFilters.shouldRender(props) && (
         <FilterHeaderToggle
           className="ml2 mr1"
@@ -537,6 +493,37 @@ function ViewTitleHeaderRightSide(props) {
           onRun={() => runQuestionQuery({ ignoreCache: true })}
           onCancel={cancelQuery}
         />
+      )}
+      {isSaved && (
+        <QuestionActions
+          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
+          isBookmarked={isBookmarked}
+          handleBookmark={toggleBookmark}
+          onOpenModal={onOpenModal}
+          question={question}
+          setQueryBuilderMode={setQueryBuilderMode}
+          turnDatasetIntoQuestion={turnDatasetIntoQuestion}
+          onInfoClick={handleInfoClick}
+          onModelPersistenceChange={onModelPersistenceChange}
+        />
+      )}
+      {hasSaveButton && (
+        <SaveButton
+          disabled={!question.canRun() || !canEditQuery}
+          tooltip={{
+            tooltip: t`You don't have permission to save this question.`,
+            isEnabled: !canEditQuery,
+            placement: "left",
+          }}
+          data-metabase-event={
+            isShowingNotebook
+              ? `Notebook Mode; Click Save`
+              : `View Mode; Click Save`
+          }
+          onClick={() => onOpenModal("save")}
+        >
+          {t`Save`}
+        </SaveButton>
       )}
     </div>
   );

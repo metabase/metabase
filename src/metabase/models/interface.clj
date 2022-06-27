@@ -227,11 +227,22 @@
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)
   :update add-updated-at-timestamp)
 
+;; like `timestamped?`, but for models that only have an `:created_at` column
+(models/add-property! :created-at-timestamped?
+  :insert add-created-at-timestamp)
+
 ;; like `timestamped?`, but for models that only have an `:updated_at` column
 (models/add-property! :updated-at-timestamped?
   :insert add-updated-at-timestamp
   :update add-updated-at-timestamp)
 
+(defn- add-entity-id [obj & _]
+  (if (contains? obj :entity_id)
+    obj
+    (assoc obj :entity_id (u/generate-nano-id))))
+
+(models/add-property! :entity_id
+  :insert add-entity-id)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |

@@ -46,8 +46,12 @@ class FieldInner extends Base {
   id: number | FieldRef;
   name: string;
   semantic_type: string | null;
+  fingerprint: any;
+  base_type: string | null;
   table?: Table;
   target?: Field;
+  has_field_values?: "list" | "search" | "none";
+  values: any[];
 
   getId() {
     if (Array.isArray(this.id)) {

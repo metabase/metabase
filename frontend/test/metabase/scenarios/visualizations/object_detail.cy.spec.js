@@ -4,7 +4,7 @@ import {
   openOrdersTable,
   openPeopleTable,
   openProductsTable,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -135,7 +135,7 @@ describe("scenarios > question > object details", () => {
       .click();
   });
 
-  it.skip("should work with non-numeric IDs (metabse#22768)", () => {
+  it("should work with non-numeric IDs (metabse#22768)", () => {
     cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
       semantic_type: null,
     });

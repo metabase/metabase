@@ -5,7 +5,7 @@ import {
   popover,
   setupSMTP,
   describeEE,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -86,6 +86,23 @@ describe("scenarios > admin > people", () => {
       cy.findByText("Done").click();
 
       cy.findByText(FULL_NAME);
+    });
+
+    it("should allow admin to create new users without first name or last name (metabase#22754)", () => {
+      const { email } = TEST_USER;
+      cy.visit("/admin/people");
+      clickButton("Invite someone");
+
+      // bit of a hack since there are multiple "Email" nodes
+      cy.findByLabelText("Email").type(email);
+      clickButton("Create");
+
+      // second modal
+      cy.findByText(`${email} has been added`);
+      cy.findByText("Show").click();
+      cy.findByText("Done").click();
+
+      cy.findByText(email);
     });
 
     it("should disallow admin to create new users with case mutation of existing user", () => {
@@ -173,7 +190,7 @@ describe("scenarios > admin > people", () => {
       cy.findByText("Reset password").click();
       cy.findByText(`Reset ${FULL_NAME}'s password?`);
       clickButton("Reset password");
-      cy.findByText(`${first_name}'s password has been reset`);
+      cy.findByText(`${FULL_NAME}'s password has been reset`);
       cy.findByText(/^temporary password$/i);
       clickButton("Done");
     });
@@ -189,7 +206,7 @@ describe("scenarios > admin > people", () => {
       cy.findByText("Reset password").click();
       cy.findByText(`Reset ${FULL_NAME}'s password?`);
       clickButton("Reset password");
-      cy.findByText(`${first_name}'s password has been reset`).should(
+      cy.findByText(`${FULL_NAME}'s password has been reset`).should(
         "not.exist",
       );
       cy.findByText(/^temporary password$/i).should("not.exist");

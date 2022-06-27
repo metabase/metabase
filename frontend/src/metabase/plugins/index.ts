@@ -13,6 +13,7 @@ import {
   Group,
 } from "metabase-types/api";
 import { AdminPathKey, State } from "metabase-types/store";
+import { User } from "metabase-types/types/User";
 import { PluginGroupManagersType } from "./types";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
@@ -68,15 +69,17 @@ export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 // authentication providers
 export const PLUGIN_AUTH_PROVIDERS = [] as any;
 
-// Only show the password tab in account settings if these functions all return true
-export const PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS = [];
+// Only show the password tab in account settings if these functions all return true.
+// Otherwise, the user is logged in via SSO and should hide first name, last name, and email field in profile settings metabase#23298.
+export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
-  getHasCustomLogo: (state: State) => false,
   getHasCustomColors: (state: State) => false,
   getHasCustomBranding: (state: State) => false,
   canWhitelabel: (state: State) => false,
+  getHideMetabot: (state: State) => false,
+  getLoadingMessage: (state: State) => t`Doing science...`,
 };
 
 export const PLUGIN_FORM_WIDGETS = {};
@@ -98,12 +101,16 @@ const AUTHORITY_LEVEL_REGULAR = {
 };
 
 export const PLUGIN_COLLECTIONS = {
-  authorityLevelFormFields: [],
-  isRegularCollection: (_: Collection | Bookmark) => true,
-  REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
+  REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
+  isRegularCollection: (_: Collection | Bookmark) => true,
+  getAuthorityLevelFormFields: () => [],
+  getAuthorityLevelMenuItems: (
+    _collection: Collection,
+    _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
+  ) => [],
 };
 
 export const PLUGIN_COLLECTION_COMPONENTS = {
@@ -113,6 +120,8 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 export const PLUGIN_MODERATION = {
   isEnabled: () => false,
   QuestionModerationSection: PluginPlaceholder,
+  QuestionModerationButton: PluginPlaceholder,
+  ModerationReviewBanner: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
   getStatusIconForQuestion: object,
   getStatusIcon: object,
@@ -123,7 +132,9 @@ export const PLUGIN_CACHING = {
   dashboardCacheTTLFormField: null,
   databaseCacheTTLFormField: null,
   questionCacheTTLFormField: null,
-  getQuestionsImplicitCacheTTL: () => null,
+  getQuestionsImplicitCacheTTL: (question?: any) => null,
+  QuestionCacheSection: PluginPlaceholder,
+  isEnabled: () => false,
 };
 
 export const PLUGIN_REDUCERS: { applicationPermissionsPlugin: any } = {
@@ -181,5 +192,4 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
 export const PLUGIN_MODEL_PERSISTENCE = {
   isModelLevelPersistenceEnabled: () => false,
   ModelCacheControl: PluginPlaceholder as any,
-  ModelCacheManagementSection: PluginPlaceholder as any,
 };

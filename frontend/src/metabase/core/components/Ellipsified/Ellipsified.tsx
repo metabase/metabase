@@ -16,6 +16,7 @@ interface EllipsifiedProps {
   tooltipMaxWidth?: React.CSSProperties["maxWidth"];
   lines?: number;
   placement?: Placement;
+  "data-testid"?: string;
 }
 
 const Ellipsified = ({
@@ -28,6 +29,7 @@ const Ellipsified = ({
   tooltipMaxWidth,
   lines,
   placement = "top",
+  "data-testid": dataTestId,
 }: EllipsifiedProps) => {
   const [isTruncated, setIsTruncated] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -62,6 +64,7 @@ const Ellipsified = ({
         className={className}
         lines={lines}
         style={style}
+        data-testid={dataTestId}
       >
         {children}
       </EllipsifiedRoot>

@@ -31,6 +31,11 @@ describe("Filter", () => {
           false,
         );
       });
+      it("should return false with a null operator", () => {
+        expect(
+          filter([null, ["field", ORDERS.TOTAL.id, null], 42]).isValid(),
+        ).toBe(false);
+      });
       it("should return true for a filter with an expression for the field", () => {
         expect(
           filter(["=", ["/", ["field", 12341234, null], 43], 42]).isValid(),

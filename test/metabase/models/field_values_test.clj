@@ -9,6 +9,7 @@
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :refer [Table]]
             [metabase.sync :as sync]
             [metabase.test :as mt]
@@ -92,13 +93,16 @@
 
 (deftest distinct-values-test
   (with-redefs [metadata-queries/field-distinct-values (constantly [1 2 3 4])]
-    (is (= [1 2 3 4]
+    (is (= {:values          [1 2 3 4]
+            :has_more_values false}
            (#'field-values/distinct-values {}))))
 
-  (testing "(#2332) check that if field values are long we skip over them"
-    (with-redefs [metadata-queries/field-distinct-values (constantly [(str/join (repeat 50000 "A"))])]
-      (is (= nil
-             (#'field-values/distinct-values {}))))))
+  (testing "(#2332) check that if field values are long we only store a subset of it"
+    (with-redefs [metadata-queries/field-distinct-values (constantly ["AAAA" (str/join (repeat 50000 "A"))])]
+      (testing "The total length of stored values must less than our max-length-limit"
+        (is (= {:values          ["AAAA"]
+                :has_more_values true}
+              (#'field-values/distinct-values {})))))))
 
 (deftest clear-field-values!-test
   (mt/with-temp* [Database    [{database-id :id}]
@@ -118,22 +122,6 @@
 (defn- sync-and-find-values [db field-values-id]
   (sync/sync-database! db)
   (find-values field-values-id))
-
-(deftest values-less-than-total-max-length?-test
-  (testing "values-less-than-total-max-length?"
-    (with-redefs [field-values/total-max-length 10]
-      (is (= true
-             (#'field-values/values-less-than-total-max-length? ["a" "b" "c"])))
-      (is (= false
-             (#'field-values/values-less-than-total-max-length? ["123" "4567" "8901"])))
-      (testing "Should only consume enough values to determine whether length is over limit"
-        (let [realized? (atom false)
-              vs        (lazy-cat ["123" "4567" "8901" "2345"] (do (reset! realized? true) ["Shouldn't get here"]))]
-          (is (= false
-                 (#'field-values/values-less-than-total-max-length? vs)))
-          (testing "Entire lazy seq shouldn't be realized"
-            (is (= false
-                   @realized?))))))))
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
@@ -227,3 +215,13 @@
                              :values                [1 2 3 4]
                              :human_readable_values []}
                             (field-values))))))))))
+
+(deftest identity-hash-test
+  (testing "Field hashes are composed of the name and the table's identity-hash"
+    (mt/with-temp* [Database    [db    {:name "field-db" :engine :h2}]
+                    Table       [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+                    Field       [field {:name "sku" :table_id (:id table)}]
+                    FieldValues [fv    {:field_id (:id field)}]]
+      (is (= "6f5bb4ba"
+             (serdes.hash/raw-hash [(serdes.hash/identity-hash field)])
+             (serdes.hash/identity-hash fv))))))

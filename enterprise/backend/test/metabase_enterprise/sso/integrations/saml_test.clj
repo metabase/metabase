@@ -5,6 +5,7 @@
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase.config :as config]
             [metabase.http-client :as client]
+            [metabase.integrations.ldap :refer [ldap-enabled]]
             [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.user :refer [User]]
@@ -126,7 +127,8 @@
   (try
     (f)
     (finally
-      (u/ignore-exceptions (db/update-where! User {} :login_attributes nil)))))
+      (u/ignore-exceptions (do (db/update-where! User {} :login_attributes nil)
+                               (db/update-where! User {:email "rasta@metabase.com"} :first_name "Rasta" :last_name "Toucan"))))))
 
 (defmacro ^:private with-saml-default-setup [& body]
   `(with-valid-premium-features-token
@@ -231,6 +233,9 @@
 (defn- new-user-saml-test-response []
   (saml-response-from-file "test_resources/saml-test-response-new-user.xml"))
 
+(defn- new-user-no-names-saml-test-response []
+  (saml-response-from-file "test_resources/saml-test-response-new-user-no-names.xml"))
+
 (defn- new-user-with-single-group-saml-test-response []
   (saml-response-from-file "test_resources/saml-test-response-new-user-with-single-group.xml"))
 
@@ -254,7 +259,7 @@
         (select-keys attribute-keys))))
 
 (deftest validate-request-id-test
-  (testing "Sample response shoudl fail because _1 isn't a request ID that we issued."
+  (testing "Sample response should fail because _1 isn't a request ID that we issued."
     (with-saml-default-setup
       (do-with-some-validators-disabled
         (fn []
@@ -405,6 +410,44 @@
               (testing "attributes"
                 (is (= (some-saml-attributes "newuser")
                        (saml-login-attributes "newuser@metabase.com")))))
+            (finally
+              (db/delete! User :%lower.email "newuser@metabase.com"))))))))
+
+(deftest login-update-account-test
+  (testing "A new 'Unknown' name account will be created for a SAML user with no configured first or last name"
+    (do-with-some-validators-disabled
+      (fn []
+        (with-saml-default-setup
+          (try
+            (is (not (db/exists? User :%lower.email "newuser@metabase.com")))
+            ;; login with a user with no givenname or surname attributes
+            (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
+                                                         (saml/str->base64 default-redirect-uri))]
+              (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options)))
+              (is (= [{:email        "newuser@metabase.com"
+                       :first_name   nil
+                       :is_qbnewb    true
+                       :is_superuser false
+                       :id           true
+                       :last_name    nil
+                       :date_joined  true
+                       :common_name  "newuser@metabase.com"}]
+                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                          (map #(dissoc % :last_login))))))
+            ;; login with the same user, but now givenname and surname attributes exist
+            (let [req-options (saml-post-request-options (new-user-saml-test-response)
+                                                         (saml/str->base64 default-redirect-uri))]
+              (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options)))
+              (is (= [{:email        "newuser@metabase.com"
+                       :first_name   "New"
+                       :is_qbnewb    true
+                       :is_superuser false
+                       :id           true
+                       :last_name    "User"
+                       :date_joined  true
+                       :common_name  "New User"}]
+                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                          (map #(dissoc % :last_login))))))
             (finally
               (db/delete! User :%lower.email "newuser@metabase.com"))))))))
 

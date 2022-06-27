@@ -2,7 +2,7 @@ import {
   restore,
   downloadAndAssert,
   visitQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const questionDetails = {
   name: "19889",

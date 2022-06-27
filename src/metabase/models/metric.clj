@@ -7,6 +7,7 @@
             [metabase.models.dependency :as dependency :refer [Dependency]]
             [metabase.models.interface :as mi]
             [metabase.models.revision :as revision]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -37,7 +38,8 @@
   (merge
    models/IModelDefaults
    {:types      (constantly {:definition :metric-segment-definition})
-    :properties (constantly {:timestamped? true})
+    :properties (constantly {:timestamped? true
+                             :entity_id    true})
     :pre-update pre-update
     :pre-delete pre-delete})
   mi/IObjectPermissions
@@ -48,7 +50,10 @@
     ;; for the time being you need to be a superuser in order to create or update Metrics because the UI for doing so
     ;; is only exposed in the admin panel
     :can-write?        mi/superuser?
-    :can-create?       mi/superuser?}))
+    :can-create?       mi/superuser?})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
 
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------

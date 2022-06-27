@@ -41,6 +41,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   background-color: ${color("bg-medium")};
   background-color: ${getBackgroundColor};
   transition: background-color 0.3s;
+  flex-shrink: 0;
 
   &:after {
     content: "";
@@ -56,7 +57,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   }
 
   &:focus {
-    outline: 2px solid ${color("focus")};
+    outline: 2px solid ${() => color("focus")};
   }
 
   &:focus:not(:focus-visible) {

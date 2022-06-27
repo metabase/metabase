@@ -17,6 +17,20 @@
 ;;; |                                                     SHARED                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn assert-valid-parameters
+  "Receive a Paremeterized Object and check if its parameters is valid."
+  [{:keys [parameters]}]
+  (when (s/check (s/maybe [su/Parameter]) parameters)
+    (throw (ex-info (tru ":parameters must be a sequence of maps with :id and :type keys")
+                    {:parameters parameters}))))
+
+(defn assert-valid-parameter-mappings
+  "Receive a Paremeterized Object and check if its parameters is valid."
+  [{:keys [parameter_mappings]}]
+  (when (s/check (s/maybe [su/ParameterMapping]) parameter_mappings)
+    (throw (ex-info (tru ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys")
+                    {:parameter_mappings parameter_mappings}))))
+
 (s/defn unwrap-field-clause :- mbql.s/field
   "Unwrap something that contains a `:field` clause, such as a template tag, Also handles unwrapped integers for
   legacy compatibility.

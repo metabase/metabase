@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { restore, modal, popover, describeEE } from "__support__/e2e/cypress";
+import { restore, modal, popover, describeEE } from "__support__/e2e/helpers";
 
 describeEE("scenarios > admin > people", () => {
   beforeEach(() => {
@@ -21,7 +21,9 @@ describeEE("scenarios > admin > people", () => {
 
   describe("group managers", () => {
     it("can manage groups from the group page", () => {
-      cy.findByTextEnsureVisible("Groups").click();
+      cy.get(".AdminList").within(() => {
+        cy.findByTextEnsureVisible("Groups").click();
+      });
 
       // Edit group name
       cy.icon("ellipsis")

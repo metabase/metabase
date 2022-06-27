@@ -16,8 +16,16 @@ FilterRadio.defaultProps = {
   colorScheme: "accent7",
 };
 
-export const Container = styled.div`
+export const RadioContainer = styled.div`
   margin: 15px 20px 70px 20px;
+`;
+
+export const CheckboxContainer = styled.div`
+  min-height: 2.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-weight: bold;
 `;
 
 const ToggleButton = styled(Button)`

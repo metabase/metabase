@@ -5,7 +5,7 @@ import {
   filterWidget,
   showDashboardCardActions,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -240,6 +240,37 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .within(() => {
         cy.findByText("foo");
       });
+  });
+
+  it("should open the same dashboard when a custom URL click behavior points to the same dashboard (metabase#22702)", () => {
+    createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
+    cy.icon("pencil").click();
+    showDashboardCardActions();
+    cy.icon("click").click();
+
+    cy.findByText("On-click behavior for each column")
+      .parent()
+      .parent()
+      .within(() => cy.findByText("MY_NUMBER").click());
+    cy.findByText("Go to a custom destination").click();
+    cy.findByText("URL").click();
+
+    modal().within(() => {
+      cy.get("input")
+        .first()
+        .type("/dashboard/2?my_param=Aaron Hand");
+      cy.get("input")
+        .last()
+        .type("Click behavior");
+      cy.findByText("Done").click();
+    });
+
+    cy.findByText("Save").click();
+
+    cy.findByText("Click behavior").click();
+
+    cy.location("pathname").should("eq", "/dashboard/2");
+    cy.location("search").should("eq", "?my_param=Aaron%20Hand");
   });
 
   // This was flaking. Example: https://dashboard.cypress.io/projects/a394u1/runs/2109/test-results/91a15b66-4b80-40bf-b569-de28abe21f42
