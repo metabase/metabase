@@ -155,7 +155,7 @@ export const PathBreadcrumbsContainer = styled.div<
   PathBreadcrumbsContainerProps
 >`
   position: absolute;
-  top: 0px;
+  top: 0;
   left: 100px;
   height: ${APP_BAR_HEIGHT};
   display: flex;
@@ -166,4 +166,10 @@ export const PathBreadcrumbsContainer = styled.div<
     !props.isVisible
       ? `transition: opacity 0.5s, visibility 0s 0.5s;`
       : `transition: opacity 0.5s;`}
+`;
+
+export const ProfileLinkContainer = styled.div`
+  color: ${color("text-light")};
+  padding: 0.25rem;
+  margin-right: 0.5rem;
 `;

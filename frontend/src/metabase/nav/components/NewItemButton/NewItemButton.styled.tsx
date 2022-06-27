@@ -4,8 +4,6 @@ import NewItemMenu from "metabase/containers/NewItemMenu";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const NewMenu = styled(NewItemMenu)`
-  margin-right: 0.5rem;
-
   ${breakpointMaxSmall} {
     display: none;
   }

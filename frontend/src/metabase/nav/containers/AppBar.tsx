@@ -12,7 +12,6 @@ import SidebarButton from "metabase/nav/components/SidebarButton";
 import NewItemButton from "metabase/nav/components/NewItemButton";
 import PathBreadcrumbs from "../components/PathBreadcrumbs/PathBreadcrumbs";
 import ProfileLink from "metabase/nav/components/ProfileLink";
-import { ProfileLinkContainer } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 
 import { State } from "metabase-types/store";
 import { User } from "metabase-types/api";
@@ -23,9 +22,10 @@ import {
   getIsSearchVisible,
   getBreadcrumbCollectionId,
   getShowBreadcumb,
+  getIsProfileLinkVisible,
 } from "metabase/selectors/app";
 import { isMac } from "metabase/lib/browser";
-import { IFRAMED, isSmallScreen } from "metabase/lib/dom";
+import { isSmallScreen } from "metabase/lib/dom";
 
 import { logout } from "metabase/auth/actions";
 import {
@@ -38,21 +38,23 @@ import {
   RightContainer,
   SidebarButtonContainer,
   PathBreadcrumbsContainer,
+  ProfileLinkContainer,
 } from "./AppBar.styled";
 import { getUser } from "metabase/selectors/user";
 
-type Props = {
+interface Props {
   isNavBarOpen: boolean;
   isNavBarVisible: boolean;
   isSearchVisible: boolean;
   isNewButtonVisible: boolean;
+  isProfileLinkVisible: boolean;
   collectionId: string;
   showBreadcrumb: boolean;
   toggleNavbar: () => void;
   closeNavbar: () => void;
   currentUser: User;
   logout: () => void;
-};
+}
 
 function mapStateToProps(state: State) {
   return {
@@ -60,6 +62,7 @@ function mapStateToProps(state: State) {
     isNavBarOpen: getIsNavbarOpen(state),
     isSearchVisible: getIsSearchVisible(state),
     isNewButtonVisible: getIsNewButtonVisible(state),
+    isProfileLinkVisible: getIsProfileLinkVisible(state),
     collectionId: getBreadcrumbCollectionId(state),
     showBreadcrumb: getShowBreadcumb(state),
   };
@@ -84,6 +87,7 @@ function AppBar({
   isNavBarVisible,
   isSearchVisible,
   isNewButtonVisible,
+  isProfileLinkVisible,
   collectionId,
   showBreadcrumb,
   toggleNavbar,
@@ -162,7 +166,7 @@ function AppBar({
             </SearchBarContainer>
           )}
           {isNewButtonVisible && <NewItemButton />}
-          {!IFRAMED && (
+          {isProfileLinkVisible && (
             <ProfileLinkContainer>
               <ProfileLink user={currentUser} handleLogout={logout} />
             </ProfileLinkContainer>

@@ -133,12 +133,6 @@ export const LoadingTitle = styled.h2`
   margin-top: ${space(1)};
 `;
 
-export const ProfileLinkContainer = styled.div`
-  padding: ${space(0)};
-  border-top: 1px solid ${color("border")};
-  color: ${color("text-light")};
-`;
-
 export const HomePageLink = styled(SidebarLink)`
   padding-left: 12px;
 `;
