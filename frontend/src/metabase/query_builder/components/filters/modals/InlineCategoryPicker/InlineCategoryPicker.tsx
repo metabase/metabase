@@ -139,7 +139,6 @@ export function SimpleCategoryFilterPicker({
             key={option.toString()}
             checked={filterValues.includes(option)}
             onChange={e => handleChange(option, e.target.checked)}
-            checkedColor="accent2"
             label={option.toString()}
           />
         ))}
