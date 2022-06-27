@@ -126,8 +126,10 @@ export const getCollectionId = createSelector(
 );
 
 export const getIsCollectionPathVisible = createSelector(
-  [getRouterPath],
-  path => PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
+  [getQuestion, getDashboard, getRouterPath],
+  (question, dashboard, path) =>
+    (question != null || dashboard != null) &&
+    PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
 );
 
 export const getIsQuestionLineageVisible = createSelector(
