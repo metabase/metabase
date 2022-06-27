@@ -1,9 +1,8 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Query from "metabase-lib/lib/queries/Query";
-import { TemplateTag } from "metabase-types/types/Query";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { TemplateTag, TemplateTagType } from "metabase-types/types/Query";
+
 export default class Variable {
   _args: any;
   _metadata: Metadata | null | undefined;
@@ -15,12 +14,16 @@ export default class Variable {
     this._query = query;
   }
 }
-const VARIABLE_ICONS = {
+
+const VARIABLE_ICONS: Record<TemplateTagType, string | null> = {
   text: "string",
   number: "int",
   date: "calendar",
   dimension: null,
+  card: null,
+  snippet: null,
 };
+
 export class TemplateTagVariable extends Variable {
   tag(): TemplateTag | null | undefined {
     if (this._query instanceof NativeQuery) {
@@ -28,12 +31,12 @@ export class TemplateTagVariable extends Variable {
     }
   }
 
-  displayName() {
+  displayName(): string | null | undefined {
     const tag = this.tag();
     return tag && (tag["display-name"] || tag.name);
   }
 
-  icon() {
+  icon(): string | null | undefined {
     const tag = this.tag();
     return tag && VARIABLE_ICONS[tag.type];
   }
