@@ -1,23 +1,22 @@
 import React from "react";
 import { useToggle } from "metabase/hooks/use-toggle";
 import Icon from "metabase/components/Icon";
-import Collections from "metabase/entities/collections";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import { Collection, CollectionId } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import { Collection } from "metabase-types/api";
 
 import {
-  PathSeparator,
-  PathContainer,
   ExpandButton,
+  PathContainer,
+  PathSeparator,
 } from "./PathBreadcrumbs.styled";
 
-interface Props {
-  collection: Collection;
-  collectionId: CollectionId;
+export interface PathBreadcrumbsProps {
+  collection?: Collection;
 }
 
-const PathBreadcrumbs = ({ collection }: Props) => {
+export const PathBreadcrumbs = ({
+  collection,
+}: PathBreadcrumbsProps): JSX.Element | null => {
   const [isExpanded, { toggle }] = useToggle(false);
 
   if (!collection) {
@@ -70,13 +69,6 @@ const PathBreadcrumbs = ({ collection }: Props) => {
   );
 };
 
-export default Collections.load({
-  id: (_state: State, props: Props) => props.collectionId || "root",
-  wrapped: true,
-  loadingAndErrorWrapper: false,
-  properties: ["name", "authority_level"],
-})(PathBreadcrumbs);
-
 interface SeparatorProps {
   onClick: () => void;
 }
@@ -86,3 +78,5 @@ const Separator = (props: SeparatorProps) => (
     <Icon name="chevronright" size={8} />
   </PathSeparator>
 );
+
+export default PathBreadcrumbs;
