@@ -143,3 +143,17 @@ export const SearchBarContent = styled.div`
     width: 28.75rem;
   }
 `;
+
+interface CollectionBreadcrumbsContainerProps {
+  isVisible: boolean;
+}
+
+export const CollectionBreadcrumbsContainer = styled.div<
+  CollectionBreadcrumbsContainerProps
+>`
+  display: flex;
+  visibility: ${props => (props.isVisible ? "visible" : "hidden")};
+  opacity: ${props => (props.isVisible ? 1 : 0)};
+  transition: ${props =>
+    !props.isVisible ? `opacity 0.5s, visibility 0s 0.5s` : `opacity 0.5s`};
+`;

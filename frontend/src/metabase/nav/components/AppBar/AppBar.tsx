@@ -8,6 +8,7 @@ import { CollectionId } from "metabase-types/api";
 import NewItemButton from "../NewItemButton";
 import SearchBar from "../SearchBar";
 import SidebarButton from "../SidebarButton";
+import CollectionBreadcrumbs from "../../containers/PathBreadcrumbs";
 import {
   AppBarRoot,
   LeftContainer,
@@ -18,23 +19,27 @@ import {
   SidebarButtonContainer,
   LogoLink,
   LogoLinkContainer,
+  CollectionBreadcrumbsContainer,
 } from "./AppBar.styled";
 
 interface AppBarProps {
+  collectionId?: CollectionId;
   isNavBarOpen?: boolean;
   isNavBarVisible?: boolean;
   isSearchVisible?: boolean;
   isNewButtonVisible?: boolean;
-  collectionId?: CollectionId;
+  isCollectionPathVisible?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
 }
 
 const AppBar = ({
+  collectionId,
   isNavBarOpen,
   isNavBarVisible,
   isSearchVisible,
   isNewButtonVisible,
+  isCollectionPathVisible,
   onToggleNavbar,
   onCloseNavbar,
 }: AppBarProps): JSX.Element => {
@@ -86,6 +91,11 @@ const AppBar = ({
             </SidebarButtonContainer>
           )}
         </HomepageLink>
+        {isCollectionPathVisible && (
+          <CollectionBreadcrumbsContainer isVisible={!isNavBarOpen}>
+            <CollectionBreadcrumbs collectionId={collectionId} />
+          </CollectionBreadcrumbsContainer>
+        )}
       </LeftContainer>
       {!isSearchActive && (
         <MiddleContainer>
