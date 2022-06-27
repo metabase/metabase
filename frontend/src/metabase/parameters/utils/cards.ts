@@ -16,6 +16,9 @@ import { Card } from "metabase-types/types/Card";
 import { TemplateTag } from "metabase-types/types/Query";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 
+import { recognizeTemplateTags } from "metabase-lib/lib/queries/NativeQuery";
+import { createTemplateTag } from "metabase-lib/lib/queries/TemplateTag";
+
 function getTemplateTagType(tag: TemplateTag) {
   const { type } = tag;
   if (type === "date") {
@@ -80,6 +83,7 @@ export function getSnippetsTemplateTags(card: Card, snippets: any[]) {
       }
       return interpolated;
     }, queryText);
+    return recognizeTemplateTags(expandedQueryText).map(createTemplateTag);
   }
 
   return [];
@@ -94,14 +98,14 @@ export function getTemplateTagsForParameters(card: Card, snippets = null) {
       ? Object.values(card.dataset_query.native["template-tags"])
       : [];
 
-  if (snippets) {
-    getSnippetsTemplateTags(card, snippets);
-  }
-
-  return templateTags.filter(
+  const filteredTags = templateTags.filter(
     // this should only return template tags that define a parameter of the card
     tag => tag.type !== "card" && tag.type !== "snippet",
   );
+
+  const snippetTags = snippets ? getSnippetsTemplateTags(card, snippets) : [];
+
+  return filteredTags.concat(snippetTags);
 }
 
 export function getParametersFromCard(
