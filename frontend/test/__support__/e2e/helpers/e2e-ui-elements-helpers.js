@@ -61,3 +61,7 @@ export function browse() {
 export function filterWidget() {
   return cy.get("fieldset");
 }
+
+export function openQuestionActions() {
+  cy.findByTestId("saved-question-header-button").click();
+}
