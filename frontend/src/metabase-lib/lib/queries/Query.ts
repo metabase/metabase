@@ -14,7 +14,7 @@ type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
  * An abstract class for all query types (StructuredQuery & NativeQuery)
  */
 
-class Query {
+class QueryInner {
   _metadata: Metadata;
 
   /**
@@ -66,7 +66,7 @@ class Query {
     return this._datasetQuery;
   }
 
-  setDatasetQuery(datasetQuery: DatasetQuery): Query {
+  setDatasetQuery(datasetQuery: DatasetQuery): QueryInner {
     return this;
   }
 
@@ -116,7 +116,7 @@ class Query {
     return [];
   }
 
-  setDefaultQuery(): Query {
+  setDefaultQuery(): QueryInner {
     return this;
   }
 
@@ -132,4 +132,4 @@ class Query {
   }
 }
 
-export default memoizeClass<Query>("question")(Query);
+export default memoizeClass<QueryInner>("question")(QueryInner);
