@@ -213,15 +213,15 @@
           (db/update! FieldValues id :human_readable_values nil))
         (db/update! Field (mt/id :venues :price) :has_field_values "list")
         ;; now update the values via the API
-        (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price)}
+        (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
                (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
 
     (testing "Should return nothing for a field whose `has_field_values` is not `list`"
-      (is (= {:values [], :field_id (mt/id :venues :id)}
+      (is (= {:values [], :field_id (mt/id :venues :id), :has_more_values false}
              (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :id))))))
 
     (testing "Sensitive fields do not have field values and should return empty"
-      (is (= {:values [], :field_id (mt/id :users :password)}
+      (is (= {:values [], :field_id (mt/id :users :password), :has_more_values false}
              (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :users :password))))))
 
     (testing "External remapping"
@@ -241,7 +241,7 @@
       (mt/with-temp* [Field       [{field-id :id}       list-field]
                       FieldValues [{field-value-id :id} {:values (range 5 10), :field_id field-id}]]
         (testing "fetch initial values"
-          (is (= {:values [[5] [6] [7] [8] [9]], :field_id true}
+          (is (= {:values [[5] [6] [7] [8] [9]], :field_id true, :has_more_values false}
                  (mt/boolean-ids-and-timestamps
                   (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
         (testing "update values"
@@ -250,7 +250,7 @@
                   (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
                    {:values (map vector (range 1 5))})))))
         (testing "fetch updated values"
-          (is (= {:values [[1] [2] [3] [4]], :field_id true}
+          (is (= {:values [[1] [2] [3] [4]], :field_id true, :has_more_values false}
                  (mt/boolean-ids-and-timestamps
                   (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))))))
 
@@ -260,16 +260,16 @@
       (mt/with-temp* [Field [{field-id :id} list-field]
                       FieldValues [{field-value-id :id} {:values (conj (range 1 5) nil), :field_id field-id}]]
         (testing "fetch initial values"
-          (is (= {:values [[nil] [1] [2] [3] [4]], :field_id true}
+          (is (= {:values [[nil] [1] [2] [3] [4]], :field_id true, :has_more_values false}
                  (mt/boolean-ids-and-timestamps
                   (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
         (testing "update values"
           (is (= {:status "success"}
                  (mt/boolean-ids-and-timestamps
                   (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
-                   {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))))
+                   {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :has_more_values false})))))
         (testing "fetch updated values"
-          (is (= {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
+          (is (= {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                  (mt/boolean-ids-and-timestamps
                   (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))))))
 
@@ -280,7 +280,7 @@
       ;; exist; we can ignore that
       (mt/suppress-output
        (mt/with-temp Field [{field-id :id} list-field]
-         (is (= {:values [], :field_id true}
+         (is (= {:values [], :field_id true, :has_more_values false}
                 (mt/boolean-ids-and-timestamps
                  (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))
 
@@ -288,10 +288,10 @@
                 (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
                  {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))
 
-         (is (= {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"]}
-                (into {} (db/select-one [FieldValues :values :human_readable_values] :field_id field-id))))
+         (is (= {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"], :has_more_values false}
+                (into {} (db/select-one [FieldValues :values :human_readable_values, :has_more_values] :field_id field-id))))
 
-         (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
+         (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                 (mt/boolean-ids-and-timestamps
                  (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))))))
 
@@ -301,13 +301,13 @@
       (testing "should be able to unset FieldValues"
         (mt/with-temp FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id}]
           (testing "before updating values"
-            (is (= {:values [[1] [2] [3] [4]], :field_id true}
+            (is (= {:values [[1] [2] [3] [4]], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
           (testing "API response"
             (is (= {:status "success"}
                    (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id) {:values [], :field_id true}))))
           (testing "after updating values"
-            (is (= {:values [], :field_id true}
+            (is (= {:values [], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))[]))
 
       (testing "should be able to unset just the human-readable values"
@@ -315,13 +315,13 @@
                                                          :field_id              field-id
                                                          :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
           (testing "before updating values"
-            (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
+            (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
           (testing "API response"
             (is (= {:status "success"}
                    (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id) {:values [[1] [2] [3] [4]]}))))
           (testing "after updating values"
-            (is (= {:values [[1] [2] [3] [4]], :field_id true}
+            (is (= {:values [[1] [2] [3] [4]], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))))))
 
     (testing "attempting to updated values should throw when human readable values are present but not for every value"
