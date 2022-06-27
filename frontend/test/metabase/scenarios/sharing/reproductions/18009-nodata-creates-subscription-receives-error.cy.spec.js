@@ -4,7 +4,7 @@ import {
   setupSMTP,
   visitDashboard,
   clickSend,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe.skip("issue 18009", () => {
   beforeEach(() => {

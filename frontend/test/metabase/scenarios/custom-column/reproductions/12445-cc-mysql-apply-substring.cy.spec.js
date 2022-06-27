@@ -1,4 +1,4 @@
-import { restore, withDatabase } from "__support__/e2e/cypress";
+import { restore, withDatabase } from "__support__/e2e/helpers";
 
 const CC_NAME = "Abbr";
 

@@ -1,4 +1,4 @@
-import { filterWidget, popover } from "__support__/e2e/cypress";
+import { filterWidget, popover } from "__support__/e2e/helpers";
 
 // FILTER WIDGET TYPE
 

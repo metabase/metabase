@@ -20,6 +20,7 @@ export interface BulkFilterSelectProps {
   query: StructuredQuery;
   filter?: Filter;
   dimension: Dimension;
+  customTrigger?: ({ onClick }: { onClick: () => void }) => JSX.Element;
   handleChange: (newFilter: Filter) => void;
   handleClear: () => void;
 }
@@ -28,6 +29,7 @@ export const BulkFilterSelect = ({
   query,
   filter,
   dimension,
+  customTrigger,
   handleChange,
   handleClear,
 }: BulkFilterSelectProps): JSX.Element => {
@@ -42,17 +44,21 @@ export const BulkFilterSelect = ({
   return (
     <TippyPopoverWithTrigger
       sizeToFit
-      renderTrigger={({ onClick }) => (
-        <SelectFilterButton
-          hasValue={filter != null}
-          highlighted
-          aria-label={dimension.displayName()}
-          onClick={onClick}
-          onClear={handleClear}
-        >
-          {name}
-        </SelectFilterButton>
-      )}
+      renderTrigger={
+        customTrigger
+          ? customTrigger
+          : ({ onClick }) => (
+              <SelectFilterButton
+                hasValue={filter != null}
+                highlighted
+                aria-label={dimension.displayName()}
+                onClick={onClick}
+                onClear={handleClear}
+              >
+                {name}
+              </SelectFilterButton>
+            )
+      }
       popoverContent={({ closePopover }) => (
         <SelectFilterPopover
           query={query}

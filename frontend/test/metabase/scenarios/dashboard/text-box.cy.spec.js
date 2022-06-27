@@ -3,7 +3,7 @@ import {
   showDashboardCardActions,
   popover,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 function addTextBox(string) {
   cy.icon("pencil").click();

@@ -1,4 +1,4 @@
-import { restore, setupSMTP, visitDashboard } from "__support__/e2e/cypress";
+import { restore, setupSMTP, visitDashboard } from "__support__/e2e/helpers";
 
 describe("issue 17658", () => {
   beforeEach(() => {

@@ -33,34 +33,38 @@
           ;; Rasta Toucan is only allowed to see Venues that are in the "Mexican" category [category_id = 50]. So
           ;; fetching FieldValues for `venue.name` should do an ad-hoc fetch and only return the names of venues in
           ;; that category.
-          (is (= {:field_id (mt/id :venues :name)
-                  :values   [["Garaje"]
-                             ["Gordo Taqueria"]
-                             ["La Tortilla"]]}
+          (is (= {:field_id        (mt/id :venues :name)
+                  :values          [["Garaje"]
+                                    ["Gordo Taqueria"]
+                                    ["La Tortilla"]]
+                  :has_more_values false}
                  (fetch-values :rasta :name)))
 
           (testing (str "Now in this case recall that the `restricted-column-query` GTAP we're using does *not* include "
                         "`venues.price` in the results. (Toucan isn't allowed to know the number of dollar signs!) So "
                         "make sure if we try to fetch the field values instead of seeing `[[1] [2] [3] [4]]` we get no "
                         "results")
-            (is (= {:field_id (mt/id :venues :price)
-                    :values   []}
+            (is (= {:field_id        (mt/id :venues :price)
+                    :values          []
+                    :has_more_values false}
                    (fetch-values :rasta :price))))
 
           (testing "Reset field values; if another User fetches them first, do I still see sandboxed values? (metabase/metaboat#128)"
             (field-values/clear-field-values! (mt/id :venues :name))
             ;; fetch Field values with an admin
             (testing "Admin should see all Field values"
-              (is (= {:field_id (mt/id :venues :name)
-                      :values   [["20th Century Cafe"]
-                                 ["25°"]
-                                 ["33 Taps"]]}
+              (is (= {:field_id        (mt/id :venues :name)
+                      :values          [["20th Century Cafe"]
+                                        ["25°"]
+                                        ["33 Taps"]]
+                      :has_more_values false}
                      (fetch-values :crowberto :name))))
             (testing "Sandboxed User should still see only their values after an admin fetches the values"
-              (is (= {:field_id (mt/id :venues :name)
-                      :values   [["Garaje"]
-                                 ["Gordo Taqueria"]
-                                 ["La Tortilla"]]}
+              (is (= {:field_id        (mt/id :venues :name)
+                      :values          [["Garaje"]
+                                        ["Gordo Taqueria"]
+                                        ["La Tortilla"]]
+                      :has_more_values false}
                      (fetch-values :rasta :name))))
             (testing "A User with a *different* sandbox should see their own values"
               (let [password (mt/random-name)]
@@ -70,10 +74,11 @@
                                                                       {:cat
                                                                        [:dimension (mt/id :venues :category_id)]}}}
                                                         :attributes {:cat 5 #_BBQ}}
-                    (is (= {:field_id (mt/id :venues :name)
-                            :values   [["Baby Blues BBQ"]
-                                       ["Bludso's BBQ"]
-                                       ["Boneyard Bistro"]]}
+                    (is (= {:field_id        (mt/id :venues :name)
+                            :values          [["Baby Blues BBQ"]
+                                              ["Bludso's BBQ"]
+                                              ["Boneyard Bistro"]]
+                            :has_more_values false}
                            (-> (mt/client {:username (:email another-user), :password password}
                                           :get 200
                                           (format "field/%d/values" (mt/id :venues :name)))
@@ -125,7 +130,8 @@
             (testing "Sanity check: make sure updated_at has been updated"
               (is (not= (db/select-one-field :updated_at FieldValues :field_id (mt/id :venues :name))
                         old-updated-at)))
-            (with-redefs [field-values/distinct-values (constantly new-values)]
+            (with-redefs [field-values/distinct-values (constantly {:values          new-values
+                                                                    :has_more_values false})]
               (is (= (map vector new-values)
                      (:values (mt/user-http-request :rasta :get 200 (str "field/" (mt/id :venues :name) "/values")))))))
           (finally

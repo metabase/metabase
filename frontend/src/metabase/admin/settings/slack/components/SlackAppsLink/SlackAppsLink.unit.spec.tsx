@@ -6,6 +6,6 @@ describe("SlackAppsLink", () => {
   it("renders correctly", () => {
     render(<SlackAppsLink />);
 
-    expect(screen.getByText("Open Slack Apps")).toBeInTheDocument();
+    expect(screen.getByText("Create Slack App")).toBeInTheDocument();
   });
 });

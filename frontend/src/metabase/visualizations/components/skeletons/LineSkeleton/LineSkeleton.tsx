@@ -24,7 +24,7 @@ const LineSkeleton = ({
         <path
           d="m1 111 15.336-10 18.043 10 22.553-16.5 15.336 9.5 46.91-47 30.331 16 31.013-16 20.299 16 43.752-41 24.358 31 15.273-15.5L299.603 63l48.714-60L374 63"
           stroke="currentColor"
-          strokeWidth="3"
+          strokeWidth="2"
         />
       </SkeletonImage>
     </SkeletonRoot>

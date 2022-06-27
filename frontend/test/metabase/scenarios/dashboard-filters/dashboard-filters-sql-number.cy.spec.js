@@ -7,7 +7,7 @@ import {
   setFilter,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { DASHBOARD_SQL_NUMBER_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";

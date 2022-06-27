@@ -251,7 +251,7 @@ const QuestionActions = ({
             {canWrite && (
               <div>
                 <Button
-                  icon="archive"
+                  icon="view_archive"
                   onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
                   data-testid={ARCHIVE_TESTID}
                   {...buttonProps}

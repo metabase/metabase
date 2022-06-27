@@ -4,7 +4,7 @@ import {
   summarize,
   popover,
   openQuestionActions,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { selectFromDropdown } from "./helpers/e2e-models-helpers";
 

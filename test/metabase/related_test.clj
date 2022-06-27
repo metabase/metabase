@@ -11,9 +11,9 @@
 (deftest collect-context-bearing-forms-test
   (is (= #{[:field 1 nil] [:metric 1] [:field 2 nil] [:segment 1]}
          (#'related/collect-context-bearing-forms [[:> [:field 1 nil] 3]
-                                             ["and" [:= ["FIELD-ID" 2] 2]
-                                              ["segment" 1]]
-                                             [:metric 1]]))))
+                                                   ["and" [:= ["FIELD-ID" 2] 2]
+                                                    ["segment" 1]]
+                                                   [:metric 1]]))))
 
 
 (deftest similiarity-test
@@ -156,11 +156,11 @@
 
 (deftest sync-related-fields-test
   (one-off-dbs/with-blank-db
-    (exec! "CREATE TABLE blueberries_consumed (num SMALLINT NOT NULL, weight FLOAT)")
-    (one-off-dbs/insert-rows-and-sync! (range 50))
+    (exec! "CREATE TABLE blueberries_consumed (str TEXT NOT NULL, weight FLOAT)")
+    (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50))
     (let [count-related-fields (fn []
                                  (->> (mt/user-http-request :crowberto :get 200
-                                                            (format "field/%s/related" (mt/id :blueberries_consumed :num)))
+                                                            (format "field/%s/related" (mt/id :blueberries_consumed :str)))
                                       :fields
                                       count))]
       (testing "before"

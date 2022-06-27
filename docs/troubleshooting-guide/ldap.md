@@ -88,4 +88,7 @@ If you run into an issue, check that you can login to your LDAP directory and is
 
 ## Are you still stuck?
 
-If you can’t solve your problem using the troubleshooting guides, search or ask the [Metabase community][discourse].
+If you can’t solve your problem using the troubleshooting guides:
+
+- Search or ask the [Metabase community](https://discourse.metabase.com/).
+- Search for [known bugs or limitations](./known-issues.html).

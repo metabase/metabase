@@ -1,7 +1,10 @@
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
-import { breakpointMaxMedium } from "metabase/styled-components/theme/media-queries";
+import {
+  breakpointMaxMedium,
+  breakpointMinLarge,
+} from "metabase/styled-components/theme/media-queries";
 
 import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
@@ -34,6 +37,14 @@ export const ColumnHeader = styled.th`
   color: ${color("text-medium")};
 `;
 
+export const LastEditedByCol = styled.col`
+  width: 140px;
+
+  ${breakpointMinLarge} {
+    width: 240px;
+  }
+`;
+
 export const ItemCell = styled.td`
   padding: 0.25em 0 0.25em 1em !important;
 `;
@@ -55,6 +66,10 @@ export const ItemLink = styled(Link)`
 
 export const SortingIcon = styled(Icon)`
   margin-left: 4px;
+`;
+
+export const DescriptionIcon = styled(Icon)`
+  color: ${color("text-medium")};
 `;
 
 SortingIcon.defaultProps = {

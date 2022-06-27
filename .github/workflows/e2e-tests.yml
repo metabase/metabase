@@ -7,6 +7,7 @@ on:
       - "docs/**"
       - "**.md"
       - ".circleci/**"
+      - "**.unit.spec.*"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -59,6 +60,7 @@ jobs:
         java-version: [11]
         edition: [ee]
         folder:
+          - "admin"
           - "binning"
           - "collections"
           - "custom-column"
@@ -66,13 +68,17 @@ jobs:
           - "dashboard-filters"
           - "downloads"
           - "embedding"
+          - "filters"
           - "joins"
           - "models"
           - "native"
+          - "native-filters"
+          - "onboarding"
           - "organization"
           - "permissions"
           - "question"
           - "sharing"
+          - "visualizations"
         include:
           - edition: oss
             java-version: 11
