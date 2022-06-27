@@ -5,7 +5,7 @@ export function nyi<T = any>(
 ) {
   const method = descriptor.value;
 
-  descriptor.value = function(...args) {
+  descriptor.value = function(...args: any[]) {
     console.warn(
       "Method not yet implemented: " + target.constructor.name + "::" + key,
     );
@@ -59,7 +59,7 @@ export function memoizeClass<T>(
       // Memoize
       Object.defineProperty(Class.prototype, key, {
         ...descriptor,
-        value: function(...args) {
+        value: function(...args: any[]) {
           const path = [this, method, args.length, ...args];
           const last = path.pop();
           const map = path.reduce(
