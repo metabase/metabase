@@ -169,4 +169,3 @@
                   :has_more_values       true}
                  (into {} (db/select-one [FieldValues :values :human_readable_values :has_more_values]
                                         :field_id (mt/id :blueberries_consumed :str))))))))))
-
