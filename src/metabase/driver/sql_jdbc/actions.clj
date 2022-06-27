@@ -196,16 +196,9 @@
         (let [e-data (if (::incorrect-number-updated (ex-data e))
                        (ex-data e)
                        (parse-error driver conn e))]
-          (def ed e-data)
           (throw
            (ex-info (or (ex-message e) "Update action error.")
-                    (assoc e-data :status-code 400)))))
-      #_(catch Exception e
-        (throw
-         (ex-info (str "Update action error." (when (ex-message e) (str " " (ex-message e))))
-                  (-> (or (ex-data e) {})
-                      (merge (parse-error driver conn e))
-                      (assoc :status-code 400))))))))
+                    (assoc e-data :status-code 400))))))))
 
 (defmethod actions/row-action! [:create :sql-jdbc]
   [_action driver {database-id :database :keys [create-row] :as query}]
