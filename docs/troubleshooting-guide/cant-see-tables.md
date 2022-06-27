@@ -13,6 +13,11 @@ You have connected Metabase to a database, but:
 
 If you can see the tables, but some of the rows or columns seem to be missing, please check out the [troubleshooting guide for sandboxing][sandboxing].
 
+## What's the status of your database connection?
+
+1. [Check if your database connection is successful](../administration-guide/01-managing-databases.html#testing-connection-status).
+2. If your connection isn't working, go to [Troubleshooting database connections](./datawarehouse.html). 
+
 ## Is your browser showing you a cached list of tables?
 
 **Root cause:** Sometimes browsers will show an old cached list of tables.

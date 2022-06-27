@@ -6,16 +6,31 @@ title: Troubleshooting connection timeouts
 
 If your queries are hanging or timing out, the problem could be coming from your:
 
+- [Database connection](./datawarehouse.html)
 - Load balancer
 - Reverse proxy server (e.g., Nginx)
 - Jetty
-- Database
 - Cloud service (such as AWS’s Elastic Beanstalk, EC2, Heroku, or Google App Engine).
 
-Fixing this depends on your specific deployment setup. These resources may help:
+## Resources for common deployments
+
+Fixes for timeout problems often depend on your specific deployment setup.
 
 - [Configuring Jetty connectors][configuring-jetty]
 - [EC2 Troubleshooting][ec2-troubleshooting]
 - [Elastic Load Balancing Connection Timeout Management][elb-timeout]
 - [Heroku timeouts][heroku-timeout]
 - [App Engine: Dealing with DeadlineExceededErrors][app-engine-timeout]
+
+## Are you still stuck?
+
+If you can’t solve your problem using the troubleshooting guides:
+
+- Search or ask the [Metabase community][discourse].
+- Search for [known bugs or limitations][known-issues].
+
+[app-engine-timeout]: https://cloud.google.com/appengine/articles/deadlineexceedederrors
+[configuring-jetty]: https://www.eclipse.org/jetty/documentation/current/configuring-connectors.html
+[ec2-troubleshooting]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html
+[elb-timeout]: https://aws.amazon.com/blogs/aws/elb-idle-timeout-control/
+[heroku-timeout]: https://devcenter.heroku.com/articles/request-timeout
