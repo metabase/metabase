@@ -3,20 +3,20 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import Icon from "metabase/components/Icon";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import { Collection } from "metabase-types/api";
-
 import {
   ExpandButton,
   PathContainer,
   PathSeparator,
-} from "./PathBreadcrumbs.styled";
+} from "./CollectionBreadcrumbs.styled";
+import { isRootCollection } from "metabase/collections/utils";
 
-export interface PathBreadcrumbsProps {
+export interface CollectionBreadcrumbsProps {
   collection?: Collection;
 }
 
-export const PathBreadcrumbs = ({
+export const CollectionBreadcrumbs = ({
   collection,
-}: PathBreadcrumbsProps): JSX.Element | null => {
+}: CollectionBreadcrumbsProps): JSX.Element | null => {
   const [isExpanded, { toggle }] = useToggle(false);
 
   if (!collection) {
@@ -24,18 +24,17 @@ export const PathBreadcrumbs = ({
   }
 
   const ancestors = collection.effective_ancestors || [];
-  const parts =
-    ancestors[0]?.id === "root" ? ancestors.splice(0, 1) : ancestors;
+  const hasRoot = ancestors[0] && isRootCollection(ancestors[0]);
+  const parts = hasRoot ? ancestors.splice(0, 1) : ancestors;
 
-  let content;
-  if (parts.length > 1 && !isExpanded) {
-    content = (
+  const content =
+    parts.length > 1 && !isExpanded ? (
       <>
         <CollectionBadge
           collectionId={parts[0].id}
           inactiveColor="text-medium"
         />
-        <Separator onClick={toggle} />
+        <CollectionSeparator onClick={toggle} />
         <ExpandButton
           small
           borderless
@@ -44,20 +43,20 @@ export const PathBreadcrumbs = ({
           onlyIcon
           onClick={toggle}
         />
-        <Separator onClick={toggle} />
+        <CollectionSeparator onClick={toggle} />
       </>
+    ) : (
+      parts.map(collection => (
+        <>
+          <CollectionBadge
+            collectionId={collection.id}
+            inactiveColor="text-medium"
+          />
+          <CollectionSeparator onClick={toggle} />
+        </>
+      ))
     );
-  } else {
-    content = parts.map(collection => (
-      <>
-        <CollectionBadge
-          collectionId={collection.id}
-          inactiveColor="text-medium"
-        />
-        <Separator onClick={toggle} />
-      </>
-    ));
-  }
+
   return (
     <PathContainer>
       {content}
@@ -69,14 +68,14 @@ export const PathBreadcrumbs = ({
   );
 };
 
-interface SeparatorProps {
+interface CollectionSeparatorProps {
   onClick: () => void;
 }
 
-const Separator = (props: SeparatorProps) => (
-  <PathSeparator {...props}>
+const CollectionSeparator = ({ onClick }: CollectionSeparatorProps) => (
+  <PathSeparator onClick={onClick}>
     <Icon name="chevronright" size={8} />
   </PathSeparator>
 );
 
-export default PathBreadcrumbs;
+export default CollectionBreadcrumbs;

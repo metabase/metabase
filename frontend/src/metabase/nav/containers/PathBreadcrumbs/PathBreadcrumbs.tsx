@@ -1,7 +1,7 @@
 import Collections from "metabase/entities/collections";
 import { CollectionId } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import PathBreadcrumbs from "../../components/PathBreadcrumbs";
+import CollectionBreadcrumbs from "../../components/CollectionBreadcrumbs";
 
 export interface PathBreadcrumbsProps {
   collectionId: CollectionId;
@@ -14,4 +14,4 @@ const collectionProps = {
   properties: ["name", "authority_level"],
 };
 
-export default Collections.load(collectionProps)(PathBreadcrumbs);
+export default Collections.load(collectionProps)(CollectionBreadcrumbs);
