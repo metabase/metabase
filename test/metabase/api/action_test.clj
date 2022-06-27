@@ -133,15 +133,31 @@
             (is (re= #"Value does not match schema:.*"
                      (:message (mt/user-http-request :crowberto :post 400 action (dissoc request-body k)))))))))))
 
+(deftest row-update-action-gives-400-when-matching-more-than-one
+  (mt/with-temporary-setting-values [experimental-enable-actions true]
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
+      (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]}) :update_row {:name "new-name"})
+            result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
+        (is (< 1 result-count))
+        (doseq [{:keys [action]} (filter #(= "action/row/update" (:action %)) (mock-requests))
+                :when (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
+          (is (re= #"Sorry, this would \w+ [\d|,]+ rows, but you can only act on 1"
+                   (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one))))
+          (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
+              "The result-count after a rollback must remain the same!"))))))
+
 (deftest row-delete-action-gives-400-when-matching-more-than-one
   (mt/with-temporary-setting-values [experimental-enable-actions true]
     (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-      (let [query-that-returns-more-than-one (assoc (mt/mbql-query venues {:filter [:>= $id 1]}) :update_row {:name "new-name"})]
-        (is (< 1 (count (mt/rows (qp/process-query query-that-returns-more-than-one)))))
-        (doseq [{:keys [action]} (mock-requests)
+      (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]}) :update_row {:name "new-name"})
+            result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
+        (is (< 1 result-count))
+        (doseq [{:keys [action]} (filter #(= "action/row/delete" (:action %)) (mock-requests))
                 :when (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
-          (is (re= #"Sorry, this would affect \d+ rows, but you can only act on 1|Row \w+ is not supported for \w+ databases."
-                   (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one)))))))))
+          (is (re= #"Sorry, this would \w+ [\d|,]+ rows, but you can only act on 1"
+                   (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one))))
+          (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
+              "The result-count after a rollback must remain the same!"))))))
 
 (deftest unknown-row-action-gives-404
   (mt/with-temporary-setting-values [experimental-enable-actions true]

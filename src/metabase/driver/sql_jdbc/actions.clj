@@ -70,13 +70,16 @@
 (defn- parse-error
   "Returns errors in a way that indicates which column had the problem. Can be used to highlight errors in forms."
   [driver conn e]
-  (let [message (ex-message e)]
-    (if-let [errors (and message
-                         (parse-sql-error driver conn message))]
-      {:errors (->> errors
-                    (m/index-by :column)
-                    (m/map-vals :message))}
-      {:message (or message (pr-str e))})))
+  (if (not= driver :postgres)
+    (ex-data e)
+    (let [message (ex-message e)]
+      (if-let [errors (and message
+                           (parse-sql-error driver conn message))]
+
+        {:errors (->> errors
+                      (m/index-by :column)
+                      (m/map-vals :message))}
+        {:message (or message (pr-str e))}))))
 
 (defn- catch-throw [e status-code & [more-info]]
   (throw
@@ -84,6 +87,16 @@
             (merge {:exception-data (ex-data e)
                     :status-code status-code}
                    more-info))))
+
+(defn- database->connection-spec [driver db-id]
+  {:pre [(#{:h2 :mysql :postgres} driver)]}
+  (let [details (db/select-one-field :details 'Database :id db-id)]
+    (metabase.driver.sql-jdbc.connection/connection-details->spec driver details)))
+
+(defn- rollback! [driver conn]
+  (cond (#{:mysql :postgres} driver) (jdbc/db-set-rollback-only! conn)
+        (= :h2 driver) (jdbc/execute! conn ["rollback"])
+        :else (throw (ex-info (str "Rollbacks are not implemented for driver: " driver) {:driver driver}))))
 
 (def base-type->sql-type
   "Mapping from base-types to postgres sql-types to e.g. be used for casting."
@@ -133,23 +146,30 @@
                            (catch-throw e 404))))
         delete-hsql  (-> raw-hsql
                          (dissoc :select)
-                         (assoc :delete []))
-        rows-deleted (try (first (jdbc/execute! conn (hformat/format delete-hsql)))
-                          (catch Exception e
-                            (throw
-                             (ex-info "Delete action error." (assoc (parse-error driver conn e) :status-code 400)))))]
-    (if (= rows-deleted 1)
-      {:rows-deleted [1]}
-      (do (jdbc/db-set-rollback-only! conn)
-          (throw (ex-info (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted)
-                          {:query       query
-                           :sql         (hformat/format delete-hsql)
-                           :status-code 400}))))))
+                         (assoc :delete []))]
+    (jdbc/with-db-transaction [tx (database->connection-spec driver database-id)]
+      (try (let [rows-deleted (first (jdbc/execute! tx (hformat/format delete-hsql)))]
+             (if (= rows-deleted 1)
+               {:rows-deleted [1]}
+               (do (rollback! driver tx)
+                   (throw (ex-info (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted)
+                                   {::incorrect-number-deleted true
+                                    :number-deleted rows-deleted
+                                    :query       query
+                                    :sql         (hformat/format delete-hsql)
+                                    :status-code 400})))))
+           (catch Exception e
+             (let [e-data (if (::incorrect-number-deleted (ex-data e))
+                            (ex-data e)
+                            (parse-error driver conn e))]
+               (throw
+                (ex-info (or (ex-message e) "Delete action error.")
+                         (assoc e-data :status-code 400)))))))))
 
 (defmethod actions/row-action! [:update :sql-jdbc]
   [_action driver {database-id :database :keys [update-row] :as query}]
-  (let [conn     (sql-jdbc.conn/db->pooled-connection-spec database-id)
-        raw-hsql (qp.store/with-store
+  (let [conn         (sql-jdbc.conn/db->pooled-connection-spec database-id)
+        raw-hsql     (qp.store/with-store
                    (try
                      (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
                      (sql.qp/mbql->honeysql driver query)
@@ -159,18 +179,33 @@
         update-hsql  (-> raw-hsql
                          (select-keys [:where])
                          (assoc :update target-table
-                                :set (cast-values update-row (get-in query [:query :source-table]))))
-        rows-updated (try (first (jdbc/execute! conn (hformat/format update-hsql)))
-                          (catch Exception e
-                            (throw
-                             (ex-info "Update action error." (assoc (parse-error driver conn e) :status-code 400)))))]
-    (if (= rows-updated 1)
-      {:rows-updated [1]}
-      (do (jdbc/db-set-rollback-only! conn)
-          (throw (ex-info (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated)
-                          {:query       query
-                           :sql         (hformat/format update-hsql)
-                           :status-code 400}))))))
+                                :set (cast-values update-row (get-in query [:query :source-table]))))]
+    (try
+      (jdbc/with-db-transaction [tx (database->connection-spec driver database-id)]
+        (let [rows-updated (first (jdbc/execute! tx (hformat/format update-hsql)))]
+          (if (= rows-updated 1)
+            {:rows-updated [1]}
+            (do (rollback! driver tx)
+                (throw (ex-info (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated)
+                                {::incorrect-number-updated true
+                                 :number-updated           rows-updated
+                                 :query                    query
+                                 :sql                      (hformat/format update-hsql)
+                                 :status-code              400}))))))
+      (catch Exception e
+        (let [e-data (if (::incorrect-number-updated (ex-data e))
+                       (ex-data e)
+                       (parse-error driver conn e))]
+          (def ed e-data)
+          (throw
+           (ex-info (or (ex-message e) "Update action error.")
+                    (assoc e-data :status-code 400)))))
+      #_(catch Exception e
+        (throw
+         (ex-info (str "Update action error." (when (ex-message e) (str " " (ex-message e))))
+                  (-> (or (ex-data e) {})
+                      (merge (parse-error driver conn e))
+                      (assoc :status-code 400))))))))
 
 (defmethod actions/row-action! [:create :sql-jdbc]
   [_action driver {database-id :database :keys [create-row] :as query}]
@@ -198,8 +233,7 @@
               (first
                (jdbc/query conn (hformat/format (assoc raw-hsql
                                                        :select [:*]
-                                                       ;; a single clause inside an and will be optimized away
-                                                       ;; by honeysql
+                                                       ;; :and with a single clause will be optimized in honeysql
                                                        :where (into [:and]
                                                                     (for [[col val] col->val]
                                                                       [:= col val])))))))
