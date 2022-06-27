@@ -121,12 +121,12 @@ const AppBar = ({
   );
 };
 
-interface HomePageLinkProps {
+interface HomepageLinkProps {
   children?: ReactNode;
   onClick?: () => void;
 }
 
-const HomepageLink = ({ children, onClick }: HomePageLinkProps) => (
+const HomepageLink = ({ children, onClick }: HomepageLinkProps) => (
   <LogoLinkContainer>
     <LogoLink to="/" onClick={onClick} data-metabase-event="Navbar;Logo">
       <LogoIcon height={32} />
