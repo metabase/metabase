@@ -30,6 +30,7 @@ export const getDashboardActions = (
     onRefreshPeriodChange,
     onSharingClick,
     onFullscreenChange,
+    hasNightModeToggle,
   },
 ) => {
   const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
@@ -117,7 +118,7 @@ export const getDashboardActions = (
     );
   }
 
-  if (!isEditing && isFullscreen) {
+  if (!isEditing && isFullscreen && hasNightModeToggle) {
     buttons.push(
       <Tooltip
         key="night"
