@@ -1,6 +1,8 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-export function nyi(target, key, descriptor) {
+export function nyi<T = any>(
+  target: Constructor<T>,
+  key: string,
+  descriptor: TypedPropertyDescriptor<any> & PropertyDescriptor,
+) {
   const method = descriptor.value;
 
   descriptor.value = function(...args) {
@@ -13,7 +15,11 @@ export function nyi(target, key, descriptor) {
   return descriptor;
 }
 
-function getWithFallback(map, key, fallback) {
+function getWithFallback(
+  map: Map<string, any>,
+  key: string,
+  fallback: () => void,
+) {
   if (map.has(key)) {
     return map.get(key);
   } else {
@@ -27,24 +33,30 @@ const memoized = new WeakMap();
 
 type Constructor<T> = new (...args: any[]) => T;
 
-export function memoizeClass<T>(...keys: string[]) {
-  return function(Class: Constructor<T>) {
+export function memoizeClass<T>(
+  ...keys: string[]
+): (Class: Constructor<T>) => Constructor<T> {
+  return (Class: Constructor<T>): Constructor<T> => {
     const descriptors = Object.getOwnPropertyDescriptors(Class.prototype);
 
     keys.forEach(key => {
+      // Is targeted method present in Class?
       if (!(key in descriptors)) {
         throw new TypeError(`${key} is not a member of class`);
       }
+
       const descriptor = descriptors[key];
       const method = descriptor.value;
+      // If we don't get a decsriptor.value, it must have a getter (i.e., ES6 class properties)
       if (!method) {
-        // If we don't get a decsriptor.value, it must have a getter
-        //  (i.e., ES6 class properties)
         throw new TypeError(`Class properties cannot be memoized`);
       }
-      if (typeof method !== "function") {
+      // Method should be a function/method
+      else if (typeof method !== "function") {
         throw new TypeError(`${key} is not a method and cannot be memoized`);
       }
+
+      // Memoize
       Object.defineProperty(Class.prototype, key, {
         ...descriptor,
         value: function(...args) {
@@ -65,12 +77,12 @@ export function memoizeClass<T>(...keys: string[]) {
 
 const createMap = () => new Map();
 
-// `sortObject`` copies objects for deterministic serialization.
+// `sortObject` copies objects for deterministic serialization.
 // Objects that have equal keys and values don't necessarily serialize to the
 // same string. JSON.strinify prints properties in inserted order. This function
 // sorts keys before adding them to the duplicated object to ensure consistent
 // serialization.
-export function sortObject(obj) {
+export function sortObject(obj: any | any[]): any | any[] {
   if (obj === null || typeof obj !== "object") {
     return obj;
   }
@@ -82,7 +94,7 @@ export function sortObject(obj) {
   const sortedKeyValues = Object.entries(obj).sort(([keyA], [keyB]) =>
     keyA.localeCompare(keyB),
   );
-  const o = {};
+  const o: Record<string, any> = {};
 
   for (const [k, v] of sortedKeyValues) {
     o[k] = sortObject(v);
@@ -90,8 +102,9 @@ export function sortObject(obj) {
 
   return o;
 }
-export function createLookupByProperty(items, property) {
-  const lookup = {};
+
+export function createLookupByProperty(items: any[], property: string) {
+  const lookup: Record<string, any> = {};
 
   for (const item of items) {
     lookup[item[property]] = item;
