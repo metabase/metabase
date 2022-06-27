@@ -27,9 +27,9 @@ Problems, their causes, how to detect them, and how to fix them.
 - [Fixing permissions issues][permissions].
 - [Managing data sandboxing][sandbox].
 
-### Data Sources
+### Databases
 
-- [Connecting to data warehouses with Metabase][datawarehouse].
+- [I can't connect to a database][datawarehouse].
 - [I can't see my tables][cant-see-tables].
 - [Fixing missing or out-of-sync tables and columns][sync-fingerprint-scan].
 

@@ -1,82 +1,59 @@
 ---
-title: Connecting to databases
+title: Troubleshooting database connections
 ---
 
-# Connecting to databases
+# Troubleshooting database connections
 
 <div class='doc-toc' markdown=1>
-- [The data warehouse server is down](#server-down)
-- [The data warehouse server is denying connections from your IP address](#server-denying-connections)
-- [Incorrect credentials](#incorrect-credentials)
-- [Connection timeout: your question took too long](#connection-timeout-took-too-long)
-- [Connections cannot be acquired from the underlying database](#connections-cannot-be-acquired)
+- [Troubleshooting connections to Metabase](#troubleshooting-connections-to-metabase)
+- [Troubleshooting connections to the database server](#troubleshooting-connections-to-the-database-server)
+- [Common database connection errors](#common-database-connection-errors)
 </div>
 
-If you're having trouble connecting to your data warehouse, run through these steps to identify the problem.
+If you can't connect to a database, you'll need to figure out if problem is happening with Metabase or your database server:
 
-1. Is the data warehouse server running ([see below](#server-down))?
-2. Can you connect to the data warehouse using another client from a machine you know should have access ([see below](#server-denying-connections))?
-3. Can you connect to the data warehouse from another client from the machine you're running Metabase on?
-4. Have you added the connection in Metabase?
-5. Have you examined the logs to verify that the sync process started and that no errors were thrown? (You can view the logs in the Metabase process, or in the app itself by going to the Admin Panel, selecting "Troubleshooting", and then selecting "Logs".)
-6. Have you run a native `SELECT 1` query to verify the connection to the data warehouse?
-7. If the sync process has completed, can you ask a [native question][native-question] to verify that you are able to use the database?
+1. [Troubleshooting connections to Metabase](#troubleshooting-connections-to-metabase)
+2. [Troubleshooting connections to your database server](#troubleshooting-connections-to-your-database-server)
+3. [Check if your database connection is successful](../administration-guide/01-managing-databases.html#testing-connection-status).
 
-<h2 id="server-down">The data warehouse server is down</h2>
+## Troubleshooting connections to Metabase
 
-**How to detect this:** Database servers occasionally go down. If you're using a hosted database service, go to its console and verify its status. If you have direct access to a command-line interface, log in and make sure that it's up and running and accepting queries.
+1. Go to **Admin** > **Databases** to confirm that your connection hasn’t been changed or deleted.
+2. If you’re setting up a new connection, go to **Admin** > **Databases** to check if:
+    > Metabase has started syncing with your database. If it hasn’t started, you can [manually start a database sync](../administration-guide/01-managing-databases.html#database-syncing).
+    > Metabase is still syncing with your database. If the sync is taking a long time, go to [Troubleshooting syncs and scans](./sync-fingerprint-scan.html).
+3. Go to **Admin** > **Troubleshooting** > **Logs** to check if [Metabase failed to sync due to an error](#common-database-connection-errors).
 
-**How to fix this:** It's out of the scope of this troubleshooting guide to get your data warehouse server back up---please check with whomever set it up for you.
+If you don't have access to the Metabase Admin panel, you'll need to ask the person who set up your Metabase.
 
-<h2 id="server-denying-connections">The data warehouse server is denying connections from your IP address</h2>
+## Troubleshooting connections to the database server
 
-**How to detect this:** If you can access the server from a bastion host or another machine, use the `nc` command (or your operating system's equivalent) to verify that you can connect to the host on a given port. Different databases use different ports; for a default PostgreSQL configuration (which listens on port 5432), the command would be:
+1. [Check that the data warehouse server is running](../administration-guide/01-managing-databases.html#checking-server-status).
+2. Check if you can connect to the data warehouse from another client using the machine you’re running Metabase on.
+    > If you can access the server from a bastion host or another machine, [check if your Metabase's IP address has access to your database server](../administration-guide/01-managing-databases.html#checking-server-access).
+    > If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](/cloud/docs/ip-addresses-to-whitelist.html).
 
-```
-nc -v your-db-host 5432
-```
+The steps here will help you detect whether the problem is occurring outside of Metabase. To fix problems with your database server, you'll need to refer to the docs for your database or cloud service.
 
-**How to fix this:** It's out of the scope of this troubleshooting guide to change your network configuration---please check with whomever is responsible for the network your data warehouse is running on.
+If you don't have access to the data warehouse server, you’ll need to ask the person who manages your database(s) or data warehouse(s).
 
-<h2 id="incorrect-credentials">Incorrect credentials</h2>
+## Common database connection errors
 
-**How to detect this:** If you've verified that you can connect to the data warehouse's host and port, the next step is to check your credentials. Again, connecting to a data warehouse depends on your database server software; for PostgreSQL, a command like the one shown below will do the job:
+**From the Metabase interface**
+- [Your question took too long](./timeout.html).
 
-```
-psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER`
-```
+**From the logs**
+- [Connections cannot be acquired from the underlying database](#connections-cannot-be-acquired-from-the-underlying-database).
 
-If your credentials are incorrect, you should see an error message letting you know if the database name or the user/password are incorrect.
+### Connections cannot be acquired from the underlying database
 
-**How to fix this:** If the database name or the user/password combination are incorrect, ask the person running your data warehouse for correct credentials.
+1. Go to **Admin** > **Databases** and select your database.
+2. Go to **Advanced options** > **Additional JDBC connection string options** and add `trustServerCertificate=true`.
+3. Click **Save**.
 
-<h2 id="connection-timeout-took-too-long">Connection timeout: your question took too long</h2>
+## Are you still stuck?
 
-**How to detect this:** If you see the error message, "Your question took too long," something in your setup timed out. Depending on the specifics of your deployment, the problem could be in:
+If you can’t solve your problem using the troubleshooting guides:
 
-- your load balancer;
-- your reverse proxy server (e.g., Nginx);
-- Jetty;
-- your database; or
-- your cloud service, such as AWS's Elastic Beanstalk, EC2, Heroku, or Google App Engine.
-
-**How to fix this:** Fixing this depends on your specific setup. These resources may help:
-
-- [Configuring Jetty connectors][configuring-jetty]
-- [EC2 Troubleshooting][ec2-troubleshooting]
-- [Elastic Load Balancing Connection Timeout Management][elb-timeout]
-- [Heroku timeouts][heroku-timeout]
-- [App Engine: Dealing with DeadlineExceededErrors][app-engine-timeout]
-
-<h2 id="connections-cannot-be-acquired">Connections cannot be acquired from the underlying database</h2>
-
-**How to detect this:** Metabase fails to connect to your data warehouse and the Metabase server logs include the error message `Connections cannot be acquired from the underlying database!
-
-**How to fix this:** Navigate to the options for your data warehouse and locate the "Additional JDBC Connection Strings" option, then add `trustServerCertificate=true` as an additional string.
-
-[app-engine-timeout]: https://cloud.google.com/appengine/articles/deadlineexceedederrors
-[configuring-jetty]: https://www.eclipse.org/jetty/documentation/current/configuring-connectors.html
-[ec2-troubleshooting]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html
-[elb-timeout]: https://aws.amazon.com/blogs/aws/elb-idle-timeout-control/
-[heroku-timeout]: https://devcenter.heroku.com/articles/request-timeout
-[native-question]: ../users-guide/writing-sql.html
+- Search or ask the [Metabase community][discourse].
+- Search for [known bugs or limitations][known-issues].
