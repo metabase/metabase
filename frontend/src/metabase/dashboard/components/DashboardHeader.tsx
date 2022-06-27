@@ -67,7 +67,7 @@ const DashboardHeader = ({
   onLastEditInfoClick,
   onSave,
   setDashboardAttribute,
-}: HeaderProps) => {
+}: DashboardHeaderProps) => {
   const [headerHeight, setHeaderHeight] = useState(0);
   const [showSubHeader, setShowSubHeader] = useState(true);
   const header = useRef<HTMLDivElement>(null);
