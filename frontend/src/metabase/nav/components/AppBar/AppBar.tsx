@@ -8,7 +8,7 @@ import { CollectionId } from "metabase-types/api";
 import NewItemButton from "../NewItemButton";
 import SearchBar from "../SearchBar";
 import SidebarButton from "../SidebarButton";
-import CollectionBreadcrumbs from "../../containers/PathBreadcrumbs";
+import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import {
   AppBarRoot,
   LeftContainer,
