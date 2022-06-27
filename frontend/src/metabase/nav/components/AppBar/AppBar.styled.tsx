@@ -26,6 +26,7 @@ export const AppBarRoot = styled.header`
 
 export const LogoLinkContainer = styled.div`
   position: relative;
+  margin-left: ${space(2)};
 
   ${breakpointMaxSmall} {
     margin-left: ${space(1)};
@@ -38,10 +39,7 @@ export const LogoLink = styled(Link)`
   align-items: center;
   justify-content: center;
   border-radius: 0.375rem;
-  left: 0;
   padding: ${space(1)} ${space(2)};
-  margin-left: ${space(2)};
-  position: absolute;
   transition: opacity 0.3s;
 
   &:hover {
@@ -51,9 +49,10 @@ export const LogoLink = styled(Link)`
 
 export const SidebarButtonContainer = styled.div`
   position: absolute;
-  top: 0.25rem;
-  left: 0.25rem;
+  top: 50%;
+  left: 50%;
   opacity: 0;
+  transform: translate(-50%, -50%);
   transition: opacity 0.3s;
 `;
 
