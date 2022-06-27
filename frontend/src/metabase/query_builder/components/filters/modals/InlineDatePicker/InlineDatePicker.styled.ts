@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { space } from "metabase/styled-components/theme";
-import { color, alpha } from "metabase/lib/colors";
+import { color, alpha, darken, lighten } from "metabase/lib/colors";
 
 import Button from "metabase/core/components/Button";
 
@@ -14,37 +14,36 @@ export const OptionContainer = styled.div`
 
 type OptionButtonProps = {
   primaryColor?: string;
-  selected?: boolean;
+  active?: boolean;
 };
 
 export const OptionButton = styled(Button)<OptionButtonProps>`
-  border-color: ${({ selected }) =>
-    selected ? color("brand") : color("border")};
   border-radius: ${space(1)};
   margin-right: ${space(1)};
   margin-bottom: ${space(1)};
-
-  background-color: ${({ selected }) =>
-    selected ? alpha("brand", 0.3) : color("white")};
-  color: ${({ selected, primaryColor = color("brand") }) =>
-    selected ? primaryColor : color("text-dark")};
-
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
 
+  background-color: ${({ active }) =>
+    active ? color("brand") : color("white")};
+  color: ${({ active }) => (active ? color("white") : color("text-dark"))};
+  border-color: ${({ active }) => (active ? "transparent" : color("border"))};
+
   &:hover {
-    background-color: ${({ selected }) =>
-      selected ? alpha("brand", 0.3) : color("white")};
-    border-color: ${color("brand")};
+    background-color: ${({ active }) =>
+      active ? alpha("brand", 0.8) : alpha("brand", 0.2)};
+    color: ${({ active }) => (active ? color("white") : color("text-dark"))};
+    border-color: ${({ active }) =>
+      active ? alpha("brand", 0.8) : color("transparent")};
   }
 `;
 
 export const ClearButton = styled.span`
-  color: ${alpha("brand", 0.5)};
+  color: ${lighten("brand", 0.5)};
   margin-left: ${space(1)};
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: ${color("white")};
   }
 `;
