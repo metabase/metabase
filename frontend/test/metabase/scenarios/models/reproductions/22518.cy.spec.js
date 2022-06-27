@@ -3,7 +3,7 @@ import {
   openQuestionActions,
   summarize,
   sidebar,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe.skip("issue 22518", () => {
   beforeEach(() => {

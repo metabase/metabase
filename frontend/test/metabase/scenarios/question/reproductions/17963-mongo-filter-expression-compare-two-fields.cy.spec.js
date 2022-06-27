@@ -3,7 +3,7 @@ import {
   popover,
   visualize,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("issue 17963", () => {
   beforeEach(() => {

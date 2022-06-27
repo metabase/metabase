@@ -17,7 +17,7 @@ export interface PinnedQuestionLoaderProps {
 export interface PinnedQuestionChildrenProps {
   loading: boolean;
   question?: Question;
-  rawSeries?: any;
+  rawSeries?: any[];
   error?: string;
   errorIcon?: string;
 }
@@ -29,18 +29,10 @@ export interface QuestionLoaderProps {
 
 export interface QuestionResultLoaderProps {
   loading: boolean;
-  error?: QuestionError;
-  result?: QuestionResult;
+  error?: any;
+  result?: any;
   results?: any;
-  rawSeries?: any;
-}
-
-export interface QuestionError {
-  status?: number;
-}
-
-export interface QuestionResult {
-  error?: QuestionError;
+  rawSeries?: any[];
 }
 
 const PinnedQuestionLoader = ({
@@ -53,7 +45,7 @@ const PinnedQuestionLoader = ({
   return (
     <Questions.Loader id={id} loadingAndErrorWrapper={false}>
       {({ loading, question: card }: QuestionLoaderProps) => {
-        if (loading) {
+        if (loading || !card.dataset_query) {
           return children({ loading: true });
         }
 
@@ -71,8 +63,8 @@ const PinnedQuestionLoader = ({
             }: QuestionResultLoaderProps) =>
               children({
                 question,
-                rawSeries,
                 loading: loading || results == null,
+                rawSeries: getRawSeries(rawSeries),
                 error: getError(error, result),
                 errorIcon: getErrorIcon(error, result),
               })
@@ -84,7 +76,22 @@ const PinnedQuestionLoader = ({
   );
 };
 
-const getError = (error?: QuestionError, result?: QuestionResult) => {
+const getRawSeries = (rawSeries?: any[]) => {
+  return rawSeries?.map(series => ({
+    ...series,
+    card: {
+      ...series.card,
+      visualization_settings: {
+        ...series.card.visualization_settings,
+        "graph.show_values": false,
+        "graph.x_axis.labels_enabled": false,
+        "graph.y_axis.labels_enabled": false,
+      },
+    },
+  }));
+};
+
+const getError = (error?: any, result?: any) => {
   const errorResponse = error ?? result?.error;
 
   if (!errorResponse) {
@@ -96,7 +103,7 @@ const getError = (error?: QuestionError, result?: QuestionResult) => {
   }
 };
 
-const getErrorIcon = (error?: QuestionError, result?: QuestionResult) => {
+const getErrorIcon = (error?: any, result?: any) => {
   const errorResponse = error ?? result?.error;
 
   if (!errorResponse) {

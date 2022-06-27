@@ -7,7 +7,9 @@ import {
   appBar,
   navigationSidebar,
   closeNavigationSidebar,
-} from "__support__/e2e/cypress";
+  getCollectionActions,
+} from "__support__/e2e/helpers";
+
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -129,7 +131,9 @@ describeEE("collections types", () => {
     cy.visit("/collection/root");
 
     openCollection("Your personal collection");
-    cy.icon("pencil").should("not.exist");
+    getCollectionActions().within(() => {
+      cy.icon("ellipsis").should("not.exist");
+    });
 
     openNewCollectionItemFlowFor("collection");
     modal().within(() => {
@@ -276,7 +280,7 @@ function openCollection(collectionName) {
 }
 
 function editCollection() {
-  cy.icon("pencil").click();
+  cy.findByTestId("collection-menu").within(() => cy.icon("ellipsis").click());
   cy.findByText("Edit this collection").click();
 }
 
@@ -313,7 +317,9 @@ function createAndOpenOfficialCollection({ name }) {
     setOfficial();
     cy.button("Create").click();
   });
-  cy.findByText(name).click();
+  navigationSidebar().within(() => {
+    cy.findByText(name).click();
+  });
 }
 
 function changeCollectionTypeTo(type) {

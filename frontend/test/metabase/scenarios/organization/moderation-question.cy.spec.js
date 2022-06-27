@@ -5,7 +5,7 @@ import {
   popover,
   openQuestionActions,
   questionInfoButton,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describeEE("scenarios > saved question moderation", () => {
   describe("as an admin", () => {
@@ -42,7 +42,7 @@ describeEE("scenarios > saved question moderation", () => {
 
       cy.findByText("Verify this question").should("be.visible");
 
-      cy.findByTestId("saved-question-header-button").within(() => {
+      cy.findByTestId("qb-header-left-side").within(() => {
         cy.icon("verified").should("not.exist");
       });
 

@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
+import Button from "metabase/core/components/Button";
 
 import { color } from "metabase/lib/colors";
 import {
@@ -96,6 +97,13 @@ export const HeaderButtonsContainer = styled.div<
   ${breakpointMaxSmall} {
     width: 100%;
     margin-bottom: 6px;
+  }
+
+  ${Button.Root} {
+    padding: 0.5rem 0.75rem;
+    &:hover {
+      color: ${color("brand")};
+    }
   }
 `;
 

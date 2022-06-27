@@ -1,4 +1,4 @@
-import { restore, isEE, visitQuestion } from "__support__/e2e/cypress";
+import { restore, isEE, visitQuestion } from "__support__/e2e/helpers";
 
 describe.skip("issue 18021", () => {
   beforeEach(() => {

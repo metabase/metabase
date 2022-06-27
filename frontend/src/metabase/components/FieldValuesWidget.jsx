@@ -91,6 +91,7 @@ class FieldValuesWidgetInner extends Component {
     formatOptions: {},
     maxWidth: 500,
     disableSearch: false,
+    showOptionsInPopover: false,
   };
 
   componentDidMount() {
@@ -245,6 +246,7 @@ class FieldValuesWidgetInner extends Component {
       disablePKRemappingForSearch,
       formatOptions,
       placeholder,
+      showOptionsInPopover,
     } = this.props;
     const { loadingState, options = [] } = this.state;
 
@@ -302,10 +304,12 @@ class FieldValuesWidgetInner extends Component {
             color={color}
             style={{ ...style, minWidth: "inherit" }}
             className={className}
-            optionsStyle={!parameter ? { maxHeight: "none" } : {}}
+            optionsStyle={
+              !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
+            }
             // end forwarded props
             options={options}
-            valueKey={0}
+            valueKey="0"
             valueRenderer={value =>
               renderValue(fields, formatOptions, value, {
                 autoLoad: true,
@@ -317,12 +321,16 @@ class FieldValuesWidgetInner extends Component {
                 autoLoad: false,
               });
             }}
-            layoutRenderer={layoutProps => (
-              <div>
-                {layoutProps.valuesList}
-                {renderOptions(this.state, this.props, layoutProps)}
-              </div>
-            )}
+            layoutRenderer={
+              showOptionsInPopover
+                ? undefined
+                : layoutProps => (
+                    <div>
+                      {layoutProps.valuesList}
+                      {renderOptions(this.state, this.props, layoutProps)}
+                    </div>
+                  )
+            }
             filterOption={(option, filterString) => {
               const lowerCaseFilterString = filterString.toLowerCase();
               return option.some(

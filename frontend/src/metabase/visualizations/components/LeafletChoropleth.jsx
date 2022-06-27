@@ -100,7 +100,6 @@ const LeafletChoropleth = ({
       // ]).addTo(map);
 
       map.fitBounds(minimalBounds);
-      map.panTo([0, 0], { animate: false });
 
       return () => {
         map.remove();

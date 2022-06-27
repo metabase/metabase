@@ -13,7 +13,7 @@ import {
 export type ColorScheme = "default" | "admin" | "transparent";
 export type Size = "sm" | "md";
 
-type TextInputProps = {
+export type TextInputProps = {
   as?: ElementType<HTMLElement>;
   value?: string;
   placeholder?: string;

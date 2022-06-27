@@ -6,7 +6,7 @@ import {
   saveDashboard,
   setFilter,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { DASHBOARD_TEXT_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
 import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";

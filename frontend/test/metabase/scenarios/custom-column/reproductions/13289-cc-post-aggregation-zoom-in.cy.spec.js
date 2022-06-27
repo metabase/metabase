@@ -5,7 +5,7 @@ import {
   enterCustomColumnDetails,
   visualize,
   summarize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const CC_NAME = "Math";
 describe("issue 13289", () => {

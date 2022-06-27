@@ -47,16 +47,18 @@
   If the Field has a human-readable values remapping (see documentation at the top of
   `metabase.models.params.chain-filter` for an explanation of what this means), values are returned in the format
 
-    {:values   [[original-value human-readable-value]]
-     :field_id field-id}
+    {:values           [[original-value human-readable-value]]
+     :field_id         field-id
+     :has_field_values boolean}
 
   If the Field does *not* have human-readable values remapping, values are returned in the format
 
-    {:values   [[value]]
-     :field_id field-id}"
+    {:values           [[value]]
+     :field_id         field-id
+     :has_field_values boolean}"
   [field]
   (if-let [field-values (get-or-create-field-values-for-current-user!* field)]
     (-> field-values
         (assoc :values (field-values/field-values->pairs field-values))
-        (select-keys [:values :field_id]))
-    {:values [], :field_id (u/the-id field)}))
+        (select-keys [:values :field_id :has_more_values]))
+    {:values [], :field_id (u/the-id field), :has_more_values false}))

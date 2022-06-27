@@ -1,4 +1,4 @@
-import { restore, setupSMTP } from "__support__/e2e/cypress";
+import { restore, setupSMTP } from "__support__/e2e/helpers";
 
 describe("scenarios > pulse", () => {
   beforeEach(() => {

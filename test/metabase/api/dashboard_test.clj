@@ -114,7 +114,7 @@
            (mt/user-http-request :rasta :post 400 "dashboard" {})))
 
     (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                      "Each parameter must be a map with String :id key")}}
+                                      "Each parameter must be a map with :id and :type keys")}}
            (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
                                                                    :parameters "abc"})))))
 
@@ -1410,9 +1410,9 @@
 
     (testing "Should work if Dashboard has multiple mappings for a single param"
       (with-chain-filter-fixtures [{:keys [dashboard card dashcard param-keys]}]
-        (mt/with-temp* [Card          [card-2 (dissoc card :id)]
+        (mt/with-temp* [Card          [card-2 (dissoc card :id :entity_id)]
                         DashboardCard [dashcard-2 (-> dashcard
-                                                      (dissoc :id :card_id)
+                                                      (dissoc :id :card_id :entity_id)
                                                       (assoc  :card_id (:id card-2)))]]
           (is (= ["African" "American" "Artisan"]
                  (take 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url

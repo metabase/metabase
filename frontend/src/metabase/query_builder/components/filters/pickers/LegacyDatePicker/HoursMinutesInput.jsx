@@ -18,6 +18,7 @@ const HoursMinutesInput = ({
 }) => (
   <div className="flex align-center">
     <NumericInput
+      data-testid="hours-input"
       className="input"
       style={{ height: 36 }}
       size={2}
@@ -37,6 +38,7 @@ const HoursMinutesInput = ({
     />
     <span className="px1">:</span>
     <NumericInput
+      data-testid="minutes-input"
       className="input"
       style={{ height: 36 }}
       size={2}

@@ -5,7 +5,7 @@ import {
   editDashboard,
   saveDashboard,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const questionDetails = {
   name: "Return input value",

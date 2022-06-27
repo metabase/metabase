@@ -5,6 +5,7 @@ import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   hasRequiredParameters,
   isItemPinned,
+  isPreviewShown,
   isPreviewEnabled,
   Item,
 } from "metabase/collections/utils";
@@ -50,11 +51,8 @@ function ActionMenu({
   deleteBookmark,
 }: ActionMenuProps) {
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
-  const canTogglePreview =
-    isItemPinned(item) &&
-    hasRequiredParameters(item) &&
-    collection.can_write &&
-    item.setCollectionPreview;
+  const isPreviewOptionShown =
+    isItemPinned(item) && collection.can_write && item.setCollectionPreview;
 
   const handlePin = useCallback(() => {
     item.setPinned(!isItemPinned(item));
@@ -89,15 +87,14 @@ function ActionMenu({
         className={className}
         item={item}
         isBookmarked={isBookmarked}
-        isPreviewEnabled={isPreviewEnabled(item)}
+        isPreviewShown={isPreviewShown(item)}
+        isPreviewAvailable={hasRequiredParameters(item)}
         onPin={collection.can_write ? handlePin : null}
         onMove={collection.can_write && item.setCollection ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}
-        onArchive={
-          collection.can_write && item.setArchived ? handleArchive : null
-        }
+        onArchive={collection.can_write ? handleArchive : null}
         onToggleBookmark={handleToggleBookmark}
-        onTogglePreview={canTogglePreview ? handleTogglePreview : null}
+        onTogglePreview={isPreviewOptionShown ? handleTogglePreview : null}
         analyticsContext={ANALYTICS_CONTEXT}
       />
     </EventSandbox>
