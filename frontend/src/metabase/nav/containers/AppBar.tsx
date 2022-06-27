@@ -13,8 +13,8 @@ import NewItemButton from "metabase/nav/components/NewItemButton";
 import PathBreadcrumbs from "../components/PathBreadcrumbs/PathBreadcrumbs";
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
-import { State } from "metabase-types/store";
 import { User } from "metabase-types/api";
+import { State } from "metabase-types/store";
 
 import { getIsNavbarOpen, closeNavbar, toggleNavbar } from "metabase/redux/app";
 import {
@@ -28,6 +28,7 @@ import { isMac } from "metabase/lib/browser";
 import { isSmallScreen } from "metabase/lib/dom";
 
 import { logout } from "metabase/auth/actions";
+import { getUser } from "metabase/selectors/user";
 import {
   AppBarRoot,
   LogoLink,
@@ -40,9 +41,9 @@ import {
   PathBreadcrumbsContainer,
   ProfileLinkContainer,
 } from "./AppBar.styled";
-import { getUser } from "metabase/selectors/user";
 
 interface Props {
+  currentUser: User;
   isNavBarOpen: boolean;
   isNavBarVisible: boolean;
   isSearchVisible: boolean;
@@ -52,7 +53,6 @@ interface Props {
   showBreadcrumb: boolean;
   toggleNavbar: () => void;
   closeNavbar: () => void;
-  currentUser: User;
   logout: () => void;
 }
 
@@ -83,6 +83,7 @@ function HomepageLink({ handleClick }: { handleClick: () => void }) {
 }
 
 function AppBar({
+  currentUser,
   isNavBarOpen,
   isNavBarVisible,
   isSearchVisible,
@@ -92,7 +93,6 @@ function AppBar({
   showBreadcrumb,
   toggleNavbar,
   closeNavbar,
-  currentUser,
   logout,
 }: Props) {
   const [isSearchActive, setSearchActive] = useState(false);
