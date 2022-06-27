@@ -21,7 +21,7 @@ describe("scenarios > question > view", () => {
       openOrdersTable();
       filter();
       cy.contains("Vendor").click({ force: true });
-      cy.findByPlaceholderText("Search by Vendor")
+      cy.findByPlaceholderText("Search the list")
         .clear()
         .type("A");
       cy.findByText("Alfreda Konopelski II Group").click();
@@ -95,7 +95,7 @@ describe("scenarios > question > view", () => {
         .first()
         .click();
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Vendor");
+        cy.findByPlaceholderText("Search the list");
         cy.findByText("Search the list").should("not.exist");
       });
     });
@@ -143,7 +143,7 @@ describe("scenarios > question > view", () => {
         .first()
         .click();
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Vendor")
+        cy.findByPlaceholderText("Enter some text")
           .focus()
           .clear()
           .type("Balistreri-Muller");

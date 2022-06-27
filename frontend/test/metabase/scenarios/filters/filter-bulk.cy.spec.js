@@ -8,7 +8,7 @@ import {
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS_ID, ORDERS, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const rawQuestionDetails = {
   dataset_query: {
@@ -26,16 +26,6 @@ const peopleQuestion = {
     type: "query",
     query: {
       "source-table": PEOPLE_ID,
-    },
-  },
-};
-
-const productsQuestion = {
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": PRODUCTS_ID,
     },
   },
 };
@@ -514,23 +504,23 @@ describe("scenarios > filters > bulk filtering", () => {
 
   describe("text filters", () => {
     beforeEach(() => {
-      visitQuestionAdhoc(productsQuestion);
+      visitQuestionAdhoc(peopleQuestion);
       openFilterModal();
     });
 
     it("adds a contains text filter", () => {
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
-          cy.findByPlaceholderText("Search by Title").type("Marble");
+        cy.findByLabelText("City").within(() => {
+          cy.findByPlaceholderText("Search by City").type("Indian");
         });
         cy.button("Apply").click();
       });
-      cy.findByText("Showing 17 rows").should("be.visible");
+      cy.findByText("Showing 5 rows").should("be.visible");
     });
 
     it("adds an ends with text filter", () => {
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
+        cy.findByLabelText("City").within(() => {
           cy.findByText("Contains").click();
         });
       });
@@ -540,12 +530,12 @@ describe("scenarios > filters > bulk filtering", () => {
       });
 
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
-          cy.findByPlaceholderText("Search by Title").type("Hat");
+        cy.findByLabelText("City").within(() => {
+          cy.findByPlaceholderText("Search by City").type("Valley");
         });
         cy.button("Apply").click();
       });
-      cy.findByText("Showing 12 rows").should("be.visible");
+      cy.findByText("Showing 8 rows").should("be.visible");
     });
   });
 });
