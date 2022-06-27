@@ -1,33 +1,52 @@
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
-/**
- * for this modal only, if a numeric field has an invalid between filter that has only one value
- * we will intuit that the user wants a >= or <=  filter
- **/
-
-export function handleEmptyBetweens(query: StructuredQuery): StructuredQuery {
+// fix between filters with missing or misordered arguments
+export function fixBetweens(query: StructuredQuery): StructuredQuery {
   const betweenFilters = query
     .filters()
     .filter(filter => filter.operatorName() === "between");
 
   for (const filter of betweenFilters) {
-    if (countValidArumgents(filter) === 1) {
-      const [validArgument] = filter.arguments().filter(isValidArgument);
-      let newFilter = filter.setArguments([validArgument]);
-
-      if (isValidArgument(filter.arguments()[0])) {
-        newFilter = newFilter.setOperator(">=");
-      } else {
-        newFilter = newFilter.setOperator("<=");
-      }
-      // we need to recurse here because we need to process the rest
-      // of our filters from a new query
-      return handleEmptyBetweens(filter.replace(newFilter));
+    const validArguments = countValidArumgents(filter);
+    if (validArguments === 1) {
+      return fixBetweens(handleEmptyBetween(filter));
+    } else if (validArguments === 2 && hasBackwardsArguments(filter)) {
+      return fixBetweens(swapFilterArguments(filter));
     }
   }
 
   return query;
+}
+
+/**
+ * if a numeric field has an invalid between filter that has only one value
+ * we will intuit that the user wants a >= or <=  filter
+ *
+ * @param filter a filter with a single valid argument
+ * @returns a new query with this filter's operator changed
+ */
+export function handleEmptyBetween(filter: Filter): StructuredQuery {
+  const [validArgument] = filter.arguments().filter(isValidArgument);
+
+  const newOperator = isValidArgument(filter.arguments()[0]) ? ">=" : "<=";
+
+  const newFilter = filter
+    .setOperator(newOperator)
+    .setArguments([validArgument]);
+
+  return filter.replace(newFilter);
+}
+
+/**
+ * swaps the filter's arguments
+ * @param filter a filter with backwards arguments
+ * @returns a new query with this filter's arguments swapped
+ */
+export function swapFilterArguments(filter: Filter): StructuredQuery {
+  const [lowerArgument, upperArgument] = filter.arguments();
+  const newFilter = filter.setArguments([upperArgument, lowerArgument]);
+  return filter.replace(newFilter);
 }
 
 const isValidArgument = (arg: number | null | undefined) =>
@@ -37,3 +56,8 @@ const countValidArumgents = (filter: Filter) =>
   filter
     .arguments()
     .reduce((count, arg) => (isValidArgument(arg) ? count + 1 : count), 0);
+
+export const hasBackwardsArguments = (filter: Filter) => {
+  const [lowerArgument, upperArgument] = filter.arguments();
+  return lowerArgument > upperArgument;
+};
