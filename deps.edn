@@ -86,7 +86,6 @@
                                                            org.slf4j/slf4j-api]}
   net.sf.cssbox/cssbox                      {:mvn/version "5.0.0"               ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api]}
-  org.silentsoft/csscolor4j                 {:mvn/version "1.0.0"}              ; CSS color spec conversion
   org.apache.commons/commons-compress       {:mvn/version "1.21"}               ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.12.0"}             ; helper methods for working with java.lang stuff
   org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.17.2"}             ; apache logging framework

@@ -19,8 +19,7 @@
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.ui-logic :as ui-logic]
             [schema.core :as s])
-  (:import [java.text DecimalFormat DecimalFormatSymbols]
-           org.silentsoft.csscolor4j.Color))
+  (:import [java.text DecimalFormat DecimalFormatSymbols]))
 
 (def ^:private card-error-rendered-info
   "Default rendered-info map when there is an error running a card on the card run.
@@ -526,9 +525,7 @@
     (let [y-col-key     (keyword (:name y-col))
           card-name     (or (series-setting viz-settings y-col-key :name)
                             (:display_name y-col))
-          card-color    (or (some-> (series-setting viz-settings y-col-key :color)
-                                    Color/valueOf
-                                    .getHex)
+          card-color    (or (series-setting viz-settings y-col-key :color)
                             (nth colors idx))
           card-type     (or (series-setting viz-settings y-col-key :display)
                             chart-type
@@ -556,9 +553,7 @@
             selected-row-group (sort-by first (map #(vector (ffirst %) (first (second %))) row-group))
             card-name          (or (series-setting viz-settings group-key :name)
                                    group-key)
-            card-color         (or (some-> (series-setting viz-settings group-key :color)
-                                           Color/valueOf
-                                           .getHex)
+            card-color         (or (series-setting viz-settings group-key :color)
                                    (nth colors idx))
             card-type          (or (series-setting viz-settings group-key :display)
                                    chart-type
