@@ -18,7 +18,7 @@
 (def ^Integer auto-list-cardinality-threshold
   "Fields with less than this many distincy values should be given a `has_field_values` value of `list`, which means
   the Field should have FieldValues."
-  (int 100))
+  (int 1000))
 
 (def ^:private ^Integer entry-max-length
   "The maximum character length for a stored FieldValues entry."
