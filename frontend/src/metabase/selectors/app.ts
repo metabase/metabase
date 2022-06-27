@@ -5,7 +5,10 @@ import {
   getIsEditing as getIsEditingDashboard,
   getDashboard,
 } from "metabase/dashboard/selectors";
-import { getQuestion } from "metabase/query_builder/selectors";
+import {
+  getOriginalQuestion,
+  getQuestion,
+} from "metabase/query_builder/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { State } from "metabase-types/store";
 
@@ -125,4 +128,13 @@ export const getCollectionId = createSelector(
 export const getIsCollectionPathVisible = createSelector(
   [getRouterPath],
   path => PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
+);
+
+export const getIsQuestionLineageVisible = createSelector(
+  [getQuestion, getOriginalQuestion],
+  (question, originalQuestion) =>
+    question != null &&
+    !question.isSaved() &&
+    originalQuestion != null &&
+    !originalQuestion.isDataset(),
 );

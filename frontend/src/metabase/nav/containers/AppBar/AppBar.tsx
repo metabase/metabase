@@ -6,6 +6,7 @@ import {
   getCollectionId,
   getIsCollectionPathVisible,
   getIsNewButtonVisible,
+  getIsQuestionLineageVisible,
   getIsSearchVisible,
   RouterProps,
 } from "metabase/selectors/app";
@@ -18,6 +19,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isSearchVisible: getIsSearchVisible(state),
   isNewButtonVisible: getIsNewButtonVisible(state),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
+  isQuestionLineageVisible: getIsQuestionLineageVisible(state),
 });
 
 const mapDispatchToProps = {
