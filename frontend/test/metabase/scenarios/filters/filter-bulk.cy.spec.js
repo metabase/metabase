@@ -551,17 +551,17 @@ describe("scenarios > filters > bulk filtering", () => {
     it("adds multiple is text filters", () => {
       modal().within(() => {
         cy.findByLabelText("Title").within(() => {
-          cy.findByText("Is").click();
+          cy.findByText("Contains").click();
         });
       });
 
       popover().within(() => {
-        cy.findByText("Ends with").click();
+        cy.findByText("Is").click();
       });
 
       modal().within(() => {
         cy.findByLabelText("Title").within(() => {
-          cy.findByPlaceholderText("Enter some text").type(
+          cy.findByPlaceholderText("Search by Title").type(
             "Small Marble Shoes,Rustic Paper Wallet",
           );
         });
