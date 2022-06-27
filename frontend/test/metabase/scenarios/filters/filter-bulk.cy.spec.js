@@ -2,7 +2,6 @@ import {
   popover,
   restore,
   visitQuestionAdhoc,
-  filter,
   setupBooleanQuery,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -284,12 +283,18 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("should load already applied segments", () => {
-      visitQuestionAdhoc(rawQuestionDetails);
-      filter();
-      cy.findByText(SEGMENT_1_NAME).click();
+      const segmentFilterQuestion = {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["segment", 1],
+          },
+        },
+      };
 
-      cy.findByTestId("qb-filters-panel").findByText(SEGMENT_1_NAME);
-
+      visitQuestionAdhoc(segmentFilterQuestion);
       openFilterModal();
 
       modal().within(() => {
