@@ -7,7 +7,7 @@ import {
   saveDashboard,
   setFilter,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("issue 22482", () => {
   beforeEach(() => {
@@ -41,7 +41,7 @@ describe("issue 22482", () => {
     const expectedRange = getFormattedRange(
       moment()
         .startOf("month")
-        .add(-16, "month"),
+        .add(-15, "month"),
       moment()
         .add(-1, "month")
         .endOf("month"),

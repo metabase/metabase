@@ -8,7 +8,7 @@ import {
   isOSS,
   visitDashboard,
   clickSend,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
@@ -258,7 +258,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     it("should not enable 'Done' button before channel is selected (metabase#14494)", () => {
       cy.findAllByRole("button", { name: "Done" }).should("be.disabled");
-      cy.findByText("Pick a user or channel...").click();
+      cy.findByPlaceholderText("Pick a user or channel...").click();
       cy.findByText("#work").click();
       cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
     });
@@ -267,13 +267,13 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findAllByRole("button", { name: "Send to Slack now" }).should(
         "be.disabled",
       );
-      cy.findByText("Pick a user or channel...").click();
+      cy.findByPlaceholderText("Pick a user or channel...").click();
       cy.findByText("#work").click();
       cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
     });
   });
 
-  describe("OSS email subscriptions", () => {
+  describe("OSS email subscriptions", { tags: "@OSS" }, () => {
     beforeEach(() => {
       cy.onlyOn(isOSS);
       cy.visit(`/dashboard/1`);

@@ -1,4 +1,4 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import { restore, visitQuestionAdhoc } from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("visual tests > visualizations > funnel", () => {
@@ -27,6 +27,7 @@ describe("visual tests > visualizations > funnel", () => {
       },
     });
 
+    cy.findByTestId("funnel-chart");
     cy.percySnapshot();
   });
 
@@ -52,6 +53,7 @@ describe("visual tests > visualizations > funnel", () => {
       },
     });
 
+    cy.findByTestId("funnel-chart");
     cy.percySnapshot();
   });
 });

@@ -18,6 +18,7 @@ import {
   HeaderButtonsContainer,
   HeaderButtonSection,
   StyledLastEditInfoLabel,
+  HeaderCaption,
 } from "./Header.styled";
 
 const propTypes = {
@@ -31,9 +32,11 @@ const propTypes = {
   headerModalMessage: PropTypes.string,
   isEditing: PropTypes.bool,
   isEditingInfo: PropTypes.bool,
+  isNavBarOpen: PropTypes.bool.isRequired,
   item: PropTypes.object.isRequired,
   objectType: PropTypes.string.isRequired,
-  hasBadge: PropTypes.bool,
+  isBadgeVisible: PropTypes.bool,
+  isLastEditInfoVisible: PropTypes.bool,
   children: PropTypes.node,
   setItemAttributeFn: PropTypes.func,
   onHeaderModalDone: PropTypes.func,
@@ -117,8 +120,12 @@ class Header extends Component {
   }
 
   render() {
-    const { item, hasBadge, onLastEditInfoClick } = this.props;
-    const hasLastEditInfo = !!item["last-edit-info"];
+    const {
+      item,
+      isBadgeVisible,
+      isLastEditInfoVisible,
+      onLastEditInfoClick,
+    } = this.props;
 
     let titleAndDescription;
     if (this.props.item && this.props.item.id != null) {
@@ -137,23 +144,14 @@ class Header extends Component {
       );
     }
 
-    let attribution;
-    if (this.props.item && this.props.item.creator) {
-      attribution = (
-        <div className="Header-attribution">
-          {t`Asked by ${this.props.item.creator.common_name}`}
-        </div>
-      );
-    }
-
     const headerButtons = this.props.headerButtons.map(
       (section, sectionIndex) => {
         return (
-          section &&
-          section.length > 0 && (
+          section?.length > 0 && (
             <HeaderButtonSection
               key={sectionIndex}
               className="Header-buttonSection"
+              isNavBarOpen={this.props.isNavBarOpen}
             >
               {section}
             </HeaderButtonSection>
@@ -168,14 +166,14 @@ class Header extends Component {
         {this.renderEditWarning()}
         {this.renderHeaderModal()}
         <HeaderRoot
+          isNavBarOpen={this.props.isNavBarOpen}
           className={cx("QueryBuilder-section", this.props.headerClassName)}
           ref={this.header}
         >
           <HeaderContent>
-            <span className="inline-block mb1">{titleAndDescription}</span>
-            {attribution}
+            <HeaderCaption>{titleAndDescription}</HeaderCaption>
             <HeaderBadges>
-              {hasBadge && (
+              {isBadgeVisible && (
                 <>
                   <CollectionBadge
                     collectionId={item.collection_id}
@@ -183,10 +181,10 @@ class Header extends Component {
                   />
                 </>
               )}
-              {hasBadge && hasLastEditInfo && (
+              {isBadgeVisible && isLastEditInfoVisible && (
                 <HeaderBadgesDivider>•</HeaderBadgesDivider>
               )}
-              {hasLastEditInfo && (
+              {isLastEditInfoVisible && (
                 <StyledLastEditInfoLabel
                   item={item}
                   onClick={onLastEditInfoClick}
@@ -195,7 +193,9 @@ class Header extends Component {
             </HeaderBadges>
           </HeaderContent>
 
-          <HeaderButtonsContainer>{headerButtons}</HeaderButtonsContainer>
+          <HeaderButtonsContainer isNavBarOpen={this.props.isNavBarOpen}>
+            {headerButtons}
+          </HeaderButtonsContainer>
         </HeaderRoot>
         {this.props.children}
       </div>

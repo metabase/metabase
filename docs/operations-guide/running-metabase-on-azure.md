@@ -1,3 +1,7 @@
+---
+title: Running Metabase on Microsoft Azure
+---
+
 # Running Metabase on Microsoft Azure
 
 This guide covers the basics for running your Metabase instance in Microsoft Azure using Docker.

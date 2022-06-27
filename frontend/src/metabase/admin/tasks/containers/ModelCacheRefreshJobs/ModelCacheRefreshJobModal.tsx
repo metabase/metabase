@@ -8,6 +8,7 @@ import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 
 import PersistedModels from "metabase/entities/persisted-models";
+import { usePrevious } from "metabase/hooks/use-previous";
 
 import { ModelCacheRefreshStatus } from "metabase-types/api";
 
@@ -26,7 +27,6 @@ type ModelCacheRefreshJobModalStateProps = {
 
 type PersistedModelsLoaderProps = {
   persistedModel: ModelCacheRefreshStatus;
-  loading: boolean;
 };
 
 type ModelCacheRefreshJobModalProps = ModelCacheRefreshJobModalOwnProps &
@@ -40,15 +40,21 @@ const mapDispatchToProps = {
 
 function ModelCacheRefreshJobModal({
   persistedModel,
-  loading,
   onClose,
   onRefresh,
 }: ModelCacheRefreshJobModalProps) {
+  const prevModelInfo = usePrevious(persistedModel);
+
   useEffect(() => {
-    if (loading === false && persistedModel?.state !== "error" && onClose) {
+    if (
+      !prevModelInfo &&
+      persistedModel &&
+      persistedModel.state !== "error" &&
+      onClose
+    ) {
       onClose();
     }
-  }, [loading, persistedModel, onClose]);
+  }, [prevModelInfo, persistedModel, onClose]);
 
   const footer = useMemo(() => {
     if (!persistedModel) {

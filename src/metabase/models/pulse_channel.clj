@@ -4,6 +4,7 @@
             [medley.core :as m]
             [metabase.models.interface :as mi]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -192,7 +193,10 @@
   (merge
    mi/IObjectPermissionsDefaults
    {:can-read?  (constantly true)
-    :can-write? mi/superuser?}))
+    :can-write? mi/superuser?})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :pulse) :channel_type :details])})
 
 (defn will-delete-recipient
   "This function is called by [[metabase.models.pulse-channel-recipient/pre-delete]] when a `PulseChannelRecipient` is

@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Run clj-kondo
-      run: docker run -v $PWD:/work --rm cljkondo/clj-kondo clj-kondo --config /work/.clj-kondo/config.edn --config-dir /work/.clj-kondo --lint /work/src:/work/enterprise/backend/src:/work/shared/src
+      run: docker run -v $PWD:/work --rm cljkondo/clj-kondo:2022.04.25 clj-kondo --config /work/.clj-kondo/config.edn --config-dir /work/.clj-kondo --lint /work/src:/work/enterprise/backend/src:/work/shared/src
 
   be-linter-eastwood:
     runs-on: ubuntu-20.04
@@ -40,3 +40,46 @@ jobs:
         m2-cache-key: 'namespace-decls'
     - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
       name: Check ns forms
+
+  be-tests:
+    runs-on: ubuntu-20.04
+    name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [oss, ee]
+        java-version: [11, 17]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+
+    - run: yarn install --frozen-lockfile --prefer-offline
+    - name: Build static viz frontend
+      run: yarn build-static-viz
+
+    - name: Compile Java source file(s)
+      run: clojure -X:deps prep
+    - name: Compile driver AOT namespaces
+      working-directory: modules/drivers
+      run: clojure -X:deps prep
+    - name: Fetch dependencies
+      run: clojure -P -X:dev:ci:ee:ee-dev:drivers:drivers-dev
+    - name: Fetch dependencies  (./bin/build/build-mb)
+      working-directory: bin/build-mb
+      run: clojure -P -M:test
+    - name: Fetch dependencies (./bin/build/build-drivers)
+      working-directory: bin/build-drivers
+      run: clojure -P -M:test
+
+    - name: Run tests
+      run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+    - name: Publish Test Report (JUnit)
+      uses: mikepenz/action-junit-report@v2
+      if: always()
+      with:
+        report_paths: 'target/junit/**/*_test.xml'
+        check_name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}

@@ -33,8 +33,8 @@ import TableBrowser from "metabase/browse/containers/TableBrowser";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 
-import CollectionEdit from "metabase/collections/containers/CollectionEdit";
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
+import MoveCollectionModal from "metabase/collections/containers/MoveCollectionModal";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import UserCollectionList from "metabase/containers/UserCollectionList";
@@ -84,7 +84,7 @@ import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetail
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import HomePage from "metabase/home/homepage/containers/HomePage";
-import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
+import CollectionLanding from "metabase/collections/components/CollectionLanding";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
@@ -217,7 +217,7 @@ export const getRoutes = store => (
         </Route>
 
         <Route path="collection/:slug" component={CollectionLanding}>
-          <ModalRoute path="edit" modal={CollectionEdit} />
+          <ModalRoute path="move" modal={MoveCollectionModal} />
           <ModalRoute path="archive" modal={ArchiveCollectionModal} />
           <ModalRoute path="new_collection" modal={CollectionCreate} />
           <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
@@ -278,7 +278,7 @@ export const getRoutes = store => (
         </Route>
 
         {/* REFERENCE */}
-        <Route path="/reference" title={`Data Reference`}>
+        <Route path="/reference" title={t`Data Reference`}>
           <IndexRedirect to="/reference/databases" />
           <Route path="metrics" component={MetricListContainer} />
           <Route path="metrics/:metricId" component={MetricDetailContainer} />

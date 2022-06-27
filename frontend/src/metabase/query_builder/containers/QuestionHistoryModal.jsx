@@ -16,7 +16,7 @@ class QuestionHistoryModalInner extends React.Component {
     const { question, onClose, onReverted } = this.props;
     return (
       <HistoryModal
-        modelType={"card"}
+        modelType="card"
         modelId={question.id}
         canRevert={question.can_write}
         onClose={onClose}

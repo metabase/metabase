@@ -1,3 +1,7 @@
+---
+title: Models
+---
+
 # Models
 
 Models are a fundamental building block in Metabase. Models curate data from another table or tables from the same database to anticipate the kinds of questions people will ask of the data. You can think of them as derived tables, or a special kind of saved question meant to be used as the starting point for new questions. You can base a model on a SQL or query builder question, which means you can include custom, calculated columns in your model.
@@ -105,8 +109,13 @@ Just like with a question, admins can verify models. Verifying a model will give
 
 - [Models in Metabase][learn-models]
 
+## Need help?
+
+If you're having trouble with your model, go to the [Models troubleshooting guide][troubleshooting-models].
+
 [column-type]: ./field-types.md
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte
 [measures-dimensions]: https://www.metabase.com/learn/databases/dimensions-and-measures
 [question]: 04-asking-questions.md
 [learn-models]: /learn/getting-started/models
+[troubleshooting-models]: ../troubleshooting-guide/models.html

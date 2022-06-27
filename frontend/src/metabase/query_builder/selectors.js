@@ -12,7 +12,7 @@ import {
   getVisualizationTransformed,
 } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 import { isPK } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
@@ -26,6 +26,7 @@ import Timelines from "metabase/entities/timelines";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { parseTimestamp } from "metabase/lib/time";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import {
@@ -139,6 +140,10 @@ export const getPKColumnIndex = createSelector(
       return;
     }
     const { cols } = result.data;
+    const hasMultiplePks = cols.filter(isPK).length > 1;
+    if (hasMultiplePks) {
+      return -1;
+    }
     return cols.findIndex(isPK);
   },
 );
@@ -150,6 +155,9 @@ export const getPKRowIndexMap = createSelector(
       return {};
     }
     const { rows } = result.data;
+    if (PKColumnIndex < 0) {
+      return rows.map((_, index) => index);
+    }
     const map = {};
     rows.forEach((row, index) => {
       const PKValue = row[PKColumnIndex];
@@ -229,11 +237,7 @@ export const getDatabaseFields = createSelector(
 export const getParameters = createSelector(
   [getCard, getMetadata, getParameterValues],
   (card, metadata, parameterValues) =>
-    getValueAndFieldIdPopulatedParametersFromCard(
-      card,
-      metadata,
-      parameterValues,
-    ),
+    getCardUiParameters(card, metadata, parameterValues),
 );
 
 const getLastRunDatasetQuery = createSelector(
@@ -415,7 +419,7 @@ const getZoomedObjectRowIndex = createSelector(
     if (!PKRowIndexMap) {
       return;
     }
-    return PKRowIndexMap[objectId] || PKRowIndexMap[parseInt(objectId)];
+    return PKRowIndexMap[objectId] ?? PKRowIndexMap[parseInt(objectId)];
   },
 );
 
@@ -424,6 +428,9 @@ export const getPreviousRowPKValue = createSelector(
   (result, PKColumnIndex, rowIndex) => {
     if (!result) {
       return;
+    }
+    if (PKColumnIndex === -1) {
+      return rowIndex - 1;
     }
     const { rows } = result.data;
     return rows[rowIndex - 1][PKColumnIndex];
@@ -435,6 +442,9 @@ export const getNextRowPKValue = createSelector(
   (result, PKColumnIndex, rowIndex) => {
     if (!result) {
       return;
+    }
+    if (PKColumnIndex === -1) {
+      return rowIndex + 1;
     }
     const { rows } = result.data;
     return rows[rowIndex + 1][PKColumnIndex];
@@ -827,4 +837,19 @@ export const getPageFavicon = createSelector(
 export const getTimeoutId = createSelector(
   [getLoadingControls],
   loadingControls => loadingControls.timeoutId,
+);
+
+export const getIsHeaderVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
+);
+
+export const getIsActionListVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.action_buttons,
+);
+
+export const getIsAdditionalInfoVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );

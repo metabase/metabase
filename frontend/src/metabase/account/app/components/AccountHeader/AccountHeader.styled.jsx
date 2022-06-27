@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import {
   breakpointMinMedium,
@@ -14,8 +14,8 @@ export const AccountHeaderRoot = styled.div`
   justify-content: center;
   align-items: center;
   padding-top: ${space(1)};
-  border-bottom: 1px solid ${colors["border"]};
-  background-color: ${colors["white"]};
+  border-bottom: 1px solid ${color("border")};
+  background-color: ${color("white")};
 
   ${breakpointMinSmall} {
     padding-top: ${space(2)};
@@ -34,7 +34,14 @@ export const HeaderSection = styled.div`
 `;
 
 export const HeaderTitle = styled.h2`
+  font-size: 1rem;
   text-align: center;
+  margin-bottom: ${space(0)};
+`;
+
+export const HeaderSubtitle = styled.h3`
+  text-align: center;
+  color: ${color("text-medium")};
 `;
 
 export const HeaderAvatar = styled(UserAvatar)`

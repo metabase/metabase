@@ -447,9 +447,11 @@
 (defonce
   ^{:private true
     :doc "Stores the current retry state. Updated whenever the notification
-  retry settings change."}
+  retry settings change.
+  It starts with value `nil` but is set whenever the settings change or when
+  the first call with retry is made. (See #22790 for more details.)"}
   retry-state
-  (atom (make-retry-state)))
+  (atom nil))
 
 (defn- reconfigure-retrying [_old-value _new-value]
   (log/info (trs "Reconfiguring notification sender"))
@@ -459,6 +461,8 @@
   "Like [[send-notification!]] but retries sending on errors according
   to the retry settings."
   [& args]
+  (when-not @retry-state
+    (compare-and-set! retry-state nil (make-retry-state)))
   (apply (:sender @retry-state) args))
 
 (defn- send-notifications! [notifications]

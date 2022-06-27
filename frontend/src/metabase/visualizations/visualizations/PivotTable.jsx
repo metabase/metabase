@@ -7,10 +7,10 @@ import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 
 import { darken, lighten } from "metabase/lib/colors";
-import "metabase/visualizations/components/TableInteractive.css";
+import "metabase/visualizations/components/TableInteractive/TableInteractive.css";
 import { getScrollBarSize } from "metabase/lib/dom";
 
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import { isDimension } from "metabase/lib/schema_metadata";
 import {

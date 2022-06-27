@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, ReactNode } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -6,17 +6,24 @@ import { withRouter } from "react-router";
 
 import Tooltip from "metabase/components/Tooltip";
 import LogoIcon from "metabase/components/LogoIcon";
-
 import SearchBar from "metabase/nav/components/SearchBar";
 import SidebarButton from "metabase/nav/components/SidebarButton";
-import NewButton from "metabase/nav/containers/NewButton";
+import NewItemButton from "metabase/nav/components/NewItemButton";
+import PathBreadcrumbs from "../components/PathBreadcrumbs/PathBreadcrumbs";
 
-import { EmbedOptions, State } from "metabase-types/store";
+import { CollectionId } from "metabase-types/api";
+import { State } from "metabase-types/store";
 
 import { getIsNavbarOpen, closeNavbar, toggleNavbar } from "metabase/redux/app";
+import {
+  getIsNewButtonVisible,
+  getIsSearchVisible,
+  getCollectionId,
+  getShowBreadcumb,
+  RouterProps,
+} from "metabase/selectors/app";
 import { isMac } from "metabase/lib/browser";
-import { IFRAMED, isSmallScreen } from "metabase/lib/dom";
-import { getEmbedOptions } from "metabase/selectors/embed";
+import { isSmallScreen } from "metabase/lib/dom";
 
 import {
   AppBarRoot,
@@ -27,21 +34,27 @@ import {
   MiddleContainer,
   RightContainer,
   SidebarButtonContainer,
+  PathBreadcrumbsContainer,
 } from "./AppBar.styled";
 
 type Props = {
-  isNavbarOpen: boolean;
-  isEmbedded: boolean;
-  embedOptions: EmbedOptions;
+  isNavBarOpen: boolean;
+  isNavBarVisible: boolean;
+  isSearchVisible: boolean;
+  isNewButtonVisible: boolean;
+  collectionId?: CollectionId;
+  showBreadcrumb: boolean;
   toggleNavbar: () => void;
   closeNavbar: () => void;
 };
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: State, props: RouterProps) {
   return {
-    isNavbarOpen: getIsNavbarOpen(state),
-    isEmbedded: IFRAMED,
-    embedOptions: getEmbedOptions(state),
+    isNavBarOpen: getIsNavbarOpen(state),
+    isSearchVisible: getIsSearchVisible(state),
+    isNewButtonVisible: getIsNewButtonVisible(state),
+    collectionId: getCollectionId(state),
+    showBreadcrumb: getShowBreadcumb(state, props),
   };
 }
 
@@ -53,22 +66,22 @@ const mapDispatchToProps = {
 function HomepageLink({ handleClick }: { handleClick: () => void }) {
   return (
     <LogoLink to="/" onClick={handleClick} data-metabase-event="Navbar;Logo">
-      <LogoIcon size={24} />
+      <LogoIcon height={32} />
     </LogoLink>
   );
 }
 
 function AppBar({
-  isNavbarOpen,
-  isEmbedded,
-  embedOptions,
+  isNavBarOpen,
+  isNavBarVisible,
+  isSearchVisible,
+  isNewButtonVisible,
+  collectionId,
   toggleNavbar,
   closeNavbar,
+  showBreadcrumb,
 }: Props) {
   const [isSearchActive, setSearchActive] = useState(false);
-  const hasSearch = !isEmbedded || embedOptions.search;
-  const hasNewButton = !isEmbedded || embedOptions.new_button;
-  const hasSidebar = !isEmbedded || embedOptions.side_nav;
 
   const onLogoClick = useCallback(() => {
     if (isSmallScreen()) {
@@ -90,27 +103,35 @@ function AppBar({
   }, []);
 
   const sidebarButtonTooltip = useMemo(() => {
-    const message = isNavbarOpen ? t`Close sidebar` : t`Open sidebar`;
+    const message = isNavBarOpen ? t`Close sidebar` : t`Open sidebar`;
     const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
     return `${message} ${shortcut}`;
-  }, [isNavbarOpen]);
+  }, [isNavBarOpen]);
 
   return (
     <AppBarRoot>
-      <LeftContainer isLogoActive={!hasSidebar} isSearchActive={isSearchActive}>
+      <LeftContainer
+        isLogoActive={!isNavBarVisible}
+        isSearchActive={isSearchActive}
+      >
         <HomepageLink handleClick={onLogoClick} />
-        {hasSidebar && (
+        {isNavBarVisible && (
           <SidebarButtonContainer>
             <Tooltip
               tooltip={sidebarButtonTooltip}
               isEnabled={!isSmallScreen()}
             >
               <SidebarButton
-                isSidebarOpen={isNavbarOpen}
+                isSidebarOpen={isNavBarOpen}
                 onClick={toggleNavbar}
               />
             </Tooltip>
           </SidebarButtonContainer>
+        )}
+        {showBreadcrumb && (
+          <PathBreadcrumbsContainer isVisible={!isNavBarOpen}>
+            <PathBreadcrumbs collectionId={collectionId} />
+          </PathBreadcrumbsContainer>
         )}
       </LeftContainer>
       {!isSearchActive && (
@@ -118,9 +139,9 @@ function AppBar({
           <HomepageLink handleClick={onLogoClick} />
         </MiddleContainer>
       )}
-      {(hasSearch || hasNewButton) && (
+      {(isSearchVisible || isNewButtonVisible) && (
         <RightContainer>
-          {hasSearch && (
+          {isSearchVisible && (
             <SearchBarContainer>
               <SearchBarContent>
                 <SearchBar
@@ -130,7 +151,7 @@ function AppBar({
               </SearchBarContent>
             </SearchBarContainer>
           )}
-          {hasNewButton && <NewButton />}
+          {isNewButtonVisible && <NewItemButton />}
         </RightContainer>
       )}
     </AppBarRoot>

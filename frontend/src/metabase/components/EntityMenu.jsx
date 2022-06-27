@@ -133,13 +133,14 @@ class EntityMenu extends Component {
                                   externalLink={item.externalLink}
                                   action={
                                     item.action &&
-                                    (() => {
-                                      item.action();
+                                    (e => {
+                                      item.action(e);
                                       this.toggleMenu();
                                     })
                                   }
                                   event={item.event && item.event}
                                   link={item.link}
+                                  disabled={item.disabled}
                                   onClose={() => {
                                     this.toggleMenu();
                                     item?.onClose?.();

@@ -2,6 +2,7 @@
   (:require [metabase.models.collection :as collection]
             [metabase.models.interface :as mi]
             [metabase.models.native-query-snippet.permissions :as snippet.perms]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
@@ -33,7 +34,8 @@
   models/IModel
   (merge
    models/IModelDefaults
-   {:properties (constantly {:timestamped? true})
+   {:properties (constantly {:timestamped? true
+                             :entity_id    true})
     :pre-insert pre-insert
     :pre-update pre-update})
 
@@ -43,7 +45,10 @@
    {:can-read?   snippet.perms/can-read?
     :can-write?  snippet.perms/can-write?
     :can-create? snippet.perms/can-create?
-    :can-update? snippet.perms/can-update?}))
+    :can-update? snippet.perms/can-update?})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
 
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------

@@ -1,3 +1,7 @@
+---
+title: Metabase documentation
+---
+
 ## Getting started
 
 - [Getting started](/learn/getting-started/getting-started)
@@ -72,10 +76,10 @@
 
 - [Editing your account settings](./users-guide/account-settings.md)
 - [Managing people and groups](./administration-guide/04-managing-users.md)
-- [Single Sign-on (SSO)](./administration-guide/sso.md)
-- [Google Sign-In or LDAP](./administration-guide/10-single-sign-on.md)
-- [SAML](./enterprise-guide/authenticating-with-saml.md)
-- [JWT](./enterprise-guide/authenticating-with-jwt.md)
+- [Single Sign-on (SSO)](./administration-guide/sso.html)
+  - [Google Sign-In or LDAP](./administration-guide/10-single-sign-on.html)
+  - [SAML](./enterprise-guide/authenticating-with-saml.html)
+  - [JWT](./enterprise-guide/authenticating-with-jwt.html)
 - [Password complexity](./operations-guide/changing-password-complexity.md)
 - [Session expiration](./operations-guide/changing-session-expiration.md)
 
@@ -130,7 +134,7 @@
 
 ## Paid plans
 
-The Enterprise and Pro editions of Metabase offer additional features.
+The Enterprise and Pro plans of Metabase offer additional features.
 
 - [Getting and activating the Enterprise edition](./enterprise-guide/activating-the-enterprise-edition.md)
 - [List of premium features](enterprise-guide/start.md)

@@ -2,16 +2,13 @@ import {
   restore,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe(`search > recently viewed`, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("shows list of recently viewed items", () => {
     cy.visit("/browse/1-sample-database");
 
     // "People" table
@@ -30,8 +27,10 @@ describe(`search > recently viewed`, () => {
     // which elicits a ViewLog entry
 
     cy.visit("/");
-
     cy.findByPlaceholderText("Search…").click();
+  });
+
+  it("shows list of recently viewed items", () => {
     cy.findByTestId("loading-spinner").should("not.exist");
 
     assertRecentlyViewedItem(
@@ -42,6 +41,14 @@ describe(`search > recently viewed`, () => {
     );
     assertRecentlyViewedItem(1, "Orders", "Question", "/question/1-orders");
     assertRecentlyViewedItem(2, "People", "Table", "/question#?db=1&table=3");
+  });
+
+  it("allows to select an item from keyboard", () => {
+    cy.get("body").trigger("keydown", { key: "ArrowDown" });
+    cy.get("body").trigger("keydown", { key: "ArrowDown" });
+    cy.get("body").trigger("keydown", { key: "Enter" });
+
+    cy.url().should("match", /\/question\/1-orders$/);
   });
 });
 

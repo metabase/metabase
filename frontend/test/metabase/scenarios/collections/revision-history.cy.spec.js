@@ -3,7 +3,8 @@ import {
   visitDashboard,
   saveDashboard,
   visitQuestion,
-} from "__support__/e2e/cypress";
+  questionInfoButton,
+} from "__support__/e2e/helpers";
 
 import { onlyOn } from "@cypress/skip-test";
 
@@ -106,6 +107,7 @@ describe("revision history", () => {
               cy.findByText("This dashboard is looking empty.");
 
               // Should be able to revert back again
+              openRevisionHistory();
               cy.findByText("Revision history").click();
               clickRevert("rearranged the cards");
 
@@ -123,7 +125,8 @@ describe("revision history", () => {
               visitQuestion(1);
 
               cy.findByTestId("revision-history-button").click();
-              cy.findByText("Revert").click();
+
+              cy.findByTestId("question-revert-button").click();
 
               cy.wait("@revert").then(({ response: { statusCode, body } }) => {
                 expect(statusCode).to.eq(200);
@@ -138,10 +141,10 @@ describe("revision history", () => {
 
               visitQuestion(1);
 
-              cy.findByTestId("saved-question-header-button").click();
+              questionInfoButton().click();
               cy.findByText("History").click();
               // Last revert is the original state
-              cy.findAllByText("Revert")
+              cy.findAllByTestId("question-revert-button")
                 .last()
                 .click();
 

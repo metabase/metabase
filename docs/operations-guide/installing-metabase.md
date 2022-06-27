@@ -1,3 +1,7 @@
+---
+title: Installing Metabase
+---
+
 # Installing Metabase
 
 Metabase is built and packaged as a Java JAR file and can be run anywhere that Java is available.
@@ -12,9 +16,9 @@ The simplest and most basic way of running Metabase.
 
 If you prefer to use a Docker container, we've got you covered.
 
-## [Metabase Cloud](/start/hosted/)
+## [Metabase Cloud](/start/)
 
-Our official hosted version, [Metabase Cloud](/start/hosted/). All you need to do is sign up for a free trial, and you're off to the races.
+Our official hosted version, [Metabase Cloud](/start/). All you need to do is sign up for a free trial, and you're off to the races.
 
 ## [Building Metabase from source](../developers-guide/start.md)
 

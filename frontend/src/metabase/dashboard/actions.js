@@ -18,8 +18,7 @@ import {
   createParameter,
   setParameterName as setParamName,
   setParameterDefaultValue as setParamDefaultValue,
-  getMappingsByParameter,
-  getDashboardParametersWithFieldMetadata,
+  getDashboardUiParameters,
   getParametersMappedToDashcard,
   getFilteringParameterValuesMap,
   getParameterValuesSearchKey,
@@ -59,6 +58,7 @@ import {
   getParameterValues,
   getDashboardParameterValuesSearchCache,
   getLoadingDashCards,
+  getDashboardParameterValuesCache,
 } from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -136,8 +136,8 @@ export const SHOW_ADD_PARAMETER_POPOVER =
 export const HIDE_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";
 
-export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES =
-  "metabase/dashboard/FETCH_DASHBOARD_PARAMETER_FIELD_VALUES";
+export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE =
+  "metabase/dashboard/FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE";
 
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
@@ -783,13 +783,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     }
 
     const metadata = getMetadata(getState());
-    const mappingsByParameter = getMappingsByParameter(metadata, result);
-
-    const parameters = getDashboardParametersWithFieldMetadata(
-      metadata,
-      result,
-      mappingsByParameter,
-    );
+    const parameters = getDashboardUiParameters(result, metadata);
 
     const parameterValuesById = preserveParameters
       ? getParameterValues(getState())
@@ -1098,8 +1092,8 @@ const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
   );
 };
 
-export const fetchDashboardParameterValues = createThunkAction(
-  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+export const fetchDashboardParameterValuesWithCache = createThunkAction(
+  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
   ({ dashboardId, parameter, parameters, query }) => async (
     dispatch,
     getState,
@@ -1138,3 +1132,14 @@ export const fetchDashboardParameterValues = createThunkAction(
     };
   },
 );
+
+export const fetchDashboardParameterValues = args => async (
+  dispatch,
+  getState,
+) => {
+  await dispatch(fetchDashboardParameterValuesWithCache(args));
+  const dashboardParameterValuesCache = getDashboardParameterValuesCache(
+    getState(),
+  );
+  return dashboardParameterValuesCache.get(args) || [];
+};

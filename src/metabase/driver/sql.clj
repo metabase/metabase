@@ -11,7 +11,7 @@
             [potemkin :as p]
             [schema.core :as s]))
 
-(comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the liner don't remove the `:require`
+(comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
 (driver/register! :sql, :abstract? true)
 

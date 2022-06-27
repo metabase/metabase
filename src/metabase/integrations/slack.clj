@@ -15,20 +15,20 @@
             [schema.core :as s]))
 
 (defsetting slack-token
-  (str (deferred-tru "Deprecated Slack API token for connecting the Metabase Slack bot.")
-       " "
-       (deferred-tru "Please use a new Slack app integration instead."))
+  (deferred-tru
+    (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
+         "Please use a new Slack app integration instead."))
   :deprecated "0.42.0")
 
 (defsetting slack-app-token
-  (str (deferred-tru "Bot user OAuth token for connecting the Metabase Slack app.")
-       " "
-       (deferred-tru "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
+  (deferred-tru
+    (str "Bot user OAuth token for connecting the Metabase Slack app. "
+         "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
 
 (defsetting slack-token-valid?
-  (str (deferred-tru "Whether the current Slack app token, if set, is valid.")
-       " "
-       (deferred-tru "Set to 'false' if a Slack API request returns an auth error."))
+  (deferred-tru
+    (str "Whether the current Slack app token, if set, is valid. "
+         "Set to 'false' if a Slack API request returns an auth error."))
   :type :boolean)
 
 (defn process-files-channel-name
@@ -90,7 +90,7 @@
       ;; We should send an email if `slack-token-valid?` is `true` or `nil` (i.e. a pre-existing bot integration is
       ;; being used)
       (when (slack-token-valid?) (messages/send-slack-token-error-emails!))
-      (slack-token-valid? false))
+      (slack-token-valid?! false))
     (if invalid-token?
       (log/warn (u/pprint-to-str 'red (trs "🔒 Your Slack authorization token is invalid or has been revoked. Please update your integration in Admin Settings -> Slack.")))
       (log/warn (u/pprint-to-str 'red error)))
@@ -163,6 +163,14 @@
           (lazy-seq
            (paged-list-request endpoint response->data (assoc params :cursor next-cursor)))))))))
 
+(defn channel-transform
+  "Transformation from slack's api representation of a channel to our own."
+  [channel]
+  {:display-name (str \# (:name channel))
+   :name         (:name channel)
+   :id           (:id channel)
+   :type         "channel"})
+
 (defn conversations-list
   "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages).
   By default only fetches channels, and returns them with their # prefix. Note the call to [[paged-list-request]] will
@@ -171,19 +179,16 @@
   (let [params (merge {:exclude_archived true, :types "public_channel"} query-parameters)]
     (paged-list-request "conversations.list"
                         ;; response -> channel names
-                        #(->> %
-                              :channels
-                              (map (fn [channel]
-                                     (str \# (:name channel)))))
+                        #(->> % :channels (map channel-transform))
                         params)))
 
 (defn channel-exists?
   "Returns true if the channel it exists."
   [channel-name]
-  (and channel-name
-       (contains?
-        (set (slack-cached-channels-and-usernames))
-        (str \# channel-name))))
+  (let [channel-names (into #{} (comp (map (juxt :name :id))
+                                      cat)
+                            (:channels (slack-cached-channels-and-usernames)))]
+    (and channel-name (contains? channel-names channel-name))))
 
 (s/defn valid-token?
   "Check whether a Slack token is valid by checking if the `conversations.list` Slack api accepts it."
@@ -196,16 +201,21 @@
         false
         (throw e)))))
 
+(defn user-transform
+  "Tranformation from slack api user to our own internal representation."
+  [member]
+  {:display-name (str \@ (:name member))
+   :type         "user"
+   :name         (:name member)
+   :id           (:id member)})
+
 (defn users-list
   "Calls Slack API `users.list` endpoint and returns the list of available users with their @ prefix. Note the call
   to [[paged-list-request]] will only fetch the first [[max-list-results]] items."
   [& {:as query-parameters}]
   (->> (paged-list-request "users.list"
                            ;; response -> user names
-                           #(->> %
-                                 :members
-                                 (map (fn [member]
-                                        (str \@ (:name member)))))
+                           #(->> % :members (map user-transform))
                            query-parameters)
        ;; remove deleted users and bots. At the time of this writing there's no way to do this in the Slack API
        ;; itself so we need to do it after the fact.
@@ -219,6 +229,12 @@
    (slack-channels-and-usernames-last-updated)
    (t/minutes 10)))
 
+(defn clear-channel-cache!
+  "Clear the Slack channels cache, and reset its last-updated timestamp to its default value (the Unix epoch)."
+  []
+  (slack-channels-and-usernames-last-updated! zoned-time-epoch)
+  (slack-cached-channels-and-usernames! {:channels []}))
+
 (defn refresh-channels-and-usernames!
   "Refreshes users and conversations in slack-cache. finds both in parallel, sets
   [[slack-cached-channels-and-usernames]], and resets the [[slack-channels-and-usernames-last-updated]] time."
@@ -227,8 +243,8 @@
     (log/info "Refreshing slack channels and usernames.")
     (let [users (future (vec (users-list)))
           conversations (future (vec (conversations-list)))]
-      (slack-cached-channels-and-usernames (concat @conversations @users))
-      (slack-channels-and-usernames-last-updated (t/zoned-date-time)))))
+      (slack-cached-channels-and-usernames! {:channels (concat @conversations @users)})
+      (slack-channels-and-usernames-last-updated! (t/zoned-date-time)))))
 
 (defn refresh-channels-and-usernames-when-needed!
   "Refreshes users and conversations in slack-cache on a per-instance lock."
@@ -266,6 +282,18 @@
   [channel-id :- su/NonBlankString]
   (POST "conversations.join" {:form-params {:channel channel-id}}))
 
+(defn- maybe-lookup-id
+  "Slack requires the slack app to be in the channel that we post all of our attachments to. Slack changed (around June
+  2022 #23229) the \"conversations.join\" api to require the internal slack id rather than the common name. This makes
+  a lot of sense to ensure we continue to operate despite channel renames. Attempt to look up the channel-id in the
+  list of channels to obtain the internal id. Fallback to using the current channel-id."
+  [channel-id cached-channels]
+  (let [name->id    (into {} (comp (filter (comp #{"channel"} :type))
+                                   (map (juxt :name :id)))
+                          (:channels cached-channels))
+        channel-id' (get name->id channel-id channel-id)]
+    channel-id'))
+
 (s/defn upload-file!
   "Calls Slack API `files.upload` endpoint and returns the URL of the uploaded file."
   [file :- NonEmptyByteArray, filename :- su/NonBlankString, channel-id :- su/NonBlankString]
@@ -279,7 +307,9 @@
                      ;; If file upload fails with a "not_in_channel" error, we join the channel and try again.
                      ;; This is expected to happen the first time a Slack subscription is sent.
                      (if (= "not_in_channel" (:error-code (ex-data e)))
-                       (do (join-channel! channel-id)
+                       (do (-> channel-id
+                               (maybe-lookup-id (slack-cached-channels-and-usernames))
+                               join-channel!)
                            (POST "files.upload" request))
                        (throw e))))]
     (u/prog1 (get-in response [:file :url_private])

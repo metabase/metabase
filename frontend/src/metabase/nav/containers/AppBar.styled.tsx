@@ -21,6 +21,10 @@ export const AppBarRoot = styled.header`
   background-color: ${color("bg-white")};
   border-bottom: 1px solid ${color("border")};
   z-index: 4;
+
+  @media print {
+    display: none;
+  }
 `;
 
 export const LogoLink = styled(Link)`
@@ -141,4 +145,25 @@ export const SearchBarContent = styled.div`
     position: relative;
     width: 460px;
   }
+`;
+
+interface PathBreadcrumbsContainerProps {
+  isVisible: boolean;
+}
+
+export const PathBreadcrumbsContainer = styled.div<
+  PathBreadcrumbsContainerProps
+>`
+  position: absolute;
+  top: 0px;
+  left: 100px;
+  height: ${APP_BAR_HEIGHT};
+  display: flex;
+  visibility: ${props => (props.isVisible ? "visible" : "hidden")};
+  opacity: ${props => (props.isVisible ? 1 : 0)};
+
+  ${props =>
+    !props.isVisible
+      ? `transition: opacity 0.5s, visibility 0s 0.5s;`
+      : `transition: opacity 0.5s;`}
 `;

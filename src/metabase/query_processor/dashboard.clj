@@ -97,7 +97,7 @@
                            :target (some (fn [{mapping-card-id :card_id, :keys [target]}]
                                             (when (= mapping-card-id card-id)
                                               target))
-                                          mappings)}]))
+                                         mappings)}]))
          (filter (fn [[_ {:keys [target]}]]
                    target)))
    dashboard-param-id->param))
@@ -160,7 +160,7 @@
   (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
         options         (merge
                          {:ignore_cache false
-                          :constraints  qp.constraints/default-query-constraints
+                          :constraints  (qp.constraints/default-query-constraints)
                           :context      :dashboard}
                          options
                          {:parameters   resolved-params

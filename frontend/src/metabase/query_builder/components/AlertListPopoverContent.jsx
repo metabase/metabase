@@ -173,7 +173,7 @@ class AlertListItemInner extends Component {
               <AlertCreatorTitle alert={alert} user={user} />
             </div>
             <div
-              className={`ml-auto text-bold text-small`}
+              className="ml-auto text-bold text-small"
               style={{
                 transform: `translateY(4px)`,
               }}
@@ -246,7 +246,7 @@ export const UnsubscribedListItem = () => (
       <Icon name="check" className="text-success" />
     </div>
     <h3
-      className={`text-dark`}
+      className="text-dark"
       style={{ marginLeft: 10 }}
     >{jt`Okay, you're unsubscribed`}</h3>
   </li>
@@ -316,7 +316,7 @@ export class AlertCreatorTitle extends Component {
     const isAdmin = user.is_superuser;
     const isCurrentUser = alert.creator.id === user.id;
     const creator =
-      alert.creator.id === user.id ? t`You` : alert.creator.first_name;
+      alert.creator.id === user.id ? t`You` : alert.creator.common_name;
     const text =
       !isCurrentUser && !isAdmin
         ? t`You're receiving ${creator}'s alerts`

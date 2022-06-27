@@ -1,6 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+import _ from "underscore";
+
 import ToggleLarge from "metabase/components/ToggleLarge";
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
@@ -8,8 +10,6 @@ import { t } from "ttag";
 import AdvancedSettingsPane from "./AdvancedSettingsPane";
 import PreviewPane from "./PreviewPane";
 import EmbedCodePane from "./EmbedCodePane";
-
-import _ from "underscore";
 
 const AdvancedEmbedPane = ({
   pane,
@@ -74,7 +74,11 @@ const AdvancedEmbedPane = ({
         onChange={() => onChangePane(pane === "preview" ? "code" : "preview")}
       />
       {pane === "preview" ? (
-        <PreviewPane className="flex-full" previewUrl={iframeUrl} />
+        <PreviewPane
+          className="flex-full"
+          previewUrl={iframeUrl}
+          isTransparent={displayOptions.theme === "transparent"}
+        />
       ) : pane === "code" ? (
         <EmbedCodePane
           className="flex-full"

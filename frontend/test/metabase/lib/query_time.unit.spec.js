@@ -46,7 +46,7 @@ describe("query_time", () => {
       ).toEqual([
         "between",
         ["field", 100, { "temporal-unit": "day" }],
-        ["relative-datetime", -31, "day"],
+        ["relative-datetime", -30, "day"],
         ["relative-datetime", -1, "day"],
       ]);
     });
@@ -265,7 +265,7 @@ describe("query_time", () => {
         ]);
         expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(
           moment()
-            .subtract(8, "day")
+            .subtract(7, "day")
             .format("YYYY-MM-DD 00:00:00"),
         );
         expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(

@@ -11,7 +11,6 @@ import Modal from "metabase/components/Modal";
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import AddToDashSelectDashModal from "metabase/containers/AddToDashSelectDashModal";
-import EditQuestionInfoModal from "metabase/query_builder/components/view/EditQuestionInfoModal";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal";
@@ -22,6 +21,7 @@ import { CreateAlertModalContent } from "metabase/query_builder/components/Alert
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+import BulkFilterModal from "metabase/query_builder/components/filters/modals/BulkFilterModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
@@ -154,6 +154,10 @@ export default class QueryModals extends React.Component {
           initialCollectionId={this.props.initialCollectionId}
         />
       </Modal>
+    ) : modal === MODAL_TYPES.FILTERS ? (
+      <Modal onClose={onCloseModal}>
+        <BulkFilterModal question={question} onClose={onCloseModal} />
+      </Modal>
     ) : modal === MODAL_TYPES.HISTORY ? (
       <Modal onClose={onCloseModal}>
         <QuestionHistoryModal
@@ -184,14 +188,6 @@ export default class QueryModals extends React.Component {
     ) : modal === MODAL_TYPES.ARCHIVE ? (
       <Modal onClose={onCloseModal}>
         <ArchiveQuestionModal question={question} onClose={onCloseModal} />
-      </Modal>
-    ) : modal === MODAL_TYPES.EDIT ? (
-      <Modal onClose={onCloseModal}>
-        <EditQuestionInfoModal
-          question={question}
-          onClose={onCloseModal}
-          onSave={card => this.props.onSave(card, false)}
-        />
       </Modal>
     ) : modal === MODAL_TYPES.EMBED ? (
       <Modal full onClose={onCloseModal}>

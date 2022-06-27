@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { createAction } from "redux-actions";
 
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { startTimer } from "metabase/lib/performance";
@@ -84,7 +85,7 @@ export const RUN_QUERY = "metabase/qb/RUN_QUERY";
 export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
-  overrideWithCard,
+  overrideWithCard = null,
 } = {}) => {
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
@@ -160,10 +161,20 @@ export const runQuestionQuery = ({
 const loadStartUIControls = createThunkAction(
   LOAD_START_UI_CONTROLS,
   () => (dispatch, getState) => {
-    dispatch(setDocumentTitle(t`Doing Science...`));
+    const loadingMessage = PLUGIN_SELECTORS.getLoadingMessage(getState());
+    const title = {
+      onceQueryIsRun: loadingMessage,
+      ifQueryTakesLong: t`Still Here...`,
+    };
+
+    dispatch(setDocumentTitle(title.onceQueryIsRun));
+
     const timeoutId = setTimeout(() => {
-      dispatch(setDocumentTitle(t`Still Here...`));
+      if (document.title.includes(title.onceQueryIsRun)) {
+        dispatch(setDocumentTitle(title.ifQueryTakesLong));
+      }
     }, 10000);
+
     dispatch(setDocumentTitleTimeoutId(timeoutId));
   },
 );
@@ -234,6 +245,8 @@ export const cancelQuery = () => (dispatch, getState) => {
     if (cancelQueryDeferred) {
       cancelQueryDeferred.resolve();
     }
+    dispatch(setDocumentTitle(""));
+
     return { type: CANCEL_QUERY };
   }
 };

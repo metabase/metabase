@@ -10,7 +10,8 @@ import {
   visualize,
   summarize,
   filter,
-} from "__support__/e2e/cypress";
+  setupBooleanQuery,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -922,30 +923,6 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  const BOOLEAN_QUERY =
-    'select 0::integer as "integer", true::boolean AS "boolean" union all \nselect 1::integer as "integer", false::boolean AS "boolean" union all \nselect null as "integer", true::boolean AS "boolean" union all \nselect -1::integer as "integer", null AS "boolean"';
-
-  const setupBooleanQuery = () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    cy.createNativeQuestion(
-      {
-        name: "16386",
-        native: {
-          query: BOOLEAN_QUERY,
-        },
-        visualization_settings: {
-          "table.pivot_column": "boolean",
-          "table.cell_column": "integer",
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.findByText("Explore results").click();
-    cy.wait("@dataset");
-  };
-
   ["true", "false"].forEach(condition => {
     const regexCondition = new RegExp(`${condition}`, "i");
     // We must use and return strings instead of boolean and numbers
@@ -955,8 +932,9 @@ describe("scenarios > question > filter", () => {
       beforeEach(setupBooleanQuery);
 
       it("from the column popover (metabase#16386-1)", () => {
-        cy.get(".cellData")
+        cy.findAllByTestId("header-cell")
           .contains("boolean")
+          .should("be.visible")
           .click();
 
         popover()

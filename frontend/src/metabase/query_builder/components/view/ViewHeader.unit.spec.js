@@ -1,11 +1,7 @@
 import React from "react";
 import xhrMock from "xhr-mock";
-import {
-  fireEvent,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import {
   SAMPLE_DATABASE,
   ORDERS,
@@ -94,27 +90,35 @@ function mockSettings({ enableNestedQueries = true } = {}) {
   });
 }
 
-function setup({ question, isRunnable = true, settings, ...props } = {}) {
+function setup({
+  question,
+  settings,
+  isRunnable = true,
+  isActionListVisible = true,
+  isAdditionalInfoVisible = true,
+  ...props
+} = {}) {
   mockSettings(settings);
 
   const callbacks = {
     runQuestionQuery: jest.fn(),
     setQueryBuilderMode: jest.fn(),
-    onOpenQuestionDetails: jest.fn(),
-    onCloseQuestionDetails: jest.fn(),
     onOpenModal: jest.fn(),
     onAddFilter: jest.fn(),
     onCloseFilter: jest.fn(),
     onEditSummary: jest.fn(),
     onCloseSummary: jest.fn(),
+    onSave: jest.fn(),
   };
 
   renderWithProviders(
     <ViewTitleHeader
       {...callbacks}
       {...props}
-      isRunnable={isRunnable}
       question={question}
+      isRunnable={isRunnable}
+      isActionListVisible={isActionListVisible}
+      isAdditionalInfoVisible={isAdditionalInfoVisible}
     />,
     {
       withRouter: true,
@@ -220,6 +224,9 @@ describe("ViewHeader", () => {
 
           setup({ question });
           expect(screen.queryByText("Filter")).not.toBeInTheDocument();
+          expect(
+            screen.queryByLabelText("Show more filters"),
+          ).not.toBeInTheDocument();
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
           expect(
             screen.queryByLabelText("notebook icon"),
@@ -252,6 +259,7 @@ describe("ViewHeader", () => {
             queryBuilderMode: "view",
           });
           fireEvent.click(screen.getByText("Filter"));
+          fireEvent.click(screen.getByLabelText("Show more filters"));
           expect(onAddFilter).toHaveBeenCalled();
         });
 
@@ -349,16 +357,19 @@ describe("ViewHeader", () => {
           xhrMock.teardown();
         });
 
-        it("displays collection where a question is saved to", async () => {
-          setup({ question });
-          await waitFor(() => screen.queryByText("Our analytics"));
-          expect(screen.queryByText("Our analytics")).toBeInTheDocument();
+        it("opens details sidebar on question name click", () => {
+          const { onSave } = setup({ question });
+          const title = screen.getByTestId("saved-question-header-title");
+          userEvent.type(title, "New Title");
+          fireEvent.blur(title);
+          expect(onSave).toHaveBeenCalled();
         });
 
-        it("opens details sidebar on question name click", () => {
-          const { onOpenQuestionDetails } = setup({ question });
-          fireEvent.click(screen.getByText(question.displayName()));
-          expect(onOpenQuestionDetails).toHaveBeenCalled();
+        it("shows bookmark and action buttons", () => {
+          setup({ question });
+          expect(
+            screen.queryByTestId("question-action-buttons-container"),
+          ).toBeInTheDocument();
         });
       });
     });
@@ -367,12 +378,12 @@ describe("ViewHeader", () => {
 
 describe("ViewHeader | Ad-hoc GUI question", () => {
   it("does not open details sidebar on table name click", () => {
-    const { question, onOpenQuestionDetails } = setupAdHoc();
+    const { question, onOpenModal } = setupAdHoc();
     const tableName = question.table().displayName();
 
     fireEvent.click(screen.getByText(tableName));
 
-    expect(onOpenQuestionDetails).not.toHaveBeenCalled();
+    expect(onOpenModal).not.toHaveBeenCalled();
   });
 
   it("displays original question name if a question is started from one", () => {
@@ -383,6 +394,13 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
     expect(
       screen.queryByText(originalQuestion.displayName()),
     ).toBeInTheDocument();
+  });
+
+  it("does not render bookmark and action buttons", () => {
+    setupAdHoc();
+    expect(
+      screen.queryByTestId("question-action-buttons-container"),
+    ).not.toBeInTheDocument();
   });
 
   describe("filters", () => {

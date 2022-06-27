@@ -1,7 +1,8 @@
 (ns metabase.api.common.internal-test
   (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase.api.common.internal :as internal :refer :all]
+            [metabase.api.common.internal :as internal]
+            [metabase.config :as config]
             [metabase.test :as mt]
             [metabase.util :as u]))
 
@@ -27,8 +28,8 @@
     #\"[0-9]+\" -> \"#[0-9]+\""
   {:style/indent 0}
   [& body]
-  `(binding [*auto-parse-types* (m/map-vals #(update % :route-param-regex (partial str "#"))
-                                            *auto-parse-types*)]
+  `(binding [internal/*auto-parse-types* (m/map-vals #(update % :route-param-regex (partial str "#"))
+                                                    internal/*auto-parse-types*)]
      ~@body))
 
 (deftest route-param-regex-test
@@ -113,3 +114,12 @@
     ;; should work with some wacky binding form
     '[id :as {body :body}]
     '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)))
+
+(deftest enterprise-endpoint-name-test
+  (when config/ee-available?
+    (testing "Make sure the route name for enterprise API endpoints is somewhat correct"
+      (require 'metabase-enterprise.advanced-permissions.api.application)
+      (is (= "GET /api/ee/advanced-permissions/application/graph"
+             (#'internal/endpoint-name (the-ns 'metabase-enterprise.advanced-permissions.api.application)
+                                       'GET
+                                       "/graph"))))))

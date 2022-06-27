@@ -1,3 +1,7 @@
+---
+title: Visualizing results
+---
+
 # Visualizing results
 
 While tables are useful for looking up information or finding specific numbers, it's usually easier to see trends and make sense of data using charts.
@@ -305,7 +309,7 @@ For example, I might have an Opportunities table, and I could create a question 
 
 When you select the **Map** visualization setting, Metabase will automatically try and pick the best kind of map to use based on the table or result set. Here are the maps that Metabase uses:
 
-- **United States Map**. Creating a map of the United States from your data requires your results to contain a column that contains names of states or two-letter state codes. This lets you do things like visualize the count of your users broken out by state, with darker states representing more users.
+- **United States Map**. Creating a map of the United States from your data requires your results to include a `State` column that contains [two-letter state codes](https://about.usps.com/who/profile/history/state-abbreviations.html) (e.g., "AK" for Alaska, "VT" for Vermont, and so on). This column with state codes lets you do things like visualize the count of people broken out by state, with darker states representing more people.
 - **World Map**. To visualize your results in the format of a map of the world broken out by country, your result must contain a column with two-letter country codes. (E.g., count of users by country.)
 
 ![Region map](images/visualizations/map.png)

@@ -66,7 +66,6 @@ export type SettingName =
   | "enable-enhancements?"
   | "enable-public-sharing"
   | "enable-xrays"
-  | "experimental-enable-actions"
   | "persisted-models-enabled"
   | "engines"
   | "ga-code"
@@ -95,7 +94,10 @@ export type SettingName =
   | "deprecation-notice-version"
   | "show-database-syncing-modal"
   | "premium-embedding-token"
-  | "metabase-store-managed";
+  | "metabase-store-managed"
+  | "application-font"
+  | "available-fonts"
+  | "enable-query-caching";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 

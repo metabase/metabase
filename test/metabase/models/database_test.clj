@@ -9,6 +9,7 @@
             [metabase.models.database :as database]
             [metabase.models.permissions :as perms]
             [metabase.models.secret :as secret :refer [Secret]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.user :as user]
             [metabase.server.middleware.session :as mw.session]
             [metabase.task :as task]
@@ -45,10 +46,7 @@
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
     (mt/with-temp-scheduler
-      ;; temporarily disable the `maybe-update-db-schedules` behavior that normally happens when the sync databases
-      ;; task gets initialized so we don't end up getting all of our database sync schedules randomized.
-      (with-redefs [task.sync-databases/maybe-update-db-schedules identity]
-        (task/init! ::task.sync-databases/SyncDatabases))
+      (task/init! ::task.sync-databases/SyncDatabases)
       (mt/with-temp Database [{db-id :id}]
         (is (schema= {:description         (s/eq (format "sync-and-analyze Database %d" db-id))
                       :key                 (s/eq (format "metabase.task.sync-and-analyze.trigger.%d" db-id))
@@ -176,7 +174,7 @@
     (mt/with-driver :secret-test-driver
       (binding [api/*current-user-id* (mt/user->id :crowberto)]
         (let [secret-ids  (atom #{}) ; keep track of all secret IDs created with the temp database
-              check-db-fn (fn [{:keys [details] :as database} exp-secret]
+              check-db-fn (fn [{:keys [details] :as _database} exp-secret]
                             (when (not= :file-path (:source exp-secret))
                               (is (not (contains? details :password-value))
                                   "password-value was removed from details when not a file-path"))
@@ -225,7 +223,7 @@
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
 
 (deftest user-may-not-update-sample-database-test
-  (mt/with-temp Database [{:keys [id details] :as sample-database} {:engine    :h2
+  (mt/with-temp Database [{:keys [id details] :as _sample-database} {:engine    :h2
                                                                     :is_sample true
                                                                     :name      "Sample Database"
                                                                     :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
@@ -245,3 +243,11 @@
     (mt/with-temp Database [{db-id :id} {:engine (u/qualified-name ::test)}]
       (is (= ::test
              (db/select-one-field :engine Database :id db-id))))))
+
+(deftest identity-hash-test
+  (testing "Database hashes are composed of the name and engine"
+    (mt/with-temp Database [db {:engine :mysql :name "hashmysql"}]
+      (is (= (Integer/toHexString (hash ["hashmysql" :mysql]))
+             (serdes.hash/identity-hash db)))
+      (is (= "b6f1a9e8"
+             (serdes.hash/identity-hash db))))))

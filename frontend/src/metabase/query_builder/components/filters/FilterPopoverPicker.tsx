@@ -28,7 +28,7 @@ export default class FilterPopoverPicker extends React.Component<Props> {
 
   handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === "Enter") {
-      this.props.onCommit(this.props.filter);
+      this.props.filter.isValid() && this.props.onCommit(this.props.filter);
     }
   };
 

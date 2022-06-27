@@ -38,7 +38,7 @@ export const setQueryBuilderMode = (
 
 export const onEditSummary = createAction("metabase/qb/EDIT_SUMMARY");
 export const onCloseSummary = createAction("metabase/qb/CLOSE_SUMMARY");
-export const onAddFilter = createAction("metabase/qb/ADD_FITLER");
+export const onAddFilter = createAction("metabase/qb/ADD_FILTER");
 export const onCloseFilter = createAction("metabase/qb/CLOSE_FILTER");
 export const onOpenChartSettings = createAction(
   "metabase/qb/OPEN_CHART_SETTINGS",
@@ -47,17 +47,12 @@ export const onCloseChartSettings = createAction(
   "metabase/qb/CLOSE_CHART_SETTINGS",
 );
 export const onOpenChartType = createAction("metabase/qb/OPEN_CHART_TYPE");
-export const onOpenQuestionDetails = createAction(
-  "metabase/qb/OPEN_QUESTION_DETAILS",
+
+export const onOpenQuestionInfo = createAction(
+  "metabase/qb/OPEN_QUESTION_INFO",
 );
-export const onCloseQuestionDetails = createAction(
-  "metabase/qb/CLOSE_QUESTION_DETAILS",
-);
-export const onOpenQuestionHistory = createAction(
-  "metabase/qb/OPEN_QUESTION_HISTORY",
-);
-export const onCloseQuestionHistory = createAction(
-  "metabase/qb/CLOSE_QUESTION_HISTORY",
+export const onCloseQuestionInfo = createAction(
+  "metabase/qb/CLOSE_QUESTION_INFO",
 );
 
 export const onOpenTimelines = createAction("metabase/qb/OPEN_TIMELINES");

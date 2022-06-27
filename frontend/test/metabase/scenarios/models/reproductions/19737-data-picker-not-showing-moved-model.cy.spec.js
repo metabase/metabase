@@ -1,4 +1,4 @@
-import { restore, modal, popover } from "__support__/e2e/cypress";
+import { restore, modal, popover } from "__support__/e2e/helpers";
 
 const modelName = "Orders Model";
 

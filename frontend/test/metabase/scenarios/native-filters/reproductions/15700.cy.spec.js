@@ -1,4 +1,4 @@
-import { restore, openNativeEditor } from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/helpers";
 
 import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "../helpers/e2e-field-filter-helpers";

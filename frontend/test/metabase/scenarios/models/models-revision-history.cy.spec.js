@@ -1,4 +1,12 @@
-import { restore, modal, filter, visitQuestion } from "__support__/e2e/cypress";
+import {
+  restore,
+  modal,
+  filter,
+  visitQuestion,
+  openQuestionActions,
+  closeQuestionActions,
+  questionInfoButton,
+} from "__support__/e2e/helpers";
 
 import {
   assertIsModel,
@@ -7,7 +15,6 @@ import {
   selectDimensionOptionFromSidebar,
   saveQuestionBasedOnModel,
   assertIsQuestion,
-  openDetailsSidebar,
 } from "./helpers/e2e-models-helpers";
 
 describe("scenarios > models > revision history", () => {
@@ -27,13 +34,17 @@ describe("scenarios > models > revision history", () => {
 
   it("should allow reverting to a saved question state", () => {
     cy.visit("/model/3");
-    openDetailsSidebar();
+    openQuestionActions();
     assertIsModel();
+    closeQuestionActions();
 
-    cy.findByText("History").click();
-    cy.button("Revert").click();
+    questionInfoButton().click();
+
+    cy.findByText("History");
+    cy.findAllByTestId("question-revert-button").click();
     cy.wait("@revertToRevision");
 
+    openQuestionActions();
     assertIsQuestion();
     cy.get(".LineAreaBarChart");
 
@@ -53,18 +64,25 @@ describe("scenarios > models > revision history", () => {
     cy.request("PUT", "/api/card/3", { dataset: false });
 
     visitQuestion(3);
-    openDetailsSidebar();
+    openQuestionActions();
     assertIsQuestion();
+    closeQuestionActions();
 
-    cy.findByText("History").click();
+    questionInfoButton().click();
+
+    cy.findByText("History");
+
     cy.findByText(/Turned this into a model/i)
       .closest("li")
       .within(() => {
-        cy.button("Revert").click();
+        cy.findByTestId("question-revert-button").click();
       });
     cy.wait("@revertToRevision");
 
+    openQuestionActions();
     assertIsModel();
+    closeQuestionActions();
+
     cy.get(".LineAreaBarChart").should("not.exist");
 
     filter();

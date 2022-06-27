@@ -7,9 +7,17 @@ import {
   UserId,
 } from "metabase-types/api";
 
+export type ModelCacheState =
+  | "creating"
+  | "refreshing"
+  | "persisted"
+  | "error"
+  | "deletable"
+  | "off";
+
 export interface ModelCacheRefreshStatus {
   id: number;
-  state: "refreshing" | "persisted" | "error";
+  state: ModelCacheState;
   error: string | null;
   active: boolean;
 
@@ -30,6 +38,6 @@ export interface ModelCacheRefreshStatus {
   refresh_end: string;
   "next-fire-time": string;
 
-  creator_id: UserId;
-  creator: BaseUser;
+  creator_id?: UserId;
+  creator?: BaseUser;
 }
