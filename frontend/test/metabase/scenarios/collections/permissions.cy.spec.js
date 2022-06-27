@@ -6,7 +6,8 @@ import {
   appBar,
   navigationSidebar,
   openNativeEditor,
-} from "__support__/e2e/cypress";
+  openCollectionMenu,
+} from "__support__/e2e/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
@@ -222,9 +223,8 @@ describe("collection permissions", () => {
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
                     });
 
-                    cy.icon("pencil").click();
-
-                    cy.findByText("Archive this collection").click();
+                    openCollectionMenu();
+                    popover().within(() => cy.findByText("Archive").click());
                     cy.get(".Modal")
                       .findByText("Archive")
                       .click();
@@ -314,8 +314,8 @@ describe("collection permissions", () => {
                         collection => collection.slug === "third_collection",
                       );
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
-                      cy.icon("pencil").click();
-                      cy.findByText("Archive this collection").click();
+                      openCollectionMenu();
+                      popover().within(() => cy.findByText("Archive").click());
                       cy.get(".Modal")
                         .findByText("Cancel")
                         .click();
@@ -431,12 +431,10 @@ describe("collection permissions", () => {
 });
 
 function openEllipsisMenuFor(item, index = 0) {
-  return cy
-    .findAllByText(item)
+  cy.findAllByText(item)
     .eq(index)
     .closest("tr")
-    .find(".Icon-ellipsis")
-    .click({ force: true });
+    .within(() => cy.icon("ellipsis").click());
 }
 
 function clickButton(name) {
@@ -446,11 +444,8 @@ function clickButton(name) {
 }
 
 function pinItem(item) {
-  cy.findAllByText(item)
-    .closest("tr")
-    .within(() => {
-      cy.icon("pin").click();
-    });
+  openEllipsisMenuFor(item);
+  popover().within(() => cy.icon("pin").click());
 }
 
 function exposeChildrenFor(collectionName) {

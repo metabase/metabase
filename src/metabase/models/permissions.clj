@@ -185,7 +185,7 @@
             [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.regex :as u.regex]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -614,8 +614,7 @@
                                        (:object permissions))))))
 
 (defn- pre-update [_]
-  (throw (Exception. (str (deferred-tru "You cannot update a permissions entry!")
-                          (deferred-tru "Delete it and create a new one.")))))
+  (throw (Exception. (tru "You cannot update a permissions entry! Delete it and create a new one."))))
 
 (defn- pre-delete [permissions]
   (log/debug (u/colorize 'red (trs "Revoking permissions for group {0}: {1}"
@@ -1164,10 +1163,10 @@
   made in the interim. Return a 409 (Conflict) if the numbers don't match up."
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ex-info (str (deferred-tru "Looks like someone else edited the permissions and your data is out of date.")
-                         " "
-                         (deferred-tru "Please fetch new data and try again."))
-             {:status-code 409}))))
+    (throw (ex-info (tru
+                      (str "Looks like someone else edited the permissions and your data is out of date. "
+                           "Please fetch new data and try again."))
+                    {:status-code 409}))))
 
 (defn save-perms-revision!
   "Save changes made to permission graph for logging/auditing purposes.

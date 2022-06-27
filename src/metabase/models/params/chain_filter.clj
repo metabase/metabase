@@ -530,7 +530,7 @@
 
 (defn- use-cached-field-values?
   "Whether we should use cached `FieldValues` instead of running a query via the QP."
-  [field-id constraints]
+  [field-id constraints search?]
   (and
    field-id
    ;; only use cached Field values if there are no additional constraints (i.e. if this is just a simple "fetch all
@@ -540,7 +540,12 @@
    (field-values/field-should-have-field-values? field-id)
    ;; If the Field *should* values, make sure the Field actually *does* have Field Values as well (but not a
    ;; human-readable remap, which is handled by [[human-readable-values-remapped-chain-filter]].
-   (db/exists? FieldValues :field_id field-id, :values [:not= nil], :human_readable_values nil)))
+   (db/exists? FieldValues (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
+                                  ;; if we are doing a search, make sure we only use field values
+                                  ;; when we're certain the fieldvalues we stored are all the possible values.
+                                  ;; otherwise, we should search directly from DB
+                                  (when search?
+                                    {:has_more_values false})))))
 
 (defn- cached-field-values [field-id {:keys [limit]}]
   (let [{:keys [values]} (params.field-values/get-or-create-field-values-for-current-user! (Field field-id))]
@@ -569,7 +574,7 @@
   (let [{:as options} options]
     (if-let [v->human-readable (human-readable-remapping-map field-id)]
       (human-readable-values-remapped-chain-filter field-id v->human-readable constraints options)
-      (if (use-cached-field-values? field-id constraints)
+      (if (use-cached-field-values? field-id constraints false)
         (cached-field-values field-id options)
         (if-let [remapped-field-id (remapped-field-id field-id)]
           (field-to-field-remapped-chain-filter field-id remapped-field-id constraints options)
@@ -629,7 +634,7 @@
       []))
 
 (defn- search-cached-field-values? [field-id constraints]
-  (and (use-cached-field-values? field-id constraints)
+  (and (use-cached-field-values? field-id constraints true)
        (isa? (db/select-one-field :base_type Field :id field-id) :type/Text)))
 
 (defn- cached-field-values-search

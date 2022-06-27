@@ -12,17 +12,21 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
   getHasCustomBranding,
   getHasCustomColors,
-  getHasCustomLogo,
+  getHideMetabot,
+  hasCustomBranding,
+  getLoadingMessage,
 } from "metabase-enterprise/settings/selectors";
 import MetabaseSettings from "metabase/lib/settings";
 
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
+import MetabotSettingWidget from "./components/MetabotSettingWidget";
 import LogoUpload from "./components/LogoUpload";
 import LogoIcon from "./components/LogoIcon";
 import {
   updateColors,
   enabledApplicationNameReplacement,
 } from "./lib/whitelabel";
+import { getLoadingMessageOptions } from "./lib/loading-message";
 
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));
@@ -72,6 +76,22 @@ if (hasPremiumFeature("whitelabel")) {
           type: "string",
           placeholder: "/",
         },
+        {
+          key: "loading-message",
+          display_name: t`Loading message`,
+          type: "select",
+          options: getLoadingMessageOptions(),
+          defaultValue: "doing-science",
+        },
+        {
+          key: "show-metabot",
+          display_name: t`Metabot`,
+          description: null,
+          type: "boolean",
+          widget: MetabotSettingWidget,
+          defaultValue: true,
+          getHidden: settings => hasCustomBranding(settings),
+        },
       ],
     },
     ...sections,
@@ -88,6 +108,7 @@ if (hasPremiumFeature("whitelabel")) {
 }
 
 // these selectors control whitelabeling UI
-PLUGIN_SELECTORS.getHasCustomLogo = getHasCustomLogo;
 PLUGIN_SELECTORS.getHasCustomColors = getHasCustomColors;
 PLUGIN_SELECTORS.getHasCustomBranding = getHasCustomBranding;
+PLUGIN_SELECTORS.getHideMetabot = getHideMetabot;
+PLUGIN_SELECTORS.getLoadingMessage = getLoadingMessage;

@@ -1,5 +1,9 @@
 (ns i18n.enumerate
-  "Enumerate and create pot file from the backend worktree of metabase."
+  "Enumerate and create pot file from the backend worktree of metabase. Look through all of our source paths for calls
+  to `trs`, `deferred-trs`, etc. to find strings we need in our pot file (po template). Use grasp to find forms by the
+  `::translate` spec. These forms come back with metadata indicating file and line/column. We look at the form to pick
+  out either the string literal or a call to `str` concatenating several string literals. Main function will write the
+  pot file and exit with 0 if all forms could be analyzed else returns 1."
   (:require
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
@@ -30,10 +34,12 @@
                             "/modules/drivers/vertica/src"]))
 
 (def overrides
+  "Location of i18n forms that grasp can not find."
   (into []
         (map (fn [override]
                (update override :file (partial str u/project-root-directory))))
-        ;; doesn't find the usage in fingerprinters, which is a macro emitting a defmethod
+        ;; doesn't find the usage in fingerprinters, which is a macro emitting a defmethod. The quoting changes the
+        ;; shape of the seq so the spec doesn't match it
         [{:file "/src/metabase/sync/analyze/fingerprint/fingerprinters.clj"
           :message "Error generating fingerprint for {0}"}]))
 
@@ -60,27 +66,32 @@
 
 (defn- form->string-for-translation
   "Function that turns a form into the translation string. Handles string literals and calls to `str` on string
-  literals.
+  literals. Returns nil if unable to recognize translation string.
 
   (form->string-for-translation (tru \"Foo {0}\")) -> \"Foo {0}\"
   (form->string-for-translation (tru (str \"Foo {0} \" \"Bar\")) -> \"Foo {0} Bar\""
   [form]
   (let [i18n-spot (second form)]
-    (if (string? i18n-spot)
-      i18n-spot
-      (apply str (rest i18n-spot)))))
+    (cond (string? i18n-spot)
+          i18n-spot
+          (and (seqable? i18n-spot) (every? string? (rest i18n-spot)))
+          (apply str (rest i18n-spot)))))
 
 (defn- analyze-translations
+  "Takes roots to grasp returning a map of :file, :line, :original (the original form), and :message. If identifying the
+  message failed message will be nil and this should be filtered out of further processing."
   [roots]
   (map (fn [result]
          (let [{:keys [line _col uri]} (meta result)]
-           {:file (strip-roots uri)
-            :line line
-            :message (form->string-for-translation result)}))
+           {:file     (strip-roots uri)
+            :line     line
+            :original result
+            :message  (form->string-for-translation result)}))
        (g/grasp roots ::translate)))
 
-(defn- group-results-by-filename
-  "Want all filenames collapsed into a list for each form"
+(defn- group-results-by-string
+  "Each string can be in the pot file once and only once (a string can only have a single translation). Want all
+  filenames collapsed into a list for each message."
   [results]
   (->> results
        (concat overrides)
@@ -91,6 +102,7 @@
               {:message string :files (map #(select-keys % [:file :line]) originals)}))))
 
 (defn- usage->Message
+  "Return a `Message` instance suitable for adding to a `Catalog`"
   ^Message [{:keys [message files]}]
   (let [msg (Message.)]
     (.setMsgid msg message)
@@ -130,32 +142,48 @@
     catalog))
 
 (defn- create-pot-file!
+  "String sources and an output filename. Writes the pot file of translation strings found in sources and returns a map
+  of number of valid usages, number of distinct translation strings, and the bad forms that could not be identified."
   [sources filename]
-  (let [analyzed-usages (group-results-by-filename (analyze-translations sources))]
-    (when-let [not-strings (seq (remove (comp string? :message) analyzed-usages))]
-      (println "Bad analysis: ")
-      (run! (comp println pr-str) not-strings))
+  (let [analyzed   (analyze-translations sources)
+        valid?     (comp string? :message)
+        bad-forms  (remove valid? analyzed)
+        good-forms (filter valid? analyzed)
+        grouped    (group-results-by-string good-forms)]
     (with-open [writer (io/writer filename)]
       (let [po-writer (PoWriter.)
-            catalog   (processed->catalog (filter (comp string? :message) analyzed-usages))]
+            catalog   (processed->catalog grouped)]
         (.write po-writer catalog writer)))
-    (println "Created pot file at " filename)))
+    (println "Created pot file at " filename)
+    {:valid-usages (count good-forms)
+     :entry-count  (count grouped)
+     :bad-forms    bad-forms}))
 
 (defn -main
-  "Entrypoint for creating a backend pot file."
+  "Entrypoint for creating a backend pot file. Exits with 0 if all forms were processed correctly, exits with 1 if one
+  or more forms were found that it could not process."
   [& [filename]]
   (when (str/blank? filename)
     (println "Please provide a filename argument. Eg: ")
     (println "  clj -M -m i18n.enumerate \"$POT_BACKEND_NAME\"")
     (println "  clj -M -m i18n.enumerate metabase.pot")
     (System/exit 1))
-  (create-pot-file! roots filename))
+  (let [{:keys [valid-usages entry-count bad-forms]} (create-pot-file! roots filename)]
+    (println (format "Found %d forms for translations" valid-usages))
+    (println (format "Grouped into %d distinct pot entries" entry-count))
+    (when (seq bad-forms)
+      (println (format "Found %d forms that could not be analyzed" (count bad-forms)))
+      (run! (comp println pr-str) bad-forms)
+      (System/exit 1))
+    (System/exit 0)))
 
 (comment
 
+  (create-pot-file! (str u/project-root-directory "/src/metabase/driver/util.clj")
+                    "pot.pot")
+
   (take 4 (analyze-translations roots))
-  (def single-file (str u/project-root-directory "/src/metabase/driver.clj"))
-  (preprocess-results (analyze-translations single-file))
+  (def single-file (str u/project-root-directory "/src/metabase/util.clj"))
   (create-pot-file! single-file "pot.pot")
   (map (juxt meta identity)
        (g/grasp single-file ::translate))

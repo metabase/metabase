@@ -11,7 +11,7 @@
 
 (defn- create-sandboxed-fieldvalues
   [field hash-key]
-  (when-let [values (field-values/distinct-values field)]
+  (when-let [{:keys [values has_more_values]} (field-values/distinct-values field)]
     (let [;; If the full FieldValues of this field has a human-readable-values, fix it with the sandboxed values
           human-readable-values (field-values/fixup-human-readable-values
                                   (db/select-one FieldValues
@@ -22,6 +22,7 @@
                   :field_id (:id field)
                   :type :sandbox
                   :hash_key hash-key
+                  :has_more_values has_more_values
                   :human_readable_values human-readable-values
                   :values values))))
 

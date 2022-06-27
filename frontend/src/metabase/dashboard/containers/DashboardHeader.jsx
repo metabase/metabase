@@ -13,19 +13,21 @@ import Button from "metabase/core/components/Button";
 import Header from "metabase/components/Header";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
+import EntityMenu from "metabase/components/EntityMenu";
 
 import Bookmark from "metabase/entities/bookmarks";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-import { DashboardHeaderButton } from "./DashboardHeader.styled";
+import {
+  DashboardHeaderButton,
+  DashboardHeaderActionContainer,
+} from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
+import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { getIsBookmarked } from "metabase/dashboard/selectors";
 
 import cx from "classnames";
-
-import { Link } from "react-router";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -35,8 +37,10 @@ const mapStateToProps = (state, props) => {
 };
 
 const mapDispatchToProps = {
-  createBookmark: id => Bookmark.actions.create({ id, type: "dashboard" }),
-  deleteBookmark: id => Bookmark.actions.delete({ id, type: "dashboard" }),
+  createBookmark: ({ id }) =>
+    Bookmark.actions.create({ id, type: "dashboard" }),
+  deleteBookmark: ({ id }) =>
+    Bookmark.actions.delete({ id, type: "dashboard" }),
   onChangeLocation: push,
 };
 
@@ -169,6 +173,9 @@ class DashboardHeader extends Component {
       location,
       onToggleAddQuestionSidebar,
       showAddQuestionSidebar,
+      onFullscreenChange,
+      createBookmark,
+      deleteBookmark,
     } = this.props;
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
@@ -252,16 +259,12 @@ class DashboardHeader extends Component {
         </span>,
       );
 
-      extraButtons.push(
-        <Tooltip key="revision-history" tooltip={t`Revision history`}>
-          <Link
-            to={location.pathname + "/history"}
-            data-metabase-event="Dashboard;Revisions"
-          >
-            {t`Revision history`}
-          </Link>
-        </Tooltip>,
-      );
+      extraButtons.push({
+        title: t`Revision history`,
+        icon: "history",
+        link: `${location.pathname}/history`,
+        event: "Dashboard;Revisions",
+      });
     }
 
     if (!isFullscreen && !isEditing && canEdit) {
@@ -282,72 +285,50 @@ class DashboardHeader extends Component {
     }
 
     if (!isFullscreen && !isEditing) {
-      const extraButtonClassNames =
-        "bg-brand-hover text-white-hover py2 px3 text-bold block cursor-pointer";
-
       if (canEdit) {
-        extraButtons.push(
-          <Link
-            className={extraButtonClassNames}
-            to={location.pathname + "/details"}
-            data-metabase-event="Dashboard;EditDetails"
-          >
-            {t`Edit dashboard details`}
-          </Link>,
-        );
+        extraButtons.push({
+          title: t`Edit dashboard details`,
+          icon: "pencil",
+          link: `${location.pathname}/details`,
+          event: "Dashboard;EditDetails",
+        });
       }
 
-      extraButtons.push(
-        <div
-          className={extraButtonClassNames}
-          onClick={this.handleToggleBookmark}
-        >
-          {isBookmarked ? t`Remove from bookmarks` : t`Bookmark`}
-        </div>,
-      );
+      extraButtons.push({
+        title: t`Enter fullscreen`,
+        icon: "expand",
+        action: e => onFullscreenChange(!isFullscreen, !e.altKey),
+        event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
+      });
 
-      extraButtons.push(
-        <Link
-          className={extraButtonClassNames}
-          to={location.pathname + "/history"}
-          data-metabase-event="Dashboard;EditDetails"
-        >
-          {t`Revision history`}
-        </Link>,
-      );
+      extraButtons.push({
+        title: t`Revision history`,
+        icon: "history",
+        link: `${location.pathname}/history`,
+        event: "Dashboard;EditDetails",
+      });
 
-      extraButtons.push(
-        <Link
-          className={extraButtonClassNames}
-          to={location.pathname + "/copy"}
-          data-metabase-event="Dashboard;Copy"
-        >
-          {t`Duplicate`}
-        </Link>,
-      );
+      extraButtons.push({
+        title: t`Duplicate`,
+        icon: "copy",
+        link: `${location.pathname}/copy`,
+        event: "Dashboard;Copy",
+      });
 
       if (canEdit) {
-        extraButtons.push(
-          <Link
-            className={extraButtonClassNames}
-            to={location.pathname + "/move"}
-            data-metabase-event="Dashboard;Move"
-          >
-            {t`Move`}
-          </Link>,
-        );
-      }
+        extraButtons.push({
+          title: t`Move`,
+          icon: "move",
+          link: `${location.pathname}/move`,
+          event: "Dashboard;Move",
+        });
 
-      if (canEdit) {
-        extraButtons.push(
-          <Link
-            className={extraButtonClassNames}
-            to={location.pathname + "/archive"}
-            data-metabase-event="Dashboard;Archive"
-          >
-            {t`Archive`}
-          </Link>,
-        );
+        extraButtons.push({
+          title: t`Archive`,
+          icon: "view_archive",
+          link: `${location.pathname}/archive`,
+          event: "Dashboard;Archive",
+        });
       }
     }
 
@@ -355,22 +336,15 @@ class DashboardHeader extends Component {
 
     if (extraButtons.length > 0 && !isEditing) {
       buttons.push(
-        <TippyPopoverWithTrigger
-          key="extra-actions-menu"
-          placement="bottom-end"
-          renderTrigger={({ onClick }) => (
-            <DashboardHeaderButton onClick={onClick}>
-              <Icon name="ellipsis" size={20} className="text-brand-hover" />
-            </DashboardHeaderButton>
-          )}
-          popoverContent={
-            <div className="py1">
-              {extraButtons.map((b, i) => (
-                <div key={i}>{b}</div>
-              ))}
-            </div>
-          }
-        />,
+        <DashboardHeaderActionContainer>
+          <DashboardBookmark
+            dashboard={dashboard}
+            onCreateBookmark={createBookmark}
+            onDeleteBookmark={deleteBookmark}
+            isBookmarked={isBookmarked}
+          />
+          <EntityMenu items={extraButtons} triggerIcon="ellipsis" />
+        </DashboardHeaderActionContainer>,
       );
     }
 

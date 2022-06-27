@@ -14,7 +14,7 @@ import {
   visitQuestion,
   visitDashboard,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
@@ -56,7 +56,7 @@ describeEE("formatting > sandboxes", () => {
       cy.findByText("Invite someone").click();
       cy.findByPlaceholderText("Johnny").type("John");
       cy.findByPlaceholderText("Appleseed").type("Smith");
-      cy.findByPlaceholderText("youlooknicetoday@email.com").type(
+      cy.findByPlaceholderText("nicetoseeyou@email.com").type(
         "john@smith.test",
       );
       cy.findByText("Add an attribute").click();

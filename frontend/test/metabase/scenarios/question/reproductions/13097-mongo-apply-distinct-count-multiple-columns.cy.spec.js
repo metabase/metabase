@@ -4,7 +4,7 @@ import {
   withDatabase,
   adhocQuestionHash,
   summarize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const MONGO_DB_ID = 2;
 

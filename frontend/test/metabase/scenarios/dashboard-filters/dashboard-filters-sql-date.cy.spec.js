@@ -7,7 +7,7 @@ import {
   setFilter,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { DASHBOARD_SQL_DATE_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";

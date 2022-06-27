@@ -27,12 +27,12 @@ const ProgressSkeleton = ({
           opacity=".32"
           y="12"
           width="404"
-          height="45"
+          height="35"
           rx="4"
           fill="currentColor"
         />
         <path
-          d="M0 16a4 4 0 0 1 4-4h298v45H4a4 4 0 0 1-4-4V16ZM302 .485h8.485L302 8.971 293.515.485H302Z"
+          d="M0 16a4 4 0 0 1 4-4h298v35H4a4 4 0 0 1-4-4V16ZM302 .485h8.485L302 8.971 293.515.485H302Z"
           fill="currentColor"
         />
       </SkeletonImage>

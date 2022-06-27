@@ -11,7 +11,7 @@ import {
   summarize,
   filter,
   setupBooleanQuery,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -932,8 +932,9 @@ describe("scenarios > question > filter", () => {
       beforeEach(setupBooleanQuery);
 
       it("from the column popover (metabase#16386-1)", () => {
-        cy.get(".cellData")
+        cy.findAllByTestId("header-cell")
           .contains("boolean")
+          .should("be.visible")
           .click();
 
         popover()
