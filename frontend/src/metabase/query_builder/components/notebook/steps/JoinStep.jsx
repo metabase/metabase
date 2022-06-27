@@ -9,6 +9,8 @@ import { DataSourceSelector } from "metabase/query_builder/components/DataSelect
 import FieldList from "metabase/query_builder/components/FieldList";
 import Join from "metabase-lib/lib/queries/structured/Join";
 import { isDateTimeField } from "metabase/lib/query/field_ref";
+import Select from "metabase/core/components/Select";
+import Button from "metabase/core/components/Button";
 
 import { NotebookCellItem, NotebookCellAdd } from "../NotebookCell";
 import {
@@ -64,6 +66,15 @@ const joinStepPropTypes = {
   isLastOpened: PropTypes.bool,
   updateQuery: PropTypes.func.isRequired,
 };
+
+const JOIN_OPERATOR_OPTIONS = [
+  { name: "=", value: "=" },
+  { name: ">", value: ">" },
+  { name: "<", value: "<" },
+  { name: "≥", value: ">=" },
+  { name: "≤", value: "<=" },
+  { name: "≠", value: "!=" },
+];
 
 export default function JoinStep({
   color,
@@ -238,6 +249,10 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
             {displayConditions.map((condition, index) => {
               const isFirst = index === 0;
               const isLast = index === displayConditions.length - 1;
+              const [operator] = condition;
+              const operatorSymbol = JOIN_OPERATOR_OPTIONS.find(
+                o => o.value === operator,
+              )?.name;
 
               function removeParentDimension() {
                 join
@@ -256,6 +271,13 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
               function removeDimensionPair() {
                 join
                   .removeCondition(index)
+                  .parent()
+                  .update(updateQuery);
+              }
+
+              function updateOperator({ target: { value } }) {
+                join
+                  .setOperator(index, value)
                   .parent()
                   .update(updateQuery);
               }
@@ -281,7 +303,18 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                       }
                       data-testid="parent-dimension"
                     />
-                    <JoinConditionLabel>=</JoinConditionLabel>
+                    <JoinConditionLabel>
+                      <Select
+                        hiddenIcons
+                        width={60}
+                        value={operator}
+                        onChange={updateOperator}
+                        options={JOIN_OPERATOR_OPTIONS}
+                        triggerElement={
+                          <Button primary>{operatorSymbol}</Button>
+                        }
+                      />
+                    </JoinConditionLabel>
                   </Row>
                   <Row>
                     <JoinDimensionPicker
