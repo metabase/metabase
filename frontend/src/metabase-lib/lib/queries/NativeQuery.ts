@@ -27,7 +27,7 @@ import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
 import Variable, { TemplateTagVariable } from "../Variable";
 import { createTemplateTag } from "metabase-lib/lib/queries/TemplateTag";
 import DimensionOptions from "../DimensionOptions";
-import { ValidationError } from "metabase-lib/lib/ValidationError";
+import ValidationError from "metabase-lib/lib/ValidationError";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
