@@ -1,4 +1,4 @@
-import { restore, describeEE } from "__support__/e2e/cypress";
+import { restore, describeEE } from "__support__/e2e/helpers";
 
 describeEE("visual tests > admin > fonts", () => {
   beforeEach(() => {

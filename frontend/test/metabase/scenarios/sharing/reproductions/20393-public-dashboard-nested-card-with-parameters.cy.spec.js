@@ -1,4 +1,4 @@
-import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
+import { restore, popover, visitDashboard } from "__support__/e2e/helpers";
 
 describe("issue 20393", () => {
   beforeEach(() => {

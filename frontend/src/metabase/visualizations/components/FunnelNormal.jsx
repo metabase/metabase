@@ -116,6 +116,7 @@ export default class FunnelNormal extends Component {
 
     return (
       <div
+        data-testid="funnel-chart"
         className={cx(className, styles.Funnel, "flex", {
           [styles["Funnel--narrow"]]: isNarrow,
           p1: isSmall,

@@ -3,7 +3,7 @@ import {
   navigationSidebar,
   openNavigationSidebar,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("scenarios > dashboard > bookmarks", () => {
   beforeEach(() => {
@@ -16,20 +16,16 @@ describe("scenarios > dashboard > bookmarks", () => {
     openNavigationSidebar();
 
     cy.get("main header").within(() => {
-      cy.icon("ellipsis").click();
+      cy.icon("bookmark").click();
     });
-
-    cy.findByText("Bookmark").click();
 
     navigationSidebar().within(() => {
       cy.findByText("Orders in a dashboard");
     });
 
     cy.get("main header").within(() => {
-      cy.icon("ellipsis").click();
+      cy.icon("bookmark").click();
     });
-
-    cy.findByText("Remove from bookmarks").click();
 
     navigationSidebar().within(() => {
       cy.findByText("Orders in a dashboard").should("not.exist");

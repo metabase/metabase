@@ -2,7 +2,7 @@ import {
   restore,
   openNativeEditor,
   runNativeQuery,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const nativeQuery = "select (random() * random() * random()), pg_sleep(2)";
 

@@ -1,4 +1,4 @@
-import { restore, setupMetabaseCloud } from "__support__/e2e/cypress";
+import { restore, setupMetabaseCloud } from "__support__/e2e/helpers";
 
 // Unskip when mocking Cloud in Cypress is fixed (#18289)
 describe.skip("Cloud settings section", () => {

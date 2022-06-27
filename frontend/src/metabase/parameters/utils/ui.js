@@ -1,5 +1,8 @@
 import _ from "underscore";
+import { isEqualsOperator } from "metabase/lib/schema_metadata";
+
 import { getParameterType } from "./parameter-type";
+import { deriveFieldOperatorFromParameter } from "./operators";
 
 export function getParameterIconName(parameter) {
   const type = getParameterType(parameter);
@@ -30,4 +33,13 @@ export function getVisibleParameters(parameters, hiddenParameterSlugs) {
   );
 
   return parameters.filter(p => !hiddenParametersSlugSet.has(p.slug));
+}
+
+export function getParameterWidgetTitle(parameter) {
+  const operator = deriveFieldOperatorFromParameter(parameter);
+  const { verboseName } = operator || {};
+
+  if (verboseName && !isEqualsOperator(operator)) {
+    return `${verboseName}…`;
+  }
 }

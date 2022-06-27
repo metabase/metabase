@@ -1,4 +1,4 @@
-import { restore, visitQuestion, isEE, popover } from "__support__/e2e/cypress";
+import { restore, visitQuestion, isEE, popover } from "__support__/e2e/helpers";
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
@@ -33,10 +33,7 @@ describe("UI elements that make no sense for users without data permissions (met
     });
 
     cy.visit("/collection/root");
-
-    cy.get("main")
-      .find(".Icon-add")
-      .click();
+    cy.findByText("New").click();
 
     popover()
       .should("contain", "Dashboard")
@@ -70,10 +67,7 @@ describe("UI elements that make no sense for users without data permissions (met
       cy.icon("refresh").should("not.exist");
     });
     cy.visit("/collection/root");
-
-    cy.get("main")
-      .find(".Icon-add")
-      .click();
+    cy.findByText("New").click();
 
     popover()
       .should("contain", "Dashboard")

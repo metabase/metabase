@@ -7,7 +7,7 @@ import {
   saveDashboard,
   checkFilterLabelAndValue,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { setMonthAndYear } from "../../native-filters/helpers/e2e-date-filter-helpers";
 

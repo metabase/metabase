@@ -20,6 +20,7 @@
   {:archived               false
    :collection_id          nil
    :collection_position    nil
+   :collection_preview     true
    :creator_id             (:creator_id card)
    :database_id            (mt/id)
    :dataset_query          (:dataset_query card)

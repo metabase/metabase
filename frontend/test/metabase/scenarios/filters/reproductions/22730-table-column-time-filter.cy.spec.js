@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/helpers";
 
 describe("issue 22730", () => {
   beforeEach(() => {
@@ -14,22 +14,31 @@ describe("issue 22730", () => {
       },
       { visitQuestion: true },
     );
+
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("allows filtering by time column (metabase#22730)", () => {
     cy.findByText("Explore results").click();
-    cy.findByText("time").click();
+    cy.wait("@dataset");
+
+    cy.findAllByTestId("header-cell")
+      .contains("time")
+      .should("be.visible")
+      .click();
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();
 
       cy.findByTestId("hours-input")
         .clear()
-        .type("14");
+        .type("14")
+        .blur();
+
       cy.findByTestId("minutes-input")
         .clear()
-        .type("03");
+        .type("03")
+        .blur();
 
       cy.button("Add filter").click();
     });

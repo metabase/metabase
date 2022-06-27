@@ -20,8 +20,7 @@ import {
   ExpressionReference,
   DatetimeUnit,
 } from "metabase-types/types/Query";
-import {
-  ValidationError,
+import ValidationError, {
   VALIDATION_ERROR_TYPES,
 } from "metabase-lib/lib/ValidationError";
 import { IconName } from "metabase-types/types";
