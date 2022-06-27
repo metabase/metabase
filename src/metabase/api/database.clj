@@ -671,8 +671,7 @@
                           (assoc (:options database) :persist-models-enabled true))
               (task.persist-refresh/schedule-persistence-for-database!
                 database
-                (public-settings/persisted-model-refresh-interval-hours)
-                (public-settings/persisted-model-refresh-anchor-time))
+                (public-settings/persisted-model-refresh-cron-schedule))
               api/generic-204-no-content)
           (throw (ex-info (ddl.i/error->message error schema)
                           {:error error
