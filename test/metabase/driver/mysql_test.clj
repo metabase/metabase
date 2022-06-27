@@ -485,4 +485,4 @@
               Exception
               #"Killed mysql process id \d+ due to timeout."
               (#'ddl.mysql/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
-        (is (= [{:val 0}] (#'ddl.mysql/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))
+        (is (= true (#'ddl.mysql/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))
