@@ -7,7 +7,7 @@ import Field from "metabase-lib/lib/metadata/Field";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Question from "metabase-lib/lib/Question";
-import { TemplateTagVariable } from "metabase-lib/lib/Variable";
+import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 
 import {
   metadata,

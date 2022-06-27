@@ -24,7 +24,8 @@ import {
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
-import Variable, { TemplateTagVariable } from "../Variable";
+import Variable from "metabase-lib/lib/variables/Variable";
+import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import { createTemplateTag } from "metabase-lib/lib/queries/TemplateTag";
 import DimensionOptions from "../DimensionOptions";
 import ValidationError from "metabase-lib/lib/ValidationError";

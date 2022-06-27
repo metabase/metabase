@@ -6,7 +6,7 @@ import { isDate } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeForParameter } from "metabase/lib/formatting/date";
 import Question from "metabase-lib/lib/Question";
-import { TemplateTagVariable } from "metabase-lib/lib/Variable";
+import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import { TemplateTagDimension } from "metabase-lib/lib/Dimension";
 import { isa, TYPE } from "metabase/lib/types";
 import {

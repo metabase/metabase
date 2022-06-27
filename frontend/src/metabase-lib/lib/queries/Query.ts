@@ -5,7 +5,7 @@ import { DependentMetadataItem } from "metabase-types/types/Query";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
 import Dimension from "metabase-lib/lib/Dimension";
-import Variable from "metabase-lib/lib/Variable";
+import Variable from "metabase-lib/lib/variables/Variable";
 import { memoizeClass } from "metabase-lib/lib/utils";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 

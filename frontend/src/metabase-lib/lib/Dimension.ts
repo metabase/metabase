@@ -5,7 +5,7 @@ import _ from "underscore";
 import { merge } from "icepick";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
-import { TemplateTagVariable } from "metabase-lib/lib/Variable";
+import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import Field from "metabase-lib/lib/metadata/Field";
 import {
   AggregationOperator,
