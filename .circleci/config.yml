@@ -495,6 +495,9 @@ jobs:
                echo '' > .CACHE-PREFIX
             fi
       - run:
+          name: Create static visualization js bundle
+          command: yarn build-static-viz
+      - run:
           name: 'Check for branch name to bust caches if it is a release branch'
           command: |
             if [[ $CIRCLE_BRANCH == release* || $CIRCLE_BRANCH == master  ]]; then

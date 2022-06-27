@@ -76,7 +76,7 @@ export function InlineDatePicker({
         DATE_SHORTCUT_OPTIONS.map(({ displayName, init }, index) => (
           <OptionButton
             key={displayName}
-            selected={index === selectedFilterIndex}
+            active={index === selectedFilterIndex}
             onClick={
               index === selectedFilterIndex
                 ? onClear
@@ -97,7 +97,7 @@ export function InlineDatePicker({
         handleClear={onClear}
         customTrigger={({ onClick }) =>
           filter && selectedFilterIndex === null ? (
-            <OptionButton selected onClick={onClick}>
+            <OptionButton active onClick={onClick}>
               <span>{filter.displayName({ includeDimension: false })}</span>
               <ClearButton onClick={handleClear}>
                 <Icon name="close" size={12} />
