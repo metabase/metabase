@@ -481,15 +481,6 @@ jobs:
               echo 'This is a release or master branch; using cache-busting prefix'
                 echo '<< pipeline.id >>' > .CACHE-PREFIX
             fi
-      - run:
-          name: Make SSL certificates for Mongo available
-          command: >-
-            curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.crt
-            -o /home/circleci/metabase/metabase/test_resources/ssl/mongo/metabase.crt
-            https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.key
-            -o /home/circleci/metabase/metabase/test_resources/ssl/mongo/metabase.key
-            https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt
-            -o /home/circleci/metabase/metabase/test_resources/ssl/mongo/metaca.crt
       - persist_to_workspace:
           root: /home/circleci/
           paths:
