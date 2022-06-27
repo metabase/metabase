@@ -4,6 +4,7 @@ import { getUser } from "metabase/selectors/user";
 import {
   getIsEditing as getIsEditingDashboard,
   getDashboard,
+  getDashboardId,
 } from "metabase/dashboard/selectors";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
@@ -121,7 +122,7 @@ export const getShowBreadcumb = createSelector([getRouterPath], path =>
 );
 
 export const getCollectionId = createSelector(
-  [getQuestion, getDashboard],
-  (question, dashboard) =>
-    question ? question.collectionId() : dashboard?.collection_id,
+  [getQuestion, getDashboard, getDashboardId],
+  (question, dashboard, dashboardId) =>
+    dashboardId ? dashboard?.collection_id : question?.collectionId(),
 );
