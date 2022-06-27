@@ -1,9 +1,8 @@
 import React from "react";
-
 import { SidebarButtonRoot, SidebarIcon } from "./SidebarButton.styled";
 
 interface SidebarButtonProps {
-  isSidebarOpen: boolean;
+  isSidebarOpen?: boolean;
   onClick: () => void;
 }
 
