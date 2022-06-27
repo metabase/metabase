@@ -185,7 +185,11 @@ export function generateTimeIntervalDescription(n, unit) {
 }
 
 export function generateTimeValueDescription(value, bucketing, isExclude) {
-  if (typeof value === "string") {
+  if (typeof value === "number" && bucketing === "hour-of-day") {
+    return moment()
+      .hour(value)
+      .format("h A");
+  } else if (typeof value === "string") {
     const m = parseTimestamp(value, bucketing);
     if (bucketing) {
       return formatDateTimeWithUnit(value, bucketing, { isExclude });
@@ -684,13 +688,19 @@ export const EXCLUDE_OPTIONS = {
     ];
   },
   [EXCLUDE_UNITS["hours"]]: () => {
+    const now = moment()
+      .utc()
+      .minutes(0)
+      .seconds(0)
+      .milliseconds(0);
     const func = hour => {
-      const displayName = hour.toString();
+      const date = now.hour(hour);
+      const displayName = date.format("h A");
       return {
         displayName,
         value: hour,
         serialized: hour.toString(),
-        test: value => value.toString() === displayName,
+        test: value => value === hour,
       };
     };
     return [_.range(0, 12).map(func), _.range(12, 24).map(func)];
