@@ -2,7 +2,7 @@ import {
   restore,
   visitQuestionAdhoc,
   ensureDcChartVisibility,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("visual tests > visualizations > bar", () => {

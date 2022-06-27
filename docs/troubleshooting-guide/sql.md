@@ -41,7 +41,10 @@ What type of [SQL variable][sql-variable-def] are you using?
 
 ## Are you still stuck?
 
-If you can’t solve your problem using the troubleshooting guides, search or ask the [Metabase community][discourse].
+If you can’t solve your problem using the troubleshooting guides:
+
+- Search or ask the [Metabase community][discourse].
+- Search for [known bugs or limitations][known-issues].
 
 [debugging-aggregations]: /learn/debugging-sql/sql-logic.html#aggregated-results-counts-sums-etc-are-wrong
 [debugging-duplicated-data]: /learn/debugging-sql/sql-logic-duplicated-data.html
@@ -49,6 +52,7 @@ If you can’t solve your problem using the troubleshooting guides, search or as
 [debugging-sql-logic]: /learn/debugging-sql/sql-logic.html
 [debugging-sql-syntax]: /learn/debugging-sql/sql-syntax.html
 [discourse]: https://discourse.metabase.com/
+[known-issues]: ./known-issues.html
 [sql-editor]: /glossary/native_query_editor.html
 [sql-variable-def]: /glossary/variable.html#example-variable-in-metabase
 [sql-variable-type]: /learn/sql-questions/sql-variables.html#the-different-types-of-variables-available-for-native-sql-queries

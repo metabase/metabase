@@ -52,7 +52,7 @@ export function InlineValuePicker({
         onChange={changeArguments}
         className="input"
         fields={[field]}
-        disableSearch
+        showOptionsInPopover
         multi
       />
     </ValuesPickerContainer>

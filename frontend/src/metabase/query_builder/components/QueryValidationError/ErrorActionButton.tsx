@@ -2,8 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import {
-  ValidationError,
+import ValidationError, {
   VALIDATION_ERROR_TYPES,
   ErrorType,
 } from "metabase-lib/lib/ValidationError";

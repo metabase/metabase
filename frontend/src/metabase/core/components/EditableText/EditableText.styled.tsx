@@ -1,7 +1,11 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-export const EditableTextRoot = styled.div`
+export interface EditableTextRootProps {
+  isDisabled: boolean;
+}
+
+export const EditableTextRoot = styled.div<EditableTextRootProps>`
   position: relative;
   color: ${color("text-dark")};
   padding: 0.25rem;
@@ -9,7 +13,7 @@ export const EditableTextRoot = styled.div`
 
   &:hover,
   &:focus-within {
-    border-color: ${color("border")};
+    border-color: ${props => (props.isDisabled ? "" : color("border"))};
   }
 
   &:after {
@@ -32,7 +36,7 @@ export const EditableTextArea = styled.textarea`
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;
-  cursor: pointer;
+  cursor: ${props => (props.disabled ? "text" : "pointer")};
   border: none;
   resize: none;
   outline: none;

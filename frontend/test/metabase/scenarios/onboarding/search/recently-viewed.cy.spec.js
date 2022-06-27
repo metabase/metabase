@@ -2,7 +2,7 @@ import {
   restore,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe(`search > recently viewed`, () => {
   beforeEach(() => {

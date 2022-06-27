@@ -4,7 +4,7 @@ import {
   modal,
   describeEE,
   mockSessionProperty,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("scenarios > admin > databases > edit", () => {
   beforeEach(() => {

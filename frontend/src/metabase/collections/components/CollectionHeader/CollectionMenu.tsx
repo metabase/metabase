@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import EntityMenu from "metabase/components/EntityMenu";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
@@ -13,18 +14,38 @@ export interface CollectionMenuProps {
   collection: Collection;
   isAdmin: boolean;
   isPersonalCollectionChild: boolean;
+  onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }
 
 const CollectionMenu = ({
   collection,
   isAdmin,
   isPersonalCollectionChild,
+  onUpdateCollection,
 }: CollectionMenuProps): JSX.Element | null => {
   const items = [];
   const url = Urls.collection(collection);
   const isRoot = isRootCollection(collection);
   const isPersonal = isPersonalCollection(collection);
   const canWrite = collection.can_write;
+
+  if (isAdmin && !isRoot && !isPersonal && !isPersonalCollectionChild) {
+    items.push(
+      ...PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems(
+        collection,
+        onUpdateCollection,
+      ),
+    );
+  }
+
+  if (isAdmin && !isPersonal && !isPersonalCollectionChild) {
+    items.push({
+      title: t`Edit permissions`,
+      icon: "lock",
+      link: `${url}/permissions`,
+      event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Permissions`,
+    });
+  }
 
   if (!isRoot && !isPersonal && canWrite) {
     items.push(
@@ -47,15 +68,6 @@ const CollectionMenu = ({
         event: `${ANALYTICS_CONTEXT};Edit Menu;Archive Collection`,
       },
     );
-  }
-
-  if (isAdmin && !isPersonal && !isPersonalCollectionChild) {
-    items.push({
-      title: t`Edit permissions`,
-      icon: "lock",
-      link: `${url}/permissions`,
-      event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Permissions`,
-    });
   }
 
   if (items.length > 0) {

@@ -4,7 +4,7 @@ import {
   visitQuestionAdhoc,
   filter,
   setupBooleanQuery,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -521,7 +521,7 @@ describe("scenarios > filters > bulk filtering", () => {
     it("adds a contains text filter", () => {
       modal().within(() => {
         cy.findByLabelText("Title").within(() => {
-          cy.findByPlaceholderText("Enter some text").type("Marble");
+          cy.findByPlaceholderText("Search by Title").type("Marble");
         });
         cy.button("Apply").click();
       });
@@ -541,7 +541,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
       modal().within(() => {
         cy.findByLabelText("Title").within(() => {
-          cy.findByPlaceholderText("Enter some text").type("Hat");
+          cy.findByPlaceholderText("Search by Title").type("Hat");
         });
         cy.button("Apply").click();
       });
