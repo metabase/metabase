@@ -24,6 +24,10 @@ title: Troubleshooting error messages
 
 - Appear in gray text when you load a dashboard or run a question.
 
+### Common Metabase error messages
+
+- [Your question took too long](./timeout.html).
+
 [api-error-message]: #api-error-messages
 [debugging-sql-syntax]: /learn/debugging-sql/sql-syntax.html
 [discourse-search-api-error]: https://discourse.metabase.com/search?q=api%20error%20message
