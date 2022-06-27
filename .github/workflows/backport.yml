@@ -128,7 +128,7 @@ jobs:
     needs: create_pull_request
     if: ${{ failure() }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/notify-pull-request
         with:
           include-log: true

@@ -121,12 +121,13 @@ export const getErrorMessage = (state: State) => {
   return errorPage?.data?.message || errorPage?.data;
 };
 
-export const getShowBreadcumb = createSelector([getRouterPath], path =>
-  PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
-);
-
 export const getCollectionId = createSelector(
   [getQuestion, getDashboard],
   (question, dashboard) =>
     question ? question.collectionId() : dashboard?.collection_id,
+);
+
+export const getIsCollectionPathVisible = createSelector(
+  [getRouterPath],
+  path => PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
 );

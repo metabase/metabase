@@ -3,7 +3,6 @@ import {
   enableTracking,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
-  openCollectionMenu,
   resetSnowplow,
   restore,
 } from "__support__/e2e/helpers";
@@ -493,12 +492,10 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.wait("@createTimeline");
       cy.icon("close").click();
 
-      openCollectionMenu();
-      cy.findByText("Edit this collection").click();
-      cy.findByLabelText("Name")
+      cy.findByDisplayValue("First collection")
         .clear()
-        .type("1st collection");
-      cy.button("Update").click();
+        .type("1st collection")
+        .blur();
       cy.wait("@updateCollection");
 
       cy.icon("calendar").click();
