@@ -12,10 +12,14 @@
   (str "-- Metabase\n"
        sql-str))
 
-(defn execute! [conn [sql & params]]
+(defn execute!
+  "Executes sql and params with a standard remark prepended to the statement."
+  [conn [sql & params]]
   (jdbc/execute! conn (into [(add-remark sql)] params)))
 
-(defn jdbc-query [conn [sql & params]]
+(defn jdbc-query
+  "Queries sql and params with a standard remark prepended to the statement."
+  [conn [sql & params]]
   (jdbc/query conn (into [(add-remark sql)] params)))
 
 (defn create-schema-sql
@@ -32,16 +36,19 @@
     (format "drop schema if exists %s"
             (q :table (ddl.i/schema-name database (public-settings/site-uuid))))))
 
-(defn create-table-sql [{driver :engine :as database} definition query]
+(defn create-table-sql
+  "Formats a create table statement within our own cache schema"
+  [{driver :engine :as database} definition query]
   (let [q (quote-fn driver)]
     (format "create table %s.%s as %s"
             (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
             (q :table (:table-name definition))
             query)))
 
-(defn drop-table-sql [{driver :engine :as database} table-name]
+(defn drop-table-sql
+  "Formats a drop table statement within our own cache schema"
+  [{driver :engine :as database} table-name]
   (let [q (quote-fn driver)]
     (format "drop table if exists %s.%s"
             (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
             (q :table table-name))))
-
