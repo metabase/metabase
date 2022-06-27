@@ -33,6 +33,7 @@ import { trackTrackingPermissionChanged } from "./analytics";
 import { PersistedModelsApi, UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import EmbeddingOption from "./components/widgets/EmbeddingOption";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -369,35 +370,49 @@ const SECTIONS = updateSectionsWithPlugins({
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
-        widget: EmbeddingCustomizationInfo,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-embedding"] ||
-          MetabaseSettings.isEnterprise(),
-      },
-      {
-        key: "embedding-secret-key",
-        display_name: t`Embedding secret key`,
-        widget: SecretKeyWidget,
+        widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+        embedName: t`Standalone embeds`,
+        embedDescription: t`Securely embed individual questions and dashboards within other applications.`,
+        embedType: "standalone",
       },
       {
-        key: "-embedded-dashboards",
-        display_name: t`Embedded Dashboards`,
-        widget: EmbeddedDashboardListing,
+        widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+        embedName: t`Full-app embedding`,
+        embedDescription: t`With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder.`,
+        embedType: "full-app",
       },
-      {
-        key: "-embedded-questions",
-        display_name: t`Embedded Questions`,
-        widget: EmbeddedQuestionListing,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-      },
-      {
-        widget: PremiumEmbeddingLinkWidget,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-embedding"] ||
-          MetabaseSettings.isEnterprise(),
-      },
+      // {
+      //   widget: EmbeddingCustomizationInfo,
+      //   getHidden: (_, derivedSettings) =>
+      //     !derivedSettings["enable-embedding"] ||
+      //     MetabaseSettings.isEnterprise(),
+      // },
+      // {
+      //   key: "embedding-secret-key",
+      //   display_name: t`Embedding secret key`,
+      //   widget: SecretKeyWidget,
+      //   getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+      // },
+      // {
+      //   key: "-embedded-dashboards",
+      //   display_name: t`Embedded Dashboards`,
+      //   widget: EmbeddedDashboardListing,
+      //   getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+      // },
+      // {
+      //   key: "-embedded-questions",
+      //   display_name: t`Embedded Questions`,
+      //   widget: EmbeddedQuestionListing,
+      //   getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+      // },
+      // {
+      //   widget: PremiumEmbeddingLinkWidget,
+      //   getHidden: (_, derivedSettings) =>
+      //     !derivedSettings["enable-embedding"] ||
+      //     MetabaseSettings.isEnterprise(),
+      // },
     ],
   },
   license: {

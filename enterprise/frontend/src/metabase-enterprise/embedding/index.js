@@ -26,24 +26,25 @@ const APP_ORIGIN_SETTING = {
   getHidden: settings => !settings["enable-embedding"],
 };
 
-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
-  updateIn(
-    sections,
-    ["embedding_in_other_applications", "settings"],
-    settings => {
-      // insert the app origin setting right after the secret key widget
-      const itemIndex = settings.findIndex(
-        s => s.key === "embedding-secret-key",
-      );
-      const sliceIndex = itemIndex === -1 ? settings.length : itemIndex + 1;
+// XXX: Full app embedding only admin
+// PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
+//   updateIn(
+//     sections,
+//     ["embedding_in_other_applications", "settings"],
+//     settings => {
+//       // insert the app origin setting right after the secret key widget
+//       const itemIndex = settings.findIndex(
+//         s => s.key === "embedding-secret-key",
+//       );
+//       const sliceIndex = itemIndex === -1 ? settings.length : itemIndex + 1;
 
-      settings = [
-        ...settings.slice(0, sliceIndex),
-        APP_ORIGIN_SETTING,
-        ...settings.slice(sliceIndex),
-      ];
+//       settings = [
+//         ...settings.slice(0, sliceIndex),
+//         APP_ORIGIN_SETTING,
+//         ...settings.slice(sliceIndex),
+//       ];
 
-      return settings;
-    },
-  ),
-);
+//       return settings;
+//     },
+//   ),
+// );
