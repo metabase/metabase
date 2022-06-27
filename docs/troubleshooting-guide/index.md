@@ -36,7 +36,7 @@ Problems, their causes, how to detect them, and how to fix them.
 ### Questions and dashboards
 
 - [Saving questions or dashboards][proxies].
-- [My dashboard is slow][slow-dashboard].
+- [My dashboard is slow or failing to load][slow-dashboard].
 - [My SQL question doesn't work][sql].
 - [The dates and times in my questions and charts are wrong][incorrect-times].
 - [My dashboard filters don't work][filters].

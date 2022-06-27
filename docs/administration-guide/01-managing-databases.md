@@ -7,7 +7,6 @@ title: Adding and managing databases
 - [Adding a database connection](#adding-a-database-connection)
 - [Databases](#databases)
 - [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
-- [Errors when connecting to your database](#errors-when-connecting-to-your-database)
 - [Database connection options](#database-connection-options)
 - [Testing a database connection](#testing-a-database-connection)
 - [Re-scanning a single table or field](#re-scanning-a-single-table-or-field)
@@ -55,10 +54,6 @@ The following databases have official drivers maintained by the Metabase team. C
 For provider-specific connection details, like connecting to a PostgreSQL data warehouse on RDS:
 
 - [AWS's Relational Database Service (RDS)](databases/aws-rds.md)
-
-## Errors when connecting to your database
-
-Check our [troubleshooting guide](../troubleshooting-guide/datawarehouse.md).
 
 ## Database connection options
 
@@ -131,27 +126,27 @@ As you're setting up your database(s) with Metabase, you can check if each compo
 
 If you’re using a hosted database service, go to the console and verify its status.
 
-If you have direct access to a command-line interface, log in and make sure that it’s up and running and accepting queries.
+If you have direct access to a command-line interface, log in and make sure that your database is running and accepting queries.
 
 ### Checking your server access
 
 To verify that your Metabase's IP address can access the database server:
 
-1. Use the nc command (or your operating system’s equivalent) to verify that you can connect to the host on a given port. Different databases use different ports.
+1. Use the nc command (or your operating system’s equivalent) to check if you can connect to the host on a given port. Note that different databases use different ports by default.
 
-    > If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](/cloud/docs/ip-addresses-to-whitelist.html).
+2. If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](/cloud/docs/ip-addresses-to-whitelist.html).
 
-2. Check that your database credentials are correct.
+3. Check that your database credentials are correct.
 
 #### Example commands
 
-To verify the port on a default PostgreSQL configuration (which listens on port 5432):
+To verify the port used in a default PostgreSQL configuration (which listens on port 5432):
 
 ```
 nc -v your-db-host 5432
 ```
 
-To verify your credientials for PostgresSQL (you'll see an error if the database name or the user/password are incorrect):
+To verify your credentials for a PostgreSQL database (you'll see an error if the database name or the user/password are incorrect):
 
 ```
 psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
@@ -159,7 +154,12 @@ psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
 
 ### Testing the connection status
 
-Go to the [SQL editor](../users-guide/writing-sql.html) and run a `SELECT 1` query to verify the connection to the data warehouse.
+1. Go to the Metabase [SQL editor](../users-guide/writing-sql.html).
+2. Test the connection to your database by running:
+    ```
+    SELECT 1
+    ```
+3. If the connection isn't working, go to [Troubleshooting database connections](../troubleshooting-guide/datawarehouse.html).
 
 ## Re-scanning a single table or field
 
