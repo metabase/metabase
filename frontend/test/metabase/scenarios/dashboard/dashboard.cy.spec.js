@@ -75,10 +75,7 @@ describe("scenarios > dashboard", () => {
 
     // refresh page and check that title/desc were updated
     visitDashboard(1);
-    cy.findByText("Orders per year")
-      .next()
-      .trigger("mouseenter");
-    cy.findByText("How many orders were placed in each year?");
+    cy.findByDisplayValue("Orders per year");
   });
 
   it("should allow empty card title (metabase#12013)", () => {

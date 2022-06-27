@@ -10,12 +10,12 @@ import { getIsNavbarOpen } from "metabase/redux/app";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
-import Header from "metabase/components/Header";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import Bookmark from "metabase/entities/bookmarks";
+
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import {
   DashboardHeaderButton,
@@ -26,6 +26,8 @@ import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { getIsBookmarked } from "metabase/dashboard/selectors";
+
+import Header from "../components/DashboardHeader";
 
 import cx from "classnames";
 
@@ -359,6 +361,7 @@ class DashboardHeader extends Component {
       isFullscreen,
       isAdditionalInfoVisible,
       onChangeLocation,
+      setDashboardAttribute,
     } = this.props;
 
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
@@ -368,7 +371,7 @@ class DashboardHeader extends Component {
         headerClassName="wrapper"
         objectType="dashboard"
         analyticsContext="Dashboard"
-        item={dashboard}
+        dashboard={dashboard}
         isEditing={isEditing}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
         isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
@@ -378,10 +381,11 @@ class DashboardHeader extends Component {
         editWarning={this.getEditWarning(dashboard)}
         editingTitle={t`You're editing this dashboard.`}
         editingButtons={this.getEditingButtons()}
-        setItemAttributeFn={this.props.setDashboardAttribute}
+        setDashboardAttribute={setDashboardAttribute}
         onLastEditInfoClick={() =>
           onChangeLocation(`${location.pathname}/history`)
         }
+        onSave={() => this.onSave()}
       />
     );
   }
