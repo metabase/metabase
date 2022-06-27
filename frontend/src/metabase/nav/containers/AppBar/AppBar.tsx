@@ -1,4 +1,6 @@
 import { connect } from "react-redux";
+import { withRouter } from "react-router";
+import _ from "underscore";
 import { closeNavbar, getIsNavbarOpen, toggleNavbar } from "metabase/redux/app";
 import {
   getCollectionId,
@@ -23,4 +25,7 @@ const mapDispatchToProps = {
   onCloseNavbar: closeNavbar,
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(AppBar);
+export default _.compose(
+  withRouter,
+  connect(mapStateToProps, mapDispatchToProps),
+)(AppBar);
