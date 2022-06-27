@@ -60,7 +60,7 @@ export const HeaderBadges = styled.div`
   }
 `;
 
-export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
+export const HeaderLastEditInfoLabel = styled(LastEditInfoLabel)`
   transition: opacity 400ms ease;
   ${breakpointMaxSmall} {
     margin-top: 4px;
@@ -77,7 +77,7 @@ export const HeaderContent = styled.div<HeaderContentProps>`
   ${HeaderCaptionContainer} {
     top: ${props => (props.showSubHeader ? "0px" : "10px")};
   }
-  ${StyledLastEditInfoLabel} {
+  ${HeaderLastEditInfoLabel} {
     opacity: ${props => (props.showSubHeader ? "1x" : "0")};
   }
 
@@ -86,7 +86,7 @@ export const HeaderContent = styled.div<HeaderContentProps>`
     ${HeaderCaptionContainer} {
       top: 0px;
     }
-    ${StyledLastEditInfoLabel} {
+    ${HeaderLastEditInfoLabel} {
       opacity: 1;
     }
   }

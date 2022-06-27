@@ -1,6 +1,6 @@
 import React, {
   useState,
-  useEffect,
+  useLayoutEffect,
   useRef,
   useMemo,
   useCallback,
@@ -22,12 +22,12 @@ import {
   HeaderContent,
   HeaderButtonsContainer,
   HeaderButtonSection,
-  StyledLastEditInfoLabel,
+  HeaderLastEditInfoLabel,
   HeaderCaption,
   HeaderCaptionContainer,
 } from "./DashboardHeader.styled";
 
-interface HeaderProps {
+interface DashboardHeaderProps {
   editingTitle: string;
   editingSubtitle: string;
   editingButtons: JSX.Element[];
@@ -49,7 +49,7 @@ interface HeaderProps {
   setDashboardAttribute: (prop: string, value: string) => null;
 }
 
-const Header = ({
+const DashboardHeader = ({
   editingTitle = "",
   editingSubtitle = "",
   editingButtons = [],
@@ -72,59 +72,17 @@ const Header = ({
   const [showSubHeader, setShowSubHeader] = useState(true);
   const header = useRef<HTMLDivElement>(null);
 
-  const updateHeaderHeight = useCallback(() => {
-    if (!header.current) {
-      return;
-    }
+  const isModalOpened = headerModalMessage != null;
 
-    const rect = header.current?.getBoundingClientRect();
-    const _headerHeight = rect.top + getScrollY();
-    if (headerHeight !== _headerHeight) {
-      setHeaderHeight(_headerHeight);
+  useLayoutEffect(() => {
+    if (isModalOpened) {
+      const headerRect = header.current?.getBoundingClientRect();
+      if (headerRect) {
+        const headerHeight = headerRect.top + getScrollY();
+        setHeaderHeight(headerHeight);
+      }
     }
-  }, [headerHeight, setHeaderHeight]);
-
-  useEffect(() => {
-    const modalIsOpen = !!headerModalMessage;
-    if (modalIsOpen) {
-      updateHeaderHeight();
-    }
-  }, [headerModalMessage, updateHeaderHeight]);
-
-  const renderEditHeader = useCallback(() => {
-    if (isEditing) {
-      return (
-        <EditBar
-          title={editingTitle}
-          subtitle={editingSubtitle}
-          buttons={editingButtons}
-        />
-      );
-    }
-  }, [isEditing, editingTitle, editingSubtitle, editingButtons]);
-
-  const renderEditWarning = useCallback(() => {
-    if (editWarning) {
-      return <EditWarning title={editWarning} />;
-    }
-  }, [editWarning]);
-
-  const renderHeaderModal = useCallback(() => {
-    return (
-      <HeaderModal
-        isOpen={!!headerModalMessage}
-        height={headerHeight}
-        title={headerModalMessage}
-        onDone={onHeaderModalDone}
-        onCancel={onHeaderModalCancel}
-      />
-    );
-  }, [
-    headerModalMessage,
-    headerHeight,
-    onHeaderModalCancel,
-    onHeaderModalDone,
-  ]);
+  }, [isModalOpened]);
 
   const _headerButtons = useMemo(
     () =>
@@ -161,9 +119,21 @@ const Header = ({
 
   return (
     <div>
-      {renderEditHeader()}
-      {renderEditWarning()}
-      {renderHeaderModal()}
+      {isEditing && (
+        <EditBar
+          title={editingTitle}
+          subtitle={editingSubtitle}
+          buttons={editingButtons}
+        />
+      )}
+      {editWarning && <EditWarning title={editWarning} />}
+      <HeaderModal
+        isOpen={!!headerModalMessage}
+        height={headerHeight}
+        title={headerModalMessage}
+        onDone={onHeaderModalDone}
+        onCancel={onHeaderModalCancel}
+      />
       <HeaderRoot
         isNavBarOpen={isNavBarOpen}
         className={cx("QueryBuilder-section", headerClassName)}
@@ -182,7 +152,7 @@ const Header = ({
           </HeaderCaptionContainer>
           <HeaderBadges>
             {isLastEditInfoVisible && (
-              <StyledLastEditInfoLabel
+              <HeaderLastEditInfoLabel
                 item={dashboard}
                 onClick={onLastEditInfoClick}
                 className=""
@@ -200,4 +170,4 @@ const Header = ({
   );
 };
 
-export default Header;
+export default DashboardHeader;
