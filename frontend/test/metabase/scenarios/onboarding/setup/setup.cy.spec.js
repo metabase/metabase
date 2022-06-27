@@ -5,7 +5,7 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   restore,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 // we're testing for one known (en) and one unknown (xx) locale
 const locales = ["en", "xx"];

@@ -5,7 +5,7 @@ import {
   isOSS,
   visitDashboard,
   visitIframe,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const embeddingPage = "/admin/settings/embedding_in_other_applications";
 const licenseUrl = "https://metabase.com/license/embedding";

@@ -1,4 +1,4 @@
-import { browse, restore } from "__support__/e2e/cypress";
+import { browse, restore } from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const sizes = [

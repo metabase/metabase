@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/helpers";
 
 const DASHBOARD_ITEM_NAME = "Orders in a dashboard";
 const CARD_ITEM_NAME = "Orders, Count";

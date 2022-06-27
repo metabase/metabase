@@ -2,7 +2,7 @@ import {
   restore,
   withDatabase,
   adhocQuestionHash,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const PG_DB_ID = 2;
 

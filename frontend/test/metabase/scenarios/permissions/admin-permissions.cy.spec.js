@@ -11,7 +11,7 @@ import {
   isPermissionDisabled,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID, USER_GROUPS } from "__support__/e2e/cypress_data";
 

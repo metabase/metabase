@@ -5,7 +5,7 @@ import {
   popover,
   setupSMTP,
   describeEE,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 

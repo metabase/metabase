@@ -1,4 +1,4 @@
-import { restore, describeEE, openNativeEditor } from "__support__/e2e/cypress";
+import { restore, describeEE, openNativeEditor } from "__support__/e2e/helpers";
 
 describeEE("audit > ad-hoc", () => {
   describe("native query", () => {

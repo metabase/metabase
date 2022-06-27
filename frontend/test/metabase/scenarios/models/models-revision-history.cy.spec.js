@@ -1,4 +1,4 @@
-import { restore, modal, filter, visitQuestion } from "__support__/e2e/cypress";
+import { restore, modal, filter, visitQuestion } from "__support__/e2e/helpers";
 
 import {
   assertIsModel,

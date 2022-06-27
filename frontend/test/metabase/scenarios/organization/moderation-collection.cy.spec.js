@@ -7,7 +7,7 @@ import {
   appBar,
   navigationSidebar,
   closeNavigationSidebar,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

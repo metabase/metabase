@@ -1,5 +1,5 @@
 // Migrated from frontend/test/metabase/user/UserSettings.integ.spec.js
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 const { first_name, last_name, email, password } = USERS.normal;
 

@@ -1,4 +1,4 @@
-import { restore, visitQuestion, saveDashboard } from "__support__/e2e/cypress";
+import { restore, visitQuestion, saveDashboard } from "__support__/e2e/helpers";
 
 import { onlyOn } from "@cypress/skip-test";
 

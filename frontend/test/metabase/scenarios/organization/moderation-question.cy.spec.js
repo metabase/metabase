@@ -1,4 +1,4 @@
-import { describeEE, restore, visitQuestion } from "__support__/e2e/cypress";
+import { describeEE, restore, visitQuestion } from "__support__/e2e/helpers";
 
 describeEE("scenarios > saved question moderation", () => {
   describe("as an admin", () => {

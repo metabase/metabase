@@ -4,7 +4,7 @@ import {
   filterWidget,
   visitEmbeddedPage,
   visitIframe,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { questionDetails } from "./embedding-native";
 

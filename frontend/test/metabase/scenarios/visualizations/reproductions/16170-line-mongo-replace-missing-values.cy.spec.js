@@ -1,4 +1,4 @@
-import { restore, withDatabase, popover } from "__support__/e2e/cypress";
+import { restore, withDatabase, popover } from "__support__/e2e/helpers";
 
 const externalDatabaseId = 2;
 
