@@ -1,15 +1,7 @@
-import { TemplateTagType, TemplateTag } from "metabase-types/types/Query";
+import { TemplateTag } from "metabase-types/types/Query";
 import Variable from "metabase-lib/lib/variables/Variable";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-
-const VARIABLE_ICONS: Record<TemplateTagType, string | null> = {
-  text: "string",
-  number: "int",
-  date: "calendar",
-  dimension: null,
-  card: null,
-  snippet: null,
-};
+import { VARIABLE_ICONS } from "./constants";
 
 export default class TemplateTagVariable extends Variable {
   tag(): TemplateTag | null | undefined {
