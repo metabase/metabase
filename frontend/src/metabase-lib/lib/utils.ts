@@ -27,8 +27,8 @@ const memoized = new WeakMap();
 
 type Constructor<T> = new (...args: any[]) => T;
 
-export function memoizeClass<T>(...keys: string[]) {
-  return function(Class: Constructor<T>) {
+export function memoizeClass<T>(...keys: string[]): Constructor<T> {
+  return function(Class: Constructor<T>): Constructor<T> {
     const descriptors = Object.getOwnPropertyDescriptors(Class.prototype);
 
     keys.forEach(key => {
