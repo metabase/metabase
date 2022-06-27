@@ -15,7 +15,6 @@ import Tooltip from "metabase/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import Bookmark from "metabase/entities/bookmarks";
-import Dashboard from "metabase/entities/dashboards";
 
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import {
@@ -45,7 +44,6 @@ const mapDispatchToProps = {
   deleteBookmark: ({ id }) =>
     Bookmark.actions.delete({ id, type: "dashboard" }),
   onChangeLocation: push,
-  updateDashboard: Dashboard.actions.update,
 };
 
 class DashboardHeader extends Component {
