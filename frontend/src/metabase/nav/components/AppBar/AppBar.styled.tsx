@@ -104,7 +104,9 @@ export const MiddleContainer = styled.div`
 
   ${LogoLink} {
     position: relative;
-    padding-left: 0.5rem;
+  }
+
+  ${LogoLinkContainer} {
     margin-left: 0;
   }
 `;
