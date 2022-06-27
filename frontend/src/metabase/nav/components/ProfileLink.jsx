@@ -24,7 +24,7 @@ const mapStateToProps = state => ({
 
 export default connect(mapStateToProps)(ProfileLink);
 
-function ProfileLink({ user, adminItems, handleLogout }) {
+function ProfileLink({ user, adminItems, onLogout }) {
   const [modalOpen, setModalOpen] = useState(null);
   const [bugReportDetails, setBugReportDetails] = useState(null);
 
@@ -83,7 +83,7 @@ function ProfileLink({ user, adminItems, handleLogout }) {
       {
         title: t`Sign out`,
         icon: null,
-        action: () => handleLogout(),
+        action: () => onLogout(),
         event: `Navbar;Profile Dropdown;Logout`,
       },
     ].filter(Boolean);
@@ -162,5 +162,5 @@ function ProfileLink({ user, adminItems, handleLogout }) {
 ProfileLink.propTypes = {
   user: PropTypes.object.isRequired,
   adminItems: PropTypes.array,
-  handleLogout: PropTypes.func.isRequired,
+  onLogout: PropTypes.func.isRequired,
 };

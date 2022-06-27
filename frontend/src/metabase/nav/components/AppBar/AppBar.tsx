@@ -4,7 +4,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { isMac } from "metabase/lib/browser";
 import LogoIcon from "metabase/components/LogoIcon";
 import Tooltip from "metabase/components/Tooltip";
-import { CollectionId } from "metabase-types/api";
+import { CollectionId, User } from "metabase-types/api";
 import NewItemButton from "../NewItemButton";
 import SearchBar from "../SearchBar";
 import SidebarButton from "../SidebarButton";
@@ -20,28 +20,36 @@ import {
   LogoLink,
   LogoLinkContainer,
   CollectionBreadcrumbsContainer,
+  ProfileLinkContainer,
 } from "./AppBar.styled";
+import ProfileLink from "metabase/nav/components/ProfileLink";
 
 interface AppBarProps {
+  currentUser: User;
   collectionId?: CollectionId;
   isNavBarOpen?: boolean;
   isNavBarVisible?: boolean;
   isSearchVisible?: boolean;
   isNewButtonVisible?: boolean;
   isCollectionPathVisible?: boolean;
+  isProfileLinkVisible?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
+  onLogout: () => void;
 }
 
 const AppBar = ({
+  currentUser,
   collectionId,
   isNavBarOpen,
   isNavBarVisible,
   isSearchVisible,
   isNewButtonVisible,
   isCollectionPathVisible,
+  isProfileLinkVisible,
   onToggleNavbar,
   onCloseNavbar,
+  onLogout,
 }: AppBarProps): JSX.Element => {
   const [isSearchActive, setSearchActive] = useState(false);
 
@@ -115,6 +123,11 @@ const AppBar = ({
             </SearchBarContainer>
           )}
           {isNewButtonVisible && <NewItemButton />}
+          {isProfileLinkVisible && (
+            <ProfileLinkContainer>
+              <ProfileLink user={currentUser} onLogout={onLogout} />
+            </ProfileLinkContainer>
+          )}
         </RightContainer>
       )}
     </AppBarRoot>

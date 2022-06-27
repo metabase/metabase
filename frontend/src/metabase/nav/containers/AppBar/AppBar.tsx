@@ -2,10 +2,12 @@ import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import _ from "underscore";
 import { closeNavbar, getIsNavbarOpen, toggleNavbar } from "metabase/redux/app";
+import { logout } from "metabase/auth/actions";
 import {
   getCollectionId,
   getIsCollectionPathVisible,
   getIsNewButtonVisible,
+  getIsProfileLinkVisible,
   getIsSearchVisible,
   RouterProps,
 } from "metabase/selectors/app";
@@ -18,11 +20,13 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isSearchVisible: getIsSearchVisible(state),
   isNewButtonVisible: getIsNewButtonVisible(state),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
+  isProfileLinkVisible: getIsProfileLinkVisible(state),
 });
 
 const mapDispatchToProps = {
   onToggleNavbar: toggleNavbar,
   onCloseNavbar: closeNavbar,
+  onLogout: logout,
 };
 
 export default _.compose(
