@@ -33,7 +33,8 @@ const APP_ORIGIN_SETTING = {
   ),
   placeholder: "https://*.example.com",
   type: "string",
-  getHidden: settings => !settings["enable-embedding"],
+  getHidden: settings =>
+    !settings["enable-embedding"] || !MetabaseSettings.isEnterprise(),
 };
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>

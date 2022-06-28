@@ -33,8 +33,9 @@ import { trackTrackingPermissionChanged } from "./analytics";
 import { PersistedModelsApi, UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import EmbeddingOption from "./components/widgets/EmbeddingOption";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import EmbeddingOption from "./components/widgets/EmbeddingOption";
+import RedirectWidget from "./components/widgets/RedirectWidget";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -384,18 +385,6 @@ const SECTIONS = updateSectionsWithPlugins({
         embedDescription: t`With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder.`,
         embedType: "full-app",
       },
-      // {
-      //   widget: EmbeddingCustomizationInfo,
-      //   getHidden: (_, derivedSettings) =>
-      //     !derivedSettings["enable-embedding"] ||
-      //     MetabaseSettings.isEnterprise(),
-      // },
-      // {
-      //   widget: PremiumEmbeddingLinkWidget,
-      //   getHidden: (_, derivedSettings) =>
-      //     !derivedSettings["enable-embedding"] ||
-      //     MetabaseSettings.isEnterprise(),
-      // },
     ],
   },
   "embedding_in_other_applications/standalone": {
@@ -434,6 +423,18 @@ const SECTIONS = updateSectionsWithPlugins({
         widget: EmbeddedQuestionListing,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
+      {
+        widget: EmbeddingCustomizationInfo,
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["enable-embedding"] ||
+          MetabaseSettings.isEnterprise(),
+      },
+      {
+        widget: () => (
+          <RedirectWidget to="/admin/settings/embedding_in_other_applications" />
+        ),
+        getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
+      },
     ],
   },
   "embedding_in_other_applications/full-app": {
@@ -452,6 +453,18 @@ const SECTIONS = updateSectionsWithPlugins({
             />
           );
         },
+      },
+      {
+        widget: PremiumEmbeddingLinkWidget,
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["enable-embedding"] ||
+          MetabaseSettings.isEnterprise(),
+      },
+      {
+        widget: () => (
+          <RedirectWidget to="/admin/settings/embedding_in_other_applications" />
+        ),
+        getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
       },
     ],
   },
