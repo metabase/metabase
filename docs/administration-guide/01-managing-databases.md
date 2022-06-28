@@ -8,7 +8,6 @@ title: Adding and managing databases
 - [Databases](#databases)
 - [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
 - [Database connection options](#database-connection-options)
-- [Testing a database connection](#testing-a-database-connection)
 - [Re-scanning a single table or field](#re-scanning-a-single-table-or-field)
 - [Deleting databases](#deleting-databases)
 - [Troubleshooting](#troubleshooting)
@@ -113,53 +112,6 @@ You can turn this option on and off in the **Show advanced options** section.
 ### Additional JDBC connection string options
 
 Some databases allow you to append options to the connection string Metabase will use to connect to your database.
-
-## Testing a database connection
-
-As you're setting up your database(s) with Metabase, you can check if each component is working as expected: 
-
-- [Server status](#checking-the-server-status)
-- [Server access](#checking-your-server-access)
-- [Connection status](#testing-the-connection-status)
-
-### Checking the server status
-
-If you’re using a hosted database service, go to the console and verify its status.
-
-If you have direct access to a command-line interface, log in and make sure that your database is running and accepting queries.
-
-### Checking your server access
-
-To verify that your Metabase's IP address can access the database server:
-
-1. Use the nc command (or your operating system’s equivalent) to check if you can connect to the host on a given port. Note that different databases use different ports by default.
-
-2. If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](/cloud/docs/ip-addresses-to-whitelist.html).
-
-3. Check that your database credentials are correct.
-
-#### Example commands
-
-To verify the port used in a default PostgreSQL configuration (which listens on port 5432):
-
-```
-nc -v your-db-host 5432
-```
-
-To verify your credentials for a PostgreSQL database (you'll see an error if the database name or the user/password are incorrect):
-
-```
-psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
-```
-
-### Testing the connection status
-
-1. Go to the Metabase [SQL editor](../users-guide/writing-sql.html).
-2. Test the connection to your database by running:
-    ```
-    SELECT 1
-    ```
-3. If the connection isn't working, go to [Troubleshooting database connections](../troubleshooting-guide/datawarehouse.html).
 
 ## Re-scanning a single table or field
 
