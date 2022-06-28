@@ -12,7 +12,7 @@
   * Life cycle
   - Full FieldValues are created by the fingerprint or scanning process.
     Once it's created the values will be updated by the scanning process that runs daily.
-  - Advanced FieldValues are created on demands: for example the Sandbox FieldValues are created when a user with
+  - Advanced FieldValues are created on demand: for example the Sandbox FieldValues are created when a user with
     sandboxed permission try to get values of a Field.
     Normally these FieldValues will be deleted after [[advanced-field-values-max-age]] days by the scanning process.
     But they will also be automatically deleted when the Full FieldValues of the same Field got updated."
@@ -50,7 +50,7 @@
 (def advanced-field-values-max-age
   "Age of an advanced FieldValues in days.
   After this time, these field values should be deleted by the `delete-expired-advanced-field-values` job."
-  30)
+  (t/days 30))
 
 (def ^:private advanced-field-values-types
   "A class of fieldvalues that has additional constraints/filters."
@@ -188,10 +188,9 @@
                 s/Keyword         s/Any}
                field)
       (boolean
-        (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
-             (not (isa? (keyword base-type) :type/Temporal))
-             (#{:list :auto-list} (keyword has-field-values)))))))
-
+       (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
+            (not (isa? (keyword base-type) :type/Temporal))
+            (#{:list :auto-list} (keyword has-field-values)))))))
 
 (defn take-by-length
   "Like `take` but condition by the total length of elements.
@@ -242,18 +241,18 @@
 ;;; |                                               Advanced FieldValues                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn advanced-fieldvalues-expired?
-  "Checks if an advanced fieldvalues expired."
+(defn advanced-field-values-expired?
+  "Checks if an advanced FieldValues expired."
   [fv]
   {:pre [(advanced-field-values-types (:type fv))]}
-  (u.date/older-than? (:created_at fv) (t/days 30)))
+  (u.date/older-than? (:created_at fv) advanced-field-values-max-age))
 
 (defn hash-key-for-sandbox
   "Return a hash-key that will be used for sandboxed fieldvalues."
   [field-id user-id user-permissions-set]
   (str (hash [field-id
               user-id
-              (seq user-permissions-set)])))
+              (hash user-permissions-set)])))
 
 (defn hash-key-for-linked-filters
   "Return a hash-key that will be used for linked-filters fieldvalues."
@@ -372,7 +371,7 @@
           (FieldValues :field_id field-id)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                  On Demands                                                    |
+;;; |                                                  On Demand                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- table-ids->table-id->is-on-demand?

@@ -9,10 +9,10 @@
 
 (comment api/keep-me)
 
-(defn- create-sandboxed-fieldvalues
+(defn- create-sandboxed-field-values
   [field hash-key]
   (when-let [{:keys [values has_more_values]} (field-values/distinct-values field)]
-    (let [;; If the full FieldValues of this field has a human-readable-values, fix it with the sandboxed values
+    (let [;; If the full FieldValues of this field has human-readable-values, fix it with the sandboxed values
           human-readable-values (field-values/fixup-human-readable-values
                                   (db/select-one FieldValues
                                                  :field_id (:id field)
@@ -33,14 +33,14 @@
         fv       (or (FieldValues :field_id (:id field)
                                   :type :sandbox
                                   :hash_key hash-key)
-                     (create-sandboxed-fieldvalues field hash-key))]
+                     (create-sandboxed-field-values field hash-key))]
     (cond
       (nil? fv) nil
 
       ;; If it's expired, delete then try to re-create it
-      (field-values/advanced-fieldvalues-expired? fv) (do
-                                                       (db/delete! FieldValues :id (:id fv))
-                                                       (recur field user-id user-permissions-set))
+      (field-values/advanced-field-values-expired? fv) (do
+                                                        (db/delete! FieldValues :id (:id fv))
+                                                        (recur field user-id user-permissions-set))
       :else fv)))
 
 (defn- field-is-sandboxed?
