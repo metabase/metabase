@@ -1,15 +1,13 @@
 import React from "react";
 import { CollectionId } from "metabase-types/api";
 import AppBarLogo from "./AppBarLogo";
+import AppBarInfo from "./AppBarInfo";
 import NewItemButton from "../NewItemButton";
 import SearchBar from "../SearchBar";
-import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
-import QuestionLineage from "../../containers/QuestionLineage";
 import {
-  AppBarRoot,
   AppBarLeftContainer,
-  InfoBarContainer,
   AppBarRightContainer,
+  AppBarRoot,
 } from "./AppBarDesktop.styled";
 
 export interface AppBarDesktopProps {
@@ -43,13 +41,12 @@ const AppBarDesktop = ({
           isNavBarVisible={isNavBarVisible}
           onToggleNavBar={onToggleNavBar}
         />
-        <InfoBarContainer isNavBarOpen={isNavBarOpen}>
-          {isQuestionLineageVisible ? (
-            <QuestionLineage />
-          ) : isCollectionPathVisible ? (
-            <CollectionBreadcrumbs collectionId={collectionId} />
-          ) : null}
-        </InfoBarContainer>
+        <AppBarInfo
+          collectionId={collectionId}
+          isNavBarOpen={isNavBarOpen}
+          isCollectionPathVisible={isCollectionPathVisible}
+          isQuestionLineageVisible={isQuestionLineageVisible}
+        />
       </AppBarLeftContainer>
       {(isSearchVisible || isNewButtonVisible) && (
         <AppBarRightContainer>
