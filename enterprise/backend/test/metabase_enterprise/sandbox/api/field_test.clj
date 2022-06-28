@@ -172,8 +172,8 @@
         ;; make sure we have a cache
         (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
         (let [old-sandbox-fv-id (db/select-one-id FieldValues :field_id (:id field) :type :sandbox)]
-          (with-redefs [field-values/advanced-fieldvalues-expired? (fn [fv]
-                                                                     (= (:id fv) old-sandbox-fv-id))]
+          (with-redefs [field-values/advanced-field-values-expired? (fn [fv]
+                                                                      (= (:id fv) old-sandbox-fv-id))]
             (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
             ;; did the old one get deleted?
             (is (not (db/exists? FieldValues :id old-sandbox-fv-id)))
