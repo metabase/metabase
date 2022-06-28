@@ -11,6 +11,7 @@ export interface Dashboard {
   model?: string;
   ordered_cards: DashboardOrderedCard[];
   parameters?: Parameter[] | null;
+  can_write: boolean;
 }
 
 export type DashboardOrderedCard = {

@@ -151,11 +151,10 @@ function testOfficialBadgePresence(expectBadge = true) {
 
   // Dashboard Page
   cy.findByText("Official Dashboard").click();
-  closeNavigationSidebar();
-  assertHasCollectionBadge(expectBadge);
+  assertHasCollectionBadgeInNavbar(expectBadge);
 
   // Question Page
-  cy.get("main")
+  cy.get("header")
     .findByText(COLLECTION_NAME)
     .click();
   cy.findByText("Official Question").click();
@@ -272,15 +271,6 @@ function assertSearchResultBadge(itemName, opts) {
   const { expectBadge } = opts;
   cy.findByText(itemName, opts)
     .parentsUntil("[data-testid=search-result-item]")
-    .within(() => {
-      cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
-    });
-}
-
-function assertHasCollectionBadge(expectBadge = true) {
-  cy.get("main")
-    .findByText(COLLECTION_NAME)
-    .parent()
     .within(() => {
       cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
     });
