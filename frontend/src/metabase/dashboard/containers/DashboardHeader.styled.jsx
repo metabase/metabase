@@ -34,5 +34,5 @@ export const DashboardHeaderActionContainer = styled.div`
 
 export const DashboardHeaderInfoButton = styled(Button)`
   color: ${props =>
-    props.isShowingDashboardIngoSidebar ? color("brand") : color("text-dark")};
+    props.isShowingDashboardInfoSidebar ? color("brand") : color("text-dark")};
 `;

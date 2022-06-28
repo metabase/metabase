@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
@@ -37,17 +37,22 @@ const DashboardInfoSidebar = ({
 }: DashboardInfoSidebarProps) => {
   const canWrite = dashboard.can_write;
 
-  const handleDescriptionChange = async (description: string) => {
-    console.log(description);
-    await setDashboardAttribute("description", description);
-    console.log("now save");
-    saveDashboardAndCards(dashboard.id);
-  };
+  const handleDescriptionChange = useCallback(
+    async (description: string) => {
+      await setDashboardAttribute("description", description);
+      saveDashboardAndCards(dashboard.id);
+    },
+    [setDashboardAttribute, saveDashboardAndCards, dashboard],
+  );
 
-  const events = getRevisionEventsForTimeline(revisions, {
-    currentUser,
-    canWrite,
-  });
+  const events = useMemo(
+    () =>
+      getRevisionEventsForTimeline(revisions, {
+        currentUser,
+        canWrite,
+      }),
+    [revisions, currentUser, canWrite],
+  );
 
   return (
     <DashboardInfoSidebarRoot>

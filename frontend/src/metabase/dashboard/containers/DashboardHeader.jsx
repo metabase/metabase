@@ -28,7 +28,7 @@ import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import {
   getIsBookmarked,
-  getShowDashboardInfoSidebar,
+  getIsShowDashboardInfoSidebar,
 } from "metabase/dashboard/selectors";
 
 import Header from "../components/DashboardHeader";
@@ -39,7 +39,7 @@ const mapStateToProps = (state, props) => {
   return {
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
-    isShowingDashboardIngoSidebar: getShowDashboardInfoSidebar(state),
+    isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
   };
 };
 
@@ -187,7 +187,7 @@ class DashboardHeader extends Component {
       createBookmark,
       deleteBookmark,
       setSidebar,
-      isShowingDashboardIngoSidebar,
+      isShowingDashboardInfoSidebar,
       closeSidebar,
     } = this.props;
 
@@ -362,9 +362,9 @@ class DashboardHeader extends Component {
             iconSize={18}
             onlyIcon
             borderless
-            isShowingDashboardIngoSidebar={isShowingDashboardIngoSidebar}
+            isShowingDashboardInfoSidebar={isShowingDashboardInfoSidebar}
             onClick={() =>
-              isShowingDashboardIngoSidebar
+              isShowingDashboardInfoSidebar
                 ? closeSidebar()
                 : setSidebar({ name: "info" })
             }
