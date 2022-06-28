@@ -1,6 +1,5 @@
-import { restore, visitDashboard } from "../cypress";
+import { restore, visitDashboard } from "../helpers";
 import { USERS } from "../cypress_data";
-
 import { setup } from "./visit-dashboard";
 
 describe(`visitDashboard e2e helper`, () => {
