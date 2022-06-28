@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { LogoLink, SidebarButtonContainer } from "./AppBarLogo.styled";
+import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const AppBarRoot = styled.header`
   display: flex;
@@ -22,10 +23,7 @@ export interface LeftContainerProps {
 
 export const AppBarLeftContainer = styled.div<LeftContainerProps>`
   display: flex;
-  height: 100%;
-  flex-direction: row;
   align-items: center;
-  width: 30%;
 
   ${SidebarButtonContainer} {
     opacity: ${props => (props.isNavBarVisible ? 0 : 1)};
@@ -41,6 +39,11 @@ export const AppBarLeftContainer = styled.div<LeftContainerProps>`
       opacity: ${props => (props.isNavBarVisible ? 1 : 0)};
     }
   }
+`;
+
+export const AppBarRightContainer = styled.div`
+  display: flex;
+  align-items: center;
 `;
 
 export interface InfoBarContainerProps {

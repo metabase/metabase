@@ -1,12 +1,14 @@
 import React from "react";
 import { CollectionId } from "metabase-types/api";
 import AppBarLogo from "./AppBarLogo";
+import NewItemButton from "../NewItemButton";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
 import {
   AppBarRoot,
   AppBarLeftContainer,
   InfoBarContainer,
+  AppBarRightContainer,
 } from "./AppBarDesktop.styled";
 
 export interface AppBarDesktopProps {
@@ -48,6 +50,11 @@ const AppBarDesktop = ({
           ) : null}
         </InfoBarContainer>
       </AppBarLeftContainer>
+      {isNewButtonVisible && (
+        <AppBarRightContainer>
+          {isNewButtonVisible && <NewItemButton />}
+        </AppBarRightContainer>
+      )}
     </AppBarRoot>
   );
 };
