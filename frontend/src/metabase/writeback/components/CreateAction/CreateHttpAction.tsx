@@ -1,6 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
+import { useMutation } from "react-query";
 
 import MethodSelector from "./MethodSelector";
 import Tabs from "./Tabs";
@@ -8,10 +9,13 @@ import HttpHeaderTab, { Headers } from "./HttpHeaderTab";
 import BodyTab from "./BodyTab";
 import UrlInput from "./UrlInput";
 import Selector from "./Selector";
+import { ActionsApi } from "metabase/services";
 
-type Props = {};
+type Props = {
+  actionName: string;
+};
 
-const CreateActionPage: React.FC<Props> = props => {
+const CreateActionPage: React.FC<Props> = ({ actionName }) => {
   const [method, setMethod] = React.useState("GET");
   const [contentType, setContentType] = React.useState("application/json");
   const [currentTab, setCurrentTab] = React.useState(TABS[0].name);
@@ -19,6 +23,35 @@ const CreateActionPage: React.FC<Props> = props => {
   const [protocol, setProtocol] = React.useState("https");
   const [body, setBody] = React.useState("");
   const [headers, setHeaders] = React.useState<Headers>([]);
+
+  const isValid = React.useMemo(() => {
+    try {
+      new URL(`${protocol}://${url}`);
+    } catch (_) {
+      return false;
+    }
+    return true;
+  }, [url, protocol, body, headers]);
+
+  const onSave = useMutation(action => {
+    return ActionsApi.create({
+      type: "http",
+      name: actionName,
+      description: "",
+      response_handle: {},
+      error_handle: {},
+      template: {
+        url: `${protocol}://${url}`,
+        method,
+        body: JSON.stringify(body),
+        headers: JSON.stringify(
+          Object.fromEntries(headers.map(({ key, value }) => [key, value])),
+        ),
+        parameters: {},
+        parameter_mappings: {},
+      },
+    });
+  });
 
   return (
     <div className="grid w-full h-full grid-cols-2 md:flex-row">

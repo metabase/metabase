@@ -1,4 +1,4 @@
-import { ActionsApi } from "metabase/services";
+import { RowActionsApi } from "metabase/services";
 import Table from "metabase-lib/lib/metadata/Table";
 
 export type InsertRowPayload = {
@@ -8,7 +8,7 @@ export type InsertRowPayload = {
 
 export const createRow = (payload: InsertRowPayload) => {
   const { table, values } = payload;
-  return ActionsApi.create({
+  return RowActionsApi.create({
     type: "query",
     database: table.db_id,
     query: {
@@ -32,7 +32,7 @@ export const updateRow = (payload: UpdateRowPayload) => {
   }
 
   const pk = field.isNumeric() && typeof id === "string" ? parseInt(id) : id;
-  return ActionsApi.update({
+  return RowActionsApi.update({
     type: "query",
     database: table.db_id,
     query: {
@@ -56,7 +56,7 @@ export const deleteRow = (payload: DeleteRowPayload) => {
   }
 
   const pk = field.isNumeric() && typeof id === "string" ? parseInt(id) : id;
-  return ActionsApi.delete({
+  return RowActionsApi.delete({
     type: "query",
     database: table.db_id,
     query: {
