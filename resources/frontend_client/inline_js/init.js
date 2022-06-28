@@ -44,7 +44,7 @@ function fadeInNewAnimation(counter) {
   const srcPrefix = (counter % content.length) + 1;
 
   animation.className = "animation";
-  animation.src = `app/instance-loading-page/img/${srcPrefix}.gif`;
+  animation.src = `app/instance-loading-page/img/${srcPrefix}.png`;
 }
 
 function updateHeading(counter) {
@@ -60,21 +60,6 @@ function poll() {
       if (req.status === 200) {
         window.location.reload();
       } else {
-        try {
-          const health = JSON.parse(req.responseText);
-          if (typeof health.progress === "number") {
-            const newValue = health.progress * 100;
-            if (newValue !== progressElement.value) {
-              progressElement.value = newValue;
-            }
-
-            const minutesRemaining = Math.ceil((100 - newValue) / 20);
-            const pluralizedMinute =
-              minutesRemaining > 1 ? "minutes" : "minute";
-            statusElement.innerHTML =
-              minutesRemaining + " " + pluralizedMinute + "…";
-          }
-        } catch (e) {}
         setTimeout(poll, 500);
       }
     }
