@@ -11,7 +11,7 @@ import {
   RouterProps,
 } from "metabase/selectors/app";
 import { State } from "metabase-types/store";
-import AppBar from "../../components/AppBar";
+import AppBar from "../../components/AppBar/AppBarDesktop";
 
 const mapStateToProps = (state: State, props: RouterProps) => ({
   collectionId: getCollectionId(state),

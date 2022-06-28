@@ -58,3 +58,5 @@ const AppBarDesktop = ({
     </AppBarRoot>
   );
 };
+
+export default AppBarDesktop;
