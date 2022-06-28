@@ -203,3 +203,13 @@ jobs:
         mv version.properties resources/
     - name: Percy Test
       run: yarn run test-visual-run
+
+  summary:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Adding markdown
+        run: |
+          ARTIFACTS_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          echo '### Hello world! :rocket:' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
+          echo "- You can download artifacts [from this link]($ARTIFACTS_URL)" >> $GITHUB_STEP_SUMMARY
