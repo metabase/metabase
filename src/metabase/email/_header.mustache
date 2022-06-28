@@ -12,7 +12,35 @@
     .pulse .container .title-link:hover {
       color: #509EE3;
     }
-    @media screen and (min-width:600px) {
+    .card-container {
+      margin: auto;
+      background-color: #ffffff;
+    }
+    .padded-section:nth-child(n + 2) {
+      padding-top: 2em;
+    }
+    @media only screen and (max-device-width: 480px) {
+      html, body {
+        font-size: 14px;
+      }
+      .card-container {
+        width: 100%;
+        padding: 1em;
+      }
+    }
+    @media only screen and (min-device-width: 481px) {
+      html, body {
+        font-size: 16px;
+      }
+      .card-container {
+        width: 570px;
+        padding: 2em 4em;
+        border: 1px solid #dddddd;
+        border-radius: 2px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      }
+    }
+    @media screen and (min-width: 600px) {
       .pulse .container {
         padding: 2em 4em !important;
       }
