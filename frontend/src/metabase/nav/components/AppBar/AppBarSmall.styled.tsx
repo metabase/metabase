@@ -2,12 +2,12 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 
-export const AppBarRoot = styled.header`
+export const AppBarHeader = styled.header`
   position: relative;
   height: ${APP_BAR_HEIGHT};
 `;
 
-export const AppBarMain = styled.header`
+export const AppBarMainContainer = styled.header`
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -18,19 +18,19 @@ export const AppBarMain = styled.header`
   background-color: ${color("bg-white")};
 `;
 
-export const AppBarLeftContainer = styled.div`
+export const AppBarToggleContainer = styled.div`
   flex: 0 0 auto;
 `;
 
-export const AppBarRightContainer = styled.div`
+export const AppBarSearchContainer = styled.div`
   flex: 1 1 auto;
 `;
 
-export interface AppBarMiddleContainerProps {
+export interface AppBarLogoContainerProps {
   isVisible?: boolean;
 }
 
-export const AppBarMiddleContainer = styled.div<AppBarMiddleContainerProps>`
+export const AppBarLogoContainer = styled.div<AppBarLogoContainerProps>`
   position: absolute;
   top: 50%;
   left: 50%;

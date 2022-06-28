@@ -2,11 +2,11 @@ import React, { useCallback, useState } from "react";
 import AppBarToggle from "./AppBarToggle";
 import SearchBar from "../SearchBar";
 import {
-  AppBarLeftContainer,
-  AppBarMain,
-  AppBarMiddleContainer,
-  AppBarRightContainer,
-  AppBarRoot,
+  AppBarToggleContainer,
+  AppBarMainContainer,
+  AppBarLogoContainer,
+  AppBarHeader,
+  AppBarSearchContainer,
 } from "./AppBarSmall.styled";
 import AppBarLogo from "metabase/nav/components/AppBar/AppBarLogo";
 
@@ -41,29 +41,31 @@ const AppBarSmall = ({
   }, []);
 
   return (
-    <AppBarRoot>
-      <AppBarMain>
-        <AppBarLeftContainer>
-          {isNavBarVisible && (
-            <AppBarToggle
-              isNavBarOpen={isNavBarOpen}
-              onToggleClick={onToggleNavbar}
-            />
-          )}
-        </AppBarLeftContainer>
-        <AppBarRightContainer>
-          {isSearchVisible && (
-            <SearchBar
-              onSearchActive={handleSearchActive}
-              onSearchInactive={handleSearchInactive}
-            />
-          )}
-        </AppBarRightContainer>
-      </AppBarMain>
-      <AppBarMiddleContainer isVisible={!isSearchActive}>
-        <AppBarLogo onLogoClick={handleLogoClick} />
-      </AppBarMiddleContainer>
-    </AppBarRoot>
+    <div>
+      <AppBarHeader>
+        <AppBarMainContainer>
+          <AppBarToggleContainer>
+            {isNavBarVisible && (
+              <AppBarToggle
+                isNavBarOpen={isNavBarOpen}
+                onToggleClick={onToggleNavbar}
+              />
+            )}
+          </AppBarToggleContainer>
+          <AppBarSearchContainer>
+            {isSearchVisible && (
+              <SearchBar
+                onSearchActive={handleSearchActive}
+                onSearchInactive={handleSearchInactive}
+              />
+            )}
+          </AppBarSearchContainer>
+        </AppBarMainContainer>
+        <AppBarLogoContainer isVisible={!isSearchActive}>
+          <AppBarLogo onLogoClick={handleLogoClick} />
+        </AppBarLogoContainer>
+      </AppBarHeader>
+    </div>
   );
 };
 
