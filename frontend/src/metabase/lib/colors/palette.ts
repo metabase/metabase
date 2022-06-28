@@ -108,10 +108,10 @@ export const darken = (c: string, f: number = 0.25) => {
 
 export const tint = (c: string, f: number = 0.125) => {
   const value = Color(color(c));
-  return value.lightness(value.lightness() + f * 100).string();
+  return value.lightness(value.lightness() + f * 100).hex();
 };
 
 export const shade = (c: string, f: number = 0.125) => {
   const value = Color(color(c));
-  return value.lightness(value.lightness() - f * 100).string();
+  return value.lightness(value.lightness() - f * 100).hex();
 };

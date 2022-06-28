@@ -4,8 +4,12 @@ import { getUser } from "metabase/selectors/user";
 import {
   getIsEditing as getIsEditingDashboard,
   getDashboard,
+  getDashboardId,
 } from "metabase/dashboard/selectors";
-import { getQuestion } from "metabase/query_builder/selectors";
+import {
+  getOriginalQuestion,
+  getQuestion,
+} from "metabase/query_builder/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { State } from "metabase-types/store";
 
@@ -116,12 +120,24 @@ export const getErrorMessage = (state: State) => {
   return errorPage?.data?.message || errorPage?.data;
 };
 
-export const getShowBreadcumb = createSelector([getRouterPath], path =>
-  PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
+export const getCollectionId = createSelector(
+  [getQuestion, getDashboard, getDashboardId],
+  (question, dashboard, dashboardId) =>
+    dashboardId ? dashboard?.collection_id : question?.collectionId(),
 );
 
-export const getCollectionId = createSelector(
-  [getQuestion, getDashboard],
-  (question, dashboard) =>
-    question ? question.collectionId() : dashboard?.collection_id,
+export const getIsCollectionPathVisible = createSelector(
+  [getQuestion, getDashboard, getRouterPath],
+  (question, dashboard, path) =>
+    (question != null || dashboard != null) &&
+    PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
+);
+
+export const getIsQuestionLineageVisible = createSelector(
+  [getQuestion, getOriginalQuestion],
+  (question, originalQuestion) =>
+    question != null &&
+    !question.isSaved() &&
+    originalQuestion != null &&
+    !originalQuestion.isDataset(),
 );
