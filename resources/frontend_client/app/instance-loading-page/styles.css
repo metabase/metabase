@@ -19,40 +19,9 @@ body {
   flex-direction: column;
 }
 
-#status {
-  margin-top: 125px;
-  font-size: 14px;
-  color: #949AAB;
-  width: 400px;
-}
-
-progress {
-  margin-top: 25px;
-}
-
-progress[value] {
-  -webkit-appearance: none;
-  appearance: none;
-  border: 1px solid #509EE3;
-  border-radius: 8px;
-  height: 8px;
-  width: 400px;
-}
-
-progress[value]::-webkit-progress-bar {
-  background-color: white;
-  border-radius: 8px;
-}
-
-progress[value]::-webkit-progress-value {
-  background-color: green;
-  background-color: #4A90E2;
-  border-radius: 8px;
-}
-
 
 .heading {
-  box-shadow: 0px 5px 6px rgba(80, 158, 227, 0.16), 0px 12px 24px rgba(148, 154, 171, 0.08);
+  box-shadow: 0 5px 6px rgba(80, 158, 227, 0.16), 0 12px 24px rgba(148, 154, 171, 0.08);
   border-radius: 8px;
   font-size: 14px;
   letter-spacing: 0;
@@ -77,36 +46,48 @@ progress[value]::-webkit-progress-value {
   opacity: 0;
 }
 
-#footer {
-  bottom: 50px;
-  margin-top: auto;
-  text-align: center;
-  width: 100%;
-}
-
 @media screen and (max-width: 72em) {
-  #left-side {
-    border-bottom: 1px solid #F0F0F0;
-    min-height: 0;
-    padding: 80px 0 80px;
-    width: 100%;
-  }
-
-  #left-container {
-    max-width: 410px;
-    padding: 0;
-  }
-
-  #right-side {
-    min-height: 0;
-    width: 100%;
-  }
-
   .animation {
     max-width: 80%;
   }
+}
 
-  #heading {
-    margin-bottom: 60px;
+@keyframes rotation {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+
+}
+
+.spinner {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
+  margin-top: 80px;
+  border: 4px solid transparent;
+  border-top-color: #509ee3;
+  border-radius: 20px;
+
+  animation: rotation 1.3s infinite
+    cubic-bezier(0.785, 0.135, 0.15, 0.86);
+
+  &::after {
+    content: "";
+
+    display: inherit;
+    box-sizing: inherit;
+    width: inherit;
+    height: inherit;
+    border: 4px solid #509ee3;
+    border-radius: 20px;
+
+    opacity: 0.25;
+    position: relative;
+    top: 8px;
+    left: 8px;
   }
 }
