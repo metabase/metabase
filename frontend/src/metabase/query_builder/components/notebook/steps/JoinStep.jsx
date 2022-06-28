@@ -10,7 +10,6 @@ import FieldList from "metabase/query_builder/components/FieldList";
 import Join from "metabase-lib/lib/queries/structured/Join";
 import { isDateTimeField } from "metabase/lib/query/field_ref";
 import Select from "metabase/core/components/Select";
-import Button from "metabase/core/components/Button";
 
 import { NotebookCellItem, NotebookCellAdd } from "../NotebookCell";
 import {
@@ -39,6 +38,7 @@ import {
   Row,
   PrimaryJoinCell,
   SecondaryJoinCell,
+  JoinOperatorButton,
 } from "./JoinStep.styled";
 
 const stepShape = {
@@ -306,12 +306,14 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                     <JoinConditionLabel>
                       <Select
                         hiddenIcons
-                        width={60}
+                        width={80}
                         value={operator}
                         onChange={updateOperator}
                         options={JOIN_OPERATOR_OPTIONS}
                         triggerElement={
-                          <Button primary>{operatorSymbol}</Button>
+                          <JoinOperatorButton primary>
+                            {operatorSymbol}
+                          </JoinOperatorButton>
                         }
                       />
                     </JoinConditionLabel>
