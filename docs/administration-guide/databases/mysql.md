@@ -1,3 +1,7 @@
+---
+title: Working with MySQL in Metabase
+---
+
 # Working with MySQL in Metabase
 
 This page includes some helpful info for connecting Metabase to your MySQL database.
@@ -60,4 +64,3 @@ mysql:
       - $PWD/mysql:/var/lib/mysql
     command: ['--default-authentication-plugin=mysql_native_password']
 ```
-

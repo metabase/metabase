@@ -1,3 +1,5 @@
+import { ngettext, msgid } from "ttag";
+
 import { formatValue } from "metabase/lib/formatting";
 
 import { getParameterType, isFieldFilterParameter } from "./parameter-type";
@@ -24,15 +26,21 @@ function formatWithInferredType(value: any, parameter: UiParameter) {
   });
 }
 
-export function formatParameterValue(value: any, parameter: UiParameter) {
+export function formatParameterValue(value: unknown, parameter: UiParameter) {
+  if (Array.isArray(value) && value.length > 1) {
+    return renderNumberOfSelections(value.length);
+  }
+
+  value = Array.isArray(value) ? value[0] : value;
+
   const type = getParameterType(parameter);
   if (type === "date") {
-    return formatDateValue(value, parameter);
+    return formatDateValue(String(value), parameter);
   }
 
   if (isFieldFilterParameter(parameter)) {
     // skip formatting field filter parameters mapped to native query variables
-    if (parameter.hasOnlyFieldTargets === false) {
+    if (parameter.hasVariableTemplateTagTarget) {
       return value;
     }
 
@@ -53,4 +61,12 @@ export function formatParameterValue(value: any, parameter: UiParameter) {
 
   // infer type information from parameter type
   return formatWithInferredType(value, parameter);
+}
+
+export function renderNumberOfSelections(numberOfSelections: number) {
+  return ngettext(
+    msgid`${numberOfSelections} selection`,
+    `${numberOfSelections} selections`,
+    numberOfSelections,
+  );
 }

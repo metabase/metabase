@@ -1,3 +1,7 @@
+---
+title: Developing Metabase with Emacs
+---
+
 # Developing Metabase with Emacs
 
 `.dir-locals.el` contains some Emacs Lisp that tells `clojure-mode` how to indent Metabase macros and which arguments are docstrings. Whenever this file is updated,
@@ -11,4 +15,3 @@ You'll probably want to tell Emacs to store customizations in a different file. 
 (ignore-errors                                                ; load customizations from ~/.emacs.d/.custom.el
   (load-file custom-file))
 ```
-

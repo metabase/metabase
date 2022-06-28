@@ -1,3 +1,7 @@
+---
+title: "Serialization: copying contents of one Metabase instance to another"
+---
+
 ## Serialization: copying contents of one Metabase instance to another
 
 {% include plans-blockquote.html feature="Serialization" %}

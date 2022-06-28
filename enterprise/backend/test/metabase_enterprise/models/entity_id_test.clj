@@ -36,6 +36,7 @@
   so they don't need a generated entity_id."
   #{metabase.db.data_migrations.DataMigrationsInstance
     metabase.models.action.ActionInstance
+    metabase.models.action.HTTPActionInstance
     metabase.models.action.QueryActionInstance
     metabase.models.activity.ActivityInstance
     metabase.models.application_permissions_revision.ApplicationPermissionsRevisionInstance
@@ -85,3 +86,9 @@
       (is (= true (-> (.newInstance model)
                       toucan.models/properties
                       :entity_id))))))
+
+(deftest comprehensive-identity-hash-test
+  (doseq [model (->> (extenders IModel)
+                     (remove entities-not-exported))]
+    (testing (format "Model %s should implement IdentityHashable" (.getSimpleName model))
+      (is (extends? metabase.models.serialization.hash/IdentityHashable model)))))

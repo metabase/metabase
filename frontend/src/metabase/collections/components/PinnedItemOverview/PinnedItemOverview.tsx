@@ -6,9 +6,13 @@ import { BookmarksType, Collection } from "metabase-types/api";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
-import PinnedChartCard from "metabase/collections/components/PinnedChartCard";
+import PinnedQuestionCard from "metabase/collections/components/PinnedQuestionCard";
 import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
-import { Item, isRootCollection } from "metabase/collections/utils";
+import {
+  Item,
+  isRootCollection,
+  isPreviewShown,
+} from "metabase/collections/utils";
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
@@ -46,6 +50,7 @@ function PinnedItemOverview({
     dashboard: dashboardItems = [],
     dataset: dataModelItems = [],
   } = _.groupBy(sortedItems, "model");
+  const cardGroups = _.partition(cardItems, isPreviewShown);
 
   return items.length === 0 ? (
     <Container>
@@ -54,39 +59,42 @@ function PinnedItemOverview({
   ) : (
     <Container data-testid="pinned-items">
       <PinDropZone variant="pin" />
-      {cardItems.length > 0 && (
-        <Grid>
-          {cardItems.map(item => (
-            <div key={item.id} className="relative">
-              <PinnedItemSortDropTarget
-                isFrontTarget
-                itemModel="card"
-                pinIndex={item.collection_position}
-                enableDropTargetBackground={false}
-              />
-              <ItemDragSource item={item} collection={collection}>
-                <div>
-                  <PinnedChartCard
-                    item={item}
-                    metadata={metadata}
-                    collection={collection}
-                    bookmarks={bookmarks}
-                    onCopy={onCopy}
-                    onMove={onMove}
-                    onCreateBookmark={createBookmark}
-                    onDeleteBookmark={deleteBookmark}
+      {cardGroups.map(
+        (cardGroup, cardGroupIndex) =>
+          cardGroup.length > 0 && (
+            <Grid key={cardGroupIndex}>
+              {cardGroup.map(item => (
+                <div key={item.id} className="relative">
+                  <PinnedItemSortDropTarget
+                    isFrontTarget
+                    itemModel="card"
+                    pinIndex={item.collection_position}
+                    enableDropTargetBackground={false}
+                  />
+                  <ItemDragSource item={item} collection={collection}>
+                    <div>
+                      <PinnedQuestionCard
+                        item={item}
+                        metadata={metadata}
+                        collection={collection}
+                        bookmarks={bookmarks}
+                        onCopy={onCopy}
+                        onMove={onMove}
+                        onCreateBookmark={createBookmark}
+                        onDeleteBookmark={deleteBookmark}
+                      />
+                    </div>
+                  </ItemDragSource>
+                  <PinnedItemSortDropTarget
+                    isBackTarget
+                    itemModel="card"
+                    pinIndex={item.collection_position}
+                    enableDropTargetBackground={false}
                   />
                 </div>
-              </ItemDragSource>
-              <PinnedItemSortDropTarget
-                isBackTarget
-                itemModel="card"
-                pinIndex={item.collection_position}
-                enableDropTargetBackground={false}
-              />
-            </div>
-          ))}
-        </Grid>
+              ))}
+            </Grid>
+          ),
       )}
 
       {dashboardItems.length > 0 && (

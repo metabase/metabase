@@ -19,6 +19,7 @@
             [metabase.models.collection-test :as collection-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.user :as user]
             [metabase.test :as mt]
             [metabase.test.data.users :as test.users]
@@ -461,3 +462,10 @@
           (is (db/update! User user-id :is_active false)))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
+
+(deftest identity-hash-test
+  (testing "User hashes are based on the email address"
+    (mt/with-temp User  [user  {:email "fred@flintston.es"}]
+      (is (= "e8d63472"
+             (serdes.hash/raw-hash ["fred@flintston.es"])
+             (serdes.hash/identity-hash user))))))

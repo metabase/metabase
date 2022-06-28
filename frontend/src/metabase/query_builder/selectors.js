@@ -12,7 +12,7 @@ import {
   getVisualizationTransformed,
 } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 import { isPK } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
@@ -237,11 +237,7 @@ export const getDatabaseFields = createSelector(
 export const getParameters = createSelector(
   [getCard, getMetadata, getParameterValues],
   (card, metadata, parameterValues) =>
-    getValueAndFieldIdPopulatedParametersFromCard(
-      card,
-      metadata,
-      parameterValues,
-    ),
+    getCardUiParameters(card, metadata, parameterValues),
 );
 
 const getLastRunDatasetQuery = createSelector(

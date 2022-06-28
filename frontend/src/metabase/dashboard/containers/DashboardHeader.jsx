@@ -6,6 +6,8 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getIsNavbarOpen } from "metabase/redux/app";
+
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import Header from "metabase/components/Header";
@@ -28,6 +30,7 @@ import { Link } from "react-router";
 const mapStateToProps = (state, props) => {
   return {
     isBookmarked: getIsBookmarked(state, props),
+    isNavBarOpen: getIsNavbarOpen(state),
   };
 };
 
@@ -55,6 +58,7 @@ class DashboardHeader extends Component {
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
+    isNavBarOpen: PropTypes.bool.isRequired,
     isNightMode: PropTypes.bool.isRequired,
     isAdditionalInfoVisible: PropTypes.bool,
 
@@ -96,6 +100,12 @@ class DashboardHeader extends Component {
 
   onAddActionsBox() {
     this.props.addActionsDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+    });
+  }
+
+  onAddActionButton() {
+    this.props.addActionButtonDashCardToDashboard({
       dashId: this.props.dashboard.id,
     });
   }
@@ -228,6 +238,18 @@ class DashboardHeader extends Component {
             >
               <DashboardHeaderButton>
                 <Icon name="bolt" size={18} />
+              </DashboardHeaderButton>
+            </a>
+          </Tooltip>,
+          <Tooltip key="add-action-button" tooltip={t`Add action button`}>
+            <a
+              data-metabase-event="Dashboard;Add Action Button"
+              key="add-action-button"
+              className="text-brand-hover cursor-pointer"
+              onClick={() => this.onAddActionButton()}
+            >
+              <DashboardHeaderButton>
+                <Icon name="play" size={18} />
               </DashboardHeaderButton>
             </a>
           </Tooltip>,
@@ -421,6 +443,7 @@ class DashboardHeader extends Component {
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
         isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
         isEditingInfo={isEditing}
+        isNavBarOpen={this.props.isNavBarOpen}
         headerButtons={this.getHeaderButtons()}
         editWarning={this.getEditWarning(dashboard)}
         editingTitle={t`You're editing this dashboard.`}

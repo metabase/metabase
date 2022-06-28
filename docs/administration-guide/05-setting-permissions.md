@@ -1,3 +1,7 @@
+---
+title: Permissions overview
+---
+
 # Permissions overview
 
 There are always going to be sensitive bits of information in your data, and thankfully Metabase provides a rich set of tools to ensure that people on your team only see the data they’re supposed to.

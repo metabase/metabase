@@ -2,7 +2,7 @@
   "Code for executing writeback queries."
   (:require
    [clojure.tools.logging :as log]
-   [metabase.api.actions :as api.actions]
+   [metabase.api.action :as api.action]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -110,7 +110,7 @@
       (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
       ;; make sure actions are enabled and supported for this Database. (We'll check the `:actions/custom` feature flag
       ;; later once the DB is fetched in and the QP store -- see above)
-      (api.actions/do-check-actions-enabled
+      (api.action/do-check-actions-enabled
        database-id
        (fn [_driver]
          (execute-write-query! query))))

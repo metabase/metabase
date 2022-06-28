@@ -1,3 +1,7 @@
+---
+title: Environment variables
+---
+
 # Environment variables
 
 Many settings in Metabase can be viewed and modified in the Admin Panel, or set via environment variables. The environment variables always take precedence. Note that the environment variables won't get written into the application database.

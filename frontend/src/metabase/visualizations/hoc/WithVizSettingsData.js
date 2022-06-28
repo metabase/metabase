@@ -4,8 +4,33 @@ import { connect } from "react-redux";
 import _ from "underscore";
 
 import { getUserAttributes } from "metabase/selectors/user";
+
+import Actions from "metabase/entities/actions";
 import Questions from "metabase/entities/questions";
 import Dashboards from "metabase/entities/dashboards";
+
+function hasLinkedQuestionOrDashboard({ type, linkType, action } = {}) {
+  if (type === "action") {
+    return typeof action === "number";
+  }
+  if (type === "link") {
+    return linkType === "question" || linkType === "dashboard";
+  }
+  return false;
+}
+
+function mapLinkedEntityToEntityQuery({ type, linkType, action, targetId }) {
+  if (type === "action") {
+    return {
+      entity: Actions,
+      entityId: action,
+    };
+  }
+  return {
+    entity: linkType === "question" ? Questions : Dashboards,
+    entityId: targetId,
+  };
+}
 
 // This HOC give access to data referenced in viz settings.
 // We use it to fetch and select entities needed for dashboard drill actions (e.g. clicking through to a question)
@@ -18,15 +43,8 @@ const WithVizSettingsData = ComposedComponent => {
         settings => settings.click_behavior,
       ),
     ]
-      .filter(
-        ({ type, linkType } = {}) =>
-          type === "link" &&
-          (linkType === "question" || linkType === "dashboard"),
-      )
-      .map(({ linkType, targetId }) => ({
-        entity: linkType === "question" ? Questions : Dashboards,
-        entityId: targetId,
-      }));
+      .filter(hasLinkedQuestionOrDashboard)
+      .map(mapLinkedEntityToEntityQuery);
   }
   return connect(
     (state, props) => ({

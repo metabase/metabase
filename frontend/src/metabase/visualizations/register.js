@@ -4,6 +4,7 @@ import {
 } from "metabase/visualizations";
 
 import ActionsViz from "metabase/writeback/components/ActionsViz";
+import ActionButtonViz from "metabase/writeback/components/ActionButtonViz";
 
 import Scalar from "./visualizations/Scalar";
 import SmartScalar from "./visualizations/SmartScalar";
@@ -46,5 +47,6 @@ export default function() {
   registerVisualization(PivotTable);
   registerVisualization(ListViz);
   registerVisualization(ActionsViz);
+  registerVisualization(ActionButtonViz);
   setDefaultVisualization(Table);
 }

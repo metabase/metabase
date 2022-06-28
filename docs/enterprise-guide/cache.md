@@ -1,3 +1,7 @@
+---
+title: Advanced caching controls
+---
+
 # Advanced caching controls
 
 {% include plans-blockquote.html feature="Question-specific caching" %}

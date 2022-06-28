@@ -15,6 +15,8 @@ import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm
 // TODO This should better be extracted to metabase/lib/somewhere
 import { getObjectName } from "metabase/visualizations/components/ObjectDetail/utils";
 
+import { getMetadata } from "metabase/selectors/metadata";
+
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
 
@@ -45,7 +47,7 @@ const ACTIONS_VIZ_DEFINITION = {
   hidden: true,
   supportPreviewing: false,
 
-  minSize: { width: 4, height: 1 },
+  minSize: { width: 3, height: 1 },
 
   checkRenderable: () => true,
   isSensible: () => false,
@@ -121,6 +123,7 @@ type ActionsVizProps = ActionVizOwnProps &
 function mapStateToProps(state: State) {
   return {
     dashCardData: getCardData(state),
+    metadata: getMetadata(state),
   };
 }
 
@@ -141,7 +144,6 @@ function getObjectDetailViewData(
 function ActionsViz({
   dashboard,
   dashCardData,
-  isEditing,
   metadata,
   settings,
   deleteRow,

@@ -285,7 +285,8 @@
                                                              :effective_type    "type/BigInteger"
                                                              :visibility_type   "normal"
                                                              :has_field_values  "none"
-                                                             :database_position 0})
+                                                             :database_position 0
+                                                             :database_required false})
                                                            (merge
                                                             (field-details (Field (mt/id :categories :name)))
                                                             {:table_id          (mt/id :categories)
@@ -297,7 +298,8 @@
                                                              :effective_type    "type/Text"
                                                              :visibility_type   "normal"
                                                              :has_field_values  "list"
-                                                             :database_position 1})]
+                                                             :database_position 1
+                                                             :database_required false})]
                                      :segments     []
                                      :metrics      []
                                      :id           (mt/id :categories)
@@ -793,9 +795,8 @@
 
     (testing "invalid database connection details"
       (testing "calling test-connection-details directly"
-        (is (= {:errors {:host "check your host settings"
-                         :port "check your port settings"}
-                :message "Hmm, we couldn't connect to the database. Make sure your Host and Port settings are correct"
+        (is (= {:errors {:db "check your connection string"}
+                :message "Implicitly relative file paths are not allowed."
                 :valid   false}
                (#'api.database/test-connection-details "h2" {:db "ABC"}))))
 

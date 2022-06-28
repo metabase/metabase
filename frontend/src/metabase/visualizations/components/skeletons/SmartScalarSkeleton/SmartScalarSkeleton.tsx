@@ -1,19 +1,19 @@
 import React, { HTMLAttributes } from "react";
-import SkeletonCaption from "../SkeletonCaption";
 import {
   SkeletonBottomImage,
+  SkeletonCenterCaption,
   SkeletonRoot,
   SkeletonTopImage,
 } from "./SmartScalarSkeleton.styled";
 
 export interface SmartScalarSkeletonProps
   extends HTMLAttributes<HTMLDivElement> {
-  displayName?: string | null;
+  name?: string | null;
   description?: string | null;
 }
 
 const SmartScalarSkeleton = ({
-  displayName,
+  name,
   description,
   ...props
 }: SmartScalarSkeletonProps): JSX.Element => {
@@ -22,7 +22,11 @@ const SmartScalarSkeleton = ({
       <SkeletonTopImage xmlns="http://www.w3.org/2000/svg" viewBox="0 0 103 32">
         <rect width="103" height="32" rx="16" fill="currentColor" />
       </SkeletonTopImage>
-      <SkeletonCaption name={displayName} description={description} />
+      <SkeletonCenterCaption
+        name={name}
+        description={description}
+        size="large"
+      />
       <SkeletonBottomImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 182 8"

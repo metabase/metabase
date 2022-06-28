@@ -1,3 +1,7 @@
+---
+title: Collection permissions
+---
+
 # Collection permissions
 
 ![Collection detail](images/collections/collection-detail.png)
