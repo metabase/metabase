@@ -12,6 +12,8 @@ function _clearAndIterativelyTypeUsingLabel(label, string) {
 
 describe("scenarios > question > snippets", () => {
   beforeEach(() => {
+    cy.intercept("POST", "api/card").as("card");
+    cy.intercept("POST", "/api/native-query-snippet").as("snippet");
     restore();
     cy.signInAsNormalUser();
   });
@@ -137,5 +139,46 @@ describe("scenarios > question > snippets", () => {
     // Rerun the query
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.get("@results").contains(/christ/i);
+  });
+
+  it("should detect template tags inside a snippet", () => {
+    openNativeEditor().type("select * ", { parseSpecialCharSequences: false });
+    cy.icon("snippet").click();
+    cy.contains("Create a snippet").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
+        "from products where rating > {{stars}}",
+        {
+          parseSpecialCharSequences: false,
+        },
+      );
+      cy.findByLabelText("Give your snippet a name").type("Good Products");
+      cy.findByText("Save").click();
+      cy.wait("@snippet");
+    });
+
+    // must trigger onChange. FIXME
+    cy.get(".NativeQueryEditor .ace_content").type("{end} ");
+
+    cy.get("input[placeholder*='Stars']").type("3");
+
+    // FIXME: does not work yet
+    // cy.get(".NativeQueryEditor .Icon-play").click();
+
+    cy.contains("Save").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Name").type("native query with snippet tag");
+      cy.findByText("Save").click();
+
+      // parameters[] should reflect the template tag in the snippet
+      cy.wait("@card").should(xhr => {
+        const requestBody = xhr.request?.body;
+        expect(requestBody?.parameters?.length).to.equal(1);
+        expect(requestBody.parameters[0].slug).to.equal("stars");
+      });
+    });
+    cy.findByText("Not now").click();
   });
 });
