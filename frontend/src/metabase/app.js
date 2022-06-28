@@ -43,6 +43,8 @@ import { initializeEmbedding } from "metabase/lib/embed";
 import { getStore } from "./store";
 
 import { refreshSiteSettings } from "metabase/redux/settings";
+import { sessionAppeared, sessionExpired } from "metabase/auth/actions";
+import { subscribeToSessionChanges } from "./session-listener";
 
 // router
 import { Router, useRouterHistory } from "react-router";
@@ -98,6 +100,11 @@ function _init(reducers, getRoutes, callback) {
   initializeEmbedding(store);
 
   store.dispatch(refreshSiteSettings());
+
+  subscribeToSessionChanges(
+    lastUrl => store.dispatch(sessionAppeared(lastUrl)),
+    () => store.dispatch(sessionExpired()),
+  );
 
   PLUGIN_APP_INIT_FUCTIONS.forEach(init => init({ root }));
 
