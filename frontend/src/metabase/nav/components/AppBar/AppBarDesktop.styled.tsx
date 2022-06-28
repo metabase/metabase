@@ -25,7 +25,6 @@ export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
   display: flex;
   flex: 1 1 auto;
   align-items: center;
-  gap: 1rem;
 
   ${SidebarButtonContainer} {
     opacity: ${props => (props.isNavBarVisible ? 0 : 1)};
