@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
 import AppBarLogo from "./AppBarLogo";
+import AppBarToggle from "./AppBarToggle";
 import SearchBar from "../SearchBar";
 import { AppBarLeftContainer, AppBarRoot } from "./AppBarMobile.styled";
 
@@ -35,16 +36,13 @@ const AppBarMobile = ({
 
   return (
     <AppBarRoot>
-      <AppBarLeftContainer>
-        <AppBarLogo
+      <AppBarLeftContainer isVisible={isNavBarVisible}>
+        <AppBarToggle
           isNavBarOpen={isNavBarOpen}
-          isToggleVisible={isNavBarVisible}
           onToggleClick={onToggleNavbar}
         />
       </AppBarLeftContainer>
-      {!isSearchActive && (
-        <AppBarLogo isLogoVisible={true} onLogoClick={handleLogoClick} />
-      )}
+      {!isSearchActive && <AppBarLogo onLogoClick={handleLogoClick} />}
       {isSearchVisible && (
         <SearchBar
           onSearchActive={handleSearchActive}

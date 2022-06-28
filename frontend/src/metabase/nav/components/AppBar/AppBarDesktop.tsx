@@ -36,7 +36,6 @@ const AppBarDesktop = ({
       <AppBarLeftContainer isNavBarVisible={isNavBarVisible}>
         <AppBarLogo
           isNavBarOpen={isNavBarOpen}
-          isLogoVisible={true}
           isToggleVisible={isNavBarVisible}
           onToggleClick={onToggleNavbar}
         />

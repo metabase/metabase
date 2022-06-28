@@ -18,9 +18,9 @@ export const AppBarRoot = styled.header`
 `;
 
 export interface AppBarLeftContainerProps {
-  isSearchActive?: boolean;
+  isVisible?: boolean;
 }
 
 export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
-  width: ${props => (props.isSearchActive ? "5rem" : "")};
+  visibility: ${props => (props.isVisible ? "visible" : "hidden")};
 `;
