@@ -386,16 +386,6 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
     expect(onOpenModal).not.toHaveBeenCalled();
   });
 
-  it("displays original question name if a question is started from one", () => {
-    const originalQuestion = getSavedGUIQuestion();
-    setupAdHoc({ originalQuestion });
-
-    expect(screen.queryByText("Started from")).toBeInTheDocument();
-    expect(
-      screen.queryByText(originalQuestion.displayName()),
-    ).toBeInTheDocument();
-  });
-
   it("does not render bookmark and action buttons", () => {
     setupAdHoc();
     expect(
@@ -521,16 +511,6 @@ describe("View Header | Not saved native question", () => {
   it("does not offer to explore query results", () => {
     setupNative();
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
-  });
-
-  it("displays original question name if a question is started from one", () => {
-    const originalQuestion = getSavedNativeQuestion();
-    setupNative({ originalQuestion });
-
-    expect(screen.queryByText("Started from")).toBeInTheDocument();
-    expect(
-      screen.queryByText(originalQuestion.displayName()),
-    ).toBeInTheDocument();
   });
 });
 

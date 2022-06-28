@@ -9,6 +9,7 @@ import NewItemButton from "../NewItemButton";
 import SearchBar from "../SearchBar";
 import SidebarButton from "../SidebarButton";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
+import QuestionLineage from "../../containers/QuestionLineage";
 import {
   AppBarRoot,
   LeftContainer,
@@ -19,7 +20,7 @@ import {
   SidebarButtonContainer,
   LogoLink,
   LogoLinkContainer,
-  CollectionBreadcrumbsContainer,
+  InfoBarContainer,
 } from "./AppBar.styled";
 
 interface AppBarProps {
@@ -29,6 +30,7 @@ interface AppBarProps {
   isSearchVisible?: boolean;
   isNewButtonVisible?: boolean;
   isCollectionPathVisible?: boolean;
+  isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
 }
@@ -40,6 +42,7 @@ const AppBar = ({
   isSearchVisible,
   isNewButtonVisible,
   isCollectionPathVisible,
+  isQuestionLineageVisible,
   onToggleNavbar,
   onCloseNavbar,
 }: AppBarProps): JSX.Element => {
@@ -91,11 +94,13 @@ const AppBar = ({
             </SidebarButtonContainer>
           )}
         </HomepageLink>
-        {isCollectionPathVisible && (
-          <CollectionBreadcrumbsContainer isVisible={!isNavBarOpen}>
+        <InfoBarContainer isVisible={!isNavBarOpen}>
+          {isQuestionLineageVisible ? (
+            <QuestionLineage />
+          ) : isCollectionPathVisible ? (
             <CollectionBreadcrumbs collectionId={collectionId} />
-          </CollectionBreadcrumbsContainer>
-        )}
+          ) : null}
+        </InfoBarContainer>
       </LeftContainer>
       {!isSearchActive && (
         <MiddleContainer>
