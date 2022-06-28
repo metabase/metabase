@@ -17,10 +17,10 @@ export const AppBarRoot = styled.header`
   }
 `;
 
-export interface AppBarLeftContainerProps {
-  isVisible?: boolean;
-}
+export const AppBarLeftContainer = styled.div`
+  width: 2rem;
+`;
 
-export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
-  visibility: ${props => (props.isVisible ? "visible" : "hidden")};
+export const AppBarRightContainer = styled.div`
+  width: 2rem;
 `;

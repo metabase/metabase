@@ -30,6 +30,7 @@ import {
   SearchInput,
   SearchResultsFloatingContainer,
   SearchResultsContainer,
+  SearchBarRoot,
 } from "./SearchBar.styled";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
@@ -45,7 +46,6 @@ type DispatchProps = {
 };
 
 type OwnProps = {
-  className?: string;
   onSearchActive?: () => void;
   onSearchInactive?: () => void;
 };
@@ -69,7 +69,6 @@ function getSearchTextFromLocation(location: SearchAwareLocation) {
 }
 
 function SearchBar({
-  className,
   location,
   onSearchActive,
   onSearchInactive,
@@ -167,7 +166,7 @@ function SearchBar({
   );
 
   return (
-    <div ref={container} className={className}>
+    <SearchBarRoot ref={container}>
       <SearchInputContainer isActive={isActive} onClick={onInputContainerClick}>
         <SearchIcon name="search" isActive={isActive} />
         <SearchInput
@@ -196,7 +195,7 @@ function SearchBar({
           )}
         </SearchResultsFloatingContainer>
       )}
-    </div>
+    </SearchBarRoot>
   );
 }
 export default _.compose(
