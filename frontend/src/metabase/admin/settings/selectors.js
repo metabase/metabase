@@ -415,6 +415,14 @@ const SECTIONS = updateSectionsWithPlugins({
       // },
     ],
   },
+  "embedding_in_other_applications/standalone": {
+    component: () => "standalone embedding brah",
+    settings: [],
+  },
+  "embedding_in_other_applications/full-app": {
+    component: () => "Full-app embedding brah",
+    settings: [],
+  },
   license: {
     name: t`License`,
     order: 11,
