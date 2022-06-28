@@ -7,55 +7,49 @@ import {
   LogoLink,
   LogoRoot,
   SidebarButton,
+  SidebarButtonContainer,
   SidebarIcon,
 } from "./AppBarLogo.styled";
 
 export interface AppBarLogoProps {
-  className?: string;
-  isLogoActive?: boolean;
-  isSidebarOpen?: boolean;
-  isSidebarActive?: boolean;
+  isNavBarOpen?: boolean;
+  isNavBarVisible?: boolean;
   onLogoClick?: () => void;
-  onSidebarToggle?: () => void;
+  onToggleNavBar?: () => void;
 }
 
 const AppBarLogo = ({
-  className,
-  isLogoActive,
-  isSidebarOpen,
-  isSidebarActive,
+  isNavBarOpen,
+  isNavBarVisible,
   onLogoClick,
-  onSidebarToggle,
+  onToggleNavBar,
 }: AppBarLogoProps): JSX.Element => {
   return (
-    <LogoRoot className={className}>
-      <LogoLink
-        to="/"
-        isLogoActive={isLogoActive}
-        onClick={onLogoClick}
-        data-metabase-event="Navbar;Logo"
-      >
+    <LogoRoot>
+      <LogoLink to="/" onClick={onLogoClick} data-metabase-event="Navbar;Logo">
         <LogoIcon height={32} />
       </LogoLink>
-      {isSidebarActive && (
-        <Tooltip tooltip={getSidebarTooltip(isSidebarOpen)}>
-          <SidebarButton
-            onClick={onSidebarToggle}
-            data-testid="sidebar-toggle-button"
-          >
-            <SidebarIcon
-              size={28}
-              name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"}
-            />
-          </SidebarButton>
-        </Tooltip>
+      {isNavBarVisible && (
+        <SidebarButtonContainer>
+          <Tooltip tooltip={getSidebarTooltip(isNavBarOpen)}>
+            <SidebarButton
+              onClick={onToggleNavBar}
+              data-testid="sidebar-toggle-button"
+            >
+              <SidebarIcon
+                size={28}
+                name={isNavBarOpen ? "sidebar_open" : "sidebar_closed"}
+              />
+            </SidebarButton>
+          </Tooltip>
+        </SidebarButtonContainer>
       )}
     </LogoRoot>
   );
 };
 
-const getSidebarTooltip = (isSidebarOpen?: boolean) => {
-  const message = isSidebarOpen ? t`Close sidebar` : t`Open sidebar`;
+const getSidebarTooltip = (isNavBarOpen?: boolean) => {
+  const message = isNavBarOpen ? t`Close sidebar` : t`Open sidebar`;
   const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
   return `${message} ${shortcut}`;
 };
