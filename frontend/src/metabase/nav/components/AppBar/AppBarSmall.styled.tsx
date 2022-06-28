@@ -11,11 +11,6 @@ export const AppBarRoot = styled.header`
   padding: 0 1rem;
   border-bottom: 1px solid ${color("border")};
   background-color: ${color("bg-white")};
-  z-index: 4;
-
-  @media print {
-    display: none;
-  }
 `;
 
 export const AppBarLeftContainer = styled.div`

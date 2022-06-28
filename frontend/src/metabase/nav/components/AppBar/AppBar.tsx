@@ -3,6 +3,7 @@ import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { CollectionId } from "metabase-types/api";
 import AppBarSmall from "./AppBarSmall";
 import AppBarLarge from "./AppBarLarge";
+import { AppBarRoot } from "./AppBar.styled";
 
 export interface AppBarProps {
   collectionId?: CollectionId;
@@ -19,10 +20,10 @@ export interface AppBarProps {
 const AppBar = (props: AppBarProps): JSX.Element => {
   const isSmallScreen = useIsSmallScreen();
 
-  return isSmallScreen ? (
-    <AppBarSmall {...props} />
-  ) : (
-    <AppBarLarge {...props} />
+  return (
+    <AppBarRoot>
+      {isSmallScreen ? <AppBarSmall {...props} /> : <AppBarLarge {...props} />}
+    </AppBarRoot>
   );
 };
 
