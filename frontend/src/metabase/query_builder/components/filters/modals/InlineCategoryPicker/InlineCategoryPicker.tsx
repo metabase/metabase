@@ -75,6 +75,10 @@ export function InlineCategoryPickerComponent({
       });
   }, [dimension, safeFetchFieldValues, shouldFetchFieldValues]);
 
+  const showInlinePicker =
+    fieldValues.length <= MAX_INLINE_CATEGORIES &&
+    (!filter || filter?.operatorName() === "=");
+
   if (hasError) {
     return (
       <Warnings
@@ -89,7 +93,7 @@ export function InlineCategoryPickerComponent({
     return <Loading size={20} />;
   }
 
-  if (fieldValues.length <= MAX_INLINE_CATEGORIES) {
+  if (showInlinePicker) {
     return (
       <SimpleCategoryFilterPicker
         filter={filter ?? newFilter}
