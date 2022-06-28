@@ -93,10 +93,7 @@
   (let [details (db/select-one-field :details 'Database :id db-id)]
     (metabase.driver.sql-jdbc.connection/connection-details->spec driver details)))
 
-(defn- rollback! [driver conn]
-  (cond (#{:mysql :postgres} driver) (jdbc/db-set-rollback-only! conn)
-        (= :h2 driver) (jdbc/execute! conn ["rollback"])
-        :else (throw (ex-info (str "Rollbacks are not implemented for driver: " driver) {:driver driver}))))
+(defn- rollback! [tx] (.rollback (:connection tx)))
 
 (def base-type->sql-type
   "Mapping from base-types to postgres sql-types to e.g. be used for casting."
@@ -151,7 +148,7 @@
       (try (let [rows-deleted (first (jdbc/execute! tx (hformat/format delete-hsql)))]
              (if (= rows-deleted 1)
                {:rows-deleted [1]}
-               (do (rollback! driver tx)
+               (do (rollback! tx)
                    (throw (ex-info (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted)
                                    {::incorrect-number-deleted true
                                     :number-deleted rows-deleted
@@ -185,7 +182,7 @@
         (let [rows-updated (first (jdbc/execute! tx (hformat/format update-hsql)))]
           (if (= rows-updated 1)
             {:rows-updated [1]}
-            (do (rollback! driver tx)
+            (do (rollback! tx)
                 (throw (ex-info (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated)
                                 {::incorrect-number-updated true
                                  :number-updated           rows-updated
