@@ -13,27 +13,35 @@ import {
 
 export interface AppBarLogoProps {
   isNavBarOpen?: boolean;
-  isNavBarVisible?: boolean;
+  isLogoVisible?: boolean;
+  isToggleVisible?: boolean;
   onLogoClick?: () => void;
-  onToggleNavBar?: () => void;
+  onToggleClick?: () => void;
 }
 
 const AppBarLogo = ({
   isNavBarOpen,
-  isNavBarVisible,
+  isLogoVisible,
+  isToggleVisible,
   onLogoClick,
-  onToggleNavBar,
+  onToggleClick,
 }: AppBarLogoProps): JSX.Element => {
   return (
     <LogoRoot>
-      <LogoLink to="/" onClick={onLogoClick} data-metabase-event="Navbar;Logo">
-        <LogoIcon height={32} />
-      </LogoLink>
-      {isNavBarVisible && (
+      {isLogoVisible && (
+        <LogoLink
+          to="/"
+          onClick={onLogoClick}
+          data-metabase-event="Navbar;Logo"
+        >
+          <LogoIcon height={32} />
+        </LogoLink>
+      )}
+      {isToggleVisible && (
         <SidebarButtonContainer>
           <Tooltip tooltip={getSidebarTooltip(isNavBarOpen)}>
             <SidebarButton
-              onClick={onToggleNavBar}
+              onClick={onToggleClick}
               data-testid="sidebar-toggle-button"
             >
               <SidebarIcon

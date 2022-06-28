@@ -18,8 +18,7 @@ export interface AppBarDesktopProps {
   isNewButtonVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
-  onToggleNavBar: () => void;
-  onCloseNavBar: () => void;
+  onToggleNavbar: () => void;
 }
 
 const AppBarDesktop = ({
@@ -30,16 +29,16 @@ const AppBarDesktop = ({
   isNewButtonVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
-  onToggleNavBar,
-  onCloseNavBar,
+  onToggleNavbar,
 }: AppBarDesktopProps): JSX.Element => {
   return (
     <AppBarRoot>
       <AppBarLeftContainer isNavBarVisible={isNavBarVisible}>
         <AppBarLogo
           isNavBarOpen={isNavBarOpen}
-          isNavBarVisible={isNavBarVisible}
-          onToggleNavBar={onToggleNavBar}
+          isLogoVisible={true}
+          isToggleVisible={isNavBarVisible}
+          onToggleClick={onToggleNavbar}
         />
         <AppBarInfo
           collectionId={collectionId}

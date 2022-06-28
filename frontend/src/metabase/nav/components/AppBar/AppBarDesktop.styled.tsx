@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
-import { LogoLink, SidebarButtonContainer } from "./AppBarLogo.styled";
+import { LogoLink, SidebarButton } from "./AppBarLogo.styled";
 
 export const AppBarRoot = styled.header`
   display: flex;
@@ -26,7 +26,7 @@ export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
   flex: 1 1 auto;
   align-items: center;
 
-  ${SidebarButtonContainer} {
+  ${SidebarButton} {
     opacity: ${props => (props.isNavBarVisible ? 0 : 1)};
   }
 
@@ -36,7 +36,7 @@ export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
       pointer-events: ${props => (props.isNavBarVisible ? "none" : "")};
     }
 
-    ${SidebarButtonContainer} {
+    ${SidebarButton} {
       opacity: ${props => (props.isNavBarVisible ? 1 : 0)};
     }
   }
