@@ -145,13 +145,11 @@ export const SearchBarContent = styled.div`
   }
 `;
 
-interface CollectionBreadcrumbsContainerProps {
+interface InfoBarContainerProps {
   isVisible: boolean;
 }
 
-export const CollectionBreadcrumbsContainer = styled.div<
-  CollectionBreadcrumbsContainerProps
->`
+export const InfoBarContainer = styled.div<InfoBarContainerProps>`
   display: flex;
   visibility: ${props => (props.isVisible ? "visible" : "hidden")};
   opacity: ${props => (props.isVisible ? 1 : 0)};
