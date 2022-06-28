@@ -17,7 +17,7 @@ const questionDetails = {
       aggregation: [["count"]],
       breakout: [
         ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-        ["field", PEOPLE.STATE, { "source-field": 11 }],
+        ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
       ],
     },
   },
