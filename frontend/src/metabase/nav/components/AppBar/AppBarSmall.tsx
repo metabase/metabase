@@ -3,9 +3,12 @@ import AppBarToggle from "./AppBarToggle";
 import SearchBar from "../SearchBar";
 import {
   AppBarLeftContainer,
+  AppBarMain,
+  AppBarMiddleContainer,
   AppBarRightContainer,
   AppBarRoot,
 } from "./AppBarSmall.styled";
+import AppBarLogo from "metabase/nav/components/AppBar/AppBarLogo";
 
 export interface AppBarSmallProps {
   isNavBarOpen?: boolean;
@@ -39,22 +42,27 @@ const AppBarSmall = ({
 
   return (
     <AppBarRoot>
-      <AppBarLeftContainer>
-        {isNavBarVisible && (
-          <AppBarToggle
-            isNavBarOpen={isNavBarOpen}
-            onToggleClick={onToggleNavbar}
-          />
-        )}
-      </AppBarLeftContainer>
-      <AppBarRightContainer>
-        {isSearchVisible && (
-          <SearchBar
-            onSearchActive={handleSearchActive}
-            onSearchInactive={handleSearchInactive}
-          />
-        )}
-      </AppBarRightContainer>
+      <AppBarMain>
+        <AppBarLeftContainer>
+          {isNavBarVisible && (
+            <AppBarToggle
+              isNavBarOpen={isNavBarOpen}
+              onToggleClick={onToggleNavbar}
+            />
+          )}
+        </AppBarLeftContainer>
+        <AppBarRightContainer>
+          {isSearchVisible && (
+            <SearchBar
+              onSearchActive={handleSearchActive}
+              onSearchInactive={handleSearchInactive}
+            />
+          )}
+        </AppBarRightContainer>
+      </AppBarMain>
+      <AppBarMiddleContainer isVisible={!isSearchActive}>
+        <AppBarLogo onLogoClick={handleLogoClick} />
+      </AppBarMiddleContainer>
     </AppBarRoot>
   );
 };
