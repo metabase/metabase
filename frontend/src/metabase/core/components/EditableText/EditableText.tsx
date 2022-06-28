@@ -6,6 +6,7 @@ import React, {
   Ref,
   useCallback,
   useState,
+  useEffect,
 } from "react";
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 
@@ -40,6 +41,11 @@ const EditableText = forwardRef(function EditableText(
   const [inputValue, setInputValue] = useState(initialValue ?? "");
   const [submitValue, setSubmitValue] = useState(initialValue ?? "");
   const displayValue = inputValue ? inputValue : placeholder;
+
+  useEffect(() => {
+    setInputValue(initialValue ?? "");
+    setSubmitValue(initialValue ?? "");
+  }, [initialValue, setInputValue, setSubmitValue]);
 
   const handleBlur = useCallback(() => {
     if (!isOptional && !inputValue) {
