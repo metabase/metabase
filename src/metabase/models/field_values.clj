@@ -50,7 +50,7 @@
 (def advanced-field-values-max-age
   "Age of an advanced FieldValues in days.
   After this time, these field values should be deleted by the `delete-expired-advanced-field-values` job."
-  30)
+  (t/days 30))
 
 (def advanced-field-values-types
   "A class of fieldvalues that has additional constraints/filters."
@@ -245,7 +245,7 @@
   "Checks if an advanced FieldValues expired."
   [fv]
   {:pre [(advanced-field-values-types (:type fv))]}
-  (u.date/older-than? (:created_at fv) (t/days advanced-field-values-max-age)))
+  (u.date/older-than? (:created_at fv) advanced-field-values-max-age))
 
 (defn hash-key-for-sandbox
   "Return a hash-key that will be used for sandboxed fieldvalues."

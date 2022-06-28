@@ -76,7 +76,7 @@
                                 :created_at [:< (sql.qp/add-interval-honeysql-form
                                                   (mdb/db-type)
                                                   :%now
-                                                  (- field-values/advanced-field-values-max-age)
+                                                  (- (.getDays field-values/advanced-field-values-max-age))
                                                   :day)]]
                     rows-count (apply db/count FieldValues conditions)]
                 (apply db/delete! FieldValues conditions)
