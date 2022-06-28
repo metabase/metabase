@@ -1,13 +1,15 @@
 import React from "react";
 import { CollectionId } from "metabase-types/api";
 import AppBarLogo from "./AppBarLogo";
-import AppBarInfo from "./AppBarInfo";
 import NewItemButton from "../NewItemButton";
 import SearchBar from "../SearchBar";
+import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
+import QuestionLineage from "../../containers/QuestionLineage";
 import {
   AppBarLeftContainer,
   AppBarRightContainer,
   AppBarRoot,
+  AppBarInfoContainer,
 } from "./AppBarLarge.styled";
 
 export interface AppBarLargeProps {
@@ -39,12 +41,13 @@ const AppBarLarge = ({
           isToggleVisible={isNavBarVisible}
           onToggleClick={onToggleNavbar}
         />
-        <AppBarInfo
-          collectionId={collectionId}
-          isNavBarOpen={isNavBarOpen}
-          isCollectionPathVisible={isCollectionPathVisible}
-          isQuestionLineageVisible={isQuestionLineageVisible}
-        />
+        <AppBarInfoContainer isNavBarOpen={isNavBarOpen}>
+          {isQuestionLineageVisible ? (
+            <QuestionLineage />
+          ) : isCollectionPathVisible ? (
+            <CollectionBreadcrumbs collectionId={collectionId} />
+          ) : null}
+        </AppBarInfoContainer>
       </AppBarLeftContainer>
       {(isSearchVisible || isNewButtonVisible) && (
         <AppBarRightContainer>

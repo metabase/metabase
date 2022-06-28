@@ -1,27 +1,38 @@
 import React, { useCallback, useState } from "react";
+import { CollectionId } from "metabase-types/api";
+import AppBarLogo from "./AppBarLogo";
 import AppBarToggle from "./AppBarToggle";
 import SearchBar from "../SearchBar";
+import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
+import QuestionLineage from "../../containers/QuestionLineage";
 import {
-  AppBarToggleContainer,
-  AppBarMainContainer,
-  AppBarLogoContainer,
   AppBarHeader,
+  AppBarLogoContainer,
+  AppBarMainContainer,
+  AppBarRoot,
   AppBarSearchContainer,
+  AppBarSubheader,
+  AppBarToggleContainer,
 } from "./AppBarSmall.styled";
-import AppBarLogo from "metabase/nav/components/AppBar/AppBarLogo";
 
 export interface AppBarSmallProps {
+  collectionId?: CollectionId;
   isNavBarOpen?: boolean;
   isNavBarVisible?: boolean;
   isSearchVisible?: boolean;
+  isCollectionPathVisible?: boolean;
+  isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
 }
 
 const AppBarSmall = ({
+  collectionId,
   isNavBarOpen,
   isNavBarVisible,
   isSearchVisible,
+  isCollectionPathVisible,
+  isQuestionLineageVisible,
   onToggleNavbar,
   onCloseNavbar,
 }: AppBarSmallProps): JSX.Element => {
@@ -41,7 +52,7 @@ const AppBarSmall = ({
   }, []);
 
   return (
-    <div>
+    <AppBarRoot>
       <AppBarHeader>
         <AppBarMainContainer>
           <AppBarToggleContainer>
@@ -65,7 +76,16 @@ const AppBarSmall = ({
           <AppBarLogo onLogoClick={handleLogoClick} />
         </AppBarLogoContainer>
       </AppBarHeader>
-    </div>
+      {(isQuestionLineageVisible || isCollectionPathVisible) && (
+        <AppBarSubheader>
+          {isQuestionLineageVisible ? (
+            <QuestionLineage />
+          ) : isCollectionPathVisible ? (
+            <CollectionBreadcrumbs collectionId={collectionId} />
+          ) : null}
+        </AppBarSubheader>
+      )}
+    </AppBarRoot>
   );
 };
 

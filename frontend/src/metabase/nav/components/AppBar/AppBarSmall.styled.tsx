@@ -2,9 +2,19 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 
+export const AppBarRoot = styled.div`
+  border-bottom: 1px solid ${color("border")};
+  background-color: ${color("bg-white")};
+`;
+
 export const AppBarHeader = styled.header`
   position: relative;
   height: ${APP_BAR_HEIGHT};
+  padding: 0 1rem;
+`;
+
+export const AppBarSubheader = styled.div`
+  padding: 1rem;
 `;
 
 export const AppBarMainContainer = styled.header`
@@ -13,9 +23,6 @@ export const AppBarMainContainer = styled.header`
   align-items: center;
   gap: 1rem;
   height: 100%;
-  padding: 0 1rem;
-  border-bottom: 1px solid ${color("border")};
-  background-color: ${color("bg-white")};
 `;
 
 export const AppBarToggleContainer = styled.div`
