@@ -28,15 +28,14 @@ const AppBarLogo = ({
 }: AppBarLogoProps): JSX.Element => {
   return (
     <LogoRoot>
-      {isLogoVisible && (
-        <LogoLink
-          to="/"
-          onClick={onLogoClick}
-          data-metabase-event="Navbar;Logo"
-        >
-          <LogoIcon height={32} />
-        </LogoLink>
-      )}
+      <LogoLink
+        to="/"
+        isVisible={isLogoVisible}
+        onClick={onLogoClick}
+        data-metabase-event="Navbar;Logo"
+      >
+        <LogoIcon height={32} />
+      </LogoLink>
       {isToggleVisible && (
         <SidebarButtonContainer>
           <Tooltip tooltip={getSidebarTooltip(isNavBarOpen)}>

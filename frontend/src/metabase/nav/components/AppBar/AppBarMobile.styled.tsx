@@ -1,10 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
-import {
-  LogoLink,
-  SidebarButton,
-} from "metabase/nav/components/AppBar/AppBarLogo.styled";
 
 export const AppBarRoot = styled.header`
   display: flex;
