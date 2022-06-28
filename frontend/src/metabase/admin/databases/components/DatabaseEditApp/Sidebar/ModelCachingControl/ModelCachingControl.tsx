@@ -31,7 +31,7 @@ function FeatureDescription({ schemaName }: { schemaName: string }) {
   );
   return (
     <PopoverContent>
-      <FeatureTitle>{t`Model caching`}</FeatureTitle>
+      <FeatureTitle>{t`Cache models`}</FeatureTitle>
       <FeatureDescriptionText>{jt`We'll create tables with model data and refresh them on a schedule you define. To enable it, you need to grant this connection credential read and write permissions on the "${schemaName}" schema or grant create schema permissions. ${docsLink}`}</FeatureDescriptionText>
     </PopoverContent>
   );
