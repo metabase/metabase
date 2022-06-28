@@ -17,6 +17,10 @@ const activeInputCSS = css`
   justify-content: flex-start;
 `;
 
+export const SearchBarRoot = styled.div`
+  flex: 1 1 auto;
+`;
+
 export const SearchInputContainer = styled.div<{ isActive: boolean }>`
   display: flex;
   flex: 1 1 auto;

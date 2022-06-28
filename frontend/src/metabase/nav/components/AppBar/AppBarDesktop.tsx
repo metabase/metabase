@@ -2,6 +2,7 @@ import React from "react";
 import { CollectionId } from "metabase-types/api";
 import AppBarLogo from "./AppBarLogo";
 import NewItemButton from "../NewItemButton";
+import SearchBar from "../SearchBar";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
 import {
@@ -50,8 +51,9 @@ const AppBarDesktop = ({
           ) : null}
         </InfoBarContainer>
       </AppBarLeftContainer>
-      {isNewButtonVisible && (
+      {(isSearchVisible || isNewButtonVisible) && (
         <AppBarRightContainer>
+          {isSearchVisible && <SearchBar />}
           {isNewButtonVisible && <NewItemButton />}
         </AppBarRightContainer>
       )}

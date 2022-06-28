@@ -45,7 +45,10 @@ export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
 
 export const AppBarRightContainer = styled.div`
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
+  gap: 1rem;
+  max-width: 32.5rem;
 `;
 
 export interface InfoBarContainerProps {
