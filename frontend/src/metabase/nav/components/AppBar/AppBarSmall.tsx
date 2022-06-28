@@ -37,6 +37,7 @@ const AppBarSmall = ({
   onCloseNavbar,
 }: AppBarSmallProps): JSX.Element => {
   const [isSearchActive, setSearchActive] = useState(false);
+  const isInfoVisible = isQuestionLineageVisible || isCollectionPathVisible;
 
   const handleLogoClick = useCallback(() => {
     onCloseNavbar();
@@ -76,7 +77,7 @@ const AppBarSmall = ({
           <AppBarLogo onLogoClick={handleLogoClick} />
         </AppBarLogoContainer>
       </AppBarHeader>
-      {(isQuestionLineageVisible || isCollectionPathVisible) && (
+      {!isNavBarOpen && isInfoVisible && (
         <AppBarSubheader>
           {isQuestionLineageVisible ? (
             <QuestionLineage />
