@@ -13,78 +13,21 @@ body {
   position: relative;
 }
 
-a {
-  color: #4C5773;
-  font-size: 14px;
-  text-decoration: none;
-}
-
-h1 {
-  font-size: 56px;
-  font-weight: 700;
-  margin-bottom: 30px;
-}
-
-h2 {
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.8em;
-  margin-bottom: 60px;
-}
-
-#left-side {
-  border-right: 1px solid #F0F0F0;
-  float: left;
-  min-height: calc(100vh - 80px);
-  justify-content: center;
-  padding: 200px 0;
-  width: 50%;
-}
-
-#left-container {
-  padding: 0 172px;
-  margin: 0 auto;
-  max-width: 758px;
-}
-
-#right-side {
+body {
   align-items: center;
   display: flex;
   flex-direction: column;
-  float: right;
-  margin-top: -110px;
-  min-height: calc(100vh - 80px);
-  justify-content: center;
-  position: relative;
-  width: 50%;
 }
 
-
-header {
-  border-bottom: 1px solid #F0F0F0;
-  display: flex;
-  justify-content: space-between;
-  padding: 20px;
-  position: relative;
-  z-index: 2;
+#status {
+  margin-top: 125px;
+  font-size: 14px;
+  color: #949AAB;
+  width: 400px;
 }
 
-#store-link {
-  color: #509EE3;
-  display: flex;
-  align-items: center;
-  font-weight: 700;
-}
-
-#store-link > img {
-  margin-right: 14px;
-  width: 20px;
-}
-
-nav a {
-  font-weight: 500;
-  margin-left: 60px;
-  margin-right: 10px;
+progress {
+  margin-top: 25px;
 }
 
 progress[value] {
@@ -93,7 +36,7 @@ progress[value] {
   border: 1px solid #509EE3;
   border-radius: 8px;
   height: 8px;
-  width: 100%;
+  width: 400px;
 }
 
 progress[value]::-webkit-progress-bar {
@@ -107,9 +50,6 @@ progress[value]::-webkit-progress-value {
   border-radius: 8px;
 }
 
-#progress {
-  margin-top: 25px;
-}
 
 .heading {
   box-shadow: 0px 5px 6px rgba(80, 158, 227, 0.16), 0px 12px 24px rgba(148, 154, 171, 0.08);
@@ -124,15 +64,10 @@ progress[value]::-webkit-progress-value {
   transition: opacity 800ms cubic-bezier(.165,.84,.44,1);
 }
 
-#status {
-  margin-top: 15px;
-  font-size: 14px;
-  color: #949AAB;
-}
 
 .animation {
+  margin-top: -30px;
   max-width: 100%;
-  mix-blend-mode: multiply;
   opacity: 1;
   transition: opacity 800ms cubic-bezier(.165,.84,.44,1);
   width: 600px;

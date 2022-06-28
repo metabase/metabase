@@ -7,37 +7,12 @@
   </head>
 
   <body>
-    <header>
-      <a href="https://store.metabase.com" id="store-link">
-        <img src="app/instance-loading-page/img/metabase-logo.svg" />
-        Metabase Store
-      </a>
-
-      <nav>
-        <a href="#">Docs</a>
-        <a href="#">Support</a>
-        <a href="#">Billing</a>
-      </nav>
-    </header>
-
-    <div id="left-side">
-      <div id="left-container">
-        <h1>We’re setting up your Metabase!</h1>
-        <h2>
-          It usually takes around 5 minutes. If you already use Metabase, you’ll be able to migrate your instance to Cloud.
-        </h2>
-
-        <div id="status">
-          5 minutes remaining…
-        </div>
-        <progress id="progress" max="100" value="0"/>
-      </div>
+    <img src="app/instance-loading-page/img/1.gif" id="animation" class="animation" />
+    <p id="heading" class="heading">Make decisions with data — no SQL required</p>
+    <div id="status">
+      5 minutes remaining…
     </div>
-
-    <div id="right-side">
-      <img src="app/instance-loading-page/img/1.gif" id="animation" class="animation" />
-      <p id="heading" class="heading">Make decisions with data — no SQL required</p>
-    </div>
+    <progress id="progress" max="100" value="0"/>
 
     <script type="text/javascript">{{{initJS}}}</script>
   </body>
