@@ -6,6 +6,7 @@ export const AppBarRoot = styled.header`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
   height: ${APP_BAR_HEIGHT};
   padding: 0 1rem;
   border-bottom: 1px solid ${color("border")};
@@ -18,9 +19,9 @@ export const AppBarRoot = styled.header`
 `;
 
 export const AppBarLeftContainer = styled.div`
-  width: 2rem;
+  flex: 0 0 auto;
 `;
 
 export const AppBarRightContainer = styled.div`
-  width: 2rem;
+  flex: 1 1 auto;
 `;

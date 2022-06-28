@@ -7,6 +7,7 @@ import { SidebarButton } from "./AppBarToggle.styled";
 export const AppBarRoot = styled.header`
   display: flex;
   align-items: center;
+  gap: 1rem;
   height: ${APP_BAR_HEIGHT};
   padding: 0 1rem;
   border-bottom: 1px solid ${color("border")};

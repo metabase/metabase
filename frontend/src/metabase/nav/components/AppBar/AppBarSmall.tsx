@@ -1,5 +1,4 @@
 import React, { useCallback, useState } from "react";
-import AppBarLogo from "./AppBarLogo";
 import AppBarToggle from "./AppBarToggle";
 import SearchBar from "../SearchBar";
 import {
@@ -48,7 +47,6 @@ const AppBarSmall = ({
           />
         )}
       </AppBarLeftContainer>
-      {!isSearchActive && <AppBarLogo onLogoClick={handleLogoClick} />}
       <AppBarRightContainer>
         {isSearchVisible && (
           <SearchBar
