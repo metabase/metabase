@@ -31,24 +31,20 @@ export function InlineValuePicker({
   );
 
   const changeArguments = useCallback(
-    (newArguments: number[]) => {
+    (newArguments: (string | number)[]) => {
       handleChange(filter.setArguments(newArguments));
     },
     [filter, handleChange],
   );
 
   const filterOperators = field.filterOperators(filter.operatorName());
+
   const hideArgumentSelector = [
     "is-null",
     "not-null",
-    "empty",
+    "is-empty",
     "not-empty",
   ].includes(filter.operatorName());
-
-  const isBetween =
-    filter.operatorName() === "between" &&
-    filter?.operator()?.fields.length === 2;
-  const filterArguments = filter.arguments() ?? [];
 
   return (
     <ValuesPickerContainer
@@ -60,39 +56,60 @@ export function InlineValuePicker({
         operators={filterOperators}
         onOperatorChange={changeOperator}
       />
-      {!hideArgumentSelector && !isBetween && (
-        <ArgumentSelector
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore: this component doesn't have types or propTypes
-          value={filterArguments}
-          onChange={changeArguments}
-          className="input"
-          fields={[field]}
-          multi={!!filter?.operator()?.multi}
-          showOptionsInPopover
-        />
-      )}
-      {isBetween && (
-        <BetweenContainer>
-          <NumberInput
-            placeholder={t`min`}
-            value={filterArguments[0] ?? ""}
-            onChange={e =>
-              changeArguments([e.target.value, filterArguments[1]])
-            }
-            fullWidth
-          />
-          <NumberSeparator>{t`and`}</NumberSeparator>
-          <NumberInput
-            placeholder={t`max`}
-            value={filterArguments[1] ?? ""}
-            onChange={e =>
-              changeArguments([filterArguments[0], e.target.value])
-            }
-            fullWidth
-          />
-        </BetweenContainer>
+      {!hideArgumentSelector && (
+        <ValuesInput filter={filter} field={field} onChange={changeArguments} />
       )}
     </ValuesPickerContainer>
+  );
+}
+
+interface ValuesInputTypes {
+  onChange: (newArguments: (string | number)[]) => void;
+  filter: Filter;
+  field: Field;
+}
+
+function ValuesInput({
+  onChange,
+  field,
+  filter,
+}: ValuesInputTypes): JSX.Element {
+  const isBetween =
+    filter.operatorName() === "between" &&
+    filter?.operator()?.fields.length === 2;
+
+  const filterArguments = filter.arguments() ?? [];
+
+  if (!isBetween) {
+    return (
+      <ArgumentSelector
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore: this component doesn't have types or propTypes
+        value={filterArguments}
+        onChange={onChange}
+        className="input"
+        fields={[field]}
+        multi={!!filter?.operator()?.multi}
+        showOptionsInPopover
+      />
+    );
+  }
+
+  return (
+    <BetweenContainer>
+      <NumberInput
+        placeholder={t`min`}
+        value={filterArguments[0] ?? ""}
+        onChange={e => onChange([e.target.value, filterArguments[1]])}
+        fullWidth
+      />
+      <NumberSeparator>{t`and`}</NumberSeparator>
+      <NumberInput
+        placeholder={t`max`}
+        value={filterArguments[1] ?? ""}
+        onChange={e => onChange([filterArguments[0], e.target.value])}
+        fullWidth
+      />
+    </BetweenContainer>
   );
 }

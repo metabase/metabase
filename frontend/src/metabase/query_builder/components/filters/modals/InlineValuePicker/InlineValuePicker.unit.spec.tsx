@@ -298,4 +298,31 @@ describe("InlineValuePicker", () => {
     screen.getByPlaceholderText("min");
     screen.getByPlaceholderText("max");
   });
+
+  const noValueOperators = ["is-null", "not-null", "is-empty", "not-empty"];
+
+  noValueOperators.forEach(op => {
+    it(`hides value input for ${op} empty operator`, () => {
+      const testFilter = new Filter(
+        [op, ["field", textField.id, null]],
+        null,
+        query,
+      );
+      const changeSpy = jest.fn();
+
+      render(
+        <Provider store={store}>
+          <InlineValuePicker
+            filter={testFilter}
+            field={textField}
+            handleChange={changeSpy}
+          />
+        </Provider>,
+      );
+
+      expect(
+        screen.queryByPlaceholderText("Enter some text"),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
