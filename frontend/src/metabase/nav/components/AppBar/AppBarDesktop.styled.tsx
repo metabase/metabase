@@ -2,14 +2,14 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { LogoLink, SidebarButtonContainer } from "./AppBarLogo.styled";
-import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const AppBarRoot = styled.header`
   display: flex;
   align-items: center;
   height: ${APP_BAR_HEIGHT};
-  background-color: ${color("bg-white")};
+  padding: 0 1rem;
   border-bottom: 1px solid ${color("border")};
+  background-color: ${color("bg-white")};
   z-index: 4;
 
   @media print {
@@ -17,11 +17,11 @@ export const AppBarRoot = styled.header`
   }
 `;
 
-export interface LeftContainerProps {
+export interface AppBarLeftContainerProps {
   isNavBarVisible?: boolean;
 }
 
-export const AppBarLeftContainer = styled.div<LeftContainerProps>`
+export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
   display: flex;
   align-items: center;
 

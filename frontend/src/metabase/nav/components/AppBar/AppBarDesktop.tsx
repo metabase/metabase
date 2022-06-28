@@ -36,7 +36,7 @@ const AppBarDesktop = ({
 }: AppBarDesktopProps): JSX.Element => {
   return (
     <AppBarRoot>
-      <AppBarLeftContainer>
+      <AppBarLeftContainer isNavBarVisible={isNavBarVisible}>
         <AppBarLogo
           isNavBarOpen={isNavBarOpen}
           isNavBarVisible={isNavBarVisible}
