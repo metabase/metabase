@@ -24,9 +24,11 @@
 (defonce ^:private object-mapper
   (delay (ObjectMapper.)))
 
+;; Largely copied from sql drivers param substitute.
+;; May go away if parameters substitution is taken out of query-processing/db dependency
 (declare substitute*)
 
-(defn- substitute-param [param->value [sql missing] in-optional? {:keys [k]}]
+(defn- substitute-param [param->value [sql missing] _in-optional? {:keys [k]}]
   (if-not (contains? param->value k)
     [sql (conj missing k)]
     (let [v (get param->value k)]
@@ -61,22 +63,22 @@
    parsed))
 
 (defn substitute
-  "Substitute `Optional` and `Param` objects in a `parsed-query`, a sequence of parsed string fragments and tokens, with
+  "Substitute `Optional` and `Param` objects in a `parsed-template`, a sequence of parsed string fragments and tokens, with
   the values from the map `param->value` (using logic from `substitution` to decide what replacement SQL should be
   generated).
 
-    (substitute [\"select * from foobars where bird_type = \" (param \"bird_type\")]
+    (substitute [\"https://example.com/?filter=\" (param \"bird_type\")]
                  {\"bird_type\" \"Steller's Jay\"})
-    ;; -> [\"select * from foobars where bird_type = ?\" [\"Steller's Jay\"]]"
-  [parsed-query param->value]
-  (log/tracef "Substituting params\n%s\nin template\n%s" (u/pprint-to-str param->value) (u/pprint-to-str parsed-query))
+    ;; -> \"https://example.com/?filter=Steller's Jay\""
+  [parsed-template param->value]
+  (log/tracef "Substituting params\n%s\nin template\n%s" (u/pprint-to-str param->value) (u/pprint-to-str parsed-template))
   (let [[sql missing] (try
-                        (substitute* param->value parsed-query false)
+                        (substitute* param->value parsed-template false)
                         (catch Throwable e
                           (throw (ex-info (tru "Unable to substitute parameters: {0}" (ex-message e))
                                           {:type         (or (:type (ex-data e)) qp.error-type/qp)
                                            :params       param->value
-                                           :parsed-query parsed-query}
+                                           :parsed-query parsed-template}
                                           e))))]
     (log/tracef "=>%s" sql)
     (when (seq missing)
@@ -90,24 +92,23 @@
     (-> s
         params.parse/parse
         (substitute params->value))))
+;;
 
 (deftype ActionOutput [results]
   Output
   (emit [_ x]
     (vswap! results conj (str x))))
 
-(defn apply-json-query [json-node query]
+(defn- apply-json-query [json-node jq-query]
   (let [vresults (volatile! [])
         output (ActionOutput. vresults)
-        expr (JsonQuery/compile query Versions/JQ_1_6)
+        expr (JsonQuery/compile jq-query Versions/JQ_1_6)
+        ;; might need to Scope childScope = Scope.newChildScope(rootScope); if root-scope can be modified by expression
         _ (.apply expr @root-scope json-node output)
         results @vresults]
     (if (<= (count results) 1)
       (first results)
-      (throw (ex-info (tru "Too many results returned: {0}" (pr-str results)) {:query query :results results})))))
-
-(comment
-  (apply-json-query nil ".ids[]"))
+      (throw (ex-info (tru "Too many results returned: {0}" (pr-str results)) {:jq-query jq-query :results results})))))
 
 (defn execute-http-action!
   "Calls an http endpoint based on action and params"
@@ -118,16 +119,21 @@
                  :accept :json
                  :as :json
                  :headers (merge
+                            ;; TODO maybe we want to default Agent here? Maybe Origin/Referer?
                             {"X-Metabase-Action" (:name action)}
                             (-> headers
                                 (parse-and-substitute params->value)
                                 (json/decode)))
                  :body (parse-and-substitute body params->value)}
         response (http/request request)
+        ;; TODO this is pretty ineficient. We parse with `:as :json`, then reencode within a response
+        ;; I couldn't find a way to get JSONNode out of cheshire, so we fall back to jackson.
+        ;; Should jackson be added explicitly to deps.edn?
         response-node (.readTree @object-mapper (json/generate-string (select-keys response [:body :headers :status])))]
     (if-let [error (json/parse-string (apply-json-query response-node (or (:error_handle action) ".status >= 400")))]
       {:status 400
-       :body (when (string? error) error)}
+       :headers {"Content-Type" "application/json"}
+       :body (when-not (boolean? error) error)}
       (if-some [response (some->> action :response_handle (apply-json-query response-node))]
         {:status 200
          :headers {"Content-Type" "application/json"}

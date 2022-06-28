@@ -83,28 +83,76 @@
                   s/Keyword s/Any}}
       (su/with-api-error-message "map of parameter name or ID -> map of parameter `:value` and `:type` of the value")))
 
-(defn execute-http-emitter!
-  [emitter parameters]
-  (let [#_#_
-        parameters {"action_id" {"value" 95, "type" "number/="}
-                    "session_id" {"value" "8c2df5e8-bfc9-4c96-b1df-bd61bf92b7af"}
-                    "foo" {"value" 10}}
-        #_#_
-        emitter {:action {:template {:method "GET"
-                                     :url "http://localhost:3000/api/action/{{action_id}}[[?{{foo}}]]"
-                                     :headers "{\"Cookie\": \"metabase.SESSION={{session_id}}\"}"}
-                          :response_handle ".status"
-                          :error_handle nil}}
+(comment
+  ;; Assuming things look like this
+;; GET native query action
+:parameters
+;;[
+;;    {
+;;        "id": "2fddf797-838e-81eb-4828-53f947932486",
+;;        "type": "number/=",
+;;        "target": [
+;;            "variable",
+;;            [
+;;                "template-tag",
+;;                "product_id"
+;;            ]
+;;        ],
+;;        "name": "Product",
+;;        "slug": "product_id"
+;;    }
+;;]
 
-        params->value  (into {} (map (juxt key (comp #(get % "value") val)) parameters))]
+;; PUT dashboards/:id
+:emitters
+:parameter_mappings
+;;{
+;;    "2fddf797-838e-81eb-4828-53f947932486": [
+;;        "variable",
+;;        [
+;;            "template-tag",
+;;            "product_id"
+;;        ]
+;;    ]
+;;}
+
+
+;; on execution
+:parameters
+;;{
+;;    "2fddf797-838e-81eb-4828-53f947932486": {
+;;        "value": 1,
+;;        "type": "number/="
+;;    }
+;;}
+
+
+  )
+
+(defn- execute-http-emitter!
+  [emitter parameters]
+  ;; TODO check the types match
+  (let [mapped-params (->> emitter
+                           :parameter_mappings
+                           (map (fn [[k [param-type param-spec]]]
+                                  (if (= "variable" param-type)
+                                    [k (second param-spec)]
+                                    (throw (ex-info "Unimplemented"
+                                                    {:parameters parameters
+                                                     :parameter_mappings (:parameter_mappings emitter)})))))
+                           (into {}))
+        params->value (->> parameters
+                           (map (juxt (comp mapped-params key) (comp #(get % "value") val)))
+                           (into {}))]
     (http-action/execute-http-action! (:action emitter) params->value)))
 
 (api/defendpoint POST "/:id/execute"
   "Execute a custom emitter."
   [id :as {{:keys [parameters]} :body}]
   {parameters (s/maybe CustomActionParametersMap)}
-  (let [emitter (api/check-404 (emitter id))]
-    (case (get-in emitter [:action :type])
+  (let [emitter (api/check-404 (emitter id))
+        action-type (get-in emitter [:action :type])]
+    (case action-type
       :query
       (do
         (or (get-in emitter [:action :card])
@@ -114,6 +162,9 @@
         (qp.writeback/execute-query-emitter! emitter parameters))
 
       :http
-      (execute-http-emitter! emitter parameters))))
+      (execute-http-emitter! emitter parameters)
+
+      ;; TODO We changed what is in action.type Could be the old "row" type, might not need to handle
+      (throw (ex-info (tru "Unknown action type {0}." (name action-type)) emitter)))))
 
 (api/define-routes actions/+check-actions-enabled api/+check-superuser)
