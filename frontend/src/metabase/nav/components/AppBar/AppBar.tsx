@@ -18,6 +18,7 @@ export interface AppBarProps {
 
 const AppBar = (props: AppBarProps): JSX.Element => {
   const isSmallScreen = useIsSmallScreen();
+
   return isSmallScreen ? (
     <AppBarSmall {...props} />
   ) : (
