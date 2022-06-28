@@ -2,9 +2,9 @@ import React, { useCallback, useState } from "react";
 import AppBarLogo from "./AppBarLogo";
 import AppBarToggle from "./AppBarToggle";
 import SearchBar from "../SearchBar";
-import { AppBarLeftContainer, AppBarRoot } from "./AppBarMobile.styled";
+import { AppBarLeftContainer, AppBarRoot } from "./AppBarSmall.styled";
 
-export interface AppBarMobileProps {
+export interface AppBarSmallProps {
   isNavBarOpen?: boolean;
   isNavBarVisible?: boolean;
   isSearchVisible?: boolean;
@@ -12,13 +12,13 @@ export interface AppBarMobileProps {
   onCloseNavbar: () => void;
 }
 
-const AppBarMobile = ({
+const AppBarSmall = ({
   isNavBarOpen,
   isNavBarVisible,
   isSearchVisible,
   onToggleNavbar,
   onCloseNavbar,
-}: AppBarMobileProps): JSX.Element => {
+}: AppBarSmallProps): JSX.Element => {
   const [isSearchActive, setSearchActive] = useState(false);
 
   const handleLogoClick = useCallback(() => {
@@ -53,4 +53,4 @@ const AppBarMobile = ({
   );
 };
 
-export default AppBarMobile;
+export default AppBarSmall;

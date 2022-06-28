@@ -8,9 +8,9 @@ import {
   AppBarLeftContainer,
   AppBarRightContainer,
   AppBarRoot,
-} from "./AppBarDesktop.styled";
+} from "./AppBarLarge.styled";
 
-export interface AppBarDesktopProps {
+export interface AppBarLargeProps {
   collectionId?: CollectionId;
   isNavBarOpen?: boolean;
   isNavBarVisible?: boolean;
@@ -21,7 +21,7 @@ export interface AppBarDesktopProps {
   onToggleNavbar: () => void;
 }
 
-const AppBarDesktop = ({
+const AppBarLarge = ({
   collectionId,
   isNavBarOpen,
   isNavBarVisible,
@@ -30,7 +30,7 @@ const AppBarDesktop = ({
   isCollectionPathVisible,
   isQuestionLineageVisible,
   onToggleNavbar,
-}: AppBarDesktopProps): JSX.Element => {
+}: AppBarLargeProps): JSX.Element => {
   return (
     <AppBarRoot>
       <AppBarLeftContainer isNavBarVisible={isNavBarVisible}>
@@ -56,4 +56,4 @@ const AppBarDesktop = ({
   );
 };
 
-export default AppBarDesktop;
+export default AppBarLarge;
