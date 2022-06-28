@@ -83,6 +83,7 @@ export type SettingName =
   | "search-typeahead-enabled"
   | "setup-token"
   | "site-url"
+  | "site-uuid"
   | "types"
   | "version-info-last-checked"
   | "version-info"
