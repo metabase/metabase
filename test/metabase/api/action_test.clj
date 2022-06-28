@@ -141,7 +141,7 @@
         (is (< 1 result-count))
         (doseq [{:keys [action]} (filter #(= "action/row/update" (:action %)) (mock-requests))
                 :when (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
-          (is (re= #"Sorry, this would \w+ [\d|,]+ rows, but you can only act on 1"
+          (is (re= #"Sorry, this would update [\d|,]+ rows, but you can only act on 1"
                    (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one))))
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))
@@ -154,7 +154,7 @@
         (is (< 1 result-count))
         (doseq [{:keys [action]} (filter #(= "action/row/delete" (:action %)) (mock-requests))
                 :when (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
-          (is (re= #"Sorry, this would \w+ [\d|,]+ rows, but you can only act on 1"
+          (is (re= #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"
                    (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one))))
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))

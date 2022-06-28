@@ -93,7 +93,8 @@
   (let [details (db/select-one-field :details 'Database :id db-id)]
     (metabase.driver.sql-jdbc.connection/connection-details->spec driver details)))
 
-(defn- rollback! [tx] (.rollback (:connection tx)))
+(defn- rollback! [tx]
+  (.rollback ^java.sql.Connection (:connection tx)))
 
 (def base-type->sql-type
   "Mapping from base-types to postgres sql-types to e.g. be used for casting."
