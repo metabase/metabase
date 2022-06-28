@@ -109,8 +109,13 @@ Just like with a question, admins can verify models. Verifying a model will give
 
 - [Models in Metabase][learn-models]
 
+## Need help?
+
+If you're having trouble with your model, go to the [Models troubleshooting guide][troubleshooting-models].
+
 [column-type]: ./field-types.md
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte
 [measures-dimensions]: https://www.metabase.com/learn/databases/dimensions-and-measures
 [question]: 04-asking-questions.md
 [learn-models]: /learn/getting-started/models
+[troubleshooting-models]: ../troubleshooting-guide/models.html

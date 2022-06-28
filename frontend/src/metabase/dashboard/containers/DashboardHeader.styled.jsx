@@ -23,3 +23,9 @@ export const DashboardHeaderButton = styled.button`
     color: ${color("text-light")};
   }
 `;
+
+export const DashboardHeaderActionContainer = styled.div`
+  display: flex;
+  padding-left: 0.5rem;
+  border-left: 1px solid ${color("border")};
+`;

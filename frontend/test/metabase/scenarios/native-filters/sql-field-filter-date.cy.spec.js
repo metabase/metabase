@@ -1,4 +1,4 @@
-import { restore, openNativeEditor } from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/helpers";
 
 import { DATE_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
 

@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -93,7 +93,6 @@ describe("scenarios > embedding > full app", () => {
 
       cy.findByText("Orders in a dashboard").should("be.visible");
       cy.findByText(/Edited/).should("be.visible");
-      cy.findByText("Our analytics").should("be.visible");
     });
 
     it("should hide the dashboard header by a param", () => {

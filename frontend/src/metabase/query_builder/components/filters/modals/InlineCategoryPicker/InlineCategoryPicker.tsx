@@ -136,11 +136,10 @@ export function SimpleCategoryFilterPicker({
       <PickerGrid>
         {options.map((option: string | number) => (
           <Checkbox
-            key={option.toString()}
+            key={option?.toString() ?? "empty"}
             checked={filterValues.includes(option)}
             onChange={e => handleChange(option, e.target.checked)}
-            checkedColor="accent2"
-            label={option.toString()}
+            label={option?.toString() ?? t`empty`}
           />
         ))}
       </PickerGrid>

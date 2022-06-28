@@ -15,4 +15,7 @@ export interface Database {
   timezone?: string;
   native_permissions: NativePermissions;
   initial_sync_status: InitialSyncStatus;
+
+  // Only appears in  GET /api/database/:id
+  "can-manage"?: boolean;
 }

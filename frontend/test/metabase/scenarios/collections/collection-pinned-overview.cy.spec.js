@@ -1,4 +1,4 @@
-import { popover, restore } from "__support__/e2e/cypress";
+import { popover, restore } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -26,6 +26,23 @@ const PIVOT_QUESTION_DETAILS = {
   },
 };
 
+const SQL_QUESTION_DETAILS = {
+  name: "SQL with parameters",
+  display: "scalar",
+  native: {
+    "template-tags": {
+      filter: {
+        id: "ce8f111c-24c4-6823-b34f-f704404572f1",
+        name: "filter",
+        "display-name": "Filter",
+        type: "text",
+        required: true,
+      },
+    },
+    query: "select {{filter}}",
+  },
+};
+
 describe("scenarios > collection pinned items overview", () => {
   beforeEach(() => {
     restore();
@@ -38,7 +55,9 @@ describe("scenarios > collection pinned items overview", () => {
   it("should be able to pin a dashboard", () => {
     openRootCollection();
     openUnpinnedItemMenu(DASHBOARD_NAME);
-    popover().within(() => cy.findByText("Pin this").click());
+    popover()
+      .findByText("Pin this")
+      .click();
     cy.wait("@getPinnedItems");
 
     getPinnedSection().within(() => {
@@ -52,7 +71,9 @@ describe("scenarios > collection pinned items overview", () => {
   it("should be able to pin a question", () => {
     openRootCollection();
     openUnpinnedItemMenu(QUESTION_NAME);
-    popover().within(() => cy.findByText("Pin this").click());
+    popover()
+      .findByText("Pin this")
+      .click();
     cy.wait(["@getPinnedItems", "@getCardQuery"]);
 
     getPinnedSection().within(() => {
@@ -82,7 +103,9 @@ describe("scenarios > collection pinned items overview", () => {
 
     openRootCollection();
     openUnpinnedItemMenu(MODEL_NAME);
-    popover().within(() => cy.findByText("Pin this").click());
+    popover()
+      .findByText("Pin this")
+      .click();
     cy.wait("@getPinnedItems");
 
     getPinnedSection().within(() => {
@@ -98,7 +121,9 @@ describe("scenarios > collection pinned items overview", () => {
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
-    popover().within(() => cy.findByText("Unpin").click());
+    popover()
+      .findByText("Unpin")
+      .click();
     cy.wait("@getPinnedItems");
 
     getPinnedSection().should("not.exist");
@@ -109,7 +134,9 @@ describe("scenarios > collection pinned items overview", () => {
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
-    popover().within(() => cy.findByText("Move").click());
+    popover()
+      .findByText("Move")
+      .click();
 
     cy.findByText(`Move "${DASHBOARD_NAME}"?`).should("be.visible");
   });
@@ -119,7 +146,9 @@ describe("scenarios > collection pinned items overview", () => {
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
-    popover().within(() => cy.findByText("Duplicate").click());
+    popover()
+      .findByText("Duplicate")
+      .click();
 
     cy.findByText(`Duplicate "${DASHBOARD_NAME}"`).should("be.visible");
   });
@@ -129,11 +158,62 @@ describe("scenarios > collection pinned items overview", () => {
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
-    popover().within(() => cy.findByText("Archive").click());
+    popover()
+      .findByText("Archive")
+      .click();
     cy.wait("@getPinnedItems");
 
     getPinnedSection().should("not.exist");
     cy.findByText(DASHBOARD_NAME).should("not.exist");
+  });
+
+  it("should be able to hide the visualization for a pinned question", () => {
+    cy.request("PUT", "/api/card/2", { collection_position: 1 });
+
+    openRootCollection();
+    openPinnedItemMenu(QUESTION_NAME);
+    popover()
+      .findByText("Don’t show visualization")
+      .click();
+    cy.wait("@getPinnedItems");
+
+    getPinnedSection().within(() => {
+      cy.findByText("18,760").should("not.exist");
+      cy.findByText("A question").should("be.visible");
+      cy.findByText(QUESTION_NAME).click();
+      cy.url().should("include", "/question/2");
+    });
+  });
+
+  it("should be able to show the visualization for a pinned question", () => {
+    cy.request("PUT", "/api/card/2", {
+      collection_position: 1,
+      collection_preview: false,
+    });
+
+    openRootCollection();
+    openPinnedItemMenu(QUESTION_NAME);
+    popover()
+      .findByText("Show visualization")
+      .click();
+    cy.wait(["@getPinnedItems", "@getCardQuery"]);
+
+    getPinnedSection().within(() => {
+      cy.findByText(QUESTION_NAME).should("be.visible");
+      cy.findByText("18,760").should("be.visible");
+    });
+  });
+
+  it("should automatically hide the visualization for pinned native questions with missing required parameters", () => {
+    cy.createNativeQuestion(SQL_QUESTION_DETAILS).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+    });
+
+    openRootCollection();
+    getPinnedSection().within(() => {
+      cy.findByText(SQL_QUESTION_DETAILS.name).should("be.visible");
+      cy.findByText("A question").should("be.visible");
+    });
   });
 });
 

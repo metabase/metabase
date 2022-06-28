@@ -5,7 +5,7 @@ import {
   popover,
   openQuestionActions,
   questionInfoButton,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { onlyOn } from "@cypress/skip-test";
 
@@ -49,7 +49,7 @@ describe("managing question from the question's details sidebar", () => {
 
               questionInfoButton().click();
 
-              cy.findByPlaceholderText("Description")
+              cy.findByPlaceholderText("Add description")
                 .type("foo", { delay: 0 })
                 .blur();
 
@@ -134,7 +134,7 @@ describe("managing question from the question's details sidebar", () => {
               });
               cy.url().should("match", /\/dashboard\/\d+-foo$/);
               saveDashboard();
-              cy.get(".QueryBuilder-section").findByText(personalCollection);
+              cy.get("header").findByText(personalCollection);
             });
 
             it("should not offer a user the ability to update or clone the question", () => {

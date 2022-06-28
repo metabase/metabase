@@ -8,7 +8,7 @@ import {
   startNewQuestion,
   visualize,
   openQuestionActions,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import {
   questionInfoButton,
   rightSidebar,
@@ -130,7 +130,7 @@ describe("scenarios > question > saved", () => {
     rightSidebar().within(() => {
       cy.findByText("History");
 
-      cy.findByPlaceholderText("Description")
+      cy.findByPlaceholderText("Add description")
         .type("This is a question")
         .blur();
 

@@ -10,7 +10,7 @@ import {
   modal,
   openNewCollectionItemFlowFor,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -75,10 +75,7 @@ describe("scenarios > dashboard", () => {
 
     // refresh page and check that title/desc were updated
     visitDashboard(1);
-    cy.findByText("Orders per year")
-      .next()
-      .trigger("mouseenter");
-    cy.findByText("How many orders were placed in each year?");
+    cy.findByDisplayValue("Orders per year");
   });
 
   it("should allow empty card title (metabase#12013)", () => {

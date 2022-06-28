@@ -3,7 +3,7 @@ import {
   popover,
   visitDashboard,
   editDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { openDetailsSidebar } from "../helpers/e2e-models-helpers";
 
