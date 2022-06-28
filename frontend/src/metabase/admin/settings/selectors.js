@@ -34,6 +34,7 @@ import { PersistedModelsApi, UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import EmbeddingOption from "./components/widgets/EmbeddingOption";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -390,24 +391,6 @@ const SECTIONS = updateSectionsWithPlugins({
       //     MetabaseSettings.isEnterprise(),
       // },
       // {
-      //   key: "embedding-secret-key",
-      //   display_name: t`Embedding secret key`,
-      //   widget: SecretKeyWidget,
-      //   getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-      // },
-      // {
-      //   key: "-embedded-dashboards",
-      //   display_name: t`Embedded Dashboards`,
-      //   widget: EmbeddedDashboardListing,
-      //   getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-      // },
-      // {
-      //   key: "-embedded-questions",
-      //   display_name: t`Embedded Questions`,
-      //   widget: EmbeddedQuestionListing,
-      //   getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-      // },
-      // {
       //   widget: PremiumEmbeddingLinkWidget,
       //   getHidden: (_, derivedSettings) =>
       //     !derivedSettings["enable-embedding"] ||
@@ -416,12 +399,61 @@ const SECTIONS = updateSectionsWithPlugins({
     ],
   },
   "embedding_in_other_applications/standalone": {
-    component: () => "standalone embedding brah",
-    settings: [],
+    settings: [
+      {
+        widget: () => {
+          return (
+            <Breadcrumbs
+              crumbs={[
+                [
+                  t`Embedding`,
+                  "/admin/settings/embedding_in_other_applications",
+                ],
+                [t`Standalone embeds`],
+              ]}
+            />
+          );
+        },
+      },
+      {
+        key: "embedding-secret-key",
+        display_name: t`Embedding secret key`,
+        description: t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`,
+        widget: SecretKeyWidget,
+        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+      },
+      {
+        key: "-embedded-dashboards",
+        display_name: t`Embedded Dashboards`,
+        widget: EmbeddedDashboardListing,
+        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+      },
+      {
+        key: "-embedded-questions",
+        display_name: t`Embedded Questions`,
+        widget: EmbeddedQuestionListing,
+        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+      },
+    ],
   },
   "embedding_in_other_applications/full-app": {
-    component: () => "Full-app embedding brah",
-    settings: [],
+    settings: [
+      {
+        widget: () => {
+          return (
+            <Breadcrumbs
+              crumbs={[
+                [
+                  t`Embedding`,
+                  "/admin/settings/embedding_in_other_applications",
+                ],
+                [t`Full-app embedding`],
+              ]}
+            />
+          );
+        },
+      },
+    ],
   },
   license: {
     name: t`License`,
