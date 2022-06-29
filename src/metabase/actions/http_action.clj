@@ -129,7 +129,7 @@
         ;; TODO this is pretty ineficient. We parse with `:as :json`, then reencode within a response
         ;; I couldn't find a way to get JSONNode out of cheshire, so we fall back to jackson.
         ;; Should jackson be added explicitly to deps.edn?
-        response-node (.readTree @object-mapper (json/generate-string (select-keys response [:body :headers :status])))]
+        response-node (.readTree ^ObjectMapper @object-mapper (json/generate-string (select-keys response [:body :headers :status])))]
     (if-let [error (json/parse-string (apply-json-query response-node (or (:error_handle action) ".status >= 400")))]
       {:status 400
        :headers {"Content-Type" "application/json"}

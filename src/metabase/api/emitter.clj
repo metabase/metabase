@@ -1,19 +1,11 @@
 (ns metabase.api.emitter
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.actions.http-action :as http-action]
-
-            [compojure.core :refer [DELETE POST PUT]]
+  (:require [compojure.core :refer [DELETE POST PUT]]
             [metabase.actions :as actions]
+            [metabase.actions.http-action :as http-action]
             [metabase.api.common :as api]
-            [metabase.driver.common.parameters :as params]
-            [metabase.driver.common.parameters.parse :as params.parse]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
              :refer [CardEmitter DashboardEmitter Emitter EmitterAction]]
-            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.writeback :as qp.writeback]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
