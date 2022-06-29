@@ -41,8 +41,7 @@ If you can't connect to the database with another application, the problem is pr
 
 **Steps to take:**
 
-1. [Check if your database connection is successful](../administration-guide/01-managing-databases.html#testing-the-connection-status).
-2. If your connection isn't working, go to [Troubleshooting database connections](./datawarehouse.html). 
+If your connection isn't working, go to [Troubleshooting database connections](./datawarehouse.html). 
 
 ## Does the table exist?
 
