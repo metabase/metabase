@@ -80,9 +80,11 @@
             (rand-nth reserved-words)
             (cond-> (random-desc)
               (coin-toss 0.1)
-              (str (rand-nth "áîëç£¢™🍒"))
+              (str (rand-nth "áîëç£¢™"))
               (coin-toss 0.01)
-              (str (subs (tt/lorem-ipsum) 1 200))
+              (str "🍒") ; This one can't be merged with the above, `rand-nth` treats it as two (broken) characters.
+              (coin-toss 0.01)
+              (str (subs (tt/lorem-ipsum) 1 120))
               (coin-toss 0.01)
               (-> first str))))
         (gen/return nil)))))
@@ -241,6 +243,16 @@
   [query]
   (rsg/ent-db-spec-gen {:schema schema} query))
 
+(def ^:private table-names (atom {}))
+
+(defn- make-unique-name [old-name db]
+  (let [names    (get @table-names db #{})
+        new-name (if (names old-name)
+                   (str (gensym old-name))
+                   old-name)]
+    (swap! table-names update-in [db new-name] (fnil conj #{}))
+    new-name))
+
 (def ^:private field-positions (atom {:table-fields {}}))
 (defn- adjust
   "Some fields have to be semantically correct, or db correct. fields have position, and they do have to be unique.
@@ -254,6 +266,10 @@
     (assoc :position
            (-> (swap! field-positions update-in [:table-fields (:table_id visit-val)] (fnil inc 0))
                (get-in [:table-fields (:table_id visit-val)])))
+
+    ;; Table names need to be unique within their database. This enforces it, and appends junk to names if needed.
+    (= :table ent-type)
+    (update :name make-unique-name (:db_id visit-val))
 
     (and (:description visit-val) (coin-toss 0.2))
     (dissoc :description)))
@@ -270,6 +286,7 @@
   - Adjust entites, in case some fields need extra tunning like incremental position, or collections.location
   - Insert entity into the db using `toucan.core/insert!` "
   [query]
+  (reset! table-names {})
   (-> (spec-gen query)
       (rs/visit-ents :spec-gen remove-ids)
       (rs/visit-ents :spec-gen adjust)

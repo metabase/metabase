@@ -255,17 +255,19 @@
   [(serdes.base/serdes-entity-id "Database" (database table))])
 
 (defmethod serdes.base/serdes-hierarchy "Table" [table]
-  (let [db-id (serdes.base/serdes-entity-id "Database" (database table))]
-    (prn table)
-    (into [] (concat [{:model "Database" :id db-id}]
-                     (when (:schema table)
-                       [{:model "Schema" :id (:schema table)}])
-                     [{:model "Table" :id (:name table)}]))))
+  (into [] (concat [{:model "Database" :id (:db_id table)}]
+                   (when (:schema table)
+                     [{:model "Schema" :id (:schema table)}])
+                   [{:model "Table" :id (:name table)}])))
 
 (defmethod serdes.base/serdes-entity-id "Table" [_ {:keys [name]}]
   name)
 
-;; Fake "Schema" for serialization purposes.
-(defmethod serdes.base/serdes-entity-id "Schema" [_ e]
-  (prn "schema EID")
-  nil)
+(defmethod serdes.base/load-find-local "Table"
+  [hierarchy]
+  (let [db-name     (-> hierarchy first :id)
+        schema-name (when (= 3 (count hierarchy))
+                    (-> hierarchy second :id))
+        table-name  (-> hierarchy last :id)
+        db-id       (db/select-one-field :id Database :name db-name)]
+    (db/select-one-field :id Table :name table-name :db_id db-id :schema schema-name)))

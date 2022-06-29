@@ -959,6 +959,11 @@
     [parent_id]
     []))
 
+(defmethod serdes.base/serdes-hierarchy "Collection" [{:keys [slug] :as coll}]
+  [{:model "Collection"
+    :id    (serdes.base/serdes-entity-id "Collection" coll)
+    :label slug}])
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+

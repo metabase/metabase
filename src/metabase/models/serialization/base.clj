@@ -250,39 +250,28 @@
 (defmethod serdes-hierarchy :default [{meta-map :serdes/meta}]
   [meta-map])
 
-(defmulti load-prescan-all
-  "Returns a reducible stream of `[entity_id identity-hash primary-key]` triples for the entire table.
+(defmulti load-find-local
+  "Given a hierarchy, tries to look up any corresponding local entity.
 
-  Defaults to running [[load-prescan-one]] over each entity returned by [[jdbc/reducible-query]] for this model.
-  Override this method if filtering is needed.
+  Returns nil, or the primary key of the local entity.
+  Keyed on the model name at the leaf of the hierarchy.
 
-  Keyed on the model name."
-  identity)
+  By default, this tries to look up the entity by its `:entity_id` column, or identity hash, depending on the shape of
+  the incoming key. For the identity hash, this scans the entire table and builds a cache of
+  [[serdes.hash/identity-hash]] to primary keys, since the identity hash cannot be queried directly.
+  This cache is cleared at the beginning and end of the deserialization process."
+  (fn [hierarchy]
+    (-> hierarchy last :model)))
 
-(defmulti load-prescan-one
-  "Converts a database entity into a `[entity_id identity-hash primary-key]` triple for the deserialization machinery.
-  Called with the Toucan model (*not* this entity), and the JDBC map for the entity in question.
+(declare lookup-by-id)
 
-  This uses [[serdes-entity-id]] to get the portable ID for this model, which might be nil. Prefer overriding that
-  method if you only need to change the entity ID.
-
-  Keyed on the model name."
-  (fn [model _] (name model)))
-
-(defmethod load-prescan-all :default [model-name]
-  (let [model (db/resolve-model (symbol model-name))]
-    (eduction (map (partial load-prescan-one model))
-              (raw-reducible-query (:table model)))))
-
-(defmethod load-prescan-one :default [model entity]
-  (let [pk  (models/primary-key model)
-        key (get entity pk)
-        eid (serdes-entity-id (name model) entity)
-        ih  (serdes.hash/identity-hash (model key))]
-    {:hierarchy (serdes-hierarchy (assoc entity :serdes/meta {:model (name model) :id (or eid ih)}))
-     :entity_id eid
-     :identity-hash ih
-     :primary-key key}))
+(defmethod load-find-local :default [hierarchy]
+  (let [{id :id model-name :model} (last hierarchy)
+        model                      (db/resolve-model (symbol model-name))
+        pk                         (models/primary-key model)]
+    (some-> model
+            (lookup-by-id id)
+            (get pk))))
 
 (defmulti serdes-dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
@@ -398,6 +387,7 @@
   "Given a model and a target identity hash, this scans the appdb for any instance of the model corresponding to the
   hash. Does a complete scan, so this should be called sparingly!"
   ;; TODO This should be able to use a cache of identity-hash values from the start of the deserialization process.
+  ;; Note that it needs to include either updates (or worst-case, invalidation) at [[load-one!]] time.
   [model id-hash]
   (->> (db/select-reducible model)
        (into [] (comp (filter #(= id-hash (serdes.hash/identity-hash %)))

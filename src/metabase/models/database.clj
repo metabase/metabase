@@ -293,6 +293,14 @@
   [_ {:keys [name]}]
   name)
 
+(defmethod serdes.base/serdes-hierarchy "Database"
+  [{:keys [name]}]
+  [{:model "Database" :id name}])
+
+(defmethod serdes.base/load-find-local "Database"
+  [[{:keys [id]}]]
+  (db/select-one-field :id Database :name id))
+
 (defmethod serdes.base/load-xform "Database" [{:keys [creator_id] :as entity}]
   (cond-> (serdes.base/load-xform-basics entity)
     creator_id (assoc :creator_id (db/select-one-field :id 'User :email creator_id))))

@@ -13,9 +13,9 @@
     (u.date/format data)))
 
 (defn- spit-yaml
-  [path obj]
-  (apply io/make-parents path)
-  (spit (apply io/file path) (yaml/generate-string obj :dumper-options {:flow-style :block})))
+  [file obj]
+  (io/make-parents file)
+  (spit (io/file file) (yaml/generate-string obj :dumper-options {:flow-style :block})))
 
 (defn- store-entity! [{:keys [root-dir]} entity]
   (spit-yaml (u.yaml/hierarchy->file root-dir (serdes.base/serdes-hierarchy entity))
@@ -25,7 +25,7 @@
   (let [as-map (into (sorted-map)
                      (for [{:keys [key value]} settings]
                        [key value]))]
-    (spit-yaml [root-dir "settings.yaml"] as-map)))
+    (spit-yaml (io/file root-dir "settings.yaml") as-map)))
 
 (defmethod storage/store-all! :yaml [stream opts]
   (when-not (or (string? (:root-dir opts))
