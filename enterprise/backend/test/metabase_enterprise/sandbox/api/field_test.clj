@@ -127,7 +127,7 @@
                   :attributes {:cat 50}}
     (let [field (Field (mt/id :venues :name))]
       ;; Make sure FieldValues are populated
-      (field-values/get-or-create-field-values! field)
+      (field-values/get-or-create-full-field-values! field)
       ;; Warm up the cache
       (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
       (testing "Do we use cached values when available?"
@@ -165,7 +165,7 @@
                      (:values (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values")))))))
           (finally
             ;; Put everything back as it was
-            (field-values/get-or-create-field-values! field))))
+            (field-values/get-or-create-full-field-values! field))))
 
       (testing "When a sandbox fieldvalues expired, do we delete it then create a new one?"
         (#'field-values/clear-advanced-field-values-for-field! field)

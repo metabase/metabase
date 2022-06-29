@@ -123,6 +123,18 @@
   (sync/sync-database! db)
   (find-values field-values-id))
 
+(deftest get-or-create-full-field-values!-test
+  (testing "create a full Fieldvalues if it does not exist"
+    (db/delete! FieldValues :field_id (mt/id :categories :name) :type :full)
+    (is (= :full (:type (field-values/get-or-create-full-field-values! (Field (mt/id :categories :name)))))
+     (is (= 1 (db/count FieldValues :field_id (mt/id :categories :name) :type :full))))
+
+   (testing "if an Advanced FeildValues Exists, make sure we still returns the full FieldValues"
+     (mt/with-temp FieldValues [_ {:field_id (mt/id :categories :name)
+                                   :type     "sandbox"
+                                   :hash_key "random-hash"}])
+     (is (= :full (:type (field-values/get-or-create-full-field-values! (Field (mt/id :categories :name)))))))))
+
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
     (mt/with-temp FieldValues [fv {:field_id (mt/id :venues :id)
@@ -210,7 +222,7 @@
                                       :type                    "external"}]
             (mt/with-temp-vals-in-db Field (mt/id :orders :product_id) {:has_field_values "list"}
               (is (= ::field-values/fv-created
-                     (field-values/create-or-update-field-values! (Field (mt/id :orders :product_id)))))
+                     (field-values/create-or-update-full-field-values! (Field (mt/id :orders :product_id)))))
               (is (partial= {:field_id              (mt/id :orders :product_id)
                              :values                [1 2 3 4]
                              :human_readable_values []}

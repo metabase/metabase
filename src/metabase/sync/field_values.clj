@@ -20,7 +20,7 @@
 
 (s/defn ^:private update-field-values-for-field! [field :- i/FieldInstance]
   (log/debug (u/format-color 'green "Looking into updating FieldValues for %s" (sync-util/name-for-logging field)))
-  (field-values/create-or-update-field-values! field))
+  (field-values/create-or-update-full-field-values! field))
 
 (defn- update-field-value-stats-count [counts-map result]
   (if (instance? Exception result)
