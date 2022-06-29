@@ -34,4 +34,11 @@ export const NumberSeparator = styled.span`
 export const NumberInput = styled(Input)`
   border-color: ${color("border")};
   width: 10rem;
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
 `;

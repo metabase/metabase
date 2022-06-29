@@ -8,10 +8,10 @@ export function fixBetweens(query: StructuredQuery): StructuredQuery {
     .filter(filter => filter.operatorName() === "between");
 
   for (const filter of betweenFilters) {
-    const validArguments = countValidArumgents(filter);
-    if (validArguments === 1) {
+    const validArgumentsCount = countValidArumgents(filter);
+    if (validArgumentsCount === 1) {
       return fixBetweens(handleEmptyBetween(filter));
-    } else if (validArguments === 2 && hasBackwardsArguments(filter)) {
+    } else if (validArgumentsCount === 2 && hasBackwardsArguments(filter)) {
       return fixBetweens(swapFilterArguments(filter));
     }
   }
