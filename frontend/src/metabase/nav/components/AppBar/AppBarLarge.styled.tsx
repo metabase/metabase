@@ -22,6 +22,7 @@ export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
   display: flex;
   flex: 1 1 auto;
   align-items: center;
+  min-width: 5rem;
 
   ${SidebarButton} {
     opacity: ${props => (props.isNavBarVisible ? 0 : 1)};
@@ -53,6 +54,7 @@ export interface InfoBarContainerProps {
 
 export const AppBarInfoContainer = styled.div<InfoBarContainerProps>`
   display: flex;
+  min-width: 0;
   visibility: ${props => (props.isNavBarOpen ? "hidden" : "visible")};
   opacity: ${props => (props.isNavBarOpen ? 0 : 1)};
   transition: ${props =>
