@@ -27,16 +27,17 @@ Problems, their causes, how to detect them, and how to fix them.
 - [Fixing permissions issues][permissions].
 - [Managing data sandboxing][sandbox].
 
-### Data sources
+### Databases
 
-- [Connecting to data warehouses with Metabase][datawarehouse].
+- [I can't connect to a database][datawarehouse].
 - [I can't see my tables][cant-see-tables].
-- [Fixing missing or out-of-sync tables and columns][sync-fingerprint-scan].
+- [The data in Metabase doesn't match my database][sync-fingerprint-scan].
+- [My connection or query is timing out][timeout].
 
 ### Questions and dashboards
 
-- [Saving questions or dashboards][proxies].
-- [My dashboard is slow][slow-dashboard].
+- [I can't save my question or dashboard][proxies].
+- [My dashboard is slow or failing to load][slow-dashboard].
 - [My SQL question doesn't work][sql].
 - [The dates and times in my questions and charts are wrong][incorrect-times].
 - [My dashboard filters don't work][filters].
@@ -120,4 +121,9 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [slow-dashboard]: ./my-dashboard-is-slow.html
 [sql]: ./sql.html
 [sync-fingerprint-scan]: ./sync-fingerprint-scan.html
+<<<<<<< HEAD
 [upgrade]: ../operations-guide/upgrading-metabase.html
+=======
+[timeout]: ./timeout.html
+[upgrade]: ../operations-guide/upgrading-metabase.html
+>>>>>>> master
