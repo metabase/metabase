@@ -20,12 +20,16 @@ import { getDashboardActions } from "metabase/dashboard/components/DashboardActi
 import {
   DashboardHeaderButton,
   DashboardHeaderActionContainer,
+  DashboardHeaderInfoButton,
 } from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { getIsBookmarked } from "metabase/dashboard/selectors";
+import {
+  getIsBookmarked,
+  getIsShowDashboardInfoSidebar,
+} from "metabase/dashboard/selectors";
 
 import Header from "../components/DashboardHeader";
 
@@ -35,6 +39,7 @@ const mapStateToProps = (state, props) => {
   return {
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
+    isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
   };
 };
 
@@ -85,6 +90,9 @@ class DashboardHeader extends Component {
     onSharingClick: PropTypes.func.isRequired,
 
     onChangeLocation: PropTypes.func.isRequired,
+
+    setSidebar: PropTypes.func.isRequired,
+    closeSidebar: PropTypes.func.isRequired,
   };
 
   handleEdit(dashboard) {
@@ -178,7 +186,11 @@ class DashboardHeader extends Component {
       onFullscreenChange,
       createBookmark,
       deleteBookmark,
+      setSidebar,
+      isShowingDashboardInfoSidebar,
+      closeSidebar,
     } = this.props;
+
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
     const buttons = [];
@@ -344,6 +356,18 @@ class DashboardHeader extends Component {
             onCreateBookmark={createBookmark}
             onDeleteBookmark={deleteBookmark}
             isBookmarked={isBookmarked}
+          />
+          <DashboardHeaderInfoButton
+            icon="info"
+            iconSize={18}
+            onlyIcon
+            borderless
+            isShowingDashboardInfoSidebar={isShowingDashboardInfoSidebar}
+            onClick={() =>
+              isShowingDashboardInfoSidebar
+                ? closeSidebar()
+                : setSidebar({ name: "info" })
+            }
           />
           <EntityMenu items={extraButtons} triggerIcon="ellipsis" />
         </DashboardHeaderActionContainer>,
