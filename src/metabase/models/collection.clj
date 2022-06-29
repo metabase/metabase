@@ -960,9 +960,9 @@
     []))
 
 (defmethod serdes.base/serdes-hierarchy "Collection" [{:keys [slug] :as coll}]
-  [{:model "Collection"
-    :id    (serdes.base/serdes-entity-id "Collection" coll)
-    :label slug}])
+  [(cond-> {:model "Collection"
+            :id    (serdes.base/serdes-entity-id "Collection" coll)}
+     slug  (assoc :label slug))])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |

@@ -57,20 +57,24 @@
                                  :another-key 7
                                  :blank-key nil}))
     (spit (io/file dump-dir "Collection" "fake-id+the_label.yaml")
-          (yaml/generate-string {:some "made up" :data "here"}))
+          (yaml/generate-string {:some "made up" :data "here" :entity_id "fake-id" :slug "the_label"}))
     (spit (io/file dump-dir "Collection" "no-label.yaml")
-          (yaml/generate-string {:some "other" :data "in this one"}))
+          (yaml/generate-string {:some "other" :data "in this one" :entity_id "no-label"}))
 
     (let [ingestable (ingest.yaml/ingest-yaml dump-dir)
-          meta-maps  (into [] (ingest/ingest-list ingestable))
-          exp-files  {[{:model "Collection" :id "fake-id" :label "the_label"}] {:some "made up" :data "here"}
-                      [{:model "Collection" :id "no-label"}]                   {:some "other" :data "in this one"}
+          exp-files  {[{:model "Collection" :id "fake-id" :label "the_label"}] {:some "made up"
+                                                                                :data "here"
+                                                                                :entity_id "fake-id"
+                                                                                :slug "the_label"}
+                      [{:model "Collection" :id "no-label"}]                   {:some "other"
+                                                                                :data "in this one"
+                                                                                :entity_id "no-label"}
                       [{:model "Setting" :id "some-key"}]                      {:key :some-key :value "with string value"}
                       [{:model "Setting" :id "another-key"}]                   {:key :another-key :value 7}
                       [{:model "Setting" :id "blank-key"}]                     {:key :blank-key :value nil}}]
       (testing "the right set of file is returned by ingest-list"
         (is (= (set (keys exp-files))
-               (set meta-maps))))
+               (into #{} (ingest/ingest-list ingestable)))))
 
       (testing "individual reads in any order are correct"
         (doseq [meta-maps (->> exp-files

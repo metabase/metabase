@@ -209,25 +209,6 @@
         {:order-by       field-order-rule}))
     tables))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
-
-(defmethod serdes.base/serdes-entity-id "Table" [_ {:keys [db_id name schema] :or {schema "default_schema"}}]
-  (str (db/select-one-field :name 'Database :id db_id) "/" schema "/" name))
-
-(defmethod serdes.base/extract-one "Table"
-  [_ _ {:keys [db_id] :as table}]
-  (-> (serdes.base/extract-one-basics "Table" table)
-      (assoc :db_id (db/select-one-field :name 'Database :id db_id))))
-
-(defmethod serdes.base/load-xform "Table"
-  [{:keys [db_id] :as table}]
-  (-> (serdes.base/load-xform-basics table)
-      (assoc :db_id (db/select-one-field :id 'Database :name db_id))))
-
-(defmethod serdes.base/serdes-dependencies "Table"
-  [{:keys [db_id]}]
-  [[{:model "Database" :id db_id}]])
-
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
 
 (defn qualified-identifier
@@ -252,9 +233,11 @@
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes.base/serdes-dependencies "Table" [table]
-  [(serdes.base/serdes-entity-id "Database" (database table))])
+  [[{:model "Database" :id (:db_id table)}]])
 
 (defmethod serdes.base/serdes-hierarchy "Table" [table]
+  (when-not (:db_id table)
+    (throw (Exception. "argh")))
   (into [] (concat [{:model "Database" :id (:db_id table)}]
                    (when (:schema table)
                      [{:model "Schema" :id (:schema table)}])
@@ -267,7 +250,17 @@
   [hierarchy]
   (let [db-name     (-> hierarchy first :id)
         schema-name (when (= 3 (count hierarchy))
-                    (-> hierarchy second :id))
+                      (-> hierarchy second :id))
         table-name  (-> hierarchy last :id)
         db-id       (db/select-one-field :id Database :name db-name)]
     (db/select-one-field :id Table :name table-name :db_id db-id :schema schema-name)))
+
+(defmethod serdes.base/extract-one "Table"
+  [_ _ {:keys [db_id] :as table}]
+  (-> (serdes.base/extract-one-basics "Table" table)
+      (assoc :db_id (db/select-one-field :name 'Database :id db_id))))
+
+(defmethod serdes.base/load-xform "Table"
+  [{:keys [db_id] :as table}]
+  (-> (serdes.base/load-xform-basics table)
+      (assoc :db_id (db/select-one-field :id 'Database :name db_id))))
