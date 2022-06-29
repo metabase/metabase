@@ -5,6 +5,11 @@ import {
   openPeopleTable,
 } from "__support__/e2e/helpers";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { PEOPLE_ID } = SAMPLE_DATABASE;
+
 describe("search > recently viewed", () => {
   beforeEach(() => {
     restore();
@@ -37,7 +42,12 @@ describe("search > recently viewed", () => {
       "/dashboard/1-orders-in-a-dashboard",
     );
     assertRecentlyViewedItem(1, "Orders", "Question", "/question/1-orders");
-    assertRecentlyViewedItem(2, "People", "Table", "/question#?db=1&table=3");
+    assertRecentlyViewedItem(
+      2,
+      "People",
+      "Table",
+      `/question#?db=${SAMPLE_DB_ID}&table=${PEOPLE_ID}`,
+    );
   });
 
   it("allows to select an item from keyboard", () => {
