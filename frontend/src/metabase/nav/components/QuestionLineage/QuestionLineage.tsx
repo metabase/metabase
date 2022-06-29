@@ -5,6 +5,7 @@ import Badge from "metabase/components/Badge";
 import Question from "metabase-lib/lib/Question";
 
 export interface QuestionLineageProps {
+  icon?: string;
   question?: Question;
   originalQuestion?: Question;
 }
