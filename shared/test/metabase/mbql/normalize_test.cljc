@@ -24,43 +24,46 @@
 
 (t/deftest ^:parallel normalize-tokens-test
   (normalize-tests
-    "Query type should get normalized"
-    {{:type "NATIVE"}
-     {:type :native}}
+   "Query type should get normalized"
+   {{:type "NATIVE"}
+    {:type :native}}
 
-    "native queries should NOT get normalized"
-    {{:type "NATIVE", :native {"QUERY" "SELECT COUNT(*) FROM CANS;"}}
-     {:type :native, :native {:query "SELECT COUNT(*) FROM CANS;"}}
+   "native queries should NOT get normalized"
+   {{:type "NATIVE", :native {"QUERY" "SELECT COUNT(*) FROM CANS;"}}
+    {:type :native, :native {:query "SELECT COUNT(*) FROM CANS;"}}
 
-     {:native {:query {:NAME        "FAKE_QUERY"
-                       :description "Theoretical fake query in a JSON-based query lang"}}}
-     {:native {:query {:NAME        "FAKE_QUERY"
-                       :description "Theoretical fake query in a JSON-based query lang"}}}}
+    {:native {:query {:NAME        "FAKE_QUERY"
+                      :description "Theoretical fake query in a JSON-based query lang"}}}
+    {:native {:query {:NAME        "FAKE_QUERY"
+                      :description "Theoretical fake query in a JSON-based query lang"}}}}
 
-    "METRICS shouldn't get normalized in some kind of wacky way"
-    {{:aggregation ["+" ["METRIC" 10] 1]}
-     {:aggregation [:+ [:metric 10] 1]}}
+   "METRICS shouldn't get normalized in some kind of wacky way"
+   {{:aggregation ["+" ["METRIC" 10] 1]}
+    {:aggregation [:+ [:metric 10] 1]}}
 
-    "Nor should SEGMENTS"
-    {{:filter ["=" ["+" ["SEGMENT" 10] 1] 10]}
-     {:filter [:= [:+ [:segment 10] 1] 10]}}
+   "Nor should SEGMENTS"
+   {{:filter ["=" ["+" ["SEGMENT" 10] 1] 10]}
+    {:filter [:= [:+ [:segment 10] 1] 10]}}
 
-    "field literals should be exempt too"
-    {{:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}
-     {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}}
+   "field literals should be exempt too"
+   {{:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}
+    {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}}
 
 
-    "... but they should be converted to strings if passed in as a KW for some reason"
-    {{:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]}
-     {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}}
+   "... but they should be converted to strings if passed in as a KW for some reason"
+   {{:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]}
+    {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}}
 
-    "modern :field clauses should get normalized"
-    {[:field 2 {"temporal-unit" "day"}]
-     [:field 2 {:temporal-unit :day}]
+   "modern :field clauses should get normalized"
+   {[:field 2 {"temporal-unit" "day"}]
+    [:field 2 {:temporal-unit :day}]
 
-     [:field 2 {"binning" {"strategy" "default"}}]
-     [:field 2 {:binning {:strategy :default}}]}))
+    [:field 2 {"binning" {"strategy" "default"}}]
+    [:field 2 {:binning {:strategy :default}}]}
 
+   ":value clauses should keep snake_case keys in the type info arg"
+   {[:value "some value" {:some_key "some key value"}]
+    [:value "some value" {:some_key "some key value"}]}))
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
