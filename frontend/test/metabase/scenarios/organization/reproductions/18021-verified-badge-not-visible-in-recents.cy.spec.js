@@ -1,10 +1,7 @@
-import { restore, isEE, visitQuestion } from "__support__/e2e/helpers";
+import { restore, describeEE, visitQuestion } from "__support__/e2e/helpers";
 
-describe.skip("issue 18021", () => {
+describeEE("issue 18021", () => {
   beforeEach(() => {
-    // Run the test only for EE version
-    cy.onlyOn(isEE);
-
     restore();
     cy.signInAsAdmin();
 
@@ -16,7 +13,7 @@ describe.skip("issue 18021", () => {
 
     visitQuestion(1);
 
-    cy.findByTestId("saved-question-header-button").find(".Icon-verified");
+    cy.findByTestId("qb-header-left-side").find(".Icon-verified");
   });
 
   it("should show verified badge in the 'Recently viewed' list (metabase#18021)", () => {
