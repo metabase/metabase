@@ -62,6 +62,7 @@
      [:field 2 {:binning {:strategy :default}}]}
 
     ":value clauses should keep snake_case keys in the type info arg"
+    ;; See https://github.com/metabase/metabase/issues/23354 for details
     {[:value "some value" {:some_key "some key value"}]
      [:value "some value" {:some_key "some key value"}]}))
 
