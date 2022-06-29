@@ -16,6 +16,10 @@ import {
   trackPasswordReset,
 } from "./analytics";
 import { LoginData } from "./types";
+import {
+  clearLastSessionUrl,
+  getLastSessionUrl,
+} from "metabase/session-listener";
 
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
 export const refreshLocale = createThunkAction(
@@ -47,7 +51,9 @@ export const login = createThunkAction(
     await dispatch(refreshSession());
     trackLogin();
 
-    dispatch(push(redirectUrl));
+    const url = redirectUrl ?? getLastSessionUrl();
+
+    dispatch(push(url));
   },
 );
 
@@ -59,7 +65,9 @@ export const loginGoogle = createThunkAction(
     await dispatch(refreshSession());
     trackLoginGoogle();
 
-    dispatch(push(redirectUrl));
+    const url = redirectUrl ?? getLastSessionUrl();
+
+    dispatch(push(url));
   },
 );
 
@@ -70,9 +78,35 @@ export const logout = createThunkAction(LOGOUT, () => {
     await dispatch(clearCurrentUser());
     await dispatch(refreshLocale());
     trackLogout();
+    clearLastSessionUrl();
 
     dispatch(push("/auth/login"));
     window.location.reload(); // clears redux state and browser caches
+  };
+});
+
+export const SESSION_APPEARED = "metabase/auth/SESSION_APPEARED";
+export const sessionAppeared = createThunkAction(
+  SESSION_APPEARED,
+  (lastUrl: string) => {
+    return async (_dispatch: any, getState: () => State) => {
+      const user = getUser(getState());
+
+      if (!user) {
+        window.location.href = lastUrl ?? "/";
+      }
+    };
+  },
+);
+
+export const SESSION_EXPIRED = "metabase/auth/SESSION_EXPIRED";
+export const sessionExpired = createThunkAction(SESSION_EXPIRED, () => {
+  return async (dispatch: any, getState: () => State) => {
+    const user = getUser(getState());
+
+    if (user) {
+      dispatch(logout());
+    }
   };
 });
 
