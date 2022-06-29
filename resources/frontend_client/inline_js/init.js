@@ -1,16 +1,17 @@
 const content = [
-  "Make decisions with data — no SQL required",
-  "Bring your charts and data into Slack",
-  "Click on your charts to dive deeper",
-  "Click on column headings in your tables to explore them",
+  ["no-sql-required", "Make decisions with data — no SQL required"],
+  ["bring-data-to-slack", "Bring your charts and data into Slack"],
+  ["click-charts-dive-deeper", "Click on your charts to dive deeper"],
+  [
+    "click-column-headings",
+    "Click on column headings in your tables to explore them",
+  ],
 ];
 
 const animation = document.getElementById("animation");
 const heading = document.getElementById("heading");
-const progressElement = document.getElementById("progress");
-const statusElement = document.getElementById("status");
 
-const fadeTimeInMilliseconds = 1000;
+const fadeTimeInMilliseconds = 500;
 let counter = 0;
 
 function switcher() {
@@ -41,7 +42,7 @@ function switchAnimation(counter) {
 }
 
 function fadeInNewAnimation(counter) {
-  const srcPrefix = (counter % content.length) + 1;
+  const srcPrefix = content[counter % content.length][0];
 
   animation.className = "animation";
   animation.src = `app/instance-loading-page/img/${srcPrefix}.png`;
@@ -49,7 +50,7 @@ function fadeInNewAnimation(counter) {
 
 function updateHeading(counter) {
   heading.className = "heading";
-  heading.innerHTML = content[counter % content.length];
+  heading.innerHTML = content[counter % content.length][1];
 }
 
 function poll() {

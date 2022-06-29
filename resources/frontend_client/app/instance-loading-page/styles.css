@@ -75,19 +75,20 @@ body {
   animation: rotation 1.3s infinite
     cubic-bezier(0.785, 0.135, 0.15, 0.86);
 
-  &::after {
-    content: "";
+}
 
-    display: inherit;
-    box-sizing: inherit;
-    width: inherit;
-    height: inherit;
-    border: 4px solid #509ee3;
-    border-radius: 20px;
+.spinner::after {
+  content: "";
 
-    opacity: 0.25;
-    position: relative;
-    top: 8px;
-    left: 8px;
-  }
+  display: inherit;
+  box-sizing: inherit;
+  width: inherit;
+  height: inherit;
+  border: 4px solid #509ee3;
+  border-radius: 20px;
+
+  opacity: 0.25;
+  position: relative;
+  top: -4px;
+  left: -4px;
 }
