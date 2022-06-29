@@ -147,12 +147,16 @@ jobs:
           --folder ${{ matrix.folder }}
       env:
         TERM: xterm
+        
+    - name: Generate Mochawesome Reports
+      if: failure()
+      run: yarn generate-cypress-html-report
 
-    - name: Upload Cypress recording upon failure
+    - name: Upload Cypress Artifacts upon failure
       uses: actions/upload-artifact@v2
       if: failure()
       with:
-        name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
+        name: cypress-artifacts-${{ matrix.folder }}-${{ matrix.edition }}
         path: |
           ./cypress
           ./logs/test.log
