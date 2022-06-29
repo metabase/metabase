@@ -26,4 +26,4 @@ For more information, check out our guide for [authenticating with SAML](authent
 
 ## Troubleshooting
 
-For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/cant-log-in.html).
+For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/saml.html).

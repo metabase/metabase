@@ -9,7 +9,7 @@ title: People can't log in to Metabase
 - [Metabase](#common-metabase-login-problems)
 - [SAML][troubleshooting-saml]
 - [LDAP][troubleshooting-ldap]
-- [I don't know how my logins are managed][how-to-find-idp].
+- [I don't know how my logins are managed](#i-dont-know-how-my-logins-are-managed).
 
 ## Common Metabase login problems
 
@@ -27,7 +27,7 @@ title: People can't log in to Metabase
 2. Check whether your Metabase instance has moved. For example, if you were using a trial instance of Metabase, but you're now in production, the URL might have changed.
 3. [Ask your Metabase admin if your account has been deactivated][how-to-reactivate-account].
 
-For more information, see the [Configuration settings documentation][config-settings]
+For more information, see the [Configuration settings documentation][config-settings].
 
 ## Can't log in to a Metabase Cloud account
 
@@ -45,11 +45,11 @@ What do you use to log in?
 
 - **An email address and password.**
 
-  You're using [Metabase][metabase-idp] or [LDAP][troubleshooting-ldap].
+  You're using [Metabase](#common-metabase-login-problems) or [LDAP][troubleshooting-ldap].
 
 - **A button that launches a [pop-up dialog][sso-gloss].**
 
-  You're using [SSO][troubleshooting-sso].
+  You're using SSO. If you're using SAML, go to [Troubleshooting SAML][troubleshooting-saml]. If you're using JWT, search or ask the [Metabase community][discourse].
 
 - **I'm signing in at a site that doesn't have `.metabase.com` in the URL.**
 
@@ -59,9 +59,9 @@ What do you use to log in?
 
   If you're using [Metabase Cloud][pricing], the password for the Metabase store (where you pay for things) is not automatically the same as the password for your Metabase instance (where you log in to look at data).
 
-  If your password and URL are correct, go to [Troubleshooting Metabase Cloud logins][metabase-cloud-login].
+  If your password and URL are correct, go to [Can't log in to a Metabase Cloud account](#cant-log-in-to-a-metabase-cloud-account).
 
-### Further reading
+## Further reading
 
 - [SSO documentation][sso-docs]
 - [SAML documentation][saml-docs]
@@ -77,20 +77,15 @@ If you can’t solve your problem using the troubleshooting guides:
 
 [cloud-docs]: /cloud/docs/
 [config-settings]: ../administration-guide/08-configuration-settings.html
-[deactivated-metabase-account]: #has-your-metabase-account-been-deactivated
 [discourse]: https://discourse.metabase.com/
 [help-premium]: https://www.metabase.com/help-premium/
 [how-to-delete-an-account]: ../administration-guide/04-managing-users.html#deleting-an-account
-[how-to-find-idp]: #i-dont-know-how-my-logins-are-managed
 [how-to-find-auth-method-for-an-account]: ../administration-guide/04-managing-users.html#checking-someones-auth-method
 [how-to-reactivate-account]: ../administration-guide/04-managing-users.html#reactivating-an-account
 [how-to-reset-admin-password]: ../administration-guide/04-managing-users.html#resetting-the-admin-password
 [how-to-reset-password]: ../administration-guide/04-managing-users.html#resetting-someones-password
-[incorrect-metabase-url]: #are-you-using-the-right-url-for-your-metabase
 [known-issues]: ./known-issues.html
 [ldap-docs]: ../administration-guide/10-single-sign-on.html#enabling-ldap-authentication
-[metabase-cloud-login]: #troubleshooting-metabase-cloud-logins
-[no-login-page]: #i-cant-access-the-metabase-login-page
 [pricing]: https://www.metabase.com/pricing/
 [reset-store-password]: https://store.metabase.com/forgot-password
 [saml-docs]: ../enterprise-guide/authenticating-with-saml.html

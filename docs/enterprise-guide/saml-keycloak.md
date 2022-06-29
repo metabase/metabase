@@ -68,4 +68,4 @@ You can find the attribute values from your Metabase **Admin settings** > **Auth
 
 ## Troubleshooting
 
-For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/cant-log-in.html).
+For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/saml.html).

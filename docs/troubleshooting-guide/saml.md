@@ -37,7 +37,7 @@ After filling out the authentication form with your identity provider, you go ba
 
 ## Is the SSO URL correct?
 
-Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider’s website has /auth/sso appended to it. For instance, if you want your users to end up at https://metabase.mycompany.com, the full URL should be https://metabase.mycompany.com/auth/sso.
+Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider’s website has `/auth/sso` appended to it. For instance, if you want your users to end up at `https://metabase.mycompany.com`, the full URL should be `https://metabase.mycompany.com/auth/sso`.
 
 ## Searching for private key and found a null
 
@@ -53,7 +53,7 @@ This error will only occur if you're using **Signed SSO requests**. That is, in 
 
 1. Add a certificate with a private key to your keystore.
 
-### Checking if SAML is working correctly
+## Checking if SAML is working correctly
 
 Go to your Metabase login page. If SAML is working correctly, you should see [a single button to sign in](/glossary/sso) with your identity provider (IdP). Once you're authenticated, you should be automatically redirected to the Metabase home page.
 
