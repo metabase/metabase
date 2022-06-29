@@ -956,7 +956,7 @@
 (defmethod serdes.base/serdes-dependencies "Collection"
   [{:keys [parent_id]}]
   (if parent_id
-    [parent_id]
+    [[{:model "Collection" :id parent_id}]]
     []))
 
 (defmethod serdes.base/serdes-hierarchy "Collection" [{:keys [slug] :as coll}]

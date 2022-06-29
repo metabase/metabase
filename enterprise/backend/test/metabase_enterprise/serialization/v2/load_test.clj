@@ -4,21 +4,26 @@
             [metabase-enterprise.serialization.v2.extract :as serdes.extract]
             [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
             [metabase-enterprise.serialization.v2.load :as serdes.load]
-            [metabase.models :refer [Collection]]
+            [metabase.models :refer [Collection Database Table]]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [toucan.db :as db]))
 
+(defn- no-labels [hierarchy]
+  (mapv #(dissoc % :label) hierarchy))
+
 (defn- ingestion-in-memory [extractions]
-  (let [mapped (into {} (for [{{:keys [model id]} :serdes/meta :as m} (into [] extractions)]
-                          [[model id] m]))]
+  (let [mapped (into {} (for [entity (into [] extractions)]
+                          [(no-labels (serdes.base/serdes-hierarchy entity))
+                           entity]))]
     (reify
       serdes.ingest/Ingestable
       (ingest-list [_]
-        (eduction (map :serdes/meta) (vals mapped)))
-      (ingest-one [_ {:keys [model id]}]
-        (or (get mapped [model id])
-            (throw (ex-info (format "Unknown ingestion target: %s %s" model id)
-                            {:model model :id id :world mapped})))))))
+        (keys mapped))
+      (ingest-one [_ hierarchy]
+        (or (get mapped (no-labels hierarchy))
+            (throw (ex-info (format "Unknown ingestion target: %s" hierarchy)
+                            {:hierarchy hierarchy :world mapped})))))))
 
 ;;; WARNING for test authors: [[extract/extract-metabase]] returns a lazy reducible value. To make sure you don't
 ;;; confound your tests with data from your dev appdb, remember to eagerly
@@ -27,7 +32,7 @@
 (deftest load-basics-test
   (testing "a simple, fresh collection is imported"
     (let [serialized (atom nil)
-          eid1       "123456789abcdef_0123"]
+          eid1       "0123456789abcdef_0123"]
       (ts/with-source-and-dest-dbs
         (testing "extraction succeeds"
           (ts/with-source-db
@@ -131,3 +136,52 @@
                      "Collection 2 version 1"
                      "Collection 2 version 2"}
                    (set (db/select-field :name Collection))))))))))
+
+(deftest deserialization-database-table-field-test
+  (testing "databases, tables and fields are nested in namespaces"
+    (let [serialized (atom nil)
+          db1s       (atom nil)
+          db1d       (atom nil)
+          db2s       (atom nil)
+          db2d       (atom nil)
+          t1s        (atom nil)
+          t1d        (atom nil)
+          t2s        (atom nil)
+          t2d        (atom nil)]
+      (ts/with-source-and-dest-dbs
+        (testing "serializing the two collections"
+          (ts/with-source-db
+            (reset! db1s (ts/create! Database :name "db1"))
+            (reset! t1s  (ts/create! Table    :name "posts" :db_id (:id @db1s)))
+            (reset! db2s (ts/create! Database :name "db2"))
+            (reset! t2s  (ts/create! Table    :name "posts" :db_id (:id @db2s))) ; Deliberately the same name!
+            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
+
+        (testing "serialization of databases is based on the :name"
+          (is (= #{(:name @db1s) (:name @db2s) "test-data"} ; TODO I'm not sure where the `test-data` one comes from.
+                 (->> @serialized
+                      (map :serdes/meta)
+                      (filter #(= "Database" (:model %)))
+                      (map :id)
+                      set))))
+
+        (testing "tables reference their databases by name"
+          (is (= #{(:name @db1s) (:name @db2s) "test-data"}
+                 (->> @serialized
+                      (filter #(-> % :serdes/meta :model (= "Table")))
+                      (map :db_id)
+                      set))))
+
+        (testing "deserialization works properly, keeping the same-named tables apart"
+          (ts/with-dest-db
+            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+            (reset! db1d (db/select-one Database :name (:name @db1s)))
+            (reset! db2d (db/select-one Database :name (:name @db2s)))
+
+            (is (= 3 (db/count Database)))
+            (is (= #{"db1" "db2" "test-data"}
+                   (db/select-field :name Database)))
+            (is (= #{(:id @db1d) (:id @db2d)}
+                   (db/select-field :db_id Table :name "posts")))
+            (is (db/exists? Table :name "posts" :db_id (:id @db1d)))
+            (is (db/exists? Table :name "posts" :db_id (:id @db2d)))))))))

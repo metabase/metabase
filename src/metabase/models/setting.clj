@@ -155,6 +155,9 @@
      :key key
      :value value}))
 
+(defmethod serdes.base/load-find-local "Setting" [[{:keys [id]}]]
+  (get-value-of-type :string (keyword id)))
+
 (defmethod serdes.base/load-one! "Setting" [{:keys [key value]} _]
   (set-value-of-type! :string key value))
 

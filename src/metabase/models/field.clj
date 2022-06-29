@@ -9,6 +9,7 @@
             [metabase.models.humanization :as humanization]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -378,3 +379,8 @@
   {:arglists '([field])}
   [{:keys [table_id]}]
   (db/select-one 'Table, :id table_id))
+
+;;; ------------------------------------------------- Serialization -------------------------------------------------
+
+#_(defmethod serdes.base/serdes-dependencies "Field" [field]
+  )

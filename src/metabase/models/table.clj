@@ -226,7 +226,7 @@
 
 (defmethod serdes.base/serdes-dependencies "Table"
   [{:keys [db_id]}]
-  [db_id])
+  [[{:model "Database" :id db_id}]])
 
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
 
