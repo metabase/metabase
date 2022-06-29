@@ -6,36 +6,30 @@ title: People can't log in to Metabase
 
 ## Do you know how your logins are managed?
 
-- [Metabase][metabase-idp]
-- [SSO][troubleshooting-sso]
+- [Metabase](#common-metabase-login-problems)
+- [SAML][troubleshooting-saml]
 - [LDAP][troubleshooting-ldap]
 - [I don't know how my logins are managed][how-to-find-idp].
 
-## Troubleshooting Metabase logins
+## Common Metabase login problems
 
-- [I can't access the Metabase login page][no-login-page].
-- [I can't log in to my Metabase Cloud account][metabase-cloud-login].
+- [I can't access the Metabase login page](#cant-access-the-metabase-login-page).
+- [I can't log in to my Metabase Cloud account](#cant-log-in-to-a-metabase-cloud-account).
 - [I forgot my password][how-to-reset-password].
 - [I forgot the admin password][how-to-reset-admin-password].
 - [I want to delete an account that was set up incorrectly][how-to-delete-an-account].
 
-### I can't access the Metabase login page.
-
-- [Are you using the right URL for your Metabase?][incorrect-metabase-url]
-- [Ask your Metabase admin if your account has been deactivated][how-to-reactivate-account].
-
-#### Are you using the right URL for your Metabase?
+### Can't access the Metabase login page
 
 1. Check whether you need to include a port number as well as a hostname in the connection URL. For example, Metabase might be at `https://example.com:3000/` instead of `https://example.com/`.
    - If you're an administrator, you'll have configured this.
    - If you're not, please ask your admin.
 2. Check whether your Metabase instance has moved. For example, if you were using a trial instance of Metabase, but you're now in production, the URL might have changed.
+3. [Ask your Metabase admin if your account has been deactivated][how-to-reactivate-account].
 
-### Further reading
+For more information, see the [Configuration settings documentation][config-settings]
 
-- [Configuration settings documentation][config-settings]
-
-## Troubleshooting Metabase Cloud logins
+## Can't log in to a Metabase Cloud account
 
 If you're using [Metabase Cloud][pricing], note that your Metabase store password is different from your Metabase Cloud admin password.
 
@@ -43,22 +37,7 @@ If you're using [Metabase Cloud][pricing], note that your Metabase store passwor
 - [I forgot my Metabase Cloud password][how-to-reset-admin-password].
 - If you're a Metabase Cloud customer, you can [contact support][help-premium].
 
-### Further reading
-
-- [Metabase Cloud documentation][cloud-docs]
-
-## Troubleshooting SSO logins
-
-- [Troubleshooting SAML][troubleshooting-saml].
-
-### Checking if SSO is working correctly
-
-Go to your Metabase login page. If SSO is working correctly, you should see [a single button to sign in][sso-gloss] with your identity provider (IdP). Once you're authenticated, you should be automatically redirected to the Metabase home page.
-
-### Further reading
-
-- [SSO documentation][sso-docs]
-- [Checking a person's auth method][how-to-find-auth-method-for-an-account]
+For more information, see the [Metabase Cloud documentation][cloud-docs].
 
 ## I don't know how my logins are managed
 
@@ -87,6 +66,7 @@ What do you use to log in?
 - [SSO documentation][sso-docs]
 - [SAML documentation][saml-docs]
 - [LDAP documentation][ldap-docs]
+- [Checking a person's auth method][how-to-find-auth-method-for-an-account]
 
 ## Are you still stuck?
 
@@ -110,7 +90,6 @@ If you can’t solve your problem using the troubleshooting guides:
 [known-issues]: ./known-issues.html
 [ldap-docs]: ../administration-guide/10-single-sign-on.html#enabling-ldap-authentication
 [metabase-cloud-login]: #troubleshooting-metabase-cloud-logins
-[metabase-idp]: #troubleshooting-metabase-logins
 [no-login-page]: #i-cant-access-the-metabase-login-page
 [pricing]: https://www.metabase.com/pricing/
 [reset-store-password]: https://store.metabase.com/forgot-password
@@ -120,4 +99,3 @@ If you can’t solve your problem using the troubleshooting guides:
 [sso-gloss]: /glossary/sso.html
 [troubleshooting-ldap]: ./ldap.html
 [troubleshooting-saml]: ./saml.html
-[troubleshooting-sso]: #troubleshooting-sso-logins

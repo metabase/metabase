@@ -53,6 +53,10 @@ This error will only occur if you're using **Signed SSO requests**. That is, in 
 
 1. Add a certificate with a private key to your keystore.
 
+### Checking if SAML is working correctly
+
+Go to your Metabase login page. If SAML is working correctly, you should see [a single button to sign in](/glossary/sso) with your identity provider (IdP). Once you're authenticated, you should be automatically redirected to the Metabase home page.
+
 ## Are you still stuck?
 
 If you can’t solve your problem using the troubleshooting guides:
