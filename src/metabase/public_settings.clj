@@ -381,6 +381,11 @@
                     v
                     true))))
 
+(defsetting session-timeout
+  (deferred-tru "Time before inactive users are logged out. By default, sessions last 30 minutes.")
+  :type       :json
+  :default    nil)
+
 (defsetting breakout-bins-num
   (deferred-tru
     (str "When using the default binning strategy and a number of bins is not provided, "
