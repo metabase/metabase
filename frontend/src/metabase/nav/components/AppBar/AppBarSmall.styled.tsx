@@ -49,6 +49,7 @@ export const AppBarLogoContainer = styled.div<AppBarLogoContainerProps>`
   left: 50%;
   transform: translate(-50%, -50%);
   opacity: ${props => (props.isVisible ? 1 : 0)};
+  visibility: ${props => (props.isVisible ? "visible" : "hidden")};
   transition: ${props =>
     props.isVisible ? "opacity 0.3s linear 0.2s" : "none"};
 `;
