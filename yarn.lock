@@ -14029,10 +14029,10 @@ jsprim@^2.0.2:
     json-schema "0.4.0"
     verror "1.10.0"
 
-jsrsasign@^10.2.0:
-  version "10.2.0"
-  resolved "https://registry.yarnpkg.com/jsrsasign/-/jsrsasign-10.2.0.tgz#960ab8046d19d3fcbb584368a57d1977cb0b7ffd"
-  integrity sha512-khMrV/10U02DRzmXhjuLQjddUF39GHndaJZ/3YiiKkbyEl1T5M6EQF9nQUq0DFVCHusmd/jl8TWl4mWt+1L5hg==
+jsrsasign@^10.5.25:
+  version "10.5.25"
+  resolved "https://registry.yarnpkg.com/jsrsasign/-/jsrsasign-10.5.25.tgz#8eb3f943718d73f2dd3d85f587f241a5316b835a"
+  integrity sha512-N7zxHaCwYvFlXsybq4p4RxRwn4AbEq3cEiyjbCrWmwA7g8aS4LTKDJ9AJmsXxwtYesYx0imJ+ITtkyyxLCgeIg==
 
 "jsx-ast-utils@^2.4.1 || ^3.0.0":
   version "3.2.0"

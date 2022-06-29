@@ -514,7 +514,7 @@
                                  :width   :100%})
             :src   (:image-src image-bundle)}]]}))
 
-(defn- series-setting [viz-settings inner-key outer-key]
+(defn- series-setting [viz-settings outer-key inner-key]
   (get-in viz-settings [:series_settings (keyword outer-key) inner-key]))
 
 (defn- single-x-axis-combo-series
