@@ -78,7 +78,7 @@ const AppBarSmall = ({
           <AppBarLogo onLogoClick={handleLogoClick} />
         </AppBarLogoContainer>
       </AppBarHeader>
-      {!isNavBarOpen && isInfoVisible && (
+      {isSubheaderVisible && (
         <AppBarSubheader>
           {isQuestionLineageVisible ? (
             <QuestionLineage />
