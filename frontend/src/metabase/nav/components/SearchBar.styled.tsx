@@ -19,6 +19,10 @@ const activeInputCSS = css`
 
 export const SearchBarRoot = styled.div`
   width: 100%;
+
+  ${breakpointMinSmall} {
+    position: relative;
+  }
 `;
 
 export const SearchInputContainer = styled.div<{ isActive: boolean }>`
