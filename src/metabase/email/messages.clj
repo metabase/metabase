@@ -15,6 +15,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.pulse.markdown :as markdown]
             [metabase.pulse.parameters :as params]
             [metabase.pulse.render :as render]
@@ -250,36 +251,42 @@
      :message-type :html
      :message      message-body)))
 
+(defn- admin-or-ee-monitoring-details-emails
+  "Find emails for users that have an interest in monitoring the database.
+   If oss that means admin users.
+   If ee that also means users with monitoring and details permissions."
+  [database-id]
+  (let [monitoring (perms/application-perms-path :monitoring)
+        db-details (perms/feature-perms-path :details :yes database-id)
+        user-ids (when (premium-features/enable-advanced-permissions?)
+                   (->> {:select   [:pgm.user_id]
+                         :from     [[:permissions_group_membership :pgm]]
+                         :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
+                         :where    [:and
+                                    [:exists {:select [1]
+                                              :from [[:permissions :p]]
+                                              :where [:and
+                                                      [:= :p.group_id :pg.id]
+                                                      [:= :p.object monitoring]]}]
+                                    [:exists {:select [1]
+                                              :from [[:permissions :p]]
+                                              :where [:and
+                                                      [:= :p.group_id :pg.id]
+                                                      [:= :p.object db-details]]}]]
+                         :group-by [:pgm.user_id]}
+                        db/query
+                        (mapv :user_id)))]
+    (db/select-field :email User {:where [:and
+                                          [:= :is_active true]
+                                          (cond-> [:or [:= :is_superuser true]]
+                                            (seq user-ids) (conj [:in :id user-ids]))]})))
+
 (defn send-persistent-model-error-email!
-  "Format and send an email informing the user about errors in the persistent "
+  "Format and send an email informing the user about errors in the persistent model refresh task."
   [database-id persisted-infos trigger]
   {:pre [(seq persisted-infos)]}
   (let [database (:database (first persisted-infos))
-        monitoring (perms/application-perms-path :monitoring)
-        db-details (perms/feature-perms-path :details :yes database-id)
-        user-ids (->> {:select   [:pgm.user_id]
-                       :from     [[:permissions_group_membership :pgm]]
-                       :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
-                       :where    [:and
-                                  [:exists {:select [1]
-                                            :from [[:permissions :p]]
-                                            :where [:and
-                                                    [:= :p.group_id :pg.id]
-                                                    [:= :p.object monitoring]]}]
-
-                                  [:exists {:select [1]
-                                            :from [[:permissions :p]]
-                                            :where [:and
-                                                    [:= :p.group_id :pg.id]
-                                                    [:= :p.object db-details]]}]]
-                       :group-by [:pgm.user_id]}
-                      db/query
-                      (mapv :user_id))
-        emails (db/select-field :email User {:where [:and
-                                                     [:= :is_active true]
-                                                     (cond-> [:or
-                                                              [:= :is_superuser true]]
-                                                       (seq user-ids) (conj [:in :id user-ids]))]})
+        emails (admin-or-ee-monitoring-details-emails database-id)
         timezone (some-> database qp.timezone/results-timezone-id t/zone-id)
         context {:database-name (:name database)
                  :errors
