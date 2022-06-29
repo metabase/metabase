@@ -131,7 +131,7 @@
 
    (testing "if an Advanced FeildValues Exists, make sure we still returns the full FieldValues"
      (mt/with-temp FieldValues [_ {:field_id (mt/id :categories :name)
-                                   :type     "sandbox"
+                                   :type     :sandbox
                                    :hash_key "random-hash"}])
      (is (= :full (:type (field-values/get-or-create-full-field-values! (Field (mt/id :categories :name)))))))))
 
