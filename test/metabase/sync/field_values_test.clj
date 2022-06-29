@@ -57,7 +57,7 @@
 (deftest sync-should-delete-expired-advanced-field-values-test
   (testing "Test that the expired Advanced FieldValues should be removed"
     (let [field-id           (mt/id :venues :price)
-          expired-created-at (t/minus (t/offset-date-time) (t/days (inc field-values/advanced-field-values-max-age)))
+          expired-created-at (t/minus (t/offset-date-time) (t/plus field-values/advanced-field-values-max-age (t/days 1)))
           now                (t/offset-date-time)
           [expired-sandbox-id
            expired-linked-filter-id
