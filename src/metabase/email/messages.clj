@@ -283,11 +283,12 @@
         timezone (some-> database qp.timezone/results-timezone-id t/zone-id)
         context {:database-name (:name database)
                  :errors
-                 (for [persisted-info persisted-infos
+                 (for [[idx persisted-info] (m/indexed persisted-infos)
                        :let [card (:card persisted-info)
                              collection (or (:collection card)
                                             (collection/root-collection-with-ui-details nil))]]
-                   {:error (:error persisted-info)
+                   {:is-not-first (not= 0 idx)
+                    :error (:error persisted-info)
                     :card-id (:id card)
                     :card-name (:name card)
                     :collection-name (:name collection)
