@@ -3,18 +3,24 @@ import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 
 export const AppBarRoot = styled.div`
-  border-bottom: 1px solid ${color("border")};
   background-color: ${color("bg-white")};
 `;
 
-export const AppBarHeader = styled.header`
+export interface AppBarHeaderProps {
+  isSubheaderVisible?: boolean;
+}
+
+export const AppBarHeader = styled.div<AppBarHeaderProps>`
   position: relative;
   height: ${APP_BAR_HEIGHT};
   padding: 0 1rem;
+  border-bottom: 1px solid transparent;
+  border-color: ${props => !props.isSubheaderVisible && color("border")};
 `;
 
 export const AppBarSubheader = styled.div`
   padding: 1rem;
+  border-bottom: 1px solid ${color("border")};
 `;
 
 export const AppBarMainContainer = styled.header`
@@ -43,6 +49,7 @@ export const AppBarLogoContainer = styled.div<AppBarLogoContainerProps>`
   left: 50%;
   transform: translate(-50%, -50%);
   opacity: ${props => (props.isVisible ? 1 : 0)};
+  visibility: ${props => (props.isVisible ? "visible" : "hidden")};
   transition: ${props =>
     props.isVisible ? "opacity 0.3s linear 0.2s" : "none"};
 `;
