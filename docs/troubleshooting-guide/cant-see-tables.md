@@ -35,6 +35,14 @@ Exactly what settings you need will depend on your environment. To test that the
 
 If you can't connect to the database with another application, the problem is probably not with Metabase. Please check that the database server is running and that you have the correct host, port, username, password, and other settings.
 
+## What's the status of your database connection?
+
+**Root cause:** You've configured a database connection, but it's not working as expected.
+
+**Steps to take:**
+
+If your connection isn't working, go to [Troubleshooting database connections](./datawarehouse.html). 
+
 ## Does the table exist?
 
 **Root cause:** The table you think you should be able to see does not exist (e.g., it has a different name than you expect).

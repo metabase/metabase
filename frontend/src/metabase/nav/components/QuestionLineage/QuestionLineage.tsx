@@ -20,7 +20,7 @@ const QuestionLineage = ({
   }
 
   return (
-    <Badge icon={icon}>
+    <Badge icon={icon} isSingleLine>
       {t`Started from`}{" "}
       <Link className="link" to={originalQuestion.getUrl()}>
         {originalQuestion.displayName()}

@@ -66,7 +66,7 @@ describe("visual tests > visualizations > line", () => {
               "field",
               PEOPLE.STATE,
               {
-                "source-field": 11,
+                "source-field": ORDERS.USER_ID,
               },
             ],
           ],
@@ -103,7 +103,7 @@ describe("visual tests > visualizations > line", () => {
               "field",
               PEOPLE.STATE,
               {
-                "source-field": 11,
+                "source-field": ORDERS.USER_ID,
               },
             ],
           ],
