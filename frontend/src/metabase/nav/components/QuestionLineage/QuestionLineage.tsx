@@ -5,7 +5,6 @@ import Badge from "metabase/components/Badge";
 import Question from "metabase-lib/lib/Question";
 
 export interface QuestionLineageProps {
-  icon?: string;
   question?: Question;
   originalQuestion?: Question;
 }
@@ -20,7 +19,7 @@ const QuestionLineage = ({
   }
 
   return (
-    <Badge icon={icon}>
+    <Badge icon={icon} isSingleLine>
       {t`Started from`}{" "}
       <Link className="link" to={originalQuestion.getUrl()}>
         {originalQuestion.displayName()}
