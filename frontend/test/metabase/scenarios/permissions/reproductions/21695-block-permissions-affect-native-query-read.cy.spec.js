@@ -1,4 +1,4 @@
-import { restore, visitDashboard, describeEE } from "__support__/e2e/cypress";
+import { restore, visitDashboard, describeEE } from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { ALL_USERS_GROUP, NOSQL_GROUP } = USER_GROUPS;

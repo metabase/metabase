@@ -368,3 +368,16 @@
        1.3     2 1.251
        12300.0 3 12345.67
        0.00321 3 0.003209817))
+
+(defspec pick-first-test 100
+  (prop/for-all [coll (gen/list gen/int)]
+    (let [result (u/pick-first pos? coll)]
+      (or (and (nil? result)
+               (every? (complement pos?) coll))
+          (let [[x ys] result
+                [non-pos [m & rest]] (split-with (complement pos?) coll)]
+            (and (vector? result)
+                 (= (count result) 2)
+                 (pos? x)
+                 (= x m)
+                 (= ys (concat non-pos rest))))))))

@@ -4,7 +4,7 @@ import {
   modal,
   questionInfoButton,
   rightSidebar,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("issue 17910", () => {
   beforeEach(() => {
@@ -27,7 +27,7 @@ describe("issue 17910", () => {
     questionInfoButton().click();
 
     rightSidebar().within(() => {
-      cy.findAllByPlaceholderText("Description")
+      cy.findAllByPlaceholderText("Add description")
         .type("A description")
         .blur();
       cy.findByText("History");

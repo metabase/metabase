@@ -1,4 +1,4 @@
-import { popover } from "__support__/e2e/cypress";
+import { popover } from "__support__/e2e/helpers";
 
 const currentYearString = new Date().getFullYear().toString();
 

@@ -7,7 +7,7 @@ import {
   setFilter,
   checkFilterLabelAndValue,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 

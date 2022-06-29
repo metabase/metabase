@@ -1,18 +1,18 @@
 (ns metabase.api.emitter
-  (:require
-   [compojure.core :refer [DELETE POST PUT]]
-   [metabase.actions :as actions]
-   [metabase.api.common :as api]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.models
-    :refer [CardEmitter DashboardEmitter Emitter EmitterAction]]
-   [metabase.query-processor.writeback :as qp.writeback]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+  (:require [compojure.core :refer [DELETE POST PUT]]
+            [metabase.actions :as actions]
+            [metabase.actions.http-action :as http-action]
+            [metabase.api.common :as api]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.models
+             :refer [CardEmitter DashboardEmitter Emitter EmitterAction]]
+            [metabase.query-processor.writeback :as qp.writeback]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (defn- emitter
   "Fetch the Emitter with `emitter-id` and extra info from FK-related tables for custom Emitter execution purposes."
@@ -75,15 +75,88 @@
                   s/Keyword s/Any}}
       (su/with-api-error-message "map of parameter name or ID -> map of parameter `:value` and `:type` of the value")))
 
+(comment
+  ;; Assuming things look like this
+;; GET native query action
+:parameters
+;;[
+;;    {
+;;        "id": "2fddf797-838e-81eb-4828-53f947932486",
+;;        "type": "number/=",
+;;        "target": [
+;;            "variable",
+;;            [
+;;                "template-tag",
+;;                "product_id"
+;;            ]
+;;        ],
+;;        "name": "Product",
+;;        "slug": "product_id"
+;;    }
+;;]
+
+;; PUT dashboards/:id
+:emitters
+:parameter_mappings
+;;{
+;;    "2fddf797-838e-81eb-4828-53f947932486": [
+;;        "variable",
+;;        [
+;;            "template-tag",
+;;            "product_id"
+;;        ]
+;;    ]
+;;}
+
+
+;; on execution
+:parameters
+;;{
+;;    "2fddf797-838e-81eb-4828-53f947932486": {
+;;        "value": 1,
+;;        "type": "number/="
+;;    }
+;;}
+
+
+  )
+
+(defn- execute-http-emitter!
+  [emitter parameters]
+  ;; TODO check the types match
+  (let [mapped-params (->> emitter
+                           :parameter_mappings
+                           (map (fn [[k [param-type param-spec]]]
+                                  (if (= "variable" param-type)
+                                    [k (second param-spec)]
+                                    (throw (ex-info "Unimplemented"
+                                                    {:parameters parameters
+                                                     :parameter_mappings (:parameter_mappings emitter)})))))
+                           (into {}))
+        params->value (->> parameters
+                           (map (juxt (comp mapped-params key) (comp #(get % "value") val)))
+                           (into {}))]
+    (http-action/execute-http-action! (:action emitter) params->value)))
+
 (api/defendpoint POST "/:id/execute"
   "Execute a custom emitter."
   [id :as {{:keys [parameters]} :body}]
   {parameters (s/maybe CustomActionParametersMap)}
-  (let [emitter (api/check-404 (emitter id))]
-    (or (get-in emitter [:action :card])
-        (throw (ex-info (tru "No Query Action found for Emitter {0}. Only Query Actions are supported at this point in time."
-                             id)
-                        {:status-code 400, :emitter emitter})))
-    (qp.writeback/execute-query-emitter! emitter parameters)))
+  (let [emitter (api/check-404 (emitter id))
+        action-type (get-in emitter [:action :type])]
+    (case action-type
+      :query
+      (do
+        (or (get-in emitter [:action :card])
+            (throw (ex-info (tru "No Query Action found for Emitter {0}. Only Query Actions are supported at this point in time."
+                                 id)
+                            {:status-code 400, :emitter emitter})))
+        (qp.writeback/execute-query-emitter! emitter parameters))
+
+      :http
+      (execute-http-emitter! emitter parameters)
+
+      ;; TODO We changed what is in action.type Could be the old "row" type, might not need to handle
+      (throw (ex-info (tru "Unknown action type {0}." (name action-type)) emitter)))))
 
 (api/define-routes actions/+check-actions-enabled api/+check-superuser)

@@ -4,7 +4,7 @@ import {
   addPostgresDatabase,
   addMongoDatabase,
   addMySQLDatabase,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("qa databases snapshots", () => {
   beforeEach(() => {

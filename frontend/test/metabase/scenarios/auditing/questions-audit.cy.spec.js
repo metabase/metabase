@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { restore, describeEE, visitQuestion } from "__support__/e2e/cypress";
+import { restore, describeEE, visitQuestion } from "__support__/e2e/helpers";
 
 describeEE("audit > auditing > questions", () => {
   beforeEach(() => {

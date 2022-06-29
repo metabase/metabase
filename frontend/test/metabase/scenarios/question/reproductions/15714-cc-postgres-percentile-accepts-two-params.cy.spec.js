@@ -2,7 +2,7 @@ import {
   enterCustomColumnDetails,
   restore,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const PG_DB_NAME = "QA Postgres12";
 

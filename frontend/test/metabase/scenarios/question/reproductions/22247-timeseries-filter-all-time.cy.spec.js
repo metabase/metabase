@@ -4,7 +4,7 @@ import {
   openProductsTable,
   summarize,
   sidebar,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("time-series filter widget", () => {
   beforeEach(() => {

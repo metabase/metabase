@@ -1,4 +1,4 @@
-import { restore, openOrdersTable } from "__support__/e2e/cypress";
+import { restore, openOrdersTable } from "__support__/e2e/helpers";
 
 describe("#22206 adding and removing columns doesn't duplicate columns", () => {
   beforeEach(() => {

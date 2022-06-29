@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import { getFullName } from "metabase/lib/user";
 import Icon from "metabase/components/Icon";
 import AdminEmptyText from "metabase/components/AdminEmptyText";
 import AdminContentTable from "metabase/components/AdminContentTable";
@@ -198,7 +199,7 @@ const UserRow = ({
 };
 
 function getName(user: IUser): string {
-  const name = [user.first_name, user.last_name].join(" ").trim();
+  const name = getFullName(user);
 
   if (!name) {
     return "-";
