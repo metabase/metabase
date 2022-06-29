@@ -5,10 +5,14 @@ import React, {
   Ref,
   useContext,
   useMemo,
+  useState,
+  useEffect,
+  useRef,
 } from "react";
+import Icon from "metabase/components/Icon";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { TabContext, TabContextType } from "../Tab";
-import { TabListContent, TabListRoot } from "./TabList.styled";
+import { TabListContent, TabListRoot, ScrollButton } from "./TabList.styled";
 
 export interface TabListProps<T>
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
@@ -23,20 +27,72 @@ const TabList = forwardRef(function TabGroup<T>(
 ) {
   const idPrefix = useUniqueId();
   const outerContext = useContext(TabContext);
+
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const [showScrollLeft, setShowScrollLeft] = useState(false);
+  const [showScrollRight, setShowScrollRight] = useState(false);
+
+  const tabListContentRef = useRef(null);
+
   const innerContext = useMemo(() => {
     return { value, idPrefix, onChange };
   }, [value, idPrefix, onChange]);
+
   const activeContext = outerContext.isDefault ? innerContext : outerContext;
+
+  const scroll = (direction: string) => {
+    if (tabListContentRef.current) {
+      const container = tabListContentRef.current as HTMLDivElement;
+
+      const scrollDistance =
+        (container.offsetWidth - 32) * (direction === "left" ? -1 : 1);
+      container.scroll(container.scrollLeft + scrollDistance, 0);
+      setScrollPosition(container.scrollLeft + scrollDistance);
+    }
+  };
+
+  useEffect(() => {
+    if (!tabListContentRef.current) {
+      return;
+    }
+
+    const container = tabListContentRef.current as HTMLDivElement;
+    setShowScrollRight(
+      scrollPosition + container.offsetWidth < container.scrollWidth,
+    );
+    setShowScrollLeft(scrollPosition > 0);
+  }, [setShowScrollLeft, setShowScrollRight, scrollPosition]);
 
   return (
     <TabListRoot {...props} ref={ref} role="tablist">
-      <TabListContent>
+      <TabListContent ref={tabListContentRef}>
         <TabContext.Provider value={activeContext as TabContextType}>
           {children}
         </TabContext.Provider>
       </TabListContent>
+      {showScrollLeft && (
+        <ScrollArrow direction="left" onClick={() => scroll("left")} />
+      )}
+      {showScrollRight && (
+        <ScrollArrow direction="right" onClick={() => scroll("right")} />
+      )}
     </TabListRoot>
   );
 });
+
+interface ScrollArrowProps {
+  direction: "left" | "right";
+  onClick: () => void;
+}
+
+const ScrollArrow = ({ direction, onClick }: ScrollArrowProps) => (
+  <ScrollButton
+    onClick={onClick}
+    direction={direction}
+    aria-label={`scroll-${direction}-button`}
+  >
+    <Icon name={`chevron${direction}`} color="brand" />
+  </ScrollButton>
+);
 
 export default TabList;

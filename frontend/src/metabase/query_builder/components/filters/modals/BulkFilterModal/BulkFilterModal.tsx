@@ -174,7 +174,7 @@ const BulkFilterModalSectionList = ({
     <TabContent value={tab} onChange={setTab}>
       <ModalTabList>
         {sections.map((section, index) => (
-          <Tab key={index} value={index} icon={section.icon}>
+          <Tab key={index} value={index}>
             {section.name}
           </Tab>
         ))}
