@@ -121,9 +121,5 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [slow-dashboard]: ./my-dashboard-is-slow.html
 [sql]: ./sql.html
 [sync-fingerprint-scan]: ./sync-fingerprint-scan.html
-<<<<<<< HEAD
-[upgrade]: ../operations-guide/upgrading-metabase.html
-=======
 [timeout]: ./timeout.html
 [upgrade]: ../operations-guide/upgrading-metabase.html
->>>>>>> master
