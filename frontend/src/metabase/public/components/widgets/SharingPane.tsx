@@ -157,7 +157,6 @@ export default function SharingPane({
         })}
         onClick={() => {
           if (!shouldDisableEmbedding) {
-            console.log("wow man");
             onChangeEmbedType("application");
           }
         }}
