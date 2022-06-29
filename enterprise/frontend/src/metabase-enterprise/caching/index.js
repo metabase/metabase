@@ -7,6 +7,7 @@ import { CacheTTLField } from "./components/CacheTTLField";
 import { DatabaseCacheTTLField } from "./components/DatabaseCacheTTLField";
 import { QuestionCacheTTLField } from "./components/QuestionCacheTTLField";
 import { QuestionCacheSection } from "./components/QuestionCacheSection";
+import { DashboardCacheSection } from "./components/DashboardCacheSection";
 
 import {
   getQuestionsImplicitCacheTTL,
@@ -52,5 +53,6 @@ if (hasPremiumFeature("advanced_config")) {
 
   PLUGIN_CACHING.getQuestionsImplicitCacheTTL = getQuestionsImplicitCacheTTL;
   PLUGIN_CACHING.QuestionCacheSection = QuestionCacheSection;
+  PLUGIN_CACHING.DashboardCacheSection = DashboardCacheSection;
   PLUGIN_CACHING.isEnabled = () => true;
 }

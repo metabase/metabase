@@ -2,6 +2,10 @@ import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
+
+import { PLUGIN_CACHING } from "metabase/plugins";
+import MetabaseSettings from "metabase/lib/settings";
+
 import DefaultTimeline from "metabase/components/Timeline";
 
 import { Dashboard, Revision as RevisionType, User } from "metabase-types/api";
@@ -16,11 +20,12 @@ import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
   DashboardDescriptionEditbaleText,
+  ContentSection,
 } from "./DashboardInfoSidebar.styled";
 
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
-  setDashboardAttribute: (name: string, value: string) => void;
+  setDashboardAttribute: (name: string, value: string | number | null) => void;
   saveDashboardAndCards: (id: number) => void;
   revisions: RevisionType[];
   currentUser: User;
@@ -37,6 +42,9 @@ const DashboardInfoSidebar = ({
 }: DashboardInfoSidebarProps) => {
   const canWrite = dashboard.can_write;
 
+  const showCaching =
+    PLUGIN_CACHING.isEnabled() && MetabaseSettings.get("enable-query-caching");
+
   const handleDescriptionChange = useCallback(
     async (description: string) => {
       await setDashboardAttribute("description", description);
@@ -44,6 +52,11 @@ const DashboardInfoSidebar = ({
     },
     [setDashboardAttribute, saveDashboardAndCards, dashboard],
   );
+
+  const handleUpdateCacheTTL = async (cache_ttl: number | null) => {
+    await setDashboardAttribute("cache_ttl", cache_ttl);
+    saveDashboardAndCards(dashboard.id);
+  };
 
   const events = useMemo(
     () =>
@@ -56,21 +69,34 @@ const DashboardInfoSidebar = ({
 
   return (
     <DashboardInfoSidebarRoot>
-      <DashboardDescriptionEditbaleText
-        initialValue={dashboard.description}
-        isDisabled={!dashboard.can_write}
-        onChange={handleDescriptionChange}
-        isMultiline
-        placeholder={t`Add a helpful description. You'll thank me later`}
-        key={`dashboard-description-${dashboard.description}`}
-      />
+      <ContentSection>
+        <DashboardDescriptionEditbaleText
+          initialValue={dashboard.description}
+          isDisabled={!dashboard.can_write}
+          onChange={handleDescriptionChange}
+          isMultiline
+          placeholder={t`Add a helpful description. You'll thank me later`}
+          key={`dashboard-description-${dashboard.description}`}
+        />
+      </ContentSection>
 
-      <HistoryHeader>{t`History`}</HistoryHeader>
-      <DefaultTimeline
-        items={events}
-        data-testid="dashboard-history-list"
-        revertFn={revertToRevision}
-      />
+      {showCaching && (
+        <ContentSection>
+          <PLUGIN_CACHING.DashboardCacheSection
+            dashboard={dashboard}
+            onSave={handleUpdateCacheTTL}
+          />
+        </ContentSection>
+      )}
+
+      <ContentSection>
+        <HistoryHeader>{t`History`}</HistoryHeader>
+        <DefaultTimeline
+          items={events}
+          data-testid="dashboard-history-list"
+          revertFn={revertToRevision}
+        />
+      </ContentSection>
     </DashboardInfoSidebarRoot>
   );
 };

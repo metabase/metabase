@@ -4,6 +4,7 @@ import {
   popover,
   visitDashboard,
   modal,
+  rightSidebar,
 } from "__support__/e2e/helpers";
 
 import { USERS } from "__support__/e2e/cypress_data";
@@ -35,16 +36,27 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             });
 
             it("should be able to change title and description", () => {
-              cy.findByText("Edit dashboard details").click();
-              cy.location("pathname").should("eq", "/dashboard/1/details");
-              cy.findByLabelText("Name")
+              cy.findByTestId("dashboard-name-heading")
                 .click()
-                .type("1");
-              cy.findByLabelText("Description")
-                .click()
-                .type("Foo");
-              clickButton("Update");
+                .type("1")
+                .blur();
               assertOnRequest("updateDashboard");
+
+              cy.get("main header").within(() => {
+                cy.icon("info").click();
+              });
+
+              rightSidebar().within(() => {
+                cy.findByPlaceholderText(
+                  "Add a helpful description. You'll thank me later",
+                )
+                  .click()
+                  .type("Foo")
+                  .blur();
+              });
+
+              assertOnRequest("updateDashboard");
+
               cy.reload();
               cy.findByDisplayValue("Orders in a dashboard1");
             });
