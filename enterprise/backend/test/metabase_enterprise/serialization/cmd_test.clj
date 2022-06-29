@@ -52,11 +52,11 @@
           :created_at             :%now
           :updated_at             :%now)
         ;; serialize "everything" (which should just be the card and user), which should succeed if #16931 is fixed
-        (is (nil? (cmd/dump (ts/random-dump-dir))))))))
+        (is (nil? (cmd/dump (ts/random-dump-dir "serdes-"))))))))
 
 (deftest blank-target-db-test
   (testing "Loading a dump into an empty app DB still works (#16639)"
-    (let [dump-dir                 (ts/random-dump-dir)
+    (let [dump-dir                 (ts/random-dump-dir "serdes-")
           user-pre-insert-called?  (atom false)]
       (log/infof "Dumping to %s" dump-dir)
       (cmd/dump dump-dir "--user" "crowberto@metabase.com")
