@@ -147,7 +147,7 @@ jobs:
           --folder ${{ matrix.folder }}
       env:
         TERM: xterm
-        
+
     - name: Generate Mochawesome Reports
       if: failure()
       run: yarn generate-cypress-html-report
