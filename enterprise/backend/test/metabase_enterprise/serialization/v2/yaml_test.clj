@@ -6,6 +6,7 @@
             [metabase-enterprise.serialization.v2.ingest :as ingest]
             [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
             [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
+            [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.util.date-2 :as u.date]
@@ -101,7 +102,7 @@
           (testing "for Collections"
             (is (= 100 (count (dir->file-set (io/file dump-dir "Collection")))))
             (doseq [{:keys [entity_id slug] :as coll} (get entities "Collection")
-                    :let [filename (str entity_id "+" slug ".yaml")]]
+                    :let [filename (str entity_id "+" (#'u.yaml/clean-string slug) ".yaml")]]
               (is (= (dissoc coll :serdes/meta)
                      (yaml/from-file (io/file dump-dir "Collection" filename))))))
 
@@ -116,8 +117,12 @@
                      (yaml/from-file (io/file dump-dir "Database" filename))))))
 
           (testing "for Tables"
-            (is (= 100 (count (get entities "Table"))
-                   #_(count (into #{} (map :name (get entities "Table"))))))
+            (is (= 100
+                   (reduce + (for [db    (get entities "Database")
+                                   :let [tables (dir->file-set (io/file dump-dir "Database" (:name db) "Table"))]]
+                               (count tables))))
+                "Tables are scattered, so the directories are harder to count")
+
             (doseq [{:keys [db_id name] :as coll} (get entities "Table")]
               (is (= (-> coll
                          (dissoc :serdes/meta)
@@ -133,18 +138,14 @@
         (testing "ingestion"
           (let [ingestable (ingest.yaml/ingest-yaml dump-dir)]
             (testing "ingest-list is accurate"
-              (is (= (into #{} (comp cat (map serdes.base/serdes-hierarchy))
+              (is (= (into #{} (comp cat
+                                     (map (fn [entity]
+                                            (mapv #(cond-> %
+                                                     (:label %) (update :label #'u.yaml/clean-string))
+                                                  (serdes.base/serdes-hierarchy entity)))))
                            (vals entities))
                      (into #{} (ingest/ingest-list ingestable)))))
 
             (testing "each entity matches its in-memory original"
               (doseq [entity extraction]
                 (is (= entity (ingest/ingest-one ingestable (serdes.base/serdes-hierarchy entity))))))))))))
-
-(comment
-  (let [ing (ingest.yaml/ingest-yaml (io/file "/tmp/serdesv2-VFBQGQNZSBCZLLFXLPQP"))]
-    (ingest/ingest-list ing)
-    #_(serdes.base/serdes-hierarchy (ingest/ingest-one ing [{:model "Database" :id "Small Plastic Clock"}
-                            {:model "Table"    :id "ARR"}]))
-    )
-  )

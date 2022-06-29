@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [metabase-enterprise.serialization.v2.ingest :as ingest]
             [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.util.date-2 :as u.date]
             [yaml.core :as yaml]
             [yaml.reader :as y.reader])
@@ -31,10 +32,14 @@
        (reduce #(update %1 %2 u.date/parse) entity)))
 
 (defn- ingest-entity [root-dir hierarchy]
-  (-> (u.yaml/hierarchy->file root-dir hierarchy)
-      yaml/from-file
-      (assoc :serdes/meta (last hierarchy))
-      (read-timestamps)))
+  (let [entity    (-> (u.yaml/hierarchy->file root-dir hierarchy)
+                      yaml/from-file
+                      (assoc :serdes/meta (last hierarchy))
+                      (read-timestamps))
+        ;; The incoming hierarchy might have some values truncated or sanitized for the filesystem; rebuild it from the
+        ;; real entity.
+        hierarchy (serdes.base/serdes-hierarchy entity)]
+    (assoc entity :serdes/meta (last hierarchy))))
 
 (deftype YamlIngestion [^File root-dir settings]
   ingest/Ingestable

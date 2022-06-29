@@ -3,27 +3,24 @@
             [clojure.string :as str])
   (:import java.io.File))
 
-#_(defn- clean-string [s]
-  (let [clean  (str/replace s #"[^a-zA-Z0-9+\-_ \.]+" "")]
-    (if (> (count clean) 100)
-      (.substring clean 0 100)
-      clean)))
-
-(def ^:private clean-string identity)
+(defn- clean-string [s]
+  (if (> (count s) 100)
+      (.substring s 0 100)
+      s))
 
 (defn ^File hierarchy->file
   "Given a :serdes/meta hierarchy, return a [[File]] corresponding to it."
   [root-dir hierarchy]
   (let [;; All earlier parts of the hierarchy form Model/id/ pairs.
         prefix     (apply concat (for [{:keys [model id]} (drop-last hierarchy)]
-                                   [model (clean-string id)]))
+                                   [model id]))
         ;; The last part of the hierarchy is used for the basename; this is the only part with the label.
         {:keys [id model label]} (last hierarchy)
         basename   (if (nil? label)
                      (str id)
                      ;; + is a legal, unescaped character on all common filesystems, but not `identity-hash` or NanoID!
-                     (str id "+" label))]
-    (apply io/file root-dir (concat prefix [model (str (clean-string basename) ".yaml")]))))
+                     (str id "+" (clean-string label)))]
+    (apply io/file root-dir (concat prefix [model (str basename ".yaml")]))))
 
 (defn path-split
   "Given a root directory and a file underneath it, return a sequence of path parts to get there.

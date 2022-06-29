@@ -244,7 +244,12 @@
   (This is not strictly required - for a different medium like protobufs the hierarchy might be encoded some other way.)
 
   The hierarchy is reconstructed by ingestion and used as the key to read entities with `ingest-one`, and to match
-  against existing entities."
+  against existing entities.
+
+  Implementation notes:
+  - :label is optional
+  - Base the hierarchy on the main entity values, not the `:serdes/meta` parts. (`:serdes/meta` is sometimes
+    reconstructed imperfectly from eg. a filesystem, which might have needed to sanitize or truncate values.)"
   ingested-model)
 
 (defmethod serdes-hierarchy :default [{meta-map :serdes/meta}]
