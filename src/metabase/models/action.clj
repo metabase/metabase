@@ -99,7 +99,9 @@
              (let [http-action (get http-actions-by-action-id (:id action))]
                (-> action
                    (merge
-                     {:disabled false}
+                     {:disabled false
+                      :parameters []
+                      :parameter_mappings []}
                      (select-keys http-action [:name :description :template])
                      (select-keys (:template http-action) [:parameters :parameter_mappings])))))
            actions))))
