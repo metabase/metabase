@@ -8,9 +8,8 @@ Keycloak is an open source platform that can be used as a user directory to save
 
 1. [Set up SAML in Keycloak](#working-in-the-keycloak-console) (the identity provider).
 2. [Set up SAML in Metabase](../enterprise-guide/authenticating-with-saml.html) (the service provider).
-3. Once you've configured SAML in both the Keycloak console and your Metabase Admin settings, you can [check if your SSO setup is working correctly](../administration-guide/10-single-sign-on.html#checking-if-sso-is-working-correctly).
 
-For more information, check out our guide for [authenticating with SAML](authenticating-with-saml.html).
+For more information, check out our guide for [authenticating with SAML](authenticating-with-saml.html#turning-on-saml-based-sso).
 
 ## Working in the Keycloak console
 
@@ -66,3 +65,7 @@ Let's say we want email, name, and surname to be passed between the client (Meta
     - **SAML Attribute NameFormat**: select “Basic” from the dropdown menu.
 
 You can find the attribute values from your Metabase **Admin settings** > **Authentication** > **SAML** > **Attributes**.
+
+## Troubleshooting
+
+For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/cant-log-in.html).

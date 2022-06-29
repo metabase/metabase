@@ -8,6 +8,10 @@ title: Troubleshooting SAML authentication setup
 
 Some common problems when setting up SAML.
 
+## Does your app support SAML?
+
+Verify that the application you created in your IdP supports SAML. Sometimes other options are presented during the app creation process.
+
 ## Is the entity or issuer ID correct?
 
 After filling out the authentication form with your identity provider, you're taken back to Metabase but it throws an error. To see the error, go to **Admin settings** > **Troubleshooting** > **Logs**. You'll see an error that says something like **Incorrect response <issuer>**.
@@ -31,6 +35,10 @@ After filling out the authentication form with your identity provider, you go ba
 1. You should have received an XML file from your identity provider. Open that metadata file, and check to make sure the certificate you inputted is correct.
 2. Go to **Admin settings** > **Settings** > **Authentication** > **SAML**. Check that the certificate that you entered into the **SAML Identity Provider Certificate** field matches the certificate in the XML file you got from your identity provider. Depending on your provider, you might need to download this, open it in a text editor, then copy and paste the certificate's contents into the field.
 
+## Is the SSO URL correct?
+
+Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider’s website has /auth/sso appended to it. For instance, if you want your users to end up at https://metabase.mycompany.com, the full URL should be https://metabase.mycompany.com/auth/sso.
+
 ## Searching for private key and found a null
 
 This error will only occur if you're using **Signed SSO requests**. That is, in Metabase, you've filled out the fields in the configuration section in **Admin settings** > **Settings** > **Authentication** > **SAML** > **Signed SSO requests**. Those fields are:
@@ -44,3 +52,10 @@ This error will only occur if you're using **Signed SSO requests**. That is, in 
 **Steps to take**:
 
 1. Add a certificate with a private key to your keystore.
+
+## Are you still stuck?
+
+If you can’t solve your problem using the troubleshooting guides:
+
+- Search or ask the [Metabase community](https://discourse.metabase.com/).
+- Search for [known bugs or limitations](./known-issues.html).

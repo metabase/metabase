@@ -50,7 +50,10 @@ If you're using [Metabase Cloud][pricing], note that your Metabase store passwor
 ## Troubleshooting SSO logins
 
 - [Troubleshooting SAML][troubleshooting-saml].
-- [SSO logins are creating "unknown" users](https://github.com/metabase/metabase/issues/15484).
+
+### Checking if SSO is working correctly
+
+Go to your Metabase login page. If SSO is working correctly, you should see [a single button to sign in][sso-gloss] with your identity provider (IdP). Once you're authenticated, you should be automatically redirected to the Metabase home page.
 
 ### Further reading
 

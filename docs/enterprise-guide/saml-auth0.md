@@ -8,9 +8,8 @@ title: Setting up SAML with Auth0
 
 1. [Configure SAML in Auth0](#working-in-the-auth0-console) (the identity provider).
 2. [Configure SAML in Metabase](../enterprise-guide/authenticating-with-saml.html) (the service provider).
-3. Once you've configured SAML in both the Auth0 console and your Metabase Admin settings, you can [check if your SSO setup is working correctly](../administration-guide/10-single-sign-on.html#checking-if-sso-is-working-correctly).
 
-For more information, check out our guide for [authenticating with SAML](authenticating-with-saml.html).
+For more information, check out our guide for [authenticating with SAML](authenticating-with-saml.html#turning-on-saml-based-sso).
 
 ## Working in the Auth0 console
 

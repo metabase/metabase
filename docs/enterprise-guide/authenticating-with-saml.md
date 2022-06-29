@@ -20,8 +20,6 @@ Setting up SAML will require you to configure settings in two places:
 1. Your [Metabase admin settings](#turning-on-saml-based-sso).
 2. The [identity provider (IdP) console](#setting-up-saml-with-your-idp).
 
-Once you've configured SAML in both places, you can [check if your SSO setup is working correctly](../administration-guide/10-single-sign-on.html#checking-if-sso-is-working-correctly).
-
 > **Tip:** Before beginning your SAML set-up, make sure you know the password for your Metabase admin account. If anything becomes misconfigured during the set-up process, an "Admin backup login" option on the sign-in screen is available.
 
 ## Turning on SAML-based SSO
@@ -201,16 +199,6 @@ After that, type in the name of the user attribute you added in your SAML provid
 
 ![Group schema](images/saml-group-schema.png)
 
-## Troubleshooting Tips
-
-[Check if your SSO setup is working correctly](../administration-guide/10-single-sign-on.html#checking-if-sso-is-working-correctly). If you're experiencing issues setting up your SAML connection:
-
-- Verify that the application you created in your IdP supports SAML. Sometimes other options are presented during the app creation process.
-- Read all field labels and tooltips carefully. Since SAML providers each use different labeling for their fields, it's important to make sure the correct information is being placed into the correct fields.
-- Set your attributes and check your assertions! Many SAML providers make this pretty easy to do - just look for a button marked "Preview the SAML assertion."
-- Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider's website has `/auth/sso` appended to it. For instance, if you want your users to end up at `https://metabase.mycompany.com`, the full URL should be `https://metabase.mycompany.com/auth/sso`.
-- If you're still stuck, try [Troubleshooting logins](../troubleshooting-guide/cant-log-in.html).
-
 ## Disabling password log-in
 
 Once you have configured SAML authentication, you can choose to disable the option for users to log in via email and password. To do this, return to the main Authentication settings page and scroll to the bottom. A toggle will now be visible allowing you to disable password authentication.
@@ -224,6 +212,10 @@ When users log in to Metabase for the first time via SSO, this will automaticall
 ## Example code using SAML
 
 You can find example code that uses SAML authentication in the [SSO examples repository](https://github.com/metabase/sso-examples).
+
+## Troubleshooting
+
+For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/cant-log-in.html).
 
 ---
 
