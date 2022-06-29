@@ -2,18 +2,15 @@ import {
   restore,
   visitQuestion,
   visitDashboard,
+  openPeopleTable,
 } from "__support__/e2e/helpers";
 
-describe(`search > recently viewed`, () => {
+describe("search > recently viewed", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.visit("/browse/1-sample-database");
 
-    // "People" table
-    cy.findByTextEnsureVisible("People").click();
-    cy.wait("@dataset");
+    openPeopleTable();
     cy.findByTextEnsureVisible("Address");
 
     // "Orders" question
