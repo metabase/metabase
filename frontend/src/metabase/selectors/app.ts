@@ -129,7 +129,7 @@ export const getCollectionId = createSelector(
 export const getIsCollectionPathVisible = createSelector(
   [getQuestion, getDashboard, getRouterPath],
   (question, dashboard, path) =>
-    (question != null || dashboard != null) &&
+    ((question != null && question.isSaved()) || dashboard != null) &&
     PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
 );
 
