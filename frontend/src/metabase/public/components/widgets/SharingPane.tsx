@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { ReactNode, useState } from "react";
 import { t, jt } from "ttag";
 import Icon from "metabase/components/Icon";
 import Toggle from "metabase/core/components/Toggle";
@@ -10,7 +10,12 @@ import { getPublicEmbedHTML } from "metabase/public/lib/code";
 import cx from "classnames";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { Description, Header, OptionHeader } from "./SharingPane.styled";
+import {
+  Description,
+  Header,
+  IconContainer,
+  OptionHeader,
+} from "./SharingPane.styled";
 
 type Resource = {
   dashboard?: number;
@@ -94,91 +99,112 @@ export default function SharingPane({
           </div>
         </div>
       )}
-      <div
-        className={cx("mb4 flex align-start", {
+
+      <SharingOption
+        className={cx({
           disabled: !resource.public_uuid,
         })}
+        illustration={
+          <IconContainer>
+            <Icon name="link" size={32} />
+          </IconContainer>
+        }
       >
-        <div
-          style={{ width: 98, height: 63 }}
-          className="bordered rounded shadowed flex layout-centered"
-        >
-          <Icon name="link" size={32} />
-        </div>
-        <div className="ml2">
-          <OptionHeader className="text-brand">{t`Public link`}</OptionHeader>
-          <Description className="mb1">{t`Share this ${resourceType} with people who don't have a Metabase account using the URL below:`}</Description>
-          <CopyWidget value={publicLink} />
-          {extensions && extensions.length > 0 && (
-            <div className="mt1">
-              {extensions.map(extension => (
-                <span
-                  key={extension}
-                  className={cx(
-                    "cursor-pointer text-brand-hover text-bold text-uppercase",
-                    extension === extensionState ? "text-brand" : "text-light",
-                  )}
-                  onClick={() =>
-                    setExtension(extensionState =>
-                      extension === extensionState ? null : extension,
-                    )
-                  }
-                >
-                  {extension}{" "}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-      <div
-        className={cx("mb4 flex align-start", {
+        <OptionHeader className="text-brand">{t`Public link`}</OptionHeader>
+        <Description className="mb1">{t`Share this ${resourceType} with people who don't have a Metabase account using the URL below:`}</Description>
+        <CopyWidget value={publicLink} />
+        {extensions && extensions.length > 0 && (
+          <div className="mt1">
+            {extensions.map(extension => (
+              <span
+                key={extension}
+                className={cx(
+                  "cursor-pointer text-brand-hover text-bold text-uppercase",
+                  extension === extensionState ? "text-brand" : "text-light",
+                )}
+                onClick={() =>
+                  setExtension(extensionState =>
+                    extension === extensionState ? null : extension,
+                  )
+                }
+              >
+                {extension}{" "}
+              </span>
+            ))}
+          </div>
+        )}
+      </SharingOption>
+
+      <SharingOption
+        className={cx({
           disabled: !resource.public_uuid,
         })}
+        illustration={
+          <ResponsiveImage imageUrl="app/assets/img/simple_embed.png" />
+        }
       >
-        <img
-          width={98}
-          src="app/assets/img/simple_embed.png"
-          srcSet="
-              app/assets/img/simple_embed.png     1x,
-              app/assets/img/simple_embed@2x.png  2x
-            "
-        />
-        <div className="ml2">
-          <OptionHeader className="text-green">{t`Public embed`}</OptionHeader>
-          <Description className="mb1">{t`Embed this ${resourceType} in blog posts or web pages by copying and pasting this snippet:`}</Description>
-          <CopyWidget value={iframeSource} />
-        </div>
-      </div>
-      <div
-        className={cx("mb4 flex align-start", {
+        <OptionHeader className="text-green">{t`Public embed`}</OptionHeader>
+        <Description className="mb1">{t`Embed this ${resourceType} in blog posts or web pages by copying and pasting this snippet:`}</Description>
+        <CopyWidget value={iframeSource} />
+      </SharingOption>
+
+      <SharingOption
+        className={cx({
           disabled: shouldDisableEmbedding,
           "cursor-pointer": !shouldDisableEmbedding,
         })}
+        illustration={
+          <ResponsiveImage imageUrl="app/assets/img/secure_embed.png" />
+        }
         onClick={() => {
           if (!shouldDisableEmbedding) {
             onChangeEmbedType("application");
           }
         }}
       >
-        <img
-          width={100}
-          src="app/assets/img/secure_embed.png"
-          srcSet="
-                app/assets/img/secure_embed.png     1x,
-                app/assets/img/secure_embed@2x.png  2x
-              "
-        />
-        <div className="ml2">
-          <OptionHeader className="text-purple">{t`Embed this ${resourceType} in an application`}</OptionHeader>
-          <Description>{t`By integrating with your application server code, you can provide a secure stats ${resourceType} limited to a specific user, customer, organization, etc.`}</Description>
-          {embeddingHelperText && (
-            <Description enableMouseEvents>{embeddingHelperText}</Description>
-          )}
-        </div>
-      </div>
+        <OptionHeader className="text-purple">{t`Embed this ${resourceType} in an application`}</OptionHeader>
+        <Description>{t`By integrating with your application server code, you can provide a secure stats ${resourceType} limited to a specific user, customer, organization, etc.`}</Description>
+        {embeddingHelperText && (
+          <Description enableMouseEvents>{embeddingHelperText}</Description>
+        )}
+      </SharingOption>
     </div>
   );
+}
+
+interface SharingOptionProps {
+  className: string;
+  onClick?: () => void;
+  illustration: ReactNode;
+  children: ReactNode;
+}
+
+function SharingOption({
+  className,
+  onClick,
+  illustration,
+  children,
+}: SharingOptionProps) {
+  return (
+    <div className={cx("mb4 flex align-start", className)} onClick={onClick}>
+      {illustration}
+      <div className="ml2">{children}</div>
+    </div>
+  );
+}
+
+function ResponsiveImage({ imageUrl }: { imageUrl: string }) {
+  return <img width={100} src={imageUrl} srcSet={getSrcSet(imageUrl)} />;
+}
+
+const imageRegExp = /(?<baseUrl>.*)(?<extension>\.[A-z]{3,4})/;
+function getSrcSet(imageUrl: string) {
+  const { baseUrl, extension } = imageRegExp.exec(imageUrl)?.groups as {
+    baseUrl: string;
+    extension: string;
+  };
+
+  return `${baseUrl}${extension} 1x, ${baseUrl}@2x${extension} 2x`;
 }
 
 function getEmbeddingHelperText({
