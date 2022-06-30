@@ -101,8 +101,8 @@
                    (merge
                      {:disabled false
                       :parameters []
-                      :parameter_mappings []}
-                     (select-keys http-action [:name :description :template])
+                      :parameter_mappings {}}
+                     (select-keys http-action [:name :description :template :response_handle :error_handle])
                      (select-keys (:template http-action) [:parameters :parameter_mappings])))))
            actions))))
 

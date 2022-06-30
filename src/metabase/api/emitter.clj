@@ -127,14 +127,14 @@
   (let [mapped-params (->> emitter
                            :parameter_mappings
                            (map (fn [[k [param-type param-spec]]]
-                                  (if (= "variable" param-type)
+                                  (if (= "variable" (name param-type))
                                     [k (second param-spec)]
                                     (throw (ex-info "Unimplemented"
                                                     {:parameters parameters
                                                      :parameter_mappings (:parameter_mappings emitter)})))))
                            (into {}))
         params->value (->> parameters
-                           (map (juxt (comp mapped-params key) (comp #(get % "value") val)))
+                           (map (juxt (comp mapped-params key) (comp #(get % :value) val)))
                            (into {}))]
     (http-action/execute-http-action! (:action emitter) params->value)))
 
