@@ -14,13 +14,13 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.session :refer [Session]]
-            [metabase.models.setting :refer [*user-local-values*]]
+            [metabase.models.setting :refer [defsetting *user-local-values*]]
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [deferred-trs tru]]
+            [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru tru]]
             [ring.util.response :as response]
             [schema.core :as s]
             [toucan.db :as db])
@@ -123,6 +123,13 @@
     (-> response
         (response/set-cookie metabase-embedded-session-cookie (str session-uuid) cookie-options)
         (assoc-in [:headers anti-csrf-token-header] anti-csrf-token))))
+
+(defn logout
+  "Destroys the current session, resulting in a logout."
+  [session-id]
+  (api/check-exists? Session session-id)
+  (db/delete! Session :id session-id)
+  (clear-session-cookie api/generic-204-no-content))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -312,14 +319,20 @@
 ;;; |                                              check-session-timeout                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn logout
-  "Destroys the current session, resulting in a logout."
-  [session-id]
-  (api/check-exists? Session session-id)
-  (db/delete! Session :id session-id)
-  (clear-session-cookie api/generic-204-no-content))
+;; WIP: this setting should be deleted, in favour of session-timeout-minutes
+(defsetting session-timeout
+  (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
+  :type       :json
+  :default    nil)
 
-(defn timed-out? [session-id session-timeout-minutes time-now]
+(defsetting session-timeout-minutes
+  (deferred-tru "Time before inactive users are logged out. If nil, sessions last indefinitely.")
+  :type       :integer
+  :default    nil)
+
+(defn timed-out?
+  "Return true if the session has timed out at this time."
+  [session-id session-timeout-minutes time-now]
   (when-let [last-activity (db/select-one-field :last_activity Session, :id session-id)]
     ;; Even if the session timeout setting is 0, which is logically possible, we should still let users login for one minute at least to change the setting.
     (t/before? (t/plus last-activity (t/minutes (max session-timeout-minutes 1)))
@@ -343,5 +356,5 @@
   (fn [request respond raise]
     (check-session-timeout*
      [handler request respond raise]
-     (public-settings/session-timeout-minutes)
+     (session-timeout-minutes)
      (t/offset-date-time))))
