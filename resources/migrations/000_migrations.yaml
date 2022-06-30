@@ -11916,7 +11916,7 @@ databaseChangeLog:
             tableName: core_session
             columns:
               name: last_activity
-              type: DATETIME
+              type: ${timestamp_type}
               remarks: 'The last time that the session was used.'
 
   - changeSet:
