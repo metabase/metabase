@@ -35,3 +35,37 @@ export interface WritebackActionEmitter {
   updated_at: string;
   created_at: string;
 }
+
+export type ActionType = "http";
+
+export type ResponseHandler = {};
+export type ErrorHandler = {};
+export type Parameters = {};
+export type ParameterMapping = {};
+
+export type CreateActionData<T extends ActionType> = T extends "http"
+  ? CreateHttpActionData
+  : never;
+
+export type CreateHttpActionData = {
+  template: {
+    method: string;
+    url: string;
+    body: string;
+    headers: string;
+    parameters: Parameters;
+    parameter_mappings: ParameterMapping;
+  };
+  response_handle: ResponseHandler;
+  error_handle: ErrorHandler;
+};
+
+export type CreateAction<T extends ActionType> = {
+  type: T;
+  name: string;
+  description: string;
+} & CreateActionData<T>;
+
+export type SaveAction<T extends ActionType = ActionType> = (
+  data: Omit<CreateAction<T>, "name" | "type" | "description">,
+) => void;

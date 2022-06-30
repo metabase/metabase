@@ -10,12 +10,15 @@ import BodyTab from "./BodyTab";
 import UrlInput from "./UrlInput";
 import Selector from "./Selector";
 import { ActionsApi } from "metabase/services";
+import { ActionType } from "metabase/writeback/types";
 
 type Props = {
-  actionName: string;
+  name: string;
+  description: string;
+  setDescription: (description: string) => void;
 };
 
-const CreateActionPage: React.FC<Props> = ({ actionName }) => {
+const CreateHttpAction: React.FC<Props> = ({ name }) => {
   const [method, setMethod] = React.useState("GET");
   const [contentType, setContentType] = React.useState("application/json");
   const [currentTab, setCurrentTab] = React.useState(TABS[0].name);
@@ -36,7 +39,7 @@ const CreateActionPage: React.FC<Props> = ({ actionName }) => {
   const onSave = useMutation(action => {
     return ActionsApi.create({
       type: "http",
-      name: actionName,
+      name,
       description: "",
       response_handle: {},
       error_handle: {},
@@ -118,4 +121,4 @@ const CONTENT_TYPE = [
   },
 ];
 
-export default CreateActionPage;
+export default CreateHttpAction;

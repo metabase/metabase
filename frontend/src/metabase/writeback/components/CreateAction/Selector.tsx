@@ -26,6 +26,7 @@ const Selector: React.FC<Props> = ({ value, setValue, options }) => {
         content={
           <Contents value={value} setValue={setValue} options={options} />
         }
+        onClose={() => setVisible(false)}
         placement="bottom-start"
       >
         <button
