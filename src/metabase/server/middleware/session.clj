@@ -4,7 +4,8 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.helpers :as hh]
-            [metabase.api.common
+            [java-time :as t]
+            [metabase.api.common :as api
              :refer
              [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
             [metabase.config :as config]
@@ -311,16 +312,36 @@
 ;;; |                                              check-session-timeout                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- timed-out?
-  [session-id time-now]
-  (let [last-activity (db/select-one-field :last_activity Session, :id session-id)]
-    ;; TODO Implement this
-    false))
+(defn logout
+  "Destroys the current session, resulting in a logout."
+  [session-id]
+  (prn "Logout!")
+  (api/check-exists? Session session-id)
+  (db/delete! Session :id session-id)
+  (clear-session-cookie api/generic-204-no-content))
+
+(defn- check-session-timeout*
+  [[handler request respond raise] session-timeout-minutes time-now]
+  (let [session-id (:metabase-session-id request)]
+    (prn session-id)
+    (if (and session-id
+             session-timeout-minutes
+             (when-let [last-activity (db/select-one-field :last_activity Session, :id session-id)]
+               ;; Even if the session timeout setting is 0, which is logically possible, we should still let users login for one minute at least to change the setting.
+               (t/before? (t/plus last-activity (t/minutes (max session-timeout-minutes 1)))
+                          (t/offset-date-time))))
+      (respond (logout session-id))
+      (handler request respond raise))))
 
 (defn check-session-timeout
-  "Middleware that logs out the current user if their session has seen no activity in the last `:max-session-age`
+  "Middleware that logs out the current user if their session has seen no activity in the last `:session-timeout-age`
   (config) seconds."
   [handler]
   (fn [request respond raise]
-    ;; TODO Implement this
-    (handler request respond raise)))
+    ;; WIP: Insert a check here to see if the request is a poll, rather than user activity.
+    (when-let [session-id (:metabase-session-id request)]
+      (db/update! Session session-id :last_activity (t/offset-date-time)))
+    (check-session-timeout*
+     [handler request respond raise]
+     (public-settings/session-timeout-minutes)
+     (t/offset-date-time))))

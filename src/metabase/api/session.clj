@@ -181,9 +181,7 @@
 (api/defendpoint DELETE "/"
   "Logout."
   [:as {:keys [metabase-session-id]}]
-  (api/check-exists? Session metabase-session-id)
-  (db/delete! Session :id metabase-session-id)
-  (mw.session/clear-session-cookie api/generic-204-no-content))
+  (mw.session/logout metabase-session-id))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.

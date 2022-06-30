@@ -381,9 +381,15 @@
                     v
                     true))))
 
+;; WIP: this setting should be deleted
 (defsetting session-timeout
-  (deferred-tru "Time before inactive users are logged out. By default, sessions last 30 minutes.")
+  (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
   :type       :json
+  :default    nil)
+
+(defsetting session-timeout-minutes
+  (deferred-tru "Time before inactive users are logged out. If nil, sessions last indefinitely.")
+  :type       :integer
   :default    nil)
 
 (defsetting breakout-bins-num

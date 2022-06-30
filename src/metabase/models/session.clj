@@ -13,8 +13,11 @@
 
 (models/defmodel Session :core_session)
 
-(defn- pre-update [_]
-  (throw (RuntimeException. "You cannot update a Session.")))
+(defn- pre-update [session]
+  (when-not (= (set (keys session))
+               #{:id :last_activity})
+    (throw (RuntimeException. "You cannot update a Session.")))
+  session)
 
 (defn- pre-insert [session]
   (cond-> session

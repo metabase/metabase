@@ -382,27 +382,75 @@
 ;;; ----------------------------------------------------- Session timeout -----------------------------------------------------
 
 (deftest session-timeout-tests
-  (testing "session with nil `last_activity` does not time out"
-    (let [session-id (format "%s-timeout" test-uuid)]
+  (let [session-id      (format "%s-timeout" test-uuid)
+        handler         (constantly :unaltered)
+        request         {:metabase-session-id session-id}
+        respond         identity
+        raise           identity
+        now             (t/offset-date-time)]
+
+    (testing "session with nil `setting-timeout-minutes` does not time out"
+      (try
+        (mt/with-temp Session [session {:id            session-id
+                                        :user_id       (mt/user->id :lucky)
+                                        :last_activity (t/minus now (t/days 1))}]
+          (is (= :unaltered
+                 (#'mw.session/check-session-timeout*
+                  [handler request respond raise]
+                  nil
+                  now))))
+        (finally
+          (db/delete! Session :id session-id))))
+
+    (testing "session with zero `setting-timeout-minutes` does not time out immediately"
+      (try
+        (mt/with-temp Session [session {:id            session-id
+                                        :user_id       (mt/user->id :lucky)
+                                        :last_activity (t/minus now (t/seconds 30))}]
+          (is (= :unaltered
+                 (#'mw.session/check-session-timeout*
+                  [handler request respond raise]
+                  0
+                  now))))
+        (finally
+          (db/delete! Session :id session-id))))
+
+    (testing "session with nil `last_activity` does not time out"
       (try
         (mt/with-temp Session [session {:id            session-id
                                         :user_id       (mt/user->id :lucky)
                                         :last_activity nil}]
-          (is (false? (#'mw.session/timed-out? (:id session) (t/offset-date-time "2011-04-18T00:00:00Z"))))
-
           (is (= :unaltered
-                 ((mw.session/check-session-timeout (constantly :unaltered)) nil nil identity))))
+                 (#'mw.session/check-session-timeout*
+                  [handler request respond raise]
+                  10
+                  now))))
         (finally
-          (db/delete! Session :id session-id)))))
+          (db/delete! Session :id session-id))))
 
-  (testing "session with zero delta t does not time out"
-    (let [session-id (format "%s-timeout" test-uuid)]
+    (testing "session shorter than `session-timeout-minutes` does not time out"
       (try
         (mt/with-temp Session [session {:id            session-id
                                         :user_id       (mt/user->id :lucky)
-                                        :last_activity (t/offset-date-time "2011-04-18T00:00:00Z")}]
-          (is (false? (#'mw.session/timed-out? (:id session) (t/offset-date-time "2011-04-18T00:00:00Z"))))
+                                        :last_activity (t/minus now (t/minutes 1))}]
           (is (= :unaltered
-                 ((mw.session/check-session-timeout (constantly :unaltered)) nil nil identity))))
+                 (#'mw.session/check-session-timeout*
+                  [handler request respond raise]
+                  10
+                  now))))
+        (finally
+          (db/delete! Session :id session-id))))
+
+    (testing "session longer than `session-timeout-minutes` times out"
+      (try
+        (mt/with-temp Session [session {:id            session-id
+                                        :user_id       (mt/user->id :lucky)
+                                        :last_activity (t/minus now (t/minutes 20))}]
+          (let [response (#'mw.session/check-session-timeout*
+                          [handler request respond raise]
+                          10
+                          now)]
+            (is (= 204 (:status response)))
+            (is (nil? (:body response)))))
         (finally
           (db/delete! Session :id session-id))))))
