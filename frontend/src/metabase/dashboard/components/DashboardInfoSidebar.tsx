@@ -20,7 +20,6 @@ import { revertToRevision } from "metabase/dashboard/actions";
 import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
-  DashboardDescriptionEditbaleText,
   ContentSection,
 } from "./DashboardInfoSidebar.styled";
 
