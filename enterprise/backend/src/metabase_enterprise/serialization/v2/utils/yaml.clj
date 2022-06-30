@@ -1,16 +1,16 @@
 (ns metabase-enterprise.serialization.v2.utils.yaml
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str])
-  (:import java.io.File))
+  (:require [clojure.java.io :as io])
+  (:import java.io.File
+           java.nio.file.Path))
 
 (defn- clean-string [s]
   (if (> (count s) 100)
-      (.substring s 0 100)
+      (subs s 0 100)
       s))
 
-(defn ^File hierarchy->file
+(defn hierarchy->file
   "Given a :serdes/meta hierarchy, return a [[File]] corresponding to it."
-  [root-dir hierarchy]
+  ^File [root-dir hierarchy]
   (let [;; All earlier parts of the hierarchy form Model/id/ pairs.
         prefix     (apply concat (for [{:keys [model id]} (drop-last hierarchy)]
                                    [model id]))
@@ -27,7 +27,7 @@
   Given a root of /foo and file /foo/bar/baz/this.file, returns `[\"bar\" \"baz\" \"this.file\"]`."
   [^File root-dir ^File file]
   (let [relative (.relativize (.toPath root-dir) (.toPath file))]
-    (for [path  (iterator-seq (.iterator relative))]
+    (for [^Path path  (iterator-seq (.iterator relative))]
       (.getName (.toFile path)))))
 
 (defn path->hierarchy

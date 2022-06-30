@@ -3,11 +3,7 @@
   See the detailed breakdown of the (de)serialization processes in [[metabase.models.serialization.base]]."
   (:require [medley.core :as m]
             [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
-            [metabase-enterprise.serialization.v2.models :as serdes.models]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+            [metabase.models.serialization.base :as serdes.base]))
 
 (declare load-one)
 
@@ -17,8 +13,6 @@
   (if (empty? deps)
     ctx
     (reduce load-one ctx deps)))
-
-(def ^:private dummy-models #{"Schema"})
 
 (defn- load-one
   "Loads a single entity, specified by its meta-map hierarchy into the appdb, doing the necessary bookkeeping.
