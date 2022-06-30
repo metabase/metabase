@@ -188,8 +188,27 @@ describe("scenarios > question > saved", () => {
     });
 
     visitQuestion(1);
-    appbar().within(() => cy.findByText("Second collection").click());
+
+    appbar().within(() => {
+      cy.findByText("Second collection").click();
+    });
 
     cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should show the question lineage when a saved question is changed", () => {
+    visitQuestion(1);
+
+    summarize();
+    rightSidebar().within(() => {
+      cy.findByText("Quantity").click();
+      cy.button("Done").click();
+    });
+
+    appbar().within(() => {
+      cy.findByText("Started from").should("be.visible");
+      cy.findByText("Orders").click();
+      cy.findByText("Started from").should("not.exist");
+    });
   });
 });
