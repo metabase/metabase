@@ -18,7 +18,7 @@
   (spit (io/file file) (yaml/generate-string obj :dumper-options {:flow-style :block})))
 
 (defn- store-entity! [{:keys [root-dir]} entity]
-  (spit-yaml (u.yaml/hierarchy->file root-dir (serdes.base/serdes-hierarchy entity))
+  (spit-yaml (u.yaml/hierarchy->file root-dir (serdes.base/serdes-path entity))
              (dissoc entity :serdes/meta)))
 
 (defn- store-settings! [{:keys [root-dir]} settings]
@@ -34,7 +34,7 @@
                     {:opts opts})))
   (let [settings (atom [])]
     (doseq [entity stream]
-      (if (-> entity :serdes/meta :model (= "Setting"))
+      (if (-> entity :serdes/meta last :model (= "Setting"))
         (swap! settings conj entity)
         (store-entity! opts entity)))
     (store-settings! opts @settings)))

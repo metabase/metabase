@@ -384,18 +384,26 @@
 
 ;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
 ;; a trio of strings with schema maybe nil.
-(defmethod serdes.base/serdes-hierarchy "Field" [{[db schema table] :table_id field :name}]
-  (filterv some? [{:model "Database" :id db}
-                  (when schema {:model "Schema" :id schema})
-                  {:model "Table"    :id table}
-                  {:model "Field"    :id field}]))
+(defmethod serdes.base/serdes-generate-path "Field" [_ {table_id :table_id field :name}]
+  (let [table (when (number? table_id)
+                   (db/select-one 'Table :id table_id))
+        db    (when table
+                (db/select-one-field :name 'Database :id (:db_id table)))
+        [db schema table] (if (number? table_id)
+                            [db (:schema table) (:name table)]
+                            ;; If table_id is not a number, it's already been exported as a [db schema table] triple.
+                            table_id)]
+    (filterv some? [{:model "Database" :id db}
+                    (when schema {:model "Schema" :id schema})
+                    {:model "Table"    :id table}
+                    {:model "Field"    :id field}])))
 
 (defmethod serdes.base/serdes-entity-id "Field" [_ {:keys [name]}]
   name)
 
 (defmethod serdes.base/serdes-dependencies "Field" [field]
-  ;; Take the hierarchy, but drop the Field section to get the parent Table's hierarchy instead.
-  [(pop (serdes.base/serdes-hierarchy field))])
+  ;; Take the path, but drop the Field section to get the parent Table's path instead.
+  [(pop (serdes.base/serdes-path field))])
 
 (defmethod serdes.base/extract-one "Field"
   [_ _ {:keys [table_id] :as field}]
@@ -412,12 +420,12 @@
         (assoc :table_id table-id))))
 
 (defmethod serdes.base/load-find-local "Field"
-  [hierarchy]
-  (let [db-name            (-> hierarchy first :id)
-        schema-name        (when (= 3 (count hierarchy))
-                             (-> hierarchy second :id))
+  [path]
+  (let [db-name            (-> path first :id)
+        schema-name        (when (= 3 (count path))
+                             (-> path second :id))
         [{table-name :id}
-         {field-name :id}] (take-last 2 hierarchy)
+         {field-name :id}] (take-last 2 path)
         db-id              (db/select-one-field :id 'Database :name db-name)
         table-id           (db/select-one-field :id 'Table :name table-name :db_id db-id :schema schema-name)]
     (db/select-one-field :id Field :name field-name :table_id table-id)))

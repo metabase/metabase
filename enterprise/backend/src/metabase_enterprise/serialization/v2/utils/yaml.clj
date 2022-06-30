@@ -9,7 +9,7 @@
       s))
 
 (defn hierarchy->file
-  "Given a :serdes/meta hierarchy, return a [[File]] corresponding to it."
+  "Given a :serdes/meta abstract path, return a [[File]] corresponding to it."
   ^File [root-dir hierarchy]
   (let [;; All earlier parts of the hierarchy form Model/id/ pairs.
         prefix     (apply concat (for [{:keys [model id]} (drop-last hierarchy)]
@@ -31,7 +31,8 @@
       (.getName (.toFile path)))))
 
 (defn path->hierarchy
-  "Given the list of path chunks as returned by [[path-split]], reconstruct the hierarchy corresponding to it."
+  "Given the list of file path chunks as returned by [[path-split]], reconstruct the `:serdes/meta` abstract path
+  corresponding to it."
   [path-parts]
   (let [parentage  (into [] (for [[model id] (partition 2 (drop-last 2 path-parts))]
                               {:model model :id id}))

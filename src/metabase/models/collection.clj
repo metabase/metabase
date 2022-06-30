@@ -939,7 +939,7 @@
     (-> (serdes.base/extract-one-basics "Collection" coll)
         (dissoc :location)
         (assoc :parent_id parent-id :personal_owner_id owner-email)
-        (assoc-in [:serdes/meta :label] (:slug coll)))))
+        (assoc-in [:serdes/meta 0 :label] (:slug coll)))))
 
 (defmethod serdes.base/load-xform "Collection" [{:keys [parent_id personal_owner_id] :as contents}]
   (let [loc        (if parent_id
@@ -959,9 +959,8 @@
     [[{:model "Collection" :id parent_id}]]
     []))
 
-(defmethod serdes.base/serdes-hierarchy "Collection" [{:keys [slug] :as coll}]
-  [(cond-> {:model "Collection"
-            :id    (serdes.base/serdes-entity-id "Collection" coll)}
+(defmethod serdes.base/serdes-generate-path "Collection" [_ {:keys [slug] :as coll}]
+  [(cond-> (serdes.base/infer-self-path "Collection" coll)
      slug  (assoc :label slug))])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

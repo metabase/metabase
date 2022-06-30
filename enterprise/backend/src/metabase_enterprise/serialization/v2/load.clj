@@ -15,32 +15,31 @@
     (reduce load-one ctx deps)))
 
 (defn- load-one
-  "Loads a single entity, specified by its meta-map hierarchy into the appdb, doing the necessary bookkeeping.
+  "Loads a single entity, specified by its `:serdes/meta` abstract path, into the appdb, doing some bookkeeping to avoid
+  cycles.
 
-  If the incoming entity has any dependencies, they are processed first (postorder) so that any foreign key references
-  in this entity can be resolved properly.
+  If the incoming entity has any dependencies, they are recursively processed first (postorder) so that any foreign key
+  references in this entity can be resolved properly.
 
   This is mostly bookkeeping for the overall deserialization process - the actual load of any given entity is done by
   [[metabase.models.serialization.base/load-one!]] and its various overridable parts, which see.
 
   Circular dependencies are not allowed, and are detected and thrown as an error."
-  [{:keys [expanding ingestion seen] :as ctx} hierarchy]
+  [{:keys [expanding ingestion seen] :as ctx} path]
   (cond
-    (expanding hierarchy) (throw (ex-info (format "Circular dependency on %s" (pr-str hierarchy)) {}))
-    (seen hierarchy)      ctx ; Already been done, just skip it.
-    :else (let [ingested (serdes.ingest/ingest-one ingestion hierarchy)
-                ;model    (db/resolve-model (symbol model-name))
+    (expanding path) (throw (ex-info (format "Circular dependency on %s" (pr-str path)) {:path path}))
+    (seen path)      ctx ; Already been done, just skip it.
+    :else (let [ingested (serdes.ingest/ingest-one ingestion path)
                 deps     (serdes.base/serdes-dependencies ingested)
                 ctx      (-> ctx
-                             (update :expanding conj hierarchy)
+                             (update :expanding conj path)
                              (load-deps deps)
-                             (update :seen conj hierarchy)
-                             (update :expanding disj hierarchy))
-                ;; Regenerate the hierarchy, since the one from the filesystem might have eg. sanitized file names.
-                ;; Those suffice to look up the value, but it should be derived from the real value.
-                rebuilt-hierarchy (serdes.base/serdes-hierarchy ingested)
-                local-pk (serdes.base/load-find-local rebuilt-hierarchy)
-                _        (serdes.base/load-one! ingested local-pk)]
+                             (update :seen conj path)
+                             (update :expanding disj path))
+                ;; Use the abstract path as attached by the ingestion process, not the original one we were passed.
+                rebuilt-path    (serdes.base/serdes-path ingested)
+                local-pk-or-nil (serdes.base/load-find-local rebuilt-path)
+                _               (serdes.base/load-one! ingested local-pk-or-nil)]
             ctx)))
 
 (defn load-metabase
@@ -54,9 +53,3 @@
                       :ingestion ingestion
                       :from-ids  (m/index-by :id contents)}
             contents)))
-
-(comment
-  (serdes.base/load-find-local [{:model "Database" :id "Sample Database"}
-                                {:model "Schema"   :id "PUBLIC"}
-                                {:model "Table"    :id "ORDERS"}])
-  )

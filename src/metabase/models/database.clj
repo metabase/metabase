@@ -293,8 +293,8 @@
   [_ {:keys [name]}]
   name)
 
-(defmethod serdes.base/serdes-hierarchy "Database"
-  [{:keys [name]}]
+(defmethod serdes.base/serdes-generate-path "Database"
+  [_ {:keys [name]}]
   [{:model "Database" :id name}])
 
 (defmethod serdes.base/load-find-local "Database"

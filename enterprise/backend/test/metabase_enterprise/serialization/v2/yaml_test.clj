@@ -9,8 +9,8 @@
             [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.serialization.base :as serdes.base]
-            [metabase.util.date-2 :as u.date]
             [metabase.test.generate :as test-gen]
+            [metabase.util.date-2 :as u.date]
             [reifyhealth.specmonstah.core :as rs]
             [yaml.core :as yaml]))
 
@@ -20,6 +20,14 @@
        (filter #(.isFile %))
        (map #(.getName %))
        set))
+
+(defn- subdirs [dir]
+  (->> dir
+       .listFiles
+       (remove #(.isFile %))))
+
+(defn- strip-labels [path]
+  (mapv #(dissoc % :label) path))
 
 (deftest basic-dump-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -84,7 +92,7 @@
                                shuffle)]
           (is (= (-> exp-files
                      (get meta-maps)
-                     (assoc :serdes/meta (last meta-maps)))
+                     (assoc :serdes/meta (mapv #(dissoc % :label) meta-maps)))
                  (ingest/ingest-one ingestable meta-maps))))))))
 
 (deftest e2e-storage-ingestion-test
@@ -94,10 +102,13 @@
                          :database   [[10]]
                          :table      (into [] (for [db [:db0 :db1 :db2 :db3 :db4 :db5 :db6 :db7 :db8 :db9]]
                                                 [10 {:refs {:db_id db}}]))
-                         #_[[100]]})
+                         :field      (into [] (for [n     (range 100)
+                                                    :let [table (keyword (str "t" n))]]
+                                                [10 {:refs {:table_id table}}]))})
       (let [extraction (into [] (extract/extract-metabase {}))
-            entities   (reduce (fn [m {{:keys [model]} :serdes/meta :as entity}]
-                                 (update m model (fnil conj []) entity))
+            entities   (reduce (fn [m entity]
+                                 (update m (-> entity :serdes/meta last :model)
+                                         (fnil conj []) entity))
                                {} extraction)]
         (is (= 100 (-> entities (get "Collection") count)))
 
@@ -134,6 +145,23 @@
                          (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Database" db_id "Table" (str name ".yaml")))))))
 
+          (testing "for Fields"
+            (is (= 1000
+                   (reduce + (for [db    (get entities "Database")
+                                   table (subdirs (io/file dump-dir "Database" (:name db) "Table"))]
+                               (->> (io/file table "Field")
+                                    dir->file-set
+                                    count))))
+                "Fields are scattered, so the directories are harder to count")
+
+            (doseq [{[db schema table] :table_id name :name :as coll} (get entities "Field")]
+              (is (nil? schema))
+              (is (= (-> coll
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Database" db "Table" table "Field" (str name ".yaml")))))))
+
           (testing "for settings"
             (is (= (into {} (for [{:keys [key value]} (get entities "Setting")]
                               [key value]))
@@ -146,10 +174,11 @@
                                      (map (fn [entity]
                                             (mapv #(cond-> %
                                                      (:label %) (update :label #'u.yaml/clean-string))
-                                                  (serdes.base/serdes-hierarchy entity)))))
+                                                  (serdes.base/serdes-path entity)))))
                            (vals entities))
                      (into #{} (ingest/ingest-list ingestable)))))
 
             (testing "each entity matches its in-memory original"
               (doseq [entity extraction]
-                (is (= entity (ingest/ingest-one ingestable (serdes.base/serdes-hierarchy entity))))))))))))
+                (is (= (update entity :serdes/meta strip-labels)
+                       (ingest/ingest-one ingestable (serdes.base/serdes-path entity))))))))))))

@@ -208,7 +208,8 @@
                                   :spec        ::field
                                   :insert!     {:model Field}
                                   :relations   {:table_id [:table :id]}
-                                  :constraints {:table_id #{:uniq}}}
+                                  ;:constraints {:table_id #{:uniq}}
+                                  }
    :metric                       {:prefix    :metric
                                   :spec      ::metric
                                   :insert!   {:model Metric}
@@ -243,14 +244,14 @@
   [query]
   (rsg/ent-db-spec-gen {:schema schema} query))
 
-(def ^:private table-names (atom {}))
+(def ^:private unique-names (atom {}))
 
-(defn- make-unique-name [old-name db]
-  (let [names    (get @table-names db #{})
+(defn- make-unique-name [old-name prefix]
+  (let [names    (get @unique-names prefix #{})
         new-name (if (names old-name)
                    (str (gensym old-name))
                    old-name)]
-    (swap! table-names update-in [db new-name] (fnil conj #{}))
+    (swap! unique-names update prefix (fnil conj #{}) new-name)
     new-name))
 
 (def ^:private field-positions (atom {:table-fields {}}))
@@ -269,7 +270,11 @@
 
     ;; Table names need to be unique within their database. This enforces it, and appends junk to names if needed.
     (= :table ent-type)
-    (update :name make-unique-name (:db_id visit-val))
+    (update :name make-unique-name [:db (:db_id visit-val)])
+
+    ;; Field names need to be unique within their table. This enforces it, and appends junk to names if needed.
+    (= :field ent-type)
+    (update :name make-unique-name [:table (:table_id visit-val)])
 
     (and (:description visit-val) (coin-toss 0.2))
     (dissoc :description)))

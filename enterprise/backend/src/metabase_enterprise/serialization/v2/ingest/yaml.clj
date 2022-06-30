@@ -1,8 +1,9 @@
 (ns metabase-enterprise.serialization.v2.ingest.yaml
+  "Note that throughout the YAML file handling, the `:serdes/meta` abstract path is referred to as the \"hierarchy\",
+  to avoid confusion with filesystem paths."
   (:require [clojure.java.io :as io]
             [metabase-enterprise.serialization.v2.ingest :as ingest]
             [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
-            [metabase.models.serialization.base :as serdes.base]
             [metabase.util.date-2 :as u.date]
             [yaml.core :as yaml]
             [yaml.reader :as y.reader])
@@ -16,7 +17,7 @@
 (defn- build-settings [file]
   (let [settings (yaml/from-file file)]
     (for [[k _] settings]
-      ; We return a hierarchy of 1 item, the setting itself.
+      ; We return a path of 1 item, the setting itself.
       [{:model "Setting" :id (name k)}])))
 
 
@@ -34,12 +35,11 @@
 (defn- ingest-entity [root-dir hierarchy]
   (let [entity    (-> (u.yaml/hierarchy->file root-dir hierarchy)
                       yaml/from-file
-                      (assoc :serdes/meta (last hierarchy))
+                      (assoc :serdes/meta hierarchy)
                       (read-timestamps))
-        ;; The incoming hierarchy might have some values truncated or sanitized for the filesystem; rebuild it from the
-        ;; real entity.
-        hierarchy (serdes.base/serdes-hierarchy entity)]
-    (assoc entity :serdes/meta (last hierarchy))))
+        ;; Strip the labels off the hierarchy; they might have been manipulated (eg. truncated) by the storage system.
+        hierarchy (mapv #(dissoc % :label) hierarchy)]
+    (assoc entity :serdes/meta hierarchy)))
 
 (deftype YamlIngestion [^File root-dir settings]
   ingest/Ingestable
@@ -52,7 +52,7 @@
     (let [{:keys [model id]} (first meta-maps)]
       (if (and (= 1 (count meta-maps))
                (= "Setting" model))
-        {:serdes/meta (first meta-maps) :key (keyword id) :value (get settings (keyword id))}
+        {:serdes/meta meta-maps :key (keyword id) :value (get settings (keyword id))}
         (ingest-entity root-dir meta-maps)))))
 
 (defn ingest-yaml

@@ -10,13 +10,13 @@
   ;; This is written as a protocol since overriding it with [[reify]] if useful for testing.
   (ingest-list
     [this]
-    "Return a reducible stream of meta-map *hierarchies*, one for each entity in the dump.
-    See the description of the `:serdes/meta` maps in [[metabase.models.serialization.base]].
-    Each hierarchy is ordered from the root to the leaf.
+    "Return a reducible stream of `:serdes/meta`-style abstract paths, one for each entity in the dump.
+    See the description of these abstract paths in [[metabase.models.serialization.base]].
+    Each path is ordered from the root to the leaf.
 
     The order of the whole list is not specified and should not be relied upon!")
 
   (ingest-one
-    [this meta-maps]
-    "Given one of the meta-map hierarchies returned by [[ingest-list]], read in and return the entire corresponding
-    entity."))
+    [this path]
+    "Given one of the `:serdes/meta` abstract paths returned by [[ingest-list]], read in and return the entire
+    corresponding entity."))

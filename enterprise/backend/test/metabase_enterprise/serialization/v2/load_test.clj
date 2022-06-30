@@ -9,21 +9,28 @@
             [metabase.models.serialization.hash :as serdes.hash]
             [toucan.db :as db]))
 
-(defn- no-labels [hierarchy]
-  (mapv #(dissoc % :label) hierarchy))
+(defn- no-labels [path]
+  (mapv #(dissoc % :label) path))
+
+(defn- ids-by-model [entities model-name]
+  (->> entities
+       (map (comp last :serdes/meta))
+       (filter #(= model-name (:model %)))
+       (map :id)
+       set))
 
 (defn- ingestion-in-memory [extractions]
   (let [mapped (into {} (for [entity (into [] extractions)]
-                          [(no-labels (serdes.base/serdes-hierarchy entity))
+                          [(no-labels (serdes.base/serdes-path entity))
                            entity]))]
     (reify
       serdes.ingest/Ingestable
       (ingest-list [_]
         (keys mapped))
-      (ingest-one [_ hierarchy]
-        (or (get mapped (no-labels hierarchy))
-            (throw (ex-info (format "Unknown ingestion target: %s" hierarchy)
-                            {:hierarchy hierarchy :world mapped})))))))
+      (ingest-one [_ path]
+        (or (get mapped (no-labels path))
+            (throw (ex-info (format "Unknown ingestion target: %s" path)
+                            {:path path :world mapped})))))))
 
 ;;; WARNING for test authors: [[extract/extract-metabase]] returns a lazy reducible value. To make sure you don't
 ;;; confound your tests with data from your dev appdb, remember to eagerly
@@ -38,7 +45,7 @@
           (ts/with-source-db
             (ts/create! Collection :name "Basic Collection" :entity_id eid1)
             (reset! serialized (into [] (serdes.extract/extract-metabase {})))
-            (is (some (fn [{{:keys [model id]} :serdes/meta}]
+            (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
                         (and (= model "Collection") (= id eid1)))
                       @serialized))))
 
@@ -116,11 +123,7 @@
         (testing "serialization should use identity hashes where no entity_id is defined"
           (is (= #{(:entity_id @c1b)
                    (serdes.hash/identity-hash @c2b)}
-                 (->> @serialized
-                      (map :serdes/meta)
-                      (filter #(= "Collection" (:model %)))
-                      (map :id)
-                      set))))
+                 (ids-by-model @serialized "Collection"))))
 
         (testing "deserializing, the name change causes a duplicated collection"
           (ts/with-dest-db
@@ -159,16 +162,12 @@
 
         (testing "serialization of databases is based on the :name"
           (is (= #{(:name @db1s) (:name @db2s) "test-data"} ; TODO I'm not sure where the `test-data` one comes from.
-                 (->> @serialized
-                      (map :serdes/meta)
-                      (filter #(= "Database" (:model %)))
-                      (map :id)
-                      set))))
+                 (ids-by-model @serialized "Database"))))
 
         (testing "tables reference their databases by name"
           (is (= #{(:name @db1s) (:name @db2s) "test-data"}
                  (->> @serialized
-                      (filter #(-> % :serdes/meta :model (= "Table")))
+                      (filter #(-> % :serdes/meta last :model (= "Table")))
                       (map :db_id)
                       set))))
 

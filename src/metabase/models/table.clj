@@ -235,23 +235,22 @@
 (defmethod serdes.base/serdes-dependencies "Table" [table]
   [[{:model "Database" :id (:db_id table)}]])
 
-(defmethod serdes.base/serdes-hierarchy "Table" [table]
-  (when-not (:db_id table)
-    (throw (Exception. "argh")))
-  (into [] (concat [{:model "Database" :id (:db_id table)}]
-                   (when (:schema table)
-                     [{:model "Schema" :id (:schema table)}])
-                   [{:model "Table" :id (:name table)}])))
+(defmethod serdes.base/serdes-generate-path "Table" [_ table]
+  (let [db-name (db/select-one-field :name 'Database :id (:db_id table))]
+    (filterv some? [{:model "Database" :id db-name}
+                    (when (:schema table)
+                      {:model "Schema" :id (:schema table)})
+                    {:model "Table" :id (:name table)}])))
 
 (defmethod serdes.base/serdes-entity-id "Table" [_ {:keys [name]}]
   name)
 
 (defmethod serdes.base/load-find-local "Table"
-  [hierarchy]
-  (let [db-name     (-> hierarchy first :id)
-        schema-name (when (= 3 (count hierarchy))
-                      (-> hierarchy second :id))
-        table-name  (-> hierarchy last :id)
+  [path]
+  (let [db-name     (-> path first :id)
+        schema-name (when (= 3 (count path))
+                      (-> path second :id))
+        table-name  (-> path last :id)
         db-id       (db/select-one-field :id Database :name db-name)]
     (db/select-one-field :id Table :name table-name :db_id db-id :schema schema-name)))
 
