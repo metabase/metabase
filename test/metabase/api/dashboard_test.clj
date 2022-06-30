@@ -11,11 +11,11 @@
             [metabase.http-client :as client]
             [metabase.models :refer [Card
                                      Collection
-                                     Database
                                      Dashboard
                                      DashboardCard
                                      DashboardCardSeries
                                      DashboardEmitter
+                                     Database
                                      Field
                                      FieldValues
                                      Pulse
