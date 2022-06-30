@@ -8,7 +8,7 @@ interface SidebarButtonProps {
 
 function SidebarButton({ isSidebarOpen, onClick }: SidebarButtonProps) {
   return (
-    <SidebarButtonRoot onClick={onClick} data-testid="sidebar-toggle-button">
+    <SidebarButtonRoot onClick={onClick} data-testid="sidebar-toggle">
       <SidebarIcon
         size={28}
         name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"}

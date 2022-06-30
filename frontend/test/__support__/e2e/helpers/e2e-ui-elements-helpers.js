@@ -28,13 +28,13 @@ export function appBar() {
 
 export function openNavigationSidebar() {
   appBar()
-    .findByTestId("sidebar-toggle-button")
+    .findByTestId("sidebar-toggle")
     .click();
 }
 
 export function closeNavigationSidebar() {
   appBar()
-    .findByTestId("sidebar-toggle-button")
+    .findByTestId("sidebar-toggle")
     .click();
 }
 
