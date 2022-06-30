@@ -52,7 +52,7 @@
   After this time, these field values should be deleted by the `delete-expired-advanced-field-values` job."
   (t/days 30))
 
-(def ^:private advanced-field-values-types
+(def advanced-field-values-types
   "A class of fieldvalues that has additional constraints/filters."
   #{:sandbox         ;; are fieldvalues but filtered by sandbox permissions
     :linked-filter}) ;; are fieldvalues but has constraints from other linked parameters on dashboard/embedding
