@@ -6,6 +6,7 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
+import MetabaseSettings from "metabase/lib/settings";
 import User from "metabase/entities/users";
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
@@ -15,13 +16,16 @@ import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
 import { PasswordSuccessMessage } from "./UserSuccessModal.styled";
+import { getSetting } from "metabase/selectors/settings";
 
 class UserSuccessModal extends React.Component {
   componentWillUnmount() {
     this.props.clearTemporaryPassword(this.props.params.userId);
   }
   render() {
-    const { onClose, user, temporaryPassword } = this.props;
+    const { onClose, user, temporaryPassword, isSsoConfigured } = this.props;
+    const isEeSsoConfigured =
+      MetabaseSettings.isEnterprise() && isSsoConfigured;
     return (
       <ModalContent
         title={t`${user.common_name} has been added`}
@@ -31,35 +35,32 @@ class UserSuccessModal extends React.Component {
         {temporaryPassword ? (
           <PasswordSuccess user={user} temporaryPassword={temporaryPassword} />
         ) : (
-          <EmailSuccess user={user} />
+          <EmailSuccess isEeSsoConfigured={isEeSsoConfigured} user={user} />
         )}
       </ModalContent>
     );
   }
 }
 
-export default _.compose(
-  User.load({
-    id: (state, props) => props.params.userId,
-  }),
-  connect(
-    (state, props) => ({
-      temporaryPassword: getUserTemporaryPassword(state, {
-        userId: props.params.userId,
-      }),
-    }),
-    {
-      onClose: () => push("/admin/people"),
-      clearTemporaryPassword,
-    },
-  ),
-)(UserSuccessModal);
-
-const EmailSuccess = ({ user }) => (
-  <div>{jt`We’ve sent an invite to ${(
-    <strong>{user.email}</strong>
-  )} with instructions to set their password.`}</div>
-);
+const EmailSuccess = ({ user, isEeSsoConfigured }) => {
+  if (isEeSsoConfigured) {
+    return (
+      <div>{jt`We’ve sent an invite to ${(
+        <strong>{user.email}</strong>
+      )} with instructions to log in. If this user is unable to authenticate then you can ${(
+        <Link
+          to={`/admin/people/${user.id}/reset`}
+          className="link"
+        >{t`reset their password.`}</Link>
+      )}`}</div>
+    );
+  }
+  return (
+    <div>{jt`We’ve sent an invite to ${(
+      <strong>{user.email}</strong>
+    )} with instructions to set their password.`}</div>
+  );
+};
 
 const PasswordSuccess = ({ user, temporaryPassword }) => (
   <div>
@@ -82,3 +83,28 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
     </div>
   </div>
 );
+
+export default _.compose(
+  User.load({
+    id: (state, props) => props.params.userId,
+  }),
+  connect(
+    (state, props) => ({
+      temporaryPassword: getUserTemporaryPassword(state, {
+        userId: props.params.userId,
+      }),
+      isSsoConfigured: [
+        "google-auth-client-id",
+        "ldap-enabled",
+        "jwt-enabled",
+        "saml-enabled",
+      ]
+        .map(settingKey => getSetting(state, settingKey))
+        .some(Boolean),
+    }),
+    {
+      onClose: () => push("/admin/people"),
+      clearTemporaryPassword,
+    },
+  ),
+)(UserSuccessModal);
