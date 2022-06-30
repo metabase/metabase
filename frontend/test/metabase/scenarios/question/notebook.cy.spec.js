@@ -414,13 +414,11 @@ describe("scenarios > question > notebook", () => {
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    cy.findByText("Filter").click();
-    cy.findByTestId("sidebar-right").within(() => {
-      cy.findByText("Max of Name").click();
+    filter();
+    cy.findByText("Summaries").click();
 
-      cy.findByText("Is").click();
-    });
-
+    cy.findByLabelText("Max of Name").click();
+    cy.findByText("Is").click();
     cy.findByText("Starts with").click();
 
     cy.findByText("Case sensitive").click();
@@ -439,13 +437,10 @@ describe("scenarios > question > notebook", () => {
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    cy.findByText("Filter").click();
-    cy.findByTestId("sidebar-right").within(() => {
-      cy.findByText("Min of Vendor").click();
-
-      cy.findByText("Is").click();
-    });
-
+    filter();
+    cy.findByText("Summaries").click();
+    cy.findByLabelText("Min of Vendor").click();
+    cy.findByText("Is").click();
     cy.findByText("Ends with").click();
 
     cy.findByText("Case sensitive").click();

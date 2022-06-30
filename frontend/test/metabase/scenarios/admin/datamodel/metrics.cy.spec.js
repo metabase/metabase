@@ -5,6 +5,7 @@ import {
   openOrdersTable,
   visualize,
   summarize,
+  filter,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -162,12 +163,15 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.get(".full")
         .find(".Button")
         .click();
-      cy.findByText("Filter").click();
-      cy.findByText("Total").click();
+
+      filter();
+
+      cy.findByLabelText("Total").click();
       cy.findByText("Equal to").click();
       cy.findByText("Greater than").click();
       cy.findByPlaceholderText("Enter a number").type("50");
       cy.findByText("Add filter").click();
+      cy.button("Apply").click();
       cy.findByText("Save").click();
       cy.findAllByText("Save")
         .last()
