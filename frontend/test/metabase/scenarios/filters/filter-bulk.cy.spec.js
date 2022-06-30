@@ -302,7 +302,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("should apply a boolean filter", () => {
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -312,7 +312,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("should change a boolean filter", () => {
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -322,7 +322,7 @@ describe("scenarios > filters > bulk filtering", () => {
       openFilterModal();
 
       modal().within(() => {
-        cy.findByText("false").click();
+        cy.findByText("False").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -332,7 +332,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("should remove a boolean filter", () => {
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -342,7 +342,7 @@ describe("scenarios > filters > bulk filtering", () => {
       openFilterModal();
 
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -388,7 +388,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     // if this gets flaky, disable, it's an issue with internal state in the datepicker component
-    it("can add a date range filter", () => {
+    it.skip("can add a date range filter", () => {
       modal().within(() => {
         cy.findByLabelText("Created At").within(() => {
           cy.findByLabelText("more options").click();

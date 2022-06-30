@@ -7,8 +7,8 @@ export const OPTIONS: RadioOption<boolean>[] = [
 ];
 
 export const EXPANDED_OPTIONS: RadioOption<string | boolean | any>[] = [
-  { name: t`true`, value: true },
-  { name: t`false`, value: false },
-  { name: t`empty`, value: "is-null" },
-  { name: t`not empty`, value: "not-null" },
+  { name: t`True`, value: true },
+  { name: t`False`, value: false },
+  { name: t`Empty`, value: "is-null" },
+  { name: t`Not empty`, value: "not-null" },
 ];
