@@ -335,7 +335,9 @@
   [session-id session-timeout-minutes time-now]
   (when-let [last-activity (db/select-one-field :last_activity Session, :id session-id)]
     ;; Even if the session timeout setting is 0, which is logically possible, we should still let users login for one minute at least to change the setting.
-    (t/before? (t/plus last-activity (t/minutes (max session-timeout-minutes 1)))
+    (t/before? (t/plus last-activity
+                       (t/seconds 10) ;; For testing purposes, hand-code the timeout to 10 seconds
+                       #_(t/minutes (max session-timeout-minutes 1)))
                time-now)))
 
 (defn- check-session-timeout*
