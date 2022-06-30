@@ -98,18 +98,16 @@ function ValuesInput({
   return (
     <BetweenContainer>
       <NumberInput
-        type="number"
         placeholder={t`min`}
         value={filterArguments[0] ?? ""}
-        onChange={e => onChange([e.target.value, filterArguments[1]])}
+        onChange={val => onChange([val, filterArguments[1]])}
         fullWidth
       />
       <NumberSeparator>{t`and`}</NumberSeparator>
       <NumberInput
-        type="number"
         placeholder={t`max`}
         value={filterArguments[1] ?? ""}
-        onChange={e => onChange([filterArguments[0], e.target.value])}
+        onChange={val => onChange([filterArguments[0], val])}
         fullWidth
       />
     </BetweenContainer>
