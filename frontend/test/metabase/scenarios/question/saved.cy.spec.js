@@ -8,11 +8,9 @@ import {
   startNewQuestion,
   visualize,
   openQuestionActions,
-} from "__support__/e2e/helpers";
-import {
   questionInfoButton,
   rightSidebar,
-} from "../../../__support__/e2e/helpers/e2e-ui-elements-helpers";
+} from "__support__/e2e/helpers";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
