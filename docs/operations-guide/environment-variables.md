@@ -608,7 +608,7 @@ Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `""`
 
-Default page to show the user.
+Default page to show people when they log in.
 
 ### `MB_LDAP_ATTRIBUTE_EMAIL`
 
