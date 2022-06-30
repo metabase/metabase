@@ -61,8 +61,8 @@
     (fn [~binding]
       ~@body)))
 
-(defn do-with-temp-dashcard [{:keys [dash card dashcard]} f]
-  (with-temp-card [card card]
+(defn do-with-temp-dashcard [{:keys [dash card dashcard card-fn]} f]
+  (with-temp-card [card (if (ifn? card-fn) (card-fn card) card)]
     (mt/with-temp* [Dashboard     [dashboard (merge
                                               (when-not (:parameters dash)
                                                 {:parameters [{:id      "_VENUE_ID_"

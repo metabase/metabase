@@ -181,7 +181,16 @@
                       :rasta :post 202 (format "card/%d/query" card-id)
                       {:parameters [{:type   :number
                                      :target [:variable [:template-tag :category]]
-                                     :value  2}]})))))))
+                                     :value  2}]})))))
+    (testing "should not allow cards with is_write true"
+      (mt/with-temp*
+        [Database   [db    {:details (:details (mt/db)), :engine :h2}]
+         Card       [card  {:is_write true
+                            :dataset_query
+                            {:database (u/the-id db)
+                             :type     :native
+                             :native   {:query "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = 1;"}}}]]
+        (mt/user-http-request :rasta :post 405 (str  "card/" (:id card) "/query") {})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1526,10 +1535,10 @@
     (with-cards-in-readable-collection card
       (let [orig qp.card/run-query-for-card-async]
         (with-redefs [qp.card/run-query-for-card-async (fn [card-id export-format & options]
-                                                          (apply orig card-id export-format
-                                                                 :run (fn [{:keys [constraints]} _]
-                                                                        {:constraints constraints})
-                                                                 options))]
+                                                         (apply orig card-id export-format
+                                                                :run (fn [{:keys [constraints]} _]
+                                                                       {:constraints constraints})
+                                                                options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
             (is (= {:constraints nil}
                    (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
@@ -1543,7 +1552,17 @@
             (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanitiy "
                           "check to make sure the `with-redefs` in the test above actually works)")
               (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
-                     (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
+                     (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card)))))))))))
+  (testing "is_write cards cannot be exported"
+    (mt/with-temp*
+      [Database   [db    {:details (:details (mt/db)), :engine :h2}]
+       Card       [card  {:is_write true
+                          :dataset_query
+                          {:database (u/the-id db)
+                           :type     :native
+                           :native   {:query "delete from users;"}}}]]
+      (is (= "Write queries are only executable via the Actions API."
+             (:message (mt/user-http-request :rasta :post 405 (format "card/%d/query/csv" (u/the-id card)))))))))
 
 (defn- test-download-response-headers
   [url]
@@ -2169,6 +2188,17 @@
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
+
+(deftest pivot-card-with-writeable-card
+  (mt/with-temp*
+    [Database   [db    {:details (:details (mt/db)), :engine :h2}]
+     Card       [card  {:is_write true
+                        :dataset_query
+                        {:database (u/the-id db)
+                         :type     :native
+                         :native   {:query "delete from users;"}}}]]
+    (is (= "Write queries are only executable via the Actions API."
+           (:message (mt/user-http-request :rasta :post 405 (format "card/pivot/%d/query" (u/the-id card))))))))
 
 (deftest dataset-card
   (testing "Setting a question to a dataset makes it viz type table"

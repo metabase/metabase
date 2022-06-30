@@ -11,6 +11,7 @@
             [metabase.http-client :as client]
             [metabase.models :refer [Card
                                      Collection
+                                     Database
                                      Dashboard
                                      DashboardCard
                                      DashboardCardSeries
@@ -1671,55 +1672,65 @@
                 (testing "Should return error if current User doesn't have query perms for the Card"
                   (mt/with-temp-vals-in-db Card card-id {:collection_id collection-id}
                     (is (= "You don't have permissions to do that."
-                           (mt/user-http-request :rasta :post 403 (url))))))))))))))
+                           (mt/user-http-request :rasta :post 403 (url)))))))))
+          (testing "with writable card"
+            (mt/with-temp*
+              [Database   [db    {:details (:details (mt/db)), :engine :h2}]
+               Card       [card  {:is_write true
+                                  :dataset_query
+                                  {:database (u/the-id db)
+                                   :type     :native
+                                   :native   {:query "delete from users;"}}}]]
+              (is (= "Write queries are only executable via the Actions API."
+                     (:message (mt/user-http-request :rasta :post 405 (url :card-id (:id card))))))))))))
 
-;; see also [[metabase.query-processor.dashboard-test]]
-(deftest dashboard-card-query-parameters-test
-  (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
-    (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
-      (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
-        (testing "parameters"
-          (testing "Should respect valid parameters"
-            (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
-                         (mt/user-http-request :rasta :post 202 url
-                                               {:parameters [{:id    "_PRICE_"
-                                                              :value 4}]})))
-            (testing "New parameter types"
-              (testing :number/=
-                (is (schema= (dashboard-card-query-expected-results-schema :row-count 94)
-                             (mt/user-http-request :rasta :post 202 url
-                                                   {:parameters [{:id    "_PRICE_"
-                                                                  :type  :number/=
-                                                                  :value [1 2 3]}]}))))))
-          (testing "Should return error if parameter doesn't exist"
-            (is (= "Dashboard does not have a parameter with ID \"_THIS_PARAMETER_DOES_NOT_EXIST_\"."
-                   (mt/user-http-request :rasta :post 400 url
-                                         {:parameters [{:id    "_THIS_PARAMETER_DOES_NOT_EXIST_"
-                                                        :value 3}]}))))
-          (testing "Should return sensible error message for invalid parameter input"
-            (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                              "Each value must be a parameter map with an 'id' key")}}
-                   (mt/user-http-request :rasta :post 400 url
-                                         {:parameters {"_PRICE_" 3}}))))
-          (testing "Should ignore parameters that are valid for the Dashboard but not part of this Card (no mapping)"
-            (testing "Sanity check"
+  ;; see also [[metabase.query-processor.dashboard-test]]
+  (deftest dashboard-card-query-parameters-test
+    (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
+      (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
+        (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
+          (testing "parameters"
+            (testing "Should respect valid parameters"
               (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
                            (mt/user-http-request :rasta :post 202 url
                                                  {:parameters [{:id    "_PRICE_"
-                                                                :value 4}]}))))
-            (mt/with-temp-vals-in-db DashboardCard dashcard-id {:parameter_mappings []}
-              (is (schema= (dashboard-card-query-expected-results-schema :row-count 100)
-                           (mt/user-http-request :rasta :post 202 url
-                                                 {:parameters [{:id    "_PRICE_"
-                                                                :value 4}]})))))
+                                                                :value 4}]})))
+              (testing "New parameter types"
+                (testing :number/=
+                  (is (schema= (dashboard-card-query-expected-results-schema :row-count 94)
+                               (mt/user-http-request :rasta :post 202 url
+                                                     {:parameters [{:id    "_PRICE_"
+                                                                    :type  :number/=
+                                                                    :value [1 2 3]}]}))))))
+            (testing "Should return error if parameter doesn't exist"
+              (is (= "Dashboard does not have a parameter with ID \"_THIS_PARAMETER_DOES_NOT_EXIST_\"."
+                     (mt/user-http-request :rasta :post 400 url
+                                           {:parameters [{:id    "_THIS_PARAMETER_DOES_NOT_EXIST_"
+                                                          :value 3}]}))))
+            (testing "Should return sensible error message for invalid parameter input"
+              (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
+                                                "Each value must be a parameter map with an 'id' key")}}
+                     (mt/user-http-request :rasta :post 400 url
+                                           {:parameters {"_PRICE_" 3}}))))
+            (testing "Should ignore parameters that are valid for the Dashboard but not part of this Card (no mapping)"
+              (testing "Sanity check"
+                (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
+                             (mt/user-http-request :rasta :post 202 url
+                                                   {:parameters [{:id    "_PRICE_"
+                                                                  :value 4}]}))))
+              (mt/with-temp-vals-in-db DashboardCard dashcard-id {:parameter_mappings []}
+                (is (schema= (dashboard-card-query-expected-results-schema :row-count 100)
+                             (mt/user-http-request :rasta :post 202 url
+                                                   {:parameters [{:id    "_PRICE_"
+                                                                  :value 4}]})))))
 
-          ;; don't let people try to be sneaky and get around our validation by passing in a different `:target`
-          (testing "Should ignore incorrect `:target` passed in to API endpoint"
-            (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
-                         (mt/user-http-request :rasta :post 202 url
-                                               {:parameters [{:id     "_PRICE_"
-                                                              :target [:dimension [:field (mt/id :venues :id) nil]]
-                                                              :value  4}]})))))))))
+            ;; don't let people try to be sneaky and get around our validation by passing in a different `:target`
+            (testing "Should ignore incorrect `:target` passed in to API endpoint"
+              (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
+                           (mt/user-http-request :rasta :post 202 url
+                                                 {:parameters [{:id     "_PRICE_"
+                                                                :target [:dimension [:field (mt/id :venues :id) nil]]
+                                                                :value  4}]}))))))))))
 
 (defn- parse-export-format-results [^bytes results export-format]
   (with-open [is (java.io.ByteArrayInputStream. results)]
@@ -1739,7 +1750,17 @@
                                           {:request-options {:as :byte-array}}
                                           :parameters (json/generate-string [{:id    "_PRICE_"
                                                                               :value 4}]))
-                    export-format)))))))))
+                    export-format))))))
+      (testing "with writable card"
+        (mt/with-temp*
+          [Database   [db    {:details (:details (mt/db)), :engine :h2}]
+           Card       [card  {:is_write true
+                              :dataset_query
+                              {:database (u/the-id db)
+                               :type     :native
+                               :native   {:query "delete from users;"}}}]]
+          (is (= "Write queries are only executable via the Actions API."
+                 (:message (mt/user-http-request :rasta :post 405 (str (dashboard-card-query-url dashboard-id (:id card) dashcard-id) "/csv"))))))))))
 
 (defn- dashcard-pivot-query-endpoint [dashboard-id card-id dashcard-id]
   (format "dashboard/pivot/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id))
@@ -1752,12 +1773,18 @@
                         Card          [{card-id :id} (api.pivots/pivot-card)]
                         DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
           (let [result (mt/user-http-request :rasta :post 202 (dashcard-pivot-query-endpoint dashboard-id card-id dashcard-id))
-                  rows   (mt/rows result)]
-              (is (= 1144 (:row_count result)))
-              (is (= "completed" (:status result)))
-              (is (= 6 (count (get-in result [:data :cols]))))
-              (is (= 1144 (count rows)))
+                rows   (mt/rows result)]
+            (is (= 1144 (:row_count result)))
+            (is (= "completed" (:status result)))
+            (is (= 6 (count (get-in result [:data :cols]))))
+            (is (= 1144 (count rows)))
 
-              (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
-              (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
-              (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
+            (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+            (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
+            (is (= [nil nil nil 7 18760 69540] (last rows))))
+          (testing "with writable card"
+            (mt/with-temp*
+              [Card       [card (assoc (api.pivots/pivot-card)
+                                       :is_write true)]]
+              (is (= "Write queries are only executable via the Actions API."
+                     (:message (mt/user-http-request :rasta :post 405 (dashcard-pivot-query-endpoint dashboard-id (:id card) dashcard-id))))))))))))

@@ -8,13 +8,24 @@
             [metabase.api.pivots :as api.pivots]
             [metabase.api.public :as api.public]
             [metabase.http-client :as client]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Dimension Field FieldValues]]
+            [metabase.models :refer [Card
+                                     Collection
+                                     Dashboard
+                                     DashboardCard
+                                     DashboardCardSeries
+                                     Database
+                                     Dimension
+                                     Field
+                                     FieldValues]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.driver.sql :as sql]
+            [clojure.java.jdbc :as jdbc]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 
@@ -442,6 +453,16 @@
                                                                :target [:dimension (mt/id :venues :name)]
                                                                :value  ["PizzaHacker"]
                                                                :id     "_VENUE_NAME_"}])))))))))))
+
+(deftest execute-public-dashcard-params-validation-test-with-writable-card
+  (testing "GET /api/public/dashboard/:uuid/card/:card-id"
+    (testing "Should not work with a writable card"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-dashboard [dash]
+          (with-temp-public-card [card {:is_write true}]
+            (let [dashcard (add-card-to-dashboard! card dash)]
+              ;; the 405 is caught and rethrown as a 400
+              (client/client :get 400 (dashcard-url dash card dashcard)))))))))
 
 (deftest execute-public-dashcard-additional-series-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"
