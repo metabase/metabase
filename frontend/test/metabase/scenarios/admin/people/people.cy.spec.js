@@ -360,16 +360,7 @@ describeEE("scenarios > admin > people", () => {
   describe("email configured", () => {
     beforeEach(() => {
       // Setup email server, since we show different modal message when email isn't configured
-      cy.request("PUT", "/api/setting", {
-        "email-from-address": "admin@metabase.test",
-        "email-from-name": "Metabase Admin",
-        "email-reply-to": "reply-to@metabase.test",
-        "email-smtp-host": "localhost",
-        "email-smtp-password": null,
-        "email-smtp-port": "1234",
-        "email-smtp-security": "none",
-        "email-smtp-username": null,
-      });
+      setupSMTP();
 
       // Setup Google authentication
       cy.request("PUT", "/api/setting", {
