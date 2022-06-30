@@ -188,10 +188,7 @@ describe("scenarios > question > saved", () => {
     });
 
     visitQuestion(1);
-
-    appbar().within(() => {
-      cy.findByText("Second collection").click();
-    });
+    appbar().within(() => cy.findByText("Second collection").click());
 
     cy.findByText("Orders").should("be.visible");
   });
