@@ -7,6 +7,7 @@ export function fixBetweens(query: StructuredQuery): StructuredQuery {
     .filters()
     .filter(filter => filter.operatorName() === "between");
 
+  // find the first invalid filter (if any), and fix it recursively
   for (const filter of betweenFilters) {
     const validArgumentsCount = countValidArumgents(filter);
     if (validArgumentsCount === 1) {
