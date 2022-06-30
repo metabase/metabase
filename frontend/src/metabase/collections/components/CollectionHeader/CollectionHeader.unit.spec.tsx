@@ -179,6 +179,61 @@ describe("CollectionHeader", () => {
       expect(props.onDeleteBookmark).toHaveBeenCalledWith(props.collection);
     });
   });
+
+  describe("moving and arching collections", () => {
+    it("should be able to move and archive a collection with write access", () => {
+      const props = getProps({
+        collection: createMockCollection({
+          can_write: true,
+        }),
+      });
+
+      render(<CollectionHeader {...props} />);
+      userEvent.click(screen.getByLabelText("ellipsis icon"));
+
+      expect(screen.getByText("Move")).toBeInTheDocument();
+      expect(screen.getByText("Archive")).toBeInTheDocument();
+    });
+
+    it("should not be able to move and archive a collection without write access", () => {
+      const props = getProps({
+        collection: createMockCollection({
+          can_write: false,
+        }),
+      });
+
+      render(<CollectionHeader {...props} />);
+
+      expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
+    });
+
+    it("should not be able to move and archive the root collection", () => {
+      const props = getProps({
+        collection: createMockCollection({
+          id: "root",
+          name: "Our analytics",
+          can_write: true,
+        }),
+      });
+
+      render(<CollectionHeader {...props} />);
+
+      expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
+    });
+
+    it("should not be able to move and archive personal collections", () => {
+      const props = getProps({
+        collection: createMockCollection({
+          personal_owner_id: 1,
+          can_write: true,
+        }),
+      });
+
+      render(<CollectionHeader {...props} />);
+
+      expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
+    });
+  });
 });
 
 const getProps = (
