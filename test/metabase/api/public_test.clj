@@ -21,7 +21,10 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.driver.sql :as sql]
+            [clojure.java.jdbc :as jdbc]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 

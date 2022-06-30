@@ -11,6 +11,7 @@
             [metabase.http-client :as client]
             [metabase.models :refer [Card
                                      Collection
+                                     Database
                                      Dashboard
                                      DashboardCard
                                      DashboardCardSeries
