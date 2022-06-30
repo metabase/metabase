@@ -122,8 +122,7 @@ export function onRenderValueLabels(
         const hidden =
           !showAll && barCount > 1 && isBarLike(display) && barWidth < 20;
         return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
-      })
-      .filter(d => !(display === "bar" && d.y === 0));
+      });
 
     if (display === "waterfall" && data.length > 0) {
       let total = 0;
