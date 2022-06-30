@@ -133,6 +133,17 @@ export function visitQuestion(id) {
 }
 
 /**
+ * Visit an archived question.
+ *
+ * @param {number} id
+ */
+export function visitArchivedQuestion(id) {
+  cy.visit(`/question/${id}`);
+
+  cy.findByText("This question has been archived");
+}
+
+/**
  * Visit a dashboard and wait for the related queries to load.
  *
  * @param {number} dashboard_id

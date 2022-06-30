@@ -1,5 +1,6 @@
 import {
   restore,
+  visitArchivedQuestion,
   visitQuestion,
   saveDashboard,
   popover,
@@ -80,6 +81,8 @@ describe("managing question from the question's details sidebar", () => {
               cy.wait("@getItems"); // unpinned items
               cy.location("pathname").should("eq", "/collection/root");
               cy.findByText("Orders").should("not.exist");
+
+              visitArchivedQuestion(1);
             });
 
             it("should be able to add question to dashboard", () => {
