@@ -7,6 +7,7 @@ import { PLUGIN_CACHING } from "metabase/plugins";
 import MetabaseSettings from "metabase/lib/settings";
 
 import DefaultTimeline from "metabase/components/Timeline";
+import EditableText from "metabase/core/components/EditableText";
 
 import { Dashboard, Revision as RevisionType, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
@@ -70,7 +71,7 @@ const DashboardInfoSidebar = ({
   return (
     <DashboardInfoSidebarRoot>
       <ContentSection>
-        <DashboardDescriptionEditbaleText
+        <EditableText
           initialValue={dashboard.description}
           isDisabled={!dashboard.can_write}
           onChange={handleDescriptionChange}

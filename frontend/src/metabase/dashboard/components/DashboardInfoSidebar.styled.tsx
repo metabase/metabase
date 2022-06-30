@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import EditableText from "metabase/core/components/EditableText";
 
 import { color } from "metabase/lib/colors";
 
@@ -15,8 +14,6 @@ export const DashboardInfoSidebarRoot = styled.div`
 export const HistoryHeader = styled.h3`
   margin-bottom: 1rem;
 `;
-
-export const DashboardDescriptionEditbaleText = styled(EditableText)``;
 
 export const ContentSection = styled.div`
   padding: 2rem 0;

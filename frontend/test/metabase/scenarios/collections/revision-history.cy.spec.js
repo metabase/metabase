@@ -87,12 +87,6 @@ describe("revision history", () => {
               }
             });
 
-            it.skip("should be able to get to the dashboard revision modal directly via url", () => {
-              cy.visit("/dashboard/1/history");
-              cy.findByText(/created this/);
-              cy.findAllByRole("button", { name: "Revert" });
-            });
-
             it("should be able to revert a dashboard (metabase#15237)", () => {
               visitDashboard(1);
               openRevisionHistory();

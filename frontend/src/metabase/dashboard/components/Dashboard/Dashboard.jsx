@@ -256,7 +256,7 @@ class Dashboard extends Component {
 
     return (
       <DashboardLoadingAndErrorWrapper
-        isFullHeight={isEditing || isSharing}
+        isFullHeight
         isFullscreen={isFullscreen}
         isNightMode={shouldRenderAsNightMode}
         loading={!dashboard}

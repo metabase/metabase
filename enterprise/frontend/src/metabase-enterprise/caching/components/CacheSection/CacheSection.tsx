@@ -11,18 +11,16 @@ import { normalizeCacheTTL } from "../../utils";
 
 import { Text, CacheSectionRoot, CachePopover } from "./CacheSection.styled";
 
-type CACHE_TTL = number | null;
-
 interface CacheSectionProps {
-  initialCacheTTL: CACHE_TTL;
-  onSave: (cache_ttl: CACHE_TTL) => Promise<any>;
+  initialCacheTTL: number | null;
+  onSave: (cache_ttl: number | null) => Promise<any>;
 }
 
 export const CacheSection = ({
   initialCacheTTL,
   onSave,
 }: CacheSectionProps) => {
-  const [cacheTTL, setCacheTTL] = useState<CACHE_TTL>(initialCacheTTL);
+  const [cacheTTL, setCacheTTL] = useState(initialCacheTTL);
 
   const handleChange = useCallback(
     number => {
