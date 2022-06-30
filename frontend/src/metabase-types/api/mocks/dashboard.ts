@@ -5,5 +5,6 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   name: "Dashboard",
   ordered_cards: [],
   can_write: true,
+  description: "",
   ...opts,
 });

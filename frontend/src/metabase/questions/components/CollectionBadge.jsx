@@ -7,9 +7,10 @@ import Collection from "metabase/entities/collections";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 const propTypes = {
-  collection: PropTypes.object,
-  analyticsContext: PropTypes.string,
   className: PropTypes.string,
+  collection: PropTypes.object,
+  isSingleLine: PropTypes.bool,
+  analyticsContext: PropTypes.string,
 };
 
 const IRREGULAR_ICON_WIDTH = 14;
@@ -21,7 +22,12 @@ const IRREGULAR_ICON_PROPS = {
   targetOffsetX: IRREGULAR_ICON_WIDTH,
 };
 
-function CollectionBadge({ collection, analyticsContext, className }) {
+function CollectionBadge({
+  className,
+  collection,
+  isSingleLine,
+  analyticsContext,
+}) {
   if (!collection) {
     return null;
   }
@@ -33,11 +39,12 @@ function CollectionBadge({ collection, analyticsContext, className }) {
   };
   return (
     <Badge
+      className={className}
       to={collection.getUrl()}
       icon={icon}
       activeColor={icon.color}
       inactiveColor="text-light"
-      className={className}
+      isSingleLine={isSingleLine}
       data-metabase-event={`${analyticsContext};Collection Badge Click`}
     >
       {collection.getName()}
