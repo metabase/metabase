@@ -315,22 +315,25 @@
 (defn logout
   "Destroys the current session, resulting in a logout."
   [session-id]
-  (prn "Logout!")
   (api/check-exists? Session session-id)
   (db/delete! Session :id session-id)
   (clear-session-cookie api/generic-204-no-content))
 
+(defn timed-out? [session-id session-timeout-minutes time-now]
+  (when-let [last-activity (db/select-one-field :last_activity Session, :id session-id)]
+    ;; Even if the session timeout setting is 0, which is logically possible, we should still let users login for one minute at least to change the setting.
+    (t/before? (t/plus last-activity (t/minutes (max session-timeout-minutes 1)))
+               time-now)))
+
 (defn- check-session-timeout*
   [[handler request respond raise] session-timeout-minutes time-now]
   (let [session-id (:metabase-session-id request)]
-    (prn session-id)
-    (if (and session-id
-             session-timeout-minutes
-             (when-let [last-activity (db/select-one-field :last_activity Session, :id session-id)]
-               ;; Even if the session timeout setting is 0, which is logically possible, we should still let users login for one minute at least to change the setting.
-               (t/before? (t/plus last-activity (t/minutes (max session-timeout-minutes 1)))
-                          (t/offset-date-time))))
-      (respond (logout session-id))
+    (if (and session-id session-timeout-minutes)
+      (if (timed-out? session-id session-timeout-minutes time-now)
+        (respond (logout session-id))
+        (do ;; WIP: Insert a check here to see if the request is a poll, rather than user activity.
+          (db/update! Session session-id :last_activity time-now)
+          (handler request respond raise)))
       (handler request respond raise))))
 
 (defn check-session-timeout
@@ -338,9 +341,6 @@
   (config) seconds."
   [handler]
   (fn [request respond raise]
-    ;; WIP: Insert a check here to see if the request is a poll, rather than user activity.
-    (when-let [session-id (:metabase-session-id request)]
-      (db/update! Session session-id :last_activity (t/offset-date-time)))
     (check-session-timeout*
      [handler request respond raise]
      (public-settings/session-timeout-minutes)
