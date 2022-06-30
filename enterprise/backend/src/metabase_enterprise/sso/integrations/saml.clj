@@ -31,7 +31,6 @@
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
-            [ring.util.codec :as codec]
             [ring.util.response :as response]
             [saml20-clj.core :as saml]
             [schema.core :as s])
