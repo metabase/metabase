@@ -466,6 +466,31 @@
             {:cols default-multi-columns
              :rows [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]})))))
 
+(deftest series-with-color-test
+  (testing "Check if single x-axis combo series can convert colors"
+    (is (= [{:name "NumPurchased", :color "#a7cf7b", :type :bar, :data [[1.25 20] [5.0 10] [10.0 1]], :yAxisPosition "left"}]
+           (#'body/single-x-axis-combo-series
+            :bar
+            [[[10.0] [1]] [[5.0] [10]] [[1.25] [20]]]
+            [{:name "Price", :display_name "Price", :base_type :type/BigInteger, :semantic_type nil}]
+            [{:name "NumPurchased", :display_name "NumPurchased", :base_type :type/BigInteger, :semantic_type nil}]
+            {:series_settings {:NumPurchased {:color "#a7cf7b"}}}))))
+  (testing "Check if double x-axis combo series can convert colors"
+    (is (= [{:name "Bob", :color "#c5a9cf", :type "line", :data [[10.0 123]], :yAxisPosition "left"}
+            {:name "Dobbs", :color "#a7cf7b", :type "bar", :data [[5.0 12]], :yAxisPosition "right"}
+            {:name "Robbs", :color "#34517d", :type "bar", :data [[2.5 1337]], :yAxisPosition "right"}
+            {:name "Mobbs", :color "#e0be40", :type "bar", :data [[1.25 -22]], :yAxisPosition "right"}]
+           (#'body/double-x-axis-combo-series
+            nil
+            [[[10.0 "Bob"] [123]] [[5.0 "Dobbs"] [12]] [[2.5 "Robbs"] [1337]] [[1.25 "Mobbs"] [-22]]]
+            [{:base_type :type/BigInteger, :display_name "Price", :name "Price", :semantic_type nil}
+             {:base_type :type/BigInteger, :display_name "NumPurchased", :name "NumPurchased", :semantic_type nil}]
+            [{:base_type :type/BigInteger, :display_name "NumKazoos", :name "NumKazoos", :semantic_type nil}]
+            {:series_settings {:Bob {:color "#c5a9cf"}
+                               :Dobbs {:color "#a7cf7b"}
+                               :Robbs {:color "#34517d"}
+                               :Mobbs {:color "#e0be40"}}})))))
+
 (defn- render-waterfall [results]
   (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
 

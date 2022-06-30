@@ -1,5 +1,8 @@
+---
+title: Monitoring your Metabase 
+---
 
-## Monitoring Your Metabase Instance
+# Monitoring Your Metabase 
 
 This guide assumes that you have the VisualVM tool installed
 locally. VisualVM is included with OpenJDK and the Oracle JDK and is
@@ -7,7 +10,7 @@ found in the `bin` directory of the JDK install. Some Linux
 distributions separate VisualVM from the JDK, in which case it's a
 separate `visualvm` package.
 
-### Connecting to a Local Metabase Instance
+## Connecting to a Local Metabase Instance
 
 If you have VisualVM installed on your Metabase server and are able to
 run VisualVM there, this is the easiest path as there is no need to
@@ -18,7 +21,7 @@ instance
 
 ![localprocess](images/LocalProcessVisualVM.png)
 
-### Connecting to a Remote Metabase Instance
+## Connecting to a Remote Metabase Instance
 
 Monitoring a remote Metabase instance (or a local instance running in
 a docker container) is probably more common, but requires a more
@@ -90,7 +93,7 @@ Next open the new remote JMX process:
 
 ![jmxinstance](images/OpenRemoteInstance.png)
 
-### Runtime Information
+## Runtime Information
 
 Connecting to a running Metabase instance with VisualVM will make lots
 of runtime information available. This guide won't go over all of

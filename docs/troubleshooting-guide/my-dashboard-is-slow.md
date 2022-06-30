@@ -1,12 +1,20 @@
+---
+title: My dashboard is slow
+---
+
 # My dashboard is slow
 
-You have created a dashboard that shows the right things but:
+You've created a dashboard that shows the right things but:
 
 - it takes longer to load than you think it should, or
 - some cards load quickly but others take much longer, but
 - the dashboard and/or the slow cards do load eventually.
 
 Our articles on [Metabase at scale][metabase-at-scale] and [making dashboards faster][faster-dashboards] will help set the stage for the steps below.
+
+## Do you see an error message?
+
+If you get an error message that says "Your question took too long", go to [Troubleshooting timeouts](./timeout.html).
 
 ## Did it used to be fast enough, but has recently slowed down?
 

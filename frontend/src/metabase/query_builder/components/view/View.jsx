@@ -29,7 +29,7 @@ import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
 import FilterSidebar from "./sidebars/FilterSidebar";
-import QuestionDetailsSidebar from "./sidebars/QuestionDetailsSidebar";
+import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
 import { ViewSubHeader } from "./ViewHeader";
@@ -40,12 +40,12 @@ import NewQuestionView from "./View/NewQuestionView";
 import QueryViewNotebook from "./View/QueryViewNotebook";
 
 import {
-  QueryBuilderViewRoot,
+  BorderedViewTitleHeader,
+  NativeQueryEditorContainer,
   QueryBuilderContentContainer,
   QueryBuilderMain,
   QueryBuilderViewHeaderContainer,
-  BorderedViewTitleHeader,
-  NativeQueryEditorContainer,
+  QueryBuilderViewRoot,
   StyledDebouncedFrame,
   StyledSyncedParametersList,
 } from "./View.styled";
@@ -57,8 +57,7 @@ const DEFAULT_POPOVER_STATE = {
   breakoutPopoverTarget: null,
 };
 
-@ExplicitSize({ refreshMode: "debounceLeading" })
-export default class View extends React.Component {
+class View extends React.Component {
   state = {
     ...DEFAULT_POPOVER_STATE,
   };
@@ -123,17 +122,10 @@ export default class View extends React.Component {
 
   getLeftSidebar = () => {
     const {
-      question,
       isShowingChartSettingsSidebar,
       isShowingChartTypeSidebar,
-      isShowingQuestionDetailsSidebar,
-      onOpenModal,
       onCloseChartSettings,
       onCloseChartType,
-      isBookmarked,
-      toggleBookmark,
-      persistDataset,
-      unpersistDataset,
     } = this.props;
 
     if (isShowingChartSettingsSidebar) {
@@ -144,19 +136,6 @@ export default class View extends React.Component {
 
     if (isShowingChartTypeSidebar) {
       return <ChartTypeSidebar {...this.props} onClose={onCloseChartType} />;
-    }
-
-    if (isShowingQuestionDetailsSidebar) {
-      return (
-        <QuestionDetailsSidebar
-          question={question}
-          onOpenModal={onOpenModal}
-          isBookmarked={isBookmarked}
-          toggleBookmark={toggleBookmark}
-          persistDataset={persistDataset}
-          unpersistDataset={unpersistDataset}
-        />
-      );
     }
 
     return null;
@@ -170,6 +149,7 @@ export default class View extends React.Component {
       isShowingSummarySidebar,
       isShowingFilterSidebar,
       isShowingTimelineSidebar,
+      isShowingQuestionInfoSidebar,
       runQuestionQuery,
       visibleTimelineIds,
       selectedTimelineEventIds,
@@ -182,6 +162,7 @@ export default class View extends React.Component {
       onCloseSummary,
       onCloseFilter,
       onCloseTimelines,
+      onSave,
     } = this.props;
 
     if (isShowingSummarySidebar) {
@@ -217,6 +198,10 @@ export default class View extends React.Component {
       );
     }
 
+    if (isShowingQuestionInfoSidebar) {
+      return <QuestionInfoSidebar question={question} onSave={onSave} />;
+    }
+
     return null;
   };
 
@@ -226,6 +211,7 @@ export default class View extends React.Component {
       isShowingDataReference,
       isShowingSnippetSidebar,
       isShowingTimelineSidebar,
+      isShowingQuestionInfoSidebar,
       toggleTemplateTagsEditor,
       toggleDataReference,
       toggleSnippetSidebar,
@@ -234,6 +220,8 @@ export default class View extends React.Component {
       selectTimelineEvents,
       deselectTimelineEvents,
       onCloseTimelines,
+      onSave,
+      question,
     } = this.props;
 
     if (isShowingTemplateTagsEditor) {
@@ -261,6 +249,10 @@ export default class View extends React.Component {
           onClose={onCloseTimelines}
         />
       );
+    }
+
+    if (isShowingQuestionInfoSidebar) {
+      return <QuestionInfoSidebar question={question} onSave={onSave} />;
     }
 
     return null;
@@ -455,6 +447,7 @@ export default class View extends React.Component {
       onDismissToast,
       onConfirmToast,
       isShowingToaster,
+      isHeaderVisible,
     } = this.props;
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
@@ -487,7 +480,7 @@ export default class View extends React.Component {
     return (
       <div className="full-height">
         <QueryBuilderViewRoot className="QueryBuilder">
-          {this.renderHeader()}
+          {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
             {isStructured && (
               <QueryViewNotebook
@@ -531,3 +524,5 @@ export default class View extends React.Component {
     );
   }
 }
+
+export default ExplicitSize({ refreshMode: "debounceLeading" })(View);

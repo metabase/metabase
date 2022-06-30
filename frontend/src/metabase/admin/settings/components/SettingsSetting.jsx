@@ -13,7 +13,6 @@ import SettingRadio from "./widgets/SettingRadio";
 import SettingToggle from "./widgets/SettingToggle";
 import SettingSelect from "./widgets/SettingSelect";
 import SettingText from "./widgets/SettingText";
-import SettingColor from "./widgets/SettingColor";
 import { settingToFormFieldId } from "./../../settings/utils";
 
 const SETTING_WIDGET_MAP = {
@@ -24,7 +23,6 @@ const SETTING_WIDGET_MAP = {
   radio: SettingRadio,
   boolean: SettingToggle,
   text: SettingText,
-  color: SettingColor,
 };
 
 const updatePlaceholderForEnvironmentVars = props => {

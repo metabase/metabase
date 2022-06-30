@@ -1,6 +1,11 @@
 (ns metabase.models.dependency-test
   (:require [clojure.test :refer :all]
+            [metabase.models.collection :refer [Collection]]
+            [metabase.models.database :refer [Database]]
             [metabase.models.dependency :as dependency :refer [Dependency]]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [toucan.db :as db]
@@ -91,3 +96,20 @@
                   :dependent_on_model "test"
                   :dependent_on_id    2}}
                (format-dependencies (db/select Dependency, :model "Mock", :model_id 1))))))))
+
+(deftest identity-hash-test
+  (testing "Dependency hashes are composed of the two model names and hashes of the target entities"
+    (mt/with-temp* [Collection [coll   {:name "some collection" :location "/"}]
+                    Database   [db     {:name "field-db" :engine :h2}]
+                    Table      [table  {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+                    Metric     [metric {:name "measured" :table_id (:id table)}]
+                    Dependency [dep    {:model              "Collection"
+                                        :model_id           (:id coll)
+                                        :dependent_on_model "Metric"
+                                        :dependent_on_id    (:id metric)
+                                        :created_at         :%now}]]
+      (is (= "cd893624"
+             ; Note the extra vector here - dependencies have one complex hash extractor that returns a list of results.
+             (serdes.hash/raw-hash [["Collection" (serdes.hash/identity-hash coll)
+                                     "Metric"     (serdes.hash/identity-hash metric)]])
+             (serdes.hash/identity-hash dep))))))

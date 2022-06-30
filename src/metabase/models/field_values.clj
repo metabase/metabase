@@ -1,5 +1,6 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
@@ -23,7 +24,7 @@
   "The maximum character length for a stored FieldValues entry."
   (int 100))
 
-(def ^:private ^Integer total-max-length
+(def ^Integer total-max-length
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
   (int (* auto-list-cardinality-threshold entry-max-length)))
 
@@ -75,7 +76,10 @@
           :types       (constantly {:human_readable_values :json-no-keywordization, :values :json})
           :pre-insert  pre-insert
           :pre-update  pre-update
-          :post-select post-select}))
+          :post-select post-select})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :field)])})
 
 
 ;; ## FieldValues Helper Functions
@@ -102,36 +106,65 @@
             (not (isa? (keyword base-type) :type/Temporal))
             (#{:list :auto-list} (keyword has-field-values)))))))
 
-(defn- values-less-than-total-max-length?
-  "`true` if the combined length of all the values in [[distinct-values]] is below the threshold for what we'll allow in a
-  FieldValues entry. Does some logging as well."
-  [distinct-values]
-  ;; only consume enough values to determine whether the total length is > `total-max-length` -- if it is, we can stop
-  (let [total-length (reduce
-                      (fn [total-length v]
-                        (let [new-total (+ total-length (count (str v)))]
-                          (if (>= new-total total-max-length)
-                            (reduced new-total)
-                            new-total)))
-                      0
-                      distinct-values)]
-    (u/prog1 (<= total-length total-max-length)
-      (log/debug (trs "Field values total length is > {0}." total-max-length)
-                 (if <>
-                   (trs "FieldValues are allowed for this Field.")
-                   (trs "FieldValues are NOT allowed for this Field."))))))
+
+(defn take-by-length
+  "Like `take` but condition by the total length of elements.
+  Returns a stateful transducer when no collection is provided.
+
+    ;; (take-by-length 6 [\"Dog\" \"Cat\" \"Crocodile\"])
+    ;; => [\"Dog\" \"Cat\"]"
+  ([max-length]
+   (fn [rf]
+     (let [current-length (volatile! 0)]
+       (fn
+         ([] (rf))
+         ([result]
+          (rf result))
+         ([result input]
+          (vswap! current-length + (count (str input)))
+          (if (< @current-length max-length)
+            (rf result input)
+            (reduced result)))))))
+
+  ([max-length coll]
+   (lazy-seq
+     (when-let [s (seq coll)]
+       (let [f          (first s)
+             new-length (- max-length (count (str f)))]
+         (when-not (neg? new-length)
+           (cons f (take-by-length new-length
+                                   (rest s)))))))))
 
 (defn distinct-values
   "Fetch a sequence of distinct values for `field` that are below the [[total-max-length]] threshold. If the values are
-  past the threshold, this returns `nil`. (This function provides the values that normally get saved as a Field's
+  past the threshold, this returns a subset of possible values values where the total length of all items is less than [[total-max-length]].
+  It also returns a `has_more_values` flag, `has_more_values` = `true` when the returned values list is a subset of all possible values.
+
+  ;; (distinct-values (Field 1))
+  ;; ->  {:values          [1, 2, 3]
+          :has_more_values false}
+
+  (This function provides the values that normally get saved as a Field's
   FieldValues. You most likely should not be using this directly in code outside of this namespace, unless it's for a
   very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
   [field]
   (classloader/require 'metabase.db.metadata-queries)
   (try
-    (let [values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)]
-      (when (values-less-than-total-max-length? values)
-        values))
+    (let [distinct-values         ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)
+          limited-distinct-values (take-by-length total-max-length distinct-values)]
+      {:values          limited-distinct-values
+       ;; has_more_values=true means the list of values we return is a subset of all possible values.
+       :has_more_values (or
+                          ;; If the `distinct-values` has more elements than `limited-distinct-values`
+                          ;; it means the the `distinct-values` has exceeded our [[total-max-length]] limits.
+                          (> (count distinct-values)
+                             (count limited-distinct-values))
+                          ;; [[metabase.db.metadata-queries/field-distinct-values]] runs a query
+                          ;; with limit = [[metabase.db.metadata-queries/absolute-max-distinct-values-limit]].
+                          ;; So, if the returned `distinct-values` has length equal to that exact limit,
+                          ;; we assume the returned values is just a subset of what we have in DB.
+                          (= (count distinct-values)
+                             @(resolve 'metabase.db.metadata-queries/absolute-max-distinct-values-limit)))})
     (catch Throwable e
       (log/error e (trs "Error fetching field values"))
       nil)))
@@ -150,21 +183,23 @@
    it; otherwise create a new FieldValues object with the newly fetched values. Returns whether the field values were
    created/updated/deleted as a result of this call."
   [field & [human-readable-values]]
-  (let [field-values (FieldValues :field_id (u/the-id field))
-        values       (distinct-values field)
-        field-name   (or (:name field) (:id field))]
+  (let [field-values                     (FieldValues :field_id (u/the-id field))
+        {:keys [values has_more_values]} (distinct-values field)
+        field-name                       (or (:name field) (:id field))]
     (cond
-      ;; If this Field is marked `auto-list`, and the number of values in now over the list threshold, we need to
-      ;; unmark it as `auto-list`. Switch it to `has_field_values` = `nil` and delete the FieldValues; this will
-      ;; result in it getting a Search Widget in the UI when `has_field_values` is automatically inferred by the
-      ;; [[metabase.models.field/infer-has-field-values]] hydration function (see that namespace for more detailed
+      ;; If this Field is marked `auto-list`, and the number of values in now over the [[auto-list-cardinality-threshold]] or
+      ;; the accumulated length of all values exceeded the [[total-max-length]] threshold
+      ;; we need to unmark it as `auto-list`. Switch it to `has_field_values` = `nil` and delete the FieldValues;
+      ;; this will result in it getting a Search Widget in the UI when `has_field_values` is automatically inferred
+      ;; by the [[metabase.models.field/infer-has-field-values]] hydration function (see that namespace for more detailed
       ;; discussion)
       ;;
       ;; It would be nicer if we could do this in analysis where it gets marked `:auto-list` in the first place, but
       ;; Fingerprints don't get updated regularly enough that we could detect the sudden increase in cardinality in a
       ;; way that could make this work. Thus, we are stuck doing it here :(
-      (and (> (count values) auto-list-cardinality-threshold)
-           (= :auto-list (keyword (:has_field_values field))))
+      (and (= :auto-list (keyword (:has_field_values field)))
+           (or has_more_values
+               (> (count values) auto-list-cardinality-threshold)))
       (do
         (log/info (trs "Field {0} was previously automatically set to show a list widget, but now has {1} values."
                        field-name (count values))
@@ -172,7 +207,8 @@
         (db/update! 'Field (u/the-id field) :has_field_values nil)
         (db/delete! FieldValues :field_id (u/the-id field)))
 
-      (= (:values field-values) values)
+      (and (= (:values field-values) values)
+           (= (:has_more_values field-values) has_more_values))
       (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
 
       ;; if the FieldValues object already exists then update values in it
@@ -180,6 +216,7 @@
       (do
         (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
         (db/update-non-nil-keys! FieldValues (u/the-id field-values)
+          :has_more_values       has_more_values
           :values                values
           :human_readable_values (fixup-human-readable-values field-values values))
         ::fv-updated)
@@ -190,6 +227,7 @@
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
         (db/insert! FieldValues
           :field_id              (u/the-id field)
+          :has_more_values       has_more_values
           :values                values
           :human_readable_values human-readable-values)
         ::fv-created)

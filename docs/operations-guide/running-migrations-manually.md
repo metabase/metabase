@@ -1,4 +1,8 @@
-# Running Metabase database migrations manually
+---
+title: Running Metabase application database migrations manually
+---
+
+# Running Metabase application database migrations manually
 
 When Metabase is starting up, it will typically attempt to determine if any changes are required to the application database, and, if so, will execute those changes automatically. If for some reason you wanted to see what these changes are and run them manually on your database then we let you do that.
 

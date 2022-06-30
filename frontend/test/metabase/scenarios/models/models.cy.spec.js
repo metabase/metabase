@@ -2,9 +2,7 @@ import {
   restore,
   modal,
   popover,
-  getNotebookStep,
   openNativeEditor,
-  openNewCollectionItemFlowFor,
   visualize,
   mockSessionProperty,
   sidebar,
@@ -13,9 +11,12 @@ import {
   visitQuestion,
   visitDashboard,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+  openQuestionActions,
+  closeQuestionActions,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { questionInfoButton } from "../../../__support__/e2e/helpers/e2e-ui-elements-helpers";
 
 import {
   turnIntoModel,
@@ -25,8 +26,6 @@ import {
   selectDimensionOptionFromSidebar,
   saveQuestionBasedOnModel,
   assertIsQuestion,
-  openDetailsSidebar,
-  getDetailsSidebarActions,
 } from "./helpers/e2e-models-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -43,6 +42,7 @@ describe("scenarios > models", () => {
     visitQuestion(1);
 
     turnIntoModel();
+    openQuestionActions();
     assertIsModel();
 
     filter();
@@ -92,6 +92,7 @@ describe("scenarios > models", () => {
     );
 
     turnIntoModel();
+    openQuestionActions();
     assertIsModel();
 
     filter();
@@ -150,6 +151,7 @@ describe("scenarios > models", () => {
     cy.findByText("Undo").click();
 
     cy.get(".LineAreaBarChart");
+    openQuestionActions();
     assertIsQuestion();
   });
 
@@ -158,15 +160,20 @@ describe("scenarios > models", () => {
     cy.intercept("PUT", "/api/card/1").as("cardUpdate");
     cy.visit("/model/1");
 
-    openDetailsSidebar();
-    cy.findByText("Turn back into a saved question").click();
+    openQuestionActions();
+    popover().within(() => {
+      cy.findByText("Turn back to saved question").click();
+    });
+
     cy.wait("@cardUpdate");
 
     cy.findByText("This is a question now.");
+    openQuestionActions();
     assertIsQuestion();
 
     cy.findByText("Undo").click();
     cy.wait("@cardUpdate");
+    openQuestionActions();
     assertIsModel();
   });
 
@@ -180,7 +187,7 @@ describe("scenarios > models", () => {
     // Important - do not use visitQuestion(1) here!
     cy.visit("/question/1");
     cy.wait("@dataset");
-    openDetailsSidebar();
+    openQuestionActions();
     assertIsModel();
     cy.url().should("include", "/model");
   });
@@ -366,100 +373,21 @@ describe("scenarios > models", () => {
       cy.visit("/model/1");
       cy.wait("@dataset");
 
-      openDetailsSidebar();
-      getDetailsSidebarActions().within(() => {
-        cy.icon("pencil").click();
-      });
-      modal().within(() => {
-        cy.findByLabelText("Name")
-          .clear()
-          .type("M1");
-        cy.findByLabelText("Description")
-          .clear()
-          .type("foo");
-        cy.button("Save").click();
-      });
+      cy.findByTestId("saved-question-header-title")
+        .clear()
+        .type("M1")
+        .blur();
       cy.wait("@updateCard");
 
-      cy.findByText("M1");
-      cy.findByText("foo");
-    });
-  });
+      questionInfoButton().click();
 
-  describe("adding a question to collection from its page", () => {
-    it("should offer to pick one of the collection's models by default", () => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
-      cy.request("PUT", "/api/card/2", { dataset: true });
+      cy.findByPlaceholderText("Add description")
+        .type("foo")
+        .blur();
+      cy.wait("@updateCard");
 
-      cy.visit("/collection/root");
-      openNewCollectionItemFlowFor("question");
-
-      cy.findByText("Orders");
-      cy.findByText("Orders, Count");
-      cy.findByText("All data");
-
-      cy.findByText("Models").should("not.exist");
-      cy.findByText("Raw Data").should("not.exist");
-      cy.findByText("Saved Questions").should("not.exist");
-      cy.findByText("Sample Database").should("not.exist");
-
-      cy.findByText("Orders").click();
-
-      getNotebookStep("data").within(() => {
-        cy.findByText("Orders");
-      });
-
-      cy.button("Visualize");
-    });
-
-    it("should open the default picker after clicking 'All data'", () => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
-      cy.request("PUT", "/api/card/2", { dataset: true });
-
-      cy.visit("/collection/root");
-      openNewCollectionItemFlowFor("question");
-
-      cy.findByText("All data").click({ force: true });
-
-      cy.findByText("Models");
-      cy.findByText("Raw Data");
-      cy.findByText("Saved Questions");
-    });
-
-    it("should automatically use the only collection model as a data source", () => {
-      cy.request("PUT", "/api/card/2", { dataset: true });
-
-      cy.visit("/collection/root");
-      openNewCollectionItemFlowFor("question");
-
-      getNotebookStep("data").within(() => {
-        cy.findByText("Orders, Count");
-      });
-      cy.button("Visualize");
-    });
-
-    it("should use correct picker if collection has no models", () => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
-
-      cy.visit("/collection/9");
-      openNewCollectionItemFlowFor("question");
-
-      cy.findByText("All data").should("not.exist");
-      cy.findByText("Models");
-      cy.findByText("Raw Data");
-      cy.findByText("Saved Questions");
-    });
-
-    it("should use correct picker if there are models at all", () => {
-      cy.visit("/collection/root");
-      openNewCollectionItemFlowFor("question");
-
-      cy.findByText("All data").should("not.exist");
-      cy.findByText("Models").should("not.exist");
-      cy.findByText("Raw Data").should("not.exist");
-
-      cy.findByText("Saved Questions");
-      cy.findByText("Sample Database");
+      cy.findByDisplayValue("M1");
+      cy.findByDisplayValue("foo");
     });
   });
 
@@ -484,8 +412,8 @@ describe("scenarios > models", () => {
       { visitQuestion: true },
     );
 
-    openDetailsSidebar();
-    getDetailsSidebarActions().within(() => {
+    openQuestionActions();
+    popover().within(() => {
       cy.icon("model").click();
     });
     modal().within(() => {
@@ -493,7 +421,9 @@ describe("scenarios > models", () => {
       cy.button("Turn this into a model").should("not.exist");
       cy.icon("close").click();
     });
+    openQuestionActions();
     assertIsQuestion();
+    closeQuestionActions();
 
     cy.findByText(/Open editor/i).click();
     cy.get(".ace_content").type(
@@ -509,6 +439,7 @@ describe("scenarios > models", () => {
       .click();
 
     turnIntoModel();
+    openQuestionActions();
     assertIsModel();
   });
 

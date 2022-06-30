@@ -209,25 +209,44 @@
 
 (deftest send-message!-test
   (tu/with-temporary-setting-values [email-from-address "lucky@metabase.com"
+                                     email-from-name    "Lucky"
                                      email-smtp-host    "smtp.metabase.com"
                                      email-smtp-username "lucky"
                                      email-smtp-password "d1nner3scapee!"
                                      email-smtp-port     1025
+                                     email-reply-to      ["reply-to-me@metabase.com" "reply-to-me-too@metabase.com"]
                                      email-smtp-security :none]
     (testing "basic sending"
       (is (=
-           [{:from    (email/email-from-address)
-             :to      ["test@test.com"]
-             :subject "101 Reasons to use Metabase"
-             :body    [{:type    "text/html; charset=utf-8"
-                        :content "101. Metabase will make you a better person"}]}]
+           [{:from     (str (email/email-from-name) " <" (email/email-from-address) ">")
+             :to       ["test@test.com"]
+             :subject  "101 Reasons to use Metabase"
+             :reply-to (email/email-reply-to)
+             :body     [{:type    "text/html; charset=utf-8"
+                         :content "101. Metabase will make you a better person"}]}]
            (with-fake-inbox
              (email/send-message!
-               :subject      "101 Reasons to use Metabase"
-               :recipients   ["test@test.com"]
-               :message-type :html
-               :message      "101. Metabase will make you a better person")
+              :subject      "101 Reasons to use Metabase"
+              :recipients   ["test@test.com"]
+              :message-type :html
+              :message      "101. Metabase will make you a better person")
              (@inbox "test@test.com")))))
+    (testing "basic sending without email-from-name"
+      (tu/with-temporary-setting-values [email-from-name nil]
+        (is (=
+             [{:from     (email/email-from-address)
+               :to       ["test@test.com"]
+               :subject  "101 Reasons to use Metabase"
+               :reply-to (email/email-reply-to)
+               :body     [{:type    "text/html; charset=utf-8"
+                           :content "101. Metabase will make you a better person"}]}]
+             (with-fake-inbox
+               (email/send-message!
+                :subject      "101 Reasons to use Metabase"
+                :recipients   ["test@test.com"]
+                :message-type :html
+                :message      "101. Metabase will make you a better person")
+               (@inbox "test@test.com"))))))
     (testing "with an attachment"
       (let [recipient    "csv_user@example.com"
             csv-contents "hugs_with_metabase,hugs_without_metabase\n1,0"
@@ -235,25 +254,26 @@
             params       {:subject      "101 Reasons to use Metabase"
                           :recipients   [recipient]
                           :message-type :attachments
-                          :message      [{:type "text/html; charset=utf-8"
+                          :message      [{:type    "text/html; charset=utf-8"
                                           :content "100. Metabase will hug you when you're sad"}
-                                         {:type :attachment
+                                         {:type         :attachment
                                           :content-type "text/csv"
-                                          :file-name "metabase-reasons.csv"
-                                          :content csv-file
-                                          :description "very scientific data"}]}]
+                                          :file-name    "metabase-reasons.csv"
+                                          :content      csv-file
+                                          :description  "very scientific data"}]}]
         (testing "it sends successfully"
           (is (=
-               [{:from    (email/email-from-address)
-                 :to      [recipient]
-                 :subject "101 Reasons to use Metabase"
-                 :body    [{:type    "text/html; charset=utf-8"
-                            :content "100. Metabase will hug you when you're sad"}
-                           {:type         :attachment
-                            :content-type "text/csv"
-                            :file-name    "metabase-reasons.csv"
-                            :content      csv-file
-                            :description  "very scientific data"}]}]
+               [{:from     (str (email/email-from-name) " <" (email/email-from-address) ">")
+                 :to       [recipient]
+                 :subject  "101 Reasons to use Metabase"
+                 :reply-to (email/email-reply-to)
+                 :body     [{:type    "text/html; charset=utf-8"
+                             :content "100. Metabase will hug you when you're sad"}
+                            {:type         :attachment
+                             :content-type "text/csv"
+                             :file-name    "metabase-reasons.csv"
+                             :content      csv-file
+                             :description  "very scientific data"}]}]
                (with-fake-inbox
                  (m/mapply email/send-message! params)
                  (@inbox recipient)))))

@@ -1,3 +1,7 @@
+---
+title: Running Metabase on Debian as a service with nginx
+---
+
 # Running Metabase on Debian as a service with nginx
 
 For those people who don't (or can't) use Docker in their infrastructure, there's still a need to easily setup and deploy Metabase in production. On Debian-based systems, this means registering Metabase as a service that can be started/stopped/uninstalled.
@@ -161,4 +165,3 @@ sudo systemctl start metabase.service
 sudo systemctl stop metabase.service
 sudo systemctl restart metabase.service
 ```
-

@@ -190,7 +190,7 @@
 
 (defn- filter-databases-by-data-model-perms
   "Filters the provided list of databases by data model perms, returning only the databases for which the current user
-  can fully or partially edit the data model. If the user also has block permissions for any databases, returns only the
+  can fully or partially edit the data model. If the user does not have data access for any databases, returns only the
   name and ID of these databases, removing all other fields."
   [dbs]
   (let [filtered-dbs
@@ -206,29 +206,25 @@
      filtered-dbs)))
 
 (defn- check-db-data-model-perms
-  [db include-editable-data-model?]
-  (if include-editable-data-model?
-    (let [filtered-dbs (filter-databases-by-data-model-perms [db])]
-      (when (seq filtered-dbs)
-        (first filtered-dbs)))
-    db))
+  "Given a DB, checks that *current-user* has any data model editing perms for the DB. If yes, returns the DB,
+  with its tables also filtered by data model editing perms. If it does not, throws a permissions exception."
+  [db]
+  (let [filtered-dbs (filter-databases-by-data-model-perms [db])]
+    (api/check-403 (first filtered-dbs))))
 
-(defn- dbs-list [& {:keys [include-tables?
-                           include-saved-questions-db?
-                           include-saved-questions-tables?
-                           include-editable-data-model?
-                           exclude-uneditable-details?]}]
+(defn- dbs-list
+  [& {:keys [include-tables?
+             include-saved-questions-db?
+             include-saved-questions-tables?
+             include-editable-data-model?
+             exclude-uneditable-details?]}]
   (let [dbs (db/select Database {:order-by [:%lower.name :%lower.engine]})
-        dbs (if include-editable-data-model?
-              ;; Since users can have *data model* perms even if they have no *data* perms for a DB, we don't filter by
-              ;; read permissions here if `include-editable-data-model?` is true. Instead, we only return ID, name
-              ;; and tables for DBs for which the user has no data perms, to avoid exposing unecessary DB metadata.
-              dbs
-              (filter mi/can-read? dbs))
-        dbs (if exclude-uneditable-details? (filter mi/can-write? dbs) dbs)]
+        filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
       include-editable-data-model? filter-databases-by-data-model-perms
+      exclude-uneditable-details?  (#(filter mi/can-write? %))
+      filter-by-data-access?       (#(filter mi/can-read? %))
       include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
 
 (def FetchAllIncludeValues
@@ -252,7 +248,7 @@
     questions virtual DB). Prefer using `include` and `saved` instead.
 
   * `include_editable_data_model` will only include DBs for which the current user has data model editing
-    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Has no effect unless
+    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if
     Enterprise Edition code is available the advanced-permissions feature is enabled.
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
@@ -330,15 +326,21 @@
   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
   and tables, with no additional metadata."
-  [id include include_editable_data_model]
+  [id include include_editable_data_model exclude_uneditable_details]
   {include (s/maybe (s/enum "tables" "tables.fields"))}
-  (let [include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)]
-    (cond-> (api/check-404 (Database id))
-      (not include-editable-data-model?) api/read-check
-      true                               add-expanded-schedules
-      true                               (get-database-hydrate-include include)
-      mi/can-write?                      secret/expand-db-details-inferred-secret-values
-      include-editable-data-model?       (check-db-data-model-perms include-editable-data-model?))))
+  (let [include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
+        exclude-uneditable-details?  (Boolean/parseBoolean exclude_uneditable_details)
+        filter-by-data-access?       (not (or include-editable-data-model? exclude-uneditable-details?))
+        database                     (api/check-404 (Database id))]
+    (cond-> database
+      filter-by-data-access?       api/read-check
+      exclude-uneditable-details?  api/write-check
+      true                         add-expanded-schedules
+      true                         (get-database-hydrate-include include)
+      include-editable-data-model? check-db-data-model-perms
+      (mi/can-write? database)     (->
+                                     secret/expand-db-details-inferred-secret-values
+                                     (assoc :can-manage true)))))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
@@ -353,36 +355,34 @@
   []
   (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
 
-(defn- filter-tables-by-data-model-perms
-  [tables]
-  (if-let [f (u/ignore-exceptions
-              (classloader/require 'metabase-enterprise.advanced-permissions.common)
-              (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
-    (f tables)
-    tables))
-
 (defn- db-metadata [id include-hidden? include-editable-data-model?]
-  (-> (if include-editable-data-model?
-        (api/check-404 (Database id))
-        (api/read-check Database id))
-      (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
-      (update :tables (if include-hidden?
-                        identity
-                        (fn [tables]
-                          (->> tables
-                               (remove :visibility_type)
-                               (map #(update % :fields filter-sensitive-fields))))))
-      (update :tables (fn [tables]
-                        (for [table tables
-                              :when (mi/can-read? table)]
-                          (-> table
-                              (update :segments (partial filter mi/can-read?))
-                              (update :metrics  (partial filter mi/can-read?))))))
-      (update :tables (fn [tables]
-                        (if include-editable-data-model?
-                          (filter-tables-by-data-model-perms tables)
-                          tables)))
-      (check-db-data-model-perms include-editable-data-model?)))
+  (let [db (-> (if include-editable-data-model?
+                 (api/check-404 (Database id))
+                 (api/read-check Database id))
+               (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
+        db (if include-editable-data-model?
+             ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
+             ;; which the *current-user* does not have data model perms
+             (check-db-data-model-perms db)
+             db)]
+    (-> db
+        (update :tables (if include-hidden?
+                          identity
+                          (fn [tables]
+                            (->> tables
+                                 (remove :visibility_type)
+                                 (map #(update % :fields filter-sensitive-fields))))))
+        (update :tables (fn [tables]
+                          (if-not include-editable-data-model?
+                            ;; If we're filtering by data model perms, table perm checks were already done by
+                            ;; check-db-data-model-perms
+                            (filter mi/can-read? tables)
+                            tables)))
+        (update :tables (fn [tables]
+                          (for [table tables]
+                            (-> table
+                                (update :segments (partial filter mi/can-read?))
+                                (update :metrics  (partial filter mi/can-read?)))))))))
 
 (api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
@@ -490,26 +490,23 @@
 
 (api/defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
-  [id]
-  (api/read-check Database id)
-  (sort-by (comp str/lower-case :name :table) (filter mi/can-read? (-> (database/pk-fields {:id id})
-                                                                       (hydrate :table)))))
+  [id include_editable_data_model]
+  (let [[db-perm-check field-perm-check] (if (Boolean/parseBoolean include_editable_data_model)
+                                           [check-db-data-model-perms mi/can-write?]
+                                           [api/read-check mi/can-read?])]
+    (db-perm-check (Database id))
+    (sort-by (comp str/lower-case :name :table)
+             (filter field-perm-check (-> (database/pk-fields {:id id})
+                                          (hydrate :table))))))
 
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 
-(defn- invalid-connection-response [field m]
-  ;; work with the new {:field error-message} format but be backwards-compatible with the UI as it exists right now
-  {:valid   false
-   field    m
-   :message m})
-
 (defn test-database-connection
   "Try out the connection details for a database and useful error message if connection fails, returns `nil` if
    connection succeeds."
-  [engine {:keys [host port] :as details}, & {:keys [invalid-response-handler log-exception]
-                                              :or   {invalid-response-handler invalid-connection-response
-                                                     log-exception            true}}]
+  [engine {:keys [host port] :as details}, & {:keys [log-exception]
+                                              :or   {log-exception true}}]
   {:pre [(some? engine)]}
   (let [engine  (keyword engine)
         details (assoc details :engine engine)]
@@ -519,22 +516,26 @@
         nil
 
         (and host port (u/host-port-up? host port))
-        (invalid-response-handler :dbname (tru "Connection to ''{0}:{1}'' successful, but could not connect to DB."
-                                               host port))
+        {:message (tru "Connection to ''{0}:{1}'' successful, but could not connect to DB."
+                       host port)}
 
         (and host (u/host-up? host))
-        (invalid-response-handler :port (tru "Connection to host ''{0}'' successful, but port {1} is invalid."
-                                             host port))
+        {:message (tru "Connection to host ''{0}'' successful, but port {1} is invalid."
+                       host port)
+         :errors  {:port (deferred-tru "check your port settings")}}
 
         host
-        (invalid-response-handler :host (tru "Host ''{0}'' is not reachable" host))
+        {:message (tru "Host ''{0}'' is not reachable" host)
+         :errors  {:host (deferred-tru "check your host settings")}}
 
         :else
-        (invalid-response-handler :db (tru "Unable to connect to database.")))
+        {:message (tru "Unable to connect to database.")})
       (catch Throwable e
         (when (and log-exception (not (some->> e ex-cause ex-data ::driver/can-connect-message?)))
           (log/error e (trs "Cannot connect to Database")))
-        (invalid-response-handler :dbname (.getMessage e))))))
+        (if (-> e ex-data :message)
+          (ex-data e)
+          {:message (.getMessage e)})))))
 
 ;; TODO - Just make `:ssl` a `feature`
 (defn- supports-ssl?
@@ -564,7 +565,8 @@
       ;; Opportunistic SSL
       details-with-ssl
       ;; Try with original parameters
-      (test-database-connection engine details)
+      (some-> (test-database-connection engine details)
+              (assoc :valid false))
       details)))
 
 (api/defendpoint POST "/"
@@ -598,7 +600,7 @@
                                   (sync.schedules/schedule-map->cron-strings
                                     (if (:let-user-control-scheduling details)
                                       (sync.schedules/scheduling schedules)
-                                      (sync.schedules/default-schedule)))
+                                      (sync.schedules/default-randomized-schedule)))
                                   (when (some? auto_run_queries)
                                     {:auto_run_queries auto_run_queries}))))
         (events/publish-event! :database-create <>)
@@ -611,7 +613,7 @@
                                api/*current-user-id*
                                {:database engine, :source :setup})
         {:status 400
-         :body   details-or-error}))))
+         :body   (dissoc details-or-error :valid)}))))
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."
@@ -653,11 +655,11 @@
   "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
   [id]
   {:id su/IntGreaterThanZero}
-  (api/check-superuser)
   (api/check (public-settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
   (api/let-404 [database (Database id)]
+    (api/write-check database)
     (if (-> database :options :persist-models-enabled)
       ;; todo: some other response if already persisted?
       api/generic-204-no-content
@@ -667,8 +669,10 @@
           ;; do secrets require special handling to not clobber them or mess up encryption?
           (do (db/update! Database id :options
                           (assoc (:options database) :persist-models-enabled true))
-              (task.persist-refresh/schedule-persistence-for-database! database
-                                                                      (public-settings/persisted-model-refresh-interval-hours))
+              (task.persist-refresh/schedule-persistence-for-database!
+                database
+                (public-settings/persisted-model-refresh-interval-hours)
+                (public-settings/persisted-model-refresh-anchor-time))
               api/generic-204-no-content)
           (throw (ex-info (ddl.i/error->message error schema)
                           {:error error
@@ -678,12 +682,12 @@
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [id]
   {:id su/IntGreaterThanZero}
-  (api/check-superuser)
   (api/let-404 [database (Database id)]
+    (api/write-check database)
     (if (-> database :options :persist-models-enabled)
       (do (db/update! Database id :options
                       (dissoc (:options database) :persist-models-enabled))
-          (persisted-info/mark-for-deletion! {:database_id id})
+          (persisted-info/mark-for-pruning! {:database_id id})
           (task.persist-refresh/unschedule-persistence-for-database! database)
           api/generic-204-no-content)
       ;; todo: a response saying this was a no-op? an error? same on the post to persist
@@ -692,7 +696,7 @@
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
-                   auto_run_queries refingerprint cache_ttl]} :body}]
+                   auto_run_queries refingerprint cache_ttl settings]} :body}]
   {name               (s/maybe su/NonBlankString)
    engine             (s/maybe DBEngineString)
    refingerprint      (s/maybe s/Bool)
@@ -702,7 +706,8 @@
    caveats            (s/maybe s/Str)   ; whether someone sets these to blank strings
    points_of_interest (s/maybe s/Str)
    auto_run_queries   (s/maybe s/Bool)
-   cache_ttl          (s/maybe su/IntGreaterThanZero)}
+   cache_ttl          (s/maybe su/IntGreaterThanZero)
+   settings           (s/maybe su/Map)}
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (let [existing-database (api/write-check (Database id))
         details           (driver.u/db-details-client->server engine details)
@@ -740,11 +745,19 @@
                                                    (and (get-in existing-database [:details :let-user-control-scheduling])
                                                         (not (:let-user-control-scheduling details)))
 
-                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/default-schedule))
+                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))
 
                                                    ;; if user is controlling schedules
                                                    (:let-user-control-scheduling details)
-                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))))))
+                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))
+
+                                                   ;; upsert settings with a PATCH-style update. `nil` key means unset
+                                                   ;; the Setting.
+                                                   (seq settings)
+                                                   {:settings (into {}
+                                                                    (remove (fn [[_k v]] (nil? v)))
+                                                                    (merge (:settings existing-database)
+                                                                           settings))}))))
         ;; do nothing in the case that user is not in control of
         ;; scheduling. leave them as they are in the db
 

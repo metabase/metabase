@@ -7,6 +7,7 @@ on:
       - "docs/**"
       - "**.md"
       - ".circleci/**"
+      - "**.unit.spec.*"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -16,11 +17,11 @@ jobs:
 
   build:
     if: github.event.pull_request.draft == false
-    runs-on: buildjet-2vcpu-ubuntu-2004
+    runs-on: ubuntu-20.04
     timeout-minutes: 25
     strategy:
       matrix:
-        edition: [ee]
+        edition: [oss, ee]
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
@@ -42,8 +43,8 @@ jobs:
       uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    runs-on: buildjet-4vcpu-ubuntu-2004
-    timeout-minutes: 30
+    runs-on: ubuntu-20.04
+    timeout-minutes: 35
     needs: build
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
     env:
@@ -59,12 +60,28 @@ jobs:
         java-version: [11]
         edition: [ee]
         folder:
+          - "admin"
           - "binning"
+          - "collections"
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
           - "downloads"
+          - "embedding"
+          - "filters"
           - "joins"
+          - "models"
+          - "native"
+          - "native-filters"
+          - "onboarding"
+          - "organization"
+          - "permissions"
+          - "question"
+          - "sharing"
+          - "visualizations"
+        include:
+          - edition: oss
+            java-version: 11
     services:
       maildev:
         image: maildev/maildev:1.1.0
@@ -104,7 +121,7 @@ jobs:
       with:
         java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
-    - name: Prepare cypress environment
+    - name: Prepare Cypress environment
       uses: ./.github/actions/prepare-cypress
     - name: Run Snowplow micro
       uses: ./.github/actions/run-snowplow-micro
@@ -118,7 +135,17 @@ jobs:
         jar xf target/uberjar/metabase.jar version.properties
         mv version.properties resources/
 
-    - name: Run Cypress tests on ${{ matrix.folder }}
+    - name: Run OSS-specific Cypress tests
+      if: matrix.edition == 'oss'
+      run: |
+        yarn run test-cypress-run \
+        --env grepTags=@OSS,grepFilterSpecs=true \
+        --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
+      env:
+        TERM: xterm
+
+    - name: Run EE Cypress tests on ${{ matrix.folder }}
+      if: matrix.edition == 'ee'
       run: yarn run test-cypress-run --folder ${{ matrix.folder }}
       env:
         TERM: xterm
@@ -132,3 +159,47 @@ jobs:
           ./cypress
           ./logs/test.log
         if-no-files-found: ignore
+
+  visual-regression-tests:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    needs: build
+    name: percy-tests-sanity-check-${{ matrix.edition }}
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      ENTERPRISE_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+    strategy:
+      matrix:
+        java-version: [11]
+        edition: [ee]
+    services:
+      maildev:
+        image: maildev/maildev:1.1.0
+        ports:
+          - "80:80"
+          - "25:25"
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare JDK ${{ matrix.java-version }}
+      uses: actions/setup-java@v3
+      with:
+        java-version: ${{ matrix.java-version }}
+        distribution: 'temurin'
+    - name: Prepare Cypress environment
+      uses: ./.github/actions/prepare-cypress
+
+    - uses: actions/download-artifact@v2
+      name: Retrieve uberjar artifact for ${{ matrix.edition }}
+      with:
+        name: metabase-${{ matrix.edition }}-uberjar
+    - name: Get the version info
+      run: |
+        jar xf target/uberjar/metabase.jar version.properties
+        mv version.properties resources/
+    - name: Percy Test
+      run: yarn run test-visual-run

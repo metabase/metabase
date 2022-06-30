@@ -33,17 +33,21 @@
 (defn randomly-once-an-hour
   "Schedule map for once an hour at a random minute of the hour."
   []
-  {:schedule_minute (rand-int 59)
-   :schedule_type   "hourly"})
+  ;; prevent zeros and 50s which would appear as non-random choices
+  (let [choices (into [] (remove #{0 50}) (range 60))]
+    {:schedule_minute (rand-nth choices)
+     :schedule_type   "hourly"}))
 
 (defn randomly-once-a-day
   "Schedule map for once a day at a random hour of the day."
   []
-  {:schedule_hour  (rand-int 24)
+  ;; prevent zeros which would appear as non-random
+  {:schedule_hour  (inc (rand-int 23))
    :schedule_type  "daily"})
 
-(defn default-schedule
-  "Default schedule maps for caching field values and sync."
+(defn default-randomized-schedule
+  "Default schedule maps for caching field values and sync. Defaults to `:cache_field_values` randomly once a day and
+  `:metadata_sync` randomly once an hour. "
   []
   {:cache_field_values (randomly-once-a-day)
    :metadata_sync      (randomly-once-an-hour)})

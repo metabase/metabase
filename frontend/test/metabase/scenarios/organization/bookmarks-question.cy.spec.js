@@ -2,9 +2,8 @@ import {
   restore,
   navigationSidebar,
   openNavigationSidebar,
-  sidebar,
   visitQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
 
 describe("scenarios > question > bookmarks", () => {
@@ -16,7 +15,6 @@ describe("scenarios > question > bookmarks", () => {
 
   it("should add then remove bookmark from question page", () => {
     visitQuestion(1);
-    cy.findByTestId("saved-question-header-button").click();
     toggleBookmark();
 
     openNavigationSidebar();
@@ -36,7 +34,7 @@ describe("scenarios > question > bookmarks", () => {
 });
 
 function toggleBookmark() {
-  sidebar().within(() => {
+  cy.findByTestId("question-action-buttons-container").within(() => {
     cy.icon("bookmark").click();
   });
   cy.wait("@toggleBookmark");

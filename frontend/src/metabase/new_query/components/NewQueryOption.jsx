@@ -44,7 +44,7 @@ export default class NewQueryOption extends Component {
           <h2 className={cx("transition-all", { "text-brand": hover })}>
             {title}
           </h2>
-          <p className={"text-medium text-small"}>{description}</p>
+          <p className="text-medium text-small">{description}</p>
         </div>
       </Link>
     );

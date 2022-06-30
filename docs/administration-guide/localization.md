@@ -1,3 +1,7 @@
+---
+title: Languages and localization
+---
+
 # Languages and localization
 
 ## Supported languages
@@ -80,5 +84,3 @@ If you need to, you can change the first day of the week for your instance (the 
 - `Unit of currency:` if you do most of your business in a particular currency, you can specify that here.
 - `Currency label style:` whether you want to have your currencies labeled with a symbol, a code (like `USD`), or its full name.
 - `Where to display the unit of currency:` this pertains specifically to tables, and lets you choose if you want the currency labels to appear only in the column heading, or next to each value in the column.
-
-

@@ -4,6 +4,7 @@ import _ from "underscore";
 import { createSelector } from "reselect";
 import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import MetabaseSettings from "metabase/lib/settings";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import SettingsLicense from "./components/SettingsLicense";
@@ -20,6 +21,7 @@ import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import { PremiumEmbeddingLinkWidget } from "./components/widgets/PremiumEmbeddingLinkWidget";
+import PersistedModelAnchorTimeWidget from "./components/widgets/PersistedModelAnchorTimeWidget";
 import PersistedModelRefreshIntervalWidget from "./components/widgets/PersistedModelRefreshIntervalWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
@@ -53,6 +55,8 @@ function updateSectionsWithPlugins(sections) {
     return sections;
   }
 }
+
+const CACHING_MIN_REFRESH_HOURS_FOR_ANCHOR_TIME_SETTING = 6;
 
 const SECTIONS = updateSectionsWithPlugins({
   setup: {
@@ -152,6 +156,7 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "string",
         required: true,
         autoFocus: true,
+        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-port",
@@ -160,6 +165,7 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "number",
         required: true,
         validations: [["integer", t`That's not a valid port number`]],
+        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-security",
@@ -168,13 +174,15 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "radio",
         options: { none: "None", ssl: "SSL", tls: "TLS", starttls: "STARTTLS" },
         defaultValue: "none",
+        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-username",
         display_name: t`SMTP Username`,
         description: null,
-        placeholder: "youlooknicetoday",
+        placeholder: "nicetoseeyou",
         type: "string",
+        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-password",
@@ -182,6 +190,14 @@ const SECTIONS = updateSectionsWithPlugins({
         description: null,
         placeholder: "Shhh...",
         type: "password",
+        getHidden: () => MetabaseSettings.isHosted(),
+      },
+      {
+        key: "email-from-name",
+        display_name: t`From Name`,
+        placeholder: "Metabase",
+        type: "string",
+        required: false,
       },
       {
         key: "email-from-address",
@@ -190,6 +206,15 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "string",
         required: true,
         validations: [["email", t`That's not a valid email address`]],
+      },
+      {
+        key: "email-reply-to",
+        display_name: t`Reply-To Address`,
+        placeholder: "metabase-replies@yourcompany.com",
+        type: "string",
+        required: false,
+        widget: SettingCommaDelimitedInput,
+        validations: [["email_list", t`That's not a valid email addresses`]],
       },
     ],
   },
@@ -302,7 +327,7 @@ const SECTIONS = updateSectionsWithPlugins({
     ],
   },
   embedding_in_other_applications: {
-    name: t`Embedding in other Applications`,
+    name: t`Embedding`,
     order: 10,
     settings: [
       {
@@ -449,8 +474,28 @@ const SECTIONS = updateSectionsWithPlugins({
         disableDefaultUpdate: true,
         widget: PersistedModelRefreshIntervalWidget,
         getHidden: settings => !settings["persisted-models-enabled"],
-        onChanged: async (oldValue, newValue) =>
-          PersistedModelsApi.setRefreshInterval({ hours: newValue }),
+        onChanged: (oldHours, hours) =>
+          PersistedModelsApi.setRefreshInterval({ hours }),
+      },
+      {
+        key: "persisted-model-refresh-anchor-time",
+        display_name: t`Anchoring time`,
+        disableDefaultUpdate: true,
+        widget: PersistedModelAnchorTimeWidget,
+        getHidden: settings => {
+          if (!settings["persisted-models-enabled"]) {
+            return true;
+          }
+          const DEFAULT_REFRESH_INTERVAL = 6;
+          const refreshInterval =
+            settings["persisted-model-refresh-interval-hours"] ||
+            DEFAULT_REFRESH_INTERVAL;
+          return (
+            refreshInterval < CACHING_MIN_REFRESH_HOURS_FOR_ANCHOR_TIME_SETTING
+          );
+        },
+        onChanged: (oldAnchor, anchor) =>
+          PersistedModelsApi.setRefreshInterval({ anchor }),
       },
     ],
   },

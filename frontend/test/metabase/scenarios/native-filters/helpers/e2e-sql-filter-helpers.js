@@ -1,4 +1,4 @@
-import { filterWidget, popover } from "__support__/e2e/cypress";
+import { filterWidget, popover } from "__support__/e2e/helpers";
 
 // FILTER TYPES
 
@@ -57,7 +57,7 @@ export function setWidgetValue(value) {
  * @param {string} value
  */
 export function setDefaultValue(value) {
-  cy.findByPlaceholderText("Enter a default value...").type(value);
+  cy.findByPlaceholderText("Enter a default value…").type(value);
 }
 
 // UI PATTERNS

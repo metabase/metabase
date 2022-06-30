@@ -25,7 +25,7 @@ function getDateTimeField(field: Field, bucketing?: string) {
 
 type Option = {
   displayName: string;
-  init: (filter: any) => any[];
+  init: (filter: Filter) => any;
 };
 
 const DAY_OPTIONS: Option[] = [
@@ -133,6 +133,12 @@ const MISC_OPTIONS: Option[] = [
   },
 ];
 
+export const OPTIONS = {
+  DAY_OPTIONS,
+  MONTH_OPTIONS,
+  MISC_OPTIONS,
+};
+
 type Props = {
   className?: string;
   primaryColor?: string;
@@ -164,7 +170,7 @@ export default function DatePickerShortcuts({
     <div className={className}>
       {onBack ? (
         <SidebarHeader
-          className={"text-default py1 mb1"}
+          className="text-default py1 mb1"
           title={title}
           onBack={onBack}
         />

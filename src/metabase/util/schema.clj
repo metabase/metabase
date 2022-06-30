@@ -115,9 +115,10 @@
 
       ;; do the same for sequences of a schema
       (when (vector? schema)
-        (str (deferred-tru "value must be an array.") (when (= (count schema) 1)
-                                                        (when-let [message (api-error-message (first schema))]
-                                                          (str " " (deferred-tru "Each {0}" message))))))))
+        (str (deferred-tru "value must be an array.")
+             (when (= (count schema) 1)
+               (when-let [message (api-error-message (first schema))]
+                 (str " " (deferred-tru "Each {0}" message))))))))
 
 
 (defn non-empty
@@ -327,6 +328,28 @@
                                                     false)))
     (deferred-tru "value must be a valid JSON string.")))
 
+(def Parameter
+  "Schema for a valid Parameter.
+  We're not using [metabase.mbql.schema/Parameter] here because this Parameter is meant to be used for
+  Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
+  (with-api-error-message {:id                         NonBlankString
+                           :type                       NonBlankString
+                           ;; Allow blank name and slug #15279
+                           (s/optional-key :name)      s/Str
+                           (s/optional-key :slug)      s/Str
+                           (s/optional-key :default)   s/Any
+                           (s/optional-key :sectionId) NonBlankString
+                           s/Keyword                   s/Any}
+    (deferred-tru "parameter must be a map with :id and :type keys")))
+
+(def ParameterMapping
+  "Schema for a valid Parameter Mapping"
+  (with-api-error-message {:parameter_id             NonBlankString
+                           :target                   s/Any
+                           (s/optional-key :card_id) IntGreaterThanZero
+                           s/Keyword                 s/Any}
+    (deferred-tru "parameter_mapping must be a map with :parameter_id and :target keys")))
+
 (def EmbeddingParams
   "Schema for a valid map of embedding params."
   (with-api-error-message (s/maybe {s/Keyword (s/enum "disabled" "enabled" "locked")})
@@ -336,3 +359,8 @@
   "Schema for a valid ISO Locale code e.g. `en` or `en-US`. Case-insensitive and allows dashes or underscores."
   (with-api-error-message (s/constrained NonBlankString i18n/available-locale?)
     (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.")))
+
+(def NanoIdString
+  "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
+  (with-api-error-message #"^[A-Za-z0-9_\-]{21}$"
+    (deferred-tru "String must be a valid 21-character NanoID string.")))

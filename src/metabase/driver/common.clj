@@ -17,50 +17,6 @@
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
 
-(def connection-error-messages
-  "Generic error messages that drivers should return in their implementation
-  of [[metabase.driver/humanize-connection-error-message]]."
-  {:cannot-connect-check-host-and-port
-   (str (deferred-tru "Hmm, we couldn''t connect to the database.")
-        " "
-        (deferred-tru "Make sure your host and port settings are correct"))
-
-   :ssh-tunnel-auth-fail
-   (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
-        " "
-        (deferred-tru "Check the username, password."))
-
-   :ssh-tunnel-connection-fail
-   (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
-        " "
-        (deferred-tru "Check the hostname and port."))
-
-   :database-name-incorrect
-   (deferred-tru "Looks like the database name is incorrect.")
-
-   :invalid-hostname
-   (str (deferred-tru "It looks like your host is invalid.")
-        " "
-        (deferred-tru "Please double-check it and try again."))
-
-   :password-incorrect
-   (deferred-tru "Looks like your password is incorrect.")
-
-   :password-required
-   (deferred-tru "Looks like you forgot to enter your password.")
-
-   :username-incorrect
-   (deferred-tru "Looks like your username is incorrect.")
-
-   :username-or-password-incorrect
-   (deferred-tru "Looks like the username or password is incorrect.")
-
-   :certificate-not-trusted
-   (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")
-
-   :requires-ssl
-   (deferred-tru "Server appears to require SSL - please enable SSL above")})
-
 ;; TODO - we should rename these from `default-*-details` to `default-*-connection-property`
 
 (def default-host-details
@@ -176,9 +132,9 @@
    :type         :boolean
    :default      true
    :display-name (deferred-tru "Rerun queries for simple explorations")
-   :description  (str (deferred-tru "We execute the underlying query when you explore data using Summarize or Filter.")
-                      " "
-                      (deferred-tru "This is on by default but you can turn it off if performance is slow."))
+   :description  (deferred-tru
+                   (str "We execute the underlying query when you explore data using Summarize or Filter. "
+                        "This is on by default but you can turn it off if performance is slow."))
    :visible-if   {"advanced-options" true}})
 
 (def let-user-control-scheduling
@@ -194,9 +150,9 @@
   `let-user-control-scheduling` is enabled."
   {:name "schedules.metadata_sync"
    :display-name (deferred-tru "Database syncing")
-   :description  (str (deferred-tru "This is a lightweight process that checks for updates to this database’s schema.")
-                      " "
-                      (deferred-tru "In most cases, you should be fine leaving this set to sync hourly."))
+   :description  (deferred-tru
+                   (str "This is a lightweight process that checks for updates to this database’s schema. "
+                        "In most cases, you should be fine leaving this set to sync hourly."))
    :visible-if   {"let-user-control-scheduling" true}})
 
 (def cache-field-values-schedule
@@ -204,9 +160,11 @@
   `let-user-control-scheduling` is enabled."
   {:name "schedules.cache_field_values"
    :display-name (deferred-tru "Scanning for Filter Values")
-   :description  (str (deferred-tru "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.")
-                      " "
-                      (deferred-tru "When should Metabase automatically scan and cache field values?"))
+   :description  (deferred-tru
+                   (str "Metabase can scan the values present in each field in this database to enable checkbox "
+                        "filters in dashboards and questions. This can be a somewhat resource-intensive process, "
+                        "particularly if you have a very large database. When should Metabase automatically scan "
+                        "and cache field values?"))
    :visible-if   {"let-user-control-scheduling" true}})
 
 (def refingerprint
@@ -214,7 +172,9 @@
   {:name         "refingerprint"
    :type         :boolean
    :display-name (deferred-tru "Periodically refingerprint tables")
-   :description  (deferred-tru "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.")
+   :description  (deferred-tru
+                   (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
+                        "behavior, like improved auto-binning on your bar charts."))
    :visible-if   {"advanced-options" true}})
 
 (def default-advanced-options
@@ -249,7 +209,9 @@
    :type   :info
    :getter (fn []
              (when-let [ips (public-settings/cloud-gateway-ips)]
-               (str (deferred-tru "If your database is behind a firewall, you may need to allow connections from our Metabase Cloud IP addresses:")
+               (str (deferred-tru
+                      (str "If your database is behind a firewall, you may need to allow connections from our Metabase "
+                           "Cloud IP addresses:"))
                     "\n"
                     (str/join " - " ips))))})
 

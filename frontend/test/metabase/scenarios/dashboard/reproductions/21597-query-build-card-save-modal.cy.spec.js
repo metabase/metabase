@@ -3,7 +3,7 @@ import {
   popover,
   modal,
   openNativeEditor,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const databaseName = "Sample Database";
 const databaseCopyName = `${databaseName} copy`;

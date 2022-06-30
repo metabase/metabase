@@ -1,4 +1,4 @@
-import { restore, openNativeEditor } from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/helpers";
 
 import { runQuery } from "../../native-filters/helpers/e2e-sql-filter-helpers";
 

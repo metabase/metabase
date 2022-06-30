@@ -12,9 +12,9 @@ import { FormButton } from "./DownloadButton.styled";
 function colorForType(type) {
   switch (type) {
     case "csv":
-      return color("accent7");
+      return color("filter");
     case "xlsx":
-      return color("accent1");
+      return color("summarize");
     case "json":
       return color("bg-dark");
     default:
@@ -23,7 +23,8 @@ function colorForType(type) {
 }
 
 const retrieveFilename = ({ res, type }) => {
-  const contentDisposition = res.headers.get("Content-Disposition") || "";
+  const contentDispositionHeader = res.headers.get("Content-Disposition") || "";
+  const contentDisposition = decodeURIComponent(contentDispositionHeader);
   const match = contentDisposition.match(/filename="(?<fileName>.+)"/);
   const fileName =
     match?.groups?.fileName ||

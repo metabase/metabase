@@ -64,3 +64,15 @@ export function buildTypedOperatorOptions(
     };
   });
 }
+
+export function getNumberParameterArity(parameter) {
+  switch (parameter.type) {
+    case "number/=":
+    case "number/!=":
+      return "n";
+    case "number/between":
+      return 2;
+    default:
+      return 1;
+  }
+}

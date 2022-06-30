@@ -5,13 +5,16 @@ import {
   isOSS,
   visitDashboard,
   visitIframe,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const embeddingPage = "/admin/settings/embedding_in_other_applications";
 const licenseUrl = "https://metabase.com/license/embedding";
 const upgradeUrl = "https://www.metabase.com/upgrade/";
 
-const licenseExplanation = `In plain English, when you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the "Powered by Metabase" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`;
+const licenseExplanations = [
+  `When you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the "Powered by Metabase" visible on those embeds.`,
+  `Your should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`,
+];
 
 describe("scenarios > embedding > smoke tests", () => {
   beforeEach(() => {
@@ -26,21 +29,22 @@ describe("scenarios > embedding > smoke tests", () => {
       resetEmbedding();
     });
 
-    it("should display the embedding page correctly", () => {
+    it("should display the embedding page correctly", { tags: "@OSS" }, () => {
       cy.visit("/admin/settings/setup");
-      cy.findByText("Embedding in other Applications").click();
+      cy.findByText("Embedding").click();
 
       cy.location("pathname").should("eq", embeddingPage);
 
       // Some info we provide to users before they enable embedding
-      cy.findByText("Using embedding");
-      cy.contains(
-        "By enabling embedding you're agreeing to the embedding license located at",
-      );
+      cy.findByText("More details");
+      cy.contains("By enabling embedding you're agreeing to");
 
-      assertLinkMatchesUrl("metabase.com/license/embedding", licenseUrl);
+      assertLinkMatchesUrl("our embedding license.", licenseUrl);
 
-      cy.findByText(licenseExplanation);
+      cy.findByText("More details").click();
+      licenseExplanations.forEach(licenseExplanation => {
+        cy.findByText(licenseExplanation);
+      });
 
       cy.button("Enable").click();
 
@@ -99,7 +103,7 @@ describe("scenarios > embedding > smoke tests", () => {
     });
   });
 
-  context("embedding enabled", () => {
+  context("embedding enabled", { tags: "@OSS" }, () => {
     ["question", "dashboard"].forEach(object => {
       it(`should be able to publish/embed and then unpublish a ${object} without filters`, () => {
         const embeddableObject = object === "question" ? "card" : "dashboard";
@@ -112,6 +116,14 @@ describe("scenarios > embedding > smoke tests", () => {
         );
 
         visitAndEnableSharing(object);
+
+        if (isEE) {
+          cy.findByText("Font");
+        }
+
+        if (isOSS) {
+          cy.findByText("Font").should("not.exist");
+        }
 
         cy.findByText("Parameters");
         cy.findByText(

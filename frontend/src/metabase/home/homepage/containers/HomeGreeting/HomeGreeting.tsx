@@ -6,7 +6,7 @@ import HomeGreeting from "../../components/HomeGreeting";
 
 const mapStateToProps = (state: State) => ({
   user: getUser(state),
-  showLogo: !PLUGIN_SELECTORS.getHasCustomBranding(state),
+  showLogo: !PLUGIN_SELECTORS.getHideMetabot(state),
 });
 
 export default connect(mapStateToProps)(HomeGreeting);

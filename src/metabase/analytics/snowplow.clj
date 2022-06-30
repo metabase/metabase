@@ -20,25 +20,25 @@
            org.apache.http.impl.conn.PoolingHttpClientConnectionManager))
 
 (defsetting analytics-uuid
-  (str (deferred-tru "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase.")
-       " "
-       (deferred-tru "This is a public setting since some analytics events are sent prior to initial setup."))
+  (deferred-tru
+    (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
+         "This is a public setting since some analytics events are sent prior to initial setup."))
   :visibility :public
   :setter     :none
   :type       ::public-settings/uuid-nonce)
 
 (defsetting snowplow-available
-  (str (deferred-tru "Boolean indicating whether a Snowplow collector is available to receive analytics events.")
-       " "
-       (deferred-tru "Should be set via environment variable in Cypress tests or during local development."))
+  (deferred-tru
+    (str "Boolean indicating whether a Snowplow collector is available to receive analytics events. "
+         "Should be set via environment variable in Cypress tests or during local development."))
   :type       :boolean
   :visibility :public
   :default    config/is-prod?)
 
 (defsetting snowplow-enabled
-  (str (deferred-tru "Boolean indicating whether analytics events are being sent to Snowplow.")
-       " "
-       (deferred-tru "True if anonymous tracking is enabled for this instance, and a Snowplow collector is available."))
+  (deferred-tru
+    (str "Boolean indicating whether analytics events are being sent to Snowplow. "
+         "True if anonymous tracking is enabled for this instance, and a Snowplow collector is available."))
   :type   :boolean
   :setter :none
   :getter (fn [] (and (snowplow-available)
@@ -125,8 +125,8 @@
   []
   (new SelfDescribingJson
        (str "iglu:com.metabase/instance/jsonschema/" (schema->version ::instance))
-       {"id"             (analytics-uuid),
-        "version"        {"tag" (:tag (public-settings/version))},
+       {"id"             (analytics-uuid)
+        "version"        {"tag" (:tag (public-settings/version))}
         "token_features" (m/map-keys name (public-settings/token-features))
         "created_at"     (u.date/format (instance-creation))}))
 

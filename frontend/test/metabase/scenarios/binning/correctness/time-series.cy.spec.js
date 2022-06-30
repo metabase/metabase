@@ -3,7 +3,7 @@ import {
   popover,
   getBinningButtonForDimension,
   summarize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { TIME_OPTIONS } from "./constants";
 

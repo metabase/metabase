@@ -3,6 +3,8 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { connect } from "react-redux";
 
+import Icon from "metabase/components/Icon";
+
 import { color, alpha } from "metabase/lib/colors";
 import { getUser } from "metabase/selectors/user";
 import { getRelativeTimeAbbreviated } from "metabase/lib/time";
@@ -16,12 +18,10 @@ import {
   Container,
   Text,
   Time,
-  IconButton,
-  StatusIcon,
+  TextContainer,
 } from "./ModerationReviewBanner.styled";
-import Tooltip from "metabase/components/Tooltip";
 
-const ICON_BUTTON_SIZE = 20;
+const ICON_BUTTON_SIZE = 16;
 
 const mapStateToProps = (state, props) => ({
   currentUser: getUser(state),
@@ -47,13 +47,9 @@ export function ModerationReviewBanner({
   moderationReview,
   user: moderator,
   currentUser,
-  onRemove,
   className,
 }) {
-  const [isHovering, setIsHovering] = React.useState(false);
-  const [isActive, setIsActive] = React.useState(false);
-
-  const { bannerText, tooltipText } = getTextForReviewBanner(
+  const { bannerText } = getTextForReviewBanner(
     moderationReview,
     moderator,
     currentUser,
@@ -64,36 +60,16 @@ export function ModerationReviewBanner({
   const { name: iconName, color: iconColor } = getIconForReview(
     moderationReview,
   );
-  const showClose = isHovering || isActive;
 
   return (
-    <Container
-      backgroundColor={alpha(iconColor, 0.2)}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-      className={className}
-    >
-      <Tooltip tooltip={onRemove && tooltipText}>
-        {onRemove ? (
-          <IconButton
-            data-testid="moderation-remove-review-action"
-            onFocus={() => setIsActive(true)}
-            onBlur={() => setIsActive(false)}
-            icon={showClose ? "close" : iconName}
-            color={color(showClose ? "text-medium" : iconColor)}
-            onClick={onRemove}
-            iconSize={ICON_BUTTON_SIZE}
-          />
-        ) : (
-          <StatusIcon
-            name={iconName}
-            color={color(iconColor)}
-            size={ICON_BUTTON_SIZE}
-          />
-        )}
-      </Tooltip>
-      <Text>{bannerText}</Text>
-      <Time dateTime={moderationReview.created_at}>{relativeCreationTime}</Time>
+    <Container backgroundColor={alpha(iconColor, 0.2)} className={className}>
+      <Icon name={iconName} color={color(iconColor)} size={ICON_BUTTON_SIZE} />
+      <TextContainer>
+        <Text>{bannerText}</Text>
+        <Time dateTime={moderationReview.created_at}>
+          {relativeCreationTime}
+        </Time>
+      </TextContainer>
     </Container>
   );
 }

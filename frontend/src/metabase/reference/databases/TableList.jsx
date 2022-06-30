@@ -84,8 +84,7 @@ export const separateTablesBySchema = (
         : createListItem(table, index);
     });
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class TableList extends Component {
+class TableList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
     entities: PropTypes.object.isRequired,
@@ -146,3 +145,5 @@ export default class TableList extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(TableList);

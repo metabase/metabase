@@ -40,9 +40,9 @@ const getBackgroundColor = ({ status }: Props): string => {
     case "incomplete":
       return "transparent";
     case "complete":
-      return color("accent1");
+      return color("success");
     case "aborted":
-      return color("accent3");
+      return color("error");
   }
 };
 

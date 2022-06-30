@@ -4,11 +4,11 @@ import {
   openOrdersTable,
   openPeopleTable,
   openProductsTable,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > question > object details", () => {
   const FIRST_ORDER_ID = 9676;
@@ -58,7 +58,7 @@ describe("scenarios > question > object details", () => {
 
     drillFK({ id: 1 });
 
-    assertUserDetailView({ id: 1 });
+    assertUserDetailView({ id: 1, name: "Hudson Borer" });
     getPreviousObjectDetailButton().should("not.exist");
     getNextObjectDetailButton().should("not.exist");
 
@@ -69,7 +69,7 @@ describe("scenarios > question > object details", () => {
     changeSorting("User ID", "desc");
     drillFK({ id: 2500 });
 
-    assertDetailView({ id: 2500, entityName: "Person", byFK: true });
+    assertUserDetailView({ id: 2500, name: "Kenny Schmidt" });
     getPreviousObjectDetailButton().should("not.exist");
     getNextObjectDetailButton().should("not.exist");
   });
@@ -125,13 +125,31 @@ describe("scenarios > question > object details", () => {
     cy.url().should("contain", "objectId=2");
 
     cy.findByTestId("object-detail")
-      .findByText("Domenica Williamson")
+      .findAllByText("Domenica Williamson")
+      .last()
       .click();
     // Popover is blocking the city. If it renders, Cypress will not be able to click on "Searsboro" and the test will fail.
     // Unfortunately, asserting that the popover does not exist will give us a false positive result.
     cy.findByTestId("object-detail")
       .findByText("Searsboro")
       .click();
+  });
+
+  it("should work with non-numeric IDs (metabse#22768)", () => {
+    cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
+      semantic_type: null,
+    });
+
+    cy.request("PUT", `/api/field/${PRODUCTS.TITLE}`, {
+      semantic_type: "type/PK",
+    });
+
+    openProductsTable({ limit: 5 });
+
+    cy.findByTextEnsureVisible("Rustic Paper Wallet").click();
+
+    cy.location("search").should("eq", "?objectId=Rustic%20Paper%20Wallet");
+    cy.findByTestId("object-detail").contains("Rustic Paper Wallet");
   });
 });
 
@@ -168,8 +186,8 @@ function assertOrderDetailView({ id }) {
   assertDetailView({ id, entityName: "Order" });
 }
 
-function assertUserDetailView({ id }) {
-  assertDetailView({ id, entityName: "Person", byFK: true });
+function assertUserDetailView({ id, name }) {
+  assertDetailView({ id, entityName: name, byFK: true });
 }
 
 function getPreviousObjectDetailButton() {

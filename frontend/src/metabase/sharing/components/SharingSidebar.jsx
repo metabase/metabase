@@ -9,7 +9,7 @@ import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
 import {
   AddEditSlackSidebar,
   AddEditEmailSidebar,
-} from "metabase/sharing/components/AddEditSidebar";
+} from "metabase/sharing/components/AddEditSidebar/AddEditSidebar";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
@@ -105,13 +105,7 @@ const mapDispatchToProps = {
   testPulse,
 };
 
-@Pulses.loadList({
-  query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
-  loadingAndErrorWrapper: false,
-})
-@User.loadList({ loadingAndErrorWrapper: false })
-@connect(mapStateToProps, mapDispatchToProps)
-class SharingSidebar extends React.Component {
+class SharingSidebarInner extends React.Component {
   state = {
     editingMode: "list-pulses",
     // use this to know where to go "back" to
@@ -412,5 +406,14 @@ class SharingSidebar extends React.Component {
     return <Sidebar />;
   }
 }
+
+const SharingSidebar = _.compose(
+  Pulses.loadList({
+    query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
+    loadingAndErrorWrapper: false,
+  }),
+  User.loadList({ loadingAndErrorWrapper: false }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(SharingSidebarInner);
 
 export default SharingSidebar;

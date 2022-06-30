@@ -233,6 +233,15 @@
   [_ _ honeysql-form _]
   honeysql-form)
 
+(defmulti json-query
+  "Reaches into a JSON field (that is, a field with a defined :nfc_path).
+
+  Lots of SQL DB's have denormalized JSON fields and they all have some sort of special syntax for dealing with indexing into it. Implement the special syntax in this multimethod."
+  {:arglists '([driver identifier json-field]), :added "0.43.1"}
+  (fn [driver _ _] (driver/dispatch-on-initialized-driver driver))
+  :hierarchy #'driver/hierarchy)
+
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Low-Level ->honeysql impls                                           |
@@ -404,14 +413,18 @@
 (defmethod ->honeysql [:sql :power] [driver [_ field power]]
   (hsql/call :power (->honeysql driver field) (->honeysql driver power)))
 
+(defn- interval? [expr]
+  (and (vector? expr) (= (first expr) :interval)))
+
 (defmethod ->honeysql [:sql :+]
   [driver [_ & args]]
   (if (mbql.u/datetime-arithmetics? args)
-    (let [[field & intervals] args]
+    (if-let [[field intervals] (u/pick-first (complement interval?) args)]
       (reduce (fn [hsql-form [_ amount unit]]
                 (add-interval-honeysql-form driver hsql-form amount unit))
               (->honeysql driver field)
-              intervals))
+              intervals)
+      (throw (ex-info "Summing intervals is not supported" {:args args})))
     (apply hsql/call :+ (map (partial ->honeysql driver) args))))
 
 (defmethod ->honeysql [:sql :-] [driver [_ & args]] (apply hsql/call :- (map (partial ->honeysql driver) args)))

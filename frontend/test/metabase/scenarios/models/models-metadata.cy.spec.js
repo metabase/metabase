@@ -1,15 +1,14 @@
 import {
   restore,
-  sidebar,
+  rightSidebar,
   visualize,
   visitDashboard,
   popover,
-} from "__support__/e2e/cypress";
+  openQuestionActions,
+  questionInfoButton,
+} from "__support__/e2e/helpers";
 
-import {
-  openDetailsSidebar,
-  startQuestionFromModel,
-} from "./helpers/e2e-models-helpers";
+import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 
 import {
   openColumnOptions,
@@ -35,10 +34,12 @@ describe("scenarios > models metadata", () => {
 
     cy.visit("/model/1");
 
-    openDetailsSidebar();
+    openQuestionActions();
 
-    sidebar().within(() => {
-      cy.findByTestId("tooltip-component-wrapper").realHover();
+    popover().within(() => {
+      cy.findByTestId("tooltip-component-wrapper")
+        .parent()
+        .realHover();
       cy.findByText("89%");
     });
 
@@ -49,7 +50,7 @@ describe("scenarios > models metadata", () => {
       "Adding metadata makes it easier for your team to explore this data.",
     );
 
-    cy.findByText("Customize metadata").click();
+    cy.findByText("Edit metadata").click();
 
     cy.wait(["@cardQuery", "@cardQuery"]);
     cy.url().should("include", "/metadata");
@@ -79,10 +80,12 @@ describe("scenarios > models metadata", () => {
       { visitQuestion: true },
     );
 
-    openDetailsSidebar();
+    openQuestionActions();
 
-    sidebar().within(() => {
-      cy.findByTestId("tooltip-component-wrapper").realHover();
+    popover().within(() => {
+      cy.findByTestId("tooltip-component-wrapper")
+        .parent()
+        .realHover();
       cy.findByText("37%");
     });
 
@@ -93,7 +96,7 @@ describe("scenarios > models metadata", () => {
       "Adding metadata makes it easier for your team to explore this data.",
     );
 
-    cy.findByText("Customize metadata").click();
+    cy.findByText("Edit metadata").click();
 
     cy.wait(["@cardQuery", "@cardQuery"]);
     cy.url().should("include", "/metadata");
@@ -138,8 +141,9 @@ describe("scenarios > models metadata", () => {
     // Revision 1
     cy.findByText("Subtotal ($)");
     cy.findByText("Tax ($)").should("not.exist");
-    openDetailsSidebar();
-    cy.findByText("Customize metadata").click();
+
+    openQuestionActions();
+    cy.findByText("Edit metadata").click();
 
     cy.wait(["@cardQuery", "@cardQuery"]);
     cy.findByTextEnsureVisible("TAX");
@@ -154,11 +158,11 @@ describe("scenarios > models metadata", () => {
     cy.findByText("Tax ($)");
 
     cy.reload();
-    openDetailsSidebar();
+    questionInfoButton().click();
 
-    sidebar().within(() => {
-      cy.findByText("History").click();
-      cy.findAllByText("Revert")
+    rightSidebar().within(() => {
+      cy.findByText("History");
+      cy.findAllByTestId("question-revert-button")
         .first()
         .click();
     });
@@ -218,8 +222,8 @@ describe("scenarios > models metadata", () => {
         drillFK({ id: 1 });
         cy.wait("@dataset");
         cy.findByTestId("object-detail").within(() => {
-          cy.findByText("1");
-          cy.findByText("Hudson Borer");
+          cy.findByText("68883"); // zip
+          cy.findAllByText("Hudson Borer");
         });
 
         cy.go("back"); // close modal
@@ -232,8 +236,8 @@ describe("scenarios > models metadata", () => {
         drillFK({ id: 7 });
         cy.wait("@dataset");
         cy.findByTestId("object-detail").within(() => {
-          cy.findByText("7");
-          cy.findByText("perry.ruecker");
+          cy.findAllByText("7");
+          cy.findAllByText("perry.ruecker");
         });
       });
     });
@@ -255,8 +259,8 @@ describe("scenarios > models metadata", () => {
           drillDashboardFK({ id: 1 });
           cy.wait("@dataset");
           cy.findByTestId("object-detail").within(() => {
-            cy.findByText("1");
-            cy.findByText("Hudson Borer");
+            cy.findAllByText("1");
+            cy.findAllByText("Hudson Borer");
           });
 
           cy.go("back");
@@ -267,8 +271,8 @@ describe("scenarios > models metadata", () => {
           drillDashboardFK({ id: 7 });
           cy.wait("@dataset");
           cy.findByTestId("object-detail").within(() => {
-            cy.findByText("7");
-            cy.findByText("perry.ruecker");
+            cy.findAllByText("7");
+            cy.findAllByText("perry.ruecker");
           });
         });
       });

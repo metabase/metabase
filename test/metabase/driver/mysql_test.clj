@@ -7,8 +7,11 @@
             [metabase.config :as config]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.mysql :as ddl.mysql]
             [metabase.driver.mysql :as mysql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
@@ -351,3 +354,135 @@
                                "Skipping %s because %s env var is not set"
                                "mysql-connect-with-ssl-and-pem-cert-test"
                                "MB_MYSQL_SSL_TEST_SSL_CERT")))))
+
+;; MariaDB doesn't have support for explicit JSON columns, it does it in a more SQL Server-ish way
+;; where LONGTEXT columns are the actual JSON columns and there's JSON functions that just work on them,
+;; construed as text.
+;; You could even have mixed JSON / non JSON columns...
+;; Therefore, we can't just automatically get JSON columns in MariaDB. Therefore, no JSON support.
+;; Therefore, no JSON tests.
+(defn- version-query [db-id] {:type :native, :native {:query "SELECT VERSION();"}, :database db-id})
+
+(defn- is-mariadb? [db-id] (str/includes?
+                             (or (get-in (qp/process-userland-query (version-query db-id)) [:data :rows 0 0]) "")
+                             "Maria"))
+
+(deftest nested-field-column-test
+  (mt/test-driver :mysql
+    (mt/dataset json
+      (when (not (is-mariadb? (u/id (mt/db))))
+        (testing "Nested field column listing"
+          (is (= #{{:name "json_bit → 1234123412314",
+                    :database-type "timestamp",
+                    :base-type :type/DateTime,
+                    :database-position 0,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "1234123412314"]}
+                   {:name "json_bit → boop",
+                    :database-type "timestamp",
+                    :base-type :type/DateTime,
+                    :database-position 0,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "boop"]}
+                   {:name "json_bit → genres",
+                    :database-type "text",
+                    :base-type :type/Array,
+                    :database-position 0,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "genres"]}
+                   {:name "json_bit → 1234",
+                    :database-type "integer",
+                    :base-type :type/Integer,
+                    :database-position 0,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "1234"]}
+                   {:name "json_bit → doop",
+                    :database-type "text",
+                    :base-type :type/Text,
+                    :database-position 0,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "doop"]}
+                   {:name "json_bit → noop",
+                    :database-type "timestamp",
+                    :base-type :type/DateTime,
+                    :database-position 0,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "noop"]}
+                   {:name "json_bit → zoop",
+                    :database-type "timestamp",
+                    :base-type :type/DateTime,
+                    :database-position 0,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "zoop"]}
+                   {:name "json_bit → published",
+                    :database-type "text",
+                    :base-type :type/Text,
+                    :database-position 0,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "published"]}
+                   {:name "json_bit → title",
+                    :database-type "text",
+                    :base-type :type/Text,
+                    :database-position 0,
+                    :visibility-type :normal,
+                    :nfc-path [:json_bit "title"]}}
+                 (sql-jdbc.sync/describe-nested-field-columns
+                   :mysql
+                   (mt/db)
+                   {:name "json"}))))))))
+
+(deftest big-nested-field-column-test
+  (mt/test-driver :mysql
+    (mt/dataset json
+      (when (not (is-mariadb? (u/id (mt/db))))
+        (testing "Nested field column listing, but big"
+          (is (= #{}
+                 (sql-jdbc.sync/describe-nested-field-columns
+                   :mysql
+                   (mt/db)
+                   {:name "big_json"}))))))))
+
+(deftest json-query-test
+  (let [boop-identifier (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {})]
+    (testing "Transforming MBQL query with JSON in it to mysql query works"
+      (let [boop-field {:nfc_path [:bleh :meh] :database_type "integer"}]
+        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"meh\""]
+               (hsql/format (#'sql.qp/json-query :mysql boop-identifier boop-field))))))
+    (testing "What if types are weird and we have lists"
+      (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "integer"}]
+        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"meh\".\"foobar\".\"1234\""]
+               (hsql/format (#'sql.qp/json-query :mysql boop-identifier weird-field))))))
+    (testing "Doesn't complain when field is boolean"
+      (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
+        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"boop\".\"foobar\".\"1234\""]
+               (hsql/format (#'sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
+
+(deftest json-alias-test
+  (mt/test-driver :mysql
+    (when (not (is-mariadb? (u/id (mt/db))))
+      (testing "json breakouts and order bys have alias coercion"
+        (mt/dataset json
+          (let [table  (db/select-one Table :db_id (u/id (mt/db)) :name "json")]
+            (sync/sync-table! table)
+            (let [field (db/select-one Field :table_id (u/id table) :name "json_bit → 1234")
+                  compile-res (qp/compile
+                                {:database (u/the-id (mt/db))
+                                 :type     :query
+                                 :query    {:source-table (u/the-id table)
+                                            :aggregation  [[:count]]
+                                            :breakout     [[:field (u/the-id field) nil]]}})]
+              (is (= (str "SELECT JSON_EXTRACT(`json`.`json_bit`, ?) AS `json_bit → 1234`, "
+                          "count(*) AS `count` FROM `json` GROUP BY JSON_EXTRACT(`json`.`json_bit`, ?) "
+                          "ORDER BY JSON_EXTRACT(`json`.`json_bit`, ?) ASC")
+                     (:query compile-res)))
+              (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
+
+(deftest ddl.execute-with-timeout-test
+  (mt/test-driver :mysql
+    (mt/dataset json
+      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+        (is (thrown-with-msg?
+              Exception
+              #"Killed mysql process id \d+ due to timeout."
+              (#'ddl.mysql/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
+        (is (= true (#'ddl.mysql/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))

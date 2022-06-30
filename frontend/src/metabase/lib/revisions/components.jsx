@@ -23,6 +23,8 @@ EntityLink.defaultProps = {
 const revisionTitlePropTypes = {
   username: PropTypes.string.isRequired,
   message: PropTypes.node.isRequired,
+  event: PropTypes.node,
+  revertFn: PropTypes.func,
 };
 
 export function RevisionTitle({ username, message }) {

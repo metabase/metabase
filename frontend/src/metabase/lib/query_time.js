@@ -30,14 +30,16 @@ export const DATETIME_UNITS = [
 
 export function computeFilterTimeRange(filter) {
   let expandedFilter;
+  let defaultUnit;
   if (filter[0] === "time-interval") {
+    defaultUnit = filter[3];
     expandedFilter = expandTimeIntervalFilter(filter);
   } else {
     expandedFilter = filter;
   }
 
   const [operator, field, ...values] = expandedFilter;
-  const bucketing = parseFieldBucketing(field, "day");
+  const bucketing = parseFieldBucketing(field, defaultUnit ?? "day");
 
   let start, end;
   if (isStartingFrom(filter)) {
@@ -94,7 +96,7 @@ export function expandTimeIntervalFilter(filter) {
     return [
       "between",
       field,
-      ["relative-datetime", n - 1, unit],
+      ["relative-datetime", n, unit],
       ["relative-datetime", includeCurrent ? 0 : -1, unit],
     ];
   } else if (n > 1) {
@@ -183,7 +185,11 @@ export function generateTimeIntervalDescription(n, unit) {
 }
 
 export function generateTimeValueDescription(value, bucketing, isExclude) {
-  if (typeof value === "string") {
+  if (typeof value === "number" && bucketing === "hour-of-day") {
+    return moment()
+      .hour(value)
+      .format("h A");
+  } else if (typeof value === "string") {
     const m = parseTimestamp(value, bucketing);
     if (bucketing) {
       return formatDateTimeWithUnit(value, bucketing, { isExclude });
@@ -692,12 +698,9 @@ export const EXCLUDE_OPTIONS = {
       const displayName = date.format("h A");
       return {
         displayName,
-        value: date.toISOString(),
-        serialized: date.format("H"),
-        test: value =>
-          moment(value)
-            .utc()
-            .format("h A") === displayName,
+        value: hour,
+        serialized: hour.toString(),
+        test: value => value === hour,
       };
     };
     return [_.range(0, 12).map(func), _.range(12, 24).map(func)];

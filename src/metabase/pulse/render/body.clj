@@ -271,7 +271,7 @@
   [col-settings col]
   (-> (m/map-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)) col-settings)
       (backfill-currency)
-      (u/update-when :date_style update-date-style (:unit col))))
+      (u/update-if-exists :date_style update-date-style (:unit col))))
 
 (defn- ->js-viz
   "Include viz settings for js.
@@ -319,7 +319,7 @@
      :x        {:type (or (:graph.x_axis.scale viz-settings) default-x-type)
                 :format x-format}
      :y        {:type (or (:graph.y_axis.scale viz-settings) "linear")
-                :format y-format }
+                :format y-format}
      :labels   labels}))
 
 (defn- set-default-stacked
@@ -504,17 +504,17 @@
         image-bundle  (image-bundle/make-image-bundle
                         render-type
                         (js-svg/combo-chart series settings))]
-  {:attachments
-   (when image-bundle
-     (image-bundle/image-bundle->attachment image-bundle))
+   {:attachments
+    (when image-bundle
+      (image-bundle/image-bundle->attachment image-bundle))
 
-   :content
-   [:div
-    [:img {:style (style/style {:display :block
-                                :width   :100%})
-           :src   (:image-src image-bundle)}]]}))
+    :content
+    [:div
+     [:img {:style (style/style {:display :block
+                                 :width   :100%})
+            :src   (:image-src image-bundle)}]]}))
 
-(defn- series-setting [viz-settings inner-key outer-key]
+(defn- series-setting [viz-settings outer-key inner-key]
   (get-in viz-settings [:series_settings (keyword outer-key) inner-key]))
 
 (defn- single-x-axis-combo-series
@@ -533,11 +533,11 @@
           selected-rows (sort-by first (map #(vector (ffirst %) (nth (second %) idx)) joined-rows))
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
                             (nth (default-y-pos viz-settings) idx))]
-    {:name          card-name
-     :color         card-color
-     :type          card-type
-     :data          selected-rows
-     :yAxisPosition y-axis-pos})))
+     {:name          card-name
+      :color         card-color
+      :type          card-type
+      :data          selected-rows
+      :yAxisPosition y-axis-pos})))
 
 (defn- double-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
@@ -797,13 +797,13 @@
                                 :measure {:format (:y jsviz-settings)}))
         svg            (js-svg/funnel rows settings)
         image-bundle   (image-bundle/make-image-bundle render-type svg)]
-  {:attachments
-   (image-bundle/image-bundle->attachment image-bundle)
+   {:attachments
+    (image-bundle/image-bundle->attachment image-bundle)
 
-   :content
-   [:div
-    [:img {:style (style/style {:display :block :width :100%})
-           :src   (:image-src image-bundle)}]]}))
+    :content
+    [:div
+     [:img {:style (style/style {:display :block :width :100%})
+            :src   (:image-src image-bundle)}]]}))
 
 
 (s/defmethod render :empty :- common/RenderedPulseCard

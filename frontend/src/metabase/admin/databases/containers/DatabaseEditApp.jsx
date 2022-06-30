@@ -2,10 +2,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { getValues } from "redux-form";
 
 import { t } from "ttag";
 import _ from "underscore";
+import { updateIn } from "icepick";
 
 import title from "metabase/hoc/Title";
 
@@ -20,11 +20,7 @@ import { getSetting } from "metabase/selectors/settings";
 
 import Database from "metabase-lib/lib/metadata/Database";
 
-import {
-  getEditingDatabase,
-  getDatabaseCreationStep,
-  getInitializeError,
-} from "../selectors";
+import { getEditingDatabase, getInitializeError } from "../selectors";
 
 import {
   reset,
@@ -51,12 +47,9 @@ const DATABASE_FORM_NAME = "database";
 
 const mapStateToProps = state => {
   const database = getEditingDatabase(state);
-  const formValues = getValues(state.form[DATABASE_FORM_NAME]);
 
   return {
     database: database ? new Database(database) : undefined,
-    databaseCreationStep: getDatabaseCreationStep(state),
-    selectedEngine: formValues ? formValues.engine : undefined,
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
     isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
@@ -76,9 +69,7 @@ const mapDispatchToProps = {
   selectEngine,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@title(({ database }) => database && database.name)
-export default class DatabaseEditApp extends Component {
+class DatabaseEditApp extends Component {
   constructor(props, context) {
     super(props, context);
   }
@@ -86,7 +77,6 @@ export default class DatabaseEditApp extends Component {
   static propTypes = {
     database: PropTypes.object,
     metadata: PropTypes.object,
-    databaseCreationStep: PropTypes.string,
     params: PropTypes.object.isRequired,
     reset: PropTypes.func.isRequired,
     initializeDatabase: PropTypes.func.isRequired,
@@ -113,7 +103,6 @@ export default class DatabaseEditApp extends Component {
       database,
       deleteDatabase,
       discardSavedFieldValues,
-      selectedEngine,
       initializeError,
       rescanDatabaseFields,
       syncDatabaseSchema,
@@ -130,6 +119,14 @@ export default class DatabaseEditApp extends Component {
       [addingNewDatabase ? t`Add Database` : database.name],
     ];
 
+    const handleSubmit = async database => {
+      try {
+        await this.props.saveDatabase(database);
+      } catch (error) {
+        throw getSubmitError(error);
+      }
+    };
+
     return (
       <DatabaseEditRoot>
         <Breadcrumbs className="py4" crumbs={crumbs} />
@@ -144,9 +141,9 @@ export default class DatabaseEditApp extends Component {
                 {() => (
                   <Databases.Form
                     database={database}
-                    form={Databases.forms.connection}
+                    form={Databases.forms.details}
                     formName={DATABASE_FORM_NAME}
-                    onSubmit={this.props.saveDatabase}
+                    onSubmit={handleSubmit}
                     submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
                     submitButtonComponent={Button}
                   >
@@ -187,11 +184,7 @@ export default class DatabaseEditApp extends Component {
                               </div>
                             </Form>
                           </DatabaseEditForm>
-                          <div>
-                            {addingNewDatabase && (
-                              <DatabaseEditHelp engine={selectedEngine} />
-                            )}
-                          </div>
+                          <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
                         </DatabaseEditContent>
                       );
                     }}
@@ -219,3 +212,18 @@ export default class DatabaseEditApp extends Component {
     );
   }
 }
+
+const getSubmitError = error => {
+  if (_.isObject(error?.data?.errors)) {
+    return updateIn(error, ["data", "errors"], errors => ({
+      details: errors,
+    }));
+  }
+
+  return error;
+};
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ database }) => database && database.name),
+)(DatabaseEditApp);

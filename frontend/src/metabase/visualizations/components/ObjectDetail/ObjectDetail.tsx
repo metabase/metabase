@@ -3,7 +3,9 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Question from "metabase-lib/lib/Question";
+import { isPK } from "metabase/lib/schema_metadata";
 import { Table } from "metabase-types/types/Table";
+
 import { ForeignKey } from "metabase-types/api/foreignKey";
 import { DatasetData } from "metabase-types/types/Dataset";
 import { ObjectId, OnVisualizationClickType } from "./types";
@@ -33,18 +35,25 @@ import {
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { State } from "metabase-types/store";
 
-import { getObjectName, getIdValue, getSingleResultsRow } from "./utils";
+import {
+  getObjectName,
+  getDisplayId,
+  getIdValue,
+  getSingleResultsRow,
+} from "./utils";
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
 import {
   ObjectDetailModal,
   ObjectDetailBodyWrapper,
+  ObjectIdLabel,
   CloseButton,
   ErrorWrapper,
 } from "./ObjectDetail.styled";
 
-const mapStateToProps = (state: unknown, { data }: ObjectDetailProps) => {
+const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
   let zoomedRowID = getZoomedObjectId(state);
   const isZooming = zoomedRowID != null;
 
@@ -195,7 +204,7 @@ export function ObjectDetailFn({
   );
 
   const onKeyDown = (event: KeyboardEvent) => {
-    const capturedKeys: { [key: string]: () => void } = {
+    const capturedKeys: Record<string, () => void> = {
       ArrowUp: viewPreviousObjectDetail,
       ArrowDown: viewNextObjectDetail,
       Escape: closeObjectDetail,
@@ -214,9 +223,20 @@ export function ObjectDetailFn({
     return null;
   }
 
-  const objectName = getObjectName({ table, question });
+  const objectName = getObjectName({
+    table,
+    question,
+    cols: data.cols,
+    zoomedRow,
+  });
 
-  const hasRelationships = tableForeignKeys && !!tableForeignKeys.length;
+  const displayId = getDisplayId({ cols: data.cols, zoomedRow });
+  const hasPk = !!data.cols.find(isPK);
+  const hasRelationships = !!(
+    tableForeignKeys &&
+    !!tableForeignKeys.length &&
+    hasPk
+  );
 
   return (
     <Modal
@@ -235,7 +255,7 @@ export function ObjectDetailFn({
             <ObjectDetailHeader
               canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
               objectName={objectName}
-              objectId={zoomedRowID}
+              objectId={displayId}
               canZoomPreviousRow={canZoomPreviousRow}
               canZoomNextRow={canZoomNextRow}
               viewPreviousObjectDetail={viewPreviousObjectDetail}
@@ -245,8 +265,9 @@ export function ObjectDetailFn({
             <ObjectDetailBody
               data={data}
               objectName={objectName}
-              zoomedRow={zoomedRow}
+              zoomedRow={zoomedRow ?? []}
               settings={settings}
+              hasRelationships={hasRelationships}
               onVisualizationClick={onVisualizationClick}
               visualizationIsClickable={visualizationIsClickable}
               tableForeignKeys={tableForeignKeys}
@@ -262,7 +283,7 @@ export function ObjectDetailFn({
 export interface ObjectDetailHeaderProps {
   canZoom: boolean;
   objectName: string;
-  objectId: ObjectId;
+  objectId: ObjectId | null | unknown;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
   viewPreviousObjectDetail: () => void;
@@ -284,7 +305,8 @@ export function ObjectDetailHeader({
     <div className="Grid border-bottom relative">
       <div className="Grid-cell">
         <h2 className="p3">
-          {objectName} {objectId}
+          {objectName}
+          {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
         </h2>
       </div>
       <div className="flex align-center">
@@ -331,8 +353,9 @@ export function ObjectDetailHeader({
 export interface ObjectDetailBodyProps {
   data: DatasetData;
   objectName: string;
-  zoomedRow: unknown[] | undefined;
+  zoomedRow: unknown[];
   settings: unknown;
+  hasRelationships: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
   tableForeignKeys: ForeignKey[];
@@ -347,6 +370,7 @@ export function ObjectDetailBody({
   objectName,
   zoomedRow,
   settings,
+  hasRelationships = false,
   onVisualizationClick,
   visualizationIsClickable,
   tableForeignKeys,
@@ -362,12 +386,14 @@ export function ObjectDetailBody({
         onVisualizationClick={onVisualizationClick}
         visualizationIsClickable={visualizationIsClickable}
       />
-      <Relationships
-        objectName={objectName}
-        tableForeignKeys={tableForeignKeys}
-        tableForeignKeyReferences={tableForeignKeyReferences}
-        foreignKeyClicked={followForeignKey}
-      />
+      {hasRelationships && (
+        <Relationships
+          objectName={objectName}
+          tableForeignKeys={tableForeignKeys}
+          tableForeignKeyReferences={tableForeignKeyReferences}
+          foreignKeyClicked={followForeignKey}
+        />
+      )}
     </ObjectDetailBodyWrapper>
   );
 }

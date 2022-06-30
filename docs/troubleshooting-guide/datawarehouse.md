@@ -1,78 +1,111 @@
-# Connecting to databases
+---
+title: Troubleshooting database connections
+---
 
-<div class='doc-toc' markdown=1>
-- [The data warehouse server is down](#server-down)
-- [The data warehouse server is denying connections from your IP address](#server-denying-connections)
-- [Incorrect credentials](#incorrect-credentials)
-- [Connection timeout: your question took too long](#connection-timeout-took-too-long)
-- [Connections cannot be acquired from the underlying database](#connections-cannot-be-acquired)
-</div>
+# Troubleshooting database connections
 
-If you're having trouble connecting to your data warehouse, run through these steps to identify the problem.
+If you can't connect to your database, you'll need to figure out if the problem is happening with Metabase or your database server.
 
-1. Is the data warehouse server running ([see below](#server-down))?
-2. Can you connect to the data warehouse using another client from a machine you know should have access ([see below](#server-denying-connections))?
-3. Can you connect to the data warehouse from another client from the machine you're running Metabase on?
-4. Have you added the connection in Metabase?
-5. Have you examined the logs to verify that the sync process started and that no errors were thrown? (You can view the logs in the Metabase process, or in the app itself by going to the Admin Panel, selecting "Troubleshooting", and then selecting "Logs".)
-6. Have you run a native `SELECT 1` query to verify the connection to the data warehouse?
-7. If the sync process has completed, can you ask a [native question][native-question] to verify that you are able to use the database?
+- [Troubleshooting connections to Metabase](#troubleshooting-connections-to-metabase).
+- [Troubleshooting connections to the database server](#troubleshooting-connections-to-the-database-server).
+- [Common database connection errors](#common-database-connection-errors).
+- [Testing a database connection](#testing-a-database-connection).
 
-<h2 id="server-down">The data warehouse server is down</h2>
+If your database connection is successful, but the tables aren't showing up in the [Data Browser](/learn/getting-started/data-browser), go to [Troubleshooting missing tables](./cant-see-tables.html).
 
-**How to detect this:** Database servers occasionally go down. If you're using a hosted database service, go to its console and verify its status. If you have direct access to a command-line interface, log in and make sure that it's up and running and accepting queries.
+## Troubleshooting connections to Metabase
 
-**How to fix this:** It's out of the scope of this troubleshooting guide to get your data warehouse server back up---please check with whomever set it up for you.
+1. Go to **Admin** > **Databases** and select your database to confirm that your connection hasn’t been changed or deleted.
 
-<h2 id="server-denying-connections">The data warehouse server is denying connections from your IP address</h2>
+    - If Metabase hasn't started syncing with your database, click **Sync database schema now**.
 
-**How to detect this:** If you can access the server from a bastion host or another machine, use the `nc` command (or your operating system's equivalent) to verify that you can connect to the host on a given port. Different databases use different ports; for a default PostgreSQL configuration (which listens on port 5432), the command would be:
+    - If Metabase is taking a long time to sync, go to [Troubleshooting syncs and scans](./sync-fingerprint-scan.html).
+
+2. Go to **Admin** > **Troubleshooting** > **Logs** to check if Metabase failed to sync [due to an error](#common-database-connection-errors). 
+
+    - If the logs feel overwhelming, check out [How to read the server logs](./server-logs.html).
+
+If you don't have access to the Metabase Admin panel, you'll need to ask the person who set up your Metabase.
+
+## Troubleshooting connections to the database server
+
+1. [Check that the data warehouse server is running](#checking-the-server-status).
+
+2. Check if you can connect to the data warehouse from another client using the machine that you’re running Metabase on.
+
+    - If you can access the server from a bastion host or another machine, [check if your Metabase's IP address has access to your database server](#checking-your-server-access).
+
+    - If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](/cloud/docs/ip-addresses-to-whitelist.html).
+
+The steps above will help you detect whether the problem is occurring outside of Metabase. To _fix_ problems with your database server, you'll need to refer to the docs for your database or cloud service. Remember to [test your database connection](#testing-the-connection-status) after you make changes.
+
+If you don't have access to the data warehouse server, you’ll need to ask the person who manages your database or data warehouse.
+
+## Common database connection errors
+
+### Your question took too long
+
+If you see this error message in the Metabase interface, go to [Troubleshooting timeouts](./timeout.html).
+
+### Connections cannot be acquired from the underlying database
+
+If you see this error messages in the [logs](./server-logs.html) (**Admin** > **Troubleshooting** > **Logs**):
+
+1. Go to **Admin** > **Databases** and select your database.
+2. Go to **Advanced options** > **Additional JDBC connection string options** and add `trustServerCertificate=true`.
+3. Click **Save**.
+
+## Testing a database connection
+
+As you work through the troubleshooting steps in this guide, you can check if each component is working as expected: 
+
+- [Server status](#checking-the-server-status)
+- [Server access](#checking-your-server-access)
+- [Connection status](#testing-the-connection-status)
+
+### Checking the server status
+
+If you’re using a hosted database service, go to the console and verify its status.
+
+If you have direct access to a command-line interface, log in and make sure that your database is running and accepting queries.
+
+### Checking your server access
+
+To verify that your Metabase's IP address can access the database server:
+
+1. Use the [netcat](https://en.wikipedia.org/wiki/Netcat) command  `nc` (or your operating system’s equivalent) to check if you can connect to the host on a given port. Note that different databases use different ports by default.
+
+2. If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](/cloud/docs/ip-addresses-to-whitelist.html).
+
+3. Check that your database credentials are correct.
+
+#### Example commands
+
+To verify the port used in a default PostgreSQL configuration (which listens on port 5432):
 
 ```
 nc -v your-db-host 5432
 ```
 
-**How to fix this:** It's out of the scope of this troubleshooting guide to change your network configuration---please check with whomever is responsible for the network your data warehouse is running on.
-
-<h2 id="incorrect-credentials">Incorrect credentials</h2>
-
-**How to detect this:** If you've verified that you can connect to the data warehouse's host and port, the next step is to check your credentials. Again, connecting to a data warehouse depends on your database server software; for PostgreSQL, a command like the one shown below will do the job:
+To verify your credentials for a PostgreSQL database (you'll see an error if the database name or the user/password are incorrect):
 
 ```
-psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER`
+psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
 ```
+### Testing the connection status
 
-If your credentials are incorrect, you should see an error message letting you know if the database name or the user/password are incorrect.
+1. Go to the Metabase [SQL editor](../users-guide/writing-sql.html).
+2. Test the connection to your database by running:
+    ```
+    SELECT 1
+    ```
 
-**How to fix this:** If the database name or the user/password combination are incorrect, ask the person running your data warehouse for correct credentials.
+## Are you still stuck?
 
-<h2 id="connection-timeout-took-too-long">Connection timeout: your question took too long</h2>
+If you can’t solve your problem using the troubleshooting guides:
 
-**How to detect this:** If you see the error message, "Your question took too long," something in your setup timed out. Depending on the specifics of your deployment, the problem could be in:
+- Search or ask the [Metabase community][discourse].
+- Search for [known bugs or limitations][known-issues].
 
-- your load balancer;
-- your reverse proxy server (e.g., Nginx);
-- Jetty;
-- your database; or
-- your cloud service, such as AWS's Elastic Beanstalk, EC2, Heroku, or Google App Engine.
-
-**How to fix this:** Fixing this depends on your specific setup. These resources may help:
-
-- [Configuring Jetty connectors][configuring-jetty]
-- [EC2 Troubleshooting][ec2-troubleshooting]
-- [Elastic Load Balancing Connection Timeout Management][elb-timeout]
-- [Heroku timeouts][heroku-timeout]
-- [App Engine: Dealing with DeadlineExceededErrors][app-engine-timeout]
-
-<h2 id="connections-cannot-be-acquired">Connections cannot be acquired from the underlying database</h2>
-
-**How to detect this:** Metabase fails to connect to your data warehouse and the Metabase server logs include the error message `Connections cannot be acquired from the underlying database!
-
-**How to fix this:** Navigate to the options for your data warehouse and locate the "Additional JDBC Connection Strings" option, then add `trustServerCertificate=true` as an additional string.
-
-[app-engine-timeout]: https://cloud.google.com/appengine/articles/deadlineexceedederrors
-[configuring-jetty]: https://www.eclipse.org/jetty/documentation/current/configuring-connectors.html
-[ec2-troubleshooting]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html
-[elb-timeout]: https://aws.amazon.com/blogs/aws/elb-idle-timeout-control/
-[heroku-timeout]: https://devcenter.heroku.com/articles/request-timeout
-[native-question]: ../users-guide/writing-sql.html
+[discourse]: https://discourse.metabase.com/
+[known-issues]: ./known-issues.html

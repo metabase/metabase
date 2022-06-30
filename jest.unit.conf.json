@@ -26,7 +26,8 @@
   "coverageReporters": ["text", "html", "lcov"],
   "collectCoverageFrom": [
     "frontend/src/**/*.{js,jsx,ts,tsx}",
-    "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}"
+    "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
+    "**/*.stories.{js,jsx,ts,tsx}"
   ],
   "coveragePathIgnorePatterns": [
     "/node_modules/",
@@ -41,5 +42,8 @@
   "watchPlugins": [
     "jest-watch-typeahead/filename",
     "jest-watch-typeahead/testname"
-  ]
+  ],
+  "transform": {
+    "\\.(jsx?|tsx?)$": ["babel-jest", { "configFile": "./babel.presets.json" }]
+  }
 }

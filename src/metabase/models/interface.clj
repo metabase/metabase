@@ -227,11 +227,22 @@
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)
   :update add-updated-at-timestamp)
 
+;; like `timestamped?`, but for models that only have an `:created_at` column
+(models/add-property! :created-at-timestamped?
+  :insert add-created-at-timestamp)
+
 ;; like `timestamped?`, but for models that only have an `:updated_at` column
 (models/add-property! :updated-at-timestamped?
   :insert add-updated-at-timestamp
   :update add-updated-at-timestamp)
 
+(defn- add-entity-id [obj & _]
+  (if (contains? obj :entity_id)
+    obj
+    (assoc obj :entity_id (u/generate-nano-id))))
+
+(models/add-property! :entity_id
+  :insert add-entity-id)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
@@ -344,13 +355,3 @@
   permissions for the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is either `:read` or
   `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.models.permissions/set-has-partial-permissions-for-set?))
-
-(defn has-any-permissions?
-  "Accepts multiple permission-checking functions, such as the ones returned by `current-user-has-full-permissions?`
-  and `current-user-has-partial-permissions?`, and returns a function which returns true if any permission functions
-  return true."
-  [& permission-check-fns]
-  (fn [object]
-    (->> ((apply juxt permission-check-fns) object)
-         (some true?)
-         boolean)))

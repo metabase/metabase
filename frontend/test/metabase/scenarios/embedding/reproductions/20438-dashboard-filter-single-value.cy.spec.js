@@ -4,7 +4,7 @@ import {
   popover,
   visitDashboard,
   visitIframe,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -98,7 +98,7 @@ describe("issue 20438", () => {
     cy.button("Add filter").click();
     cy.wait("@getEmbed");
 
-    cy.get(".cellData")
+    cy.findAllByTestId("cell-data")
       // One of product titles for Doohickey
       .should("contain", "Small Marble Shoes")
       // One of product titles for Gizmo

@@ -1,3 +1,7 @@
+---
+title: Application permissions
+---
+
 # Application permissions
 
 {% include plans-blockquote.html feature="Application permissions" %}

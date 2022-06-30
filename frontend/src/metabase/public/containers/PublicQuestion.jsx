@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import _ from "underscore";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
@@ -16,7 +17,7 @@ import {
 import { applyParameters } from "metabase/meta/Card";
 import {
   getParametersFromCard,
-  getValueAndFieldIdPopulatedParametersFromCard,
+  getCardUiParameters,
 } from "metabase/parameters/utils/cards";
 
 import {
@@ -45,10 +46,7 @@ const mapDispatchToProps = {
   addFields,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@title(({ card }) => card && card.name)
-@ExplicitSize({ refreshMode: "debounceLeading" })
-export default class PublicQuestion extends Component {
+class PublicQuestion extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -90,9 +88,11 @@ export default class PublicQuestion extends Component {
         this.props.addFields(card.param_fields);
       }
 
-      const parameters = getValueAndFieldIdPopulatedParametersFromCard(
+      const parameters = getCardUiParameters(
         card,
         metadata,
+        {},
+        card.parameters || undefined,
       );
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
@@ -136,7 +136,7 @@ export default class PublicQuestion extends Component {
       return;
     }
 
-    const parameters = getParametersFromCard(card);
+    const parameters = card.parameters || getParametersFromCard(card);
 
     try {
       this.setState({ result: null });
@@ -189,7 +189,8 @@ export default class PublicQuestion extends Component {
     );
 
     const parameters =
-      card && getValueAndFieldIdPopulatedParametersFromCard(card, metadata);
+      card &&
+      getCardUiParameters(card, metadata, {}, card.parameters || undefined);
 
     return (
       <EmbedFrame
@@ -233,3 +234,9 @@ export default class PublicQuestion extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ card }) => card && card.name),
+  ExplicitSize({ refreshMode: "debounceLeading" }),
+)(PublicQuestion);

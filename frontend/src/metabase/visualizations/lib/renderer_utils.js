@@ -185,6 +185,9 @@ export function getXValues({ settings, series }) {
     // In the raw series, the dimension isn't necessarily in the first element
     // of each row. This finds the correct column index.
     const columnIndex = getColumnIndex({ settings, data });
+    if (!data.cols[columnIndex]) {
+      continue;
+    }
 
     const parseOptions = getParseOptions({ settings, data });
     let lastValue;

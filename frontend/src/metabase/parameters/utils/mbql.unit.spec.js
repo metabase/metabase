@@ -4,7 +4,7 @@ import {
   dateParameterValueToMBQL,
   stringParameterValueToMBQL,
   numberParameterValueToMBQL,
-  parameterToMBQLFilter,
+  fieldFilterParameterToMBQLFilter,
 } from "./mbql";
 import { metadata, PRODUCTS } from "__support__/sample_database_fixture";
 
@@ -117,21 +117,15 @@ describe("parameters/utils/mbql", () => {
       expect(dateParameterValueToMBQL("exclude-hours-0", null)).toEqual([
         "!=",
         ["field", null, { "temporal-unit": "hour-of-day" }],
-        date()
-          .hour(0)
-          .toISOString(),
+        0,
       ]);
     });
     it("should parse exclude-hours-0-23", () => {
       expect(dateParameterValueToMBQL("exclude-hours-0-23", null)).toEqual([
         "!=",
         ["field", null, { "temporal-unit": "hour-of-day" }],
-        date()
-          .hour(0)
-          .toISOString(),
-        date()
-          .hour(23)
-          .toISOString(),
+        0,
+        23,
       ]);
     });
     it("should parse exclude-quarters-1", () => {
@@ -143,7 +137,7 @@ describe("parameters/utils/mbql", () => {
           .format("YYYY-MM-DD"),
       ]);
     });
-    it("should parse exclude-quarters-1-2", () => {
+    it.skip("should parse exclude-quarters-1-2", () => {
       expect(dateParameterValueToMBQL("exclude-quarters-1-2", null)).toEqual([
         "!=",
         ["field", null, { "temporal-unit": "quarter-of-year" }],
@@ -252,10 +246,10 @@ describe("parameters/utils/mbql", () => {
     });
   });
 
-  describe("parameterToMBQLFilter", () => {
+  describe("fieldFilterParameterToMBQLFilter", () => {
     it("should return null for parameter targets that are not field dimension targets", () => {
       expect(
-        parameterToMBQLFilter({
+        fieldFilterParameterToMBQLFilter({
           target: null,
           type: "category",
           value: ["foo"],
@@ -263,11 +257,15 @@ describe("parameters/utils/mbql", () => {
       ).toBe(null);
 
       expect(
-        parameterToMBQLFilter({ target: [], type: "category", value: ["foo"] }),
+        fieldFilterParameterToMBQLFilter({
+          target: [],
+          type: "category",
+          value: ["foo"],
+        }),
       ).toBe(null);
 
       expect(
-        parameterToMBQLFilter({
+        fieldFilterParameterToMBQLFilter({
           target: ["dimension"],
           type: "category",
           value: ["foo"],
@@ -275,7 +273,7 @@ describe("parameters/utils/mbql", () => {
       ).toBe(null);
 
       expect(
-        parameterToMBQLFilter({
+        fieldFilterParameterToMBQLFilter({
           target: ["dimension", ["template-tag", "foo"]],
           type: "category",
           value: ["foo"],
@@ -285,7 +283,7 @@ describe("parameters/utils/mbql", () => {
 
     it("should return mbql filter for date parameter", () => {
       expect(
-        parameterToMBQLFilter(
+        fieldFilterParameterToMBQLFilter(
           {
             target: ["dimension", ["field", PRODUCTS.CREATED_AT.id, null]],
             type: "date/single",
@@ -298,7 +296,7 @@ describe("parameters/utils/mbql", () => {
 
     it("should return mbql filter for string parameter", () => {
       expect(
-        parameterToMBQLFilter(
+        fieldFilterParameterToMBQLFilter(
           {
             target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
             type: "string/starts-with",
@@ -309,7 +307,7 @@ describe("parameters/utils/mbql", () => {
       ).toEqual(["starts-with", ["field", PRODUCTS.CATEGORY.id, null], "foo"]);
 
       expect(
-        parameterToMBQLFilter(
+        fieldFilterParameterToMBQLFilter(
           {
             target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
             type: "string/starts-with",
@@ -322,7 +320,7 @@ describe("parameters/utils/mbql", () => {
 
     it("should return mbql filter for category parameter", () => {
       expect(
-        parameterToMBQLFilter(
+        fieldFilterParameterToMBQLFilter(
           {
             target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
             type: "category",
@@ -335,7 +333,7 @@ describe("parameters/utils/mbql", () => {
 
     it("should return mbql filter for number parameter", () => {
       expect(
-        parameterToMBQLFilter(
+        fieldFilterParameterToMBQLFilter(
           {
             target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
             type: "number/=",
@@ -346,7 +344,7 @@ describe("parameters/utils/mbql", () => {
       ).toEqual(["=", ["field", PRODUCTS.RATING.id, null], 111]);
 
       expect(
-        parameterToMBQLFilter(
+        fieldFilterParameterToMBQLFilter(
           {
             target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
             type: "number/=",
@@ -357,7 +355,7 @@ describe("parameters/utils/mbql", () => {
       ).toEqual(["=", ["field", PRODUCTS.RATING.id, null], 111]);
 
       expect(
-        parameterToMBQLFilter(
+        fieldFilterParameterToMBQLFilter(
           {
             target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
             type: "number/between",

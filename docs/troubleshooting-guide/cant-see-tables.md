@@ -1,3 +1,7 @@
+---
+title: I can't see my tables
+---
+
 # I can't see my tables
 
 You have connected Metabase to a database, but:
@@ -30,6 +34,14 @@ Exactly what settings you need will depend on your environment. To test that the
 1. Try to connect to the database using some other application (e.g., `psql` for PostgreSQL).
 
 If you can't connect to the database with another application, the problem is probably not with Metabase. Please check that the database server is running and that you have the correct host, port, username, password, and other settings.
+
+## What's the status of your database connection?
+
+**Root cause:** You've configured a database connection, but it's not working as expected.
+
+**Steps to take:**
+
+If your connection isn't working, go to [Troubleshooting database connections](./datawarehouse.html). 
 
 ## Does the table exist?
 

@@ -1,6 +1,7 @@
 (ns metabase.api.user-test
   "Tests for /api/user endpoints."
   (:require [clojure.test :refer :all]
+            [metabase.api.user :as api.user]
             [metabase.http-client :as client]
             [metabase.models :refer [Card Collection Dashboard LoginHistory
                                      PermissionsGroup PermissionsGroupMembership User]]
@@ -377,14 +378,6 @@
 (deftest create-user-validate-input-test
   (testing "POST /api/user"
     (testing "Test input validations"
-      (is (= {:errors {:first_name "value must be a non-blank string."}}
-             (mt/user-http-request :crowberto :post 400 "user"
-                                   {})))
-
-      (is (= {:errors {:last_name "value must be a non-blank string."}}
-             (mt/user-http-request :crowberto :post 400 "user"
-                                   {:first_name "whatever"})))
-
       (is (= {:errors {:email "value must be a valid email address."}}
              (mt/user-http-request :crowberto :post 400 "user"
                                    {:first_name "whatever"
@@ -564,6 +557,89 @@
                                           :login_attributes {:test "value"}})
                    (dissoc :user_group_memberships)
                    mt/boolean-ids-and-timestamps)))))))
+
+(deftest updated-user-name-test
+  (testing "Test that `metabase.api.user/updated-user-name` works as intended."
+    (let [names     {:first_name "Test" :last_name "User"} ;; in a real user map, `:first_name` and `:last_name` will always be present
+          nonames   {:first_name nil :last_name nil}
+          firstname {:first_name "Test" :last_name nil}
+          lastname  {:first_name nil :last_name "User"}]
+      ;; starting with names
+      (is (nil? (#'api.user/updated-user-name names {})))
+      (is (nil? (#'api.user/updated-user-name names {:first_name "Test"})))
+      (is (nil? (#'api.user/updated-user-name names {:last_name "User"})))
+      (is (nil? (#'api.user/updated-user-name names {:first_name "Test" :last_name "User"})))
+      (is (= {:first_name "T" :last_name "U"} (#'api.user/updated-user-name names {:first_name "T" :last_name "U"})))
+      (is (= {:first_name "Test" :last_name "U"} (#'api.user/updated-user-name names {:last_name "U"})))
+      (is (= {:first_name "T" :last_name "User"} (#'api.user/updated-user-name names {:first_name "T"})))
+      ;; starting with 'nil' names
+      (is (nil? (#'api.user/updated-user-name nonames {})))
+      (is (nil? (#'api.user/updated-user-name nonames {:first_name nil})))
+      (is (nil? (#'api.user/updated-user-name nonames {:last_name nil})))
+      (is (nil? (#'api.user/updated-user-name nonames {:first_name nil :last_name nil})))
+      (is (= {:first_name "T" :last_name "U"} (#'api.user/updated-user-name nonames {:first_name "T" :last_name "U"})))
+      (is (= {:first_name nil :last_name "U"} (#'api.user/updated-user-name nonames {:last_name "U"})))
+      (is (= {:first_name "T" :last_name nil} (#'api.user/updated-user-name nonames {:first_name "T"})))
+      ;; starting with one name nil
+      (is (nil? (#'api.user/updated-user-name firstname {:first_name "Test" :last_name nil})))
+      (is (nil? (#'api.user/updated-user-name firstname {:first_name "Test"})))
+      (is (nil? (#'api.user/updated-user-name lastname {:first_name nil :last_name "User"})))
+      (is (nil? (#'api.user/updated-user-name lastname {:last_name "User"}))))))
+
+(deftest update-first-name-last-name-test
+  (testing "PUT /api/user/:id"
+    (testing "Test that we can update a user's first and last names"
+      (mt/with-temp User [{user-id :id} {:first_name   "Blue Ape"
+                                         :last_name    "Ron"
+                                         :email        "blueronny@metabase.com"
+                                         :is_superuser true}]
+        (letfn [(change-user-via-api! [m]
+                  (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) m)
+                      (hydrate :personal_collection_id :personal_collection_name)
+                      (dissoc :user_group_memberships :personal_collection_id :email :is_superuser)
+                      (#(apply (partial dissoc %) (keys @user-defaults)))
+                      mt/boolean-ids-and-timestamps))]
+          (testing "Name keys ommitted does not update the user"
+            (is (= {:first_name               "Blue Ape"
+                    :last_name                "Ron"
+                    :common_name              "Blue Ape Ron"
+                    :personal_collection_name "Blue Ape Ron's Personal Collection"}
+                   (change-user-via-api! {}))))
+          (testing "Name keys having the same values does not update the user"
+            (is (= {:first_name               "Blue Ape"
+                    :last_name                "Ron"
+                    :common_name              "Blue Ape Ron"
+                    :personal_collection_name "Blue Ape Ron's Personal Collection"}
+                   (change-user-via-api! {:first_name "Blue Ape"
+                                          :last_name  "Ron"}))))
+          (testing "Name keys explicitly set to `nil` updates the user"
+            (is (= {:first_name               nil
+                    :last_name                nil
+                    :common_name              "blueronny@metabase.com"
+                    :personal_collection_name "blueronny@metabase.com's Personal Collection"}
+                   (change-user-via-api! {:first_name nil
+                                          :last_name  nil}))))
+          (testing "Nil keys compare correctly with nil names and cause no change."
+            (is (= {:first_name               nil
+                    :last_name                nil
+                    :common_name              "blueronny@metabase.com"
+                    :personal_collection_name "blueronny@metabase.com's Personal Collection"}
+                   (change-user-via-api! {:first_name nil
+                                          :last_name  nil}))))
+          (testing "First/last_name keys are sent but one is unchanged, updates only the altered key for the user"
+            (is (= {:first_name               nil
+                    :last_name                "Apron"
+                    :common_name              "Apron"
+                    :personal_collection_name "Apron's Personal Collection"}
+                   (change-user-via-api! {:first_name nil
+                                          :last_name  "Apron"}))))
+          (testing "Both new name keys update the user"
+            (is (= {:first_name               "Blue"
+                    :last_name                nil
+                    :common_name              "Blue"
+                    :personal_collection_name "Blue's Personal Collection"}
+                   (change-user-via-api! {:first_name "Blue"
+                                          :last_name  nil})))))))))
 
 (deftest update-email-check-if-already-used-test
   (testing "PUT /api/user/:id"
