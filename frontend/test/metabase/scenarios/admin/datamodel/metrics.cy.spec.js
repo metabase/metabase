@@ -166,11 +166,10 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
       filter();
 
-      cy.findByLabelText("Total").click();
-      cy.findByText("Equal to").click();
-      cy.findByText("Greater than").click();
-      cy.findByPlaceholderText("Enter a number").type("50");
-      cy.findByText("Add filter").click();
+      cy.findByLabelText("Total")
+        .findByPlaceholderText("min")
+        .type("50");
+
       cy.button("Apply").click();
       cy.findByText("Save").click();
       cy.findAllByText("Save")
