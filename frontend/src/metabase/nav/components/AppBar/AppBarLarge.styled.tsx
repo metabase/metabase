@@ -55,8 +55,8 @@ export interface InfoBarContainerProps {
 export const AppBarInfoContainer = styled.div<InfoBarContainerProps>`
   display: flex;
   min-width: 0;
-  visibility: ${props => (props.isNavBarOpen ? "hidden" : "visible")};
   opacity: ${props => (props.isNavBarOpen ? 0 : 1)};
+  visibility: ${props => (props.isNavBarOpen ? "hidden" : "visible")};
   transition: ${props =>
     props.isNavBarOpen ? `opacity 0.5s, visibility 0s` : `opacity 0.5s`};
 `;
