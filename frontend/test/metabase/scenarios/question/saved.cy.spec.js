@@ -10,6 +10,8 @@ import {
   openQuestionActions,
   questionInfoButton,
   rightSidebar,
+  appbar,
+  getCollectionIdFromSlug,
 } from "__support__/e2e/helpers";
 
 describe("scenarios > question > saved", () => {
@@ -171,5 +173,23 @@ describe("scenarios > question > saved", () => {
     visitQuestion(1);
     cy.findByTestId("question-table-badges").trigger("mouseenter");
     cy.findByText("9 columns");
+  });
+
+  it("should show collection breadcrumbs for a saved question in the root collection", () => {
+    visitQuestion(1);
+    appbar().within(() => cy.findByText("Our analytics").click());
+
+    cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should show collection breadcrumbs for a saved question in a non-root collection", () => {
+    getCollectionIdFromSlug("second_collection", collection_id => {
+      cy.request("PUT", "/api/card/1", { collection_id });
+    });
+
+    visitQuestion(1);
+    appbar().within(() => cy.findByText("Second collection").click());
+
+    cy.findByText("Orders").should("be.visible");
   });
 });

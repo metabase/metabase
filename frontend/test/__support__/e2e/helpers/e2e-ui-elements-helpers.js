@@ -14,6 +14,10 @@ export function sidebar() {
   return cy.get("main aside");
 }
 
+export function appbar() {
+  return cy.findByTestId("app-bar");
+}
+
 export function rightSidebar() {
   return cy.findAllByTestId("sidebar-right");
 }
