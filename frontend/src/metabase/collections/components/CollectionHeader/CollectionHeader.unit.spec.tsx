@@ -139,6 +139,46 @@ describe("CollectionHeader", () => {
       expect(input).toBeDisabled();
     });
   });
+
+  describe("collection timelines", () => {
+    it("should have a link to collection timelines", () => {
+      const props = getProps();
+
+      render(<CollectionHeader {...props} />);
+
+      expect(screen.getByLabelText("calendar icon")).toBeInTheDocument();
+    });
+  });
+
+  describe("collection bookmark", () => {
+    it("should be able to bookmark a collection", () => {
+      const props = getProps({
+        collection: createMockCollection({
+          can_write: false,
+        }),
+        isBookmarked: false,
+      });
+
+      render(<CollectionHeader {...props} />);
+      userEvent.click(screen.getByLabelText("bookmark icon"));
+
+      expect(props.onCreateBookmark).toHaveBeenCalledWith(props.collection);
+    });
+
+    it("should be able to remove a collection from bookmarks", () => {
+      const props = getProps({
+        collection: createMockCollection({
+          can_write: false,
+        }),
+        isBookmarked: true,
+      });
+
+      render(<CollectionHeader {...props} />);
+      userEvent.click(screen.getByLabelText("bookmark icon"));
+
+      expect(props.onDeleteBookmark).toHaveBeenCalledWith(props.collection);
+    });
+  });
 });
 
 const getProps = (
