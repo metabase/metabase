@@ -76,7 +76,6 @@ describe("scenarios > admin > people", () => {
       // first modal
       cy.findByLabelText("First name").type(first_name);
       cy.findByLabelText("Last name").type(last_name);
-      // bit of a hack since there are multiple "Email" nodes
       cy.findByLabelText("Email").type(email);
       clickButton("Create");
 
@@ -93,7 +92,6 @@ describe("scenarios > admin > people", () => {
       cy.visit("/admin/people");
       clickButton("Invite someone");
 
-      // bit of a hack since there are multiple "Email" nodes
       cy.findByLabelText("Email").type(email);
       clickButton("Create");
 
@@ -383,7 +381,6 @@ describeEE("scenarios > admin > people", () => {
       // first modal
       cy.findByLabelText("First name").type(first_name);
       cy.findByLabelText("Last name").type(last_name);
-      // bit of a hack since there are multiple "Email" nodes
       cy.findByLabelText("Email").type(email);
       clickButton("Create");
 
@@ -412,7 +409,6 @@ describeEE("scenarios > admin > people", () => {
       // first modal
       cy.findByLabelText("First name").type(first_name);
       cy.findByLabelText("Last name").type(last_name);
-      // bit of a hack since there are multiple "Email" nodes
       cy.findByLabelText("Email").type(email);
       clickButton("Create");
 
