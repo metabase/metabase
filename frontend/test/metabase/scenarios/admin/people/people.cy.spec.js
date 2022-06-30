@@ -370,6 +370,12 @@ describeEE("scenarios > admin > people", () => {
         "email-smtp-security": "none",
         "email-smtp-username": null,
       });
+
+      // Setup Google authentication
+      cy.request("PUT", "/api/setting", {
+        "google-auth-client-id": "fake-id.apps.googleusercontent.com",
+        "google-auth-auto-create-accounts-domain": "metabase.com",
+      });
     });
 
     it("invite member when SSO is not configured metabase#23630", () => {
@@ -398,8 +404,7 @@ describeEE("scenarios > admin > people", () => {
     it("invite member when SSO is configured metabase#23630", () => {
       // Setup Google authentication
       cy.request("PUT", "/api/setting", {
-        "google-auth-client-id": "fake-id.apps.googleusercontent.com",
-        "google-auth-auto-create-accounts-domain": "metabase.com",
+        "enable-password-login": false,
       });
 
       const { first_name, last_name, email } = TEST_USER;

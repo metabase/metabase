@@ -93,14 +93,10 @@ export default _.compose(
       temporaryPassword: getUserTemporaryPassword(state, {
         userId: props.params.userId,
       }),
-      isSsoConfigured: [
-        "google-auth-client-id",
-        "ldap-enabled",
-        "jwt-enabled",
-        "saml-enabled",
-      ]
-        .map(settingKey => getSetting(state, settingKey))
-        .some(Boolean),
+      isSsoConfigured:
+        ["google-auth-client-id", "ldap-enabled", "jwt-enabled", "saml-enabled"]
+          .map(settingKey => getSetting(state, settingKey))
+          .some(Boolean) && !getSetting(state, "enable-password-login"),
     }),
     {
       onClose: () => push("/admin/people"),
