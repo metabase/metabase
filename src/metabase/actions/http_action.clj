@@ -117,7 +117,8 @@
         request {:method (keyword method)
                  :url (parse-and-substitute url params->value)
                  :accept :json
-                 :as :json
+                 :content-type :json
+                 :throw-exceptions false
                  :headers (merge
                             ;; TODO maybe we want to default Agent here? Maybe Origin/Referer?
                             {"X-Metabase-Action" (:name action)}
@@ -125,12 +126,13 @@
                                 (parse-and-substitute params->value)
                                 (json/decode)))
                  :body (parse-and-substitute body params->value)}
-        response (http/request request)
+        response (update (select-keys (http/request request) [:body :headers :status]) :body json/decode)
         ;; TODO this is pretty ineficient. We parse with `:as :json`, then reencode within a response
         ;; I couldn't find a way to get JSONNode out of cheshire, so we fall back to jackson.
         ;; Should jackson be added explicitly to deps.edn?
-        response-node (.readTree ^ObjectMapper @object-mapper (json/generate-string (select-keys response [:body :headers :status])))]
-    (if-let [error (json/parse-string (apply-json-query response-node (or (:error_handle action) ".status >= 400")))]
+        response-node (.readTree ^ObjectMapper @object-mapper (json/generate-string response))
+        error (json/parse-string (apply-json-query response-node (or (:error_handle action) ".status >= 400")))]
+    (if error
       {:status 400
        :headers {"Content-Type" "application/json"}
        :body (when-not (boolean? error) error)}
