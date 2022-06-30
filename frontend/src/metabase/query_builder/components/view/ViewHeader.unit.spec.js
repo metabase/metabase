@@ -254,13 +254,12 @@ describe("ViewHeader", () => {
         });
 
         it("offers to filter query results", () => {
-          const { onAddFilter } = setup({
+          const { onOpenModal } = setup({
             question,
             queryBuilderMode: "view",
           });
           fireEvent.click(screen.getByText("Filter"));
-          fireEvent.click(screen.getByLabelText("Show more filters"));
-          expect(onAddFilter).toHaveBeenCalled();
+          expect(onOpenModal).toHaveBeenCalled();
         });
 
         it("offers to summarize query results", () => {

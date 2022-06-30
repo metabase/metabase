@@ -14,11 +14,9 @@ import {
   HeaderButton,
   FilterHeaderContainer,
   FilterHeaderButton,
-  IconHeaderButton,
 } from "./ViewHeader.styled";
 
 import { color } from "metabase/lib/colors";
-import ButtonGroup from "metabase/core/components/ButtonGroup";
 
 const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
 
@@ -151,34 +149,18 @@ export function FilterHeader({ className, question, expanded }) {
   );
 }
 
-export function QuestionFilterWidget({
-  className,
-  isShowingFilterSidebar,
-  onAddFilter,
-  onOpenModal,
-  onCloseFilter,
-}) {
+export function QuestionFilterWidget({ onOpenModal }) {
   return (
-    <ButtonGroup className={className}>
-      <HeaderButton
-        large
-        labelBreakpoint="sm"
-        color={color("filter")}
-        active={isShowingFilterSidebar}
-        onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}
-        data-metabase-event="View Mode; Open Filter Widget"
-      >
-        {t`Filter`}
-      </HeaderButton>
-      <IconHeaderButton
-        large
-        labelBreakpoint="sm"
-        color={color("filter")}
-        icon="ellipsis"
-        aria-label={t`Show more filters`}
-        onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
-      />
-    </ButtonGroup>
+    <HeaderButton
+      large
+      labelBreakpoint="sm"
+      color={color("filter")}
+      onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
+      aria-label={t`Show more filters`}
+      data-metabase-event="View Mode; Open Filter Modal"
+    >
+      {t`Filter`}
+    </HeaderButton>
   );
 }
 

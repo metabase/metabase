@@ -3,7 +3,7 @@ import React, { useMemo, useCallback } from "react";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { isBoolean, isString } from "metabase/lib/schema_metadata";
+import { isBoolean, isString, isNumber } from "metabase/lib/schema_metadata";
 
 import { BooleanPickerCheckbox } from "metabase/query_builder/components/filters/pickers/BooleanPicker";
 import { BulkFilterSelect } from "../BulkFilterSelect";
@@ -85,6 +85,8 @@ export const BulkFilterItem = ({
     case "type/PK":
     case "type/FK":
     case "type/Text":
+    case "type/Integer":
+    case "type/Float":
       return (
         <InlineValuePicker
           filter={filter ?? newFilter}
@@ -128,6 +130,11 @@ const getNewFilter = (query: StructuredQuery, dimension: Dimension): Filter => {
   filter = filter.setDimension(dimension.mbql(), {
     useDefaultOperator: !isBooleanField,
   });
+
+  const isNumericField = isNumber(field);
+  if (isNumericField) {
+    filter = filter.setOperator("between");
+  }
 
   const isTextField = isString(field) && field.has_field_values !== "list";
   if (isTextField) {

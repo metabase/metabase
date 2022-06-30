@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 
 import OperatorSelectorComponent from "metabase/query_builder/components/filters/OperatorSelector";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
-import Input from "metabase/core/components/Input";
+import NumericInput from "metabase/core/components/NumericInput";
 
 export const OperatorSelector = styled(OperatorSelectorComponent)`
   margin-bottom: ${space(1)};
@@ -31,7 +31,7 @@ export const NumberSeparator = styled.span`
   padding: 0 ${space(1)};
 `;
 
-export const NumberInput = styled(Input)`
+export const NumberInput = styled(NumericInput)`
   border-color: ${color("border")};
   width: 10rem;
 `;

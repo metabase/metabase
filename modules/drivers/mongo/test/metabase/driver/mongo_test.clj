@@ -286,7 +286,20 @@
             (rows (mt/dataset with-bson-ids
                     (mt/run-mbql-query birds
                       {:filter [:is-null $bird_id]}))))
-         "handle null ObjectId queries properly (#11134)"))))
+         "handle null ObjectId queries properly (#11134)")
+
+     (is (= [[3 "Unlucky Raven" nil]]
+            (rows (mt/dataset with-bson-ids
+                    (mt/run-mbql-query birds
+                      {:filter [:is-empty $bird_id]}))))
+         "treat null ObjectId as empty (#15801)")
+
+     (is (= [[1 "Rasta Toucan" (ObjectId. "012345678901234567890123")]
+             [2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
+            (rows (mt/dataset with-bson-ids
+                    (mt/run-mbql-query birds
+                      {:filter [:not-empty $bird_id]}))))
+         "treat non-null ObjectId as not-empty (#15801)"))))
 
 (deftest bson-fn-call-forms-test
   (mt/test-driver :mongo

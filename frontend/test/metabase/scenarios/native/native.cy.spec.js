@@ -6,6 +6,7 @@ import {
   visitQuestionAdhoc,
   summarize,
   sidebar,
+  filter,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -160,25 +161,20 @@ describe("scenarios > question > native", () => {
 
     cy.findByText("This has a value");
 
-    FILTERS.forEach(filter => {
+    FILTERS.forEach(operator => {
       cy.log("Apply a filter");
-      cy.findAllByText("Filter")
-        .first()
-        .click();
-      cy.get(".List-item-title")
-        .contains("V")
-        .click();
-      cy.findByText("Is").click();
+      filter();
+      cy.findByText("Contains").click();
       popover().within(() => {
-        cy.findByText(filter).click();
+        cy.findByText(operator).click();
       });
       cy.findByPlaceholderText("Enter some text").type("This has a value");
-      cy.findByText("Add filter").click();
+      cy.findByText("Apply").click();
 
       cy.log(
-        `**Mid-point assertion for "${filter}" filter| FAILING in v0.36.6**`,
+        `**Mid-point assertion for "${operator}" filter| FAILING in v0.36.6**`,
       );
-      cy.findByText(`V ${filter.toLowerCase()} This has a value`);
+      cy.findByText(`V ${operator.toLowerCase()} This has a value`);
       cy.findByText("No results!").should("not.exist");
 
       cy.log(

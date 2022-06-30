@@ -23,5 +23,8 @@
     "/node_modules/",
     "/frontend/src/metabase/visualizations/lib/errors.js"
   ],
-  "testEnvironment": "jsdom"
+  "testEnvironment": "jsdom",
+  "transform": {
+    "\\.(jsx?|tsx?)$": ["babel-jest", { "configFile": "./babel.presets.json" }]
+  }
 }

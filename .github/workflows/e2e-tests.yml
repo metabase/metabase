@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 35
     needs: build
-    name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
+    name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
@@ -81,6 +81,7 @@ jobs:
           - "visualizations"
         include:
           - edition: oss
+            context: grep
             java-version: 11
     services:
       maildev:
@@ -158,7 +159,7 @@ jobs:
       uses: actions/upload-artifact@v2
       if: failure()
       with:
-        name: cypress-artifacts-${{ matrix.folder }}-${{ matrix.edition }}
+        name: cypress-recording-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
         path: |
           ./cypress
           ./logs/test.log
