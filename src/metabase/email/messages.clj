@@ -276,10 +276,15 @@
                          :group-by [:pgm.user_id]}
                         db/query
                         (mapv :user_id)))]
-    (db/select-field :email User {:where [:and
-                                          [:= :is_active true]
-                                          (cond-> [:or [:= :is_superuser true]]
-                                            (seq user-ids) (conj [:in :id user-ids]))]})))
+    (into
+      []
+      (distinct)
+      (concat
+        (all-admin-recipients)
+        (when (seq user-ids)
+          (db/select-field :email User {:where [:and
+                                                [:= :is_active true]
+                                                [:in :id user-ids]]}))))))
 
 (defn send-persistent-model-error-email!
   "Format and send an email informing the user about errors in the persistent model refresh task."

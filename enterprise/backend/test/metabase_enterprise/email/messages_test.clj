@@ -16,8 +16,9 @@
       (perms/grant-permissions! group (perms/feature-perms-path :details :yes db-id))
       (testing "Include monitoring and details user when advanced-permissions are enabled"
         (premium-features-test/with-premium-features #{:advanced-permissions}
-          (is (= #{"crowberto@metabase.com" (:email user)}
-                 (#'messages/admin-or-ee-monitoring-details-emails db-id)))))
+          (is (= (conj (set (#'messages/all-admin-recipients))
+                       (:email user))
+                 (set (#'messages/admin-or-ee-monitoring-details-emails db-id))))))
       (testing "Only send to admin users if advanced-permissions is disabled"
-        (is (= #{"crowberto@metabase.com"}
-               (#'messages/admin-or-ee-monitoring-details-emails db-id)))))))
+        (is (= (set (#'messages/all-admin-recipients))
+               (set (#'messages/admin-or-ee-monitoring-details-emails db-id))))))))
