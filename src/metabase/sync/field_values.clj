@@ -1,6 +1,7 @@
 (ns metabase.sync.field-values
   "Logic for updating FieldValues for fields in a database."
   (:require [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.field :refer [Field]]
@@ -73,7 +74,7 @@
                       :created_at [:< (sql.qp/add-interval-honeysql-form
                                         (mdb/db-type)
                                         :%now
-                                        (- (.getDays field-values/advanced-field-values-max-age))
+                                        (- (t/as field-values/advanced-field-values-max-age :days))
                                         :day)]]
           rows-count (apply db/count FieldValues conditions)]
       (apply db/delete! FieldValues conditions)
