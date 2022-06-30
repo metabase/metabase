@@ -10,7 +10,7 @@ import Icon from "metabase/components/Icon";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 
-import { OPTIONS } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts";
+import { DATE_SHORTCUT_OPTIONS as ALL_DATE_OPTIONS } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
 
 import { BulkFilterSelect } from "../BulkFilterSelect";
 import {
@@ -19,12 +19,24 @@ import {
   ClearButton,
 } from "./InlineDatePicker.styled";
 
-const DATE_SHORTCUT_OPTIONS = [
-  OPTIONS.DAY_OPTIONS[0], // Today
-  OPTIONS.DAY_OPTIONS[1], // Yesterday
-  OPTIONS.DAY_OPTIONS[2], // Last Week
-  OPTIONS.MONTH_OPTIONS[0], // Last Month
+const INLINE_SHORTCUT_OPTIONS = [
+  ALL_DATE_OPTIONS.DAY_OPTIONS[0], // Today
+  ALL_DATE_OPTIONS.DAY_OPTIONS[1], // Yesterday
+  ALL_DATE_OPTIONS.DAY_OPTIONS[2], // Last Week
+  ALL_DATE_OPTIONS.MONTH_OPTIONS[0], // Last Month
 ];
+
+const POPOVER_SHORTCUT_OPTIONS = {
+  DAY_OPTIONS: _.difference(
+    ALL_DATE_OPTIONS.DAY_OPTIONS,
+    INLINE_SHORTCUT_OPTIONS,
+  ),
+  MONTH_OPTIONS: _.difference(
+    ALL_DATE_OPTIONS.MONTH_OPTIONS,
+    INLINE_SHORTCUT_OPTIONS,
+  ),
+  MISC_OPTIONS: ALL_DATE_OPTIONS.MISC_OPTIONS,
+};
 
 interface InlineDatePickerProps {
   query: StructuredQuery;
@@ -47,7 +59,7 @@ export function InlineDatePicker({
     if (!filter) {
       return null;
     }
-    const optionIndex = DATE_SHORTCUT_OPTIONS.findIndex(({ init }) =>
+    const optionIndex = INLINE_SHORTCUT_OPTIONS.findIndex(({ init }) =>
       _.isEqual(filter, init(filter)),
     );
     return optionIndex !== -1 ? optionIndex : null;
@@ -73,7 +85,7 @@ export function InlineDatePicker({
       aria-label={dimension?.field()?.displayName()}
     >
       {shouldShowShortcutOptions &&
-        DATE_SHORTCUT_OPTIONS.map(({ displayName, init }, index) => (
+        INLINE_SHORTCUT_OPTIONS.map(({ displayName, init }, index) => (
           <OptionButton
             key={displayName}
             active={index === selectedFilterIndex}
@@ -95,6 +107,7 @@ export function InlineDatePicker({
         dimension={dimension}
         handleChange={onChange}
         handleClear={onClear}
+        dateShortcutOptions={POPOVER_SHORTCUT_OPTIONS}
         customTrigger={({ onClick }) =>
           filter && selectedFilterIndex === null ? (
             <OptionButton active onClick={onClick}>
