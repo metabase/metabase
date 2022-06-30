@@ -11,6 +11,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.sso :as sso-utils]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -82,7 +83,7 @@
   ;; this will just give the user a random password; they can go reset it if they ever change their mind and want to
   ;; log in without Google Auth; this lets us keep the NOT NULL constraints on password / salt without having to make
   ;; things hairy and only enforce those for non-Google Auth users
-  (user/create-new-google-auth-user! new-user))
+  (sso-utils/create-new-google-auth-user! new-user))
 
 (s/defn ^:private google-auth-fetch-or-create-user! :- metabase.models.user.UserInstance
   [first-name last-name email]

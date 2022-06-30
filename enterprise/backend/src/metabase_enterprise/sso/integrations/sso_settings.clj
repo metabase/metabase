@@ -4,6 +4,7 @@
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
             [saml20-clj.core :as saml]
@@ -80,7 +81,7 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :type    :boolean
   :default false)
 
-(defsetting saml-attribute-group
+(defsetting saml-attribute-groups
   (deferred-tru "SAML attribute for group syncing")
   :default "member_of")
 
@@ -114,19 +115,23 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
 
 (defsetting jwt-attribute-email
   (deferred-tru "Key to retrieve the JWT user's email address")
-  :default "email")
+  :default "email"
+  :getter (fn [] (-> (setting/get-value-of-type :string :jwt-attribute-email) u/lower-case-en keyword)))
 
 (defsetting jwt-attribute-firstname
   (deferred-tru "Key to retrieve the JWT user's first name")
-  :default "first_name")
+  :default "first_name"
+  :getter (fn [] (-> (setting/get-value-of-type :string :jwt-attribute-firstname) u/lower-case-en keyword)))
 
 (defsetting jwt-attribute-lastname
   (deferred-tru "Key to retrieve the JWT user's last name")
-  :default "last_name")
+  :default "last_name"
+  :getter (fn [] (-> (setting/get-value-of-type :string :jwt-attribute-lastname) u/lower-case-en keyword)))
 
 (defsetting jwt-attribute-groups
   (deferred-tru "Key to retrieve the JWT user's groups")
-  :default "groups")
+  :default "groups"
+  :getter (fn [] (-> (setting/get-value-of-type :string :jwt-attribute-groups) u/lower-case-en keyword)))
 
 (defsetting jwt-group-sync
   (deferred-tru "Enable group membership synchronization with JWT.")

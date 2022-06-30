@@ -22,68 +22,16 @@
             [medley.core :as m]
             [metabase-enterprise.sso.api.interface :as sso.i]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-            [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
             [metabase.api.common :as api]
-            [metabase.api.session :as api.session]
-            [metabase.integrations.common :as integrations.common]
             [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.sso :as sso-utils]
             [ring.util.codec :as codec]
             [ring.util.response :as response]
-            [saml20-clj.core :as saml]
-            [schema.core :as s])
-  (:import java.util.UUID))
-
-(defn- group-names->ids
-  "Translate a user's group names to a set of MB group IDs using the configured mappings"
-  [group-names]
-  (->> (cond-> group-names (string? group-names) vector)
-       (map keyword)
-       (mapcat (sso-settings/saml-group-mappings))
-       set))
-
-(defn- all-mapped-group-ids
-  "Returns the set of all MB group IDs that have configured mappings"
-  []
-  (-> (sso-settings/saml-group-mappings)
-      vals
-      flatten
-      set))
-
-(defn- sync-groups!
-  "Sync a user's groups based on mappings configured in the SAML settings"
-  [user group-names]
-  (when (sso-settings/saml-group-sync)
-    (when group-names
-      (integrations.common/sync-group-memberships! user
-                                                   (group-names->ids group-names)
-                                                   (all-mapped-group-ids)))))
-
-(s/defn ^:private fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
-  "Returns a Session for the given `email`. Will create the user if needed."
-  [{:keys [first-name last-name email group-names user-attributes device-info]}]
-  (when-not (sso-settings/saml-configured?)
-    (throw (IllegalArgumentException. (tru "Can't create new SAML user when SAML is not configured"))))
-  (when-not email
-    (throw (ex-info (str (tru "Invalid SAML configuration: could not find user email.")
-                         " "
-                         (tru "We tried looking for {0}, but couldn't find the attribute."
-                              (sso-settings/saml-attribute-email))
-                         " "
-                         (tru "Please make sure your SAML IdP is properly configured."))
-                    {:status-code 400, :user-attributes (keys user-attributes)})))
-  (let [new-user {:first_name       first-name
-                  :last_name        last-name
-                  :email            email
-                  :sso_source       "saml"
-                  :login_attributes user-attributes}]
-    (when-let [user (or (sso-utils/fetch-and-update-login-attributes! new-user)
-                        (sso-utils/create-new-sso-user! new-user))]
-      (sync-groups! user group-names)
-      (api.session/create-session! :sso user device-info))))
+            [saml20-clj.core :as saml]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -175,24 +123,24 @@
   ;; `(get-in saml-info [:assertions :attrs])
   [{:keys [params], :as request}]
   (check-saml-enabled)
-  (let [continue-url  (u/ignore-exceptions
-                        (when-let [s (some-> (:RelayState params) base64-decode)]
-                          (when-not (str/blank? s)
-                            s)))]
+  (let [continue-url (u/ignore-exceptions
+                       (when-let [s (some-> (:RelayState params) base64-decode)]
+                         (when-not (str/blank? s)
+                           s)))]
     (sso-utils/check-sso-redirect continue-url)
     (let [xml-string    (base64-decode (:SAMLResponse params))
           saml-response (xml-string->saml-response xml-string)
-          attrs         (saml-response->attributes saml-response)
-          email         (get attrs (sso-settings/saml-attribute-email))
-          first-name    (get attrs (sso-settings/saml-attribute-firstname))
-          last-name     (get attrs (sso-settings/saml-attribute-lastname))
-          groups        (get attrs (sso-settings/saml-attribute-group))
-          session       (fetch-or-create-user!
-                          {:first-name      first-name
-                           :last-name       last-name
-                           :email           email
-                           :group-names     groups
-                           :user-attributes attrs
-                           :device-info     (request.u/device-info request)})
+          sso-data      (saml-response->attributes saml-response)
+          device-info   (request.u/device-info request)
+          sso-settings  {:sso-source          "saml"
+                         :group-mappings      (sso-settings/saml-group-mappings)
+                         :group-sync          (sso-settings/saml-group-sync)
+                         :attribute-email     (sso-settings/saml-attribute-email)
+                         :attribute-firstname (sso-settings/saml-attribute-firstname)
+                         :attribute-lastname  (sso-settings/saml-attribute-lastname)
+                         :attribute-groups    (sso-settings/saml-attribute-groups)
+                         :configured?         (sso-settings/saml-configured?)}
+          user          (sso-utils/fetch-or-create-user! sso-data sso-settings)
+          session       (sso-utils/create-session! :sso user device-info)
           response      (response/redirect (or continue-url (public-settings/site-url)))]
       (mw.session/set-session-cookie request response session))))

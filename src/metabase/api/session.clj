@@ -3,14 +3,11 @@
   (:require [cemerick.friend.credentials :as creds]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST]]
-            [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.config :as config]
             [metabase.email.messages :as messages]
-            [metabase.events :as events]
             [metabase.integrations.google :as google]
             [metabase.integrations.ldap :as ldap]
-            [metabase.models.login-history :refer [LoginHistory]]
             [metabase.models.session :refer [Session]]
             [metabase.models.setting :as setting]
             [metabase.models.user :as user :refer [User]]
@@ -21,55 +18,12 @@
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.password :as u.password]
             [metabase.util.schema :as su]
+            [metabase.util.sso :as sso-utils]
             [schema.core :as s]
             [throttle.core :as throttle]
-            [toucan.db :as db]
-            [toucan.models :as models])
+            [toucan.db :as db])
   (:import com.unboundid.util.LDAPSDKException
            java.util.UUID))
-
-(s/defn ^:private record-login-history!
-  [session-id :- UUID user-id :- su/IntGreaterThanZero device-info :- request.u/DeviceInfo]
-  (db/insert! LoginHistory (merge {:user_id    user-id
-                                   :session_id (str session-id)}
-                                  device-info)))
-
-(defmulti create-session!
-  "Generate a new Session for a User. `session-type` is the currently either `:password` (for email + password login) or
-  `:sso` (for other login types). Returns the newly generated Session."
-  {:arglists '(^java.util.UUID [session-type user device-info])}
-  (fn [session-type & _]
-    session-type))
-
-(def ^:private CreateSessionUserInfo
-  {:id         su/IntGreaterThanZero
-   :last_login s/Any
-   s/Keyword   s/Any})
-
-(s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
-  [_ user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
-  (let [session-uuid (UUID/randomUUID)
-        session      (or
-                      (db/insert! Session
-                        :id      (str session-uuid)
-                        :user_id (u/the-id user))
-                      ;; HACK !!! For some reason `db/insert` doesn't seem to be working correctly for Session.
-                      (models/post-insert (Session (str session-uuid))))]
-    (assert (map? session))
-    (events/publish-event! :user-login
-      {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
-    (record-login-history! session-uuid (u/the-id user) device-info)
-    (when-not (:last_login user)
-      (snowplow/track-event! ::snowplow/new-user-created (u/the-id user)))
-    (assoc session :id session-uuid)))
-
-(s/defmethod create-session! :password :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
-  [session-type user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
-  ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
-  (when-not (public-settings/enable-password-login)
-    (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
-  ((get-method create-session! :sso) session-type user device-info))
-
 
 ;;; ## API Endpoints
 
@@ -104,7 +58,7 @@
         ;; password is ok, return new session if user is not deactivated
         (let [user (ldap/fetch-or-create-user! user-info)]
           (if (:is_active user)
-            (create-session! :sso user device-info)
+            (sso-utils/create-session! :sso user device-info)
             (throw (ex-info (str disabled-account-message)
                             {:status-code 401
                              :errors      {:_error disabled-account-snippet}})))))
@@ -117,7 +71,7 @@
   (if-let [user (db/select-one [User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
     (when (u.password/verify-password password (:password_salt user) (:password user))
       (if (:is_active user)
-        (create-session! :password user device-info)
+        (sso-utils/create-session! :password user device-info)
         (throw (ex-info (str disabled-account-message)
                         {:status-code 401
                          :errors      {:_error disabled-account-snippet}}))))
@@ -249,7 +203,7 @@
         (when-not (:last_login user)
           (messages/send-user-joined-admin-notification-email! (User user-id)))
         ;; after a successful password update go ahead and offer the client a new session that they can use
-        (let [{session-uuid :id, :as session} (create-session! :password user (request.u/device-info request))
+        (let [{session-uuid :id, :as session} (sso-utils/create-session! :password user (request.u/device-info request))
               response                        {:success    true
                                                :session_id (str session-uuid)}]
           (mw.session/set-session-cookie request response session)))
@@ -283,7 +237,7 @@
     (http-401-on-error
      (throttle/with-throttling [(login-throttlers :ip-address) (request.u/ip-address request)]
        (let [user (google/do-google-auth request)
-             {session-uuid :id, :as session} (create-session! :sso user (request.u/device-info request))
+             {session-uuid :id, :as session} (sso-utils/create-session! :sso user (request.u/device-info request))
              response {:id (str session-uuid)}
              user (db/select-one [User :id :is_active], :email (:email user))]
          (if (and user (:is_active user))

@@ -283,25 +283,6 @@
   (u/prog1 (insert-new-user! new-user)
     (send-welcome-email! <> invitor setup?)))
 
-(s/defn create-new-google-auth-user!
-  "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
-  admins will receive an email right away."
-  [new-user :- NewUser]
-  (u/prog1 (insert-new-user! (assoc new-user :google_auth true))
-    ;; send an email to everyone including the site admin if that's set
-    (classloader/require 'metabase.email.messages)
-    ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true)))
-
-(s/defn create-new-ldap-auth-user!
-  "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
-  will receive an email right away."
-  [new-user :- NewUser]
-  (insert-new-user!
-   (-> new-user
-       ;; We should not store LDAP passwords
-       (dissoc :password)
-       (assoc :ldap_auth true))))
-
 (defn set-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
   [user-id password]

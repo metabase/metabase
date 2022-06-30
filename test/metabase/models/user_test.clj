@@ -25,6 +25,7 @@
             [metabase.test.data.users :as test.users]
             [metabase.util :as u]
             [metabase.util.password :as u.password]
+            [metabase.util.sso :as u.sso]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
@@ -121,7 +122,7 @@
                                  :password   password}]
         (try
           (if google-auth?
-            (user/create-new-google-auth-user! (dissoc new-user :password))
+            (u.sso/create-new-google-auth-user! (dissoc new-user :password))
             (user/create-and-invite-user! new-user invitor false))
           (when accept-invite?
             (maybe-accept-invite! new-user-email))
@@ -187,7 +188,7 @@
   (testing (str "LDAP users should not persist their passwords. Check that if somehow we get passed an LDAP user "
                 "password, it gets swapped with something random")
     (try
-      (user/create-new-ldap-auth-user! {:email      "ldaptest@metabase.com"
+      (u.sso/create-new-ldap-auth-user! {:email      "ldaptest@metabase.com"
                                         :first_name "Test"
                                         :last_name  "SomeLdapStuff"
                                         :password   "should be removed"})
@@ -207,7 +208,7 @@
 (deftest ldap-sequential-login-attributes-test
   (testing "You should be able to create a new LDAP user if some `login_attributes` are vectors (#10291)"
     (try
-      (user/create-new-ldap-auth-user! {:email            "ldaptest@metabase.com"
+      (u.sso/create-new-ldap-auth-user! {:email            "ldaptest@metabase.com"
                                         :first_name       "Test"
                                         :last_name        "SomeLdapStuff"
                                         :login_attributes {:local_birds ["Steller's Jay" "Mountain Chickadee"]}})
