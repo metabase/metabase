@@ -65,31 +65,34 @@
 (defn- delete-expired-advanced-field-values-summary [{:keys [deleted]}]
   (trs "Deleted {0} expired advanced fieldvalues" deleted))
 
+(defn- delete-expired-advanced-field-values-for-field!
+  [field]
+  (sync-util/with-error-handling (format "Error deleting expired advanced field values for %s" (sync-util/name-for-logging field))
+    (let [conditions [:field_id   (:id field),
+                      :type       [:in field-values/advanced-field-values-types],
+                      :created_at [:< (sql.qp/add-interval-honeysql-form
+                                        (mdb/db-type)
+                                        :%now
+                                        (- (.getDays field-values/advanced-field-values-max-age))
+                                        :day)]]
+          rows-count (apply db/count FieldValues conditions)]
+      (apply db/delete! FieldValues conditions)
+      rows-count)))
+
 (s/defn delete-expired-advanced-field-values-for-table!
-  "Delete all expired advanced FieldValues for a table.
+  "Delete all expired advanced FieldValues for a table and returns the number of deleted rows.
   For more info about advanced FieldValues, check the docs in [[metabase.models.field-values/field-values-types]]"
   [table :- i/TableInstance]
-  (reduce (fn [acc field]
-            (sync-util/with-error-handling (format "Error deleting expired advanced field values for %s" (sync-util/name-for-logging field))
-              (let [conditions [:field_id   (:id field),
-                                :type       [:in field-values/advanced-field-values-types],
-                                :created_at [:< (sql.qp/add-interval-honeysql-form
-                                                  (mdb/db-type)
-                                                  :%now
-                                                  (- (.getDays field-values/advanced-field-values-max-age))
-                                                  :day)]]
-                    rows-count (apply db/count FieldValues conditions)]
-                (apply db/delete! FieldValues conditions)
-                (+ acc rows-count))))
-          0
-          (table->fields-to-scan table)))
+  (->> (table->fields-to-scan table)
+       (map delete-expired-advanced-field-values-for-field!)
+       (reduce +)))
 
 (s/defn ^:private delete-expired-advanced-field-values-for-database!
   [_database :- i/DatabaseInstance
    tables :- [i/TableInstance]]
   {:deleted (apply + (map delete-expired-advanced-field-values-for-table! tables))})
 
-(defn ^:private make-sync-field-values-steps
+(defn- make-sync-field-values-steps
   [tables]
   [(sync-util/create-sync-step "delete-expired-advanced-field-values"
                                #(delete-expired-advanced-field-values-for-database! % tables)
