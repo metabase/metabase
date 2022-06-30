@@ -75,7 +75,7 @@ const DashboardInfoSidebar = ({
           isDisabled={!dashboard.can_write}
           onChange={handleDescriptionChange}
           isMultiline
-          placeholder={t`Add a helpful description. You'll thank me later`}
+          placeholder={t`Add description`}
           key={`dashboard-description-${dashboard.description}`}
         />
       </ContentSection>

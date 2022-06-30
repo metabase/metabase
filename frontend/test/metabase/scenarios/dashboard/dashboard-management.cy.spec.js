@@ -47,9 +47,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               });
 
               rightSidebar().within(() => {
-                cy.findByPlaceholderText(
-                  "Add a helpful description. You'll thank me later",
-                )
+                cy.findByPlaceholderText("Add description")
                   .click()
                   .type("Foo")
                   .blur();

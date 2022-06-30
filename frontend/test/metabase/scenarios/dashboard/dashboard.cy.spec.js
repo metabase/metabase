@@ -72,9 +72,7 @@ describe("scenarios > dashboard", () => {
     });
 
     rightSidebar().within(() => {
-      cy.findByPlaceholderText(
-        "Add a helpful description. You'll thank me later",
-      )
+      cy.findByPlaceholderText("Add description")
         .click()
         .type("{selectall}How many orders were placed in each year?")
         .blur();
