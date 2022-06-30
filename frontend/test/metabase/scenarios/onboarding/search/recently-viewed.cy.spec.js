@@ -63,7 +63,7 @@ describeEE("search > recently viewed > enterprise features", () => {
 
     visitQuestion(1);
 
-    cy.findByTestId("qb-header-left-side").find(".Icon-verified");
+    cy.findByTestId("saved-question-header-button").find(".Icon-verified");
   });
 
   it("should show verified badge in the 'Recently viewed' list (metabase#18021)", () => {
