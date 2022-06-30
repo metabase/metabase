@@ -242,6 +242,9 @@
 (defn- new-user-with-groups-saml-test-response []
   (saml-response-from-file "test_resources/saml-test-response-new-user-with-groups.xml"))
 
+(defn- whitespace-response []
+  (str (saml-response-from-file "test_resources/saml-test-response.xml") "\n\n"))
+
 (defn- saml-post-request-options [saml-response relay-state]
   {:request-options {:content-type     :x-www-form-urlencoded
                      :redirect-strategy :none
@@ -344,11 +347,23 @@
 ;; Part of accepting the POST is validating the response and the relay state so we can redirect the user to their
 ;; original destination
 (deftest login-test
-  (with-saml-default-setup
-    (do-with-some-validators-disabled
-      (fn []
-        (testing "After a successful login with the identity provider, the SAML provider will POST to the `/auth/sso` route."
+  (testing "After a successful login with the identity provider, the SAML provider will POST to the `/auth/sso` route."
+    (with-saml-default-setup
+      (do-with-some-validators-disabled
+        (fn []
           (let [req-options (saml-post-request-options (saml-test-response)
+                                                       (saml/str->base64 default-redirect-uri))
+                response    (client-full-response :post 302 "/auth/sso" req-options)]
+            (is (successful-login? response))
+            (is (= default-redirect-uri
+                   (get-in response [:headers "Location"])))
+            (is (= (some-saml-attributes "rasta")
+                   (saml-login-attributes "rasta@metabase.com"))))))))
+  (testing "Still works with whitespace in the SAML post response (#23451)"
+    (with-saml-default-setup
+      (do-with-some-validators-disabled
+        (fn []
+          (let [req-options (saml-post-request-options (whitespace-response)
                                                        (saml/str->base64 default-redirect-uri))
                 response    (client-full-response :post 302 "/auth/sso" req-options)]
             (is (successful-login? response))

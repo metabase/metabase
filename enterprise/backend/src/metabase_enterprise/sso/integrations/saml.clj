@@ -35,7 +35,7 @@
             [ring.util.response :as response]
             [saml20-clj.core :as saml]
             [schema.core :as s])
-  (:import java.util.UUID))
+  (:import [java.util Base64 UUID]))
 
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"
@@ -118,7 +118,7 @@
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
             saml-request (saml/request
-                           {:request-id (str "id-" (java.util.UUID/randomUUID))
+                           {:request-id (str "id-" (UUID/randomUUID))
                             :sp-name    (sso-settings/saml-application-name)
                             :issuer     (sso-settings/saml-application-name)
                             :acs-url    (acs-url)
@@ -168,7 +168,8 @@
 
 (defn- base64-decode [s]
   (when (u/base64-string? s)
-    (codecs/bytes->str (codec/base64-decode s))))
+    (codecs/bytes->str
+      (.decode (Base64/getMimeDecoder) s))))
 
 (defmethod sso.i/sso-post :saml
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
@@ -180,7 +181,7 @@
                           (when-not (str/blank? s)
                             s)))]
     (sso-utils/check-sso-redirect continue-url)
-    (let [xml-string    (base64-decode (:SAMLResponse params))
+    (let [xml-string    (str/trim (base64-decode (:SAMLResponse params)))
           saml-response (xml-string->saml-response xml-string)
           attrs         (saml-response->attributes saml-response)
           email         (get attrs (sso-settings/saml-attribute-email))
