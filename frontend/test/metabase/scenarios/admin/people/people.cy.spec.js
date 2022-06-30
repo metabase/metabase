@@ -359,6 +359,7 @@ describeEE("scenarios > admin > people", () => {
 
   describe("email configured", () => {
     beforeEach(() => {
+      // Setup email server, since we show different modal message when email isn't configured
       cy.request("PUT", "/api/setting", {
         "email-from-address": "admin@metabase.test",
         "email-from-name": "Metabase Admin",
@@ -395,6 +396,7 @@ describeEE("scenarios > admin > people", () => {
     });
 
     it("invite member when SSO is configured metabase#23630", () => {
+      // Setup Google authentication
       cy.request("PUT", "/api/setting", {
         "google-auth-client-id": "fake-id.apps.googleusercontent.com",
         "google-auth-auto-create-accounts-domain": "metabase.com",
