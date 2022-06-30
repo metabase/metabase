@@ -12,7 +12,7 @@
   "OSS implementation; used as a fallback for the EE implementation if the field isn't sandboxed."
   [field]
   (when (field-values/field-should-have-field-values? field)
-    (field-values/get-or-create-field-values! field)))
+    (field-values/get-or-create-full-field-values! field)))
 
 (defenterprise get-or-create-field-values-for-current-user!*
   "Fetch cached FieldValues for a `field`, creating them if needed if the Field should have FieldValues."
@@ -26,7 +26,8 @@
   (when (seq field-ids)
     (not-empty
      (let [field-values       (db/select [FieldValues :values :human_readable_values :field_id]
-                                :field_id [:in (set field-ids)])
+                                :field_id [:in (set field-ids)]
+                                :type :full)
            readable-fields    (when (seq field-values)
                                 (field/readable-fields-only (db/select [Field :id :table_id]
                                                               :id [:in (set (map :field_id field-values))])))

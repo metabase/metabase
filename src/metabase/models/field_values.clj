@@ -298,12 +298,14 @@
       (log/error e (trs "Error fetching field values"))
       nil)))
 
-(defn create-or-update-field-values!
-  "Create or update the FieldValues object for `field`. If the FieldValues object already exists, then update values for
+(defn create-or-update-full-field-values!
+  "Create or update the full FieldValues object for `field`. If the FieldValues object already exists, then update values for
    it; otherwise create a new FieldValues object with the newly fetched values. Returns whether the field values were
-   created/updated/deleted as a result of this call."
+   created/updated/deleted as a result of this call.
+
+  Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
   [field & [human-readable-values]]
-  (let [field-values                     (FieldValues :field_id (u/the-id field))
+  (let [field-values                     (FieldValues :field_id (u/the-id field) :type :full)
         {:keys [values has_more_values]} (distinct-values field)
         field-name                       (or (:name field) (:id field))]
     (cond
@@ -347,6 +349,7 @@
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
         (db/insert! FieldValues
+          :type :full
           :field_id              (u/the-id field)
           :has_more_values       has_more_values
           :values                values
@@ -359,16 +362,16 @@
         (clear-field-values-for-field! field)
         ::fv-deleted))))
 
-(defn get-or-create-field-values!
+(defn get-or-create-full-field-values!
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
   created FieldValues for `Field`."
   {:arglists '([field] [field human-readable-values])}
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (or (FieldValues :field_id field-id)
-        (when (#{::fv-created ::fv-updated} (create-or-update-field-values! field human-readable-values))
-          (FieldValues :field_id field-id)))))
+    (or (FieldValues :field_id field-id :type :full)
+        (when (#{::fv-created ::fv-updated} (create-or-update-full-field-values! field human-readable-values))
+          (FieldValues :field_id field-id :type :full)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  On Demand                                                     |
@@ -403,4 +406,4 @@
         (log/debug
          (trs "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
                  (u/the-id field) (:name field)))
-        (create-or-update-field-values! field)))))
+        (create-or-update-full-field-values! field)))))
