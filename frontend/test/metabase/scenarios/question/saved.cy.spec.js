@@ -156,11 +156,14 @@ describe("scenarios > question > saved", () => {
     cy.findByText("15808").click();
     visualize();
     filter();
-    cy.findByLabelText("RATING").click();
-    cy.findByPlaceholderText("Enter a number").type("4");
-    cy.button("Add filter")
-      .should("not.be.disabled")
+    cy.findByLabelText("RATING")
+      .findByText("Between")
       .click();
+    cy.findByText("Equal to").click();
+    cy.findByLabelText("RATING")
+      .findByPlaceholderText("Enter a number")
+      .type("4");
+
     cy.button("Apply").click();
     cy.findByText("Synergistic Granite Chair");
     cy.findByText("Rustic Paper Wallet").should("not.exist");

@@ -46,10 +46,10 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     filter();
-    cy.findByLabelText("Discount").click();
-    cy.findByText("Equal to").click();
+    cy.findByLabelText("Discount")
+      .findByText("Between")
+      .click();
     selectFromDropdown("Not empty");
-    cy.button("Add filter").click();
     cy.button("Apply").click();
 
     assertQuestionIsBasedOnModel({
@@ -97,10 +97,11 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     filter();
-    cy.findByLabelText("DISCOUNT").click();
-    cy.findByText("Equal to").click();
+    cy.findByLabelText("DISCOUNT")
+      .findByText("Between")
+      .click();
     selectFromDropdown("Not empty");
-    cy.button("Add filter").click();
+
     cy.button("Apply").click();
 
     assertQuestionIsBasedOnModel({
@@ -309,10 +310,10 @@ describe("scenarios > models", () => {
       cy.wait("@dataset");
 
       filter();
-      cy.findByLabelText("Discount").click();
-      cy.findByText("Equal to").click();
+      cy.findByLabelText("Discount")
+        .findByText("Between")
+        .click();
       selectFromDropdown("Not empty");
-      cy.button("Add filter").click();
       cy.button("Apply").click();
 
       assertQuestionIsBasedOnModel({

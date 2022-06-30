@@ -418,10 +418,8 @@ describe("scenarios > question > notebook", () => {
     cy.findByText("Summaries").click();
 
     cy.findByLabelText("Max of Name").click();
-    cy.findByText("Is").click();
+    cy.findByText("Contains").click();
     cy.findByText("Starts with").click();
-
-    cy.findByText("Case sensitive").click();
   });
 
   it("should treat max/min on a category as a string filter (metabase#22154)", () => {
@@ -440,10 +438,8 @@ describe("scenarios > question > notebook", () => {
     filter();
     cy.findByText("Summaries").click();
     cy.findByLabelText("Min of Vendor").click();
-    cy.findByText("Is").click();
+    cy.findByText("Contains").click();
     cy.findByText("Ends with").click();
-
-    cy.findByText("Case sensitive").click();
   });
 
   // flaky test
