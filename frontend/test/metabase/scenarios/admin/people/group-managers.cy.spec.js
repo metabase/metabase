@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { restore, modal, popover, describeEE } from "__support__/e2e/cypress";
+import { restore, modal, popover, describeEE } from "__support__/e2e/helpers";
 
 describeEE("scenarios > admin > people", () => {
   beforeEach(() => {

@@ -6,7 +6,7 @@ import {
   popover,
   openQuestionActions,
   questionInfoButton,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 

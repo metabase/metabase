@@ -8,7 +8,7 @@ import {
   openNavigationSidebar,
   closeNavigationSidebar,
   openCollectionMenu,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -473,23 +473,15 @@ function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
 
 function moveOpenedCollectionTo(newParent) {
   openCollectionMenu();
-  cy.findByTextEnsureVisible("Edit this collection").click();
-
-  // Open the select dropdown menu
-  modal()
-    .findByTestId("select-button")
-    .click();
+  popover().within(() => cy.findByText("Move").click());
 
   cy.findAllByTestId("item-picker-item")
     .contains(newParent)
     .click();
 
-  // Make sure the correct value is selected
-  cy.findAllByTestId("select-button-content").contains(newParent);
-
-  cy.button("Update").click();
+  cy.button("Move").click();
   // Make sure modal closed
-  cy.button("Update").should("not.exist");
+  cy.button("Move").should("not.exist");
 }
 
 function dragAndDrop(subjectAlias, targetAlias) {

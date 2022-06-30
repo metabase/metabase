@@ -101,12 +101,16 @@ const AUTHORITY_LEVEL_REGULAR = {
 };
 
 export const PLUGIN_COLLECTIONS = {
-  authorityLevelFormFields: [],
-  isRegularCollection: (_: Collection | Bookmark) => true,
-  REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
+  REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
+  isRegularCollection: (_: Collection | Bookmark) => true,
+  getAuthorityLevelFormFields: () => [],
+  getAuthorityLevelMenuItems: (
+    _collection: Collection,
+    _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
+  ) => [],
 };
 
 export const PLUGIN_COLLECTION_COMPONENTS = {
@@ -188,5 +192,4 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
 export const PLUGIN_MODEL_PERSISTENCE = {
   isModelLevelPersistenceEnabled: () => false,
   ModelCacheControl: PluginPlaceholder as any,
-  ModelCacheManagementSection: PluginPlaceholder as any,
 };

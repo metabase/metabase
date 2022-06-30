@@ -327,7 +327,7 @@ const SECTIONS = updateSectionsWithPlugins({
     ],
   },
   embedding_in_other_applications: {
-    name: t`Embedding in other Applications`,
+    name: t`Embedding`,
     order: 10,
     settings: [
       {

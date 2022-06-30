@@ -13,7 +13,7 @@ import {
   startNewQuestion,
   openQuestionActions,
   closeQuestionActions,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import { questionInfoButton } from "../../../__support__/e2e/helpers/e2e-ui-elements-helpers";
@@ -46,10 +46,11 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     filter();
-    selectDimensionOptionFromSidebar("Discount");
+    cy.findByLabelText("Discount").click();
     cy.findByText("Equal to").click();
     selectFromDropdown("Not empty");
     cy.button("Add filter").click();
+    cy.button("Apply").click();
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",
@@ -96,10 +97,11 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     filter();
-    selectDimensionOptionFromSidebar("DISCOUNT");
+    cy.findByLabelText("DISCOUNT").click();
     cy.findByText("Equal to").click();
     selectFromDropdown("Not empty");
     cy.button("Add filter").click();
+    cy.button("Apply").click();
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",
@@ -307,10 +309,11 @@ describe("scenarios > models", () => {
       cy.wait("@dataset");
 
       filter();
-      selectDimensionOptionFromSidebar("Discount");
+      cy.findByLabelText("Discount").click();
       cy.findByText("Equal to").click();
       selectFromDropdown("Not empty");
       cy.button("Add filter").click();
+      cy.button("Apply").click();
 
       assertQuestionIsBasedOnModel({
         model: "Orders Model",
@@ -381,7 +384,7 @@ describe("scenarios > models", () => {
 
       questionInfoButton().click();
 
-      cy.findByPlaceholderText("Description")
+      cy.findByPlaceholderText("Add description")
         .type("foo")
         .blur();
       cy.wait("@updateCard");

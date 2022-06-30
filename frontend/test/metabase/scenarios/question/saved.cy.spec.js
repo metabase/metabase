@@ -8,7 +8,8 @@ import {
   startNewQuestion,
   visualize,
   openQuestionActions,
-} from "__support__/e2e/cypress";
+  filter,
+} from "__support__/e2e/helpers";
 import {
   questionInfoButton,
   rightSidebar,
@@ -130,7 +131,7 @@ describe("scenarios > question > saved", () => {
     rightSidebar().within(() => {
       cy.findByText("History");
 
-      cy.findByPlaceholderText("Description")
+      cy.findByPlaceholderText("Add description")
         .type("This is a question")
         .blur();
 
@@ -154,17 +155,13 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Saved Questions").click();
     cy.findByText("15808").click();
     visualize();
-    cy.findAllByText("Filter")
-      .first()
-      .click();
-    cy.findByTestId("sidebar-right")
-      .findByText(/Rating/i)
-      .click();
-    cy.findByTestId("select-button").findByText("Equal to");
+    filter();
+    cy.findByLabelText("RATING").click();
     cy.findByPlaceholderText("Enter a number").type("4");
     cy.button("Add filter")
       .should("not.be.disabled")
       .click();
+    cy.button("Apply").click();
     cy.findByText("Synergistic Granite Chair");
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });

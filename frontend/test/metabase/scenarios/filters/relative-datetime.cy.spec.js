@@ -5,7 +5,7 @@ import {
   sidebar,
   popover,
   openOrdersTable,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const STARTING_FROM_UNITS = [
   "minutes",
@@ -25,7 +25,7 @@ describe("scenarios > question > relative-datetime", () => {
     cy.signInAsNormalUser();
   });
 
-  describe("sidebar", () => {
+  describe.skip("sidebar", () => {
     it("should go to field selection with one click", () => {
       openOrdersTable();
 

@@ -1,21 +1,37 @@
 import styled from "@emotion/styled";
+import EditableText from "metabase/core/components/EditableText";
 
-export const CaptionContainer = styled.div`
+export const CaptionTitleContainer = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
 `;
 
-export const CaptionTitle = styled.h1`
+export const CaptionTitle = styled(EditableText)`
+  font-size: 1.75rem;
   font-weight: 900;
-  word-break: break-word;
-  word-wrap: anywhere;
-  overflow-wrap: anywhere;
 `;
 
-export const CaptionDescription = styled.div`
-  font-size: 1rem;
-  line-height: 1.5rem;
-  padding-top: 1.15rem;
+export interface CaptionDescriptionProps {
+  isVisible: boolean;
+}
+
+export const CaptionDescription = styled(EditableText)<CaptionDescriptionProps>`
+  opacity: ${props => (props.isVisible ? 1 : 0)};
   max-width: 25rem;
+  transition: opacity 400ms ease 1s;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
+`;
+
+export const CaptionRoot = styled.div`
+  &:hover,
+  &:focus-within {
+    ${CaptionDescription} {
+      opacity: 1;
+      transition-delay: 0s;
+    }
+  }
 `;

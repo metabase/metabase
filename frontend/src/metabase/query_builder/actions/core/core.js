@@ -26,6 +26,11 @@ import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+import {
+  getTemplateTagsForParameters,
+  getTemplateTagParameters,
+} from "metabase/parameters/utils/cards";
+
 import { trackNewQuestionSaved } from "../../analytics";
 import {
   getCard,
@@ -305,6 +310,14 @@ export const updateQuestion = (
           shouldUpdateUrl: false,
         }),
       );
+    }
+
+    const newDatasetQuery = newQuestion.query().datasetQuery();
+    // Sync card's parameters with the template tags;
+    if (newDatasetQuery.type === "native") {
+      const templateTags = getTemplateTagsForParameters(newQuestion.card());
+      const parameters = getTemplateTagParameters(templateTags);
+      newQuestion = newQuestion.setParameters(parameters);
     }
 
     // Replace the current question with a new one

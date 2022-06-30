@@ -3,7 +3,7 @@ import {
   mockSessionProperty,
   popover,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("issue 19341", () => {
   const TEST_NATIVE_QUESTION_NAME = "Native";

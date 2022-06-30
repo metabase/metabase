@@ -1,11 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
-import {
-  PLUGIN_MODERATION,
-  PLUGIN_MODEL_PERSISTENCE,
-  PLUGIN_CACHING,
-} from "metabase/plugins";
+import { PLUGIN_MODERATION, PLUGIN_CACHING } from "metabase/plugins";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -15,6 +11,8 @@ import Question from "metabase-lib/lib/Question";
 import { Card } from "metabase-types/types/Card";
 
 import EditableText from "metabase/core/components/EditableText";
+
+import ModelCacheManagementSection from "./ModelCacheManagementSection";
 import { Root, ContentSection } from "./QuestionInfoSidebar.styled";
 
 interface QuestionInfoSidebarProps {
@@ -50,7 +48,8 @@ export const QuestionInfoSidebar = ({
       <ContentSection>
         <EditableText
           initialValue={description}
-          placeholder={t`Description`}
+          placeholder={t`Add description`}
+          isOptional
           isMultiline
           onChange={handleSave}
         />
@@ -59,9 +58,7 @@ export const QuestionInfoSidebar = ({
 
       {isPersisted && (
         <ContentSection extraPadding>
-          <PLUGIN_MODEL_PERSISTENCE.ModelCacheManagementSection
-            model={question}
-          />
+          <ModelCacheManagementSection model={question} />
         </ContentSection>
       )}
 

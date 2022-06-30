@@ -2,7 +2,7 @@ import {
   describeEE,
   restore,
   visitQuestionAdhoc,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -17,7 +17,7 @@ const questionDetails = {
       aggregation: [["count"]],
       breakout: [
         ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-        ["field", PEOPLE.STATE, { "source-field": 11 }],
+        ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
       ],
     },
   },
@@ -47,8 +47,9 @@ describeEE("visual tests > admin > colors", () => {
     visitQuestionAdhoc(questionDetails);
     cy.percySnapshot("chart");
 
-    cy.findByText("Filter").click();
+    cy.icon("notebook").click();
     cy.percySnapshot("filters");
+    cy.icon("notebook").click();
 
     cy.findByText("Summarize").click();
     cy.percySnapshot("summarize");
@@ -66,8 +67,9 @@ describeEE("visual tests > admin > colors", () => {
     visitQuestionAdhoc(questionDetails);
     cy.percySnapshot("chart");
 
-    cy.findByText("Filter").click();
+    cy.icon("notebook").click();
     cy.percySnapshot("filters");
+    cy.icon("notebook").click();
 
     cy.findByText("Summarize").click();
     cy.percySnapshot("summarize");

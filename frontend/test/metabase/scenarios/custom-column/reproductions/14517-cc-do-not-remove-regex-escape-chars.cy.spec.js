@@ -1,4 +1,4 @@
-import { restore, popover, startNewQuestion } from "__support__/e2e/cypress";
+import { restore, popover, startNewQuestion } from "__support__/e2e/helpers";
 
 const PG_DB_NAME = "QA Postgres12";
 

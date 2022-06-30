@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { restore, popover, startNewQuestion } from "__support__/e2e/cypress";
+import { restore, popover, startNewQuestion } from "__support__/e2e/helpers";
 
 describe("visual tests > notebook > major UI elements", () => {
   const VIEWPORT_WIDTH = 2500;

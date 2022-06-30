@@ -4,7 +4,7 @@ import {
   editDashboard,
   saveDashboard,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const filter1 = {
   name: "Card 1 Filter",

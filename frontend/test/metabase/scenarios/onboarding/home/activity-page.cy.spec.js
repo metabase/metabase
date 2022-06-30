@@ -6,7 +6,7 @@ import {
   editDashboard,
   saveDashboard,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("metabase > scenarios > home > activity-page", () => {
   beforeEach(() => {

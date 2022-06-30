@@ -24,7 +24,6 @@ import RunButtonWithTooltip from "../RunButtonWithTooltip";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
-import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
 import QuestionFilters, {
@@ -192,11 +191,8 @@ function SavedQuestionLeftSide(props) {
 
   const onHeaderChange = useCallback(
     name => {
-      if (name !== question.displayName()) {
-        onSave({
-          ...question.card(),
-          name,
-        });
+      if (name && name !== question.displayName()) {
+        onSave(question.setDisplayName(name).card());
       }
     },
     [question, onSave],
@@ -271,12 +267,6 @@ function AhHocQuestionLeftSide(props) {
             />
           )}
         </AdHocViewHeading>
-        {QuestionLineage.shouldRender(props) && (
-          <QuestionLineage
-            question={question}
-            originalQuestion={originalQuestion}
-          />
-        )}
       </ViewHeaderMainLeftContentContainer>
       <ViewHeaderLeftSubHeading>
         {isSummarized && (

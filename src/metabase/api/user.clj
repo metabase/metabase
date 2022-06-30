@@ -128,11 +128,11 @@
         true (hh/merge-where (status-clause status include_deactivated))
         true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
                                (when (segmented-user?)
-                                 [:= :id api/*current-user-id*])))
+                                 [:= :core_user.id api/*current-user-id*])))
         (some? query) (hh/merge-where (query-clause query))
         (some? group_id) (hh/merge-right-join :permissions_group_membership
                                               [:= :core_user.id :permissions_group_membership.user_id])
-        (some? group_id) (hh/merge-where [:= :group_id group_id])))
+        (some? group_id) (hh/merge-where [:= :permissions_group_membership.group_id group_id])))
 
 (api/defendpoint GET "/"
   "Fetch a list of `Users`. By default returns every active user but only active users.

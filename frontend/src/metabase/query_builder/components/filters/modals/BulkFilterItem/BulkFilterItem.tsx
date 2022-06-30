@@ -3,12 +3,13 @@ import React, { useMemo, useCallback } from "react";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { isBoolean, isString } from "metabase/lib/schema_metadata";
+import { isBoolean, isString, isNumber } from "metabase/lib/schema_metadata";
 
 import { BooleanPickerCheckbox } from "metabase/query_builder/components/filters/pickers/BooleanPicker";
 import { BulkFilterSelect } from "../BulkFilterSelect";
 import { InlineCategoryPicker } from "../InlineCategoryPicker";
 import { InlineValuePicker } from "../InlineValuePicker";
+import { InlineDatePicker } from "../InlineDatePicker";
 
 import { FIELD_PRIORITY } from "./constants";
 
@@ -84,11 +85,28 @@ export const BulkFilterItem = ({
     case "type/PK":
     case "type/FK":
     case "type/Text":
+    case "type/Integer":
+    case "type/Float":
       return (
         <InlineValuePicker
           filter={filter ?? newFilter}
           field={dimension.field()}
           handleChange={handleChange}
+        />
+      );
+    case "type/DateTime":
+    case "type/DateTimeWithTZ":
+    case "type/DateTimeWithLocalTZ":
+    case "type/DateTimeWithZoneOffset":
+    case "type/DateTimeWithZoneID":
+      return (
+        <InlineDatePicker
+          query={query}
+          filter={filter}
+          newFilter={newFilter}
+          dimension={dimension}
+          onChange={handleChange}
+          onClear={handleClear}
         />
       );
     default:
@@ -112,6 +130,11 @@ const getNewFilter = (query: StructuredQuery, dimension: Dimension): Filter => {
   filter = filter.setDimension(dimension.mbql(), {
     useDefaultOperator: !isBooleanField,
   });
+
+  const isNumericField = isNumber(field);
+  if (isNumericField) {
+    filter = filter.setOperator("between");
+  }
 
   const isTextField = isString(field) && field.has_field_values !== "list";
   if (isTextField) {

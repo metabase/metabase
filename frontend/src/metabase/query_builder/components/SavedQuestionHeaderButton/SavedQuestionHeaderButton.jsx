@@ -27,7 +27,7 @@ function SavedQuestionHeaderButton({ className, question, onSave }) {
     <HeaderRoot>
       <HeaderTitle
         initialValue={question.displayName()}
-        placeholder={t`A nice title`}
+        placeholder={t`Add title`}
         onChange={onSave}
         data-testid="saved-question-header-title"
       />
