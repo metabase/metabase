@@ -126,7 +126,9 @@
 (deftest get-or-create-full-field-values!-test
   (testing "create a full Fieldvalues if it does not exist"
     (db/delete! FieldValues :field_id (mt/id :categories :name) :type :full)
-    (is (= :full (:type (field-values/get-or-create-full-field-values! (Field (mt/id :categories :name)))))
+    (is (= :full (-> (Field (mt/id :categories :name))
+                     field-values/get-or-create-full-field-values!
+                     :type))
      (is (= 1 (db/count FieldValues :field_id (mt/id :categories :name) :type :full))))
 
    (testing "if an Advanced FeildValues Exists, make sure we still returns the full FieldValues"
