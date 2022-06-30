@@ -2,8 +2,8 @@ import { t } from "ttag";
 import { RadioOption } from "metabase/core/components/Radio/Radio";
 
 export const OPTIONS: RadioOption<boolean>[] = [
-  { name: t`true`, value: true },
-  { name: t`false`, value: false },
+  { name: t`True`, value: true },
+  { name: t`False`, value: false },
 ];
 
 export const EXPANDED_OPTIONS: RadioOption<string | boolean | any>[] = [
