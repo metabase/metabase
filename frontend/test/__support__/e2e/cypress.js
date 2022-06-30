@@ -12,7 +12,7 @@ Cypress.on("uncaught:exception", (err, runnable) => false);
 Cypress.on("test:after:run", (test, runnable) => {
   if (test.state === "failed") {
     const titleToFileName = title => title.replace(/[>]/g, "");
-    let parent = runnable.parent;
+    let { parent } = runnable;
     let filename = "";
     // This while is to be able to support more than one level of parent in the screenshot name
     while (parent && parent.title) {
