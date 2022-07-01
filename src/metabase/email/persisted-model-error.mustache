@@ -6,7 +6,12 @@
       Model refresh for {{database-name}} failed
     </h2>
     {{#errors}}
-    <div class="padded-section">
+    {{^is-not-first}}
+      <div>
+    {{/is-not-first}}
+    {{#is-not-first}}
+      <div class="padded-section">
+    {{/is-not-first}}
       <p
       style="font-weight: 600; font-size: 0.875em; line-height: 1.375em; color: #949AAB;"
     >
