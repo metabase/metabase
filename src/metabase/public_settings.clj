@@ -32,7 +32,7 @@
   (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-configured?)]
     (varr)))
 
-(defn- sso-configured?
+(defn sso-configured?
   "Any SSO provider is configured"
   []
   (or (google-auth-configured?)

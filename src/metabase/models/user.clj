@@ -244,7 +244,9 @@
 
 (defn- send-welcome-email! [new-user invitor sent-from-setup?]
   (let [reset-token               (set-password-reset-token! (u/the-id new-user))
-        should-link-to-login-page (and (premium-features/enable-sso?) (not (public-settings/enable-password-login)))
+        should-link-to-login-page (and (premium-features/enable-sso?)
+                                       (public-settings/sso-configured?)
+                                       (not (public-settings/enable-password-login)))
         join-url                  (if should-link-to-login-page
                                     (str (public-settings/site-url) "/auth/login")
                                     ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
