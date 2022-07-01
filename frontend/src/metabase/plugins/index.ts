@@ -126,6 +126,8 @@ export const PLUGIN_MODERATION = {
   getStatusIconForQuestion: object,
   getStatusIcon: object,
   getModerationTimelineEvents: array,
+  getMenuItems: (question?: any, isModerator?: boolean, reload?: () => void) =>
+    object,
 };
 
 export const PLUGIN_CACHING = {
@@ -192,4 +194,5 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
 export const PLUGIN_MODEL_PERSISTENCE = {
   isModelLevelPersistenceEnabled: () => false,
   ModelCacheControl: PluginPlaceholder as any,
+  getMenuItems: (question?: any, onChange?: any) => object,
 };
