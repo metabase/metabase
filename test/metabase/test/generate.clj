@@ -291,7 +291,7 @@
   - Adjust entites, in case some fields need extra tunning like incremental position, or collections.location
   - Insert entity into the db using `toucan.core/insert!` "
   [query]
-  (reset! table-names {})
+  (reset! unique-names {})
   (-> (spec-gen query)
       (rs/visit-ents :spec-gen remove-ids)
       (rs/visit-ents :spec-gen adjust)
