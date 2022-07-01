@@ -94,6 +94,7 @@ export const BulkFilterItem = ({
           handleChange={handleChange}
         />
       );
+    case "type/Date":
     case "type/DateTime":
     case "type/DateTimeWithTZ":
     case "type/DateTimeWithLocalTZ":
