@@ -11908,19 +11908,6 @@ databaseChangeLog:
               WHERE p.object IS NULL;
 
   - changeSet:
-      id: v44.00-034
-      author: calherries
-      comment: Added 0.44.0. Add last_activity to session
-      changes:
-        - addColumn:
-            tableName: core_session
-            columns:
-              - column:
-                  name: last_activity
-                  type: ${timestamp_type}
-                  remarks: 'The last time that the session was used.'
-
-  - changeSet:
       id: v44.00-038
       author: metamben
       comment: Added 0.44.0 - Add collection_preview to report_card
