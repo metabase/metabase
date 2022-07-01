@@ -250,7 +250,7 @@
 saved later when it is ready."
   1500)
 
-(defn- save-new-card-async!
+(defn- save-new-card!
   "Save `card-data` as a new Card on a separate thread. Returns a channel to fetch the response; closing this channel
   will cancel the save."
   [{:keys [dataset_query result_metadata dataset] :as card-data} user]
@@ -287,10 +287,10 @@ saved later when it is ready."
                  :collection [:moderation_reviews :moderator_details])
         (assoc :last-edit-info (last-edit/edit-information-for-user user)))))
 
-(defn- create-card-async!
+(defn- create-card!
   "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
   thrown. Closing this channel before it finishes will cancel the Card creation."
-  [{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data}]
+  [{:keys [parameters parameter_mappings], :as card-data}]
   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
   ;; `api/maybe-reconcile-collection-position!`
   (let [data-keys            [:dataset_query :description :display :name :visualization_settings
@@ -300,9 +300,9 @@ saved later when it is ready."
                                     :dataset (boolean (:dataset card-data))
                                     :parameters (or parameters [])
                                     :parameter_mappings (or parameter_mappings []))]
-    (save-new-card-async! card-data @api/*current-user*)))
+    (save-new-card! card-data @api/*current-user*)))
 
-(api/defendpoint ^:returns-chan POST "/"
+(api/defendpoint POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl], :as body} :body}]
@@ -321,17 +321,16 @@ saved later when it is ready."
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
   ;; Return a channel that can be used to fetch the results asynchronously
-  (create-card-async! body))
+  (create-card! body))
 
-(api/defendpoint ^:returns-chan POST "/:id/copy"
+(api/defendpoint POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
   [id]
   {id (s/maybe su/IntGreaterThanZero)}
   (let [orig-card (api/read-check Card id)
         new-name  (str (trs "Copy of ") (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
-    ;; Return a channel that can be used to fetch the results asynchronously
-    (create-card-async! new-card)))
+    (create-card! new-card)))
 
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
