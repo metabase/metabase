@@ -82,7 +82,7 @@ const FontFileRow = ({
 
   return (
     <TableBodyRow>
-      <TableBodyCell>
+      <TableBodyCell fontWeight={option.fontWeight}>
         {option.name}
         <TableBodyCellLabel>{option.fontWeight}</TableBodyCellLabel>
       </TableBodyCell>

@@ -50,11 +50,16 @@ export const TableBodyRow = styled.div`
   }
 `;
 
-export const TableBodyCell = styled.div`
+export interface TableBodyCellProps {
+  fontWeight?: number;
+}
+
+export const TableBodyCell = styled.div<TableBodyCellProps>`
   ${cellStyles};
   color: ${color("text-medium")};
   padding-top: 1rem;
   padding-bottom: 1rem;
+  font-weight: ${props => props.fontWeight};
 `;
 
 export const TableBodyCellLabel = styled.span`
