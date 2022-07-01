@@ -1,4 +1,5 @@
 import React, { ChangeEvent, useCallback, useMemo } from "react";
+import { t } from "ttag";
 import { FontSelect } from "./FontFamilySettings.styled";
 
 export interface FontFamilySettingsProps {
@@ -13,13 +14,16 @@ const FontFamilySettings = ({
   onChange,
 }: FontFamilySettingsProps): JSX.Element => {
   const options = useMemo(
-    () => availableFonts.map(font => ({ name: font, value: font })),
+    () => [
+      ...availableFonts.map(font => ({ name: font, value: font })),
+      { name: t`Custom…`, value: null },
+    ],
     [availableFonts],
   );
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) => {
-      onChange(event.currentTarget.value);
+      onChange(event.target.value);
     },
     [onChange],
   );

@@ -31,12 +31,17 @@ const FontSettings = ({
         availableFonts={availableFonts}
         onChange={onChangeFont}
       />
-      <FontFileSection>
-        <SettingDescription>
-          {t`Tell us where to find the font file for each required style.`}
-        </SettingDescription>
-        <FontFileSettings fontFiles={fontFiles} onChange={onChangeFontFiles} />
-      </FontFileSection>
+      {font == null && (
+        <FontFileSection>
+          <SettingDescription>
+            {t`Tell us where to find the font file for each required style.`}
+          </SettingDescription>
+          <FontFileSettings
+            fontFiles={fontFiles}
+            onChange={onChangeFontFiles}
+          />
+        </FontFileSection>
+      )}
     </SettingRoot>
   );
 };
