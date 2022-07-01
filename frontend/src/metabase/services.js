@@ -524,9 +524,9 @@ function setParamsEndpoints(prefix) {
 }
 
 export const ActionsApi = {
-  create: POST("/api/actions/row/create"),
-  update: POST("/api/actions/row/update"),
-  delete: POST("/api/actions/row/delete"),
+  create: POST("/api/action/row/create"),
+  update: POST("/api/action/row/update"),
+  delete: POST("/api/action/row/delete"),
 };
 
 export const EmittersApi = {
