@@ -97,7 +97,6 @@ describe("revision history", () => {
                 expect(body.cause).not.to.exist;
               });
 
-              cy.findAllByText(/Revert/).should("not.exist");
               // We reverted the dashboard to the state prior to adding any cards to it
               cy.findByText("This dashboard is looking empty.");
 
