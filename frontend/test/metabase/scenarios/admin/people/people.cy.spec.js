@@ -369,7 +369,7 @@ describeEE("scenarios > admin > people", () => {
       });
     });
 
-    it("invite member when SSO is not configured metabase#23630", () => {
+    it("invite member when SSO is not configured", () => {
       const { first_name, last_name, email } = TEST_USER;
       const FULL_NAME = `${first_name} ${last_name}`;
       cy.visit("/admin/people");
