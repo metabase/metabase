@@ -29,7 +29,7 @@ export const createMockEngines = (
 });
 
 export const createMockFontFile = (opts?: Partial<FontFile>): FontFile => ({
-  src: "https://metabase.test/font-regular.woff2",
+  src: "https://metabase.test/regular.woff2",
   fontWeight: 400,
   fontFormat: "woff2",
   ...opts,
