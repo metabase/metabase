@@ -39,7 +39,6 @@ function CustomFormFooter({
           {cancelTitle}
         </Button>
       )}
-      <div className="flex-full" />
       <CustomFormMessage className="mt1 flex-full" />
       {footerExtraButtons}
     </CustomFormFooterStyled>
