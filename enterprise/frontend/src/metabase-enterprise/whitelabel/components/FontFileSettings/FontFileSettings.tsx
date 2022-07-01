@@ -14,15 +14,15 @@ import {
 } from "./FontFileSettings.styled";
 
 export interface FontFileSettingsProps {
-  files: FontFile[];
-  onChange: (files: FontFile[]) => void;
+  fontFiles: FontFile[];
+  onChange: (fontFiles: FontFile[]) => void;
 }
 
 const FontFileSettings = ({
-  files,
+  fontFiles,
   onChange,
 }: FontFileSettingsProps): JSX.Element => {
-  const urls = useMemo(() => getFontUrls(files), [files]);
+  const urls = useMemo(() => getFontUrls(fontFiles), [fontFiles]);
 
   const handleChange = useCallback(
     (option: FontFileOption, url: string) => {
