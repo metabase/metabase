@@ -194,17 +194,6 @@
   (eduction (map (partial extract-one model opts))
             (extract-query model opts)))
 
-(defn raw-reducible-query
-  "Helper for calling Toucan's raw [[db/reducible-query]]. With just the model name, fetches everything. You can filter
-  with a HoneySQL map like `{:where [:= :archived true]}`.
-
-  Returns a reducible stream of JDBC row maps."
-  ([model-name]
-   (raw-reducible-query model-name nil))
-  ([model-name honeysql-form]
-   (db/reducible-query (merge {:select [:*] :from [(symbol model-name)]}
-                              honeysql-form))))
-
 (defn- model-name->table
   "The model name is not necessarily the table name. This pulls the table name from the Toucan model."
   [model-name]
@@ -213,8 +202,19 @@
       db/resolve-model
       :table))
 
+(defn raw-reducible-query
+  "Helper for calling Toucan's raw [[db/reducible-query]]. With just the model name, fetches everything. You can filter
+  with a HoneySQL map like `{:where [:= :archived true]}`.
+
+  Returns a reducible stream of JDBC row maps."
+  ([model-name]
+   (raw-reducible-query model-name nil))
+  ([model-name honeysql-form]
+   (db/reducible-query (merge {:select [:*] :from [(model-name->table model-name)]}
+                              honeysql-form))))
+
 (defmethod extract-query :default [model-name _]
-  (raw-reducible-query (model-name->table model-name)))
+  (raw-reducible-query model-name))
 
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:

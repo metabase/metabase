@@ -12,6 +12,7 @@
             [metabase.test.generate :as test-gen]
             [metabase.util.date-2 :as u.date]
             [reifyhealth.specmonstah.core :as rs]
+            [toucan.db :as db]
             [yaml.core :as yaml]))
 
 (defn- dir->file-set [dir]
@@ -95,6 +96,9 @@
                      (assoc :serdes/meta (mapv #(dissoc % :label) abs-path)))
                  (ingest/ingest-one ingestable abs-path))))))))
 
+(defn- random-key [prefix n]
+  (keyword (str prefix (rand-int n))))
+
 (deftest e2e-storage-ingestion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (ts/with-empty-h2-app-db
@@ -104,7 +108,14 @@
                                                 [10 {:refs {:db_id db}}]))
                          :field      (into [] (for [n     (range 100)
                                                     :let [table (keyword (str "t" n))]]
-                                                [10 {:refs {:table_id table}}]))})
+                                                [10 {:refs {:table_id table}}]))
+                         :core-user  [[10]]
+                         :card       [[100 {:refs (let [db (rand-int 10)
+                                                        t  (rand-int 10)]
+                                                    {:database_id   (keyword (str "db" db))
+                                                     :table_id      (keyword (str "t" (+ t (* 10 db))))
+                                                     :collection_id (random-key "coll" 100)
+                                                     :creator_id    (random-key "u" 10)})}]]})
       (let [extraction (into [] (extract/extract-metabase {}))
             entities   (reduce (fn [m entity]
                                  (update m (-> entity :serdes/meta last :model)
@@ -161,6 +172,20 @@
                          (update :created_at u.date/format)
                          (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Database" db "Table" table "Field" (str name ".yaml")))))))
+
+          (testing "for cards"
+            (is (= 100 (count (dir->file-set (io/file dump-dir "Card")))))
+            (doseq [{[db-name schema table] :table
+                     :keys [collection_id creator_id entity_id]
+                     :as   card}                                (get entities "Card")
+                    :let [filename (str entity_id ".yaml")
+                          db       (db/select-one 'Database :name db-name)
+                          table    (db/select-one 'Table :db_id (:id db) :name table :schema schema)]]
+              (is (= (-> card
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Card" filename))))))
 
           (testing "for settings"
             (is (= (into {} (for [{:keys [key value]} (get entities "Setting")]

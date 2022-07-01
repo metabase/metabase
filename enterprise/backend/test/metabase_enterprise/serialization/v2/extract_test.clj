@@ -2,11 +2,19 @@
   (:require [clojure.test :refer :all]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
-            [metabase.models :refer [Collection User]]
+            [metabase.models :refer [Card Collection Database Table User]]
             [metabase.models.serialization.base :as serdes.base]))
 
 (defn- select-one [model-name where]
   (first (into [] (serdes.base/raw-reducible-query model-name {:where where}))))
+
+(defn- by-model [model-name extraction]
+  (->> extraction
+       (into [])
+       (map (comp last :serdes/meta))
+       (filter #(= model-name (:model %)))
+       (map :id)
+       set))
 
 (deftest fundamentals-test
   (ts/with-empty-h2-app-db
@@ -52,20 +60,59 @@
           (is (= "mark@direstrai.ts" (:personal_owner_id ser)))))
 
       (testing "overall extraction returns the expected set"
-        (letfn [(collections [extraction] (->> extraction
-                                               (into [])
-                                               (map (comp last :serdes/meta))
-                                               (filter #(= "Collection" (:model %)))
-                                               (map :id)
-                                               set))]
-          (testing "no user specified"
-            (is (= #{coll-eid child-eid}
-                   (collections (extract/extract-metabase nil)))))
+        (testing "no user specified"
+          (is (= #{coll-eid child-eid}
+                 (by-model "Collection" (extract/extract-metabase nil)))))
 
-          (testing "valid user specified"
-            (is (= #{coll-eid child-eid pc-eid}
-                   (collections (extract/extract-metabase {:user mark-id})))))
+        (testing "valid user specified"
+          (is (= #{coll-eid child-eid pc-eid}
+                 (by-model "Collection" (extract/extract-metabase {:user mark-id})))))
 
-          (testing "invalid user specified"
-            (is (= #{coll-eid child-eid}
-                   (collections (extract/extract-metabase {:user 218921}))))))))))
+        (testing "invalid user specified"
+          (is (= #{coll-eid child-eid}
+                 (by-model "Collection" (extract/extract-metabase {:user 218921})))))))))
+
+(deftest dashboard-and-cards-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [Collection [{coll-id    :id
+                                    coll-eid   :entity_id
+                                    coll-slug  :slug}      {:name "Some Collection"}]
+                       User       [{mark-id :id}           {:first_name "Mark"
+                                                            :last_name  "Knopfler"
+                                                            :email      "mark@direstrai.ts"}]
+                       Database   [{db-id      :id}        {:name "My Database"}]
+                       Table      [{no-schema-id :id}      {:name "Schemaless Table" :db_id db-id}]
+                       Table      [{schema-id    :id}      {:name        "Schema'd Table"
+                                                            :db_id       db-id
+                                                            :schema      "PUBLIC"}]
+                       Card       [{c1-id  :id
+                                    c1-eid :entity_id}     {:name          "Some Question"
+                                                            :database_id   db-id
+                                                            :table_id      no-schema-id
+                                                            :collection_id coll-id
+                                                            :creator_id    mark-id
+                                                            :dataset_query "{\"json\": \"string values\"}"}]
+                       Card       [{c2-id  :id
+                                    c2-eid :entity_id}     {:name          "Second Question"
+                                                            :database_id   db-id
+                                                            :table_id      schema-id
+                                                            :collection_id coll-id
+                                                            :creator_id    mark-id}]]
+      (testing "table and database are extracted as [db schema table] triples"
+        (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c1-id]))]
+          (is (= {:serdes/meta   [{:model "Card" :id c1-eid}]
+                  :table         ["My Database" nil "Schemaless Table"]
+                  :creator_id    "mark@direstrai.ts"
+                  :collection_id coll-eid
+                  :dataset_query "{\"json\": \"string values\"}"} ; Undecoded, still a string.
+                 (select-keys ser [:serdes/meta :table :creator_id :collection_id :dataset_query])))
+          (is (not (contains? ser :id))))
+
+        (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c2-id]))]
+          (is (= {:serdes/meta   [{:model "Card" :id c2-eid}]
+                  :table         ["My Database" "PUBLIC" "Schema'd Table"]
+                  :creator_id    "mark@direstrai.ts"
+                  :collection_id coll-eid
+                  :dataset_query "{}"} ; Undecoded, still a string.
+                 (select-keys ser [:serdes/meta :table :creator_id :collection_id :dataset_query])))
+          (is (not (contains? ser :id))))))))
