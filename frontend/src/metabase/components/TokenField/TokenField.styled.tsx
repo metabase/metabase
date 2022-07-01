@@ -9,8 +9,8 @@ export const TokenFieldItem = styled.li<{
   margin: 0 0.25rem 0.25rem 0;
   padding: 0.75rem 0.5rem;
   border-radius: 0.5rem;
-  color: ${({ isValid }) => (isValid ? "" : color("error"))};
-  background-color: ${color("bg-medium")};
+  color: ${({ isValid }) => (isValid ? color("white") : color("error"))};
+  background-color: ${color("brand")};
 `;
 
 export const TokenFieldAddon = styled.a<{

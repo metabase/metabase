@@ -19,7 +19,6 @@ export const ModalHeader = styled.div`
 
 export const ModalBody = styled.div`
   overflow-y: auto;
-  padding: 0 2rem;
 `;
 
 export const ModalFooter = styled.div`
@@ -44,7 +43,6 @@ export const ModalTabList = styled(TabList)`
 
 export const ModalTabPanel = styled(TabPanel)`
   overflow-y: auto;
-  padding: 0 2rem;
 `;
 
 interface ModalDividerProps {

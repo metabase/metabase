@@ -23,21 +23,16 @@ export function InlineValuePicker({
   field,
   handleChange,
 }: InlineValuePickerProps) {
-  const changeOperator = useCallback(
-    (newOperator: any) => {
-      handleChange(filter.setOperator(newOperator));
-    },
-    [filter, handleChange],
-  );
-
   const changeArguments = useCallback(
     (newArguments: (string | number)[]) => {
-      handleChange(filter.setArguments(newArguments));
+      handleChange(
+        filter
+          .setArguments(newArguments)
+          .setFilterOptions(filter.filterOptions()),
+      );
     },
     [filter, handleChange],
   );
-
-  const filterOperators = field.filterOperators(filter.operatorName());
 
   const hideArgumentSelector = [
     "is-null",
@@ -47,19 +42,20 @@ export function InlineValuePicker({
   ].includes(filter.operatorName());
 
   return (
-    <ValuesPickerContainer
-      data-testid="value-picker"
-      aria-label={field.displayName()}
-    >
-      <OperatorSelector
-        operator={filter.operatorName() ?? "="}
-        operators={filterOperators}
-        onOperatorChange={changeOperator}
-      />
-      {!hideArgumentSelector && (
-        <ValuesInput filter={filter} field={field} onChange={changeArguments} />
-      )}
-    </ValuesPickerContainer>
+    <>
+      <ValuesPickerContainer
+        data-testid="value-picker"
+        aria-label={field.displayName()}
+      >
+        {!hideArgumentSelector && (
+          <ValuesInput
+            filter={filter}
+            field={field}
+            onChange={changeArguments}
+          />
+        )}
+      </ValuesPickerContainer>
+    </>
   );
 }
 

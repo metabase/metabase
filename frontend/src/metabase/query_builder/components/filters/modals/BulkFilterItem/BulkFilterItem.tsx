@@ -10,6 +10,7 @@ import { BulkFilterSelect } from "../BulkFilterSelect";
 import { InlineCategoryPicker } from "../InlineCategoryPicker";
 import { InlineValuePicker } from "../InlineValuePicker";
 import { InlineDatePicker } from "../InlineDatePicker";
+import { InlineOperatorSelector } from "../InlineOperatorSelector";
 
 import { FIELD_PRIORITY } from "./constants";
 
@@ -56,31 +57,43 @@ export const BulkFilterItem = ({
     [filter, onAddFilter, onChangeFilter],
   );
 
+  const changeOperator = (newOperator: any) => {
+    handleChange((filter ?? newFilter).setOperator(newOperator));
+  };
+
   const handleClear = useCallback(() => {
     if (filter) {
       onRemoveFilter(filter);
     }
   }, [filter, onRemoveFilter]);
 
+  const currentOperator = (filter ?? newFilter)?.operatorName() ?? undefined;
+
   switch (fieldType) {
     case "type/Boolean":
       return (
-        <BooleanPickerCheckbox
-          filter={filter ?? newFilter}
-          onFilterChange={handleChange}
-        />
+        <>
+          <InlineOperatorSelector fieldName={dimension.displayName()} />
+          <BooleanPickerCheckbox
+            filter={filter ?? newFilter}
+            onFilterChange={handleChange}
+          />
+        </>
       );
     case "type/Category":
     case "list":
       return (
-        <InlineCategoryPicker
-          query={query}
-          filter={filter}
-          newFilter={newFilter}
-          dimension={dimension}
-          onChange={handleChange}
-          onClear={handleClear}
-        />
+        <>
+          <InlineOperatorSelector fieldName={dimension.displayName()} />
+          <InlineCategoryPicker
+            query={query}
+            filter={filter}
+            newFilter={newFilter}
+            dimension={dimension}
+            onChange={handleChange}
+            onClear={handleClear}
+          />
+        </>
       );
     case "type/PK":
     case "type/FK":
@@ -88,36 +101,51 @@ export const BulkFilterItem = ({
     case "type/Integer":
     case "type/Float":
       return (
-        <InlineValuePicker
-          filter={filter ?? newFilter}
-          field={dimension.field()}
-          handleChange={handleChange}
-        />
+        <>
+          <InlineOperatorSelector
+            fieldName={dimension.displayName()}
+            value={currentOperator}
+            operators={dimension.filterOperators(currentOperator)}
+            onChange={changeOperator}
+          />
+          <InlineValuePicker
+            filter={filter ?? newFilter}
+            field={dimension.field()}
+            handleChange={handleChange}
+          />
+        </>
       );
+    case "type/Date":
     case "type/DateTime":
     case "type/DateTimeWithTZ":
     case "type/DateTimeWithLocalTZ":
     case "type/DateTimeWithZoneOffset":
     case "type/DateTimeWithZoneID":
       return (
-        <InlineDatePicker
-          query={query}
-          filter={filter}
-          newFilter={newFilter}
-          dimension={dimension}
-          onChange={handleChange}
-          onClear={handleClear}
-        />
+        <>
+          <InlineOperatorSelector fieldName={dimension.displayName()} />
+          <InlineDatePicker
+            query={query}
+            filter={filter}
+            newFilter={newFilter}
+            dimension={dimension}
+            onChange={handleChange}
+            onClear={handleClear}
+          />
+        </>
       );
     default:
       return (
-        <BulkFilterSelect
-          query={query}
-          filter={filter}
-          dimension={dimension}
-          handleChange={handleChange}
-          handleClear={handleClear}
-        />
+        <>
+          <InlineOperatorSelector fieldName={dimension.displayName()} />
+          <BulkFilterSelect
+            query={query}
+            filter={filter}
+            dimension={dimension}
+            handleChange={handleChange}
+            handleClear={handleClear}
+          />
+        </>
       );
   }
 };

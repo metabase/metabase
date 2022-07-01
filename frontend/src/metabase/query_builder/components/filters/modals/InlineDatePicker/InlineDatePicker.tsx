@@ -13,6 +13,7 @@ import Dimension from "metabase-lib/lib/Dimension";
 import { OPTIONS } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts";
 
 import { BulkFilterSelect } from "../BulkFilterSelect";
+
 import {
   OptionButton,
   OptionContainer,

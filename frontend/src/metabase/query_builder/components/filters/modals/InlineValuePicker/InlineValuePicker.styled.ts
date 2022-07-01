@@ -16,10 +16,14 @@ export const ArgumentSelector = styled(FieldValuesWidget)`
 
 export const ValuesPickerContainer = styled.div`
   grid-column: 2;
+  ul.input {
+    margin-bottom: 0;
+  }
 `;
 
 export const BetweenContainer = styled.div`
   display: flex;
+  height: 53px;
   width: 100%;
   align-items: center;
   justify-content: space-between;

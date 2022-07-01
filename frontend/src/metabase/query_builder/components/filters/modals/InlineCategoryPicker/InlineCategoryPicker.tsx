@@ -17,6 +17,7 @@ import {
   PickerGrid,
   Loading,
 } from "./InlineCategoryPicker.styled";
+
 import { BulkFilterSelect } from "../BulkFilterSelect";
 
 const mapStateToProps = (state: any, props: any) => {
@@ -76,6 +77,7 @@ export function InlineCategoryPickerComponent({
   }, [dimension, safeFetchFieldValues, shouldFetchFieldValues]);
 
   const showInlinePicker =
+    fieldValues.length > 0 &&
     fieldValues.length <= MAX_INLINE_CATEGORIES &&
     (!filter || filter?.operatorName() === "=");
 
@@ -96,6 +98,7 @@ export function InlineCategoryPickerComponent({
   if (showInlinePicker) {
     return (
       <SimpleCategoryFilterPicker
+        title={dimension.displayName()}
         filter={filter ?? newFilter}
         onChange={onChange}
         options={fieldValues.flat()}
@@ -115,12 +118,14 @@ export function InlineCategoryPickerComponent({
 }
 
 interface SimpleCategoryFilterPickerProps {
+  title: string;
   filter: Filter;
   options: (string | number)[];
   onChange: (newFilter: Filter) => void;
 }
 
 export function SimpleCategoryFilterPicker({
+  title,
   filter,
   options,
   onChange,
