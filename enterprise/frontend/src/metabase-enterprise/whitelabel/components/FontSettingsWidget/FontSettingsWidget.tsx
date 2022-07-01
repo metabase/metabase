@@ -1,12 +1,14 @@
 import React from "react";
+import MetabaseSettings from "metabase/lib/settings";
 import FontSettings from "../FontSettings";
 
 const FontSettingsWidget = (): JSX.Element => {
   return (
     <FontSettings
-      fontFamily={null}
+      font={"Lato"}
+      availableFonts={MetabaseSettings.get("available-fonts")}
       fontFiles={[]}
-      onChangeFontFamily={() => 0}
+      onChangeFont={() => 0}
       onChangeFontFiles={() => 0}
     />
   );
