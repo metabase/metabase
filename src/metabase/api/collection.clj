@@ -686,9 +686,8 @@
 
 (api/defendpoint POST "/"
   "Create a new Collection."
-  [:as {{:keys [name color description parent_id namespace authority_level]} :body}]
+  [:as {{:keys [name description parent_id namespace authority_level]} :body}]
   {name            su/NonBlankString
-   color           collection/hex-color-regex
    description     (s/maybe su/NonBlankString)
    parent_id       (s/maybe su/IntGreaterThanZero)
    namespace       (s/maybe su/NonBlankString)
@@ -701,7 +700,6 @@
   (db/insert! Collection
     (merge
      {:name        name
-      :color       color
       :description description
       :authority_level authority_level
       :namespace   namespace}
@@ -757,9 +755,8 @@
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [id, :as {{:keys [name color description archived parent_id authority_level update_collection_tree_authority_level], :as collection-updates} :body}]
+  [id, :as {{:keys [name description archived parent_id authority_level update_collection_tree_authority_level], :as collection-updates} :body}]
   {name                                   (s/maybe su/NonBlankString)
-   color                                  (s/maybe collection/hex-color-regex)
    description                            (s/maybe su/NonBlankString)
    archived                               (s/maybe s/Bool)
    parent_id                              (s/maybe su/IntGreaterThanZero)
@@ -779,7 +776,7 @@
                           (not (collection/is-personal-collection-or-descendant-of-one? collection-before-update)))))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :authority_level])]
+    (let [updates (u/select-keys-when collection-updates :present [:name :description :archived :authority_level])]
       (when (seq updates)
         (db/update! Collection id updates)))
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
