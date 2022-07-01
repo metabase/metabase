@@ -5,8 +5,9 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 
-import CustomFormMessage from "./CustomFormMessage";
-import CustomFormSubmit from "./CustomFormSubmit";
+import CustomFormMessage from "../CustomFormMessage";
+import CustomFormSubmit from "../CustomFormSubmit";
+import { CustomFormFooterStyled } from "./CustomFormFooter.styled";
 
 export interface CustomFormFooterProps {
   submitTitle: string;
@@ -31,11 +32,7 @@ function CustomFormFooter({
   isContextModal,
 }: CustomFormFooterProps & { isContextModal?: boolean }) {
   return (
-    <div
-      className={cx("flex align-center", {
-        "flex-reverse": isModal || isContextModal,
-      })}
-    >
+    <CustomFormFooterStyled shouldReverse={isModal || isContextModal}>
       <CustomFormSubmit fullWidth={fullWidth}>{submitTitle}</CustomFormSubmit>
       {onCancel && (
         <Button className="mx1" type="button" onClick={onCancel}>
@@ -43,9 +40,9 @@ function CustomFormFooter({
         </Button>
       )}
       <div className="flex-full" />
-      <CustomFormMessage className="ml1" noPadding />
+      <CustomFormMessage className="mt1 flex-full" />
       {footerExtraButtons}
-    </div>
+    </CustomFormFooterStyled>
   );
 }
 
