@@ -119,7 +119,35 @@ function addMsgIds(translationsObject) {
   }
 }
 
-// set the initial localization
-if (window.MetabaseLocalization) {
-  setLocalization(window.MetabaseLocalization);
+// Runs `f` with the current language for ttag set to the instance (site) locale rather than the user locale, then
+// restores the user locale. This can be used for translating specific strings into the instance language; e.g. for
+// parameter values in dashboard text cards that should be translated the same for all users viewing the dashboard.
+export function withInstanceLanguage(f) {
+  if (window.MetabaseSiteLocalization) {
+    const siteLocale = window.MetabaseSiteLocalization.headers.language;
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useLocale(siteLocale);
+  }
+  try {
+    return f();
+  } finally {
+    if (window.MetabaseUserLocalization) {
+      const siteLocale = window.MetabaseUserLocalization.headers.language;
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      useLocale(siteLocale);
+    }
+  }
+}
+
+// register site locale with ttag, if needed later
+if (window.MetabaseSiteLocalization) {
+  const translationsObject = window.MetabaseSiteLocalization;
+  const locale = translationsObject.headers.language;
+  addMsgIds(translationsObject);
+  addLocale(locale, translationsObject);
+}
+
+// set the initial localization to user locale
+if (window.MetabaseUserLocalization) {
+  setLocalization(window.MetabaseUserLocalization);
 }

@@ -7,6 +7,8 @@ import styles from "./Text.css";
 import cx from "classnames";
 import { t } from "ttag";
 
+import { withInstanceLanguage } from "metabase/lib/i18n";
+
 import { substitute_tags } from "cljs/metabase.shared.util.parameters";
 
 const getSettingsStyle = settings => ({
@@ -126,7 +128,12 @@ export default class Text extends Component {
         }
       }, {});
     }
-    const textWithParams = substitute_tags(settings["text"], parametersByTag);
+
+    // Temporarily override language to use site language, so that all viewers of a dashboard see parameter values
+    // translated the same way.
+    const textWithParams = withInstanceLanguage(() => {
+      return substitute_tags(settings["text"], parametersByTag);
+    });
 
     if (isEditing) {
       return (
