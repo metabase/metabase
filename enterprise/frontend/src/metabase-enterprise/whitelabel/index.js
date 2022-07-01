@@ -43,6 +43,15 @@ if (hasPremiumFeature("whitelabel")) {
         {
           key: "application-font",
           display_name: t`Font`,
+          type: "select",
+          options: MetabaseSettings.get("available-fonts").map(font => ({
+            name: font,
+            value: font,
+          })),
+          defaultValue: "Lato",
+        },
+        {
+          key: "application-font-files",
           widget: FontSettingsWidget,
         },
         {

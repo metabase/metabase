@@ -1,40 +1,104 @@
-import React, { useCallback } from "react";
-import MetabaseSettings from "metabase/lib/settings";
+import React, { FocusEvent, useCallback, useMemo } from "react";
+import { t } from "ttag";
+import Input from "metabase/core/components/Input";
 import { FontFile } from "metabase-types/api";
-import FontSettings from "../FontSettings";
-import { FontSettingKey, FontSettingValues } from "./types";
+import { FontFileOption, FontSetting } from "./types";
+import { FONT_OPTIONS, getFontFiles, getFontUrls } from "./utils";
+import {
+  TableBody,
+  TableBodyCell,
+  TableBodyCellLabel,
+  TableBodyRow,
+  TableHeader,
+  TableHeaderCell,
+  TableHeaderRow,
+  TableRoot,
+} from "./FontSettingsWidget.styled";
 
 export interface FontSettingsWidgetProps {
-  settingValues: FontSettingValues;
-  onChangeSetting: (name: FontSettingKey, value: unknown) => void;
+  setting: FontSetting;
+  onChange: (fontFiles: FontFile[]) => void;
 }
 
 const FontSettingsWidget = ({
-  settingValues,
-  onChangeSetting,
+  setting,
+  onChange,
 }: FontSettingsWidgetProps): JSX.Element => {
-  const handleFontChange = useCallback(
-    (font: string | null) => {
-      onChangeSetting("application-font", font);
+  const files = setting.value;
+  const urls = useMemo(() => getFontUrls(files), [files]);
+
+  const handleChange = useCallback(
+    (option: FontFileOption, url: string) => {
+      onChange(getFontFiles({ ...urls, [option.fontWeight]: url }));
     },
-    [onChangeSetting],
+    [urls, onChange],
   );
 
-  const handleFontFilesChange = useCallback(
-    (fontFiles: FontFile[]) => {
-      onChangeSetting("application-font-files", fontFiles);
+  return <FontFileTable urls={urls} onChange={handleChange} />;
+};
+
+interface FontFileTableProps {
+  urls: Record<string, string>;
+  onChange: (option: FontFileOption, url: string) => void;
+}
+
+const FontFileTable = ({ urls, onChange }: FontFileTableProps): JSX.Element => {
+  return (
+    <TableRoot>
+      <TableHeader>
+        <TableHeaderRow>
+          <TableHeaderCell>{t`Font weight`}</TableHeaderCell>
+          <TableHeaderCell>{t`URL`}</TableHeaderCell>
+        </TableHeaderRow>
+      </TableHeader>
+      <TableBody>
+        {FONT_OPTIONS.map(option => (
+          <FontFileRow
+            key={option.name}
+            url={urls[option.fontWeight]}
+            option={option}
+            onChange={onChange}
+          />
+        ))}
+      </TableBody>
+    </TableRoot>
+  );
+};
+
+interface FontFileRowProps {
+  url?: string;
+  option: FontFileOption;
+  onChange: (option: FontFileOption, url: string) => void;
+}
+
+const FontFileRow = ({
+  url,
+  option,
+  onChange,
+}: FontFileRowProps): JSX.Element => {
+  const handleBlur = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      onChange(option, event.currentTarget.value);
     },
-    [onChangeSetting],
+    [option, onChange],
   );
 
   return (
-    <FontSettings
-      font={settingValues["application-font"]}
-      fontFiles={settingValues["application-font-files"] ?? []}
-      availableFonts={MetabaseSettings.get("available-fonts")}
-      onChangeFont={handleFontChange}
-      onChangeFontFiles={handleFontFilesChange}
-    />
+    <TableBodyRow>
+      <TableBodyCell fontWeight={option.fontWeight}>
+        {option.name}
+        <TableBodyCellLabel>{option.fontWeight}</TableBodyCellLabel>
+      </TableBodyCell>
+      <TableBodyCell>
+        <Input
+          defaultValue={url}
+          size="small"
+          placeholder="https://some.trusted.location/font-file.woff2"
+          fullWidth
+          onBlur={handleBlur}
+        />
+      </TableBodyCell>
+    </TableBodyRow>
   );
 };
 

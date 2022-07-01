@@ -342,7 +342,7 @@
               (setting/set-value-of-type! :string :application-font new-value)))
 
 (defsetting application-font-files
-  (deferred-tru "A list of font files for a custom font")
+  (deferred-tru "Tell us where to find the font file for each required style.")
   :visibility :public
   :type       :json
   :default    []

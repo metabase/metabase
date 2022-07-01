@@ -42,7 +42,8 @@ export const createMockVersion = (opts?: Partial<Version>): Version => ({
 
 export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "application-font": "Lato",
-  "application-font-files": null,
+  "application-font-files": [],
+  "available-fonts": [],
   "available-locales": [],
   "enable-public-sharing": false,
   "enable-xrays": false,

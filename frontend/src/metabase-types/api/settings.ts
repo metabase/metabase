@@ -28,8 +28,9 @@ export interface Version {
 export type LocaleData = [string, string];
 
 export interface Settings {
-  "application-font": string | null;
-  "application-font-files": FontFile[] | null;
+  "application-font": string;
+  "application-font-files": FontFile[];
+  "available-fonts": string[];
   "available-locales": LocaleData[] | undefined;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;

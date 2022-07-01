@@ -16,6 +16,10 @@ const cellStyles = css`
   }
 `;
 
+export const TableRoot = styled.div`
+  flex: 1 1 auto;
+`;
+
 export const TableHeader = styled.div`
   border: 1px solid ${color("border")};
   border-bottom: none;
