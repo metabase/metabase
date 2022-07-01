@@ -41,6 +41,7 @@
 
 (def ^:private ^String metabase-session-cookie          "metabase.SESSION")
 (def ^:private ^String metabase-embedded-session-cookie "metabase.EMBEDDED_SESSION")
+(def ^:private ^String metabase-session-timeout-cookie  "metabase.TIMEOUT")
 (def ^:private ^String anti-csrf-token-header           "x-metabase-anti-csrf-token")
 
 (defn- clear-cookie [response cookie-name]
@@ -319,44 +320,51 @@
 ;;; |                                              check-session-timeout                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; WIP: this setting should be deleted, in favour of session-timeout-minutes
+;; TODO: this setting should be deleted, in favour of session-timeout-seconds
 (defsetting session-timeout
   (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
   :type       :json
   :default    nil)
 
-(defsetting session-timeout-minutes
+(defsetting session-timeout-seconds
   (deferred-tru "Time before inactive users are logged out. If nil, sessions last indefinitely.")
   :type       :integer
-  :default    nil)
+  :setter (fn [new-value] (max new-value 60))) ;; enforce minimum of 60 seconds so users can't lock themselves out
 
-(defn timed-out?
-  "Return true if the session has timed out at this time."
-  [session-id session-timeout-minutes time-now]
-  (when-let [last-activity (db/select-one-field :last_activity Session, :id session-id)]
-    ;; Even if the session timeout setting is 0, which is logically possible, we should still let users login for one minute at least to change the setting.
-    (t/before? (t/plus last-activity
-                       (t/seconds 10) ;; For testing purposes, hand-code the timeout to 10 seconds
-                       #_(t/minutes (max session-timeout-minutes 1)))
-               time-now)))
+(defn response-with-session-timeout-cookie
+  "Adds a cookie to the response that expires after `session-timeout-seconds` seconds."
+  [request request-time timeout-seconds response]
+  (tap> request)
+  (if timeout-seconds
+    (let [expires        (t/plus request-time (t/seconds timeout-seconds))
+          cookie-options (merge
+                          {:path      "/"
+                           :expires   (t/format (t/formatter "EEE, dd MMM yyyy HH:mm:ss z")
+                                                expires)}
+                          (when (request.u/https? request)
+                                        ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
+                                        ;; security is provided via anti-CSRF token. Note that most browsers will only accept
+                                        ;; SameSite=None with secure cookies, thus we are setting it only over HTTPS to prevent
+                                        ;; the cookie from being rejected in case of same-domain embedding.
+                            {:same-site :none
+                             :secure    true}))]
+      (-> response
+          (wrap-body-if-needed)
+          (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options)))
+    (-> response
+        (wrap-body-if-needed)
+        (clear-cookie metabase-session-timeout-cookie))))
 
-(defn- check-session-timeout*
-  [[handler request respond raise] session-timeout-minutes time-now]
-  (let [session-id (:metabase-session-id request)]
-    (if (and session-id session-timeout-minutes)
-      (if (timed-out? session-id session-timeout-minutes time-now)
-        (respond (logout session-id))
-        (do ;; WIP: Insert a check here to see if the request is a poll, rather than user activity.
-          (db/update! Session session-id :last_activity time-now)
-          (handler request respond raise)))
-      (handler request respond raise))))
-
-(defn check-session-timeout
-  "Middleware that logs out the current user if their session has seen no activity in the last `:session-timeout-age`
-  (config) seconds."
+(defn reset-timeout-cookie
+  "Middleware that resets a timeout cookie that expires according to the session timeout setting."
   [handler]
   (fn [request respond raise]
-    (check-session-timeout*
-     [handler request respond raise]
-     (session-timeout-minutes)
-     (t/offset-date-time))))
+    (let [;; The expiry time for the cookie is relative to the time the request is received, rather than the time of the response.
+          request-time (t/zoned-date-time)]
+      (handler request
+               (fn [response]
+                 (respond (response-with-session-timeout-cookie request
+                                                        request-time
+                                                        (session-timeout-seconds)
+                                                        response)))
+               raise))))

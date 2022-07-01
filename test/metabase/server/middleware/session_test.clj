@@ -382,75 +382,21 @@
 ;;; ----------------------------------------------------- Session timeout -----------------------------------------------------
 
 (deftest session-timeout-tests
-  (let [session-id      (format "%s-timeout" test-uuid)
-        handler         (constantly :unaltered)
-        request         {:metabase-session-id session-id}
-        respond         identity
-        raise           identity
-        now             (t/offset-date-time)]
+  (let [request      {}
+        request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
+        response     {:body    "some body",
+                      :cookies {}}]
 
-    (testing "session with nil `setting-timeout-minutes` does not time out"
-      (try
-        (mt/with-temp Session [session {:id            session-id
-                                        :user_id       (mt/user->id :lucky)
-                                        :last_activity (t/minus now (t/days 1))}]
-          (is (= :unaltered
-                 (#'mw.session/check-session-timeout*
-                  [handler request respond raise]
-                  nil
-                  now))))
-        (finally
-          (db/delete! Session :id session-id))))
+    (testing "nil `session-timeout-seconds` should clear the timeout cookie"
+      (is (= {:body    "some body"
+              :cookies {"metabase.TIMEOUT" {:path    "/"
+                                            :expires "Thu, 1 Jan 1970 00:00:00 GMT"}}}
+             (-> (mw.session/response-with-session-timeout-cookie request request-time nil response)
+                 (update-in [:cookies "metabase.TIMEOUT"] dissoc :value)))))
 
-    (testing "session with zero `setting-timeout-minutes` does not time out immediately"
-      (try
-        (mt/with-temp Session [session {:id            session-id
-                                        :user_id       (mt/user->id :lucky)
-                                        :last_activity (t/minus now (t/seconds 30))}]
-          (is (= :unaltered
-                 (#'mw.session/check-session-timeout*
-                  [handler request respond raise]
-                  0
-                  now))))
-        (finally
-          (db/delete! Session :id session-id))))
-
-    (testing "session with nil `last_activity` does not time out"
-      (try
-        (mt/with-temp Session [session {:id            session-id
-                                        :user_id       (mt/user->id :lucky)
-                                        :last_activity nil}]
-          (is (= :unaltered
-                 (#'mw.session/check-session-timeout*
-                  [handler request respond raise]
-                  10
-                  now))))
-        (finally
-          (db/delete! Session :id session-id))))
-
-    (testing "session shorter than `session-timeout-minutes` does not time out"
-      (try
-        (mt/with-temp Session [session {:id            session-id
-                                        :user_id       (mt/user->id :lucky)
-                                        :last_activity (t/minus now (t/minutes 1))}]
-          (is (= :unaltered
-                 (#'mw.session/check-session-timeout*
-                  [handler request respond raise]
-                  10
-                  now))))
-        (finally
-          (db/delete! Session :id session-id))))
-
-    (testing "session longer than `session-timeout-minutes` times out"
-      (try
-        (mt/with-temp Session [session {:id            session-id
-                                        :user_id       (mt/user->id :lucky)
-                                        :last_activity (t/minus now (t/minutes 20))}]
-          (let [response (#'mw.session/check-session-timeout*
-                          [handler request respond raise]
-                          10
-                          now)]
-            (is (= 204 (:status response)))
-            (is (nil? (:body response)))))
-        (finally
-          (db/delete! Session :id session-id))))))
+    (testing "Non-nil `session-timeout-seconds` should set the expiry relative to the request time"
+      (is (= {:body    "some body",
+              :cookies {"metabase.TIMEOUT" {:path    "/"
+                                            :expires "Sat, 01 Jan 2022 00:01:00 Z"}}}
+             (-> (mw.session/response-with-session-timeout-cookie request request-time 60 response)
+                 (update-in [:cookies "metabase.TIMEOUT"] dissoc :value)))))))

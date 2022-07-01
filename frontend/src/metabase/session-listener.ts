@@ -1,6 +1,6 @@
 import Cookies from "js-cookie";
 
-const SESSION_KEY = "metabase:session";
+const SESSION_KEY = "metabase.TIMEOUT";
 const COOKIE_POOLING_TIMEOUT = 5000;
 const getIsLoggedIn = () => typeof Cookies.get(SESSION_KEY) !== "undefined";
 let wasLoggedIn = getIsLoggedIn();
