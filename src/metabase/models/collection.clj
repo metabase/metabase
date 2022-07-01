@@ -642,10 +642,9 @@
 
 ;;; ----------------------------------------------------- INSERT -----------------------------------------------------
 
-(defn- pre-insert [{collection-name :name, color :color, :as collection}]
+(defn- pre-insert [{collection-name :name, :as collection}]
   (assert-valid-location collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
-  (assert-valid-hex-color color)
   (assoc collection :slug (slugify collection-name)))
 
 (defn- copy-collection-permissions!
@@ -823,9 +822,6 @@
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
       (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates))
-    ;; (5) make sure hex color is valid
-    (when (api/column-will-change? :color collection-before-updates collection-updates)
-      (assert-valid-hex-color color))
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
     ;; (1) archive or unarchive as appropriate
     (maybe-archive-or-unarchive! collection-before-updates collection-updates)
