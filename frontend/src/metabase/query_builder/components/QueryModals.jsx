@@ -29,7 +29,7 @@ import NewEventModal from "metabase/timelines/questions/containers/NewEventModal
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 
-import { createRowFromTableView } from "metabase/writeback/actions";
+import { createRowFromTableView } from "metabase/query_builder/actions/writeback";
 
 class QueryModals extends React.Component {
   showAlertsAfterQuestionSaved = () => {

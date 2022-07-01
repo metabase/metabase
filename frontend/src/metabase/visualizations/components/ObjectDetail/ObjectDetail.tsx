@@ -60,10 +60,9 @@ import {
 } from "./ObjectDetail.styled";
 import {
   deleteRowFromObjectDetail,
-  DeleteRowPayload,
   updateRowFromObjectDetail,
-  UpdateRowPayload,
-} from "metabase/writeback/actions";
+} from "metabase/query_builder/actions/writeback";
+import { DeleteRowPayload, UpdateRowPayload } from "metabase/writeback/actions";
 import ActionHeader from "metabase/writeback/components/ObjectDetails/ActionHeader";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {

@@ -33,7 +33,8 @@ import {
   deleteRowFromDataApp,
   createRowFromDataApp,
   updateRowFromDataApp,
-} from "../../actions";
+} from "metabase/dashboard/writeback-actions";
+
 import { HorizontalAlignmentValue } from "./types";
 import { Root } from "./ActionsViz.styled";
 
