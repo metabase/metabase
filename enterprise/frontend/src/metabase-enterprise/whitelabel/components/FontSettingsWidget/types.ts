@@ -1,9 +1,4 @@
-import { FontFile } from "metabase-types/api";
+import { Settings } from "metabase-types/api";
 
-export interface FontSetting {
-  value: string | null;
-}
-
-export interface FontValues {
-  "application-font-files": FontFile[];
-}
+export type FontSettingKey = "application-font" | "application-font-files";
+export type FontSettingValues = Pick<Settings, FontSettingKey>;

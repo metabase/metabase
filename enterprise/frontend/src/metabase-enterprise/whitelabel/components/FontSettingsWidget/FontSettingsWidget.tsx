@@ -1,36 +1,39 @@
 import React, { useCallback } from "react";
 import MetabaseSettings from "metabase/lib/settings";
-import FontSettings from "../FontSettings";
-import { FontSetting, FontValues } from "./types";
 import { FontFile } from "metabase-types/api";
+import FontSettings from "../FontSettings";
+import { FontSettingKey, FontSettingValues } from "./types";
 
 export interface FontSettingsWidgetProps {
-  setting: FontSetting;
-  values: FontValues;
-  onChange: (value: string | null) => void;
-  onChangeField: (name: keyof FontValues, value: unknown) => void;
+  settingValues: FontSettingValues;
+  onChangeSetting: (name: FontSettingKey, value: unknown) => void;
 }
 
 const FontSettingsWidget = ({
-  setting,
-  values,
-  onChange,
-  onChangeField,
+  settingValues,
+  onChangeSetting,
 }: FontSettingsWidgetProps): JSX.Element => {
-  const handleFontFiles = useCallback(
-    (fontFiles: FontFile[]) => {
-      onChangeField("application-font-files", fontFiles);
+  const handleFontChange = useCallback(
+    (font: string | null) => {
+      onChangeSetting("application-font", font);
     },
-    [onChangeField],
+    [onChangeSetting],
+  );
+
+  const handleFontFilesChange = useCallback(
+    (fontFiles: FontFile[]) => {
+      onChangeSetting("application-font-files", fontFiles);
+    },
+    [onChangeSetting],
   );
 
   return (
     <FontSettings
-      font={setting.value}
+      font={settingValues["application-font"]}
+      fontFiles={settingValues["application-font-files"] ?? []}
       availableFonts={MetabaseSettings.get("available-fonts")}
-      fontFiles={values["application-font-files"]}
-      onChangeFont={onChange}
-      onChangeFontFiles={handleFontFiles}
+      onChangeFont={handleFontChange}
+      onChangeFontFiles={handleFontFilesChange}
     />
   );
 };
