@@ -341,6 +341,14 @@
                   (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
               (setting/set-value-of-type! :string :application-font new-value)))
 
+(defsetting application-font-files
+  (deferred-tru "A list of font files for a custom font")
+  :visibility :public
+  :type       :json
+  :default    []
+  :enabled?   premium-features/enable-whitelabeling?
+)
+
 (defn application-color
   "The primary color, a.k.a. brand color"
   []

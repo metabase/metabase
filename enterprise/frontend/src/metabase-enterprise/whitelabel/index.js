@@ -46,6 +46,10 @@ if (hasPremiumFeature("whitelabel")) {
           widget: FontSettingsWidget,
         },
         {
+          key: "application-font-files",
+          type: "hidden",
+        },
+        {
           key: "application-colors",
           display_name: t`Color Palette`,
           widget: ColorSettingsWidget,
