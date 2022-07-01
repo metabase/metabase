@@ -32,12 +32,14 @@
   (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-configured?)]
     (varr)))
 
-(defn sso-configured?
-  "Any SSO provider is configured"
-  []
-  (or (google-auth-configured?)
-      (ldap-configured?)
-      (ee-sso-configured?)))
+(defsetting sso-configured?
+  (deferred-tru "Are we using any SSO integration?")
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter (fn [] (or (google-auth-configured?)
+                     (ldap-configured?)
+                     (ee-sso-configured?))))
 
 (defsetting check-for-updates
   (deferred-tru "Identify when new versions of Metabase are available.")

@@ -76,6 +76,8 @@ export type SettingName =
   | "hide-embed-branding?"
   | "is-hosted?"
   | "ldap-configured?"
+  | "sso-configured?"
+  | "enable-password-login"
   | "map-tile-server-url"
   | "password-complexity"
   | "persisted-model-refresh-interval-hours"
@@ -181,6 +183,14 @@ class Settings {
 
   ldapEnabled() {
     return this.get("ldap-configured?");
+  }
+
+  ssoConfigured() {
+    return this.get("sso-configured?");
+  }
+
+  passwordLoginEnabled() {
+    return this.get("enable-password-login");
   }
 
   searchTypeaheadEnabled() {

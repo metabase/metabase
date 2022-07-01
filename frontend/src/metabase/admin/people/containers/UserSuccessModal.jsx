@@ -16,16 +16,17 @@ import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
 import { PasswordSuccessMessage } from "./UserSuccessModal.styled";
-import { getSetting } from "metabase/selectors/settings";
 
 class UserSuccessModal extends React.Component {
   componentWillUnmount() {
     this.props.clearTemporaryPassword(this.props.params.userId);
   }
   render() {
-    const { onClose, user, temporaryPassword, isSsoConfigured } = this.props;
+    const { onClose, user, temporaryPassword } = this.props;
     const isEeSsoConfigured =
-      MetabaseSettings.isEnterprise() && isSsoConfigured;
+      MetabaseSettings.isEnterprise() &&
+      MetabaseSettings.ssoConfigured() &&
+      !MetabaseSettings.passwordLoginEnabled();
     return (
       <ModalContent
         title={t`${user.common_name} has been added`}
@@ -93,10 +94,6 @@ export default _.compose(
       temporaryPassword: getUserTemporaryPassword(state, {
         userId: props.params.userId,
       }),
-      isSsoConfigured:
-        ["google-auth-client-id", "ldap-enabled", "jwt-enabled", "saml-enabled"]
-          .map(settingKey => getSetting(state, settingKey))
-          .some(Boolean) && !getSetting(state, "enable-password-login"),
     }),
     {
       onClose: () => push("/admin/people"),
