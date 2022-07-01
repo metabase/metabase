@@ -24,7 +24,6 @@ class UserSuccessModal extends React.Component {
   render() {
     const { onClose, user, temporaryPassword } = this.props;
     const isEeSsoConfigured =
-      MetabaseSettings.isEnterprise() &&
       MetabaseSettings.ssoConfigured() &&
       !MetabaseSettings.passwordLoginEnabled();
     return (

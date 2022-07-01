@@ -234,6 +234,78 @@ describe("scenarios > admin > people", () => {
       cy.findByText("readonly");
     });
 
+    describe("email configured", () => {
+      beforeEach(() => {
+        // Setup email server, since we show different modal message when email isn't configured
+        setupSMTP();
+
+        // Setup Google authentication
+        cy.request("PUT", "/api/setting", {
+          "google-auth-client-id": "fake-id.apps.googleusercontent.com",
+          "google-auth-auto-create-accounts-domain": "metabase.com",
+        });
+      });
+
+      it("invite member when SSO is not configured", () => {
+        const { first_name, last_name, email } = TEST_USER;
+        const FULL_NAME = `${first_name} ${last_name}`;
+        cy.visit("/admin/people");
+
+        clickButton("Invite someone");
+
+        // first modal
+        cy.findByLabelText("First name").type(first_name);
+        cy.findByLabelText("Last name").type(last_name);
+        cy.findByLabelText("Email").type(email);
+        clickButton("Create");
+
+        // second modal
+        cy.findByText(`${FULL_NAME} has been added`);
+        cy.contains(
+          `We’ve sent an invite to ${email} with instructions to set their password.`,
+        );
+        cy.findByText("Done").click();
+
+        cy.findByText(FULL_NAME);
+      });
+
+      it("invite member when SSO is configured metabase#23630", () => {
+        // Setup Google authentication
+        cy.request("PUT", "/api/setting", {
+          "enable-password-login": false,
+        });
+
+        const { first_name, last_name, email } = TEST_USER;
+        const FULL_NAME = `${first_name} ${last_name}`;
+        cy.visit("/admin/people");
+
+        clickButton("Invite someone");
+
+        // first modal
+        cy.findByLabelText("First name").type(first_name);
+        cy.findByLabelText("Last name").type(last_name);
+        cy.findByLabelText("Email").type(email);
+        clickButton("Create");
+
+        // second modal
+        cy.findByText(`${FULL_NAME} has been added`);
+        cy.contains(
+          `We’ve sent an invite to ${email} with instructions to log in. If this user is unable to authenticate then you can reset their password.`,
+        );
+        cy.url().then(url => {
+          const URL_REGEX = /\/admin\/people\/(?<userId>\d+)\/success/;
+          const { userId } = URL_REGEX.exec(url).groups;
+          assertLinkMatchesUrl(
+            "reset their password.",
+            `/admin/people/${userId}/reset`,
+          );
+        });
+        cy.findByText("Done").click();
+
+        cy.findByText(FULL_NAME);
+      });
+    });
+
     describe("pagination", () => {
       const NEW_USERS = 18;
       const NEW_TOTAL_USERS = TOTAL_USERS + NEW_USERS;
@@ -355,78 +427,6 @@ describeEE("scenarios > admin > people", () => {
     cy.findByLabelText("bell icon");
     cy.findByText("Question").should("not.exist");
     cy.findByText("Dashboard").should("not.exist");
-  });
-
-  describe("email configured", () => {
-    beforeEach(() => {
-      // Setup email server, since we show different modal message when email isn't configured
-      setupSMTP();
-
-      // Setup Google authentication
-      cy.request("PUT", "/api/setting", {
-        "google-auth-client-id": "fake-id.apps.googleusercontent.com",
-        "google-auth-auto-create-accounts-domain": "metabase.com",
-      });
-    });
-
-    it("invite member when SSO is not configured", () => {
-      const { first_name, last_name, email } = TEST_USER;
-      const FULL_NAME = `${first_name} ${last_name}`;
-      cy.visit("/admin/people");
-
-      clickButton("Invite someone");
-
-      // first modal
-      cy.findByLabelText("First name").type(first_name);
-      cy.findByLabelText("Last name").type(last_name);
-      cy.findByLabelText("Email").type(email);
-      clickButton("Create");
-
-      // second modal
-      cy.findByText(`${FULL_NAME} has been added`);
-      cy.contains(
-        `We’ve sent an invite to ${email} with instructions to set their password.`,
-      );
-      cy.findByText("Done").click();
-
-      cy.findByText(FULL_NAME);
-    });
-
-    it("invite member when SSO is configured metabase#23630", () => {
-      // Setup Google authentication
-      cy.request("PUT", "/api/setting", {
-        "enable-password-login": false,
-      });
-
-      const { first_name, last_name, email } = TEST_USER;
-      const FULL_NAME = `${first_name} ${last_name}`;
-      cy.visit("/admin/people");
-
-      clickButton("Invite someone");
-
-      // first modal
-      cy.findByLabelText("First name").type(first_name);
-      cy.findByLabelText("Last name").type(last_name);
-      cy.findByLabelText("Email").type(email);
-      clickButton("Create");
-
-      // second modal
-      cy.findByText(`${FULL_NAME} has been added`);
-      cy.contains(
-        `We’ve sent an invite to ${email} with instructions to log in. If this user is unable to authenticate then you can reset their password.`,
-      );
-      cy.url().then(url => {
-        const URL_REGEX = /\/admin\/people\/(?<userId>\d+)\/success/;
-        const { userId } = URL_REGEX.exec(url).groups;
-        assertLinkMatchesUrl(
-          "reset their password.",
-          `/admin/people/${userId}/reset`,
-        );
-      });
-      cy.findByText("Done").click();
-
-      cy.findByText(FULL_NAME);
-    });
   });
 });
 
