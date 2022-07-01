@@ -250,11 +250,20 @@
 saved later when it is ready."
   1500)
 
-(defn- save-new-card!
-  "Save `card-data` as a new Card on a separate thread. Returns a channel to fetch the response; closing this channel
-  will cancel the save."
-  [{:keys [dataset_query result_metadata dataset] :as card-data} user]
-  (let [result-metadata-chan (result-metadata-async {:query    dataset_query
+(defn- create-card!
+  "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
+  the card will be saved without metadata and it will be saved to the card in the future when it is ready."
+  [{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data}]
+  ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
+  ;; `api/maybe-reconcile-collection-position!`
+  (let [data-keys            [:dataset_query :description :display :name :visualization_settings
+                              :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
+        card-data            (assoc (zipmap data-keys (map card-data data-keys))
+                                    :creator_id api/*current-user-id*
+                                    :dataset (boolean (:dataset card-data))
+                                    :parameters (or parameters [])
+                                    :parameter_mappings (or parameter_mappings []))
+        result-metadata-chan (result-metadata-async {:query    dataset_query
                                                      :metadata result_metadata
                                                      :dataset? dataset})
         metadata-timeout     (a/timeout metadata-sync-wait-ms)
@@ -268,39 +277,37 @@ saved later when it is ready."
                                                  (not timed-out?)
                                                  (assoc :result_metadata metadata))))]
     (events/publish-event! :card-create card)
-    (when timed-out?
-      (.submit clojure.lang.Agent/pooledExecutor
-               ^Runnable
-               (fn []
-                 (let [metadata (a/<!! result-metadata-chan)]
-                   (log/info (trs "Asynchronously updating metadata for new card: {0}" (u/the-id card)))
-                   (db/update! Card (u/the-id card) {:result_metadata metadata})))))
-    ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
-    ;; currently has with returned one -- See #4283
+    (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata"))
+    ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
+    ;; returned one -- See #4283
+    (u/prog1 (-> card
+                 (hydrate :creator
+                          :dashboard_count
+                          :can_write
+                          :average_query_time
+                          :last_query_start
+                          :collection [:moderation_reviews :moderator_details])
+                 (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
+      (when timed-out?
+        (.submit clojure.lang.Agent/pooledExecutor
+                 ^Runnable
+                 (fn []
+                   (try
+                     (let [metadata      (a/<!! result-metadata-chan)
+                           id            (:id <>)
+                           current-query (db/select-one-field :dataset_query Card :id id)]
+                       (cond (and (seq metadata) (= current-query (:dataset_query <>)))
+                             (do (db/update! Card id {:result_metadata metadata})
+                                 (log/info (trs "Metadata updated asynchronously for card {0}" id)))
+                             (not= current-query (:dataset_query <>))
+                             (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
+                                            id))
 
-    (-> card
-        (hydrate :creator
-                 :dashboard_count
-                 :can_write
-                 :average_query_time
-                 :last_query_start
-                 :collection [:moderation_reviews :moderator_details])
-        (assoc :last-edit-info (last-edit/edit-information-for-user user)))))
-
-(defn- create-card!
-  "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
-  thrown. Closing this channel before it finishes will cancel the Card creation."
-  [{:keys [parameters parameter_mappings], :as card-data}]
-  ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
-  ;; `api/maybe-reconcile-collection-position!`
-  (let [data-keys            [:dataset_query :description :display :name :visualization_settings
-                              :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
-        card-data            (assoc (zipmap data-keys (map card-data data-keys))
-                                    :creator_id api/*current-user-id*
-                                    :dataset (boolean (:dataset card-data))
-                                    :parameters (or parameters [])
-                                    :parameter_mappings (or parameter_mappings []))]
-    (save-new-card! card-data @api/*current-user*)))
+                             (not (seq metadata))
+                             (log/info (trs "Not updating metadata asynchronously for card {0} because no metadata"
+                                            id))))
+                     (catch Exception e
+                       (log/warn e (trs "Error updating card metadata asynchronously"))))))))))
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
@@ -485,8 +492,9 @@ saved later when it is ready."
     :query_type ;; these first three may not even be changeable
     :dataset_query})
 
-(defn- update-card-async!
-  "Update a Card asynchronously. Returns a `core.async` promise channel that will return updated Card."
+(defn- update-card!
+  "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
+  included, otherwise the metadata will be saved to the database asynchronously."
   [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (db/transaction
@@ -570,18 +578,27 @@ saved later when it is ready."
           card-updates          (cond-> card-updates
                                   (not timed-out?)
                                   (assoc :result_metadata fresh-metadata))]
-      (when timed-out?
-        (log/info (trs "Metadata not available soon enough. Saving card {0} and asynchronously updating metadata" id))
-        (.submit clojure.lang.Agent/pooledExecutor
-                 ^Runnable
-                 (fn []
-                   (try
-                     (let [metadata (a/<!! result-metadata-chan)]
-                       (db/update! Card id {:result_metadata metadata})
-                       (log/info (trs "Metadata updated asynchronously for card {0}" id)))
-                     (catch Exception e
-                       (log/warn e (trs "Error updating card metadata asynchronously")))))))
-      (update-card-async! card-before-update card-updates))))
+      (u/prog1 (update-card! card-before-update card-updates)
+        (when timed-out?
+          (log/info (trs "Metadata not available soon enough. Saving card {0} and asynchronously updating metadata" id))
+          (.submit clojure.lang.Agent/pooledExecutor
+                   ^Runnable
+                   (fn []
+                     (try
+                       (let [metadata (a/<!! result-metadata-chan)
+                             current-query (db/select-one-field :dataset_query Card :id id)]
+                         (cond (and (seq metadata) (= current-query (:dataset_query <>)))
+                               (do (db/update! Card id {:result_metadata metadata})
+                                   (log/info (trs "Metadata updated asynchronously for card {0}" id)))
+                               (not= current-query (:dataset_query <>))
+                               (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
+                                              id))
+
+                               (not (seq metadata))
+                               (log/info (trs "Not updating metadata asynchronously for card {0} because no metadata"
+                                              id))))
+                       (catch Exception e
+                         (log/warn e (trs "Error updating card metadata asynchronously")))))))))))
 
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
