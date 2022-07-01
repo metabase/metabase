@@ -1,4 +1,4 @@
-import { Engine, Settings, Version } from "metabase-types/api";
+import { Engine, FontFile, Settings, Version } from "metabase-types/api";
 
 export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "driver-name": "PostgreSQL",
@@ -28,12 +28,20 @@ export const createMockEngines = (
   ...opts,
 });
 
+export const createMockFontFile = (opts?: Partial<FontFile>): FontFile => ({
+  src: "https://metabase.test/font-regular.woff2",
+  fontWeight: 400,
+  fontFormat: "woff2",
+  ...opts,
+});
+
 export const createMockVersion = (opts?: Partial<Version>): Version => ({
   tag: "v1",
   ...opts,
 });
 
 export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
+  "application-font-files": [],
   "available-locales": [],
   "enable-public-sharing": false,
   "enable-xrays": false,
