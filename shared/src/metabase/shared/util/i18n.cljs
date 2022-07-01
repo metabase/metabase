@@ -1,6 +1,6 @@
 (ns metabase.shared.util.i18n
-  (:require ["ttag" :as ttag])
-  (:require ["metabase/lib/i18n" :as i18n])
+  (:require ["metabase/lib/i18n" :as i18n]
+            ["ttag" :as ttag])
   (:require-macros metabase.shared.util.i18n))
 
 (comment metabase.shared.util.i18n/keep-me
