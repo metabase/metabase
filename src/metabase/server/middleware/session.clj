@@ -125,14 +125,6 @@
         (response/set-cookie metabase-embedded-session-cookie (str session-uuid) cookie-options)
         (assoc-in [:headers anti-csrf-token-header] anti-csrf-token))))
 
-(defn logout
-  "Destroys the current session, resulting in a logout."
-  [session-id]
-  (api/check-exists? Session session-id)
-  (db/delete! Session :id session-id)
-  (clear-session-cookie api/generic-204-no-content))
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                wrap-session-id                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
