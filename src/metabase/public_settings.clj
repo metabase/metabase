@@ -330,9 +330,7 @@
                   new-colors)))))
 
 (defsetting application-font
-  (deferred-tru
-   (str "This is the primary font used in charts and throughout Metabase. "
-        "You might need to refresh your browser to see your changes take effect."))
+  (deferred-tru "This will replace “Lato” as the font family.")
   :visibility :public
   :type       :string
   :default    "Lato"

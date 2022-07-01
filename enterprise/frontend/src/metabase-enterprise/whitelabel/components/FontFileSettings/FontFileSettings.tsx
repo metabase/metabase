@@ -87,7 +87,7 @@ const FontFileRow = ({
         <TableBodyCellLabel>{option.fontWeight}</TableBodyCellLabel>
       </TableBodyCell>
       <TableBodyCell>
-        <Input defaultValue={url} onBlur={handleBlur} />
+        <Input defaultValue={url} size="small" fullWidth onBlur={handleBlur} />
       </TableBodyCell>
     </TableBodyRow>
   );

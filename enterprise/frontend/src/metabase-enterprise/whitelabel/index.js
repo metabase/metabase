@@ -19,6 +19,7 @@ import {
 import MetabaseSettings from "metabase/lib/settings";
 
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
+import FontSettingsWidget from "./components/FontSettingsWidget";
 import MetabotSettingWidget from "./components/MetabotSettingWidget";
 import LogoUpload from "./components/LogoUpload";
 import LogoIcon from "./components/LogoIcon";
@@ -42,17 +43,7 @@ if (hasPremiumFeature("whitelabel")) {
         {
           key: "application-font",
           display_name: t`Font`,
-          type: "select",
-          options: MetabaseSettings.get("available-fonts").map(font => ({
-            name: font,
-            value: font,
-          })),
-          defaultValue: "Lato",
-          onChanged: (oldFont, newFont) => {
-            if (oldFont !== newFont) {
-              window.location.reload();
-            }
-          },
+          widget: FontSettingsWidget,
         },
         {
           key: "application-colors",

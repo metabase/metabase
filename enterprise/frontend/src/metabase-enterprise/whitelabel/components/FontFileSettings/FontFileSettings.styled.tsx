@@ -64,4 +64,5 @@ export const TableBodyCell = styled.div<TableBodyCellProps>`
 
 export const TableBodyCellLabel = styled.span`
   color: ${color("text-light")};
+  margin-left: 0.25rem;
 `;
