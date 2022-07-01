@@ -10,6 +10,10 @@ const cellStyles = css`
     flex: 0 0 auto;
     width: 12rem;
   }
+
+  &:last-of-type {
+    flex: 1 1 auto;
+  }
 `;
 
 export const TableHeader = styled.div`
