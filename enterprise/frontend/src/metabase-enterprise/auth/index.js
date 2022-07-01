@@ -248,7 +248,7 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
   if (MetabaseSettings.get("other-sso-configured?")) {
     providers = [SSO_PROVIDER, ...providers];
   }
-  if (!MetabaseSettings.passwordLoginEnabled()) {
+  if (!MetabaseSettings.isPasswordLoginEnabled()) {
     providers = providers.filter(p => p.name !== "password");
   }
   return providers;
@@ -258,7 +258,7 @@ PLUGIN_IS_PASSWORD_USER.push(
   user =>
     !user.google_auth &&
     !user.ldap_auth &&
-    MetabaseSettings.passwordLoginEnabled(),
+    MetabaseSettings.isPasswordLoginEnabled(),
 );
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
