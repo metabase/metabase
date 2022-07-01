@@ -1,7 +1,7 @@
 {{> metabase/email/_header }}
   <div class="card-container">
     <h2
-      style="margin: 0; padding: 0; font-weight: 700; font-size: 1.5em; color: #4C5773; line-height: 2em;"
+      style="margin: 0; padding: 0; font-weight: 700; font-size: 1.5em; color: {{colorTextDark}}; line-height: 2em;"
     >
       Model refresh for {{database-name}} failed
     </h2>
@@ -13,13 +13,13 @@
       <div class="padded-section">
     {{/is-not-first}}
       <p
-      style="font-weight: 600; font-size: 0.875em; line-height: 1.375em; color: #949AAB;"
+      style="font-weight: 600; font-size: 0.875em; line-height: 1.375em; color: {{colorTextMedium}};"
     >
       We ran into some trouble refreshing the model {{card-name}}. You can
       see the error description below:
     </p>
     <code
-      style="display: block; background-color: #F9FBFC; color: #4C5773; border-radius: 4px; padding: 1.375rem 2.25em; margin-top: 1.125em; margin-bottom: 1.125em;"
+      style="display: block; background-color: #F9FBFC; color: {{colorTextDark}}; border-radius: 4px; padding: 1.375rem 2.25em; margin-top: 1.125em; margin-bottom: 1.125em;"
     >
       {{error}}
     </code>
@@ -32,14 +32,14 @@
     >
       <tr>
         <td
-          style="font-weight: 600; font-size: 0.875em; color: #949AAB; line-height: 1.375em;"
+          style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
         >
           Model name
         </td>
         <td>
           <a
             href="{{card-url}}"
-            style="font-weight: 600; font-size: 0.875em; color: #509EE3; line-height: 1.375em; text-decoration: none;"
+            style="font-weight: 600; font-size: 0.875em; color: {{applicationColor}}; line-height: 1.375em; text-decoration: none;"
           >
             {{card-name}}
           </a>
@@ -47,14 +47,14 @@
       </tr>
       <tr>
         <td
-          style="font-weight: 600; font-size: 0.875em; color: #949AAB; line-height: 1.375em;"
+          style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
         >
           Collection
         </td>
         <td>
           <a
             href="{{collection-url}}"
-            style="font-weight: 600; font-size: 0.875em; color: #509EE3; line-height: 1.375em; text-decoration: none;"
+            style="font-weight: 600; font-size: 0.875em; color: {{applicationColor}}; line-height: 1.375em; text-decoration: none;"
           >
             {{collection-name}}
           </a>
@@ -62,24 +62,24 @@
       </tr>
       <tr>
         <td
-          style="font-weight: 600; font-size: 0.875em; color: #949AAB; line-height: 1.375em;"
+          style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
         >
           Last run at
         </td>
         <td
-          style="font-weight: 600; font-size: 0.875em; color: #4C5773; line-height: 1.375em;"
+          style="font-weight: 600; font-size: 0.875em; color: {{colorTextDark}}; line-height: 1.375em;"
         >
           {{last-run-at}}
         </td>
       </tr>
       <tr>
         <td
-          style="font-weight: 600; font-size: 0.875em; color: #949AAB; line-height: 1.375em;"
+          style="font-weight: 600; font-size: 0.875em; color: {{colorTextMedium}}; line-height: 1.375em;"
         >
           Last run trigger
         </td>
         <td
-          style="font-weight: 600; font-size: 0.875em; color: #4C5773; line-height: 1.375em;"
+          style="font-weight: 600; font-size: 0.875em; color: {{colorTextDark}}; line-height: 1.375em;"
         >
           {{last-run-trigger}}
         </td>
@@ -89,7 +89,7 @@
     <div style="text-align: center;">
       <a
         href="{{caching-log-details-url}}"
-        style="display: inline-block; padding: 0.75rem 1.125em; background-color: #509EE3; color: #FFF; border-radius: 6px; font-size: 0.875em; font-weight: 700; text-decoration: none;"
+        style="display: inline-block; padding: 0.75rem 1.125em; background-color: {{applicationColor}}; color: #FFF; border-radius: 6px; font-size: 0.875em; font-weight: 700; text-decoration: none;"
       >
         Review in Tools page
       </a>
