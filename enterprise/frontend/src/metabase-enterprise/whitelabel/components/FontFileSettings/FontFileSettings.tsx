@@ -1,8 +1,8 @@
-import React, { useCallback, FocusEvent } from "react";
+import React, { FocusEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import Input from "metabase/core/components/Input";
-import { FontFileOption } from "./types";
+import { FontFile, FontFileOption } from "./types";
+import { FONT_OPTIONS, getFontFiles, getFontUrls } from "./utils";
 import {
   TableBody,
   TableBodyCell,
@@ -14,43 +14,32 @@ import {
 } from "./FontFileSettings.styled";
 
 export interface FontFileSettingsProps {
-  urls: Record<string, string>;
-  options: FontFileOption[];
-  onChange: (urls: Record<string, string>) => void;
+  files: FontFile[];
+  onChange: (files: FontFile[]) => void;
 }
 
 const FontFileSettings = ({
-  urls,
-  options,
+  files,
   onChange,
 }: FontFileSettingsProps): JSX.Element => {
+  const urls = useMemo(() => getFontUrls(files), [files]);
+
   const handleChange = useCallback(
     (option: FontFileOption, url: string) => {
-      if (url) {
-        onChange(_.assign({ ...urls }, { [option.fontWeight]: url }));
-      } else {
-        onChange(_.omit(urls, option.fontWeight.toString()));
-      }
+      onChange(getFontFiles({ ...urls, [option.fontWeight]: url }));
     },
     [urls, onChange],
   );
 
-  return (
-    <FontFileTable urls={urls} options={options} onChange={handleChange} />
-  );
+  return <FontFileTable urls={urls} onChange={handleChange} />;
 };
 
 interface FontFileTableProps {
   urls: Record<string, string>;
-  options: FontFileOption[];
   onChange: (option: FontFileOption, url: string) => void;
 }
 
-const FontFileTable = ({
-  urls,
-  options,
-  onChange,
-}: FontFileTableProps): JSX.Element => {
+const FontFileTable = ({ urls, onChange }: FontFileTableProps): JSX.Element => {
   return (
     <div>
       <TableHeader>
@@ -60,7 +49,7 @@ const FontFileTable = ({
         </TableHeaderRow>
       </TableHeader>
       <TableBody>
-        {options.map(option => (
+        {FONT_OPTIONS.map(option => (
           <FontFileRow
             key={option.name}
             url={urls[option.fontWeight]}

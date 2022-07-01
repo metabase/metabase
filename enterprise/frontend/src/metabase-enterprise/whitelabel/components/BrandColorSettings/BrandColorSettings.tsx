@@ -32,7 +32,7 @@ const BrandColorSettings = ({
   const handleChange = useCallback(
     (colorName: string, color?: string) => {
       if (color) {
-        onChange(_.assign({ ...colorsRef.current }, { [colorName]: color }));
+        onChange({ ...colorsRef.current, [colorName]: color });
       } else {
         onChange(_.omit(colorsRef.current, colorName));
       }
