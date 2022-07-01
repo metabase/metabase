@@ -36,9 +36,9 @@ describe("FontSettingsWidget", () => {
 
 const getFontFiles = (): FontFile[] => [
   {
-    src: "https://metabase.test/regular.woff2",
+    src: "https://metabase.test/regular.ttf",
     fontWeight: 400,
-    fontFormat: "woff2",
+    fontFormat: "truetype",
   },
   {
     src: "https://metabase.test/bold.woff2",
