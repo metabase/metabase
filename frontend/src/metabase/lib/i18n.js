@@ -130,7 +130,7 @@ export function withInstanceLanguage(f) {
     setLanguage(window.MetabaseSiteLocalization);
   }
   try {
-    f();
+    return f();
   } finally {
     if (window.MetabaseUserLocalization) {
       setLanguage(window.MetabaseUserLocalization);
