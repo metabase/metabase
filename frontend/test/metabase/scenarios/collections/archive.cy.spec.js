@@ -1,8 +1,4 @@
-import {
-  getCollectionIdFromSlug,
-  restore,
-  visitArchivedQuestion,
-} from "__support__/e2e/helpers";
+import { getCollectionIdFromSlug, restore } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
@@ -23,12 +19,19 @@ describe("scenarios > collections > archive", () => {
     getCollectionIdFromSlug("first_collection", collectionId => {
       const questionDetails = getQuestionDetails(collectionId);
 
-      cy.createQuestion(questionDetails).then(({ body: { id } }) => {
-        cy.request("PUT", `/api/collection/${collectionId}`, {
-          archived: false,
-        });
-        visitArchivedQuestion(id);
-      });
+      cy.createQuestion(questionDetails).then(
+        ({ body: { id: questionId } }) => {
+          cy.request("PUT", `/api/collection/${collectionId}`, {
+            archived: true,
+          });
+
+          // Question belonging to collection
+          // will have been archived,
+          // and archived page should be displayed
+          cy.visit(`/question/${questionId}`);
+          cy.findByText("This question has been archived");
+        },
+      );
     });
   });
 });
