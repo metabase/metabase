@@ -6,6 +6,8 @@ export interface EditableTextRootProps {
 }
 
 export const EditableTextRoot = styled.div<EditableTextRootProps>`
+  ${props =>
+    props.bigText ? "font-size: 1rem; line-height: 1.4rem;" : "inherit"}
   position: relative;
   color: ${color("text-dark")};
   padding: 0.25rem;

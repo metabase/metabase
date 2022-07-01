@@ -16,8 +16,8 @@ interface ContentSectionProps {
 export const ContentSection = styled.div<ContentSectionProps>`
   display: flex;
   flex-direction: column;
+  row-gap: 0.5rem;
   ${props => (props.extraPadding ? "padding: 2rem 0;" : "padding: 1rem 0;")}
-  ${props => (props.bigText ? "font-size: 1rem; line-height: 1.4rem;" : "")}
   border-bottom: 1px solid ${color("border")};
 
   &:last-of-type {
