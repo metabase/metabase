@@ -6,6 +6,7 @@ import { FontFileOption } from "./types";
 import {
   TableBody,
   TableBodyCell,
+  TableBodyCellLabel,
   TableBodyRow,
   TableHeader,
   TableHeaderCell,
@@ -92,7 +93,10 @@ const FontFileRow = ({
 
   return (
     <TableBodyRow>
-      <TableBodyCell>{option.name}</TableBodyCell>
+      <TableBodyCell>
+        {option.name}
+        <TableBodyCellLabel>{option.fontWeight}</TableBodyCellLabel>
+      </TableBodyCell>
       <TableBodyCell>
         <Input defaultValue={url} onBlur={handleBlur} />
       </TableBodyCell>

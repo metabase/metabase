@@ -56,3 +56,7 @@ export const TableBodyCell = styled.div`
   padding-top: 1rem;
   padding-bottom: 1rem;
 `;
+
+export const TableBodyCellLabel = styled.span`
+  color: ${color("text-light")};
+`;
