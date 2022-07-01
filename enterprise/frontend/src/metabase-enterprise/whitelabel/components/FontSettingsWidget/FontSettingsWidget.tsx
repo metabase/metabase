@@ -96,6 +96,7 @@ const FontFileRow = ({
           placeholder="https://some.trusted.location/font-file.woff2"
           fullWidth
           onBlur={handleBlur}
+          aria-label={option.name}
         />
       </TableBodyCell>
     </TableBodyRow>
