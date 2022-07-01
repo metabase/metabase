@@ -52,9 +52,17 @@ function getContextPath(accessorString: string) {
 
 const PARAMETER_ACCESSOR_REGEXP = /{{(.*?)}}/gm;
 
-// Example:
-// Input: "### {{ data.user.name }} from {{ data.user.company }}"
-// Output: "### John from Metabase"
+/**
+ * Takes a string and replaces all instances of {{parameterName}} with the value of the parameter
+ *
+ * @example
+ * Input: "### {{ data.user.name }} from {{ data.user.company }}"
+ * Output: "### John from Metabase"
+ *
+ * @param text parameterized text
+ * @param context data app context to use when resolving parameter values
+ * @returns formatted text with parameters replaced with real values
+ */
 export function formatDataAppString(
   text: string,
   context: DataAppContextType,
