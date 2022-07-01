@@ -45,7 +45,7 @@ export const QuestionInfoSidebar = ({
 
   return (
     <Root>
-      <ContentSection>
+      <ContentSection bigText>
         <EditableText
           initialValue={description}
           placeholder={t`Add description`}
