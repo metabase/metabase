@@ -14,7 +14,7 @@
 ;; are an example usage of this. Segmented users should not have that ability. Instead they should only see
 ;; themselves. This test checks that GET /api/user for a segmented user only returns themselves
 (deftest segmented-user-list-test
-  (testing "GET /api/user"
+  (testing "GET /api/user for a segmented user should return themselves"
     (mt/with-gtaps {:gtaps {:venues {}}}
       ;; Now do the request
       (is (= [{:common_name "Rasta Toucan"
@@ -23,7 +23,7 @@
                :email       "rasta@metabase.com"
                :id          true}]
              (tu/boolean-ids-and-timestamps ((mt/user-http-request :rasta :get 200 "user") :data))))
-      (testing "When a group manager"
+      (testing "Should return themselves when the user is a segmented group manager"
         (mt/with-group [group {:name "a group"}]
           (let [membership (db/select-one PermissionsGroupMembership
                                           :group_id (u/the-id group)
