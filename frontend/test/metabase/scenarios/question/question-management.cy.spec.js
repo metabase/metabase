@@ -1,6 +1,5 @@
 import {
   restore,
-  visitArchivedQuestion,
   visitQuestion,
   saveDashboard,
   popover,
@@ -82,7 +81,9 @@ describe("managing question from the question's details sidebar", () => {
               cy.location("pathname").should("eq", "/collection/root");
               cy.findByText("Orders").should("not.exist");
 
-              visitArchivedQuestion(1);
+              // Check page for archived questions
+              cy.visit("/question/1");
+              cy.findByText("This question has been archived");
             });
 
             it("should be able to add question to dashboard", () => {
