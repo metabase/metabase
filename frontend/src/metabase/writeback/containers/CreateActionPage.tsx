@@ -3,11 +3,7 @@ import { QueryClient, QueryClientProvider } from "react-query";
 
 import Header from "metabase/writeback/components/CreateAction/Header";
 import CreateHttpAction from "metabase/writeback/components/CreateAction/CreateHttpAction";
-import {
-  ActionType,
-  CreateActionData,
-  SaveAction,
-} from "metabase/writeback/types";
+import { ActionType } from "metabase/writeback/types";
 import { useCreateAction } from "../hooks";
 
 type Props = {};
@@ -15,26 +11,49 @@ type Props = {};
 const queryClient = new QueryClient();
 
 const CreateActionPage: React.FC<Props> = props => {
-  const [type, setType] = React.useState<ActionType>("http");
-  const { save, name, setName, description, setDescription } = useCreateAction(
-    type,
-  );
-
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex flex-col h-full">
-        <Header name={name} setName={setName} type={type} setType={setType} />
-        <div className="flex-grow bg-white">
-          <CreateAction
-            type={type}
-            save={save}
-            name={name}
-            description={description}
-            setDescription={setDescription}
-          />
-        </div>
-      </div>
+      <CreateActionPageInner />
     </QueryClientProvider>
+  );
+};
+
+const CreateActionPageInner: React.FC<Props> = props => {
+  const [type, setType] = React.useState<ActionType>("http");
+  const {
+    save,
+    name,
+    setName,
+    description,
+    setDescription,
+    data,
+    setData,
+    isDirty,
+    isValid,
+    isSaving,
+  } = useCreateAction(type);
+
+  return (
+    <div className="flex flex-col h-full">
+      <Header
+        name={name}
+        setName={setName}
+        type={type}
+        setType={setType}
+        canSave={isDirty && isValid && !isSaving}
+        save={save}
+      />
+      <div className="flex-grow bg-white">
+        <CreateAction
+          type={type}
+          name={name}
+          description={description}
+          setDescription={setDescription}
+          data={data}
+          setData={setData}
+        />
+      </div>
+    </div>
   );
 };
 
@@ -44,7 +63,8 @@ type InnerProps = {
   description: string;
   setDescription: (description: string) => void;
 
-  save: SaveAction;
+  data: any;
+  setData: any;
 };
 
 const CreateAction: React.FC<InnerProps> = ({
@@ -52,11 +72,17 @@ const CreateAction: React.FC<InnerProps> = ({
   name,
   description,
   setDescription,
+  data,
+  setData,
 }) => {
   if (type === "http") {
+    const { template = {} } = data;
     return (
       <CreateHttpAction
-        name={name}
+        data={template}
+        setData={newData =>
+          setData({ ...data, template: { ...template, ...newData } })
+        }
         description={description}
         setDescription={setDescription}
       />

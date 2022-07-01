@@ -65,7 +65,3 @@ export type CreateAction<T extends ActionType> = {
   name: string;
   description: string;
 } & CreateActionData<T>;
-
-export type SaveAction<T extends ActionType = ActionType> = (
-  data: Omit<CreateAction<T>, "name" | "type" | "description">,
-) => void;

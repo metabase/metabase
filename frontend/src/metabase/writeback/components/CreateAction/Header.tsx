@@ -1,7 +1,9 @@
+import React from "react";
+import cx from "classnames";
+
 import Icon from "metabase/components/Icon";
 import EditableText from "metabase/core/components/EditableText";
-import { ActionType, SaveAction } from "metabase/writeback/types";
-import React from "react";
+import { ActionType } from "metabase/writeback/types";
 import Selector from "./Selector";
 
 type Props = {
@@ -11,13 +13,21 @@ type Props = {
   type: ActionType;
   setType: (type: ActionType) => void;
 
-  save: SaveAction;
+  save: () => void;
+  canSave: boolean;
 };
 
-const Header: React.FC<Props> = ({ name, setName, type, setType }) => {
+const Header: React.FC<Props> = ({
+  name,
+  setName,
+  type,
+  setType,
+  canSave,
+  save,
+}) => {
   return (
     <div className="flex items-center justify-between w-full py-3 pl-8 pr-4 bg-white">
-      <div>
+      <div className="flex items-center space-x-4">
         <EditableText
           className="text-sm font-bold"
           initialValue={name}
@@ -29,7 +39,16 @@ const Header: React.FC<Props> = ({ name, setName, type, setType }) => {
           setValue={value => setType(value as ActionType)}
         />
       </div>
-      <button className="">Save</button>
+      <button
+        className={cx(
+          "font-semibold",
+          canSave ? "text-brand hover:text-opacity-50" : "text-text-medium",
+        )}
+        disabled={!canSave}
+        onClick={canSave ? save : undefined}
+      >
+        Save
+      </button>
     </div>
   );
 };

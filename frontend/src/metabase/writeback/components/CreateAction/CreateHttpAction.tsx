@@ -10,51 +10,103 @@ import BodyTab from "./BodyTab";
 import UrlInput from "./UrlInput";
 import Selector from "./Selector";
 import { ActionsApi } from "metabase/services";
-import { ActionType } from "metabase/writeback/types";
 
 type Props = {
-  name: string;
+  description: string;
+  setDescription: (description: string) => void;
+
+  data: any;
+  setData: (data: any) => void;
+};
+
+const CreateHttpAction: React.FC<Props> = ({
+  setData,
+  data,
+  description,
+  setDescription,
+}) => {
+  const { protocol, url, method, initialHeaders, body } = React.useMemo(() => {
+    const [protocol, url] = (data.url || "https://").split("://", 2);
+    const initialHeaders: Headers = Object.entries(
+      data.headers || {},
+    ).map(([key, value]) => ({ key, value: value as string }));
+    return {
+      protocol,
+      url,
+      method: data.method || "GET",
+      initialHeaders,
+      body: data.body,
+    };
+  }, [data]);
+  const [headers, setHeaders] = React.useState<Headers>(initialHeaders);
+
+  return (
+    <CreateHttpActionInner
+      description={description}
+      setDescription={setDescription}
+      method={method}
+      setMethod={value => {
+        setData({ method: value });
+      }}
+      url={url}
+      setUrl={value => {
+        setData({ url: `${protocol}://${value}` });
+      }}
+      protocol={protocol}
+      setProtocol={value => {
+        setData({ url: `${value}://${url}` });
+      }}
+      body={body}
+      setBody={value => {
+        setData({ body: value });
+      }}
+      headers={headers}
+      setHeaders={value => {
+        setHeaders(value);
+        setData({
+          headers: Object.fromEntries(
+            value.map(({ key, value }) => [key, value]),
+          ),
+        });
+      }}
+    />
+  );
+};
+
+type InnerProps = {
+  method: string;
+  setMethod: (newValue: string) => void;
+
+  url: string;
+  setUrl: (newValue: string) => void;
+
+  protocol: string;
+  setProtocol: (newValue: string) => void;
+
+  body: string;
+  setBody: (newValue: string) => void;
+
+  headers: Headers;
+  setHeaders: (newValue: Headers) => void;
+
   description: string;
   setDescription: (description: string) => void;
 };
 
-const CreateHttpAction: React.FC<Props> = ({ name }) => {
-  const [method, setMethod] = React.useState("GET");
-  const [contentType, setContentType] = React.useState("application/json");
+const CreateHttpActionInner: React.FC<InnerProps> = ({
+  method,
+  setMethod,
+  url,
+  setUrl,
+  protocol,
+  setProtocol,
+  body,
+  setBody,
+  headers,
+  setHeaders,
+}) => {
   const [currentTab, setCurrentTab] = React.useState(TABS[0].name);
-  const [url, setUrl] = React.useState("");
-  const [protocol, setProtocol] = React.useState("https");
-  const [body, setBody] = React.useState("");
-  const [headers, setHeaders] = React.useState<Headers>([]);
-
-  const isValid = React.useMemo(() => {
-    try {
-      new URL(`${protocol}://${url}`);
-    } catch (_) {
-      return false;
-    }
-    return true;
-  }, [url, protocol, body, headers]);
-
-  const onSave = useMutation(action => {
-    return ActionsApi.create({
-      type: "http",
-      name,
-      description: "",
-      response_handle: {},
-      error_handle: {},
-      template: {
-        url: `${protocol}://${url}`,
-        method,
-        body: JSON.stringify(body),
-        headers: JSON.stringify(
-          Object.fromEntries(headers.map(({ key, value }) => [key, value])),
-        ),
-        parameters: {},
-        parameter_mappings: {},
-      },
-    });
-  });
+  const [contentType, setContentType] = React.useState("application/json");
 
   return (
     <div className="grid w-full h-full grid-cols-2 md:flex-row">
@@ -64,10 +116,10 @@ const CreateHttpAction: React.FC<Props> = ({ name }) => {
         </div>
         <div className="py-4 border-b border-border">
           <UrlInput
-            protocol={protocol}
-            setProtocol={setProtocol}
             url={url}
             setUrl={setUrl}
+            protocol={protocol}
+            setProtocol={setProtocol}
           />
         </div>
       </div>
@@ -109,6 +161,7 @@ const Contents: React.FC<{ active: boolean }> = ({ active, children }) => {
     <div className={cx("flex-grow", active ? "" : "hidden")}>{children}</div>
   );
 };
+
 const TABS = [
   { name: "body", label: t`Body` },
   { name: "headers", label: t`Headers` },
