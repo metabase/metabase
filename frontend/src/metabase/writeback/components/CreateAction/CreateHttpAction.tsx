@@ -1,7 +1,6 @@
 import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
-import { useMutation } from "react-query";
 
 import MethodSelector from "./MethodSelector";
 import Tabs from "./Tabs";
@@ -9,7 +8,7 @@ import HttpHeaderTab, { Headers } from "./HttpHeaderTab";
 import BodyTab from "./BodyTab";
 import UrlInput from "./UrlInput";
 import Selector from "./Selector";
-import { ActionsApi } from "metabase/services";
+import EditableText from "metabase/core/components/EditableText";
 
 type Props = {
   description: string;
@@ -104,6 +103,8 @@ const CreateHttpActionInner: React.FC<InnerProps> = ({
   setBody,
   headers,
   setHeaders,
+  description,
+  setDescription,
 }) => {
   const [currentTab, setCurrentTab] = React.useState(TABS[0].name);
   const [contentType, setContentType] = React.useState("application/json");
@@ -120,6 +121,14 @@ const CreateHttpActionInner: React.FC<InnerProps> = ({
             setUrl={setUrl}
             protocol={protocol}
             setProtocol={setProtocol}
+          />
+        </div>
+        <div className="py-4 pl-6 pr-4 bg-white border-b border-border">
+          <EditableText
+            className="text-sm text-text-light"
+            placeholder={t`Enter an action description...`}
+            initialValue={description}
+            onChange={setDescription}
           />
         </div>
       </div>
