@@ -30,11 +30,14 @@ describe(
       );
 
       cy.visit(embeddingPage);
+      cy.findByText("Full-app embedding").click();
 
-      cy.contains("Have a Premium Embedding license?");
-      cy.contains("Activate it here.").click();
+      cy.contains(
+        "With some of our paid plans, you can embed the full Metabase app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers.",
+      );
 
-      cy.location("pathname").should("eq", licensePage);
+      // Old premium embedding page
+      cy.visit(licensePage);
 
       cy.findByRole("heading")
         .invoke("text")

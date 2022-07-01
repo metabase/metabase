@@ -45,9 +45,8 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 .type("Foo");
               clickButton("Update");
               assertOnRequest("updateDashboard");
-              cy.findByText("Orders in a dashboard1");
-              cy.icon("info").click();
-              cy.findByText("Foo");
+              cy.reload();
+              cy.findByDisplayValue("Orders in a dashboard1");
             });
 
             it("should be able to duplicate a dashboard", () => {

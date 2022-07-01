@@ -329,6 +329,7 @@ class Dashboard extends Component {
                 {...this.props}
                 onCancel={this.onCancel}
                 showAddQuestionSidebar={showAddQuestionSidebar}
+                setDashboardAttribute={this.setDashboardAttribute}
               />
             </DashboardBody>
           </DashboardStyled>

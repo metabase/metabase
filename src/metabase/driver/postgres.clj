@@ -188,14 +188,18 @@
   [_]
   :monday)
 
+(defn- get-typenames [{:keys [nspname typname]}]
+  (cond-> [typname]
+    (not= nspname "public") (conj (format "\"%s\".\"%s\"" nspname typname))))
+
 (defn- enum-types [_driver database]
-  (set
-    (map (comp keyword :typname)
-         (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
-                     [(str "SELECT DISTINCT t.typname "
-                           "FROM pg_enum e "
-                           "LEFT JOIN pg_type t "
-                           "  ON t.oid = e.enumtypid")]))))
+  (into #{}
+        (comp (mapcat get-typenames)
+              (map keyword))
+        (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                       [(str "SELECT nspname, typname "
+                             "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
+                             "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")])))
 
 (def ^:private ^:dynamic *enum-types* nil)
 
@@ -270,6 +274,10 @@
   [_ _ expr]
   (sql.qp/adjust-start-of-week :postgres (partial date-trunc :week) expr))
 
+(defn- quoted? [database-type]
+  (and (str/starts-with? database-type "\"")
+       (str/ends-with? database-type "\"")))
+
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
   (let [[_ value {base-type :base_type, database-type :database_type}] value]
@@ -278,7 +286,9 @@
         :type/UUID         (when (not= "" value) ; support is-empty/non-empty checks
                              (UUID/fromString  value))
         :type/IPAddress    (hx/cast :inet value)
-        :type/PostgresEnum (hx/quoted-cast database-type value)
+        :type/PostgresEnum (if (quoted? database-type)
+                             (hx/cast database-type value)
+                             (hx/quoted-cast database-type value))
         (sql.qp/->honeysql driver value)))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]

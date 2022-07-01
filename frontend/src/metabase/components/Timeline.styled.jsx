@@ -16,7 +16,7 @@ export const TimelineItem = styled.li`
   transform: translateX(-${props => props.leftShift}px);
   white-space: pre-line;
   width: 100%;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 `;
 
 export const ItemIcon = styled(Icon)`
@@ -57,5 +57,4 @@ export const Border = styled.div`
   top: ${props => props.borderShift}px;
   left: ${props => props.borderShift}px;
   bottom: calc(-1rem - ${props => props.borderShift}px);
-  border-left: 1px solid ${color("border")};
 `;

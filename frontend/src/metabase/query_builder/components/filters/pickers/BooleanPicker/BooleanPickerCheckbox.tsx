@@ -41,7 +41,7 @@ export function BooleanPickerCheckbox({
           indeterminate={["is-null", "not-null"].includes(value)}
           checked={optionValue === getValue(filter)}
           onChange={() => updateFilter(optionValue)}
-          checkedColor="accent2"
+          checkedColor="brand"
         />
       ))}
     </CheckboxContainer>

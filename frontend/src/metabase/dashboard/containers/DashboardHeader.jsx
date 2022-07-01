@@ -10,22 +10,28 @@ import { getIsNavbarOpen } from "metabase/redux/app";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
-import Header from "metabase/components/Header";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import Bookmark from "metabase/entities/bookmarks";
+
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import {
   DashboardHeaderButton,
   DashboardHeaderActionContainer,
+  DashboardHeaderInfoButton,
 } from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { getIsBookmarked } from "metabase/dashboard/selectors";
+import {
+  getIsBookmarked,
+  getIsShowDashboardInfoSidebar,
+} from "metabase/dashboard/selectors";
+
+import Header from "../components/DashboardHeader";
 
 import cx from "classnames";
 
@@ -33,6 +39,7 @@ const mapStateToProps = (state, props) => {
   return {
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
+    isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
   };
 };
 
@@ -84,6 +91,9 @@ class DashboardHeader extends Component {
     onSharingClick: PropTypes.func.isRequired,
 
     onChangeLocation: PropTypes.func.isRequired,
+
+    setSidebar: PropTypes.func.isRequired,
+    closeSidebar: PropTypes.func.isRequired,
   };
 
   handleEdit(dashboard) {
@@ -191,7 +201,11 @@ class DashboardHeader extends Component {
       onFullscreenChange,
       createBookmark,
       deleteBookmark,
+      setSidebar,
+      isShowingDashboardInfoSidebar,
+      closeSidebar,
     } = this.props;
+
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
     const buttons = [];
@@ -387,6 +401,18 @@ class DashboardHeader extends Component {
             onDeleteBookmark={deleteBookmark}
             isBookmarked={isBookmarked}
           />
+          <DashboardHeaderInfoButton
+            icon="info"
+            iconSize={18}
+            onlyIcon
+            borderless
+            isShowingDashboardInfoSidebar={isShowingDashboardInfoSidebar}
+            onClick={() =>
+              isShowingDashboardInfoSidebar
+                ? closeSidebar()
+                : setSidebar({ name: "info" })
+            }
+          />
           <EntityMenu items={extraButtons} triggerIcon="ellipsis" />
         </DashboardHeaderActionContainer>,
       );
@@ -403,6 +429,7 @@ class DashboardHeader extends Component {
       isFullscreen,
       isAdditionalInfoVisible,
       onChangeLocation,
+      setDashboardAttribute,
     } = this.props;
 
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
@@ -412,7 +439,7 @@ class DashboardHeader extends Component {
         headerClassName="wrapper"
         objectType="dashboard"
         analyticsContext="Dashboard"
-        item={dashboard}
+        dashboard={dashboard}
         isEditing={isEditing}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
         isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
@@ -422,10 +449,11 @@ class DashboardHeader extends Component {
         editWarning={this.getEditWarning(dashboard)}
         editingTitle={t`You're editing this dashboard.`}
         editingButtons={this.getEditingButtons()}
-        setItemAttributeFn={this.props.setDashboardAttribute}
+        setDashboardAttribute={setDashboardAttribute}
         onLastEditInfoClick={() =>
           onChangeLocation(`${location.pathname}/history`)
         }
+        onSave={() => this.onSave()}
       />
     );
   }

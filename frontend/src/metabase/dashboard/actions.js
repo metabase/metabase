@@ -1215,6 +1215,18 @@ export const fetchDashboardParameterValues = args => async (
   return dashboardParameterValuesCache.get(args) || [];
 };
 
+export const REVERT_TO_REVISION = "metabase/dashboard/REVERT_TO_REVISION";
+export const revertToRevision = createThunkAction(
+  REVERT_TO_REVISION,
+  revision => {
+    return async dispatch => {
+      await revision.revert();
+      await dispatch(fetchDashboard(revision.model_id, null));
+      await dispatch(fetchDashboardCardData({ reload: false, clear: true }));
+    };
+  },
+);
+
 // Writeback
 export const OPEN_ACTION_PARAMETERS_MODAL =
   "metabase/data-app/OPEN_ACTION_PARAMETERS_MODAL";
