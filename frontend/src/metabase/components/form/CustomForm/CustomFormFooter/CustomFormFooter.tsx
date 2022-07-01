@@ -9,14 +9,7 @@ import CustomFormMessage from "../CustomFormMessage";
 import CustomFormSubmit from "../CustomFormSubmit";
 import { CustomFormFooterStyled } from "./CustomFormFooter.styled";
 
-export interface CustomFormFooterProps {
-  submitTitle: string;
-  cancelTitle?: string;
-  fullWidth?: boolean;
-  isModal?: boolean;
-  footerExtraButtons: React.ReactElement[];
-  onCancel?: () => void;
-}
+import { CustomFormFooterProps } from "./CustomFormFooterTypes";
 
 interface LegacyContextProps {
   isModal?: boolean;

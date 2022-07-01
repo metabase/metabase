@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-export interface CustomFormFooterStyledProps {
+interface CustomFormFooterStyledProps {
   shouldReverse?: boolean;
 }
 export const CustomFormFooterStyled = styled.div<CustomFormFooterStyledProps>`
