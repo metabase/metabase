@@ -14,7 +14,7 @@ const FontSettings = (): JSX.Element => {
         <SettingDescription>
           {t`Tell us where to find the font file for each required style.`}
         </SettingDescription>
-        <FontFileSettings files={[]} onChange={() => 0} />
+        <FontFileSettings fontFiles={[]} onChange={() => 0} />
       </FontFileSection>
     </SettingRoot>
   );
