@@ -28,3 +28,7 @@ export const ContentSection = styled.div<ContentSectionProps>`
     padding-top: 0;
   }
 `;
+
+export const Header = styled.h3`
+  margin-top: 0.5rem;
+`;

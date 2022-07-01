@@ -13,7 +13,7 @@ import { Card } from "metabase-types/types/Card";
 import EditableText from "metabase/core/components/EditableText";
 
 import ModelCacheManagementSection from "./ModelCacheManagementSection";
-import { Root, ContentSection } from "./QuestionInfoSidebar.styled";
+import { Root, ContentSection, Header } from "./QuestionInfoSidebar.styled";
 
 interface QuestionInfoSidebarProps {
   question: Question;
@@ -46,9 +46,10 @@ export const QuestionInfoSidebar = ({
   return (
     <Root>
       <ContentSection>
-        <h3>{t`About`}</h3>
+        <Header>{t`About`}</Header>
         <EditableText
           bigText
+          negativeMargin
           initialValue={description}
           placeholder={t`Add description`}
           isOptional
