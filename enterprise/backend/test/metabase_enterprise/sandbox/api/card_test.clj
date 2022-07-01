@@ -40,6 +40,6 @@
             (perms/grant-permissions! group (perms/table-segmented-query-path table))
             (perms/grant-collection-readwrite-permissions! group collection)
             (is (= "Another Name"
-                   (:name ((mt/user->client :rasta) :put 202 (str "card/" (u/the-id card))
+                   (:name ((mt/user->client :rasta) :put 200 (str "card/" (u/the-id card))
                            {:name          "Another Name"
                             :dataset_query (api.card-test/mbql-count-query db table)}))))))))))
