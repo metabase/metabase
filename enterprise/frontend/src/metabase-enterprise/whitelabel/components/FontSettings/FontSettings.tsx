@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+import { FontFile } from "metabase-types/api";
 import FontFileSettings from "../FontFileSettings";
 import {
   FontFileSection,
@@ -7,14 +8,26 @@ import {
   SettingRoot,
 } from "./FontSettings.styled";
 
-const FontSettings = (): JSX.Element => {
+export interface FontSettingsProps {
+  fontFamily: string | null;
+  fontFiles: FontFile[];
+  onChangeFontFamily: (fontFamily: string | null) => void;
+  onChangeFontFiles: (fontFiles: FontFile[]) => void;
+}
+
+const FontSettings = ({
+  fontFamily,
+  fontFiles,
+  onChangeFontFamily,
+  onChangeFontFiles,
+}: FontSettingsProps): JSX.Element => {
   return (
     <SettingRoot>
       <FontFileSection>
         <SettingDescription>
           {t`Tell us where to find the font file for each required style.`}
         </SettingDescription>
-        <FontFileSettings fontFiles={[]} onChange={() => 0} />
+        <FontFileSettings fontFiles={fontFiles} onChange={onChangeFontFiles} />
       </FontFileSection>
     </SettingRoot>
   );
