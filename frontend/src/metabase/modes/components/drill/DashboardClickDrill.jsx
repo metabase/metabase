@@ -9,7 +9,7 @@ import {
   setParameterValue,
   openActionParametersModal,
 } from "metabase/dashboard/actions";
-import { executeRowAction } from "metabase/writeback/actions";
+import { executeRowAction } from "metabase/dashboard/writeback-actions";
 import {
   getDataFromClicked,
   getTargetForQueryParams,
