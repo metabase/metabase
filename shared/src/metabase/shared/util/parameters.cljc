@@ -1,7 +1,8 @@
 (ns metabase.shared.util.parameters
   "Util functions for dealing with parameters"
   (:require [clojure.string :as str]
-            [metabase.mbql.normalize :as mbql.normalize]))
+            [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.shared.util.i18n :refer [trs]]))
 
 (def ^:private template-tag-regex
   "A regex to find template tags in a text card on a dashboard. This should mirror the regex used to find template
@@ -29,6 +30,22 @@
 (defmulti formatted-value
   "Formats a value appropriately for inclusion in a text card, based on its type. Does not do any escaping."
   (fn [tyype _value] (keyword tyype)))
+
+(defmethod formatted-value :date/relative
+  [_ value]
+  (case value
+    "today"      (trs "Today")
+    "yesterday"  (trs "Yesterday")
+    "past7days"  (trs "Past 7 Days")
+    "past30days" (trs "Past 30 Days")
+    "lastweek"   (trs "Last Week")
+    "lastmonth"  (trs "Last Month")
+    "lastyear"   (trs "Last Year")
+    "thisweek"   (trs "This Week")
+    "thismonth"  (trs "This Month")
+    "thisyear"   (trs "This Year")
+    ;; Always fallback to default formatting, just in case
+    (formatted-value :default value)))
 
 (defmethod formatted-value :default
   [_ value]
