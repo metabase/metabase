@@ -246,9 +246,9 @@
                 (and (:dataset card) (seq (:result_metadata card)))
                 (assoc :metadata/dataset-metadata (:result_metadata card)))]
     (api/check-not-archived card)
-    (when (and 
-              (seq parameters) 
-              (not-any? #{context} '(:csv-download, :xlsx-download, :json-download)))
+    (when (and
+        (seq parameters)
+        (not-any? #{context} '(:csv-download, :xlsx-download, :json-download)))
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
