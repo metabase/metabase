@@ -10,6 +10,7 @@ import {
   breakpointMinSmall,
   breakpointMaxMedium,
 } from "metabase/styled-components/theme";
+import EditableText from "metabase/core/components/EditableText";
 
 interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;
@@ -34,25 +35,60 @@ export const HeaderRoot = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   }
 `;
 
-export const HeaderContent = styled.div`
-  padding: 1rem 0;
+export const HeaderCaptionContainer = styled.div`
+  position: relative;
+  transition: top 400ms ease;
+  display: flex;
+  padding-right: 2rem;
 `;
 
-export const HeaderCaption = styled.span`
-  display: inline-block;
-
-  &:not(:last-child) {
-    margin-bottom: 0.5rem;
-  }
+export const HeaderCaption = styled(EditableText)`
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.5rem;
 `;
 
 export const HeaderBadges = styled.div`
   display: flex;
   align-items: center;
+  padding-left: 0.25rem;
+  border-left: 1px solid transparent;
 
   ${breakpointMaxSmall} {
     flex-direction: column;
     align-items: baseline;
+  }
+`;
+
+export const HeaderLastEditInfoLabel = styled(LastEditInfoLabel)`
+  transition: opacity 400ms ease;
+  ${breakpointMaxSmall} {
+    margin-top: 4px;
+  }
+`;
+
+interface HeaderContentProps {
+  showSubHeader: boolean;
+}
+
+export const HeaderContent = styled.div<HeaderContentProps>`
+  padding: 1rem 0;
+
+  ${HeaderCaptionContainer} {
+    top: ${props => (props.showSubHeader ? "0px" : "10px")};
+  }
+  ${HeaderLastEditInfoLabel} {
+    opacity: ${props => (props.showSubHeader ? "1x" : "0")};
+  }
+
+  &:hover,
+  &:focus-within {
+    ${HeaderCaptionContainer} {
+      top: 0px;
+    }
+    ${HeaderLastEditInfoLabel} {
+      opacity: 1;
+    }
   }
 `;
 
@@ -65,12 +101,6 @@ export const HeaderBadgesDivider = styled.span`
 
   ${breakpointMaxSmall} {
     display: none;
-  }
-`;
-
-export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
-  ${breakpointMaxSmall} {
-    margin-top: 4px;
   }
 `;
 

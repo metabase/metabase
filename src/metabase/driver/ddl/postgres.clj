@@ -4,45 +4,11 @@
             [honeysql.core :as hsql]
             [java-time :as t]
             [metabase.driver.ddl.interface :as ddl.i]
+            [metabase.driver.ddl.sql :as ddl.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql.util :as sql.u]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.util.i18n :refer [trs]]))
-
-(defn- quote-fn [driver]
-  (fn quote [ident entity]
-    (sql.u/quote-name driver ident (ddl.i/format-name driver entity))))
-
-(defn- add-remark [sql-str]
-  (str "-- Metabase\n"
-       sql-str))
-
-(defn- execute! [conn [sql & params]]
-  (jdbc/execute! conn (into [(add-remark sql)] params)))
-
-(defn- jdbc-query [conn [sql & params]]
-  (jdbc/query conn (into [(add-remark sql)] params)))
-
-(defn- create-schema-sql
-  "SQL string to create a schema suitable for postgres"
-  [{driver :engine :as database}]
-  (let [q (quote-fn driver)]
-    (format "create schema %s"
-            (q :table (ddl.i/schema-name database (public-settings/site-uuid))))))
-
-(defn- create-table-sql [{driver :engine :as database} definition query]
-  (let [q (quote-fn driver)]
-    (format "create table %s.%s as %s"
-            (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
-            (q :table (:table-name definition))
-            query)))
-
-(defn- drop-table-sql [{driver :engine :as database} table-name]
-  (let [q (quote-fn driver)]
-    (format "drop table if exists %s.%s"
-            (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
-            (q :table table-name))))
 
 (defn- set-statement-timeout!
   "Must be called within a transaction.
@@ -54,7 +20,7 @@
   (let [existing-timeout (->> (hsql/format {:select [:setting]
                                             :from [:pg_settings]
                                             :where [:= :name "statement_timeout"]})
-                              (jdbc-query tx)
+                              (ddl.sql/jdbc-query tx)
                               first
                               :setting
                               parse-long)
@@ -63,25 +29,22 @@
                       ten-minutes
                       (min ten-minutes existing-timeout))]
     ;; Can't use a prepared parameter with these statements
-    (execute! tx [(format "SET LOCAL statement_timeout TO '%s'" (str new-timeout))])))
+    (ddl.sql/execute! tx [(format "SET LOCAL statement_timeout TO '%s'" (str new-timeout))])))
 
 (defmethod ddl.i/refresh! :postgres [_driver database definition dataset-query]
-  (try
-    (let [{:keys [query params]} (qp/compile dataset-query)]
-      (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
-        (jdbc/with-db-transaction [tx conn]
-          (set-statement-timeout! tx)
-          (execute! tx [(drop-table-sql database (:table-name definition))])
-          (execute! tx (into [(create-table-sql database definition query)] params)))
-        {:state :success}))
-    (catch Exception e
-      {:state :error :error (ex-message e)})))
+  (let [{:keys [query params]} (qp/compile dataset-query)]
+    (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
+      (jdbc/with-db-transaction [tx conn]
+        (set-statement-timeout! tx)
+        (ddl.sql/execute! tx [(ddl.sql/drop-table-sql database (:table-name definition))])
+        (ddl.sql/execute! tx (into [(ddl.sql/create-table-sql database definition query)] params)))
+      {:state :success})))
 
 (defmethod ddl.i/unpersist! :postgres
   [_driver database persisted-info]
   (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
     (try
-      (execute! conn [(drop-table-sql database (:table_name persisted-info))])
+      (ddl.sql/execute! conn [(ddl.sql/drop-table-sql database (:table_name persisted-info))])
       (catch Exception e
         (log/warn e)
         (throw e)))))
@@ -93,25 +56,25 @@
         steps       [[:persist.check/create-schema
                       (fn check-schema [conn]
                         (let [existing-schemas (->> ["select schema_name from information_schema.schemata"]
-                                                    (jdbc-query conn)
+                                                    (ddl.sql/jdbc-query conn)
                                                     (map :schema_name)
                                                     (into #{}))]
                           (or (contains? existing-schemas schema-name)
-                              (execute! conn [(create-schema-sql database)]))))]
+                              (ddl.sql/execute! conn [(ddl.sql/create-schema-sql database)]))))]
                      [:persist.check/create-table
                       (fn create-table [conn]
-                        (execute! conn [(create-table-sql database
+                        (ddl.sql/execute! conn [(ddl.sql/create-table-sql database
                                                           {:table-name table-name
                                                            :field-definitions [{:field-name "field"
                                                                                 :base-type :type/Text}]}
                                                           "values (1)")]))]
                      [:persist.check/read-table
                       (fn read-table [conn]
-                        (jdbc-query conn [(format "select * from %s.%s"
+                        (ddl.sql/jdbc-query conn [(format "select * from %s.%s"
                                              schema-name table-name)]))]
                      [:persist.check/delete-table
                       (fn delete-table [conn]
-                        (execute! conn [(drop-table-sql database table-name)]))]]]
+                        (ddl.sql/execute! conn [(ddl.sql/drop-table-sql database table-name)]))]]]
     (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
       (jdbc/with-db-transaction
         [tx conn]

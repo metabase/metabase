@@ -1,15 +1,12 @@
 import styled from "@emotion/styled";
-
-import Link from "metabase/core/components/Link";
-
 import { color } from "metabase/lib/colors";
+import Link from "metabase/core/components/Link";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
   space,
 } from "metabase/styled-components/theme";
-
-import { APP_BAR_HEIGHT } from "../constants";
+import { APP_BAR_HEIGHT } from "../../constants";
 
 export const AppBarRoot = styled.header`
   position: relative;
@@ -27,37 +24,35 @@ export const AppBarRoot = styled.header`
   }
 `;
 
-export const LogoLink = styled(Link)`
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  left: 0;
-  padding: ${space(1)} ${space(2)};
+export const LogoLinkContainer = styled.div`
+  position: relative;
   margin-left: ${space(2)};
-  position: absolute;
-  transition: opacity 0.3s;
-
-  &:hover {
-    background-color: ${color("bg-light")};
-  }
 
   ${breakpointMaxSmall} {
     margin-left: ${space(1)};
   }
 `;
 
-export const SidebarButtonContainer = styled.div`
-  left: 23px;
-  opacity: 0;
-  position: absolute;
-  top: 4px;
+export const LogoLink = styled(Link)`
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  padding: ${space(1)} ${space(2)};
   transition: opacity 0.3s;
 
-  ${breakpointMaxSmall} {
-    left: 5px;
+  &:hover {
+    background-color: ${color("bg-light")};
   }
+`;
+
+export const SidebarButtonContainer = styled.div`
+  position: absolute;
+  top: 0.625rem;
+  left: 0.9375rem;
+  opacity: 0;
+  transition: opacity 0.3s;
 `;
 
 export interface LeftContainerProps {
@@ -84,7 +79,8 @@ export const LeftContainer = styled.div<LeftContainerProps>`
   }
 
   ${breakpointMaxSmall} {
-    width: ${props => (props.isSearchActive ? "80px" : "calc(100% - 60px);")};
+    width: ${props =>
+      props.isSearchActive ? "5rem" : "calc(100% - 3.75rem);"};
 
     ${LogoLink} {
       opacity: 0;
@@ -100,7 +96,7 @@ export const LeftContainer = styled.div<LeftContainerProps>`
 export const MiddleContainer = styled.div`
   display: none;
   justify-content: center;
-  width: 80px;
+  width: 5rem;
 
   ${breakpointMaxSmall} {
     display: flex;
@@ -108,7 +104,9 @@ export const MiddleContainer = styled.div`
 
   ${LogoLink} {
     position: relative;
-    padding-left: 8px;
+  }
+
+  ${LogoLinkContainer} {
     margin-left: 0;
   }
 `;
@@ -122,7 +120,7 @@ export const RightContainer = styled.div`
   justify-content: flex-end;
 
   ${breakpointMaxSmall} {
-    width: calc(100% - 60px);
+    width: calc(100% - 3.75rem);
   }
 `;
 
@@ -143,27 +141,20 @@ export const SearchBarContent = styled.div`
 
   ${breakpointMinSmall} {
     position: relative;
-    width: 460px;
+    width: 28.75rem;
   }
 `;
 
-interface PathBreadcrumbsContainerProps {
+interface CollectionBreadcrumbsContainerProps {
   isVisible: boolean;
 }
 
-export const PathBreadcrumbsContainer = styled.div<
-  PathBreadcrumbsContainerProps
+export const CollectionBreadcrumbsContainer = styled.div<
+  CollectionBreadcrumbsContainerProps
 >`
-  position: absolute;
-  top: 0px;
-  left: 100px;
-  height: ${APP_BAR_HEIGHT};
   display: flex;
   visibility: ${props => (props.isVisible ? "visible" : "hidden")};
   opacity: ${props => (props.isVisible ? 1 : 0)};
-
-  ${props =>
-    !props.isVisible
-      ? `transition: opacity 0.5s, visibility 0s 0.5s;`
-      : `transition: opacity 0.5s;`}
+  transition: ${props =>
+    !props.isVisible ? `opacity 0.5s, visibility 0s 0.5s` : `opacity 0.5s`};
 `;
