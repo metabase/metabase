@@ -390,13 +390,13 @@
     (testing "nil `session-timeout-seconds` should clear the timeout cookie"
       (is (= {:body    "some body"
               :cookies {"metabase.TIMEOUT" {:path    "/"
+                                            :value   nil
                                             :expires "Thu, 1 Jan 1970 00:00:00 GMT"}}}
-             (-> (mw.session/response-with-session-timeout-cookie request request-time nil response)
-                 (update-in [:cookies "metabase.TIMEOUT"] dissoc :value)))))
+             (mw.session/response-with-session-timeout-cookie request request-time nil response))))
 
     (testing "Non-nil `session-timeout-seconds` should set the expiry relative to the request time"
       (is (= {:body    "some body",
               :cookies {"metabase.TIMEOUT" {:path    "/"
+                                            :value   "alive"
                                             :expires "Sat, 01 Jan 2022 00:01:00 Z"}}}
-             (-> (mw.session/response-with-session-timeout-cookie request request-time 60 response)
-                 (update-in [:cookies "metabase.TIMEOUT"] dissoc :value)))))))
+             (mw.session/response-with-session-timeout-cookie request request-time 60 response))))))
