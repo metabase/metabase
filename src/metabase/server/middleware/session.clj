@@ -7,14 +7,15 @@
             [java-time :as t]
             [metabase.api.common :as api
              :refer
-             [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
+             [*current-user* *current-user-id* *current-user-permissions-set*
+              *is-group-manager?* *is-superuser?*]]
             [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.session :refer [Session]]
-            [metabase.models.setting :refer [defsetting *user-local-values*]]
+            [metabase.models.setting :as setting :refer [*user-local-values* defsetting]]
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.public-settings.premium-features :as premium-features]
@@ -320,31 +321,49 @@
 
 (defsetting session-timeout-seconds
   (deferred-tru "Time before inactive users are logged out. If nil, sessions last indefinitely.")
-  :type       :integer
-  :setter (fn [new-value] (max new-value 60))) ;; enforce minimum of 60 seconds so users can't lock themselves out
+  :type         :integer
+  :setter       (fn [new-value]
+                  ; Ensure a minimum of 60 seconds so a user can't lock themselves out
+                  (setting/set-value-of-type! :integer :session-timeout-seconds (when new-value
+                                                                                  (max new-value 60)))))
 
 (defn response-with-session-timeout-cookie
   "Adds a cookie to the response that expires after `session-timeout-seconds` seconds."
   [request request-time timeout-seconds response]
-  (if timeout-seconds
+  (cond
+    (nil? timeout-seconds) ; If the timeout-seconds is nil, sessions last indefinitely
+    (let [cookie-options (merge
+                          {:path    "/"}
+                          (when (request.u/https? request)
+                            ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
+                            ;; security is provided via anti-CSRF token. Note that most browsers will only accept
+                            ;; SameSite=None with secure cookies, thus we are setting it only over HTTPS to prevent
+                            ;; the cookie from being rejected in case of same-domain embedding.
+                            {:same-site :none
+                             :secure    true}))]
+      (-> response
+          (wrap-body-if-needed)
+          (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options)))
+
+    (or
+     ;; Either the session is just starting, so we need to set the timeout cookie for the first time
+     (get-in response [:cookies metabase-session-cookie :value])
+     ;; Or the cookie is already set and not expired, so we need to reset it.
+     (get-in request [:cookies metabase-session-timeout-cookie :value]))
     (let [expires        (t/plus request-time (t/seconds timeout-seconds))
           cookie-options (merge
                           {:path      "/"
                            :expires   (t/format (t/formatter "EEE, dd MMM yyyy HH:mm:ss z")
                                                 expires)}
                           (when (request.u/https? request)
-                                        ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
-                                        ;; security is provided via anti-CSRF token. Note that most browsers will only accept
-                                        ;; SameSite=None with secure cookies, thus we are setting it only over HTTPS to prevent
-                                        ;; the cookie from being rejected in case of same-domain embedding.
                             {:same-site :none
                              :secure    true}))]
       (-> response
           (wrap-body-if-needed)
           (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options)))
-    (-> response
-        (wrap-body-if-needed)
-        (clear-cookie metabase-session-timeout-cookie))))
+
+    :else
+    response))
 
 (defn reset-timeout-cookie
   "Middleware that resets a timeout cookie that expires according to the session timeout setting."
