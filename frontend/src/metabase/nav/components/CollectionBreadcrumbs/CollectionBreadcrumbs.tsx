@@ -1,5 +1,6 @@
 import React from "react";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { isRootCollection } from "metabase/collections/utils";
 import Icon from "metabase/components/Icon";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import { Collection } from "metabase-types/api";
@@ -8,7 +9,6 @@ import {
   PathContainer,
   PathSeparator,
 } from "./CollectionBreadcrumbs.styled";
-import { isRootCollection } from "metabase/collections/utils";
 
 export interface CollectionBreadcrumbsProps {
   collection?: Collection;
@@ -33,6 +33,7 @@ export const CollectionBreadcrumbs = ({
         <CollectionBadge
           collectionId={parts[0].id}
           inactiveColor="text-medium"
+          isSingleLine
         />
         <CollectionSeparator onClick={toggle} />
         <ExpandButton
@@ -51,6 +52,7 @@ export const CollectionBreadcrumbs = ({
           <CollectionBadge
             collectionId={collection.id}
             inactiveColor="text-medium"
+            isSingleLine
           />
           <CollectionSeparator onClick={toggle} />
         </>
@@ -63,6 +65,7 @@ export const CollectionBreadcrumbs = ({
       <CollectionBadge
         collectionId={collection.id}
         inactiveColor="text-medium"
+        isSingleLine
       />
     </PathContainer>
   );

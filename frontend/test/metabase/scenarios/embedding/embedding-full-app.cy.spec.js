@@ -61,7 +61,7 @@ describe("scenarios > embedding > full app", () => {
       cy.icon("refresh").should("be.visible");
       cy.icon("notebook").should("be.visible");
       cy.button("Summarize").should("be.visible");
-      cy.button("Filter").should("be.visible");
+      cy.findByText("Filter").should("be.visible");
     });
 
     it("should hide the question header by a param", () => {

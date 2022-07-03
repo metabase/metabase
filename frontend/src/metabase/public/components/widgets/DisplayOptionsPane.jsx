@@ -35,6 +35,7 @@ const DisplayOptionsPane = ({
   displayOptions,
   onChangeDisplayOptions,
   canWhitelabel,
+  showDownloadDataButtonVisibilityToggle,
 }) => {
   const toggleId = useUniqueId("show-download-data-button");
 
@@ -93,25 +94,27 @@ const DisplayOptionsPane = ({
               }}
             />
           </DisplayOptionSection>
-          <DisplayOptionSection title={t`Download data`}>
-            <ToggleContainer>
-              <ToggleLabel
-                htmlFor={toggleId}
-              >{t`Enable users to download data from this embed?`}</ToggleLabel>
-              <Toggle
-                id={toggleId}
-                aria-checked={!displayOptions.hide_download_button}
-                role="switch"
-                value={!displayOptions.hide_download_button}
-                onChange={isEnabled => {
-                  onChangeDisplayOptions({
-                    ...displayOptions,
-                    hide_download_button: !isEnabled ? true : null,
-                  });
-                }}
-              />
-            </ToggleContainer>
-          </DisplayOptionSection>
+          {showDownloadDataButtonVisibilityToggle && (
+            <DisplayOptionSection title={t`Download data`}>
+              <ToggleContainer>
+                <ToggleLabel
+                  htmlFor={toggleId}
+                >{t`Enable users to download data from this embed?`}</ToggleLabel>
+                <Toggle
+                  id={toggleId}
+                  aria-checked={!displayOptions.hide_download_button}
+                  role="switch"
+                  value={!displayOptions.hide_download_button}
+                  onChange={isEnabled => {
+                    onChangeDisplayOptions({
+                      ...displayOptions,
+                      hide_download_button: !isEnabled ? true : null,
+                    });
+                  }}
+                />
+              </ToggleContainer>
+            </DisplayOptionSection>
+          )}
         </>
       )}
     </div>
