@@ -326,7 +326,6 @@
 (defn response-with-session-timeout-cookie
   "Adds a cookie to the response that expires after `session-timeout-seconds` seconds."
   [request request-time timeout-seconds response]
-  (tap> request)
   (if timeout-seconds
     (let [expires        (t/plus request-time (t/seconds timeout-seconds))
           cookie-options (merge
