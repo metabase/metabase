@@ -1,7 +1,7 @@
 import { FontFile } from "metabase-types/api";
 
 export interface FontSetting {
-  value: FontFile[];
+  value: FontFile[] | null;
 }
 
 export interface FontFileOption {
