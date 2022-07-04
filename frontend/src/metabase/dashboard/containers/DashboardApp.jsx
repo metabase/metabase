@@ -61,6 +61,8 @@ import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
 
+import DataAppContext from "metabase/writeback/containers/DataAppContext";
+
 import ActionParametersInputModal from "./ActionParametersInputModal";
 
 const mapStateToProps = (state, props) => {
@@ -162,29 +164,31 @@ const DashboardApp = props => {
   const isDataApp = dashboard?.name.endsWith(" App");
 
   return (
-    <div className="shrink-below-content-size full-height">
-      <Dashboard
-        editingOnLoad={editingOnLoad}
-        addCardOnLoad={addCardOnLoad}
-        {...props}
-        isDataApp={isDataApp}
-      />
-      {/* For rendering modal urls */}
-      {props.children}
-      {dashboard && focusedEmitterId && (
-        <ActionParametersInputModal
-          dashboard={dashboard}
-          focusedEmitterId={focusedEmitterId}
+    <DataAppContext>
+      <div className="shrink-below-content-size full-height">
+        <Dashboard
+          editingOnLoad={editingOnLoad}
+          addCardOnLoad={addCardOnLoad}
+          {...props}
+          isDataApp={isDataApp}
         />
-      )}
-      <Toaster
-        message={t`Would you like to be notified when this dashboard is done loading?`}
-        isShown={isShowingToaster}
-        onDismiss={onDismissToast}
-        onConfirm={onConfirmToast}
-        fixed
-      />
-    </div>
+        {/* For rendering modal urls */}
+        {props.children}
+        {dashboard && focusedEmitterId && (
+          <ActionParametersInputModal
+            dashboard={dashboard}
+            focusedEmitterId={focusedEmitterId}
+          />
+        )}
+        <Toaster
+          message={t`Would you like to be notified when this dashboard is done loading?`}
+          isShown={isShowingToaster}
+          onDismiss={onDismissToast}
+          onConfirm={onConfirmToast}
+          fixed
+        />
+      </div>
+    </DataAppContext>
   );
 };
 
