@@ -81,14 +81,9 @@ const config = (module.exports = {
   module: {
     rules: [
       {
-        test: /\.styled\.(tsx?|jsx?)$/,
-        exclude: /node_modules|cljs/,
-        use: [BABEL_LOADER, ESBUILD_LOADER],
-      },
-      {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
-        use: [ESBUILD_LOADER],
+        use: [BABEL_LOADER, ESBUILD_LOADER],
       },
       ...(shouldUseEslint
         ? [
