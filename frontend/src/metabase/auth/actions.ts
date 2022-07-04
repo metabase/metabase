@@ -16,10 +16,6 @@ import {
   trackPasswordReset,
 } from "./analytics";
 import { LoginData } from "./types";
-import {
-  clearLastSessionUrl,
-  getLastSessionUrl,
-} from "metabase/session-listener";
 
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
 export const refreshLocale = createThunkAction(
@@ -51,9 +47,7 @@ export const login = createThunkAction(
     await dispatch(refreshSession());
     trackLogin();
 
-    const url = redirectUrl ?? getLastSessionUrl();
-
-    dispatch(push(url));
+    dispatch(push(redirectUrl));
   },
 );
 
@@ -65,50 +59,32 @@ export const loginGoogle = createThunkAction(
     await dispatch(refreshSession());
     trackLoginGoogle();
 
-    const url = redirectUrl ?? getLastSessionUrl();
-
-    dispatch(push(url));
+    dispatch(push(redirectUrl));
   },
 );
 
 export const LOGOUT = "metabase/auth/LOGOUT";
-export const logout = createThunkAction(LOGOUT, () => {
-  return async (dispatch: any) => {
-    await deleteSession();
-    await dispatch(clearCurrentUser());
-    await dispatch(refreshLocale());
-    trackLogout();
-    clearLastSessionUrl();
-
-    dispatch(push("/auth/login"));
-    window.location.reload(); // clears redux state and browser caches
-  };
-});
-
-export const SESSION_APPEARED = "metabase/auth/SESSION_APPEARED";
-export const sessionAppeared = createThunkAction(
-  SESSION_APPEARED,
-  (lastUrl: string) => {
-    return async (_dispatch: any, getState: () => State) => {
-      const user = getUser(getState());
-
-      if (!user) {
-        window.location.href = lastUrl ?? "/";
+export const logout = createThunkAction(
+  LOGOUT,
+  (redirectUrl: string, isSessionAlreadyExpired: boolean) => {
+    return async (dispatch: any) => {
+      if (!isSessionAlreadyExpired) {
+        await deleteSession();
       }
+      await dispatch(clearCurrentUser());
+      await dispatch(refreshLocale());
+      trackLogout();
+
+      let loginUrl = "/auth/login";
+      if (redirectUrl) {
+        loginUrl += `?redirect=${encodeURIComponent(redirectUrl)}`;
+      }
+
+      dispatch(push(loginUrl));
+      window.location.reload(); // clears redux state and browser caches
     };
   },
 );
-
-export const SESSION_EXPIRED = "metabase/auth/SESSION_EXPIRED";
-export const sessionExpired = createThunkAction(SESSION_EXPIRED, () => {
-  return async (dispatch: any, getState: () => State) => {
-    const user = getUser(getState());
-
-    if (user) {
-      dispatch(logout());
-    }
-  };
-});
 
 export const FORGOT_PASSWORD = "metabase/auth/FORGOT_PASSWORD";
 export const forgotPassword = createThunkAction(

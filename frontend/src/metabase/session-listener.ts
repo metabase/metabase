@@ -8,10 +8,10 @@ let wasLoggedIn = getIsLoggedIn();
 const LAST_URL_KEY = "lastSessionUrl";
 
 export const clearLastSessionUrl = () =>
-  window.localStorage.removeItem(LAST_URL_KEY);
+  window.sessionStorage.removeItem(LAST_URL_KEY);
 
 export const getLastSessionUrl = () =>
-  window.localStorage.getItem(LAST_URL_KEY) ?? "/";
+  window.sessionStorage.getItem(LAST_URL_KEY) ?? "/";
 
 export const subscribeToSessionChanges = (
   onSessionAppeared: (lastUrl: string | null) => void,
