@@ -23,7 +23,7 @@ export const AppBarSubheader = styled.div`
   border-bottom: 1px solid ${color("border")};
 `;
 
-export const AppBarMainContainer = styled.header`
+export const AppBarMainContainer = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;

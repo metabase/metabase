@@ -4,7 +4,7 @@ import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { LogoLink } from "./AppBarLogo.styled";
 import { SidebarButton } from "./AppBarToggle.styled";
 
-export const AppBarRoot = styled.header`
+export const AppBarRoot = styled.div`
   display: flex;
   align-items: center;
   gap: 1rem;

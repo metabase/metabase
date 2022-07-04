@@ -24,7 +24,7 @@ const AppBar = (props: AppBarProps): JSX.Element => {
   const isSmallScreen = useIsSmallScreen();
 
   return (
-    <AppBarRoot>
+    <AppBarRoot data-testid="app-bar">
       {isSmallScreen ? <AppBarSmall {...props} /> : <AppBarLarge {...props} />}
     </AppBarRoot>
   );

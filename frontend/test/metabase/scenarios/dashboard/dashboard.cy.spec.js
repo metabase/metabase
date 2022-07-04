@@ -10,6 +10,7 @@ import {
   modal,
   openNewCollectionItemFlowFor,
   visitDashboard,
+  appbar,
   rightSidebar,
 } from "__support__/e2e/helpers";
 
@@ -494,6 +495,13 @@ describe("scenarios > dashboard", () => {
 
     cy.findByTestId("loading-spinner").should("not.exist");
     cy.findAllByText("18,760").should("have.length", 2);
+  });
+
+  it("should show collection breadcrumbs for a dashboard", () => {
+    visitDashboard(1);
+    appbar().within(() => cy.findByText("Our analytics").click());
+
+    cy.findByText("Orders").should("be.visible");
   });
 });
 
