@@ -388,22 +388,6 @@
       (is (= #{"db-2"}
              (set (map :name (search-request-data-with sorted-results :rasta :q "db"))))))))
 
-(mt/with-non-admin-groups-no-root-collection-perms
-  (with-search-items-in-collection {db-1 :database} "test"
-    (with-search-items-in-collection {db-2 :database} "test2"
-      (mt/with-temp* [PermissionsGroup           [group]
-                      PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
-        (perms/grant-collection-read-permissions! group (u/the-id coll-1))
-        (is (= (sorted-results
-                (reverse
-                 (into
-                  (default-results-with-collection)
-                  (map #(merge default-search-row % (table-search-results))
-                       [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
-                        {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))))
-               (search-request-data :rasta :q "test")))))))
-
-
 (deftest bookmarks-test
   (testing "Bookmarks are per user, so other user's bookmarks don't cause search results to be altered"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
