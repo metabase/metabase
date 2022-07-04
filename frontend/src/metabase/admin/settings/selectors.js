@@ -357,7 +357,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
       {
         key: "enable-embedding",
-        display_name: t`Enable Embedding Metabase in other Applications`,
+        display_name: t`Embedding`,
         type: "boolean",
         showActualValue: true,
         getProps: setting => {
