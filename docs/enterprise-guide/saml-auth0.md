@@ -75,6 +75,6 @@ The "SAML Application Name" value can be left as the default (Metabase).
 
 Save your settings, then [enable SAML](authenticating-with-saml.html) in Metabase, and you should be good to go!
 
-## Troubleshooting
+## Troubleshooting SAML issues
 
 For common issues, see our [SAML troubleshooting page](../troubleshooting-guide/saml.html).

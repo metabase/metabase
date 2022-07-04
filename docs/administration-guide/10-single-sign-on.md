@@ -134,7 +134,7 @@ Once a person creates an account, you cannot change the authentication method fo
 
 Note that you must have at least one account with email and password login. This account safeguards you from getting locked out of your Metabase if there are any problems with your SSO provider.
 
-## Troubleshooting
+## Troubleshooting login issues
 
 For common issues, go to [Troubleshooting logins](../troubleshooting-guide/cant-log-in.html).
 

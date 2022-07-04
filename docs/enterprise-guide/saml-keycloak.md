@@ -66,6 +66,6 @@ Let's say we want email, name, and surname to be passed between the client (Meta
 
 You can find the attribute values from your Metabase **Admin settings** > **Authentication** > **SAML** > **Attributes**.
 
-## Troubleshooting
+## Troubleshooting SAML issues
 
 For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/saml.html).

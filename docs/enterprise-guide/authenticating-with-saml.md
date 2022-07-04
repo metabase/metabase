@@ -213,7 +213,7 @@ When users log in to Metabase for the first time via SSO, this will automaticall
 
 You can find example code that uses SAML authentication in the [SSO examples repository](https://github.com/metabase/sso-examples).
 
-## Troubleshooting
+## Troubleshooting SAML issues
 
 For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/cant-log-in.html).
 
