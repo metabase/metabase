@@ -314,7 +314,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defsetting session-timeout
-  ;; Should be in the form {:amount 60 :unit "minutes"} where the unit is one of "seconds", "minutes" or "hours".
+  ;; Should be in the form {:amount 60 :unit "minutes"} where the unit is one of "seconds", "minutes" or "hours". The amount is nillable.
   (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
   :type       :json
   :default    nil)
@@ -322,11 +322,12 @@
 (defn session-timeout->seconds
   "Convert a session timeout setting to seconds."
   [{:keys [unit amount]}]
-  (when amount ; amount is nillable
-    (case unit
-      "seconds" amount
-      "minutes" (* amount 60)
-      "hours"  (* amount 3600))))
+  (when amount
+    (-> (case unit
+          "seconds" amount
+          "minutes" (* amount 60)
+          "hours"  (* amount 3600))
+        (max 60)))) ; Ensure a minimum of 60 seconds so a user can't lock themselves out
 
 (defn response-with-session-timeout-cookie
   "Adds a cookie to the response that expires after `session-timeout-seconds` seconds."
@@ -375,8 +376,6 @@
                  (respond (response-with-session-timeout-cookie
                            request
                            request-time
-                           (some-> (session-timeout)
-                                   session-timeout->seconds
-                                   (max 60)) ; Ensure a minimum of 60 seconds so a user can't lock themselves out
+                           (session-timeout->seconds (session-timeout))
                            response)))
                raise))))

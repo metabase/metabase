@@ -397,6 +397,11 @@
              (mw.session/session-timeout->seconds {:amount 1
                                                    :unit   "hours"}))))
 
+    (testing "the session timeout should be a minimum of 60 seconds"
+      (is (= 60
+             (mw.session/session-timeout->seconds {:amount 0
+                                                   :unit   "minutes"}))))
+
     (testing "nil `session-timeout-seconds` should set the timeout cookie without an `expires` attribute, lasting indefinitely"
       (let [request {:cookies {"metabase.TIMEOUT" {:value "alive"}}}]
         (is (= {:body    "some body"
