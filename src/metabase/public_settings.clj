@@ -341,7 +341,7 @@
               (when new-value
                 (when-not (u.fonts/available-font? new-value)
                   (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
-              (setting/set-value-of-type! :string :application-font new-value))
+              (setting/set-value-of-type! :string :application-font new-value)))
 
 (defsetting application-font-files
   (deferred-tru "Tell us where to find the font file for each required style.")
