@@ -16,7 +16,7 @@ describe("scenarios > question > view", () => {
     cy.signInAsAdmin();
   });
 
-  describe("filter sidebar", () => {
+  describe.skip("filter sidebar", () => {
     it("should filter a table", () => {
       openOrdersTable();
       filter();

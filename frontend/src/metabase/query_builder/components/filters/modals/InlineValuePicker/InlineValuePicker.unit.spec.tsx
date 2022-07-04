@@ -127,7 +127,7 @@ describe("InlineValuePicker", () => {
 
   it("loads an existing set of text filter values", async () => {
     const testFilter = new Filter(
-      ["contains", ["field", textField.id, null], "fooBarBaz", "BazBarFoo"],
+      ["!=", ["field", textField.id, null], "fooBarBaz", "BazBarFoo"],
       null,
       query,
     );
@@ -142,7 +142,7 @@ describe("InlineValuePicker", () => {
         />
       </Provider>,
     );
-    screen.getByText("Contains");
+    screen.getByText("Is not");
     screen.getByText("fooBarBaz");
     screen.getByText("BazBarFoo");
   });
@@ -222,5 +222,107 @@ describe("InlineValuePicker", () => {
     userEvent.click(firstDataItem);
     expect(changeSpy).toHaveBeenCalled();
     expect(changeSpy.mock.calls[0][0].arguments()).toEqual([888]);
+  });
+
+  it("tokenizes inputs for multi-input operators", async () => {
+    let testFilter = new Filter(
+      ["=", ["field", textField.id, null]],
+      null,
+      query,
+    );
+    const changeSpy = jest.fn(newFilter => (testFilter = newFilter));
+
+    render(
+      <Provider store={store}>
+        <InlineValuePicker
+          filter={testFilter}
+          field={textField}
+          handleChange={changeSpy}
+        />
+      </Provider>,
+    );
+
+    const textInput = screen.getByPlaceholderText("Enter some text");
+    userEvent.type(textInput, "foo,bar,");
+    changeSpy.mock.calls.forEach(([[_, __, value]]) => {
+      // passed value will never contain a comma because the tokenizer will filter it out
+      expect(value).not.toContain(",");
+    });
+  });
+
+  it("does not tokenize input for single-input operators", async () => {
+    const testFilter = new Filter(
+      ["contains", ["field", textField.id, null]],
+      null,
+      query,
+    );
+    const changeSpy = jest.fn();
+
+    render(
+      <Provider store={store}>
+        <InlineValuePicker
+          filter={testFilter}
+          field={textField}
+          handleChange={changeSpy}
+        />
+      </Provider>,
+    );
+
+    const textInput = screen.getByPlaceholderText("Enter some text");
+    userEvent.type(textInput, "foo,bar,");
+
+    const lastCall = changeSpy.mock.calls[changeSpy.mock.calls.length - 1][0];
+    // reads commas as part of the input instead of token separators
+    expect(lastCall[2]).toEqual("foo,bar,");
+  });
+
+  it("shows multiple inputs for between filters", async () => {
+    const testFilter = new Filter(
+      ["between", ["field", pkField.id, null], 14, 74],
+      null,
+      query,
+    );
+    const changeSpy = jest.fn();
+
+    render(
+      <Provider store={store}>
+        <InlineValuePicker
+          filter={testFilter}
+          field={pkField}
+          handleChange={changeSpy}
+        />
+      </Provider>,
+    );
+
+    screen.getByText("Between");
+    screen.getByPlaceholderText("min");
+    screen.getByPlaceholderText("max");
+  });
+
+  const noValueOperators = ["is-null", "not-null", "is-empty", "not-empty"];
+
+  noValueOperators.forEach(op => {
+    it(`hides value input for ${op} empty operator`, () => {
+      const testFilter = new Filter(
+        [op, ["field", textField.id, null]],
+        null,
+        query,
+      );
+      const changeSpy = jest.fn();
+
+      render(
+        <Provider store={store}>
+          <InlineValuePicker
+            filter={testFilter}
+            field={textField}
+            handleChange={changeSpy}
+          />
+        </Provider>,
+      );
+
+      expect(
+        screen.queryByPlaceholderText("Enter some text"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

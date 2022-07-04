@@ -3,6 +3,7 @@ const BUILD_PATH = __dirname + "/resources/frontend_client";
 
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? null : ".babel_cache",
+  ...require("./babel.presets.json"),
 };
 
 module.exports = {

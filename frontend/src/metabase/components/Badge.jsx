@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import { iconPropTypes } from "metabase/components/Icon";
 
-import { BadgeIcon, MaybeLink } from "./Badge.styled";
+import { BadgeIcon, BadgeText, MaybeLink } from "./Badge.styled";
 
 const iconProp = PropTypes.oneOfType([
   PropTypes.string,
@@ -15,6 +15,7 @@ const propTypes = {
   icon: iconProp,
   inactiveColor: PropTypes.string,
   activeColor: PropTypes.string,
+  isSingleLine: PropTypes.bool,
   onClick: PropTypes.func,
   children: PropTypes.node,
 };
@@ -36,6 +37,7 @@ function Badge({
   icon,
   inactiveColor = "text-medium",
   activeColor = "brand",
+  isSingleLine,
   children,
   ...props
 }) {
@@ -43,10 +45,15 @@ function Badge({
     <MaybeLink
       inactiveColor={inactiveColor}
       activeColor={activeColor}
+      isSingleLine={isSingleLine}
       {...props}
     >
       {icon && <BadgeIcon {...getIconProps(icon)} $hasMargin={!!children} />}
-      {children && <span className="text-wrap">{children}</span>}
+      {children && (
+        <BadgeText className="text-wrap" isSingleLine={isSingleLine}>
+          {children}
+        </BadgeText>
+      )}
     </MaybeLink>
   );
 }

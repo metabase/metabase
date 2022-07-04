@@ -7,7 +7,7 @@ const questionDetails = {
   query: { "source-table": ORDERS_ID },
 };
 
-describe("visual tests > dashboard > filter sidebar", () => {
+describe.skip("visual tests > dashboard > filter sidebar", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

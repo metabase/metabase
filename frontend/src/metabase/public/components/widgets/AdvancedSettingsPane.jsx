@@ -52,6 +52,9 @@ const AdvancedSettingsPane = ({
           className="pt1"
           displayOptions={displayOptions}
           onChangeDisplayOptions={onChangeDisplayOptions}
+          // We only show the "Download Data" toggle if the users are pro/enterprise
+          // and they're sharing a question metabase#23477
+          showDownloadDataButtonVisibilityToggle={resourceType === "question"}
         />
       </Section>
       {embedType === "application" && (
