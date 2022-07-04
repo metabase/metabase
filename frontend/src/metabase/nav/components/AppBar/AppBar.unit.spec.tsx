@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import { createMockUser } from "metabase-types/api/mocks";
 import AppBar, { AppBarProps } from "./AppBar";
 
 const NewItemButtonMock = () => <div data-testid="new-button" />;
@@ -115,8 +116,10 @@ describe("AppBar", () => {
 });
 
 const getProps = (opts?: Partial<AppBarProps>): AppBarProps => ({
+  currentUser: createMockUser(),
   onToggleNavbar: jest.fn(),
   onCloseNavbar: jest.fn(),
+  onLogout: jest.fn(),
   ...opts,
 });
 
