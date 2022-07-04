@@ -5,7 +5,7 @@ interface CustomFormFooterStyledProps {
 }
 export const CustomFormFooterStyled = styled.div<CustomFormFooterStyledProps>`
   display: flex;
-  flex-align: center;
+  align-items: center;
   flex-direction: ${({ shouldReverse }) =>
     shouldReverse ? "row-reverse" : "column"};
 `;
