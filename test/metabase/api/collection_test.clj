@@ -1062,9 +1062,10 @@
     (testing "has_required_parameters of a card"
       (testing "can be false"
         (mt/with-temp Card [card {:name "Business Card"
-                                  :dataset_query {:native {:template-tags {:param0 {:required true, :default 0}
-                                                                           :param1 {:required true}
-                                                                           :param2 {:required false}}}}}]
+                                  :dataset_query {:native {:template-tags {:param0 {:default 0}
+                                                                           :param1 {:required false}
+                                                                           :param2 {:required false}}
+                                                           :query "select {{param0}}, {{param1}} [[ , {{param2}} ]]"}}}]
           (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
                    [{:name                    "Business Card"
                      :description             nil
@@ -1084,11 +1085,61 @@
                  (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
                    (dissoc item :id))))))
 
-      (testing "is true if all required parameters have defaults"
+      (testing "is false even if a required field-filter parameter has no default"
         (mt/with-temp Card [card {:name "Business Card"
-                                  :dataset_query {:native {:template-tags {:param0 {:required true, :default 0}
+                                  :dataset_query {:native {:template-tags {:param0 {:default 0}
+                                                                           :param1 {:type "dimension", :required true}}
+                                                           :query "select {{param0}}, {{param1}}"}}}]
+          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
+                   [{:name                    "Business Card"
+                     :description             nil
+                     :collection_position     nil
+                     :collection_preview      true
+                     :display                 "table"
+                     :moderated_status        nil
+                     :entity_id               (:entity_id card)
+                     :model                   "card"
+                     :has_required_parameters false}
+                    {:name            "Crowberto Corv's Personal Collection"
+                     :description     nil
+                     :model           "collection"
+                     :authority_level nil
+                     :entity_id       (:entity_id collection)
+                     :can_write       true}])
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+                   (dissoc item :id))))))
+
+      (testing "is false even if an optional required parameter has no default"
+        (mt/with-temp Card [card {:name "Business Card"
+                                  :dataset_query {:native {:template-tags {:param0 {:default 0}
+                                                                           :param1 {:required true}}
+                                                           :query "select {{param0}}, [[ , {{param1}} ]]"}}}]
+          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
+                   [{:name                    "Business Card"
+                     :description             nil
+                     :collection_position     nil
+                     :collection_preview      true
+                     :display                 "table"
+                     :moderated_status        nil
+                     :entity_id               (:entity_id card)
+                     :model                   "card"
+                     :has_required_parameters false}
+                    {:name            "Crowberto Corv's Personal Collection"
+                     :description     nil
+                     :model           "collection"
+                     :authority_level nil
+                     :entity_id       (:entity_id collection)
+                     :can_write       true}])
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+                   (dissoc item :id))))))
+
+      (testing "is true if all obligatory parameters have defaults"
+        (mt/with-temp Card [card {:name "Business Card"
+                                  :dataset_query {:native {:template-tags {:param0 {:required false, :default 0}
                                                                            :param1 {:required true, :default 1}
-                                                                           :param2 {:required false}}}}}]
+                                                                           :param2 {}
+                                                                           :param3 {:type "dimension"}}
+                                                           :query "select {{param0}}, {{param1}} [[ , {{param2}} ]] from t {{param3}}"}}}]
           (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
                    [{:name                    "Business Card"
                      :description             nil

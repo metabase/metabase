@@ -14,6 +14,8 @@
             [metabase.api.common :as api]
             [metabase.api.timeline :as api.timeline]
             [metabase.db :as mdb]
+            [metabase.driver.common.parameters :as params]
+            [metabase.driver.common.parameters.parse :as params.parse]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.collection.graph :as graph]
@@ -297,9 +299,15 @@
     v))
 
 (defn- has-required-parameters? [row]
-  (if-let [template-tags (-> row :dataset_query (json/parse-string keyword) :native :template-tags)]
-    (every? #(or (not (:required %)) (:default %)) (vals template-tags))
-    true))
+  (let [native-query (-> row :dataset_query (json/parse-string keyword) :native)]
+    (if-let [template-tags (:template-tags native-query)]
+      (let [obligatory-params (into #{}
+                                    (comp (filter params/Param?)
+                                          (map (comp keyword :k)))
+                                    (-> native-query :query params.parse/parse))]
+        (and (every? #(or (:default %) (= (:type %) "dimension")) (map template-tags obligatory-params))
+             (every? #(or (:default %) (not (:required %))) (vals template-tags))))
+      true)))
 
 (defn- post-process-card-row [row]
   (-> row
