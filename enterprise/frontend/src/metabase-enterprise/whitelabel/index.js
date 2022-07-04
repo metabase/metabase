@@ -44,15 +44,22 @@ if (hasPremiumFeature("whitelabel")) {
           key: "application-font",
           display_name: t`Font`,
           type: "select",
-          options: MetabaseSettings.get("available-fonts").map(font => ({
-            name: font,
-            value: font,
-          })),
+          options: [
+            ...MetabaseSettings.get("available-fonts").map(font => ({
+              name: font,
+              value: font,
+            })),
+            { name: t`Custom…`, value: "Custom" },
+          ],
           defaultValue: "Lato",
         },
         {
           key: "application-font-files",
           widget: FontSettingsWidget,
+          getHidden: (settings, properties) =>
+            MetabaseSettings.get("available-fonts").includes(
+              properties["application-font"],
+            ),
         },
         {
           key: "application-colors",
