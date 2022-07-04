@@ -43,10 +43,10 @@ if (hasPremiumFeature("content_management")) {
       if (isModerator) {
         return {
           title: isVerified
-            ? t`Remove Verification`
+            ? t`Remove verification`
             : isDataset
-            ? t`Verify model`
-            : t`Verify question`,
+            ? t`Verify this model`
+            : t`Verify this question`,
           icon: isVerified ? "close" : verifiedIconName,
           action: () => {
             if (isVerified) {
@@ -56,6 +56,9 @@ if (hasPremiumFeature("content_management")) {
             }
             reload();
           },
+          testId: isVerified
+            ? "moderation-remove-verification-action"
+            : "moderation-verify-action",
         };
       }
     },
