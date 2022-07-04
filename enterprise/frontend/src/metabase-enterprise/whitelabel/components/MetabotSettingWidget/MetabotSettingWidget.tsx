@@ -1,14 +1,13 @@
 import React from "react";
 import { t } from "ttag";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import MetabotLogo from "metabase/components/MetabotLogo";
+import Toggle from "metabase/core/components/Toggle";
 import {
   MetabotSettingWidgetRoot,
   MetabotContainer,
   ToggleContainer,
   ToggleLabel,
 } from "./MetabotSettingWidget.styled";
-import Toggle from "metabase/core/components/Toggle";
 
 const MetabotSettingWidget = ({ setting, onChange }: any) => {
   const isEnabled = setting.value ?? setting.defaultValue;

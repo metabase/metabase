@@ -13,17 +13,17 @@ import {
   TableHeaderCell,
   TableHeaderRow,
   TableRoot,
-} from "./FontSettingsWidget.styled";
+} from "./FontFilesWidget.styled";
 
-export interface FontSettingsWidgetProps {
+export interface FontFilesWidgetProps {
   setting: FontSetting;
   onChange: (fontFiles: FontFile[]) => void;
 }
 
-const FontSettingsWidget = ({
+const FontFilesWidget = ({
   setting,
   onChange,
-}: FontSettingsWidgetProps): JSX.Element => {
+}: FontFilesWidgetProps): JSX.Element => {
   const files = setting.value;
   const urls = useMemo(() => getFontUrls(files), [files]);
 
@@ -103,4 +103,4 @@ const FontFileRow = ({
   );
 };
 
-export default FontSettingsWidget;
+export default FontFilesWidget;

@@ -2,15 +2,15 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FontFile } from "metabase-types/api";
-import FontSettingsWidget from "./FontSettingsWidget";
+import FontFilesWidget from "./FontFilesWidget";
 
-describe("FontSettingsWidget", () => {
+describe("FontFilesWidget", () => {
   it("should add a font file", () => {
     const files = getFontFiles();
     const setting = { value: [] };
     const onChange = jest.fn();
 
-    render(<FontSettingsWidget setting={setting} onChange={onChange} />);
+    render(<FontFilesWidget setting={setting} onChange={onChange} />);
 
     const input = screen.getByLabelText("Regular");
     userEvent.type(input, files[0].src);
@@ -24,7 +24,7 @@ describe("FontSettingsWidget", () => {
     const setting = { value: files };
     const onChange = jest.fn();
 
-    render(<FontSettingsWidget setting={setting} onChange={onChange} />);
+    render(<FontFilesWidget setting={setting} onChange={onChange} />);
 
     const input = screen.getByLabelText("Regular");
     userEvent.clear(input);
