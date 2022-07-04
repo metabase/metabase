@@ -7,9 +7,9 @@ title: Setting up SAML with Google
 {% include plans-blockquote.html feature="Google SAML authentication" %}
 
 1. Set up a [custom SAML application](https://support.google.com/a/answer/6087519) with Google (the identity provider).
-2. [Configure SAML in Metabase](../enterprise-guide/authenticating-with-saml.html) (the service provider).
+2. [Configure SAML in Metabase](../enterprise-guide/authenticating-with-saml.html#enabling-saml-authentication-in-metabase) (the service provider).
 
-For more information, check out our guide for [authenticating with SAML](authenticating-with-saml.html#turning-on-saml-based-sso).
+For more information, check out our guide for [authenticating with SAML](../enterprise-guide/authenticating-with-saml.html).
 
 ## How to fill out SAML settings in Google and Metabase
 

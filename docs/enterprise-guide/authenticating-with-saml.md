@@ -24,13 +24,17 @@ Setting up SAML will require you to configure settings in two places:
 
 ## Turning on SAML-based SSO
 
-To get started, head over to the Settings section of the Admin Panel, then click on the Authentication tab. Click the `Configure` button in the SAML section of the Authentication page, and you'll see this form:
+To get started, head over to the Settings section of the Admin Panel, then click on the **Authentication** tab. Click the **Configure** button in the SAML section of the Authentication page, and you'll see this form:
 
 ![SAML form](images/saml-form.png)
 
 At the top, **make sure to click the toggle to enable SAML authentication**, otherwise things won't work even if all of your settings are right.
 
-The form itself is broken up into three parts: information about Metabase that you'll have to input into your identity provider (IdP); information about your IdP that you'll need to tell Metabase about; and some optional settings at the bottom.
+The form itself is broken up into three parts: 
+
+1. Information about Metabase that you'll have to input into your identity provider (IdP).
+2. Information about your IdP that you'll need to tell Metabase about.
+3. Optional settings at the bottom.
 
 ## Setting up SAML with your IdP
 
