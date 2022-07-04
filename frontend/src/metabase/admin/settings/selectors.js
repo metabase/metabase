@@ -535,23 +535,43 @@ const SECTIONS = updateSectionsWithPlugins({
         },
       },
       {
-        key: "persisted-model-refresh-interval-hours",
-        description: "",
-        display_name: t`Refresh every`,
-        type: "radio",
-        options: {
-          1: t`Hour`,
-          2: t`2 hours`,
-          3: t`3 hours`,
-          6: t`6 hours`,
-          12: t`12 hours`,
-          24: t`24 hours`,
-        },
+        key: "persisted-model-refresh-cron-schedule",
+        noHeader: true,
+        type: "select",
+        options: [
+          {
+            value: "0 0 0/1 * * ? *",
+            name: t`Hour`,
+          },
+          {
+            value: "0 0 0/2 * * ? *",
+            name: t`2 hours`,
+          },
+          {
+            value: "0 0 0/3 * * ? *",
+            name: t`3 hours`,
+          },
+          {
+            value: "0 0 0/6 * * ? *",
+            name: t`6 hours`,
+          },
+          {
+            value: "0 0 0/12 * * ? *",
+            name: t`12 hours`,
+          },
+          {
+            value: "0 0 0 ? * * *",
+            name: t`24 hours`,
+          },
+          {
+            value: "custom",
+            name: t`Custom…`,
+          },
+        ],
         disableDefaultUpdate: true,
         widget: PersistedModelRefreshIntervalWidget,
         getHidden: settings => !settings["persisted-models-enabled"],
-        onChanged: (oldHours, hours) =>
-          PersistedModelsApi.setRefreshInterval({ hours }),
+        onChanged: (oldHours, hours) => {},
       },
     ],
   },
