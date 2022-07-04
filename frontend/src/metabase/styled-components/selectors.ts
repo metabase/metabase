@@ -1,3 +1,4 @@
+import _ from "underscore";
 import { createSelector } from "reselect";
 import { getSettings } from "metabase/selectors/settings";
 import { getEmbedOptions } from "metabase/selectors/embed";
@@ -7,7 +8,7 @@ export const getFont = createSelector(
   (settings, embedOptions) => {
     if (embedOptions.font) {
       return embedOptions.font;
-    } else if (settings["application-font-files"]) {
+    } else if (!_.isEmpty(settings["application-font-files"])) {
       return "Custom";
     } else {
       return settings["application-font"];

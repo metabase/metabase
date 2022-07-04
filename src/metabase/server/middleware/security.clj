@@ -69,9 +69,7 @@
                   :style-src    ["'self'"
                                  "'unsafe-inline'"
                                  "https://accounts.google.com"]
-                  :font-src     ["'self'"
-                                 (when config/is-dev?
-                                   "localhost:8080")]
+                  :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]
                   :connect-src  ["'self'"

@@ -9,7 +9,10 @@ export interface GlobalStylesProps {
 
 const GlobalStyles = ({ font, fontFiles }: GlobalStylesProps): JSX.Element => {
   const styles = css`
-    --default-font-family: "${font}"
+    :root {
+      --default-font-family: "${font}";
+    }
+
     ${fontFiles?.map(
       file => css`
       @font-face {
