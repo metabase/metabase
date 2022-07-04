@@ -24,8 +24,8 @@ const FontFilesWidget = ({
   setting,
   onChange,
 }: FontFilesWidgetProps): JSX.Element => {
-  const files = setting.value ?? setting.defaultValue;
-  const urls = useMemo(() => getFontUrls(files), [files]);
+  const files = setting.value;
+  const urls = useMemo(() => getFontUrls(files ?? []), [files]);
 
   const handleChange = useCallback(
     (option: FontFileOption, url: string) => {

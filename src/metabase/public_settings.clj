@@ -347,7 +347,6 @@
   (deferred-tru "Tell us where to find the font file for each required style.")
   :visibility :public
   :type       :json
-  :default    []
   :enabled?   premium-features/enable-whitelabeling?)
 
 (defn application-color

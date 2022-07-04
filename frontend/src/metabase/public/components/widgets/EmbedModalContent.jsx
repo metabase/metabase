@@ -49,7 +49,7 @@ class EmbedModalContent extends Component {
       titled: true,
     };
     if (props.canWhitelabel) {
-      displayOptions.font = MetabaseSettings.font();
+      displayOptions.font = MetabaseSettings.get("application-font");
     }
     this.state = {
       pane: "preview",
