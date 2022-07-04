@@ -279,8 +279,22 @@
       (add-collection-join-and-where-clauses :collection.id search-ctx)))
 
 (s/defmethod search-query-for-model "database"
-  [model search-ctx :- SearchContext]
-  (base-query-for-model model search-ctx))
+  [model {:keys [current-user-perms] :as search-ctx} :- SearchContext]
+  (let [base-query (base-query-for-model model search-ctx)]
+    (if (contains? current-user-perms "/")
+      base-query
+      (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
+        {:select (:select base-query)
+         :from   [[(merge
+                    base-query
+                    {:select [:id :name :description :updated_at :initial_sync_status
+                              [(hx/concat (hx/literal "/db/") :database.id (hx/literal "/"))
+                               :path]]})
+                   :database]]
+         :where  (if (seq data-perms)
+                   (into [:or] (for [path data-perms]
+                                 [:like :path (str path "%")]))
+                   [:= 0 1])}))))
 
 (s/defmethod search-query-for-model "dashboard"
   [model search-ctx :- SearchContext]
@@ -419,15 +433,15 @@
       ;; We get to do this slicing and dicing with the result data because
       ;; the pagination of search is for UI improvement, not for performance.
       ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-      {:total             (count total-results)
-       :data              (cond->> total-results
-                            (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-                            (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
-       :available_models  (query-model-set search-ctx)
-       :limit             (:limit-int search-ctx)
-       :offset            (:offset-int search-ctx)
-       :table_db_id       (:table-db-id search-ctx)
-       :models            (:models search-ctx)})))
+      {:total            (count total-results)
+       :data             (cond->> total-results
+                           (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                           (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
+       :available_models (query-model-set search-ctx)
+       :limit            (:limit-int search-ctx)
+       :offset           (:offset-int search-ctx)
+       :table_db_id      (:table-db-id search-ctx)
+       :models           (:models search-ctx)})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
