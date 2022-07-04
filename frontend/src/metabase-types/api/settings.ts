@@ -29,7 +29,7 @@ export type LocaleData = [string, string];
 
 export interface Settings {
   "application-font": string;
-  "application-font-files": FontFile[];
+  "application-font-files": FontFile[] | null;
   "available-fonts": string[];
   "available-locales": LocaleData[] | undefined;
   "enable-public-sharing": boolean;
