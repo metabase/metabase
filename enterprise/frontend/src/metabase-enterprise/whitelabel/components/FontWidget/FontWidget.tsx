@@ -1,24 +1,27 @@
 import React, { ChangeEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
-import { FontFile } from "metabase-types/api";
-import { FontSetting, FontFilesKey } from "./types";
+import { FontSetting, FontSettingKeys, FontSettingValues } from "./types";
 import { FontSelect } from "./FontWidget.styled";
 
 export interface FontWidgetProps {
   setting: FontSetting;
+  settingValues: FontSettingValues;
   availableFonts?: string[];
   onChange: (value: string) => void;
-  onChangeSetting: (key: FontFilesKey, value: FontFile[] | null) => void;
+  onChangeSetting: (key: FontSettingKeys, value: unknown) => void;
 }
 
 const FontWidget = ({
   setting,
+  settingValues,
   availableFonts = MetabaseSettings.get("available-fonts"),
   onChange,
   onChangeSetting,
 }: FontWidgetProps): JSX.Element => {
-  const value = setting.value ?? setting.default;
+  const value = !settingValues["application-font-files"]
+    ? setting.value ?? setting.default
+    : null;
 
   const options = useMemo(
     () => [
