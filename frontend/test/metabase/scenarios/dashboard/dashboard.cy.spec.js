@@ -11,6 +11,7 @@ import {
   openNewCollectionItemFlowFor,
   visitDashboard,
   appbar,
+  rightSidebar,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -57,26 +58,35 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should update the name and description", () => {
+    cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
     visitDashboard(1);
 
+    cy.findByTestId("dashboard-name-heading")
+      .click()
+      .type("{selectall}Orders per year")
+      .blur();
+
+    cy.wait("@updateDashboard");
+
     cy.get("main header").within(() => {
-      cy.icon("ellipsis").click();
-    });
-    // update title
-    popover().within(() => cy.findByText("Edit dashboard details").click());
-
-    modal().within(() => {
-      cy.findByText("Edit dashboard details");
-      cy.findByLabelText("Name").type("{selectall}Orders per year");
-      cy.findByLabelText("Description").type(
-        "{selectall}How many orders were placed in each year?",
-      );
-      cy.findByText("Update").click();
+      cy.icon("info").click();
     });
 
+    rightSidebar().within(() => {
+      cy.findByPlaceholderText("Add description")
+        .click()
+        .type("{selectall}How many orders were placed in each year?")
+        .blur();
+    });
+    cy.wait("@updateDashboard");
     // refresh page and check that title/desc were updated
     visitDashboard(1);
     cy.findByDisplayValue("Orders per year");
+
+    cy.get("main header").within(() => {
+      cy.icon("info").click();
+    });
+    cy.findByDisplayValue("How many orders were placed in each year?");
   });
 
   it("should allow empty card title (metabase#12013)", () => {

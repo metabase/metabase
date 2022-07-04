@@ -4,10 +4,7 @@ import Input from "metabase/core/components/Input";
 
 import { color } from "metabase/lib/colors";
 
-export const QuestionCacheSectionRoot = styled.div`
-  display: flex;
-  flex-direction: column;
-
+export const CacheSectionRoot = styled.div`
   ${Button.Root} {
     padding: 0;
   }

@@ -48,15 +48,19 @@ export const AppBarRightContainer = styled.div`
   max-width: 32.5rem;
 `;
 
-export interface InfoBarContainerProps {
+export interface AppBarInfoContainerProps {
   isNavBarOpen?: boolean;
 }
 
-export const AppBarInfoContainer = styled.div<InfoBarContainerProps>`
+export const AppBarInfoContainer = styled.div<AppBarInfoContainerProps>`
   display: flex;
   min-width: 0;
   opacity: ${props => (props.isNavBarOpen ? 0 : 1)};
   visibility: ${props => (props.isNavBarOpen ? "hidden" : "visible")};
   transition: ${props =>
     props.isNavBarOpen ? `opacity 0.5s, visibility 0s` : `opacity 0.5s`};
+`;
+
+export const AppBarProfileLinkContainer = styled.div`
+  color: ${color("text-light")};
 `;

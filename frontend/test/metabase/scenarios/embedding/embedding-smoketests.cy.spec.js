@@ -31,7 +31,9 @@ describe("scenarios > embedding > smoke tests", () => {
 
     it("should display the embedding page correctly", { tags: "@OSS" }, () => {
       cy.visit("/admin/settings/setup");
-      cy.findByText("Embedding").click();
+      sidebar().within(() => {
+        cy.findByText("Embedding").click();
+      });
 
       cy.location("pathname").should("eq", embeddingPage);
 
@@ -52,32 +54,23 @@ describe("scenarios > embedding > smoke tests", () => {
       cy.location("pathname").should("eq", embeddingPage);
       cy.findByText("Enabled");
 
+      cy.findByText("Standalone embeds").click();
       if (isOSS) {
-        cy.findByText(/Customization/i);
-        cy.findByText(
-          "Looking to remove the “Powered by Metabase” logo, customize colors and make it your own?",
+        cy.contains(
+          "In order to remove the Metabase logo from embeds, you can always upgrade to one of our paid plans.",
         );
 
-        assertLinkMatchesUrl("Explore our paid plans.", upgradeUrl);
+        assertLinkMatchesUrl("paid plans.", upgradeUrl);
       }
 
       cy.findByText(/Embedding secret key/i);
       cy.findByText(
-        "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.",
+        "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.",
       );
 
       getTokenValue().should("have.length", 64);
 
       cy.button("Regenerate key");
-
-      // Full app embedding section (available only for EE version and in PRO hosted plans)
-      if (isEE) {
-        cy.findByText(/Embedding the entire Metabase app/i);
-        cy.contains(
-          "If you want to embed all of Metabase, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the exact specifications for what can be entered.",
-        );
-        cy.findByPlaceholderText("https://*.example.com").should("be.empty");
-      }
 
       // List of all embedded dashboards and questions
       cy.findByText(/Embedded dashboards/i);
@@ -85,6 +78,22 @@ describe("scenarios > embedding > smoke tests", () => {
 
       cy.findByText(/Embedded questions/i);
       cy.findByText("No questions have been embedded yet.");
+
+      // Full app embedding section (available only for EE version and in PRO hosted plans)
+      if (isEE) {
+        sidebar().within(() => {
+          cy.findByText("Embedding").click();
+        });
+        cy.findByText("Full-app embedding").click();
+        cy.findByText(/Embedding the entire Metabase app/i);
+        cy.contains(
+          "With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder. Learn more.",
+        );
+        cy.contains(
+          "Enter the origins for the websites or web apps where you want to allow embedding, separated by a space. Here are the exact specifications for what can be entered.",
+        );
+        cy.findByPlaceholderText("https://*.example.com").should("be.empty");
+      }
     });
 
     it("should not let you embed the question", () => {
@@ -154,6 +163,7 @@ describe("scenarios > embedding > smoke tests", () => {
         cy.signInAsAdmin();
 
         cy.visit(embeddingPage);
+        cy.findByText("Standalone embeds").click();
         cy.wait("@currentlyEmbeddedObject");
 
         const sectionName = new RegExp(`Embedded ${object}s`, "i");
@@ -180,6 +190,7 @@ describe("scenarios > embedding > smoke tests", () => {
         cy.signInAsAdmin();
 
         cy.visit(embeddingPage);
+        cy.findByText("Standalone embeds").click();
         cy.wait("@currentlyEmbeddedObject");
 
         cy.contains(/No (questions|dashboards) have been embedded yet./);
@@ -249,4 +260,8 @@ function visitAndEnableSharing(object) {
     cy.icon("share").click();
     cy.findByText(/Embed this (question|dashboard) in an application/).click();
   }
+}
+
+function sidebar() {
+  return cy.get(".AdminList");
 }

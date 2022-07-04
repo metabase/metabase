@@ -12,6 +12,7 @@ import {
   rightSidebar,
   appbar,
   getCollectionIdFromSlug,
+  filter,
 } from "__support__/e2e/helpers";
 
 describe("scenarios > question > saved", () => {
@@ -154,17 +155,16 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Saved Questions").click();
     cy.findByText("15808").click();
     visualize();
-    cy.findAllByText("Filter")
-      .first()
+    filter();
+    cy.findByLabelText("RATING")
+      .findByText("Between")
       .click();
-    cy.findByTestId("sidebar-right")
-      .findByText(/Rating/i)
-      .click();
-    cy.findByTestId("select-button").findByText("Equal to");
-    cy.findByPlaceholderText("Enter a number").type("4");
-    cy.button("Add filter")
-      .should("not.be.disabled")
-      .click();
+    cy.findByText("Equal to").click();
+    cy.findByLabelText("RATING")
+      .findByPlaceholderText("Enter a number")
+      .type("4");
+
+    cy.button("Apply").click();
     cy.findByText("Synergistic Granite Chair");
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });

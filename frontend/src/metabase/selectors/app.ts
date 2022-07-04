@@ -111,6 +111,11 @@ export const getIsNewButtonVisible = createSelector(
   },
 );
 
+export const getIsProfileLinkVisible = createSelector(
+  [getIsEmbedded],
+  isEmbedded => !isEmbedded,
+);
+
 export const getErrorPage = (state: State) => {
   return state.app.errorPage;
 };
