@@ -75,6 +75,10 @@ export function InlineCategoryPickerComponent({
       });
   }, [dimension, safeFetchFieldValues, shouldFetchFieldValues]);
 
+  const showInlinePicker =
+    fieldValues.length <= MAX_INLINE_CATEGORIES &&
+    (!filter || filter?.operatorName() === "=");
+
   if (hasError) {
     return (
       <Warnings
@@ -89,7 +93,7 @@ export function InlineCategoryPickerComponent({
     return <Loading size={20} />;
   }
 
-  if (fieldValues.length <= MAX_INLINE_CATEGORIES) {
+  if (showInlinePicker) {
     return (
       <SimpleCategoryFilterPicker
         filter={filter ?? newFilter}
@@ -139,7 +143,6 @@ export function SimpleCategoryFilterPicker({
             key={option?.toString() ?? "empty"}
             checked={filterValues.includes(option)}
             onChange={e => handleChange(option, e.target.checked)}
-            checkedColor="accent2"
             label={option?.toString() ?? t`empty`}
           />
         ))}

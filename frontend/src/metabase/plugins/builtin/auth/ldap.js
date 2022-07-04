@@ -25,7 +25,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
   sections => ({
     ...sections,
     "authentication/ldap": {
-      sidebar: false,
       component: SettingsLdapForm,
       settings: [
         {

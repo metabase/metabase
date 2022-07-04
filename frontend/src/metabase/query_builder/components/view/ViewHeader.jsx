@@ -24,7 +24,6 @@ import RunButtonWithTooltip from "../RunButtonWithTooltip";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
-import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
 import QuestionFilters, {
@@ -268,12 +267,6 @@ function AhHocQuestionLeftSide(props) {
             />
           )}
         </AdHocViewHeading>
-        {QuestionLineage.shouldRender(props) && (
-          <QuestionLineage
-            question={question}
-            originalQuestion={originalQuestion}
-          />
-        )}
       </ViewHeaderMainLeftContentContainer>
       <ViewHeaderLeftSubHeading>
         {isSummarized && (

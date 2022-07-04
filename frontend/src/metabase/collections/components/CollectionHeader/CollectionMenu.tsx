@@ -57,7 +57,7 @@ const CollectionMenu = ({
       },
       {
         title: t`Archive`,
-        icon: "view_archive",
+        icon: "archive",
         link: `${url}/archive`,
         event: `${ANALYTICS_CONTEXT};Edit Menu;Archive Collection`,
       },

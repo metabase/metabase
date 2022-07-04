@@ -27,7 +27,8 @@ export const TableHeaderRow = styled.div`
 export const TableHeaderCell = styled.div`
   ${cellStyles};
   color: ${color("text-medium")};
-  font-size: 0.5rem;
+  font-size: 0.6rem;
+  letter-spacing: 1px;
   line-height: 0.625rem;
   font-weight: bold;
   text-transform: uppercase;

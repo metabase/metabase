@@ -3,6 +3,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { space, breakpointMaxMedium } from "metabase/styled-components/theme";
 import Icon from "metabase/components/Icon";
+import Button from "metabase/core/components/Button";
 import { NotebookCell } from "../NotebookCell";
 
 export const Row = styled.div`
@@ -148,4 +149,11 @@ export const SecondaryJoinCell = styled(NotebookCell)`
   flex: 1;
   flex-direction: column;
   align-items: start;
+`;
+
+export const JoinOperatorButton = styled(Button)`
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+  padding: 0;
 `;

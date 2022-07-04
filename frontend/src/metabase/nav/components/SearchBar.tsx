@@ -30,6 +30,7 @@ import {
   SearchInput,
   SearchResultsFloatingContainer,
   SearchResultsContainer,
+  SearchBarRoot,
 } from "./SearchBar.styled";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
@@ -165,7 +166,7 @@ function SearchBar({
   );
 
   return (
-    <div ref={container}>
+    <SearchBarRoot ref={container}>
       <SearchInputContainer isActive={isActive} onClick={onInputContainerClick}>
         <SearchIcon name="search" isActive={isActive} />
         <SearchInput
@@ -194,7 +195,7 @@ function SearchBar({
           )}
         </SearchResultsFloatingContainer>
       )}
-    </div>
+    </SearchBarRoot>
   );
 }
 export default _.compose(

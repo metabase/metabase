@@ -69,7 +69,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/saml": {
-    sidebar: false,
     component: SettingsSAMLForm,
     settings: [
       {
@@ -165,7 +164,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     ],
   },
   "authentication/jwt": {
-    sidebar: false,
     component: SettingsJWTForm,
     settings: [
       {
@@ -290,7 +288,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
     component: SettingsGoogleForm,
-    sidebar: false,
     settings: [
       {
         key: "google-auth-client-id",
