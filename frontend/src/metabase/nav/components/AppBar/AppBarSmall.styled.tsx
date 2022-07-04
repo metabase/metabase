@@ -53,3 +53,7 @@ export const AppBarLogoContainer = styled.div<AppBarLogoContainerProps>`
   transition: ${props =>
     props.isVisible ? "opacity 0.3s linear 0.2s" : "none"};
 `;
+
+export const AppBarProfileLinkContainer = styled.div`
+  color: ${color("text-light")};
+`;
