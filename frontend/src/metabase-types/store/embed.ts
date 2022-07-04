@@ -6,6 +6,7 @@ export interface EmbedOptions {
   header?: boolean;
   additional_info?: boolean;
   action_buttons?: boolean;
+  font?: string;
 }
 
 export interface EmbedState {

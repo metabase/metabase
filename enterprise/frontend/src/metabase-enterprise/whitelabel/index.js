@@ -52,11 +52,6 @@ if (hasPremiumFeature("whitelabel")) {
             { name: t`Custom…`, value: "Custom" },
           ],
           defaultValue: "Lato",
-          onChanged: (oldFont, newFont) => {
-            if (MetabaseSettings.availableFonts().includes(newFont)) {
-              window.location.reload();
-            }
-          },
         },
         {
           key: "application-font-files",
