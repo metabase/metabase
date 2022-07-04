@@ -7,7 +7,7 @@ import {
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS_ID, ORDERS, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const rawQuestionDetails = {
   dataset_query: {
@@ -25,6 +25,16 @@ const peopleQuestion = {
     type: "query",
     query: {
       "source-table": PEOPLE_ID,
+    },
+  },
+};
+
+const productsQuestion = {
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": PRODUCTS_ID,
     },
   },
 };
