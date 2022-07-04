@@ -11,6 +11,7 @@ import {
   AppBarRightContainer,
   AppBarRoot,
   AppBarInfoContainer,
+  AppBarProfileLinkContainer,
 } from "./AppBarLarge.styled";
 
 export interface AppBarLargeProps {
@@ -61,7 +62,9 @@ const AppBarLarge = ({
           {isSearchVisible && <SearchBar />}
           {isNewButtonVisible && <NewItemButton />}
           {isProfileLinkVisible && (
-            <ProfileLink user={currentUser} onLogout={onLogout} />
+            <AppBarProfileLinkContainer>
+              <ProfileLink user={currentUser} onLogout={onLogout} />
+            </AppBarProfileLinkContainer>
           )}
         </AppBarRightContainer>
       )}

@@ -63,5 +63,4 @@ export const AppBarInfoContainer = styled.div<AppBarInfoContainerProps>`
 
 export const AppBarProfileLinkContainer = styled.div`
   color: ${color("text-light")};
-  padding: 0.25rem;
 `;
