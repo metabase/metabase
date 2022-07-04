@@ -2,10 +2,8 @@ import React from "react";
 import { css, Global } from "@emotion/react";
 import { connect } from "react-redux";
 import _ from "underscore";
-import MetabaseSettings from "metabase/lib/settings";
-import { IFRAMED } from "metabase/lib/dom";
 import { getFont } from "metabase/selectors/settings";
-import { getEmbedOptions } from "metabase/selectors/embed";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { EmbedOptions, State } from "metabase-types/store";
 
 interface GlobalStylesProps {
@@ -17,7 +15,7 @@ interface GlobalStylesProps {
 const mapStateToProps = (state: State) => ({
   font: getFont(state),
   embedOptions: getEmbedOptions(state),
-  isEmbedded: IFRAMED,
+  isEmbedded: getIsEmbedded(),
 });
 
 const GlobalStyles = ({
