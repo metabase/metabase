@@ -334,20 +334,14 @@
   :visibility :public
   :type       :string
   :default    "Lato"
-  :enabled?   premium-features/enable-whitelabeling?
-  :setter (fn [new-value]
-              (when new-value
-                (when-not (u.fonts/available-font? new-value)
-                  (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
-              (setting/set-value-of-type! :string :application-font new-value)))
+  :enabled?   premium-features/enable-whitelabeling?)
 
 (defsetting application-font-files
   (deferred-tru "Tell us where to find the font file for each required style.")
   :visibility :public
   :type       :json
   :default    []
-  :enabled?   premium-features/enable-whitelabeling?
-)
+  :enabled?   premium-features/enable-whitelabeling?)
 
 (defn application-color
   "The primary color, a.k.a. brand color"
