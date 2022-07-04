@@ -45,21 +45,24 @@ if (hasPremiumFeature("whitelabel")) {
           display_name: t`Font`,
           type: "select",
           options: [
-            ...MetabaseSettings.get("available-fonts").map(font => ({
+            ...MetabaseSettings.availableFonts().map(font => ({
               name: font,
               value: font,
             })),
             { name: t`Custom…`, value: "Custom" },
           ],
           defaultValue: "Lato",
+          onChanged: (oldFont, newFont) => {
+            if (MetabaseSettings.availableFonts().includes(newFont)) {
+              window.location.reload();
+            }
+          },
         },
         {
           key: "application-font-files",
           widget: FontSettingsWidget,
-          getHidden: (settings, properties) =>
-            MetabaseSettings.get("available-fonts").includes(
-              properties["application-font"],
-            ),
+          getHidden: () =>
+            MetabaseSettings.availableFonts().includes(MetabaseSettings.font()),
         },
         {
           key: "application-colors",

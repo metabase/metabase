@@ -22,9 +22,7 @@ const GlobalStyles = ({ embedOptions, isEmbedded }: GlobalStylesProps) => {
   const applicationFontStyles = css`
     :root {
       --default-font-family: "${
-        isEmbedded
-          ? embedOptions.font
-          : MetabaseSettings.get("application-font")
+        isEmbedded ? embedOptions.font : MetabaseSettings.font()
       }";
     }`;
 

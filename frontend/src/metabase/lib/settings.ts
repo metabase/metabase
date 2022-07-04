@@ -330,6 +330,14 @@ class Settings {
     return this.isHosted() || this.isEnterprise();
   }
 
+  font() {
+    return this.get("application-font");
+  }
+
+  availableFonts() {
+    return this.get("available-fonts");
+  }
+
   // returns a map that looks like {total: 6, digit: 1}
   passwordComplexityRequirements() {
     return this.get("password-complexity", {});
