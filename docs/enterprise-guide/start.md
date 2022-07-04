@@ -17,7 +17,7 @@ Metabase Pro is hosted, so you should already be setup with all the paid feature
 Paid plans include more ways to authenticate people and manage groups.
 
 - [Authenticating with SAML](authenticating-with-saml.html)
-  - [Setting up SAML with Auth0](authenticating-with-saml.html)
+  - [Setting up SAML with Auth0](saml-auth0.html)
   - [Setting up SAML with Google](saml-google.html)
   - [Setting up SAML with Keycloak](saml-keycloak.html)
   - [Documentation for other common IdPs](../enterprise-guide/authenticating-with-saml.html#documentation-for-other-common-idps)
