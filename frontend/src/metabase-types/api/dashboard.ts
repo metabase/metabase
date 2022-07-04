@@ -13,6 +13,7 @@ export interface Dashboard {
   ordered_cards: DashboardOrderedCard[];
   parameters?: Parameter[] | null;
   can_write: boolean;
+  cache_ttl: number | null;
 }
 
 export type DashboardOrderedCard = {
