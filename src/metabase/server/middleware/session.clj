@@ -369,7 +369,7 @@
   [handler]
   (fn [request respond raise]
     (let [;; The expiry time for the cookie is relative to the time the request is received, rather than the time of the response.
-          request-time (t/zoned-date-time)]
+          request-time (t/zoned-date-time (t/zone-id "GMT"))]
       (handler request
                (fn [response]
                  (respond (response-with-session-timeout-cookie
