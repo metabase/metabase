@@ -1,6 +1,6 @@
 import { FontFile } from "metabase-types/api";
 
-export interface FontSetting {
+export interface FontFilesSetting {
   value: FontFile[] | null;
   defaultValue: FontFile[];
 }

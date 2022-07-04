@@ -2,7 +2,7 @@ import React, { FocusEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import { FontFile } from "metabase-types/api";
-import { FontFileOption, FontSetting } from "./types";
+import { FontFileOption, FontFilesSetting } from "./types";
 import { FONT_OPTIONS, getFontFiles, getFontUrls } from "./utils";
 import {
   TableBody,
@@ -16,7 +16,7 @@ import {
 } from "./FontFilesWidget.styled";
 
 export interface FontFilesWidgetProps {
-  setting: FontSetting;
+  setting: FontFilesSetting;
   onChange: (fontFiles: FontFile[]) => void;
 }
 
