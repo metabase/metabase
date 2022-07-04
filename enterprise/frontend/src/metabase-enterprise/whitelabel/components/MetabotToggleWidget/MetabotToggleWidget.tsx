@@ -19,7 +19,7 @@ const MetabotToggleWidget = ({
   setting,
   onChange,
 }: MetabotToggleWidgetProps): JSX.Element => {
-  const isEnabled = setting.value ?? setting.defaultValue;
+  const isEnabled = setting.value ?? setting.default;
   const metabotImage = isEnabled ? "metabot-happy" : "metabot-sad";
 
   const toggleId = useUniqueId("show-metabot-switch");

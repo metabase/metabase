@@ -1,6 +1,6 @@
 export interface FontSetting {
   value: string | null;
-  defaultValue: string;
+  default: string;
 }
 
 export type FontFilesKey = "application-font-files";

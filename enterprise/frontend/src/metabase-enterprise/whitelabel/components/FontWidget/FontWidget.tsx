@@ -18,7 +18,7 @@ const FontWidget = ({
   onChange,
   onChangeSetting,
 }: FontWidgetProps): JSX.Element => {
-  const value = setting.value ?? setting.defaultValue;
+  const value = setting.value ?? setting.default;
 
   const options = useMemo(
     () => [
@@ -34,7 +34,7 @@ const FontWidget = ({
         onChange(event.target.value);
         onChangeSetting("application-font-files", null);
       } else {
-        onChange(setting.defaultValue);
+        onChange(setting.default);
         onChangeSetting("application-font-files", []);
       }
     },
