@@ -1,4 +1,4 @@
-import { FontFile, Settings } from "metabase-types/api";
+import { Settings } from "metabase-types/api";
 
 export interface FontSetting {
   value: string | null;
