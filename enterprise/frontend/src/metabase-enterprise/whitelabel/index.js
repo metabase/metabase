@@ -56,8 +56,7 @@ if (hasPremiumFeature("whitelabel")) {
         {
           key: "application-font-files",
           widget: FontFilesWidget,
-          getHidden: () =>
-            MetabaseSettings.availableFonts().includes(MetabaseSettings.font()),
+          getHidden: settings => settings["application-font-files"] == null,
         },
         {
           key: "application-colors",

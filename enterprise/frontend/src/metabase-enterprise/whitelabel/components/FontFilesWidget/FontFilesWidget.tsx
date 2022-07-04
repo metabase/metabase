@@ -34,15 +34,18 @@ const FontFilesWidget = ({
     [urls, onChange],
   );
 
-  return <FontFileTable urls={urls} onChange={handleChange} />;
+  return <FontFilesTable urls={urls} onChange={handleChange} />;
 };
 
-interface FontFileTableProps {
+interface FontFilesTableProps {
   urls: Record<string, string>;
   onChange: (option: FontFileOption, url: string) => void;
 }
 
-const FontFileTable = ({ urls, onChange }: FontFileTableProps): JSX.Element => {
+const FontFilesTable = ({
+  urls,
+  onChange,
+}: FontFilesTableProps): JSX.Element => {
   return (
     <TableRoot>
       <TableHeader>
