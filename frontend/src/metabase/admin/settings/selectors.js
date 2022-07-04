@@ -393,6 +393,7 @@ const SECTIONS = updateSectionsWithPlugins({
         widget: () => {
           return (
             <Breadcrumbs
+              size="large"
               crumbs={[
                 [
                   t`Embedding`,
@@ -443,6 +444,7 @@ const SECTIONS = updateSectionsWithPlugins({
         widget: () => {
           return (
             <Breadcrumbs
+              size="large"
               crumbs={[
                 [
                   t`Embedding`,

@@ -19,15 +19,17 @@ export default class Breadcrumbs extends Component {
     crumbs: PropTypes.array,
     inSidebar: PropTypes.bool,
     placeholder: PropTypes.string,
+    size: PropTypes.oneOf(["medium", "large"]),
   };
   static defaultProps = {
     crumbs: [],
     inSidebar: false,
     placeholder: null,
+    size: "medium",
   };
 
   render() {
-    const { className, crumbs, inSidebar, placeholder } = this.props;
+    const { className, crumbs, inSidebar, placeholder, size } = this.props;
 
     const breadcrumbClass = inSidebar ? S.sidebarBreadcrumb : S.breadcrumb;
     const breadcrumbsClass = inSidebar ? S.sidebarBreadcrumbs : S.breadcrumbs;
@@ -51,6 +53,7 @@ export default class Breadcrumbs extends Component {
                 className={cx(
                   breadcrumbClass,
                   breadcrumb.length > 1 ? S.breadcrumbPath : S.breadcrumbPage,
+                  { [S.fontLarge]: size === "large" },
                 )}
               >
                 {breadcrumb.length > 1 && typeof breadcrumb[1] === "string" ? (
