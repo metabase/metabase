@@ -219,7 +219,7 @@ You can find example code that uses SAML authentication in the [SSO examples rep
 
 ## Troubleshooting SAML issues
 
-For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/cant-log-in.html).
+For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/saml.html).
 
 ---
 
