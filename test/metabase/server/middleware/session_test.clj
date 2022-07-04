@@ -398,7 +398,7 @@
         (is (= {:body    "some body",
                 :cookies {"metabase.TIMEOUT" {:value   "alive"
                                               :path    "/"
-                                              :expires "Sat, 01 Jan 2022 01:00:00 Z"}}}
+                                              :expires "Sat, 1 Jan 2022 01:00:00 GMT"}}}
                (mw.session/response-with-session-timeout-cookie request request-time 3600 response)))))
 
     (testing "If the request does not have a `metabase.TIMEOUT` cookie, it should not be set"
@@ -415,5 +415,5 @@
                   :cookies {"metabase.SESSION" {:value "some-session-id"},
                             "metabase.TIMEOUT" {:value   "alive"
                                                 :path    "/"
-                                                :expires "Sat, 01 Jan 2022 01:00:00 Z"}}}
+                                                :expires "Sat, 1 Jan 2022 01:00:00 GMT"}}}
                  (mw.session/response-with-session-timeout-cookie request request-time 3600 response))))))))

@@ -335,10 +335,10 @@
     (let [cookie-options (merge
                           {:path    "/"}
                           (when (request.u/https? request)
-                            ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
-                            ;; security is provided via anti-CSRF token. Note that most browsers will only accept
-                            ;; SameSite=None with secure cookies, thus we are setting it only over HTTPS to prevent
-                            ;; the cookie from being rejected in case of same-domain embedding.
+                            ;; SameSite=None is required for cross-domain full-app embedding.
+                            ;; Note that most browsers will only accept SameSite=None with secure cookies,
+                            ;; so we are setting it only over HTTPS to prevent the cookie from being rejected
+                            ;; in case of same-domain embedding. See https://github.com/metabase/metabase/issues/18553
                             {:same-site :none
                              :secure    true}))]
       (-> response
@@ -350,11 +350,9 @@
      (get-in response [:cookies metabase-session-cookie :value])
      ;; Or the cookie is already set and not expired, so we need to reset it.
      (get-in request [:cookies metabase-session-timeout-cookie :value]))
-    (let [expires        (t/plus request-time (t/seconds timeout-seconds))
-          cookie-options (merge
+    (let [cookie-options (merge
                           {:path      "/"
-                           :expires   (t/format (t/formatter "EEE, dd MMM yyyy HH:mm:ss z")
-                                                expires)}
+                           :expires   (t/format :rfc-1123-date-time (t/plus request-time (t/seconds timeout-seconds)))}
                           (when (request.u/https? request)
                             {:same-site :none
                              :secure    true}))]
