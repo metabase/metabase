@@ -40,11 +40,16 @@ const checkIfParametersWidgetShouldBeSticky = dashboard => {
     dashboard.state.parametersListLength > MAXIMUM_PARAMETERS_FOR_STICKINESS &&
     isSmallScreen()
   );
+
   const offsetTop =
     dashboard.state.parametersWidgetOffsetTop ||
     dashboard.parametersWidgetRef.offsetTop;
 
-  return isStickyForDevice && getMainElement().scrollTop >= offsetTop;
+  const headerHeight = getHeaderHeight();
+
+  return (
+    isStickyForDevice && getMainElement().scrollTop - headerHeight >= offsetTop
+  );
 };
 
 const updateParametersAndCardsContainerStyle = (dashboard, shouldBeSticky) => {
@@ -54,3 +59,5 @@ const updateParametersAndCardsContainerStyle = (dashboard, shouldBeSticky) => {
 
   dashboard.parametersAndCardsContainerRef.style.paddingTop = paddingTop;
 };
+
+const getHeaderHeight = () => document.querySelector("header").offsetHeight;
