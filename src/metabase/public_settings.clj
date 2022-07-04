@@ -330,11 +330,18 @@
                   new-colors)))))
 
 (defsetting application-font
-  (deferred-tru "This will replace “Lato” as the font family.")
+  (deferred-tru
+   (str "This is the primary font used in charts and throughout Metabase. "
+        "You might need to refresh your browser to see your changes take effect."))
   :visibility :public
   :type       :string
   :default    "Lato"
-  :enabled?   premium-features/enable-whitelabeling?)
+  :enabled?   premium-features/enable-whitelabeling?
+  :setter (fn [new-value]
+              (when new-value
+                (when-not (u.fonts/available-font? new-value)
+                  (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
+              (setting/set-value-of-type! :string :application-font new-value))
 
 (defsetting application-font-files
   (deferred-tru "Tell us where to find the font file for each required style.")
