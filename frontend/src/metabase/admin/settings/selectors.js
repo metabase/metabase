@@ -21,7 +21,7 @@ import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import { PremiumEmbeddingLinkWidget } from "./components/widgets/PremiumEmbeddingLinkWidget";
-import PersistedModelRefreshIntervalWidget from "./components/widgets/PersistedModelRefreshIntervalWidget";
+import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
@@ -568,8 +568,8 @@ const SECTIONS = updateSectionsWithPlugins({
             name: t`Custom…`,
           },
         ],
+        widget: ModelCachingScheduleWidget,
         disableDefaultUpdate: true,
-        widget: PersistedModelRefreshIntervalWidget,
         getHidden: settings => !settings["persisted-models-enabled"],
         onChanged: (oldHours, hours) => {},
       },
