@@ -47,6 +47,8 @@ interface Props {
     opt: { datasetEditorTab: string },
   ) => void;
   turnDatasetIntoQuestion: () => void;
+  turnQuestionIntoAction: () => void;
+  turnActionIntoQuestion: () => void;
   onInfoClick: () => void;
   onModelPersistenceChange: () => void;
 }
@@ -65,6 +67,8 @@ const QuestionActions = ({
   question,
   setQueryBuilderMode,
   turnDatasetIntoQuestion,
+  turnQuestionIntoAction,
+  turnActionIntoQuestion,
   onInfoClick,
   onModelPersistenceChange,
 }: Props) => {
@@ -81,9 +85,11 @@ const QuestionActions = ({
     ? color("brand")
     : undefined;
 
+  const isAction = question.isAction();
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
+  const isNative = question.isNative();
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
@@ -212,7 +218,7 @@ const QuestionActions = ({
                 </Button>
               </div>
             )}
-            {!isDataset && canWrite && (
+            {!isDataset && !isAction && canWrite && (
               <div>
                 <Button
                   icon="model"
@@ -233,6 +239,21 @@ const QuestionActions = ({
                   {...buttonProps}
                 >
                   {t`Turn back to saved question`}
+                </Button>
+              </div>
+            )}
+            {isSaved && isNative && !isDataset && canWrite && (
+              <div>
+                <Button
+                  icon="bolt"
+                  onClick={
+                    isAction ? turnActionIntoQuestion : turnQuestionIntoAction
+                  }
+                  {...buttonProps}
+                >
+                  {isAction
+                    ? t`Turn back to saved question`
+                    : t`Turn into an action`}
                 </Button>
               </div>
             )}

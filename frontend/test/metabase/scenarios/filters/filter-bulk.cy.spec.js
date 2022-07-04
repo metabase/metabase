@@ -388,7 +388,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     // if this gets flaky, disable, it's an issue with internal state in the datepicker component
-    it("can add a date range filter", () => {
+    it.skip("can add a date range filter", () => {
       modal().within(() => {
         cy.findByLabelText("Created At").within(() => {
           cy.findByLabelText("more options").click();
