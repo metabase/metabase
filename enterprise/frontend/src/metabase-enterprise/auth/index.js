@@ -1,7 +1,8 @@
 import React from "react";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { jt, t } from "ttag";
+import { t, jt } from "ttag";
 import { updateIn } from "icepick";
+import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import MetabaseSettings from "metabase/lib/settings";
@@ -9,8 +10,10 @@ import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_IS_PASSWORD_USER,
+  PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
 import { UtilApi } from "metabase/services";
+import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 
 import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
@@ -68,7 +71,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       key: "session-timeout",
       display_name: t`Session timeout`,
       description: t`Time before inactive users are logged out.`,
-      type: "boolean",
       widget: SessionTimeoutSetting,
     },
   ]),
@@ -317,3 +319,5 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     ],
   },
 }));
+
+PLUGIN_REDUX_MIDDLEWARES.push(createSessionMiddleware([LOGIN, LOGIN_GOOGLE]));
