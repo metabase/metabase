@@ -12,8 +12,12 @@ describeEE("visual tests > admin > fonts", () => {
     cy.findByText("Font");
     cy.percySnapshot("before-font");
 
+    cy.findByText("Lato").click();
     cy.findByText("Roboto Mono").click();
-    cy.wait("@getFont");
+    cy.document()
+      .its("fonts")
+      .invoke("check", "14px Roboto Mono")
+      .should("be.true");
     cy.percySnapshot("after-font");
   });
 });
