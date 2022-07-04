@@ -1,6 +1,6 @@
 import { restore, describeEE } from "__support__/e2e/helpers";
 
-describeEE("visual tests > admin > fonts", () => {
+describeEE.skip("visual tests > admin > fonts", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
