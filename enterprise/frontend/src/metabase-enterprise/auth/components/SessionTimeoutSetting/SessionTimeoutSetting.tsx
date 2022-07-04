@@ -15,15 +15,18 @@ const UNITS = [
   { value: "hours", name: t`hours` },
 ];
 
-const DEFAULT_VALUE = { timeout: 30, unit: UNITS[0].value };
+const DEFAULT_VALUE = { amount: 30, unit: UNITS[0].value };
 
 const SessionTimeoutSetting = ({ setting, onChange }: any) => {
   const isEnabled = setting.value != null;
   const unit = setting.value?.unit ?? DEFAULT_VALUE.unit;
-  const timeout = setting.value?.timeout ?? DEFAULT_VALUE.timeout;
+  const amount = setting.value?.amount ?? DEFAULT_VALUE.amount;
 
   const handleValueChange: ChangeEventHandler<HTMLInputElement> = e => {
-    onChange({ ...(setting.value ?? DEFAULT_VALUE), timeout: e.target.value });
+    onChange({
+      ...(setting.value ?? DEFAULT_VALUE),
+      amount: Number(e.target.value),
+    });
   };
 
   const handleUnitChange: ChangeEventHandler<HTMLInputElement> = e => {
@@ -44,7 +47,7 @@ const SessionTimeoutSetting = ({ setting, onChange }: any) => {
             style={{ width: "70px" }}
             className="input mr1 bordered"
             disabled={!isEnabled}
-            defaultValue={timeout}
+            defaultValue={amount}
             onBlurChange={handleValueChange}
           />
           <Select

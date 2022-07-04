@@ -386,6 +386,17 @@
         response     {:body    "some body",
                       :cookies {}}]
 
+    (testing "`session-timeout` setting conversion to seconds"
+      (is (= 10800
+             (mw.session/session-timeout->seconds {:amount 180
+                                                   :unit   "minutes"})))
+      (is (= 60
+             (mw.session/session-timeout->seconds {:amount 60
+                                                   :unit   "seconds"})))
+      (is (= 3600
+             (mw.session/session-timeout->seconds {:amount 1
+                                                   :unit   "hours"}))))
+
     (testing "nil `session-timeout-seconds` should set the timeout cookie without an `expires` attribute, lasting indefinitely"
       (let [request {:cookies {"metabase.TIMEOUT" {:value "alive"}}}]
         (is (= {:body    "some body"

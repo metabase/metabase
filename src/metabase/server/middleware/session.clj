@@ -313,19 +313,20 @@
 ;;; |                                              check-session-timeout                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO: this setting should be deleted, in favour of session-timeout-seconds
 (defsetting session-timeout
+  ;; Should be in the form {:amount 60 :unit "minutes"} where the unit is one of "seconds", "minutes" or "hours".
   (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
   :type       :json
   :default    nil)
 
-(defsetting session-timeout-seconds
-  (deferred-tru "Time before inactive users are logged out. If nil, sessions last indefinitely.")
-  :type         :integer
-  :setter       (fn [new-value]
-                  ; Ensure a minimum of 60 seconds so a user can't lock themselves out
-                  (setting/set-value-of-type! :integer :session-timeout-seconds (when new-value
-                                                                                  (max new-value 60)))))
+(defn session-timeout->seconds
+  "Convert a session timeout setting to seconds."
+  [{:keys [unit amount]}]
+  (when amount ; amount is nillable
+    (case unit
+      "seconds" amount
+      "minutes" (* amount 60)
+      "hours"  (* amount 3600))))
 
 (defn response-with-session-timeout-cookie
   "Adds a cookie to the response that expires after `session-timeout-seconds` seconds."
@@ -371,8 +372,11 @@
           request-time (t/zoned-date-time)]
       (handler request
                (fn [response]
-                 (respond (response-with-session-timeout-cookie request
-                                                        request-time
-                                                        (session-timeout-seconds)
-                                                        response)))
+                 (respond (response-with-session-timeout-cookie
+                           request
+                           request-time
+                           (some-> (session-timeout)
+                                   session-timeout->seconds
+                                   (max 60)) ; Ensure a minimum of 60 seconds so a user can't lock themselves out
+                           response)))
                raise))))
