@@ -1,31 +1,31 @@
 import React from "react";
-import { css, Global } from "@emotion/react";
-import { connect } from "react-redux";
 import _ from "underscore";
-import { getFont } from "metabase/selectors/settings";
-import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
-import { EmbedOptions, State } from "metabase-types/store";
+import { connect } from "react-redux";
+
+import { css, Global } from "@emotion/react";
+import MetabaseSettings from "metabase/lib/settings";
+import { State } from "metabase-types/store";
+import { IFRAMED } from "metabase/lib/dom";
+import { getEmbedOptions } from "metabase/selectors/embed";
 
 interface GlobalStylesProps {
-  font: string;
-  embedOptions: EmbedOptions;
+  embedOptions: any;
   isEmbedded: boolean;
 }
 
 const mapStateToProps = (state: State) => ({
-  font: getFont(state),
   embedOptions: getEmbedOptions(state),
-  isEmbedded: getIsEmbedded(),
+  isEmbedded: IFRAMED,
 });
 
-const GlobalStyles = ({
-  font,
-  embedOptions,
-  isEmbedded,
-}: GlobalStylesProps) => {
+const GlobalStyles = ({ embedOptions, isEmbedded }: GlobalStylesProps) => {
   const applicationFontStyles = css`
     :root {
-      --default-font-family: "${isEmbedded ? embedOptions.font : font}";
+      --default-font-family: "${
+        isEmbedded
+          ? embedOptions.font
+          : MetabaseSettings.get("application-font")
+      }";
     }`;
 
   return <Global styles={applicationFontStyles} />;

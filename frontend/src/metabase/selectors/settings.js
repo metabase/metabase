@@ -28,5 +28,3 @@ export const getNestedQueriesEnabled = state =>
 export const getSiteUrl = state => state.settings.values["site-url"];
 export const getEmbeddingSecretKey = state =>
   state.settings.values["embedding-secret-key"];
-
-export const getFont = state => state.settings.values["application-font"];
