@@ -397,20 +397,30 @@
              (mw.session/session-timeout->seconds {:amount 1
                                                    :unit   "hours"}))))
 
-    (testing "the session timeout should be a minimum of 60 seconds"
+    (testing "If there is no session cookie (because the user has logged out) we should clear the timeout cookie"
+      (let [request {:cookies {"metabase.TIMEOUT" {:value "alive"}}}]
+        (is (= {:body    "some body",
+                :cookies {"metabase.TIMEOUT" {:value   nil
+                                              :path    "/"
+                                              :expires "Thu, 1 Jan 1970 00:00:00 GMT"}}}
+               (mw.session/response-with-session-timeout-cookie request request-time 3600 response)))))
+
+    (testing "The session timeout should be a minimum of 60 seconds"
       (is (= 60
              (mw.session/session-timeout->seconds {:amount 0
                                                    :unit   "minutes"}))))
 
     (testing "nil `session-timeout-seconds` should set the timeout cookie without an `expires` attribute, lasting indefinitely"
-      (let [request {:cookies {"metabase.TIMEOUT" {:value "alive"}}}]
+      (let [request {:cookies {"metabase.SESSION" {:value "session-id"}
+                               "metabase.TIMEOUT" {:value "alive"}}}]
         (is (= {:body    "some body"
-                :cookies {"metabase.TIMEOUT" {:path    "/"
-                                              :value   "alive"}}}
+                :cookies {"metabase.TIMEOUT" {:path  "/"
+                                              :value "alive"}}}
                (mw.session/response-with-session-timeout-cookie request request-time nil response)))))
 
     (testing "non-nil `session-timeout-seconds` should set the expiry relative to the request time"
-      (let [request {:cookies {"metabase.TIMEOUT" {:value "alive"}}}]
+      (let [request {:cookies {"metabase.SESSION" {:value "session-id"}
+                               "metabase.TIMEOUT" {:value "alive"}}}]
         (is (= {:body    "some body",
                 :cookies {"metabase.TIMEOUT" {:value   "alive"
                                               :path    "/"
@@ -424,11 +434,11 @@
                (mw.session/response-with-session-timeout-cookie request request-time 3600 response))))
 
       (testing "unless the response is setting a `metabase.SESSION` cookie"
-        (let [request  {:cookies {"metabase.TIMEOUT" {:value "alive"}}}
+        (let [request  {:cookies {}}
               response {:body    "some body",
-                        :cookies {"metabase.SESSION" {:value "some-session-id"}}}]
+                        :cookies {"metabase.SESSION" {:value "session-id"}}}]
           (is (= {:body    "some body",
-                  :cookies {"metabase.SESSION" {:value "some-session-id"},
+                  :cookies {"metabase.SESSION" {:value "session-id"},
                             "metabase.TIMEOUT" {:value   "alive"
                                                 :path    "/"
                                                 :expires "Sat, 1 Jan 2022 01:00:00 GMT"}}}

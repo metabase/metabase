@@ -333,6 +333,14 @@
   "Adds a cookie to the response that expires after `session-timeout-seconds` seconds."
   [request request-time timeout-seconds response]
   (cond
+    ;; If there is no session cookie because the user is logged out, clear the timeout cookie
+    (and (get-in request [:cookies metabase-session-timeout-cookie :value])
+         (not (or (get-in request [:cookies metabase-session-cookie :value])
+                  (get-in response [:cookies metabase-session-cookie :value]))))
+    (-> response
+        (wrap-body-if-needed)
+        (clear-cookie metabase-session-timeout-cookie))
+
     (nil? timeout-seconds) ; If the timeout-seconds is nil, sessions last indefinitely
     (let [cookie-options (merge
                           {:path    "/"}
