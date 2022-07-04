@@ -19,7 +19,7 @@ describe("FontFilesWidget", () => {
     expect(onChange).toHaveBeenCalledWith([files[0]]);
   });
 
-  it("should add a font file", () => {
+  it("should remove a font file", () => {
     const files = getFontFiles();
     const setting = { value: files };
     const onChange = jest.fn();
