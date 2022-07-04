@@ -8,9 +8,11 @@ import { CardId, SavedCard } from "metabase-types/types/Card";
 export interface Dashboard {
   id: number;
   name: string;
+  description: string | null;
   model?: string;
   ordered_cards: DashboardOrderedCard[];
   parameters?: Parameter[] | null;
+  can_write: boolean;
 }
 
 export type DashboardOrderedCard = {

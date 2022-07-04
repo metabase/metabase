@@ -80,6 +80,10 @@ describe("managing question from the question's details sidebar", () => {
               cy.wait("@getItems"); // unpinned items
               cy.location("pathname").should("eq", "/collection/root");
               cy.findByText("Orders").should("not.exist");
+
+              // Check page for archived questions
+              cy.visit("/question/1");
+              cy.findByText("This question has been archived");
             });
 
             it("should be able to add question to dashboard", () => {
@@ -134,7 +138,7 @@ describe("managing question from the question's details sidebar", () => {
               });
               cy.url().should("match", /\/dashboard\/\d+-foo$/);
               saveDashboard();
-              cy.get(".QueryBuilder-section").findByText(personalCollection);
+              cy.get("header").findByText(personalCollection);
             });
 
             it("should not offer a user the ability to update or clone the question", () => {

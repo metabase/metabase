@@ -245,9 +245,10 @@
   [[_ value {base-type :base_type}]]
   (if (and (isa? base-type :type/MongoBSONID)
            (some? value))
-    ;; Passing a nil to the ObjectId constructor throws an exception
+    ;; Passing nil or "" to the ObjectId constructor throws an exception
     ;; "invalid hexadecimal representation of an ObjectId: []" so, just treat it as nil
-    (ObjectId. (str value))
+    (when (not= value "")
+      (ObjectId. (str value)))
     value))
 
 (defn- $date-from-string [s]

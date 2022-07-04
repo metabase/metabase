@@ -338,4 +338,30 @@ describe("InlineCategoryPicker", () => {
 
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it("should fall back to bulk filter if the filter operator is not =", async () => {
+    const testFilter = new Filter(
+      ["!=", ["field", smallCategoryField.id, null], undefined],
+      null,
+      query,
+    );
+    const changeSpy = jest.fn();
+    const fetchSpy = jest.fn();
+
+    render(
+      <InlineCategoryPickerComponent
+        query={query}
+        filter={testFilter}
+        newFilter={testFilter}
+        onChange={changeSpy}
+        fieldValues={smallCategoryField.values}
+        fetchFieldValues={fetchSpy}
+        dimension={smallDimension}
+        onClear={changeSpy}
+      />,
+    );
+
+    expect(screen.queryByTestId("category-picker")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("select-button")).toBeInTheDocument();
+  });
 });
