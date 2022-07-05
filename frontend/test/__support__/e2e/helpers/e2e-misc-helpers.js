@@ -210,3 +210,13 @@ function dashboardHasQuestions(cards) {
     return false;
   }
 }
+
+export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
+  const aliases = Object.keys(cy.state("aliases"));
+
+  const isAlreadyDefined = aliases.find(a => a === alias);
+
+  if (!isAlreadyDefined) {
+    cy.intercept(method, url).as(alias);
+  }
+}
