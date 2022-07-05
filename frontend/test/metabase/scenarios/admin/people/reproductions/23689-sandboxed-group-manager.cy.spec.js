@@ -3,9 +3,11 @@ import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { COLLECTION_GROUP } = USER_GROUPS;
-const { sandboxed, normal, nodata } = USERS;
+const { sandboxed, normal, nodata, nocollection } = USERS;
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+
+const totalUsers = Object.keys(USERS).length;
 
 describeEE("issue 23689", () => {
   beforeEach(() => {
@@ -44,7 +46,7 @@ describeEE("issue 23689", () => {
     cy.signInAsSandboxedUser();
   });
 
-  it("sandboxed group manager should see all group members (metabase#23689)", () => {
+  it("sandboxed group manager should see all other members (metabase#23689)", () => {
     visitGroupPermissionsPage(COLLECTION_GROUP);
 
     cy.findByText("3 members");
@@ -52,6 +54,15 @@ describeEE("issue 23689", () => {
     findUserByFullName(sandboxed);
     findUserByFullName(normal);
     findUserByFullName(nodata);
+
+    cy.visit("/admin/people");
+    cy.wait("@membership");
+
+    cy.findByText(`${totalUsers} people found`);
+    findUserByFullName(sandboxed);
+    findUserByFullName(normal);
+    findUserByFullName(nodata);
+    findUserByFullName(nocollection);
   });
 });
 
