@@ -77,6 +77,7 @@ const PersistedModelRefreshIntervalWidget = ({
         <WidgetContainer>
           <CustomScheduleInputHint />
           <SettingInput
+            disabled={disabled}
             setting={{
               value: customCronSchedule,
               placeholder: "For example 5   0   *   Aug   *",
