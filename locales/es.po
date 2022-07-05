@@ -643,7 +643,7 @@ msgstr "{0} – Configuración de campos"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:277
 msgid "Where this field will appear throughout Metabase"
-msgstr "Donde aparecerá este campo en Metabase"
+msgstr "Donde aparecerá este campo en Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:329
 msgid "Filtering on this field"
@@ -928,7 +928,7 @@ msgstr "Convertir a este usuario en administrador"
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:32
 msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
-msgstr "Todos los usuarios pertenecen al grupo {0} no se pueden eliminar. Establecer permisos para este grupo es una excelente manera de asegurarte qué podrán ver los nuevos usuarios de Metabase."
+msgstr "Todos los usuarios pertenecen al grupo {0} no se pueden eliminar. Establecer permisos para este grupo es una excelente manera de asegurarte qué podrán ver los nuevos usuarios de Metadatabasefeliupeurrego."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:41
 msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
@@ -1299,7 +1299,7 @@ msgstr "Lo siento, ocurrió un error."
 
 #: frontend/src/metabase/admin/permissions/constants/messages.js:3
 msgid "Administrators always have the highest level of access to everything in Metabase."
-msgstr "Los administradores siempre tienen el más alto nivel de acceso a todo en Metabase."
+msgstr "Los administradores siempre tienen el más alto nivel de acceso a todo en Metadatabasefelipeurrego."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:70
 msgid "Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access."
@@ -1432,7 +1432,7 @@ msgstr "Accede con Google"
 #: frontend/src/metabase/admin/settings/components/SettingsGoogleForm.jsx:52
 #: frontend/src/metabase/plugins/builtin/auth/google.js:32
 msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
-msgstr "Permite a los usuarios con cuentas Metabase existentes iniciar sesión con una cuenta de Google que coincida con su dirección de correo electrónico además de su nombre de usuario y contraseña de Metabase."
+msgstr "Permite a los usuarios con cuentas Metabase existentes iniciar sesión con una cuenta de Google que coincida con su dirección de correo electrónico además de su nombre de usuario y contraseña de Metadatabasefelipeurrego."
 
 #: frontend/src/metabase/admin/settings/components/widgets/AuthenticationOption.jsx:25
 #: frontend/src/metabase/components/ChannelSetupMessage.jsx:32
@@ -1446,7 +1446,7 @@ msgstr "LDAP"
 
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:19
 msgid "Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
-msgstr "Permite a los usuarios de tu directorio LDAP iniciar sesión en la Metabase con sus credenciales LDAP, y permite la asignación automática de grupos LDAP a grupos de metabase."
+msgstr "Permite a los usuarios de tu directorio LDAP iniciar sesión en la Metabase con sus credenciales LDAP, y permite la asignación automática de grupos LDAP a grupos de metadatabasefelipeurrego."
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:20
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:62
@@ -1521,7 +1521,7 @@ msgstr "Preparándote"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:112
 msgid "A few things you can do to get the most out of Metabase."
-msgstr "Algunas cosas que puedes hacer para sacar el máximo provecho de Metabase."
+msgstr "Algunas cosas que puedes hacer para sacar el máximo provecho de Metadatabasefelipeurrego."
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:121
 msgid "Recommended next step"
@@ -1688,7 +1688,7 @@ msgstr "Embebido Premium habilitado"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:30
 msgid "Enter the token you bought from the Metabase Store"
-msgstr "Introduce el token que compraste en la Tienda Metabase"
+msgstr "Introduce el token que compraste en la Tienda Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:57
 msgid "Premium embedding lets you disable \"Powered by Metabase\" on your embedded dashboards and questions."
@@ -2108,7 +2108,7 @@ msgstr "Olvidé mi contraseña"
 
 #: frontend/src/metabase/entities/users/forms.js:168
 msgid "The email you use for your Metabase account"
-msgstr "El correo electrónico que utilizas para tu cuenta Metabase"
+msgstr "El correo electrónico que utilizas para tu cuenta Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/auth/components/ForgotPassword/ForgotPassword.tsx:82
 msgid "Send password reset email"
@@ -2120,7 +2120,7 @@ msgstr "Consulta tu correo electrónico para obtener instrucciones sobre cómo r
 
 #: frontend/src/metabase/auth/components/Login/Login.tsx:27
 msgid "Sign in to Metabase"
-msgstr "Iniciar sesión en Metabase"
+msgstr "Iniciar sesión en Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/auth/containers/LoginApp.jsx:165
 msgid "OR"
@@ -2730,7 +2730,7 @@ msgstr "Cargando..."
 
 #: frontend/src/metabase/setup/components/NewsletterForm/NewsletterForm.tsx:43
 msgid "Metabase Newsletter"
-msgstr "Boletín Metabase"
+msgstr "Boletín Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/setup/components/NewsletterForm/NewsletterForm.tsx:47
 msgid "Get infrequent emails about new releases and feature updates."
@@ -2843,7 +2843,7 @@ msgstr "Día Calendario"
 
 #: frontend/src/metabase/components/SchedulePicker.jsx:257
 msgid "your Metabase timezone"
-msgstr "tu zona horaria en Metabase"
+msgstr "tu zona horaria en Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/components/SearchHeader.jsx:21
 msgid "Filter this list..."
@@ -4276,7 +4276,7 @@ msgstr "Ayuda"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:80
 msgid "About Metabase"
-msgstr "Sobre Metabase"
+msgstr "Sobre Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:86
 msgid "Sign out"
@@ -4304,7 +4304,7 @@ msgstr "y está construido con cariño en San Francisco, CA"
 
 #: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
 msgid "Metabase Admin"
-msgstr "Configuración Metabase"
+msgstr "Configuración Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/reference/databases/TableQuestions.jsx:35
 #: frontend/src/metabase/reference/metrics/MetricQuestions.jsx:36
@@ -6488,7 +6488,7 @@ msgstr "está a un solo click."
 
 #: frontend/src/metabase/setup/components/WelcomePage/WelcomePage.tsx:39
 msgid "Welcome to Metabase"
-msgstr "Bienvenid@ a Metabase"
+msgstr "Bienvenid@ a Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:132
 msgid "Looks like everything is working. Now let’s get to know you, connect to your data, and start finding you some answers!"
@@ -6504,7 +6504,7 @@ msgstr "¡Estás listo!"
 
 #: frontend/src/metabase/setup/components/CompletedStep/CompletedStep.tsx:32
 msgid "Take me to Metabase"
-msgstr "Llévame a Metabase"
+msgstr "Llévame a Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/setup/components/UserStep/UserStep.tsx:109
 msgid "What should we call you?"
@@ -7775,7 +7775,7 @@ msgstr "¿Tienes muchas preguntas guardadas en {0}? Crea colecciones para ayudar
 #: src/metabase/email/messages.clj target/classes/metabase/api/setup.clj
 #: target/classes/metabase/email/messages.clj
 msgid "Metabase"
-msgstr "Metabase"
+msgstr "Metadatabasefelipeurrego"
 
 #: src/metabase/api/setup.clj target/classes/metabase/api/setup.clj
 msgid "Create metrics"
@@ -8438,7 +8438,7 @@ msgstr "Se ha registrado metabase.driver.FixedHiveDriver con JDBC."
 #. TODO - smtp-port should be switched to type :integer
 #: src/metabase/email.clj target/classes/metabase/email.clj
 msgid "Email address you want to use as the sender of Metabase."
-msgstr "Dirección de correo electrónico que quieres usar como remitente de Metabase."
+msgstr "Dirección de correo electrónico que quieres usar como remitente de Metadatabasefelipeurrego."
 
 #: src/metabase/email.clj target/classes/metabase/email.clj
 msgid "The address of the SMTP server that handles your emails."
@@ -8542,7 +8542,7 @@ msgstr "Base de búsqueda para grupos, no requerida si tu directorio LDAP propor
 #: src/metabase/integrations/ldap.clj
 #: target/classes/metabase/integrations/ldap.clj
 msgid "JSON containing LDAP to Metabase group mappings."
-msgstr "JSON que contiene las correspondencia de LDAP a grupos de Metabase."
+msgstr "JSON que contiene las correspondencia de LDAP a grupos de Metadatabasefelipeurrego."
 
 #. Define a setting which captures our Slack api token
 #: target/classes/metabase/integrations/slack.clj
@@ -8946,7 +8946,7 @@ msgstr "Cargando complemento {0}..."
 
 #: src/metabase/plugins.clj
 msgid "It looks like you have some external dependencies in your Metabase plugins directory."
-msgstr "Parece que tienes algunas dependencias externas en tu directorio de complementos de Metabase."
+msgstr "Parece que tienes algunas dependencias externas en tu directorio de complementos de Metadatabasefelipeurrego."
 
 #: src/metabase/plugins.clj
 msgid "With Java 9 or higher, Metabase cannot automatically add them to your classpath."
@@ -8966,15 +8966,15 @@ msgstr "(Si ya estás ejecutando Metabase de esta manera, puedes ignorar este me
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
 msgid "Identify when new versions of Metabase are available."
-msgstr "Informar cuándo hay nuevas versiones de Metabase."
+msgstr "Informar cuándo hay nuevas versiones de Metadatabasefelipeurrego."
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
 msgid "Information about available versions of Metabase."
-msgstr "Información sobre las versiones disponibles de Metabase."
+msgstr "Información sobre las versiones disponibles de Metadatabasefelipeurrego."
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
 msgid "The name used for this instance of Metabase."
-msgstr "El nombre usado para esta instancia de Metabase."
+msgstr "El nombre usado para esta instancia de Metadatabasefelipeurrego."
 
 #: src/metabase/public_settings.clj
 msgid "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"."
@@ -8982,7 +8982,7 @@ msgstr "La URL base de esta instancia de Metabase, p.e. \"http://metabase.my-com
 
 #: src/metabase/public_settings.clj
 msgid "The default language for this Metabase instance."
-msgstr "El idioma predeterminado para esta instancia de Metabase."
+msgstr "El idioma predeterminado para esta instancia de Metadatabasefelipeurrego."
 
 #: src/metabase/public_settings.clj
 msgid "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."
@@ -8994,7 +8994,7 @@ msgstr "La dirección de correo electrónico al que se dirigirán los usuarios s
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
 msgid "Enable the collection of anonymous usage data in order to help Metabase improve."
-msgstr "Habilita la recopilación de datos de uso anónimos para ayudar a mejorar Metabase."
+msgstr "Habilita la recopilación de datos de uso anónimos para ayudar a mejorar Metadatabasefelipeurrego."
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
@@ -9277,11 +9277,11 @@ msgstr "MB_ENCRYPTION_SECRET_KEY debe tener al menos 16 caracteres"
 
 #: src/metabase/util/encryption.clj target/classes/metabase/util/encryption.clj
 msgid "Saved credentials encryption is ENABLED for this Metabase instance."
-msgstr "Guardar credenciales encriptadas está HABILITADO para esta instancia de Metabase."
+msgstr "Guardar credenciales encriptadas está HABILITADO para esta instancia de Metadatabasefelipeurrego."
 
 #: src/metabase/util/encryption.clj target/classes/metabase/util/encryption.clj
 msgid "Saved credentials encryption is DISABLED for this Metabase instance."
-msgstr "Guardar credenciales encriptadas está DESHABILITADO para esta instancia de Metabase."
+msgstr "Guardar credenciales encriptadas está DESHABILITADO para esta instancia de Metadatabasefelipeurrego."
 
 #: src/metabase/util/encryption.clj
 msgid "nFor more information, see"
@@ -11797,7 +11797,7 @@ msgstr "¿Te importaría realizar una encuesta rápida de 5 preguntas para ayuda
 
 #: src/metabase/email/messages.clj target/classes/metabase/email/messages.clj
 msgid "We hope you''ve been enjoying Metabase."
-msgstr "Esperamos que hayas estado disfrutando de Metabase."
+msgstr "Esperamos que hayas estado disfrutando de Metadatabasefelipeurrego."
 
 #: src/metabase/email/messages.clj target/classes/metabase/email/messages.clj
 msgid "Would you mind taking a fast 6 question survey to tell us how it’s going?"
@@ -11805,11 +11805,11 @@ msgstr "¿Te importaría hacer una encuesta rápida de 6 preguntas para decirnos
 
 #: src/metabase/email/messages.clj
 msgid "{0} created a Metabase account"
-msgstr "{0} ha creado una cuenta en Metabase"
+msgstr "{0} ha creado una cuenta en Metadatabasefelipeurrego"
 
 #: src/metabase/email/messages.clj
 msgid "{0} accepted their Metabase invite"
-msgstr "{0} ha aceptado su invitación a Metabase"
+msgstr "{0} ha aceptado su invitación a Metadatabasefelipeurrego"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Password Reset Request"
@@ -11821,7 +11821,7 @@ msgstr "[Metabase] Notificación"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Help make Metabase better."
-msgstr "[Metabase] Ayuda a mejorar Metabase."
+msgstr "[Metabase] Ayuda a mejorar Metadatabasefelipeurrego."
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Tell us how things are going."
@@ -12143,7 +12143,7 @@ msgstr "Para obtener más información, consulta https://metabase.com/docs/lates
 
 #: src/metabase/db/setup.clj target/classes/metabase/db/setup.clj
 msgid "Unable to connect to Metabase {0} DB."
-msgstr "No se ha podido conectar a la base de datos {0} de Metabase."
+msgstr "No se ha podido conectar a la base de datos {0} de Metadatabasefelipeurrego."
 
 #: target/classes/metabase/db/data_migrations.clj
 msgid "Error adding legacy SQL directive to BigQuery saved Question"
@@ -12280,7 +12280,7 @@ msgstr "Volviendo a un directorio temporal por ahora."
 
 #: src/metabase/plugins.clj target/classes/metabase/plugins.clj
 msgid "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
-msgstr "Metabase no puede escribir en el directorio temporal. Configura MB_PLUGINS_DIR en un directorio escribible y reinicia Metabase."
+msgstr "Metabase no puede escribir en el directorio temporal. Configura MB_PLUGINS_DIR en un directorio escribible y reinicia Metadatabasefelipeurrego."
 
 #: src/metabase/plugins.clj
 msgid "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
@@ -12581,7 +12581,7 @@ msgstr "La limpieza del historial de tareas fue exitosa, no se ha eliminado ning
 #: src/metabase/task/upgrade_checks.clj
 #: target/classes/metabase/task/upgrade_checks.clj
 msgid "Checking for new Metabase version info."
-msgstr "Buscando información de la versión de Metabase."
+msgstr "Buscando información de la versión de Metadatabasefelipeurrego."
 
 #: src/metabase/task/upgrade_checks.clj
 msgid "Error fetching version info"
@@ -13510,7 +13510,7 @@ msgstr "No he podido mostrar este Pulso."
 #: src/metabase/pulse/render/body.clj
 #: target/classes/metabase/pulse/render/body.clj
 msgid "Please view this card in Metabase."
-msgstr "Por favor mostrar esta tarjeta en Metabase."
+msgstr "Por favor mostrar esta tarjeta en Metadatabasefelipeurrego."
 
 #: src/metabase/pulse/render/body.clj
 #: target/classes/metabase/pulse/render/body.clj
@@ -13844,7 +13844,7 @@ msgstr "Selecciona el proceso de Metabase:"
 
 #: frontend/src/metabase/admin/tasks/containers/Logs.jsx:134
 msgid "All Metabase processes"
-msgstr "Todos los procesos de Metabase"
+msgstr "Todos los procesos de Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/lib/auth.js:18
 msgid "The window was closed before completing Google Authentication."
@@ -14332,7 +14332,7 @@ msgstr "No hay grupos asignables"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:109
 msgid "Metabase Documentation"
-msgstr "Documentación de Metabase"
+msgstr "Documentación de Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:110
 msgid "Includes a troubleshooting guide"
@@ -14340,11 +14340,11 @@ msgstr "Incluye una guía de solución de problemas."
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:114
 msgid "Post on the Metabase support forum"
-msgstr "Comparte en el foro de soporte de Metabase"
+msgstr "Comparte en el foro de soporte de Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:115
 msgid "A community forum for all things Metabase"
-msgstr "Un foro comunitario para todas las cosas Metabase"
+msgstr "Un foro comunitario para todas las cosas Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:121
 msgid "File a bug report"
@@ -15134,7 +15134,7 @@ msgstr "El token de autenticación de Google parece ser incorrecto."
 #: src/metabase/integrations/google.clj
 #: target/classes/metabase/integrations/google.clj
 msgid "Double check that it matches in Google and Metabase."
-msgstr "Verifica que coincida en Google y Metabase."
+msgstr "Verifica que coincida en Google y Metadatabasefelipeurrego."
 
 #: frontend/src/metabase/lib/saved-questions/saved-questions.js:5
 #: frontend/src/metabase/query_builder/components/saved-question-picker/SavedQuestionPicker.jsx:42
@@ -15152,7 +15152,7 @@ msgstr "Actualización de base de datos requerida"
 
 #: src/metabase/db/setup.clj target/classes/metabase/db/setup.clj
 msgid "NOTICE: Your database requires updates to work with this version of Metabase."
-msgstr "AVISO: tu base de datos requiere actualizaciones para funcionar con esta versión de Metabase."
+msgstr "AVISO: tu base de datos requiere actualizaciones para funcionar con esta versión de Metadatabasefelipeurrego."
 
 #: src/metabase/db/setup.clj target/classes/metabase/db/setup.clj
 msgid "Please execute the following sql commands on your database before proceeding."
@@ -16023,7 +16023,7 @@ msgstr "Configura tu proveeedor de identidad (IdP)"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:72
 msgid "Your identity provider will need the following info about Metabase."
-msgstr "Su proveedor de identidad necesitará la siguiente información sobre Metabase."
+msgstr "Su proveedor de identidad necesitará la siguiente información sobre Metadatabasefelipeurrego."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:75
 msgid "URL the IdP should redirect back to"
@@ -16182,7 +16182,7 @@ msgstr "Cadena utilizada por la clave de firma JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:15
 msgid "Embedding the entire Metabase app"
-msgstr "Incrustar toda la aplicación Metabase"
+msgstr "Incrustar toda la aplicación Metadatabasefelipeurrego"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:16
 msgid "If you want to embed all of Metabase, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the {0} for what can be entered."
@@ -16309,7 +16309,7 @@ msgstr "Tenemos problemas validando tu token"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:89
 msgid "Please double-check that your instance can connect to Metabase's servers"
-msgstr "Verifica que tu instancia puede conectarse a los servidores de Metabase"
+msgstr "Verifica que tu instancia puede conectarse a los servidores de Metadatabasefelipeurrego"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:94
 msgid "Get help"
@@ -16520,7 +16520,7 @@ msgstr "en"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:46
 msgid "Open the Metabase actions menu"
-msgstr "Abra el menú de acciones de la Metabase"
+msgstr "Abra el menú de acciones de la Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:47
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:374
@@ -17254,7 +17254,7 @@ msgstr "Las extensiones de Metabase Enterprise Edition ESTÁN PRESENTES."
 
 #: src/metabase/core.clj target/classes/metabase/core.clj
 msgid "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License."
-msgstr "El uso de las funciones de Metabase Enterprise Edition está sujeto a la licencia comercial de Metabase."
+msgstr "El uso de las funciones de Metabase Enterprise Edition está sujeto a la licencia comercial de Metadatabasefelipeurrego."
 
 #: src/metabase/core.clj target/classes/metabase/core.clj
 msgid "See {0} for details."
@@ -17445,7 +17445,7 @@ msgstr "Página predeterminada para mostrar al usuario"
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
 msgid "Allow this origin to embed the full Metabase application"
-msgstr "Permitir que este origen incruste la aplicación completa de Metabase"
+msgstr "Permitir que este origen incruste la aplicación completa de Metadatabasefelipeurrego"
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
 msgid "Values greater than {0} ({1}) are not allowed."
@@ -18051,7 +18051,7 @@ msgstr "Atributo SAML para sincronización de grupo"
 #. Should be in the form: {"groupName": [1, 2, 3]} where keys are SAML groups and values are lists of MB groups IDs
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
 msgid "JSON containing SAML to Metabase group mappings."
-msgstr "JSON que contiene asignaciones de grupos de SAML a Metabase."
+msgstr "JSON que contiene asignaciones de grupos de SAML a Metadatabasefelipeurrego."
 
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
 msgid "Enable JWT based authentication"
@@ -18088,7 +18088,7 @@ msgstr "Habilitar la sincronización de la pertenencia a grupos con JWT."
 #. Should be in the form: {"groupName": [1, 2, 3]} where keys are JWT groups and values are lists of MB groups IDs
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
 msgid "JSON containing JWT to Metabase group mappings."
-msgstr "JSON que contiene asignaciones de grupos JWT a Metabase."
+msgstr "JSON que contiene asignaciones de grupos JWT a Metadatabasefelipeurrego."
 
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/sso_settings.clj
 msgid "Should new email notifications be sent to admins, for all new SSO users?"
@@ -18576,11 +18576,11 @@ msgstr "¿Quieres que se encarguen de las actualizaciones por ti?"
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:126
 #: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:17
 msgid "Migrate to Metabase Cloud."
-msgstr "Migrar a la Nube de Metabase."
+msgstr "Migrar a la Nube de Metadatabasefelipeurrego."
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:50
 msgid "Manage Metabase Cloud"
-msgstr "Administrar la Nube de Metabase"
+msgstr "Administrar la Nube de Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:45
 msgid "Show totals"
@@ -19647,12 +19647,12 @@ msgstr "Haz también todas las subcolecciones {0}."
 
 #: frontend/src/metabase/plugins/components/SettingsCloudStoreLink/SettingsCloudStoreLink.jsx:10
 msgid "Manage your Cloud account, including billing preferences and technical settings about this instance in your Metabase Store account."
-msgstr "Gestione su cuenta en la nube, incluidas las preferencias de facturación y los ajustes técnicos sobre esta instancia en su cuenta de la tienda Metabase."
+msgstr "Gestione su cuenta en la nube, incluidas las preferencias de facturación y los ajustes técnicos sobre esta instancia en su cuenta de la tienda Metadatabasefelipeurrego."
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:116
 #: frontend/src/metabase/plugins/components/SettingsCloudStoreLink/SettingsCloudStoreLink.jsx:12
 msgid "Go to the Metabase Store"
-msgstr "Ir a la tienda de Metabase"
+msgstr "Ir a la tienda de Metadatabasefelipeurrego"
 
 #: modules/drivers/presto-jdbc/src/metabase/driver/presto_jdbc.clj
 msgid "Running statement in describe-schema: {0}"
@@ -19779,7 +19779,7 @@ msgstr "Asegúra que los usuarios nunca puedan ver los datos de esta base de dat
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.jsx:51
 msgid "Only available in certain Metabase plans."
-msgstr "Sólo disponible en algunos planes de Metabase."
+msgstr "Sólo disponible en algunos planes de Metadatabasefelipeurrego."
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.jsx:62
 msgid "Learn more about permissions"
@@ -20134,7 +20134,7 @@ msgstr "Esto eliminará todas las suscripciones o alertas del panel de control q
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/UnsubscribeUserForm/UnsubscribeUserForm.jsx:45
 msgid "This does not affect email distribution lists that are managed outside of Metabase."
-msgstr "Esto no afecta a las listas de distribución de correo electrónico que se administran fuera de Metabase."
+msgstr "Esto no afecta a las listas de distribución de correo electrónico que se administran fuera de Metadatabasefelipeurrego."
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditSidebar.jsx:53
 msgid "Team members"
@@ -20647,7 +20647,7 @@ msgstr "Nuestro {0}"
 
 #: frontend/src/metabase/entities/databases/forms.js:344
 msgid "Choose what this data will be called in Metabase."
-msgstr "Elige cómo se llamarán estos datos en Metabase."
+msgstr "Elige cómo se llamarán estos datos en Metadatabasefelipeurrego."
 
 #: frontend/src/metabase/admin/settings/selectors.js:419
 #: frontend/src/metabase/home/containers/SearchApp.jsx:47
@@ -21069,7 +21069,7 @@ msgstr "DB {0} tenía un ID de conjunto de datos codificado; cambiando a un patr
 
 #: src/metabase/analytics/snowplow.clj
 msgid "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase."
-msgstr "Identificador único que se usará en el análisis de Snowplow para identificar esta instancia de Metabase."
+msgstr "Identificador único que se usará en el análisis de Snowplow para identificar esta instancia de Metadatabasefelipeurrego."
 
 #: src/metabase/analytics/snowplow.clj
 msgid "This is a public setting since some analytics events are sent prior to initial setup."
@@ -21328,7 +21328,7 @@ msgstr "Todos menos..."
 
 #: src/metabase/driver/util.clj
 msgid "Comma separated names of {0} that <strong>should</strong> appear in Metabase"
-msgstr "Nombres separados por comas de {0} que <strong>deberían</strong> aparecer en Metabase"
+msgstr "Nombres separados por comas de {0} que <strong>deberían</strong> aparecer en Metadatabasefelipeurrego"
 
 #: src/metabase/driver/util.clj
 msgid "You can use patterns like <strong>auth*</strong> to match multiple {0}"
@@ -21336,7 +21336,7 @@ msgstr "Puedes usar patrones como <strong>auth*</strong> para hacer coincidir m�
 
 #: src/metabase/driver/util.clj
 msgid "Comma separated names of {0} that <strong>should NOT</strong> appear in Metabase"
-msgstr "Nombres separados por comas de {0} que <strong>NO deberían</strong> aparecer en Metabase"
+msgstr "Nombres separados por comas de {0} que <strong>NO deberían</strong> aparecer en Metadatabasefelipeurrego"
 
 #: src/metabase/email/messages.clj
 msgid "Your Slack connection stopped working"
@@ -21388,7 +21388,7 @@ msgstr "'falso' si una solicitud de API de Slack devuelve un error de autenticac
 
 #: src/metabase/integrations/slack.clj
 msgid "The name of the channel to which Metabase files should be initially uploaded"
-msgstr "El nombre del canal en el que se deben cargar inicialmente los archivos Metabase"
+msgstr "El nombre del canal en el que se deben cargar inicialmente los archivos Metadatabasefelipeurrego"
 
 #: src/metabase/integrations/slack.clj
 msgid "🔒 Your Slack authorization token is invalid or has been revoked. Please update your integration in Admin Settings -> Slack."
@@ -21448,7 +21448,7 @@ msgstr "{0} apunta a un archivo inexistente: {1}"
 
 #: src/metabase/models/secret.clj
 msgid "{0} (a local file path) cannot be used in Metabase hosted environment"
-msgstr "{0} (una ruta de archivo local) no se puede usar en el entorno alojado de Metabase"
+msgstr "{0} (una ruta de archivo local) no se puede usar en el entorno alojado de Metadatabasefelipeurrego"
 
 #: src/metabase/models/setting.clj
 msgid "Error parsing Setting {0}: {1}"
@@ -21624,7 +21624,7 @@ msgstr "Este token no parece ser válido. Verifícalo y pónte en contacto con e
 
 #: frontend/src/metabase/admin/settings/hooks/use-license.ts:8
 msgid "We're having trouble validating your token. Please double-check that your instance can connect to Metabase's servers."
-msgstr "Estamos teniendo problemas para validar tu token. Vuelve a verificar que tu instancia puede conectarse a los servidores de Metabase."
+msgstr "Estamos teniendo problemas para validar tu token. Vuelve a verificar que tu instancia puede conectarse a los servidores de Metadatabasefelipeurrego."
 
 #: frontend/src/metabase/lib/expressions/pratt/compiler.ts:48
 #: frontend/src/metabase/lib/expressions/pratt/compiler.ts:221
@@ -21988,7 +21988,7 @@ msgstr "Invitar un compañero de equipo"
 
 #: frontend/src/metabase/home/homepage/components/StartSection/StartSection.tsx:117
 msgid "Connect your data to get the most out of Metabase"
-msgstr "Conecta tus datos para aprovechar al máximo Metabase"
+msgstr "Conecta tus datos para aprovechar al máximo Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/home/homepage/components/StartSection/StartSection.tsx:119
 msgid "If you need help, you can {0} or {1}."
@@ -22134,7 +22134,7 @@ msgstr "Desde un manifiesto de aplicación."
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:128
 msgid "2. Copy the Metabase manifest"
-msgstr "2. Copia el manifiesto de Metabase"
+msgstr "2. Copia el manifiesto de Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:130
 msgid "Select your workspace and then copy our {0} below and paste it in to create the app. In the following screen, click “{1}” and authorize it."
@@ -22538,7 +22538,7 @@ msgstr "Encantado de verte, {0}"
 
 #: frontend/src/metabase/home/homepage/components/HomeHelpCard/HomeHelpCard.tsx:9
 msgid "Metabase tips"
-msgstr "Consejos de Metabase"
+msgstr "Consejos de Metadatabasefelipeurrego"
 
 #: frontend/src/metabase/home/homepage/components/HomePopularSection/HomePopularSection.tsx:41
 #: frontend/src/metabase/home/homepage/components/HomePopularSection/HomePopularSection.tsx:54
@@ -22567,7 +22567,7 @@ msgstr "Continua donde lo dejaste"
 
 #: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:41
 msgid "Try out these sample x-rays to see what Metabase can do."
-msgstr "Prueba estas radiografías de muestra para ver qué puede hacer Metabase."
+msgstr "Prueba estas radiografías de muestra para ver qué puede hacer Metadatabasefelipeurrego."
 
 #: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:45
 msgid "Here are some explorations of the"
@@ -22749,7 +22749,7 @@ msgstr "Esquema original"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:98
 msgid "Click the button below to begin creating your Slack App using the Metabase configuration."
-msgstr "Haz clic en el botón a continuación para comenzar a crear tu aplicación de Slack utilizando la configuración de Metabase."
+msgstr "Haz clic en el botón a continuación para comenzar a crear tu aplicación de Slack utilizando la configuración de Metadatabasefelipeurrego."
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:99
 msgid "Once created, click “{0}” to authorize it."
