@@ -418,6 +418,17 @@
                                               :value "alive"}}}
                (mw.session/response-with-session-timeout-cookie request request-time nil response)))))
 
+    (testing "If the session cookie is present on the request but the timeout cookie has expired, clear the session cookie"
+      (let [request {:cookies {"metabase.SESSION" {:value "session-id"}}}]
+        (is (= {:body    "some body",
+                :cookies {"metabase.SESSION"          {:value   nil
+                                                       :expires "Thu, 1 Jan 1970 00:00:00 GMT"
+                                                       :path    "/"},
+                          "metabase.EMBEDDED_SESSION" {:value   nil
+                                                       :expires "Thu, 1 Jan 1970 00:00:00 GMT"
+                                                       :path    "/"}}}
+               (mw.session/response-with-session-timeout-cookie request request-time 3600 response)))))
+
     (testing "non-nil `session-timeout-seconds` should set the expiry relative to the request time"
       (let [request {:cookies {"metabase.SESSION" {:value "session-id"}
                                "metabase.TIMEOUT" {:value "alive"}}}]

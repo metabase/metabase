@@ -341,7 +341,8 @@
         (wrap-body-if-needed)
         (clear-cookie metabase-session-timeout-cookie))
 
-    (nil? timeout-seconds) ; If the timeout-seconds is nil, sessions last indefinitely
+    ;; If the timeout-seconds is nil, sessions last indefinitely
+    (nil? timeout-seconds)
     (let [cookie-options (merge
                           {:path    "/"}
                           (when (request.u/https? request)
@@ -369,6 +370,11 @@
       (-> response
           (wrap-body-if-needed)
           (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options)))
+
+    ;; Clear the session cookie if the timeout cookie expired
+    (and (not (get-in request [:cookies metabase-session-timeout-cookie :value]))
+         (get-in request [:cookies metabase-session-cookie :value]))
+    (clear-session-cookie response)
 
     :else
     response))
