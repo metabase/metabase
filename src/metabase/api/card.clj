@@ -1,4 +1,4 @@
-(ns metabase.api.card
+ (ns metabase.api.card
   "/api/card endpoints."
   (:require [cheshire.core :as json]
             [clojure.core.async :as a]
@@ -18,7 +18,6 @@
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Card CardBookmark Collection Database Field PersistedInfo Pulse Table ViewLog]]
-            [metabase.models.card :as card]
             [metabase.models.collection :as collection]
             [metabase.models.interface :as mi]
             [metabase.models.moderation-review :as moderation-review]

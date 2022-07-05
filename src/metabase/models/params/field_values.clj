@@ -60,6 +60,7 @@
     (field-values/distinct-values field)))
 
 (defn hash-key-for-advanced-field-values
+  "Returns hash-key for Advanced FieldValues by types."
   [fv-type field-id constraints]
   (case fv-type
     :linked-filter

@@ -248,12 +248,6 @@
   {:pre [(advanced-field-values-types (:type fv))]}
   (u.date/older-than? (:created_at fv) advanced-field-values-max-age))
 
-(defn advanced-field-values-expired?
-  "Checks if an advanced FieldValues expired."
-  [fv]
-  {:pre [(advanced-field-values-types (:type fv))]}
-  (u.date/older-than? (:created_at fv) advanced-field-values-max-age))
-
 (defenterprise hash-key-for-sandbox
   "Return a hash-key that will be used for sandboxed fieldvalues."
   metabase-enterprise.sandbox.models.params.field-values
