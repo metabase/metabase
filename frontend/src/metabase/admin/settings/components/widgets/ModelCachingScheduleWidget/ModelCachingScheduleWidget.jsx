@@ -56,6 +56,7 @@ const PersistedModelRefreshIntervalWidget = ({
         setCustom(true);
       } else {
         setCustom(false);
+        setCustomCronSchedule("");
         onChange(nextValue);
       }
     },
