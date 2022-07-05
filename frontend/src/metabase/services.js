@@ -261,6 +261,7 @@ export const MetabaseApi = {
     "/api/database/:dbId/autocomplete_suggestions?search=:prefix",
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
+  db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),
   db_rescan_values: POST("/api/database/:dbId/rescan_values"),
   db_discard_values: POST("/api/database/:dbId/discard_values"),
   db_get_db_ids_with_deprecated_drivers: GET("/db-ids-with-deprecated-drivers"),

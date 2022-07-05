@@ -28,6 +28,7 @@ import {
   initializeDatabase,
   saveDatabase,
   syncDatabaseSchema,
+  dismissSyncSpinner,
   rescanDatabaseFields,
   discardSavedFieldValues,
   deleteDatabase,
@@ -61,6 +62,7 @@ const mapDispatchToProps = {
   initializeDatabase,
   saveDatabase,
   syncDatabaseSchema,
+  dismissSyncSpinner,
   rescanDatabaseFields,
   discardSavedFieldValues,
   deleteDatabase,
@@ -81,6 +83,7 @@ export default class DatabaseEditApp extends Component {
     reset: PropTypes.func.isRequired,
     initializeDatabase: PropTypes.func.isRequired,
     syncDatabaseSchema: PropTypes.func.isRequired,
+    dismissSyncSpinner: PropTypes.func.isRequired,
     rescanDatabaseFields: PropTypes.func.isRequired,
     discardSavedFieldValues: PropTypes.func.isRequired,
     deleteDatabase: PropTypes.func.isRequired,
@@ -104,6 +107,7 @@ export default class DatabaseEditApp extends Component {
       initializeError,
       rescanDatabaseFields,
       syncDatabaseSchema,
+      dismissSyncSpinner,
       isAdmin,
     } = this.props;
     const editingExistingDatabase = database?.id != null;
@@ -193,6 +197,7 @@ export default class DatabaseEditApp extends Component {
               discardSavedFieldValues={discardSavedFieldValues}
               rescanDatabaseFields={rescanDatabaseFields}
               syncDatabaseSchema={syncDatabaseSchema}
+              dismissSyncSpinner={dismissSyncSpinner}
             />
           )}
         </DatabaseEditMain>

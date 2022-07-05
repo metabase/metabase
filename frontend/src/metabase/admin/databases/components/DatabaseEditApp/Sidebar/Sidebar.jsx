@@ -14,6 +14,7 @@ const propTypes = {
   database: PropTypes.object.isRequired,
   deleteDatabase: PropTypes.func.isRequired,
   syncDatabaseSchema: PropTypes.func.isRequired,
+  dismissSyncSpinner: PropTypes.func.isRequired,
   rescanDatabaseFields: PropTypes.func.isRequired,
   discardSavedFieldValues: PropTypes.func.isRequired,
   isAdmin: PropTypes.bool,
@@ -23,6 +24,7 @@ const DatabaseEditAppSidebar = ({
   database,
   deleteDatabase,
   syncDatabaseSchema,
+  dismissSyncSpinner,
   rescanDatabaseFields,
   discardSavedFieldValues,
   isAdmin,
@@ -61,6 +63,18 @@ const DatabaseEditAppSidebar = ({
                 successText={t`Scan triggered!`}
               />
             </li>
+            {database["initial_sync_status"] !== "complete" && (
+              <li className="mt2">
+                <ActionButton
+                  actionFn={() => dismissSyncSpinner(database.id)}
+                  className="Button Button--dismissSyncSpinner"
+                  normalText={t`Dismiss sync spinner manually`}
+                  activeText={t`Dismissing…`}
+                  failedText={t`Failed to dismiss sync spinner`}
+                  successText={t`Sync spinners dismissed!`}
+                />
+              </li>
+            )}
           </ol>
         </div>
 
