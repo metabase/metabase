@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 
@@ -45,12 +45,12 @@ const PersistedModelRefreshIntervalWidget = ({
   disabled,
   onChange,
 }) => {
-  const [isCustom, setCustom] = React.useState(isCustomSchedule(setting));
-  const [customCronSchedule, setCustomCronSchedule] = React.useState(
+  const [isCustom, setCustom] = useState(isCustomSchedule(setting));
+  const [customCronSchedule, setCustomCronSchedule] = useState(
     isCustom ? setting.value : "",
   );
 
-  const handleChange = React.useCallback(
+  const handleChange = useCallback(
     nextValue => {
       if (nextValue === "custom") {
         setCustom(true);
