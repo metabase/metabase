@@ -288,7 +288,7 @@
          :from   [[(merge
                     base-query
                     {:select [:id :name :description :updated_at :initial_sync_status
-                              [(hx/concat (hx/literal "/db/") :database.id (hx/literal "/"))
+                              [(hx/concat (hx/literal "/db/") :id (hx/literal "/"))
                                :path]]})
                    :database]]
          :where  (if (seq data-perms)
