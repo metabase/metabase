@@ -5,7 +5,7 @@ import Color from "color";
 import { colors, lighten } from "metabase/lib/colors/palette";
 import { addCSSRule } from "metabase/lib/dom";
 
-import { omit } from "lodash";
+import _ from "underscore";
 import memoize from "lodash.memoize";
 
 export const originalColors = { ...colors };
@@ -191,7 +191,7 @@ function updateColorsCSS() {
     used in CSS and variables are preserved during the build.
    */
   const scheme = colorScheme();
-  const colors = omit(scheme, ["filter", "summarize", "accent0"]);
+  const colors = _.omit(scheme, ["filter", "summarize", "accent0"]);
   for (const [colorName, themeColor] of Object.entries(colors)) {
     updateColorCSS(colorName, themeColor);
   }

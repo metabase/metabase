@@ -1,17 +1,25 @@
 import React from "react";
 import { t } from "ttag";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import MetabotLogo from "metabase/components/MetabotLogo";
+import Toggle from "metabase/core/components/Toggle";
+import { MetabotSetting } from "./types";
 import {
   MetabotSettingWidgetRoot,
   MetabotContainer,
   ToggleContainer,
   ToggleLabel,
-} from "./MetabotSettingWidget.styled";
-import Toggle from "metabase/core/components/Toggle";
+} from "./MetabotToggleWidget.styled";
 
-const MetabotSettingWidget = ({ setting, onChange }: any) => {
-  const isEnabled = setting.value ?? setting.defaultValue;
+interface MetabotToggleWidgetProps {
+  setting: MetabotSetting;
+  onChange: (value: boolean) => void;
+}
+
+const MetabotToggleWidget = ({
+  setting,
+  onChange,
+}: MetabotToggleWidgetProps): JSX.Element => {
+  const isEnabled = setting.value ?? setting.default;
   const metabotImage = isEnabled ? "metabot-happy" : "metabot-sad";
 
   const toggleId = useUniqueId("show-metabot-switch");
@@ -30,7 +38,7 @@ const MetabotSettingWidget = ({ setting, onChange }: any) => {
         >{t`Display our little friend on the homepage`}</ToggleLabel>
         <Toggle
           id={toggleId}
-          aria-checked={setting.value}
+          aria-checked={isEnabled}
           role="switch"
           value={isEnabled}
           onChange={onChange}
@@ -40,4 +48,4 @@ const MetabotSettingWidget = ({ setting, onChange }: any) => {
   );
 };
 
-export default MetabotSettingWidget;
+export default MetabotToggleWidget;

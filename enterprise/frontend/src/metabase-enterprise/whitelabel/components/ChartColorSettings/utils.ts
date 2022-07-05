@@ -1,22 +1,22 @@
 import Color from "color";
-import { chain, flatten, omit, times } from "lodash";
+import _ from "underscore";
 
 export const getChartColorGroups = (): string[][] => {
-  return times(8, i => [`accent${i}`, `accent${i}-light`, `accent${i}-dark`]);
+  return _.times(8, i => [`accent${i}`, `accent${i}-light`, `accent${i}-dark`]);
 };
 
 export const getDefaultChartColors = (
   values: Record<string, string>,
   groups: string[][],
 ) => {
-  return omit({ ...values }, flatten(groups));
+  return _.omit(values, _.flatten(groups));
 };
 
 export const hasCustomChartColors = (
   values: Record<string, string>,
   groups: string[][],
 ) => {
-  return flatten(groups).some(name => values[name] != null);
+  return _.flatten(groups).some(name => values[name] != null);
 };
 
 export const getAutoChartColors = (
@@ -24,7 +24,7 @@ export const getAutoChartColors = (
   groups: string[][],
   palette: Record<string, string>,
 ) => {
-  const oldColors = chain(groups)
+  const oldColors = _.chain(groups)
     .map(([name]) => values[name])
     .map(value => (value ? Color(value) : undefined))
     .value();
@@ -33,10 +33,10 @@ export const getAutoChartColors = (
   const newColors = getAutoColors(oldColors, fallbackColor);
   const defaultValues = getDefaultChartColors(values, groups);
 
-  const newValues = chain(groups)
+  const newValues = _.chain(groups)
     .map(([name], index) => [name, newColors[index]?.hex()])
     .filter(([_, value]) => value != null)
-    .fromPairs()
+    .object()
     .value();
 
   return { ...defaultValues, ...newValues };

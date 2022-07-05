@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef } from "react";
-import { debounce } from "lodash";
+import _ from "underscore";
 import { originalColors } from "../../lib/whitelabel";
 import ColorSettings from "../ColorSettings";
 import { ColorSetting } from "./types";
@@ -33,7 +33,7 @@ const useDebounce = function<T>(func: (value: T) => void, wait: number) {
   }, []);
 
   return useMemo(() => {
-    return debounce(callback, wait);
+    return _.debounce(callback, wait);
   }, [callback, wait]);
 };
 
