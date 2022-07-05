@@ -98,10 +98,9 @@ export function InlineCategoryPickerComponent({
   if (showInlinePicker) {
     return (
       <SimpleCategoryFilterPicker
-        title={dimension.displayName()}
         filter={filter ?? newFilter}
         onChange={onChange}
-        options={fieldValues.flat()}
+        options={fieldValues.flat().filter(isValidOption)}
       />
     );
   }
@@ -118,19 +117,17 @@ export function InlineCategoryPickerComponent({
 }
 
 interface SimpleCategoryFilterPickerProps {
-  title: string;
   filter: Filter;
   options: (string | number)[];
   onChange: (newFilter: Filter) => void;
 }
 
 export function SimpleCategoryFilterPicker({
-  title,
   filter,
   options,
   onChange,
 }: SimpleCategoryFilterPickerProps) {
-  const filterValues = filter.arguments().filter(Boolean);
+  const filterValues = filter.arguments().filter(isValidOption);
 
   const handleChange = (option: string | number, checked: boolean) => {
     const newArgs = checked
@@ -155,6 +152,8 @@ export function SimpleCategoryFilterPicker({
     </PickerContainer>
   );
 }
+
+const isValidOption = (option: any) => option !== undefined && option !== null;
 
 export const InlineCategoryPicker = connect(
   mapStateToProps,

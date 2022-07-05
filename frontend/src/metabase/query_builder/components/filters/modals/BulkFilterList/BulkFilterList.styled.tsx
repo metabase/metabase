@@ -25,3 +25,11 @@ export const ListRowLabel = styled(Ellipsified)`
   line-height: 1rem;
   font-weight: bold;
 `;
+
+export const FilterDivider = styled.div`
+  grid-column: 2;
+  border-top: 1px solid ${color("border")};
+  &:last-child {
+    display: none;
+  }
+`;

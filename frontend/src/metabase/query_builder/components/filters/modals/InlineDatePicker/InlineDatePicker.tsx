@@ -106,7 +106,7 @@ export function InlineDatePicker({
             </OptionButton>
           ) : (
             <OptionButton onClick={onClick} aria-label={t`more options`}>
-              <Icon name="ellipsis" size={14} />
+              <Icon name="ellipsis" size={14} style={{ marginBottom: -5 }} />
             </OptionButton>
           )
         }

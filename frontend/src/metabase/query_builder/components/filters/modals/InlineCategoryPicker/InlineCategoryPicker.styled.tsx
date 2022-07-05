@@ -16,5 +16,5 @@ export const PickerContainer = styled.div`
 export const PickerGrid = styled.div`
   display: grid;
   align-items: center;
-  gap: ${space(1)};
+  gap: ${space(2)};
 `;

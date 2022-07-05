@@ -12,7 +12,12 @@ import { ModalDivider } from "../BulkFilterModal/BulkFilterModal.styled";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { BulkFilterItem } from "../BulkFilterItem";
 import { SegmentFilterSelect } from "../BulkFilterSelect";
-import { ListRoot, ListRow, ListRowLabel } from "./BulkFilterList.styled";
+import {
+  ListRoot,
+  ListRow,
+  ListRowLabel,
+  FilterDivider,
+} from "./BulkFilterList.styled";
 import { sortDimensions } from "./utils";
 
 export interface BulkFilterListProps {
@@ -100,15 +105,18 @@ const BulkFilterListItem = ({
       data-testid="dimension-filter-row"
     >
       {options.map((filter, index) => (
-        <BulkFilterItem
-          key={index}
-          query={query}
-          filter={filter}
-          dimension={dimension}
-          onAddFilter={onAddFilter}
-          onChangeFilter={onChangeFilter}
-          onRemoveFilter={onRemoveFilter}
-        />
+        <>
+          <BulkFilterItem
+            key={index}
+            query={query}
+            filter={filter}
+            dimension={dimension}
+            onAddFilter={onAddFilter}
+            onChangeFilter={onChangeFilter}
+            onRemoveFilter={onRemoveFilter}
+          />
+          <FilterDivider />
+        </>
       ))}
     </ListRow>
   );
