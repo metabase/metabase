@@ -571,7 +571,8 @@ const SECTIONS = updateSectionsWithPlugins({
         widget: ModelCachingScheduleWidget,
         disableDefaultUpdate: true,
         getHidden: settings => !settings["persisted-models-enabled"],
-        onChanged: (oldHours, hours) => {},
+        onChanged: (previousValue, value) =>
+          PersistedModelsApi.setRefreshSchedule({ cron: value }),
       },
     ],
   },
