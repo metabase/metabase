@@ -541,7 +541,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("adds multiple is text filters", () => {
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
+        cy.findByLabelText("City").within(() => {
           cy.findByText("Contains").click();
         });
       });
@@ -551,15 +551,15 @@ describe("scenarios > filters > bulk filtering", () => {
       });
 
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
-          cy.findByPlaceholderText("Search by Title").type(
-            "Small Marble Shoes,Rustic Paper Wallet",
+        cy.findByLabelText("City").within(() => {
+          cy.findByPlaceholderText("Search by City").type(
+            "Indianeown, Indian Valley",
           );
         });
         cy.button("Apply").click();
       });
-      cy.findByText("Title is 2 selections").should("be.visible");
-      cy.findByText("Showing 2 rows").should("be.visible");
+      cy.findByText("City is 2 selections").should("be.visible");
+      cy.findByText("Showing 1 row").should("be.visible");
     });
   });
 
