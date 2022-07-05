@@ -1,8 +1,4 @@
-import {
-  isSmallScreen,
-  getHeaderElement,
-  getMainElement,
-} from "metabase/lib/dom";
+import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 
 export const MAXIMUM_PARAMETERS_FOR_STICKINESS = 6;
 
@@ -54,21 +50,9 @@ const checkIfParametersWidgetShouldBeSticky = dashboard => {
     return false;
   }
 
-  const { isNavbarOpen } = dashboard.props;
-
   const offsetTop = getOffsetTop(dashboard);
 
-  // If AppNavBar is open,
-  // we make the ParametersWidget sticky below the header.
-  //
-  // Otherwise, we'd have to make the AppNavBar height
-  // responsive, so it gets progressively more complicated
-  // in a situation where the user is more likely to be
-  // navigation around the application than to be focusing on
-  // the Dashboard parameters.
-  const headerHeight = isNavbarOpen ? 0 : getHeaderHeight();
-
-  return getMainElement().scrollTop - headerHeight >= offsetTop;
+  return getMainElement().scrollTop >= offsetTop;
 };
 
 const updateParametersAndCardsContainerStyle = (dashboard, shouldBeSticky) => {
@@ -82,5 +66,3 @@ const updateParametersAndCardsContainerStyle = (dashboard, shouldBeSticky) => {
 const getOffsetTop = dashboard =>
   dashboard.state.parametersWidgetOffsetTop ||
   dashboard.parametersWidgetRef.offsetTop;
-
-const getHeaderHeight = () => getHeaderElement().offsetHeight;

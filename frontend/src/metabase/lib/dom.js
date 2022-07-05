@@ -452,11 +452,6 @@ export function getMainElement() {
   return main;
 }
 
-export function getHeaderElement() {
-  const [header] = document.getElementsByTagName("header");
-  return header;
-}
-
 export function isSmallScreen() {
   const mediaQuery = window.matchMedia("(max-width: 40em)");
   return mediaQuery && mediaQuery.matches;
