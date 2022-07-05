@@ -226,11 +226,11 @@
          (finally (db/delete! User :email "john.smith@metabase.com"))))
 
       (try
-       (testing "a user without a givenName attribute defaults to Unknown"
+       (testing "a user without a givenName attribute has `nil` for that attribute"
          (ldap/fetch-or-create-user! (ldap/find-user "jmiller"))
-         (is (= {:first_name       "Unknown"
+         (is (= {:first_name       nil
                  :last_name        "Miller"
-                 :common_name      "Unknown Miller"}
+                 :common_name      "Miller"}
                 (into {} (db/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
 
        (testing "when givenName or sn attributes change in LDAP, they are updated in Metabase on next login"
