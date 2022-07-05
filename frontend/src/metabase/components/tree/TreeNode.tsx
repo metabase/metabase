@@ -75,7 +75,7 @@ const BaseTreeNode = React.memo(
             <Icon {...iconProps} />
           </IconContainer>
         )}
-        <NameContainer>{name}</NameContainer>
+        <NameContainer data-testid="tree-item-name">{name}</NameContainer>
       </TreeNodeRoot>
     );
   }),

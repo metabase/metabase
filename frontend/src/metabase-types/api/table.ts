@@ -13,7 +13,7 @@ export type VisibilityType =
   | "cruft";
 
 export interface Table {
-  id: number;
+  id: number | string; // can be string for virtual questions (e.g. "card__17")
   db_id: number;
   db?: Database;
   name: string;
