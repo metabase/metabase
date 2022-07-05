@@ -46,3 +46,8 @@ export const CustomScheduleLabel = styled.span`
 
   margin-bottom: 6px;
 `;
+
+export const ErrorMessage = styled.span`
+  color: ${color("error")};
+  margin-top: 4px;
+`;

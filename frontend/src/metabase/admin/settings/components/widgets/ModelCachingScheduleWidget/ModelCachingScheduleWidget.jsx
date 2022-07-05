@@ -4,6 +4,8 @@ import { t, jt } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 
+import { validateCronExpression } from "metabase/lib/cron";
+
 import SettingInput from "../SettingInput";
 import {
   Root,
@@ -11,6 +13,7 @@ import {
   StyledSettingSelect,
   SelectLabel,
   CustomScheduleLabel,
+  ErrorMessage,
 } from "./ModelCachingScheduleWidget.styled";
 
 const CRON_SYNTAX_DOC_URL =
@@ -49,6 +52,7 @@ const PersistedModelRefreshIntervalWidget = ({
   const [customCronSchedule, setCustomCronSchedule] = useState(
     isCustom ? setting.value : "",
   );
+  const [error, setError] = useState(null);
 
   const handleChange = useCallback(
     nextValue => {
@@ -58,6 +62,20 @@ const PersistedModelRefreshIntervalWidget = ({
         setCustom(false);
         setCustomCronSchedule("");
         onChange(nextValue);
+      }
+    },
+    [onChange],
+  );
+
+  const handleCustomInputBlur = useCallback(
+    cronExpression => {
+      const error = validateCronExpression(cronExpression);
+      setCustomCronSchedule(cronExpression);
+      if (error) {
+        setError(error);
+      } else {
+        setError(null);
+        onChange(cronExpression);
       }
     },
     [onChange],
@@ -83,12 +101,15 @@ const PersistedModelRefreshIntervalWidget = ({
           <CustomScheduleInputHint />
           <SettingInput
             disabled={disabled}
+            errorMessage={error}
             setting={{
               value: customCronSchedule,
               placeholder: "For example 5   0   *   Aug   *",
             }}
-            onChange={setCustomCronSchedule}
+            onChange={handleCustomInputBlur}
+            fireOnChange={false}
           />
+          {error && <ErrorMessage>{error}</ErrorMessage>}
         </WidgetContainer>
       )}
     </Root>
