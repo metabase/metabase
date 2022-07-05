@@ -81,10 +81,14 @@ const Fields = createEntity({
       ),
       withNormalize(FieldSchema),
     )(({ id: fieldId }) => async (dispatch, getState) => {
-      const { field_id: id, values } = await MetabaseApi.field_values({
+      const {
+        field_id: id,
+        values,
+        has_more_values = false,
+      } = await MetabaseApi.field_values({
         fieldId,
       });
-      return { id, values };
+      return { id, values, has_more_values };
     }),
 
     updateField(field, opts) {

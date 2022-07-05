@@ -107,17 +107,24 @@ class FieldValuesWidgetInner extends Component {
     });
 
     let options = [];
+    let hasIncompleteValueSet;
     try {
       if (usesChainFilterEndpoints(this.props.dashboard)) {
         options = await this.fetchDashboardParamValues(query);
+        // not yet implemented for dashboard parameter values endpoint
+        hasIncompleteValueSet = false;
       } else {
         options = await this.fetchFieldValues(query);
+        hasIncompleteValueSet = this.props.fields.some(
+          field => field.has_more_values,
+        );
       }
     } finally {
       this.updateRemappings(options);
       this.setState({
         loadingState: "LOADED",
         options,
+        hasIncompleteValueSet,
       });
     }
   }
@@ -182,12 +189,24 @@ class FieldValuesWidgetInner extends Component {
   }
 
   onInputChange = value => {
-    const { fields, disableSearch, disablePKRemappingForSearch } = this.props;
+    const {
+      fields,
+      disableSearch,
+      disablePKRemappingForSearch,
+      maxResults,
+    } = this.props;
+    const { lastValue, options, hasIncompleteValueSet } = this.state;
 
-    if (
-      value &&
-      isSearchable(fields, disableSearch, disablePKRemappingForSearch)
-    ) {
+    const canSearch = isSearchable(
+      fields,
+      disableSearch,
+      disablePKRemappingForSearch,
+    );
+    const shouldSearch =
+      !isExtensionOfPreviousSearch(value, lastValue, options, maxResults) ||
+      hasIncompleteValueSet;
+
+    if (value && canSearch && shouldSearch) {
       this._search(value);
     }
 
@@ -207,19 +226,6 @@ class FieldValuesWidgetInner extends Component {
   }, 500);
 
   _search = value => {
-    const { lastValue, options } = this.state;
-
-    // if this search is just an extension of the previous search, and the previous search
-    // wasn't truncated, then we don't need to do another search because TypeaheadListing
-    // will filter the previous result client-side
-    if (
-      lastValue &&
-      value.slice(0, lastValue.length) === lastValue &&
-      options.length < this.props.maxResults
-    ) {
-      return;
-    }
-
     if (this._cancel) {
       this._cancel();
     }
@@ -248,7 +254,7 @@ class FieldValuesWidgetInner extends Component {
       placeholder,
       showOptionsInPopover,
     } = this.props;
-    const { loadingState, options = [] } = this.state;
+    const { loadingState, options = [], hasIncompleteValueSet } = this.state;
 
     const tokenFieldPlaceholder = getTokenFieldPlaceholder({
       fields,
@@ -262,11 +268,12 @@ class FieldValuesWidgetInner extends Component {
     const isLoading = loadingState === "LOADING";
     const isFetchingList =
       shouldList(this.props.fields, this.props.disableSearch) && isLoading;
-    const hasListData = hasList({
-      fields,
-      disableSearch,
-      options,
-    });
+    const hasExhaustedListData =
+      hasList({
+        fields,
+        disableSearch,
+        options,
+      }) && !hasIncompleteValueSet;
 
     return (
       <div
@@ -276,8 +283,8 @@ class FieldValuesWidgetInner extends Component {
           maxWidth: this.props.maxWidth,
         }}
       >
-        {isFetchingList && <LoadingState />}
-        {hasListData && (
+        {hasExhaustedListData && isFetchingList && <LoadingState />}
+        {hasExhaustedListData && (
           <ListField
             isDashboardFilter={parameter}
             placeholder={tokenFieldPlaceholder}
@@ -291,7 +298,7 @@ class FieldValuesWidgetInner extends Component {
             }
           />
         )}
-        {!hasListData && !isFetchingList && (
+        {!hasExhaustedListData && (
           <TokenField
             prefix={prefix}
             value={value.filter(v => v != null)}
@@ -476,14 +483,23 @@ function hasList({ fields, disableSearch, options }) {
   return shouldList(fields, disableSearch) && !_.isEmpty(options);
 }
 
+// if this search is just an extension of the previous search, and the previous search
+// wasn't truncated, then we don't need to do another search because TypeaheadListing
+// will filter the previous result client-side
+function isExtensionOfPreviousSearch(value, lastValue, options, maxResults) {
+  return (
+    lastValue &&
+    value.slice(0, lastValue.length) === lastValue &&
+    options.length < maxResults
+  );
+}
+
 function isSearchable(fields, disableSearch, disablePKRemappingForSearch) {
   return (
     !disableSearch &&
     // search is available if:
     // all fields have a valid search field
     fields.every(field => searchField(field, disablePKRemappingForSearch)) &&
-    // at least one field is set to display as "search"
-    fields.some(f => f.has_field_values === "search") &&
     // and all fields are either "search" or "list"
     fields.every(
       f => f.has_field_values === "search" || f.has_field_values === "list",
