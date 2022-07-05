@@ -1,4 +1,9 @@
-import { popover, modal, openQuestionActions } from "__support__/e2e/helpers";
+import {
+  popover,
+  modal,
+  openQuestionActions,
+  interceptIfNotPreviouslyDefined,
+} from "__support__/e2e/helpers";
 
 export function assertQuestionIsBasedOnModel({
   questionName,
@@ -84,6 +89,12 @@ export function assertIsQuestion() {
 }
 
 export function turnIntoModel() {
+  interceptIfNotPreviouslyDefined({
+    method: "POST",
+    url: "/api/dataset",
+    alias: "dataset",
+  });
+
   openQuestionActions();
   popover().within(() => {
     cy.icon("model").click();
@@ -91,6 +102,7 @@ export function turnIntoModel() {
   modal().within(() => {
     cy.button("Turn this into a model").click();
   });
+  cy.wait("@dataset");
 }
 
 export function selectFromDropdown(option, clickOpts) {

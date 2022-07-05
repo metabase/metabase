@@ -50,7 +50,9 @@ describe("scenarios > models", () => {
       .findByText("Between")
       .click();
     selectFromDropdown("Not empty");
+
     cy.button("Apply").click();
+    cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",
@@ -103,6 +105,7 @@ describe("scenarios > models", () => {
     selectFromDropdown("Not empty");
 
     cy.button("Apply").click();
+    cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",
@@ -130,7 +133,7 @@ describe("scenarios > models", () => {
       cy.icon("table");
     });
 
-    cy.url().should("not.include", "/question/1");
+    cy.location("pathname").should("eq", "/collection/root");
   });
 
   it("changes model's display to table", () => {
@@ -315,6 +318,7 @@ describe("scenarios > models", () => {
         .click();
       selectFromDropdown("Not empty");
       cy.button("Apply").click();
+      cy.wait("@dataset");
 
       assertQuestionIsBasedOnModel({
         model: "Orders Model",
@@ -325,6 +329,7 @@ describe("scenarios > models", () => {
       summarize();
 
       selectDimensionOptionFromSidebar("Created At");
+      cy.wait("@dataset");
       cy.button("Done").click();
 
       assertQuestionIsBasedOnModel({
