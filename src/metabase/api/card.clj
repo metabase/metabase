@@ -1,4 +1,4 @@
- (ns metabase.api.card
+(ns metabase.api.card
   "/api/card endpoints."
   (:require [cheshire.core :as json]
             [clojure.core.async :as a]
