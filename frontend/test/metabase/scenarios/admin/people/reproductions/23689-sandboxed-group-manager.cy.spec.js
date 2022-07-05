@@ -61,6 +61,6 @@ function findUserByFullName(user) {
 }
 
 function visitGroupPermissionsPage(groupId) {
-  cy.visit(`/admin/people/groups/${COLLECTION_GROUP}`);
+  cy.visit(`/admin/people/groups/${groupId}`);
   cy.wait("@membership");
 }
