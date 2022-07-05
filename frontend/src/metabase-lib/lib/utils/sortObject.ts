@@ -1,6 +1,6 @@
 // `sortObject` copies objects for deterministic serialization.
 // Objects that have equal keys and values don't necessarily serialize to the
-// same string. JSON.strinify prints properties in inserted order. This function
+// same string. JSON.stringify prints properties in inserted order. This function
 // sorts keys before adding them to the duplicated object to ensure consistent
 // serialization.
 export function sortObject(obj: any | any[]): any | any[] {
