@@ -7,7 +7,7 @@
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings.premium-features :as premium-features :refer [defenterprise-schema]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs]]
+            [metabase.util.i18n :refer [deferred-tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
