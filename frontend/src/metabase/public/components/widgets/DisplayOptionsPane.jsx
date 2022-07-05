@@ -84,7 +84,7 @@ const DisplayOptionsPane = ({
               value={displayOptions.font}
               options={[
                 {
-                  name: t`Default`,
+                  name: t`Use instance font`,
                   value: null,
                 },
                 ...MetabaseSettings.get("available-fonts").map(font => ({
