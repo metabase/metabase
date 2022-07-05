@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import styled from "@emotion/styled";
 
-import { color as c, lighten, darken } from "metabase/lib/colors";
+import { color as c, lighten, darken, alpha } from "metabase/lib/colors";
 
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
@@ -39,6 +39,7 @@ const STEP_UI = {
     title: t`Data`,
     component: DataStep,
     getColor: () => c("brand"),
+    getBackgroundColor: () => alpha("brand", 0.2),
   },
   join: {
     title: t`Join data`,
@@ -46,6 +47,7 @@ const STEP_UI = {
     component: JoinStep,
     priority: 1,
     getColor: () => c("brand"),
+    getBackgroundColor: () => alpha("brand", 0.2),
   },
   expression: {
     title: t`Custom column`,
@@ -59,6 +61,7 @@ const STEP_UI = {
     component: FilterStep,
     priority: 10,
     getColor: () => c("filter"),
+    getBackgroundColor: () => alpha("filter", 0.2),
   },
   summarize: {
     title: t`Summarize`,
@@ -66,6 +69,7 @@ const STEP_UI = {
     component: SummarizeStep,
     priority: 5,
     getColor: () => c("summarize"),
+    getBackgroundColor: () => alpha("summarize", 0.2),
   },
   aggregate: {
     title: t`Aggregate`,
@@ -73,6 +77,7 @@ const STEP_UI = {
     component: AggregateStep,
     priority: 5,
     getColor: () => c("summarize"),
+    getBackgroundColor: () => alpha("summarize", 0.2),
   },
   breakout: {
     title: t`Breakout`,
@@ -80,6 +85,7 @@ const STEP_UI = {
     component: BreakoutStep,
     priority: 1,
     getColor: () => c("accent4"),
+    getBackgroundColor: () => alpha("accent4", 0.2),
   },
   sort: {
     title: t`Sort`,
@@ -140,6 +146,7 @@ export default class NotebookStep extends React.Component {
               mr={isLastStep ? 2 : 1}
               mt={isLastStep ? 2 : null}
               color={stepUi.getColor()}
+              backgroundColor={stepUi.getBackgroundColor?.()}
               large={largeActionButtons}
               {...stepUi}
               key={`actionButton_${stepUi.title}`}
@@ -216,22 +223,31 @@ export default class NotebookStep extends React.Component {
 
 const ColorButton = styled(Button)`
   border: none;
-  color: ${({ color }) => (color ? color : c("text-medium"))};
-  background-color: ${({ color }) => (color ? lighten(color, 0.61) : null)};
+  color: ${({ color }) => color};
+  background-color: ${({ backgroundColor }) => backgroundColor};
   &:hover {
-    color: ${({ color }) => (color ? darken(color, 0.115) : color("brand"))};
-    background-color: ${({ color }) =>
-      color ? lighten(color, 0.5) : lighten(color("brand"), 0.61)};
+    color: ${({ color }) => darken(color, 0.115)};
+    background-color: ${({ color, backgroundColor }) =>
+      !backgroundColor ? lighten(color, 0.5) : alpha(color, 0.35)};
   }
   transition: background 300ms;
 `;
 
-const ActionButton = ({ icon, title, color, large, onClick, ...props }) => {
+const ActionButton = ({
+  icon,
+  title,
+  color,
+  backgroundColor,
+  large,
+  onClick,
+  ...props
+}) => {
   const button = (
     <ColorButton
-      color={color}
       icon={icon}
       small={!large}
+      color={color}
+      backgroundColor={backgroundColor}
       iconVertical={large}
       iconSize={large ? 18 : 14}
       onClick={onClick}
