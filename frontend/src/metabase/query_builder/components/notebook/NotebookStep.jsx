@@ -39,7 +39,6 @@ const STEP_UI = {
     title: t`Data`,
     component: DataStep,
     getColor: () => c("brand"),
-    getBackgroundColor: () => alpha("brand", 0.2),
   },
   join: {
     title: t`Join data`,
@@ -47,12 +46,12 @@ const STEP_UI = {
     component: JoinStep,
     priority: 1,
     getColor: () => c("brand"),
-    getBackgroundColor: () => alpha("brand", 0.2),
   },
   expression: {
     title: t`Custom column`,
     icon: "add_data",
     component: ExpressionStep,
+    transparent: true,
     getColor: () => c("bg-dark"),
   },
   filter: {
@@ -61,7 +60,6 @@ const STEP_UI = {
     component: FilterStep,
     priority: 10,
     getColor: () => c("filter"),
-    getBackgroundColor: () => alpha("filter", 0.2),
   },
   summarize: {
     title: t`Summarize`,
@@ -69,7 +67,6 @@ const STEP_UI = {
     component: SummarizeStep,
     priority: 5,
     getColor: () => c("summarize"),
-    getBackgroundColor: () => alpha("summarize", 0.2),
   },
   aggregate: {
     title: t`Aggregate`,
@@ -77,7 +74,6 @@ const STEP_UI = {
     component: AggregateStep,
     priority: 5,
     getColor: () => c("summarize"),
-    getBackgroundColor: () => alpha("summarize", 0.2),
   },
   breakout: {
     title: t`Breakout`,
@@ -85,13 +81,13 @@ const STEP_UI = {
     component: BreakoutStep,
     priority: 1,
     getColor: () => c("accent4"),
-    getBackgroundColor: () => alpha("accent4", 0.2),
   },
   sort: {
     title: t`Sort`,
     icon: "smartscalar",
     component: SortStep,
     compact: true,
+    transparent: true,
     getColor: () => c("bg-dark"),
   },
   limit: {
@@ -99,6 +95,7 @@ const STEP_UI = {
     icon: "list",
     component: LimitStep,
     compact: true,
+    transparent: true,
     getColor: () => c("bg-dark"),
   },
 };
@@ -146,7 +143,6 @@ export default class NotebookStep extends React.Component {
               mr={isLastStep ? 2 : 1}
               mt={isLastStep ? 2 : null}
               color={stepUi.getColor()}
-              backgroundColor={stepUi.getBackgroundColor?.()}
               large={largeActionButtons}
               {...stepUi}
               key={`actionButton_${stepUi.title}`}
@@ -197,6 +193,7 @@ export default class NotebookStep extends React.Component {
                   icon="play"
                   title={t`Preview`}
                   color={c("text-light")}
+                  transparent
                   onClick={() => this.setState({ showPreview: true })}
                 />
               </StepButtonContainer>
@@ -224,11 +221,12 @@ export default class NotebookStep extends React.Component {
 const ColorButton = styled(Button)`
   border: none;
   color: ${({ color }) => color};
-  background-color: ${({ backgroundColor }) => backgroundColor};
+  background-color: ${({ color, transparent }) =>
+    transparent ? null : alpha(color, 0.2)};
   &:hover {
     color: ${({ color }) => darken(color, 0.115)};
-    background-color: ${({ color, backgroundColor }) =>
-      !backgroundColor ? lighten(color, 0.5) : alpha(color, 0.35)};
+    background-color: ${({ color, transparent }) =>
+      transparent ? lighten(color, 0.5) : alpha(color, 0.35)};
   }
   transition: background 300ms;
 `;
@@ -237,7 +235,7 @@ const ActionButton = ({
   icon,
   title,
   color,
-  backgroundColor,
+  transparent,
   large,
   onClick,
   ...props
@@ -247,7 +245,7 @@ const ActionButton = ({
       icon={icon}
       small={!large}
       color={color}
-      backgroundColor={backgroundColor}
+      transparent={transparent}
       iconVertical={large}
       iconSize={large ? 18 : 14}
       onClick={onClick}
