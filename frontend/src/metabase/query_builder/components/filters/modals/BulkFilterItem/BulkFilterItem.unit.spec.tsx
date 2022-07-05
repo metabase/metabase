@@ -167,8 +167,8 @@ describe("BulkFilterItem", () => {
       />,
     );
 
-    expect(screen.getByLabelText("true")).toBeChecked();
-    expect(screen.getByLabelText("false")).not.toBeChecked();
+    expect(screen.getByLabelText("True")).toBeChecked();
+    expect(screen.getByLabelText("False")).not.toBeChecked();
   });
 
   it("renders a value picker integer field type", () => {

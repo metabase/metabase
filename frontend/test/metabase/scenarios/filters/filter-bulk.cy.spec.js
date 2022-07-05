@@ -302,7 +302,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("should apply a boolean filter", () => {
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -312,7 +312,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("should change a boolean filter", () => {
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -322,7 +322,7 @@ describe("scenarios > filters > bulk filtering", () => {
       openFilterModal();
 
       modal().within(() => {
-        cy.findByText("false").click();
+        cy.findByText("False").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -332,7 +332,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("should remove a boolean filter", () => {
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -342,7 +342,7 @@ describe("scenarios > filters > bulk filtering", () => {
       openFilterModal();
 
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
