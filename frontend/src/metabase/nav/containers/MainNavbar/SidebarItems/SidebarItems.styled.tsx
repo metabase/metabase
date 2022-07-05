@@ -9,7 +9,7 @@ import Link from "metabase/core/components/Link";
 
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
-import { darken, color, lighten } from "metabase/lib/colors";
+import { darken, color, lighten, alpha } from "metabase/lib/colors";
 
 export const SidebarIcon = styled(Icon)<{
   color?: string | null;
@@ -45,7 +45,7 @@ export const NodeRoot = styled(TreeNode.Root)<{
   color: ${props => getTextColor(props.isSelected)};
 
   background-color: ${props =>
-    props.isSelected ? lighten(color("brand"), 0.6) : "unset"};
+    props.isSelected ? alpha("brand", 0.35) : "unset"};
 
   padding-left: ${props => props.depth}rem;
   border-radius: 4px;
