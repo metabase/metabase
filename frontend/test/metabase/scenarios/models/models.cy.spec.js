@@ -50,7 +50,9 @@ describe("scenarios > models", () => {
       .findByText("Between")
       .click();
     selectFromDropdown("Not empty");
+
     cy.button("Apply").click();
+    cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",
@@ -103,6 +105,7 @@ describe("scenarios > models", () => {
     selectFromDropdown("Not empty");
 
     cy.button("Apply").click();
+    cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",
@@ -315,6 +318,7 @@ describe("scenarios > models", () => {
         .click();
       selectFromDropdown("Not empty");
       cy.button("Apply").click();
+      cy.wait("@dataset");
 
       assertQuestionIsBasedOnModel({
         model: "Orders Model",
@@ -325,6 +329,7 @@ describe("scenarios > models", () => {
       summarize();
 
       selectDimensionOptionFromSidebar("Created At");
+      cy.wait("@dataset");
       cy.button("Done").click();
 
       assertQuestionIsBasedOnModel({
