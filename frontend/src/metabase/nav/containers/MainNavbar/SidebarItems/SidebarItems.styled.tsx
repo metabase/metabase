@@ -45,7 +45,7 @@ export const NodeRoot = styled(TreeNode.Root)<{
   color: ${props => getTextColor(props.isSelected)};
 
   background-color: ${props =>
-    props.isSelected ? alpha("brand", 0.35) : "unset"};
+    props.isSelected ? alpha("brand", 0.2) : "unset"};
 
   padding-left: ${props => props.depth}rem;
   border-radius: 4px;
@@ -55,7 +55,7 @@ export const NodeRoot = styled(TreeNode.Root)<{
   }
 
   &:hover {
-    background-color: ${lighten(color("brand"), 0.6)};
+    background-color: ${alpha("brand", 0.35)};
     color: ${color("brand")};
 
     ${ExpandToggleButton} {
