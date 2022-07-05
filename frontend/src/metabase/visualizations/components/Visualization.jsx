@@ -7,6 +7,7 @@ import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { t, jt } from "ttag";
@@ -157,6 +158,17 @@ class Visualization extends React.PureComponent {
     });
   }
 
+  isLoading = series => {
+    !(
+      series &&
+      series.length > 0 &&
+      _.every(
+        series,
+        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
+      )
+    );
+  };
+
   handleHoverChange = hovered => {
     if (hovered) {
       const { yAxisSplit } = this.state;
@@ -300,6 +312,7 @@ class Visualization extends React.PureComponent {
     const {
       actionButtons,
       className,
+      dashcard,
       showTitle,
       isDashboard,
       width,
@@ -307,6 +320,7 @@ class Visualization extends React.PureComponent {
       headerIcon,
       errorIcon,
       isSlow,
+      isEditingParameter,
       expectedDuration,
       replacementContent,
       onOpenChartSettings,
@@ -325,14 +339,7 @@ class Visualization extends React.PureComponent {
     }
 
     let error = this.props.error || this.state.error;
-    const loading = !(
-      series &&
-      series.length > 0 &&
-      _.every(
-        series,
-        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
-      )
-    );
+    const loading = this.isLoading(series);
     let noResults = false;
     let isPlaceholder = false;
 
@@ -433,12 +440,14 @@ class Visualization extends React.PureComponent {
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
     const isHeaderEnabled = !(visualization && visualization.noHeader);
+    const isVirtual = isVirtualDashCard(dashcard);
 
     const hasHeader =
       (showTitle &&
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
-      replacementContent;
+      (isVirtual && isEditingParameter);
+    replacementContent;
 
     return (
       <div
@@ -452,6 +461,7 @@ class Visualization extends React.PureComponent {
               settings={settings}
               icon={headerIcon}
               actionButtons={extra}
+              isVirtual={isVirtual}
               onChangeCardAndRun={
                 this.props.onChangeCardAndRun && !replacementContent
                   ? this.handleOnChangeCardAndRun

@@ -238,6 +238,7 @@ export default class DashCard extends Component {
           parameterValuesBySlug={parameterValuesBySlug}
           isEditing={isEditing}
           isPreviewing={this.state.isPreviewingCard}
+          isEditingParameter={isEditingParameter}
           gridSize={gridSize}
           totalNumGridCols={this.props.totalNumGridCols}
           actionButtons={

@@ -153,7 +153,7 @@ function DashCardCardParameterMapper({
     <Container>
       {hasSeries && <CardLabel>{card.name}</CardLabel>}
       <Header>
-        {isVirtual ? t`Tag to substitute` : t`Column to filter on`}
+        {isVirtual ? t`Variable to map to` : t`Column to filter on`}
       </Header>
       <Tooltip tooltip={tooltip}>
         <TippyPopover

@@ -40,7 +40,9 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
     cy.icon("pencil").click();
     cy.icon("string").click();
-    cy.findByPlaceholderText("Write here, and use Markdown if you'd like")
+    cy.findByPlaceholderText(
+      "You can use Markdown here, and include variables {{like_this}}",
+    )
       .click()
       .type("Foo");
     cy.button("Save").click();

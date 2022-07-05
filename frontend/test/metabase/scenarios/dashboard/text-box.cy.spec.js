@@ -8,9 +8,9 @@ import {
 function addTextBox(string) {
   cy.icon("pencil").click();
   cy.icon("string").click();
-  cy.findByPlaceholderText("Write here, and use Markdown if you'd like").type(
-    string,
-  );
+  cy.findByPlaceholderText(
+    "You can use Markdown here, and include variables {{like_this}}",
+  ).type(string);
 }
 
 describe("scenarios > dashboard > text-box", () => {
