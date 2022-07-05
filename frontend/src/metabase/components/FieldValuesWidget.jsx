@@ -201,6 +201,7 @@ class FieldValuesWidgetInner extends Component {
       fields,
       disableSearch,
       disablePKRemappingForSearch,
+      hasIncompleteValueSet,
     );
     const shouldSearch =
       !isExtensionOfPreviousSearch(value, lastValue, options, maxResults) ||
@@ -263,6 +264,7 @@ class FieldValuesWidgetInner extends Component {
       disablePKRemappingForSearch,
       loadingState,
       options,
+      hasIncompleteValueSet,
     });
 
     const isLoading = loadingState === "LOADING";
@@ -494,12 +496,23 @@ function isExtensionOfPreviousSearch(value, lastValue, options, maxResults) {
   );
 }
 
-function isSearchable(fields, disableSearch, disablePKRemappingForSearch) {
+function isSearchable(
+  fields,
+  disableSearch,
+  disablePKRemappingForSearch,
+  hasIncompleteValueSet,
+) {
   return (
     !disableSearch &&
     // search is available if:
     // all fields have a valid search field
     fields.every(field => searchField(field, disablePKRemappingForSearch)) &&
+    // at least one field is set to display as "search" or is a list field that has an incomplete value set
+    fields.some(
+      f =>
+        f.has_field_values === "search" ||
+        (f.has_field_values === "list" && hasIncompleteValueSet),
+    ) &&
     // and all fields are either "search" or "list"
     fields.every(
       f => f.has_field_values === "search" || f.has_field_values === "list",
@@ -514,6 +527,7 @@ function getTokenFieldPlaceholder({
   disablePKRemappingForSearch,
   loadingState,
   options,
+  hasIncompleteValueSet,
 }) {
   if (placeholder) {
     return placeholder;
@@ -529,7 +543,14 @@ function getTokenFieldPlaceholder({
     })
   ) {
     return t`Search the list`;
-  } else if (isSearchable(fields, disableSearch, disablePKRemappingForSearch)) {
+  } else if (
+    isSearchable(
+      fields,
+      disableSearch,
+      disablePKRemappingForSearch,
+      hasIncompleteValueSet,
+    )
+  ) {
     return getSearchableTokenFieldPlaceholder(
       fields,
       firstField,
@@ -551,7 +572,7 @@ function renderOptions(
     disableSearch,
     disablePKRemappingForSearch,
   } = props;
-  const { loadingState, options } = state;
+  const { loadingState, options, hasIncompleteValueSet } = state;
 
   if (alwaysShowOptions || isFocused) {
     if (optionsList) {
@@ -567,7 +588,12 @@ function renderOptions(
         return <EveryOptionState />;
       }
     } else if (
-      isSearchable(fields, disableSearch, disablePKRemappingForSearch)
+      isSearchable(
+        fields,
+        disableSearch,
+        disablePKRemappingForSearch,
+        hasIncompleteValueSet,
+      )
     ) {
       if (loadingState === "LOADING") {
         return <LoadingState />;
