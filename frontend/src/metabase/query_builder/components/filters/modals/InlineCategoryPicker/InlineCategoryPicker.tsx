@@ -21,6 +21,11 @@ import { BulkFilterSelect } from "../BulkFilterSelect";
 
 const mapStateToProps = (state: any, props: any) => {
   const fieldId = props.dimension?.field?.()?.id;
+
+  if (props.dimension?.field?.()?.values?.length) {
+    return { fieldValues: props.dimension?.field?.()?.values };
+  }
+
   const fieldValues =
     fieldId != null
       ? Fields.selectors.getFieldValues(state, {

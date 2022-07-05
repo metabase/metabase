@@ -61,12 +61,12 @@ const categoryField = new Field({
   table_id: 8,
   name: "category_string",
   has_field_values: "list",
-  values: ["Michaelangelo", "Donatello", "Raphael", "Leonardo"],
+  values: [["Michaelangelo"], ["Donatello"], ["Raphael"], ["Leonardo"]],
   dimensions: {},
   dimension_options: [],
-  effective_type: "type/Float",
+  effective_type: "type/Text",
   id: 137,
-  base_type: "type/Float",
+  base_type: "type/Text",
   metadata,
 });
 
