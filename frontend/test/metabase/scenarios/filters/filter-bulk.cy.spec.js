@@ -104,7 +104,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     popover().within(() => {
-      cy.findByPlaceholderText("Search the list").type("21");
+      cy.findByPlaceholderText("Search the list").type("20");
       cy.findByText("20").click();
       cy.button("Add filter").click();
     });
@@ -302,7 +302,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("should apply a boolean filter", () => {
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -312,7 +312,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("should change a boolean filter", () => {
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -322,7 +322,7 @@ describe("scenarios > filters > bulk filtering", () => {
       openFilterModal();
 
       modal().within(() => {
-        cy.findByText("false").click();
+        cy.findByText("False").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -332,7 +332,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("should remove a boolean filter", () => {
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -342,7 +342,7 @@ describe("scenarios > filters > bulk filtering", () => {
       openFilterModal();
 
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -505,23 +505,23 @@ describe("scenarios > filters > bulk filtering", () => {
 
   describe("text filters", () => {
     beforeEach(() => {
-      visitQuestionAdhoc(productsQuestion);
+      visitQuestionAdhoc(peopleQuestion);
       openFilterModal();
     });
 
     it("adds a contains text filter", () => {
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
-          cy.findByPlaceholderText("Search by Title").type("Marble");
+        cy.findByLabelText("City").within(() => {
+          cy.findByPlaceholderText("Search by City").type("Indian");
         });
         cy.button("Apply").click();
       });
-      cy.findByText("Showing 17 rows").should("be.visible");
+      cy.findByText("Showing 5 rows").should("be.visible");
     });
 
     it("adds an ends with text filter", () => {
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
+        cy.findByLabelText("City").within(() => {
           cy.findByText("Contains").click();
         });
       });
@@ -531,17 +531,17 @@ describe("scenarios > filters > bulk filtering", () => {
       });
 
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
-          cy.findByPlaceholderText("Search by Title").type("Hat");
+        cy.findByLabelText("City").within(() => {
+          cy.findByPlaceholderText("Search by City").type("Valley");
         });
         cy.button("Apply").click();
       });
-      cy.findByText("Showing 12 rows").should("be.visible");
+      cy.findByText("Showing 8 rows").should("be.visible");
     });
 
     it("adds multiple is text filters", () => {
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
+        cy.findByLabelText("City").within(() => {
           cy.findByText("Contains").click();
         });
       });
@@ -551,15 +551,15 @@ describe("scenarios > filters > bulk filtering", () => {
       });
 
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
-          cy.findByPlaceholderText("Search by Title").type(
-            "Small Marble Shoes,Rustic Paper Wallet",
+        cy.findByLabelText("City").within(() => {
+          cy.findByPlaceholderText("Search by City").type(
+            "Indianeown, Indian Valley",
           );
         });
         cy.button("Apply").click();
       });
-      cy.findByText("Title is 2 selections").should("be.visible");
-      cy.findByText("Showing 2 rows").should("be.visible");
+      cy.findByText("City is 2 selections").should("be.visible");
+      cy.findByText("Showing 1 row").should("be.visible");
     });
   });
 

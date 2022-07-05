@@ -7,6 +7,6 @@ export interface Revision {
   is_reversion: boolean;
   message?: string | null;
   user: BaseUser;
-  diff: { before: Record<string, unknown>; after: Record<string, unknown> };
+  diff: { before: Record<string, any>; after: Record<string, any> };
   timestamp: string;
 }
