@@ -68,7 +68,11 @@ const PersistedModelRefreshIntervalWidget = ({
         <SelectLabel>{t`Refresh models every…`}</SelectLabel>
         <StyledSettingSelect
           className="SettingsInput--short"
-          setting={{ ...setting, defaultValue: setting.default }}
+          setting={{
+            ...setting,
+            value: isCustom ? "custom" : setting.value,
+            defaultValue: setting.default,
+          }}
           disabled={disabled}
           onChange={handleChange}
         />
