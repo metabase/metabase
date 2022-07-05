@@ -148,8 +148,14 @@ jobs:
       env:
         TERM: xterm
 
+    - name: "Check JSON report existence"
+      id: check_files
+      uses: andstor/file-existence-action@v1
+      with:
+        files: "cypress/reports/mochareports/*.json"
+
     - name: Generate Mochawesome Reports
-      if: failure()
+      if: steps.check_files.outputs.files_exists == 'true'
       run: yarn generate-cypress-html-report
 
     - name: Upload Cypress Artifacts upon failure
