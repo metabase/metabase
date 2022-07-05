@@ -461,6 +461,7 @@
   [field-id :- su/IntGreaterThanZero]
   (when-let [{orig :values, remapped :human_readable_values} (db/select-one [FieldValues :values :human_readable_values]
                                                                {:where [:and
+                                                                        [:= :type "full"]
                                                                         [:= :field_id field-id]
                                                                         [:not= :human_readable_values nil]
                                                                         [:not= :human_readable_values "{}"]]})]
@@ -530,25 +531,17 @@
 
 (defn- use-cached-field-values?
   "Whether we should use cached `FieldValues` instead of running a query via the QP."
-  [field-id constraints search?]
+  [field-id]
   (and
    field-id
-   ;; only use cached Field values if there are no additional constraints (i.e. if this is just a simple "fetch all
-   ;; values" call)
-   (empty? constraints)
    ;; check whether the Field *should* have Field values. Not whether it actually does.
-   (field-values/field-should-have-field-values? field-id)
-   ;; If the Field *should* values, make sure the Field actually *does* have Field Values as well (but not a
-   ;; human-readable remap, which is handled by [[human-readable-values-remapped-chain-filter]].
-   (db/exists? FieldValues (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
-                                  ;; if we are doing a search, make sure we only use field values
-                                  ;; when we're certain the fieldvalues we stored are all the possible values.
-                                  ;; otherwise, we should search directly from DB
-                                  (when search?
-                                    {:has_more_values false})))))
+   (field-values/field-should-have-field-values? field-id)))
 
-(defn- cached-field-values [field-id {:keys [limit]}]
-  (let [{:keys [values]} (params.field-values/get-or-create-field-values-for-current-user! (Field field-id))]
+(defn- cached-field-values [field-id constraints {:keys [limit]}]
+  ;; TODO: why don't we remap the human readable values here?
+  (let [{:keys [values]} (if (empty? constraints)
+                           (params.field-values/get-or-create-field-values-for-current-user! (Field field-id))
+                           (params.field-values/get-or-create-linked-filter-field-values! (Field field-id) constraints))]
     (cond->> (map first values)
       limit (take limit))))
 
@@ -574,8 +567,8 @@
   (let [{:as options} options]
     (if-let [v->human-readable (human-readable-remapping-map field-id)]
       (human-readable-values-remapped-chain-filter field-id v->human-readable constraints options)
-      (if (use-cached-field-values? field-id constraints false)
-        (cached-field-values field-id options)
+      (if (use-cached-field-values? field-id)
+        (cached-field-values field-id constraints options)
         (if-let [remapped-field-id (remapped-field-id field-id)]
           (field-to-field-remapped-chain-filter field-id remapped-field-id constraints options)
           (unremapped-chain-filter field-id constraints options))))))
@@ -634,12 +627,24 @@
       []))
 
 (defn- search-cached-field-values? [field-id constraints]
-  (and (use-cached-field-values? field-id constraints true)
-       (isa? (db/select-one-field :base_type Field :id field-id) :type/Text)))
+  (and (use-cached-field-values? field-id)
+       (isa? (db/select-one-field :base_type Field :id field-id) :type/Text)
+       (db/exists? FieldValues (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
+                                  ;; if we are doing a search, make sure we only use field values
+                                  ;; when we're certain the fieldvalues we stored are all the possible values.
+                                  ;; otherwise, we should search directly from DB
+                                  {:has_more_values false}
+                                  (if-not (empty? constraints)
+                                    {:type     "linked-filter"
+                                     :hash_key (params.field-values/hash-key-for-advanced-field-values :linked-filter field-id constraints)}
+                                    (if-let [hash-key (params.field-values/hash-key-for-advanced-field-values :sandbox field-id nil)]
+                                      {:type    "sandbox"
+                                       :hash_key hash-key}
+                                      {:type "full"}))))))
 
 (defn- cached-field-values-search
-  [field-id query {:keys [limit]}]
-  (let [values (cached-field-values field-id nil)
+  [field-id query constraints {:keys [limit]}]
+  (let [values (cached-field-values field-id constraints nil)
         query  (str/lower-case query)]
     (cond->> (filter (fn [s]
                        (when s
@@ -672,7 +677,7 @@
       (if-let [v->human-readable (human-readable-remapping-map field-id)]
         (human-readable-values-remapped-chain-filter-search field-id v->human-readable constraints query options)
         (if (search-cached-field-values? field-id constraints)
-          (cached-field-values-search field-id query options)
+          (cached-field-values-search field-id query constraints options)
           (if-let [remapped-field-id (remapped-field-id field-id)]
             (field-to-field-remapped-chain-filter-search field-id remapped-field-id constraints query options)
             (unremapped-chain-filter-search field-id constraints query options)))))))

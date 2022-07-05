@@ -17,21 +17,19 @@
             [metabase.events :as events]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models.bookmark :as bookmark :refer [CardBookmark]]
-            [metabase.models.card :as card :refer [Card]]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.database :refer [Database]]
+            [metabase.models :refer [Card CardBookmark Collection Database Field PersistedInfo Pulse Table ViewLog]]
+            [metabase.models.card :as card]
+            [metabase.models.collection :as collection]
             [metabase.models.interface :as mi]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.params.chain-filter :as chain-filter]
-            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
-            [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.models.params.field-values :as params.field-values]
+            [metabase.models.persisted-info :as persisted-info]
+            [metabase.models.pulse :as pulse]
             [metabase.models.query :as query]
             [metabase.models.query.permissions :as query-perms]
             [metabase.models.revision.last-edit :as last-edit]
-            [metabase.models.table :refer [Table]]
             [metabase.models.timeline :as timeline]
-            [metabase.models.view-log :refer [ViewLog]]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.error-type :as qp.error-type]
@@ -782,23 +780,29 @@
      (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-id))
                      {:status-code 400})))
    (let [field-ids (param-id->field-ids card param-id)]
-     (when (empty? field-ids)
-       (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-id))
-                       {:param-id    param-id
-                        :status-code 400})))
-     (try
-         (let [results (distinct (mapcat (if (seq query)
-                                           #(chain-filter/chain-filter-search % {} query :limit result-limit)
-                                           #(chain-filter/chain-filter % {} :limit result-limit))
-                                         field-ids))]
-           ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
-           (if (sequential? (first results))
-             (sort-by second results)
-             (sort results)))
-         (catch clojure.lang.ExceptionInfo e
-           (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-             (api/throw-403 e)
-             (throw e)))))))
+     ;; make sure has permissions to read values of these fields
+     (->> field-ids
+          (map Field)
+          (map params.field-values/current-user-can-fetch-field-values?)
+          (every? true?)
+          api/check-403)
+    (when (empty? field-ids)
+      (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-id))
+                      {:param-id    param-id
+                       :status-code 400})))
+    (try
+        (let [results (distinct (mapcat (if (seq query)
+                                          #(chain-filter/chain-filter-search % {} query :limit result-limit)
+                                          #(chain-filter/chain-filter % {} :limit result-limit))
+                                        field-ids))]
+          ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
+          (if (sequential? (first results))
+            (sort-by second results)
+            (sort results)))
+        (catch clojure.lang.ExceptionInfo e
+          (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+            (api/throw-403 e)
+            (throw e)))))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-id`.

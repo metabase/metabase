@@ -1,9 +1,10 @@
 (ns metabase.models.params.field-values
   "Code related to fetching *cached* FieldValues for Fields to populate parameter widgets. Always used by the field
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
-  (:require [metabase.models.field :as field :refer [Field]]
+  (:require [metabase.api.common :as api]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
+            [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -11,8 +12,7 @@
 (defn default-get-or-create-field-values-for-current-user!
   "OSS implementation; used as a fallback for the EE implementation if the field isn't sandboxed."
   [field]
-  (when (field-values/field-should-have-field-values? field)
-    (field-values/get-or-create-full-field-values! field)))
+  (field-values/get-or-create-full-field-values! field))
 
 (defenterprise get-or-create-field-values-for-current-user!*
   "Fetch cached FieldValues for a `field`, creating them if needed if the Field should have FieldValues."
@@ -20,46 +20,123 @@
   [field]
   (default-get-or-create-field-values-for-current-user! field))
 
-(defn default-field-id->field-values-for-current-user
-  "OSS implementation; used as a fallback for the EE implementation for any fields that aren't subject to sandboxing."
-  [field-ids]
-  (when (seq field-ids)
-    (not-empty
-     (let [field-values       (db/select [FieldValues :values :human_readable_values :field_id]
-                                :field_id [:in (set field-ids)]
-                                :type :full)
-           readable-fields    (when (seq field-values)
-                                (field/readable-fields-only (db/select [Field :id :table_id]
-                                                              :id [:in (set (map :field_id field-values))])))
-           readable-field-ids (set (map :id readable-fields))]
-       (->> field-values
-            (filter #(contains? readable-field-ids (:field_id %)))
-            (u/key-by :field_id))))))
-
 (defn current-user-can-fetch-field-values?
   "Whether the current User has permissions to fetch FieldValues for a `field`."
   [field]
   ;; read permissions for a Field = partial permissions for its parent Table (including EE segmented permissions)
   (mi/can-read? field))
 
+(defn- format-field-values
+  "Format a FieldValues to use by params functions.
+  ;; (format-field-values (FieldValues 1))
+  ;; => {:values          [1 2 3 4]
+         :field_id        1
+         :has_more_values boolean}"
+  [field-values field]
+  (if field-values
+    (-> field-values
+        (assoc :values (field-values/field-values->pairs field-values))
+        (select-keys [:values :field_id :has_more_values]))
+    {:values [], :field_id (u/the-id field), :has_more_values false}))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             Advanced FieldValues                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- fetch-advanced-field-values
+  [fv-type field constraints]
+  {:pre [(field-values/advanced-field-values-types fv-type)]}
+  (case fv-type
+    :linked-filter
+    (do
+      (classloader/require 'metabase.models.params.chain-filter)
+      {:values          ((resolve 'metabase.models.params.chain-filter/unremapped-chain-filter)
+                         (:id field) constraints {})
+       ;; TODO: refactor [unremapped-chain-filter] to returns has_more_values
+       ;; currently default to `true` to makes sure chain-filter-search to do a MBQL search
+       :has_more_values true})
+
+    :sandbox
+    (field-values/distinct-values field)))
+
+(defn hash-key-for-advanced-field-values
+  [fv-type field-id constraints]
+  (case fv-type
+    :linked-filter
+    (field-values/hash-key-for-linked-filters field-id constraints)
+
+    :sandbox
+    (field-values/hash-key-for-sandbox field-id api/*current-user-id* @api/*current-user-permissions-set*)))
+
+(defn- create-advanced-field-values!
+  [fv-type field hash-key constraints]
+  (when-let [{:keys [values has_more_values]} (fetch-advanced-field-values fv-type field constraints)]
+    (let [;; If the full FieldValues of this field has a human-readable-values, fix it with the new values
+          human-readable-values (field-values/fixup-human-readable-values
+                                  (db/select-one FieldValues
+                                                 :field_id (:id field)
+                                                 :type :full)
+                                  values)]
+      (db/insert! FieldValues
+                  :field_id (:id field)
+                  :type fv-type
+                  :hash_key hash-key
+                  :has_more_values has_more_values
+                  :human_readable_values human-readable-values
+                  :values values))))
+
+(defn get-or-create-advanced-field-values!
+  "blablo"
+  ([fv-type field]
+   (get-or-create-advanced-field-values! fv-type field nil))
+
+  ([fv-type field constraints]
+   (let [hash-key (hash-key-for-advanced-field-values fv-type (:id field) constraints)
+         fv       (or (FieldValues :field_id (:id field)
+                                   :type fv-type
+                                   :hash_key hash-key)
+                      (create-advanced-field-values! fv-type field hash-key constraints))]
+     (cond
+       (nil? fv) nil
+
+       ;; If it's expired, delete then try to re-create it
+       (field-values/advanced-field-values-expired? fv) (do
+                                                          (db/delete! FieldValues :id (:id fv))
+                                                          (recur fv-type field constraints))
+       :else fv))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Public functions                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (defn get-or-create-field-values-for-current-user!
   "Fetch FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These are
   filtered as appropriate for the current User, depending on MB version (e.g. EE sandboxing will filter these values).
   If the Field has a human-readable values remapping (see documentation at the top of
   `metabase.models.params.chain-filter` for an explanation of what this means), values are returned in the format
-
     {:values           [[original-value human-readable-value]]
      :field_id         field-id
      :has_field_values boolean}
-
   If the Field does *not* have human-readable values remapping, values are returned in the format
-
     {:values           [[value]]
      :field_id         field-id
      :has_field_values boolean}"
   [field]
-  (if-let [field-values (get-or-create-field-values-for-current-user!* field)]
-    (-> field-values
-        (assoc :values (field-values/field-values->pairs field-values))
-        (select-keys [:values :field_id :has_more_values]))
-    {:values [], :field_id (u/the-id field), :has_more_values false}))
+  (-> (get-or-create-field-values-for-current-user!* field)
+      (format-field-values field)))
+
+(defn get-or-create-linked-filter-field-values!
+  "Fetch linked-filter FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These are
+  filtered as appropriate for the current User, depending on MB version (e.g. EE sandboxing will filter these values).
+  If the Field has a human-readable values remapping (see documentation at the top of
+  `metabase.models.params.chain-filter` for an explanation of what this means), values are returned in the format
+    {:values           [[original-value human-readable-value]]
+     :field_id         field-id
+     :has_field_values boolean}
+  If the Field does *not* have human-readable values remapping, values are returned in the format
+    {:values           [[value]]
+     :field_id         field-id
+     :has_field_values boolean}"
+  [field constraints]
+  (-> (get-or-create-advanced-field-values! :linked-filter field constraints)
+      (format-field-values field)))

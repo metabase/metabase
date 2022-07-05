@@ -20,6 +20,7 @@
             [java-time :as t]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
@@ -247,15 +248,21 @@
   {:pre [(advanced-field-values-types (:type fv))]}
   (u.date/older-than? (:created_at fv) advanced-field-values-max-age))
 
-(defn hash-key-for-sandbox
-  "Return a hash-key that will be used for sandboxed fieldvalues."
-  [field-id user-id user-permissions-set]
-  (str (hash [field-id
-              user-id
-              (hash user-permissions-set)])))
+(defn advanced-field-values-expired?
+  "Checks if an advanced FieldValues expired."
+  [fv]
+  {:pre [(advanced-field-values-types (:type fv))]}
+  (u.date/older-than? (:created_at fv) advanced-field-values-max-age))
 
-(defn hash-key-for-linked-filters
+(defenterprise hash-key-for-sandbox
+  "Return a hash-key that will be used for sandboxed fieldvalues."
+  metabase-enterprise.sandbox.models.params.field-values
+  [field-id user-id user-permissions-set]
+  nil)
+
+(defenterprise hash-key-for-linked-filters
   "Return a hash-key that will be used for linked-filters fieldvalues."
+  metabase-enterprise.sandbox.models.params.field-values
   [field-id constraints]
   (str (hash [field-id
               constraints])))

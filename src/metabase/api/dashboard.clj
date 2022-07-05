@@ -20,6 +20,7 @@
             [metabase.models.interface :as mi]
             [metabase.models.params :as params]
             [metabase.models.params.chain-filter :as chain-filter]
+            [metabase.models.params.field-values :as params.field-values]
             [metabase.models.query :as query :refer [Query]]
             [metabase.models.query.permissions :as query-perms]
             [metabase.models.revision :as revision]
@@ -594,25 +595,30 @@
                         :status-code     400})))
      (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
            field-ids   (param-key->field-ids dashboard param-key)]
-       (when (empty? field-ids)
-         (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                         {:param       (get (:resolved-params dashboard) param-key)
-                          :status-code 400})))
+      (->> field-ids
+                (map Field)
+                (map params.field-values/current-user-can-fetch-field-values?)
+                (every? true?)
+                api/check-403)
+      (when (empty? field-ids)
+        (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
+                        {:param       (get (:resolved-params dashboard) param-key)
+                         :status-code 400})))
        ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
        ;; separate query for each Field (for parameters that are mapped to more than one Field)
-       (try
-         (let [results (distinct (mapcat (if (seq query)
-                                           #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                           #(chain-filter/chain-filter % constraints :limit result-limit))
-                                         field-ids))]
-           ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
-           (if (sequential? (first results))
-             (sort-by second results)
-             (sort results)))
-         (catch clojure.lang.ExceptionInfo e
-           (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-             (api/throw-403 e)
-             (throw e))))))))
+      (try
+        (let [results (distinct (mapcat (if (seq query)
+                                          #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                                          #(chain-filter/chain-filter % constraints :limit result-limit))
+                                        field-ids))]
+          ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
+          (if (sequential? (first results))
+            (sort-by second results)
+            (sort results)))
+        (catch clojure.lang.ExceptionInfo e
+          (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+            (api/throw-403 e)
+            (throw e))))))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
