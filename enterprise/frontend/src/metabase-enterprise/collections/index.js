@@ -34,8 +34,8 @@ PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (collection, onUpdate) => {
   } else {
     return [
       {
-        title: t`Make collection unofficial`,
-        icon: REGULAR_COLLECTION.icon,
+        title: t`Remove Official badge`,
+        icon: "close",
         action: () =>
           onUpdate(collection, {
             authority_level: REGULAR_COLLECTION.type,
@@ -64,10 +64,6 @@ PLUGIN_COLLECTIONS.getAuthorityLevelFormFields = () => [
         selectedColor: OFFICIAL_COLLECTION.color,
       },
     ],
-  },
-  {
-    name: "update_collection_tree_authority_level",
-    type: "hidden",
   },
 ];
 

@@ -11791,6 +11791,7 @@ databaseChangeLog:
                   nullable: true
                   unique: true
             tableName: report_dashboardcard
+
   - changeSet:
       id: v44.00-023
       author: qnkhuat
@@ -11906,6 +11907,45 @@ databaseChangeLog:
                       ON all_users_group.id = p.group_id
                     AND p.object = '/collection/namespace/snippets/root/'
               WHERE p.object IS NULL;
+
+  - changeSet:
+      id: v44.00-035
+      author: qnkhuat
+      comment: Added 0.44.0. Add type to fieldvalues
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: type
+                  type: ${text.type}
+                  remarks: Type of FieldValues
+                  constraints:
+                    nullable: true
+  - changeSet:
+      id: v44.00-036
+      author: qnkhuat
+      comment: Added 0.44.0 - Add default value for metabase_fieldvalues.type
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${text.type}
+            columnName: type
+            defaultNullValue: 'full'
+            tableName: metabase_fieldvalues
+  - changeSet:
+      id: v44.00-037
+      author: qnkhuat
+      comment: Added 0.44.0. Add type to fieldvalues
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: hash_key
+                  type: ${text.type}
+                  remarks: Hash key for a cached fieldvalues
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v44.00-038

@@ -134,6 +134,7 @@ export const PLUGIN_CACHING = {
   questionCacheTTLFormField: null,
   getQuestionsImplicitCacheTTL: (question?: any) => null,
   QuestionCacheSection: PluginPlaceholder,
+  DashboardCacheSection: PluginPlaceholder,
   isEnabled: () => false,
 };
 

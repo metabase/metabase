@@ -254,13 +254,12 @@ describe("ViewHeader", () => {
         });
 
         it("offers to filter query results", () => {
-          const { onAddFilter } = setup({
+          const { onOpenModal } = setup({
             question,
             queryBuilderMode: "view",
           });
           fireEvent.click(screen.getByText("Filter"));
-          fireEvent.click(screen.getByLabelText("Show more filters"));
-          expect(onAddFilter).toHaveBeenCalled();
+          expect(onOpenModal).toHaveBeenCalled();
         });
 
         it("offers to summarize query results", () => {
@@ -384,16 +383,6 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
     fireEvent.click(screen.getByText(tableName));
 
     expect(onOpenModal).not.toHaveBeenCalled();
-  });
-
-  it("displays original question name if a question is started from one", () => {
-    const originalQuestion = getSavedGUIQuestion();
-    setupAdHoc({ originalQuestion });
-
-    expect(screen.queryByText("Started from")).toBeInTheDocument();
-    expect(
-      screen.queryByText(originalQuestion.displayName()),
-    ).toBeInTheDocument();
   });
 
   it("does not render bookmark and action buttons", () => {
@@ -521,16 +510,6 @@ describe("View Header | Not saved native question", () => {
   it("does not offer to explore query results", () => {
     setupNative();
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
-  });
-
-  it("displays original question name if a question is started from one", () => {
-    const originalQuestion = getSavedNativeQuestion();
-    setupNative({ originalQuestion });
-
-    expect(screen.queryByText("Started from")).toBeInTheDocument();
-    expect(
-      screen.queryByText(originalQuestion.displayName()),
-    ).toBeInTheDocument();
   });
 });
 

@@ -117,21 +117,15 @@ describe("parameters/utils/mbql", () => {
       expect(dateParameterValueToMBQL("exclude-hours-0", null)).toEqual([
         "!=",
         ["field", null, { "temporal-unit": "hour-of-day" }],
-        date()
-          .hour(0)
-          .toISOString(),
+        0,
       ]);
     });
     it("should parse exclude-hours-0-23", () => {
       expect(dateParameterValueToMBQL("exclude-hours-0-23", null)).toEqual([
         "!=",
         ["field", null, { "temporal-unit": "hour-of-day" }],
-        date()
-          .hour(0)
-          .toISOString(),
-        date()
-          .hour(23)
-          .toISOString(),
+        0,
+        23,
       ]);
     });
     it("should parse exclude-quarters-1", () => {

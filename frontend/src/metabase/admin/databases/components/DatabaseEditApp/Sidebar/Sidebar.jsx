@@ -8,6 +8,8 @@ import ActionButton from "metabase/components/ActionButton";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Button from "metabase/core/components/Button";
+
+import ModelCachingControl from "./ModelCachingControl";
 import { SidebarRoot } from "./Sidebar.styled";
 
 const propTypes = {
@@ -69,25 +71,17 @@ const DatabaseEditAppSidebar = ({
             </li>
             {isModelPersistenceEnabled && database.supportsPersistence() && (
               <li className="mt2">
-                {database.isPersisted() ? (
-                  <ActionButton
-                    actionFn={() => unpersistDatabase(database.id)}
-                    className="Button"
-                    normalText={t`Disable model persistence`}
-                    activeText={t`Disabling…`}
-                    failedText={t`Failed`}
-                    successText={t`Done`}
-                  />
-                ) : (
-                  <ActionButton
-                    actionFn={() => persistDatabase(database.id)}
-                    className="Button"
-                    normalText={t`Enable model persistence`}
-                    activeText={t`Enabling…`}
-                    failedText={t`Failed`}
-                    successText={t`Done`}
-                  />
-                )}
+                <ModelCachingControl
+                  databaseId={database.id}
+                  isEnabled={database.isPersisted()}
+                  onToggle={isEnabled => {
+                    if (isEnabled) {
+                      return persistDatabase(database.id);
+                    } else {
+                      return unpersistDatabase(database.id);
+                    }
+                  }}
+                />
               </li>
             )}
           </ol>

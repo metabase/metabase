@@ -76,6 +76,8 @@ export type SettingName =
   | "hide-embed-branding?"
   | "is-hosted?"
   | "ldap-configured?"
+  | "other-sso-configured?"
+  | "enable-password-login"
   | "map-tile-server-url"
   | "password-complexity"
   | "persisted-model-refresh-interval-hours"
@@ -83,6 +85,7 @@ export type SettingName =
   | "search-typeahead-enabled"
   | "setup-token"
   | "site-url"
+  | "site-uuid"
   | "types"
   | "version-info-last-checked"
   | "version-info"
@@ -167,10 +170,6 @@ class Settings {
     return this.get("cloud-gateway-ips") || [];
   }
 
-  googleAuthEnabled() {
-    return this.get("google-auth-client-id") != null;
-  }
-
   hasUserSetup() {
     return this.get("has-user-setup");
   }
@@ -179,8 +178,29 @@ class Settings {
     return this.get("hide-embed-branding?");
   }
 
-  ldapEnabled() {
+  isGoogleAuthConfigured() {
+    return this.get("google-auth-client-id") != null;
+  }
+
+  isLdapConfigured() {
     return this.get("ldap-configured?");
+  }
+
+  // JWT or SAML is configured
+  isOtherSsoConfigured() {
+    return this.get("other-sso-configured?");
+  }
+
+  isSsoConfigured() {
+    return (
+      this.isGoogleAuthConfigured() ||
+      this.isLdapConfigured() ||
+      this.isGoogleAuthConfigured()
+    );
+  }
+
+  isPasswordLoginEnabled() {
+    return this.get("enable-password-login");
   }
 
   searchTypeaheadEnabled() {

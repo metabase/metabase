@@ -32,7 +32,7 @@
   (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-configured?)]
     (varr)))
 
-(defn- sso-configured?
+(defn sso-configured?
   "Any SSO provider is configured"
   []
   (or (google-auth-configured?)
@@ -85,7 +85,7 @@
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
   its magic getter. Nice!"
-  :visibility :internal
+  :visibility :authenticated
   :setter     :none
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
   :type       ::uuid-nonce)
