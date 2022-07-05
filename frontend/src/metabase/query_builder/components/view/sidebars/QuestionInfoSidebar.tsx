@@ -48,8 +48,6 @@ export const QuestionInfoSidebar = ({
       <ContentSection>
         <Header>{t`About`}</Header>
         <EditableText
-          bigText
-          negativeMargin
           initialValue={description}
           placeholder={t`Add description`}
           isOptional

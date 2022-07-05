@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import EditableText from "metabase/core/components/EditableText";
 
 export const Root = styled.div`
   padding: 1rem 1.5rem 0;
@@ -26,6 +27,12 @@ export const ContentSection = styled.div<ContentSectionProps>`
 
   &:first-of-type {
     padding-top: 0;
+  }
+
+  ${EditableText.Root} {
+    font-size: 1rem; 
+    line-height: 1.4rem;
+    margin-left: -0.3rem;
   }
 `;
 
