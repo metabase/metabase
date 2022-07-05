@@ -14,6 +14,8 @@ import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { TabContext, TabContextType } from "../Tab";
 import { TabListContent, TabListRoot, ScrollButton } from "./TabList.styled";
 
+const UNDERSCROLL_PIXELS = 32;
+
 export interface TabListProps<T>
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
   value?: T;
@@ -29,7 +31,6 @@ const TabList = forwardRef(function TabGroup<T>(
   const outerContext = useContext(TabContext);
 
   const [scrollPosition, setScrollPosition] = useState(0);
-  const [showScrollLeft, setShowScrollLeft] = useState(false);
   const [showScrollRight, setShowScrollRight] = useState(false);
 
   const tabListContentRef = useRef(null);
@@ -45,11 +46,14 @@ const TabList = forwardRef(function TabGroup<T>(
       const container = tabListContentRef.current as HTMLDivElement;
 
       const scrollDistance =
-        (container.offsetWidth - 32) * (direction === "left" ? -1 : 1);
-      container.scroll(container.scrollLeft + scrollDistance, 0);
+        (container.offsetWidth - UNDERSCROLL_PIXELS) *
+        (direction === "left" ? -1 : 1);
+      container.scrollBy(scrollDistance, 0);
       setScrollPosition(container.scrollLeft + scrollDistance);
     }
   };
+
+  const showScrollLeft = scrollPosition > 0;
 
   useEffect(() => {
     if (!tabListContentRef.current) {
@@ -60,8 +64,7 @@ const TabList = forwardRef(function TabGroup<T>(
     setShowScrollRight(
       scrollPosition + container.offsetWidth < container.scrollWidth,
     );
-    setShowScrollLeft(scrollPosition > 0);
-  }, [setShowScrollLeft, setShowScrollRight, scrollPosition]);
+  }, [scrollPosition]);
 
   return (
     <TabListRoot {...props} ref={ref} role="tablist">
@@ -88,7 +91,7 @@ interface ScrollArrowProps {
 const ScrollArrow = ({ direction, onClick }: ScrollArrowProps) => (
   <ScrollButton
     onClick={onClick}
-    direction={direction}
+    directionIcon={direction}
     aria-label={`scroll-${direction}-button`}
   >
     <Icon name={`chevron${direction}`} color="brand" />

@@ -17,7 +17,7 @@ export const TabListContent = styled.div`
 `;
 
 interface ScrollButtonProps {
-  direction: "left" | "right";
+  directionIcon: "left" | "right";
 }
 
 export const ScrollButton = styled.button<ScrollButtonProps>`
@@ -26,14 +26,14 @@ export const ScrollButton = styled.button<ScrollButtonProps>`
   height: 100%;
   width: 3rem;
   padding-bottom: ${space(2)};
-  text-align: ${props => props.direction};
+  text-align: ${props => props.directionIcon};
   color: ${color("text-light")};
   &:hover {
     color: ${color("brand")};
   }
-  ${props => props.direction}: 0;
+  ${props => props.directionIcon}: 0;
   background: linear-gradient(
-    to ${props => props.direction},
+    to ${props => props.directionIcon},
     ${alpha("white", 0.1)},
     ${alpha("white", 0.5)},
     30%,
