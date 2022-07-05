@@ -133,7 +133,7 @@ describe("scenarios > models", () => {
       cy.icon("table");
     });
 
-    cy.url().should("not.include", "/question/1");
+    cy.location("pathname").should("eq", "/collection/root");
   });
 
   it("changes model's display to table", () => {
