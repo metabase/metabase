@@ -104,14 +104,14 @@
                 :has_more_values true}
               (#'field-values/distinct-values {})))))))
 
-(deftest clear-field-values!-test
+(deftest clear-field-values-for-field!-test
   (mt/with-temp* [Database    [{database-id :id}]
                   Table       [{table-id :id} {:db_id database-id}]
                   Field       [{field-id :id} {:table_id table-id}]
                   FieldValues [_              {:field_id field-id, :values "[1,2,3]"}]]
     (is (= [1 2 3]
            (db/select-one-field :values FieldValues, :field_id field-id)))
-    (#'field-values/clear-field-values! field-id)
+    (field-values/clear-field-values-for-field! field-id)
     (is (= nil
            (db/select-one-field :values FieldValues, :field_id field-id)))))
 
@@ -122,6 +122,20 @@
 (defn- sync-and-find-values [db field-values-id]
   (sync/sync-database! db)
   (find-values field-values-id))
+
+(deftest get-or-create-full-field-values!-test
+  (testing "create a full Fieldvalues if it does not exist"
+    (db/delete! FieldValues :field_id (mt/id :categories :name) :type :full)
+    (is (= :full (-> (Field (mt/id :categories :name))
+                     field-values/get-or-create-full-field-values!
+                     :type))
+     (is (= 1 (db/count FieldValues :field_id (mt/id :categories :name) :type :full))))
+
+   (testing "if an Advanced FeildValues Exists, make sure we still returns the full FieldValues"
+     (mt/with-temp FieldValues [_ {:field_id (mt/id :categories :name)
+                                   :type     :sandbox
+                                   :hash_key "random-hash"}])
+     (is (= :full (:type (field-values/get-or-create-full-field-values! (Field (mt/id :categories :name)))))))))
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
@@ -210,11 +224,63 @@
                                       :type                    "external"}]
             (mt/with-temp-vals-in-db Field (mt/id :orders :product_id) {:has_field_values "list"}
               (is (= ::field-values/fv-created
-                     (field-values/create-or-update-field-values! (Field (mt/id :orders :product_id)))))
+                     (field-values/create-or-update-full-field-values! (Field (mt/id :orders :product_id)))))
               (is (partial= {:field_id              (mt/id :orders :product_id)
                              :values                [1 2 3 4]
                              :human_readable_values []}
                             (field-values))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 Life Cycle                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest insert-field-values-type-test
+  (testing "fieldvalues type=:full shouldn't have hash_key"
+    (is (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"Full FieldValues shouldnt have hash_key"
+          (mt/with-temp FieldValues [_ {:field_id (mt/id :venues :id)
+                                        :type :full
+                                        :hash_key "random-hash"}]))))
+
+  (testing "Advanced fieldvalues requires a hash_key"
+    (is (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"Advanced FieldValues requires a hash_key"
+          (mt/with-temp FieldValues [_ {:field_id (mt/id :venues :id)
+                                        :type :sandbox}])))))
+
+(deftest insert-full-field-values-should-remove-all-cached-field-values
+  (mt/with-temp* [FieldValues [sandbox-fv {:field_id (mt/id :venues :id)
+                                           :type     :sandbox
+                                           :hash_key "random-hash"}]]
+    (db/insert! FieldValues {:field_id (mt/id :venues :id)
+                             :type     :full})
+    (is (not (db/exists? FieldValues :id (:id sandbox-fv))))))
+
+(deftest update-full-field-values-should-remove-all-cached-field-values
+  (mt/with-temp* [FieldValues [fv         {:field_id (mt/id :venues :id)
+                                           :type     :full}]
+                  FieldValues [sandbox-fv {:field_id (mt/id :venues :id)
+                                           :type     :sandbox
+                                           :hash_key "random-hash"}]]
+    (db/update! FieldValues (:id fv) :values [1 2 3])
+    (is (not (db/exists? FieldValues :id (:id sandbox-fv))))))
+
+(deftest cant-update-type-or-has-of-a-field-values-test
+  (mt/with-temp FieldValues [fv {:field_id (mt/id :venues :id)
+                                  :type     :sandbox
+                                  :hash_key "random-hash"}]
+    (is (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"Cant update type or hash_key for a FieldValues."
+          (db/update! FieldValues (:id fv) :type :full)))
+
+    (is (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"Cant update type or hash_key for a FieldValues."
+          (db/update! FieldValues (:id fv) :hash_key "new-hash")))))
+
 
 (deftest identity-hash-test
   (testing "Field hashes are composed of the name and the table's identity-hash"
