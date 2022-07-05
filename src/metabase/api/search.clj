@@ -284,17 +284,11 @@
     (if (contains? current-user-perms "/")
       base-query
       (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
-        {:select (:select base-query)
-         :from   [[(merge
-                    base-query
-                    {:select [:id :name :description :updated_at :initial_sync_status
-                              [(hx/concat (hx/literal "/db/") :id (hx/literal "/"))
-                               :path]]})
-                   :database]]
-         :where  (if (seq data-perms)
-                   (into [:or] (for [path data-perms]
-                                 [:like :path (str path "%")]))
-                   [:= 0 1])}))))
+        (hh/merge-where base-query
+                        (if (seq data-perms)
+                          (into [:or] (for [path data-perms]
+                                        [:like (hx/concat (hx/literal "/db/") :id (hx/literal "/")) (str path "%")]))
+                          [:= 0 1]))))))
 
 (s/defmethod search-query-for-model "dashboard"
   [model search-ctx :- SearchContext]
