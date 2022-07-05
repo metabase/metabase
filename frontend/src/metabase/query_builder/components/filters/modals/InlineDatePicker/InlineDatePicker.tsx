@@ -107,7 +107,11 @@ export function InlineDatePicker({
         dimension={dimension}
         handleChange={onChange}
         handleClear={onClear}
-        dateShortcutOptions={POPOVER_SHORTCUT_OPTIONS}
+        dateShortcutOptions={
+          shouldShowShortcutOptions
+            ? POPOVER_SHORTCUT_OPTIONS
+            : ALL_DATE_OPTIONS
+        }
         customTrigger={({ onClick }) =>
           filter && selectedFilterIndex === null ? (
             <OptionButton active onClick={onClick}>
