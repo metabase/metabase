@@ -39,12 +39,12 @@ export function InlineOperatorSelector({
         <TippyPopoverWithTrigger
           sizeToFit
           renderTrigger={({ onClick }) => (
-            <OperatorDisplay onClick={onClick}>
+            <OperatorDisplay onClick={onClick} data-testid="operator-select">
               {operatorDisplayName} <Icon name="chevrondown" size={8} />
             </OperatorDisplay>
           )}
           popoverContent={({ closePopover }) => (
-            <OptionContainer>
+            <OptionContainer data-testid="operator-options">
               {operators.map(o => (
                 <Option
                   key={o.name}

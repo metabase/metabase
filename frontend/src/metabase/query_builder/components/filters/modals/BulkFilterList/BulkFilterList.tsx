@@ -95,10 +95,10 @@ const BulkFilterListItem = ({
   }, [filters, dimension]);
 
   return (
-    <ListRow>
-      {/* <ListRowLabel data-testid="dimension-filter-label">
-        { {dimension.displayName()}}
-      </ListRowLabel> */}
+    <ListRow
+      aria-label={`filter-field-${dimension.displayName()}`}
+      data-testid="dimension-filter-row"
+    >
       {options.map((filter, index) => (
         <BulkFilterItem
           key={index}
@@ -130,7 +130,10 @@ const SegmentListItem = ({
   onClearSegments,
 }: SegmentListItemProps): JSX.Element => (
   <>
-    <ListRow>
+    <ListRow
+      aria-label="filter-field-Segments"
+      data-testid="dimension-filter-row"
+    >
       <ListRowLabel>{t`Segments`}</ListRowLabel>
       <SegmentFilterSelect
         query={query}

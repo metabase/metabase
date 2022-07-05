@@ -43,10 +43,7 @@ export function InlineValuePicker({
 
   return (
     <>
-      <ValuesPickerContainer
-        data-testid="value-picker"
-        aria-label={field.displayName()}
-      >
+      <ValuesPickerContainer data-testid="value-picker">
         {!hideArgumentSelector && (
           <ValuesInput
             filter={filter}
