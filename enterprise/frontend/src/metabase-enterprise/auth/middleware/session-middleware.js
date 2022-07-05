@@ -1,9 +1,8 @@
 import Cookies from "js-cookie";
-import { replace } from "react-router-redux";
 import { logout } from "metabase/auth/actions";
 
 export const SESSION_KEY = "metabase.TIMEOUT";
-export const COOKIE_POOLING_TIMEOUT = 5000;
+export const COOKIE_POOLING_TIMEOUT = 3000;
 const getIsLoggedIn = () => typeof Cookies.get(SESSION_KEY) !== "undefined";
 
 export const createSessionMiddleware = (
@@ -27,7 +26,7 @@ export const createSessionMiddleware = (
           if (isLoggedIn) {
             const params = new URLSearchParams(window.location.search);
             const redirectUrl = params.get("redirect");
-            store.dispatch(replace(redirectUrl ?? "/"));
+            window.location.replace(redirectUrl ?? "/");
           } else {
             const url = location.pathname + location.search + location.hash;
             store.dispatch(logout(url, true));

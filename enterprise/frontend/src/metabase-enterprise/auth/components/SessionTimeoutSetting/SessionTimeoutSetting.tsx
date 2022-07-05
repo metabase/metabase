@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import Toggle from "metabase/core/components/Toggle";
 import Select from "metabase/core/components/Select";
-import InputBlurChange from "metabase/components/InputBlurChange";
 
 import {
+  SessionTimeoutInput,
   SessionTimeoutInputContainer,
   SessionTimeoutSettingRoot,
 } from "./SessionTimeoutSetting.styled";
@@ -17,7 +17,21 @@ const UNITS = [
 
 const DEFAULT_VALUE = { amount: 30, unit: UNITS[0].value };
 
-const SessionTimeoutSetting = ({ setting, onChange }: any) => {
+type TimeoutValue = { amount: number; unit: string } | null;
+interface SessionTimeoutSettingProps {
+  setting: {
+    key: string;
+    value: TimeoutValue;
+    default: string;
+  };
+
+  onChange: (value: TimeoutValue) => void;
+}
+
+const SessionTimeoutSetting = ({
+  setting,
+  onChange,
+}: SessionTimeoutSettingProps) => {
   const isEnabled = setting.value != null;
   const unit = setting.value?.unit ?? DEFAULT_VALUE.unit;
   const amount = setting.value?.amount ?? DEFAULT_VALUE.amount;
@@ -25,7 +39,7 @@ const SessionTimeoutSetting = ({ setting, onChange }: any) => {
   const handleValueChange: ChangeEventHandler<HTMLInputElement> = e => {
     onChange({
       ...(setting.value ?? DEFAULT_VALUE),
-      amount: Number(e.target.value),
+      amount: parseInt(e.target.value, 10),
     });
   };
 
@@ -43,19 +57,12 @@ const SessionTimeoutSetting = ({ setting, onChange }: any) => {
 
       {isEnabled && (
         <SessionTimeoutInputContainer>
-          <InputBlurChange
-            style={{ width: "70px" }}
-            className="input mr1 bordered"
-            disabled={!isEnabled}
-            defaultValue={amount}
+          <SessionTimeoutInput
+            className="input"
+            defaultValue={amount.toString()}
             onBlurChange={handleValueChange}
           />
-          <Select
-            disabled={!isEnabled}
-            value={unit}
-            options={UNITS}
-            onChange={handleUnitChange}
-          />
+          <Select value={unit} options={UNITS} onChange={handleUnitChange} />
         </SessionTimeoutInputContainer>
       )}
     </SessionTimeoutSettingRoot>

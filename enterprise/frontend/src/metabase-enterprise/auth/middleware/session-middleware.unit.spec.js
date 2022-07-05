@@ -10,12 +10,9 @@ jest.mock("js-cookie", () => jest.fn());
 jest.mock("metabase/auth/actions", () => ({
   logout: jest.fn(),
 }));
-jest.mock("react-router-redux", () => ({
-  replace: jest.fn(),
-}));
 
-import { replace } from "react-router-redux";
 import { logout } from "metabase/auth/actions";
+
 let clock;
 
 const actionStub = { type: "ANY_ACTION" };
@@ -106,6 +103,7 @@ describe("createSessionMiddleware", () => {
       window.location = new URL(
         "https://metabase.com/auth/login?redirect=%2Fquestion%2F1%3Fquery%3D5%23hash",
       );
+      window.location.replace = jest.fn();
     });
 
     it("should redirect to the redirectUrl when a session appears", () => {
@@ -114,14 +112,15 @@ describe("createSessionMiddleware", () => {
         .mockImplementationOnce(() => undefined)
         .mockImplementationOnce(() => "alive");
 
-      const { handleAction, dispatchMock } = setup();
+      const { handleAction } = setup();
 
       handleAction(actionStub);
 
       clock.tick(COOKIE_POOLING_TIMEOUT);
 
-      expect(dispatchMock).toHaveBeenCalled();
-      expect(replace).toHaveBeenCalledWith("/question/1?query=5#hash");
+      expect(window.location.replace).toHaveBeenCalledWith(
+        "/question/1?query=5#hash",
+      );
     });
   });
 });
