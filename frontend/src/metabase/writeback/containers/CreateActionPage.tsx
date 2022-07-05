@@ -46,7 +46,6 @@ const CreateActionPageInner: React.FC<Props> = props => {
       <div className="flex-grow bg-white">
         <CreateAction
           type={type}
-          name={name}
           description={description}
           setDescription={setDescription}
           data={data}
@@ -59,7 +58,6 @@ const CreateActionPageInner: React.FC<Props> = props => {
 
 type InnerProps = {
   type: ActionType;
-  name: string;
   description: string;
   setDescription: (description: string) => void;
 
@@ -69,7 +67,6 @@ type InnerProps = {
 
 const CreateAction: React.FC<InnerProps> = ({
   type,
-  name,
   description,
   setDescription,
   data,

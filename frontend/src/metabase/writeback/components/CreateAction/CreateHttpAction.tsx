@@ -9,6 +9,7 @@ import BodyTab from "./BodyTab";
 import UrlInput from "./UrlInput";
 import Selector from "./Selector";
 import EditableText from "metabase/core/components/EditableText";
+import ParametersTab from "./ParametersTab";
 
 type Props = {
   description: string;
@@ -106,12 +107,17 @@ const CreateHttpActionInner: React.FC<InnerProps> = ({
   description,
   setDescription,
 }) => {
-  const [currentTab, setCurrentTab] = React.useState(TABS[0].name);
+  const [currentParamTab, setCurrentParamTab] = React.useState(
+    PARAM_TABS[0].name,
+  );
+  const [currentConfigTab, setCurrentConfigTab] = React.useState(
+    CONFIG_TABS[0].name,
+  );
   const [contentType, setContentType] = React.useState("application/json");
 
   return (
     <div className="grid w-full h-full grid-cols-2 md:flex-row">
-      <div className="border-t border-r border-border bg-content">
+      <div className="flex flex-col border-t border-r border-border bg-content">
         <div className="px-6 py-2 border-b border-b-border">
           <MethodSelector value={method} setValue={setMethod} />
         </div>
@@ -123,7 +129,19 @@ const CreateHttpActionInner: React.FC<InnerProps> = ({
             setProtocol={setProtocol}
           />
         </div>
-        <div className="py-4 pl-6 pr-4 bg-white border-b border-border">
+        <div className="flex flex-col flex-grow bg-white border-b border-border">
+          <div className="pl-4 pr-4 border-b border-border">
+            <Tabs
+              tabs={PARAM_TABS}
+              currentTab={currentParamTab}
+              setCurrentTab={setCurrentParamTab}
+            />
+          </div>
+          <div className="flex-grow py-4 pl-6 pr-4">
+            <ParametersTab body={body} headers={headers} />
+          </div>
+        </div>
+        <div className="py-4 pl-6 pr-4 bg-white">
           <EditableText
             className="text-sm text-text-light"
             placeholder={t`Enter an action description...`}
@@ -136,9 +154,9 @@ const CreateHttpActionInner: React.FC<InnerProps> = ({
         <div className="flex items-center justify-between py-1 pl-2 pr-4 border-b border-b-border">
           <div>
             <Tabs
-              tabs={TABS}
-              currentTab={currentTab}
-              setCurrentTab={setCurrentTab}
+              tabs={CONFIG_TABS}
+              currentTab={currentConfigTab}
+              setCurrentTab={setCurrentConfigTab}
             />
           </div>
           <div>
@@ -149,7 +167,7 @@ const CreateHttpActionInner: React.FC<InnerProps> = ({
             />
           </div>
         </div>
-        <Contents active={currentTab === "body"}>
+        <Contents active={currentConfigTab === "body"}>
           <BodyTab
             contentType={contentType}
             setContentType={setContentType}
@@ -157,7 +175,7 @@ const CreateHttpActionInner: React.FC<InnerProps> = ({
             setBody={setBody}
           />
         </Contents>
-        <Contents active={currentTab === "headers"}>
+        <Contents active={currentConfigTab === "headers"}>
           <HttpHeaderTab headers={headers} setHeaders={setHeaders} />
         </Contents>
       </div>
@@ -171,10 +189,12 @@ const Contents: React.FC<{ active: boolean }> = ({ active, children }) => {
   );
 };
 
-const TABS = [
+const CONFIG_TABS = [
   { name: "body", label: t`Body` },
   { name: "headers", label: t`Headers` },
 ];
+
+const PARAM_TABS = [{ name: "params", label: t`Parameters` }];
 
 const CONTENT_TYPE = [
   {

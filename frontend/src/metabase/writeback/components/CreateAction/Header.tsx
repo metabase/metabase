@@ -34,6 +34,7 @@ const Header: React.FC<Props> = ({
           onChange={setName}
         />
         <Selector
+          className="text-text-light"
           options={OPTS}
           value={type}
           setValue={value => setType(value as ActionType)}

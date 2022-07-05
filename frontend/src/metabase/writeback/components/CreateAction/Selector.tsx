@@ -5,6 +5,7 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import React from "react";
 
 type Props = {
+  className?: string;
   value: string;
   setValue: (value: string) => void;
   options: {
@@ -13,14 +14,14 @@ type Props = {
   }[];
 };
 
-const Selector: React.FC<Props> = ({ value, setValue, options }) => {
+const Selector: React.FC<Props> = ({ value, setValue, options, className }) => {
   const [visible, setVisible] = React.useState(false);
   const label = React.useMemo(
     () => options.find(opt => opt.value === value)?.label || options[0].label,
     [options, value],
   );
   return (
-    <div>
+    <div className={className}>
       <TippyPopover
         visible={visible}
         content={

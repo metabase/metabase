@@ -14,7 +14,7 @@ type Props = {
 
 const Tabs: React.FC<Props> = ({ tabs, currentTab, setCurrentTab }) => {
   return (
-    <div className="flex gap-2 prose">
+    <div className="flex space-x-2 prose">
       {tabs.map(({ name, label }) => (
         <button
           className={cx(
