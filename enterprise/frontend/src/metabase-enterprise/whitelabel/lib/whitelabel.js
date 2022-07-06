@@ -20,7 +20,7 @@ const JS_COLOR_UPDATORS_BY_COLOR_NAME = {};
 const RANDOM_COLOR = Color({ r: 0xab, g: 0xcd, b: 0xed });
 
 function colorScheme() {
-  return { ...MetabaseSettings.get("application-colors"), ...originalColors };
+  return { ...originalColors, ...MetabaseSettings.get("application-colors") };
 }
 
 function applicationName() {
