@@ -26,15 +26,15 @@ export const ValuesPickerContainer = styled.div`
 
 export const BetweenContainer = styled.div`
   display: flex;
+  height: 53px;
   width: 100%;
   align-items: center;
-  justify-content: space-between;
 `;
 
 export const NumberSeparator = styled.span`
   color: ${color("text-light")};
   font-weight: bold;
-  padding: 0 ${space(1)};
+  padding: 0 ${space(2)};
 `;
 
 export const NumberInput = styled(NumericInput)`
