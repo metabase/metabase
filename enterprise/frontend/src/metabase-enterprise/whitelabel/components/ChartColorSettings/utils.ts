@@ -50,12 +50,12 @@ const getAutoColors = (
 
   const autoColors: Color[] = [];
   oldColors.forEach((_, index) => {
-    if (index > 0) {
-      autoColors.push(getNextColor(autoColors[index - 1]));
-    } else if (oldColor) {
+    if (index === 0 && !oldColor) {
+      autoColors.push(fallbackColor);
+    } else if (index === 0 && oldColor) {
       autoColors.push(getNextColor(oldColor));
     } else {
-      autoColors.push(fallbackColor);
+      autoColors.push(getNextColor(autoColors[index - 1]));
     }
   });
 
