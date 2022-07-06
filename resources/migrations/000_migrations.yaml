@@ -11918,20 +11918,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: type
-                  type: ${text.type}
+                  type: varchar(254)
+                  defaultValue: 'full'
                   remarks: Type of FieldValues
                   constraints:
                     nullable: true
-  - changeSet:
-      id: v44.00-036
-      author: qnkhuat
-      comment: Added 0.44.0 - Add default value for metabase_fieldvalues.type
-      changes:
-        - addNotNullConstraint:
-            columnDataType: ${text.type}
-            columnName: type
-            defaultNullValue: 'full'
-            tableName: metabase_fieldvalues
   - changeSet:
       id: v44.00-037
       author: qnkhuat
