@@ -102,6 +102,11 @@
   {cron CronSchedule}
   (validation/check-has-application-permission :setting)
   (when cron
+    (when-not (and (string? cron)
+                   (org.quartz.CronExpression/isValidExpression c)
+                   (str/ends-with? cron "*"))
+      (throw (ex-info (tru "Must be a valid cron string not specifying a year")
+                      {:status-code 400})))
     (public-settings/persisted-model-refresh-cron-schedule! cron))
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
