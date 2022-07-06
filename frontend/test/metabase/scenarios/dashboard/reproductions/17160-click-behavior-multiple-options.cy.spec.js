@@ -25,7 +25,9 @@ describe("issue 17160", () => {
     });
 
     // Check click behavior connected to a question
-    cy.findAllByText("click-behavior-question-label").eq(0).click();
+    cy.findAllByText("click-behavior-question-label")
+      .eq(0)
+      .click();
 
     cy.url().should("include", "/question");
 
@@ -35,10 +37,12 @@ describe("issue 17160", () => {
     cy.go("back");
 
     // Check click behavior connected to a dashboard
-    cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
+    cy.findAllByText("click-behavior-dashboard-label")
+      .eq(0)
+      .click();
 
     cy.url().should("include", "/dashboard");
-    cy.findByText(TARGET_DASHBOARD_NAME);
+    cy.findByDisplayValue(TARGET_DASHBOARD_NAME);
 
     assertMultipleValuesFilterState();
   });
@@ -67,7 +71,9 @@ describe("issue 17160", () => {
     });
 
     // Check click behavior connected to a question
-    cy.findAllByText("click-behavior-question-label").eq(0).click();
+    cy.findAllByText("click-behavior-question-label")
+      .eq(0)
+      .click();
 
     cy.url().should("include", "/public/question");
 
@@ -77,7 +83,9 @@ describe("issue 17160", () => {
     cy.go("back");
 
     // Check click behavior connected to a dashboard
-    cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
+    cy.findAllByText("click-behavior-dashboard-label")
+      .eq(0)
+      .click();
 
     cy.url().should("include", "/public/dashboard");
     cy.findByText(TARGET_DASHBOARD_NAME);
