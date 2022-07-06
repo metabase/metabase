@@ -11893,7 +11893,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: type
-                  type: varchar(254)
+                  type: varchar(32)
                   defaultValue: 'full'
                   remarks: Type of FieldValues
                   constraints:
