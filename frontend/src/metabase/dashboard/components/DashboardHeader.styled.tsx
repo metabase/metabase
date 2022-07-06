@@ -104,9 +104,7 @@ export const HeaderBadgesDivider = styled.span`
   }
 `;
 
-export const HeaderButtonsContainer = styled.div<
-  TypeForItemsThatRespondToNavBarOpen
->`
+export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
   color: ${color("text-dark")};
@@ -137,9 +135,7 @@ export const HeaderButtonsContainer = styled.div<
   }
 `;
 
-export const HeaderButtonSection = styled.div<
-  TypeForItemsThatRespondToNavBarOpen
->`
+export const HeaderButtonSection = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
 

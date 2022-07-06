@@ -51,9 +51,7 @@ describe.skip("issue 19744", () => {
     cy.findByText("Time").click();
     cy.findByText("All Options").click();
 
-    cy.get(".DashCard")
-      .contains("Select…")
-      .click();
+    cy.get(".DashCard").contains("Select…").click();
     popover().contains("Created At");
   });
 });
@@ -64,9 +62,7 @@ function saveQuestion(name) {
   cy.findByText("Save").click();
   cy.findByLabelText("Name").type(name);
 
-  cy.get(".Modal")
-    .button("Save")
-    .click();
+  cy.get(".Modal").button("Save").click();
 
   cy.findByText("Not now").click();
 

@@ -36,9 +36,8 @@ function NumberInputWidget({
   label,
 }: NumberInputWidgetProps) {
   const arrayValue = normalize(value);
-  const [unsavedArrayValue, setUnsavedArrayValue] = useState<
-    (number | undefined)[]
-  >(arrayValue);
+  const [unsavedArrayValue, setUnsavedArrayValue] =
+    useState<(number | undefined)[]>(arrayValue);
   const hasValueChanged = !isEqual(arrayValue, unsavedArrayValue);
   const allValuesUnset = unsavedArrayValue.every(isUndefined);
   const allValuesSet = unsavedArrayValue.every(isNumber);

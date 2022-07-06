@@ -24,9 +24,7 @@ describe.skip("issue 22727", () => {
     visitQuestion(1);
 
     cy.findByText("31.44").click();
-    popover()
-      .contains("=")
-      .click();
+    popover().contains("=").click();
     cy.wait("@dataset");
 
     cy.findByText("Save").click();

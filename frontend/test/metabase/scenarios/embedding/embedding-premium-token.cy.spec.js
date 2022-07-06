@@ -39,9 +39,7 @@ describe(
       // Old premium embedding page
       cy.visit(licensePage);
 
-      cy.findByRole("heading")
-        .invoke("text")
-        .should("eq", "Premium embedding");
+      cy.findByRole("heading").invoke("text").should("eq", "Premium embedding");
 
       cy.findByText(discountedWarning);
 
@@ -49,9 +47,7 @@ describe(
         "Enter the token you bought from the Metabase Store below.",
       );
 
-      cy.findByTestId("license-input")
-        .as("tokenInput")
-        .should("be.empty");
+      cy.findByTestId("license-input").as("tokenInput").should("be.empty");
 
       // 1. Try an invalid token format
       cy.get("@tokenInput").type("Hi");
@@ -67,9 +63,7 @@ describe(
       cy.findByText(invalidTokenMessage);
 
       // 2. Try a valid format, but an invalid token
-      cy.get("@tokenInput")
-        .clear()
-        .type(embeddingToken);
+      cy.get("@tokenInput").clear().type(embeddingToken);
       cy.button("Activate").click();
 
       cy.wait("@saveEmbeddingToken").then(({ response: { body } }) => {

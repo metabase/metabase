@@ -37,8 +37,7 @@ const getBorderColor = (colorScheme: ColorScheme, invalid?: boolean) => {
 };
 
 export const Input = styled.input<InputProps>`
-  border: 1px solid ${props =>
-    getBorderColor(props.colorScheme, props.invalid)};
+  border: 1px solid ${props => getBorderColor(props.colorScheme, props.invalid)};
   outline: none;
   width: 100%;
   font-size: 1.12em;

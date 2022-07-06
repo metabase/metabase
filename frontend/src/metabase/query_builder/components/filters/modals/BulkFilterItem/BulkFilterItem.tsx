@@ -44,10 +44,10 @@ export const BulkFilterItem = ({
     }
   }, [dimension]);
 
-  const newFilter = useMemo(() => getNewFilter(query, dimension), [
-    query,
-    dimension,
-  ]);
+  const newFilter = useMemo(
+    () => getNewFilter(query, dimension),
+    [query, dimension],
+  );
 
   const handleChange = useCallback(
     (newFilter: Filter) => {

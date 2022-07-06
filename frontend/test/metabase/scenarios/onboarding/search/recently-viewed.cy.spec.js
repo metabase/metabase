@@ -82,9 +82,7 @@ describeEE("search > recently viewed > enterprise features", () => {
     cy.findByText("Recently viewed")
       .parent()
       .within(() => {
-        cy.findByText("Orders")
-          .closest("a")
-          .find(".Icon-verified");
+        cy.findByText("Orders").closest("a").find(".Icon-verified");
       });
   });
 });

@@ -757,10 +757,10 @@ export function foreignKeyCountsByOriginTable(fks) {
   }
 
   return fks
-    .map(function(fk) {
+    .map(function (fk) {
       return "origin" in fk ? fk.origin.table.id : null;
     })
-    .reduce(function(prev, curr, idx, array) {
+    .reduce(function (prev, curr, idx, array) {
       if (curr in prev) {
         prev[curr]++;
       } else {

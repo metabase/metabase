@@ -21,12 +21,8 @@ export default class Expressions extends Component {
   };
 
   render() {
-    const {
-      expressions,
-      query,
-      onAddExpression,
-      onEditExpression,
-    } = this.props;
+    const { expressions, query, onAddExpression, onEditExpression } =
+      this.props;
 
     const sortedNames = _.sortBy(_.keys(expressions), _.identity);
     return (

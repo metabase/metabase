@@ -12,7 +12,7 @@ global.console = {
   error: print,
 };
 
-global.makeCellBackgroundGetter = function(
+global.makeCellBackgroundGetter = function (
   rowsJavaList,
   colsJSON,
   settingsJSON,

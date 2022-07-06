@@ -37,9 +37,7 @@ describe("scenarios > models metadata", () => {
     openQuestionActions();
 
     popover().within(() => {
-      cy.findByTestId("tooltip-component-wrapper")
-        .parent()
-        .realHover();
+      cy.findByTestId("tooltip-component-wrapper").parent().realHover();
       cy.findByText("89%");
     });
 
@@ -83,9 +81,7 @@ describe("scenarios > models metadata", () => {
     openQuestionActions();
 
     popover().within(() => {
-      cy.findByTestId("tooltip-component-wrapper")
-        .parent()
-        .realHover();
+      cy.findByTestId("tooltip-component-wrapper").parent().realHover();
       cy.findByText("37%");
     });
 
@@ -162,9 +158,7 @@ describe("scenarios > models metadata", () => {
 
     rightSidebar().within(() => {
       cy.findByText("History");
-      cy.findAllByTestId("question-revert-button")
-        .first()
-        .click();
+      cy.findAllByTestId("question-revert-button").first().click();
     });
 
     cy.wait("@revert");
@@ -281,18 +275,10 @@ describe("scenarios > models metadata", () => {
 });
 
 function drillFK({ id }) {
-  cy.get(".Table-FK")
-    .contains(id)
-    .first()
-    .click();
-  popover()
-    .findByText("View details")
-    .click();
+  cy.get(".Table-FK").contains(id).first().click();
+  popover().findByText("View details").click();
 }
 
 function drillDashboardFK({ id }) {
-  cy.get(".Table-FK")
-    .contains(id)
-    .first()
-    .click();
+  cy.get(".Table-FK").contains(id).first().click();
 }

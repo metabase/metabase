@@ -133,9 +133,7 @@ export function computeTimeseriesDataInverval(xValues, unit) {
 function intervalTickDistanceMilliseconds(interval) {
   // add COUNT nuumber of INTERVALS to the UNIX timestamp 0. e.g. add '5 hours' to 0. Then get the new timestamp
   // (in milliseconds). Since we added to 0 this will be the interval between each tick
-  return moment(0)
-    .add(interval.count, interval.interval)
-    .valueOf();
+  return moment(0).add(interval.count, interval.interval).valueOf();
 }
 
 /// Return the number of ticks we can expect to see over a time range using the TIMESERIES_INTERVALS entry interval.

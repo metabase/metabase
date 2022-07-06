@@ -21,9 +21,8 @@ const SlackChannelField = ({
   channelSpec,
   onChannelPropertyChange,
 }: SlackChannelFieldProps) => {
-  const [hasPrivateChannelWarning, setHasPrivateChannelWarning] = useState(
-    false,
-  );
+  const [hasPrivateChannelWarning, setHasPrivateChannelWarning] =
+    useState(false);
 
   const channelField = channelSpec.fields.find(
     field => field.name === CHANNEL_FIELD_NAME,

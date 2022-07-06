@@ -87,31 +87,21 @@ function getCardProperties(cardObject) {
 }
 
 function connectFilterToCard({ filterName, cardPosition }) {
-  cy.findByText(filterName)
-    .find(".Icon-gear")
-    .click();
+  cy.findByText(filterName).find(".Icon-gear").click();
 
-  cy.findAllByText("Select…")
-    .eq(cardPosition)
-    .click();
+  cy.findAllByText("Select…").eq(cardPosition).click();
 
-  popover()
-    .contains("Category")
-    .click();
+  popover().contains("Category").click();
 }
 
 function setDefaultFilter(value) {
   cy.findByText("No default").click();
 
-  popover()
-    .contains(value)
-    .click();
+  popover().contains(value).click();
 
   cy.button("Add filter").click();
 }
 
 function checkAppliedFilter(name, value) {
-  cy.findByText(name)
-    .closest("fieldset")
-    .contains(value);
+  cy.findByText(name).closest("fieldset").contains(value);
 }

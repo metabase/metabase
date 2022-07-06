@@ -116,11 +116,7 @@ export function ViewTitleHeader(props) {
   const isDataset = question.isDataset();
 
   const isSummarized =
-    isStructured &&
-    question
-      .query()
-      .topLevelQuery()
-      .hasAggregations();
+    isStructured && question.query().topLevelQuery().hasAggregations();
 
   return (
     <>

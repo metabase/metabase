@@ -66,9 +66,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
     // Default dashboard filter
     cy.location("search").should("eq", "?category=Widget");
 
-    cy.get(".Card")
-      .as("dashboardCard")
-      .contains("Widget");
+    cy.get(".Card").as("dashboardCard").contains("Widget");
 
     filterWidget().contains("Widget");
 
@@ -104,7 +102,5 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
 });
 
 function removeWidgetFilterValue() {
-  filterWidget()
-    .find(".Icon-close")
-    .click();
+  filterWidget().find(".Icon-close").click();
 }

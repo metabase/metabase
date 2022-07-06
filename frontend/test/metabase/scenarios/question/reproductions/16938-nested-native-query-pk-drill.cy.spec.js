@@ -23,10 +23,7 @@ describe("issue 16938", () => {
     cy.button(/Explore results/i).click();
     cy.wait("@dataset");
 
-    getFirstTableColumn()
-      .eq(1)
-      .should("contain", ORDER_ID)
-      .click();
+    getFirstTableColumn().eq(1).should("contain", ORDER_ID).click();
 
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("37.65");

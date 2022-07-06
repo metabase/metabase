@@ -94,10 +94,7 @@ QuestionSummaries.shouldRender = ({
   queryBuilderMode === "view" &&
   question &&
   question.isStructured() &&
-  question
-    .query()
-    .topLevelQuery()
-    .hasAggregations() &&
+  question.query().topLevelQuery().hasAggregations() &&
   !isObjectDetail;
 
 QuestionSummarizeWidget.shouldRender = ({

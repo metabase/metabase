@@ -30,7 +30,7 @@ export const ContentSection = styled.div<ContentSectionProps>`
   }
 
   ${EditableText.Root} {
-    font-size: 1rem; 
+    font-size: 1rem;
     line-height: 1.4rem;
     margin-left: -0.3rem;
   }

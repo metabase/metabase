@@ -126,28 +126,20 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             visitDashboard(1);
 
             cy.get("main header").within(() => {
-              cy.icon("ellipsis")
-                .should("be.visible")
-                .click();
+              cy.icon("ellipsis").should("be.visible").click();
             });
           });
 
           it("should not be offered to edit dashboard details or archive the dashboard for dashboard in collections they have `read` access to (metabase#15280)", () => {
-            popover()
-              .findByText("Edit dashboard details")
-              .should("not.exist");
+            popover().findByText("Edit dashboard details").should("not.exist");
 
-            popover()
-              .findByText("Archive")
-              .should("not.exist");
+            popover().findByText("Archive").should("not.exist");
           });
 
           it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
             const { first_name, last_name } = USERS[user];
 
-            popover()
-              .findByText("Duplicate")
-              .click();
+            popover().findByText("Duplicate").click();
             cy.findByTestId("select-button").findByText(
               `${first_name} ${last_name}'s Personal Collection`,
             );
@@ -159,9 +151,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
 });
 
 function clickButton(name) {
-  cy.findByRole("button", { name })
-    .should("not.be.disabled")
-    .click();
+  cy.findByRole("button", { name }).should("not.be.disabled").click();
 }
 
 function assertOnRequest(xhr_alias) {

@@ -248,8 +248,9 @@ export default class Gauge extends Component {
             viewBox={`0 0 ${viewBoxWidth * expandWidthFactor} ${viewBoxHeight}`}
           >
             <g
-              transform={`translate(${(viewBoxWidth * expandWidthFactor) /
-                2},50)`}
+              transform={`translate(${
+                (viewBoxWidth * expandWidthFactor) / 2
+              },50)`}
             >
               {/* BACKGROUND ARC */}
               <GaugeArc

@@ -78,9 +78,8 @@ function SearchBar({
     getSearchTextFromLocation(location),
   );
 
-  const [isActive, { turnOn: setActive, turnOff: setInactive }] = useToggle(
-    false,
-  );
+  const [isActive, { turnOn: setActive, turnOff: setInactive }] =
+    useToggle(false);
 
   const wasActive = usePrevious(isActive);
   const previousLocation = usePrevious(location);

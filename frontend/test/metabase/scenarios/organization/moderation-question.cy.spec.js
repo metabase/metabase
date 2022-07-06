@@ -57,15 +57,11 @@ describeEE("scenarios > saved question moderation", () => {
       });
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
-      cy.findByText("Orders, Count")
-        .find(".Icon-verified")
-        .should("not.exist");
+      cy.findByText("Orders, Count").find(".Icon-verified").should("not.exist");
 
       cy.visit("/collection/root");
 
-      cy.findByText("Orders, Count")
-        .find(".Icon-verified")
-        .should("not.exist");
+      cy.findByText("Orders, Count").find(".Icon-verified").should("not.exist");
     });
 
     it("should be able to see evidence of verification/unverification in the question's timeline", () => {
