@@ -56,6 +56,19 @@ function explainCronExpression(expression) {
   return lowerCaseFirstLetter(_explainCronExpression(expression));
 }
 
+function formatCronExpression(expression) {
+  const parts = expression.split(" ");
+  const partsWithoutYear = parts.slice(0, -1);
+  return partsWithoutYear.join(" ");
+}
+
+function validateExpressionHasNoYearComponent(expression) {
+  const parts = expression.split(" ");
+  if (parts.length === 7) {
+    return t`Year property is not configurable`;
+  }
+}
+
 const PersistedModelRefreshIntervalWidget = ({
   setting,
   disabled,
@@ -63,7 +76,9 @@ const PersistedModelRefreshIntervalWidget = ({
 }) => {
   const [isCustom, setCustom] = useState(isCustomSchedule(setting));
   const [customCronSchedule, setCustomCronSchedule] = useState(
-    isCustom ? setting.value : "",
+    // We don't allow to specify the "year" component, but it's present in the value
+    // So we need to cut it visually to avoid confusion
+    isCustom ? formatCronExpression(setting.value) : "",
   );
   const [error, setError] = useState(null);
 
@@ -82,13 +97,19 @@ const PersistedModelRefreshIntervalWidget = ({
 
   const handleCustomInputBlur = useCallback(
     cronExpression => {
-      const error = validateCronExpression(cronExpression);
       setCustomCronSchedule(cronExpression);
+      let error = validateCronExpression(cronExpression);
+      if (!error) {
+        error = validateExpressionHasNoYearComponent(cronExpression);
+      }
       if (error) {
         setError(error);
       } else {
         setError(null);
-        onChange(cronExpression);
+
+        // We don't allow to specify the "year" component, but it's present in the value
+        // and we need to append it before sending a new value to the backend
+        onChange(`${cronExpression} *`);
       }
     },
     [onChange],
