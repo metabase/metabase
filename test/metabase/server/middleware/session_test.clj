@@ -403,7 +403,7 @@
              (mw.session/session-timeout->seconds {:amount 1
                                                    :unit   "hours"}))))
 
-    (testing "The session timeout should be a minimum of 60 seconds"
+    (testing "The session timeout should be a minimum of 30 seconds"
       (is (= 60
              (mw.session/session-timeout->seconds {:amount 0
                                                    :unit   "minutes"}))))
@@ -415,7 +415,7 @@
         (let [request {:cookies {"metabase.SESSION" {:value "session-id" :expires "2025"}
                                  "metabase.TIMEOUT" {:value "alive" :expires "2025"}}}]
           (is (= response
-                 (mw.session/reset-cookie-timeout* request response request-time))))))
+                 (mw.session/reset-session-timeout-on-response request response request-time))))))
 
     (testing "non-nil `session-timeout-seconds` should set the expiry relative to the request time"
       (mt/with-temporary-setting-values [session-timeout {:amount 60 :unit "minutes"}]
@@ -426,10 +426,10 @@
                                                :expires "Sat, 1 Jan 2022 01:00:00 GMT"},
                            "metabase.TIMEOUT" {:value   "alive"
                                                :expires "Sat, 1 Jan 2022 01:00:00 GMT"}}}
-                (mw.session/reset-cookie-timeout* request response request-time))))))
+                (mw.session/reset-session-timeout-on-response request response request-time))))))
 
     (testing "If the request does not have a `metabase.TIMEOUT` cookie (because it has expired), it should not be reset."
       (mt/with-temporary-setting-values [session-timeout {:amount 60 :unit "minutes"}]
         (let [request {:cookies {}}]
           (is (= response
-                 (mw.session/reset-cookie-timeout* request response request-time))))))))
+                 (mw.session/reset-session-timeout-on-response request response request-time))))))))

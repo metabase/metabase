@@ -347,10 +347,13 @@
           "hours"  (* amount 3600))
         (max 60)))) ; Ensure a minimum of 60 seconds so a user can't lock themselves out
 
-(defn session-timeout-seconds []
+(defn session-timeout-seconds
+  "Returns the number of seconds before a session times out. An alternative to calling `(session-timeout) directly`"
+  []
   (session-timeout->seconds (session-timeout)))
 
-(defn reset-cookie-timeout*
+(defn reset-session-timeout-on-response
+  "Implementation for `reset-cookie-timeout` respond handler."
   [request response request-time]
   (if (some? (get-in request [:cookies metabase-session-timeout-cookie :value]))
     (if-let [timeout (session-timeout-seconds)]
@@ -366,7 +369,7 @@
       response)
     response))
 
-(defn reset-cookie-timeout
+(defn reset-session-timeout
   "Middleware that resets the expiry date on session cookies according to the session-timeout setting.
    Will not change anything if the session-timeout setting is nil, or the timeout cookie has already expired."
   [handler]
@@ -375,5 +378,5 @@
           request-time (t/zoned-date-time (t/zone-id "GMT"))]
       (handler request
                (fn [response]
-                 (respond (reset-cookie-timeout* request response request-time)))
+                 (respond (reset-session-timeout-on-response request response request-time)))
                raise))))
