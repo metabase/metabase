@@ -11897,7 +11897,7 @@ databaseChangeLog:
                   defaultValue: 'full'
                   remarks: Type of FieldValues
                   constraints:
-                    nullable: true
+                    nullable: false
   - changeSet:
       id: v44.00-037
       author: qnkhuat
