@@ -219,11 +219,14 @@
   instance. This only returns a single instance for each Field! Duplicates are discarded!
 
     (select-field-id->instance [(Field 1) (Field 2)] FieldValues)
-    ;; -> {1 #FieldValues{...}, 2 #FieldValues{...}}"
-  [fields model]
+    ;; -> {1 #FieldValues{...}, 2 #FieldValues{...}}
+
+  (select-field-id->instance [(Field 1) (Field 2)] FieldValues :type :full)
+    -> returns Fieldvalues of type :full for fields: [(Field 1) (Field 2)] "
+  [fields model & conditions]
   (let [field-ids (set (map :id fields))]
     (u/key-by :field_id (when (seq field-ids)
-                          (db/select model :field_id [:in field-ids])))))
+                          (apply db/select model :field_id [:in field-ids] conditions)))))
 
 (defn nfc-field->parent-identifier
   "Take a nested field column field corresponding to something like an inner key within a JSON column,
@@ -248,7 +251,11 @@
   "Efficiently hydrate the `FieldValues` for a collection of `fields`."
   {:batched-hydrate :values}
   [fields]
-  (let [id->field-values (select-field-id->instance fields FieldValues)]
+  ;; In 44 we added a new concept of Advanced FieldValues, so FieldValues are no longer have an one-to-one relationship
+  ;; with Field. See the doc in [[metabase.models.field-values]] for more.
+  ;; Adding an explicity filter by :type =:full for FieldValues here bc I believe this hydration does not concern
+  ;; the new Advanced FieldValues.
+  (let [id->field-values (select-field-id->instance fields FieldValues :type :full)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -257,7 +264,8 @@
   {:batched-hydrate :normal_values}
   [fields]
   (let [id->field-values (select-field-id->instance (filter field-values/field-should-have-field-values? fields)
-                                                    [FieldValues :id :human_readable_values :values :field_id])]
+                                                    [FieldValues :id :human_readable_values :values :field_id]
+                                                    :type :full)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 

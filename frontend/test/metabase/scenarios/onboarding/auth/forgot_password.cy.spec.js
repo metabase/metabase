@@ -35,6 +35,7 @@ describe("scenarios > auth > password", () => {
 });
 
 const getResetLink = html => {
-  const [, href] = html.match(/href="([^"]+)"/);
+  const [, anchor] = html.match(/<a (.*)>/);
+  const [, href] = anchor.match(/href="([^"]+)"/);
   return href;
 };

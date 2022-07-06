@@ -89,4 +89,4 @@ const EditableText = forwardRef(function EditableText(
   );
 });
 
-export default EditableText;
+export default Object.assign(EditableText, { Root: EditableTextRoot });

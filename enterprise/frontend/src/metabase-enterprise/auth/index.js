@@ -69,7 +69,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/saml": {
-    sidebar: false,
     component: SettingsSAMLForm,
     settings: [
       {
@@ -165,7 +164,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     ],
   },
   "authentication/jwt": {
-    sidebar: false,
     component: SettingsJWTForm,
     settings: [
       {
@@ -250,7 +248,7 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
   if (MetabaseSettings.get("other-sso-configured?")) {
     providers = [SSO_PROVIDER, ...providers];
   }
-  if (!MetabaseSettings.get("enable-password-login")) {
+  if (!MetabaseSettings.isPasswordLoginEnabled()) {
     providers = providers.filter(p => p.name !== "password");
   }
   return providers;
@@ -260,7 +258,7 @@ PLUGIN_IS_PASSWORD_USER.push(
   user =>
     !user.google_auth &&
     !user.ldap_auth &&
-    MetabaseSettings.get("enable-password-login"),
+    MetabaseSettings.isPasswordLoginEnabled(),
 );
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
@@ -290,7 +288,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
     component: SettingsGoogleForm,
-    sidebar: false,
     settings: [
       {
         key: "google-auth-client-id",

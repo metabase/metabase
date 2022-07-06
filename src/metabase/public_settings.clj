@@ -32,7 +32,7 @@
   (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-configured?)]
     (varr)))
 
-(defn- sso-configured?
+(defn sso-configured?
   "Any SSO provider is configured"
   []
   (or (google-auth-configured?)
@@ -85,7 +85,7 @@
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
   its magic getter. Nice!"
-  :visibility :internal
+  :visibility :authenticated
   :setter     :none
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
   :type       ::uuid-nonce)
@@ -330,9 +330,7 @@
                   new-colors)))))
 
 (defsetting application-font
-  (deferred-tru
-   (str "This is the primary font used in charts and throughout Metabase. "
-        "You might need to refresh your browser to see your changes take effect."))
+  (deferred-tru "This will replace “Lato” as the font family.")
   :visibility :public
   :type       :string
   :default    "Lato"
@@ -342,6 +340,12 @@
                 (when-not (u.fonts/available-font? new-value)
                   (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
               (setting/set-value-of-type! :string :application-font new-value)))
+
+(defsetting application-font-files
+  (deferred-tru "Tell us where to find the font file for each required style.")
+  :visibility :public
+  :type       :json
+  :enabled?   premium-features/enable-whitelabeling?)
 
 (defn application-color
   "The primary color, a.k.a. brand color"

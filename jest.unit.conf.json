@@ -42,8 +42,5 @@
   "watchPlugins": [
     "jest-watch-typeahead/filename",
     "jest-watch-typeahead/testname"
-  ],
-  "transform": {
-    "\\.(jsx?|tsx?)$": ["babel-jest", { "configFile": "./babel.presets.json" }]
-  }
+  ]
 }

@@ -923,10 +923,10 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  ["true", "false"].forEach(condition => {
+  ["True", "False"].forEach(condition => {
     const regexCondition = new RegExp(`${condition}`, "i");
     // We must use and return strings instead of boolean and numbers
-    const integerAssociatedWithCondition = condition === "true" ? "0" : "1";
+    const integerAssociatedWithCondition = condition === "True" ? "0" : "1";
 
     describe(`should be able to filter on the boolean column ${condition.toUpperCase()} (metabase#16386)`, () => {
       beforeEach(setupBooleanQuery);
@@ -1009,7 +1009,7 @@ describe("scenarios > question > filter", () => {
 
       function assertOnTheResult() {
         // Filter name
-        cy.findByTextEnsureVisible(`boolean is ${condition}`);
+        cy.findByTextEnsureVisible(`boolean is ${condition.toLowerCase()}`);
         cy.get(".cellData").should("contain", integerAssociatedWithCondition);
       }
     });

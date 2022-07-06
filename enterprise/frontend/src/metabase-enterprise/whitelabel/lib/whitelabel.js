@@ -5,7 +5,7 @@ import Color from "color";
 import { colors, lighten } from "metabase/lib/colors/palette";
 import { addCSSRule } from "metabase/lib/dom";
 
-import { omit } from "lodash";
+import _ from "underscore";
 import memoize from "lodash.memoize";
 
 export const originalColors = { ...colors };
@@ -20,20 +20,11 @@ const JS_COLOR_UPDATORS_BY_COLOR_NAME = {};
 const RANDOM_COLOR = Color({ r: 0xab, g: 0xcd, b: 0xed });
 
 function colorScheme() {
-  // FIXME: Ugh? initially load public setting as "application_color" but if the admin updates it
-  // we need to use "application-colors"
-  return (
-    MetabaseSettings.get("application-colors") ||
-    MetabaseSettings.get("application_colors")
-  );
+  return { ...MetabaseSettings.get("application-colors"), ...originalColors };
 }
 
 function applicationName() {
-  // FIXME: Ugh? see comment in colorScheme()
-  return (
-    MetabaseSettings.get("application-name") ||
-    MetabaseSettings.get("application_name")
-  );
+  return MetabaseSettings.get("application-name");
 }
 
 function walkStyleSheets(sheets, fn) {
@@ -191,7 +182,7 @@ function updateColorsCSS() {
     used in CSS and variables are preserved during the build.
    */
   const scheme = colorScheme();
-  const colors = omit(scheme, ["filter", "summarize", "accent0"]);
+  const colors = _.omit(scheme, ["filter", "summarize", "accent0"]);
   for (const [colorName, themeColor] of Object.entries(colors)) {
     updateColorCSS(colorName, themeColor);
   }

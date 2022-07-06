@@ -54,3 +54,15 @@
   "URL for the notification management page in account settings."
   []
   (str (site-url) "/account/notifications"))
+
+(defn collection-url
+  "Return an appropriate URL for a `Collection` with ID or nil for root.
+     (collection-url 10) -> \"http://localhost:3000/question/10\"
+     (collection-url nil) -> \"http://localhost:3000/question/root\""
+  [collection-id-or-nil]
+  (format "%s/collection/%s" (site-url) (or collection-id-or-nil "root")))
+
+(defn tools-caching-details-url
+  "Return an appropriate URL for linking to caching log details."
+  [^Integer persisted-info-id]
+  (format "%s/admin/tools/model-caching/%d" (site-url) persisted-info-id))

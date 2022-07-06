@@ -46,11 +46,13 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     filter();
-    cy.findByLabelText("Discount").click();
-    cy.findByText("Equal to").click();
+    cy.findByLabelText("Discount")
+      .findByText("Between")
+      .click();
     selectFromDropdown("Not empty");
-    cy.button("Add filter").click();
+
     cy.button("Apply").click();
+    cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",
@@ -97,11 +99,13 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     filter();
-    cy.findByLabelText("DISCOUNT").click();
-    cy.findByText("Equal to").click();
+    cy.findByLabelText("DISCOUNT")
+      .findByText("Between")
+      .click();
     selectFromDropdown("Not empty");
-    cy.button("Add filter").click();
+
     cy.button("Apply").click();
+    cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",
@@ -129,7 +133,7 @@ describe("scenarios > models", () => {
       cy.icon("table");
     });
 
-    cy.url().should("not.include", "/question/1");
+    cy.location("pathname").should("eq", "/collection/root");
   });
 
   it("changes model's display to table", () => {
@@ -309,11 +313,12 @@ describe("scenarios > models", () => {
       cy.wait("@dataset");
 
       filter();
-      cy.findByLabelText("Discount").click();
-      cy.findByText("Equal to").click();
+      cy.findByLabelText("Discount")
+        .findByText("Between")
+        .click();
       selectFromDropdown("Not empty");
-      cy.button("Add filter").click();
       cy.button("Apply").click();
+      cy.wait("@dataset");
 
       assertQuestionIsBasedOnModel({
         model: "Orders Model",
@@ -324,6 +329,7 @@ describe("scenarios > models", () => {
       summarize();
 
       selectDimensionOptionFromSidebar("Created At");
+      cy.wait("@dataset");
       cy.button("Done").click();
 
       assertQuestionIsBasedOnModel({
