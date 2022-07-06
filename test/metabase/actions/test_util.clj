@@ -127,18 +127,23 @@
   [[bindings action] & body]
   `(do-with-card-emitter ~action (fn [~bindings] ~@body)))
 
-
-(defn do-with-actions-setup
-  "Impl for [[with-actions-setup]]."
+(defn do-with-actions-enabled
+  "Impl for [[with-actions-enabled]]."
   [thunk]
-  (with-actions-test-data
-    (mt/with-temporary-setting-values [experimental-enable-actions true]
-      (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-        (thunk)))))
+  (mt/with-temporary-setting-values [experimental-enable-actions true]
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
+      (thunk))))
 
-(defmacro with-actions-setup
-  "Execute `body` with the actions test dataset via [[with-actions-test-data]], which can be freely modified, as it is
-  recreated on each use. Enables actions at the global level and for the current test Database."
+(defmacro with-actions-enabled
+  "Execute `body` with Actions enabled at the global level and for the current test Database."
   {:style/indent 0}
   [& body]
-  `(do-with-actions-setup (fn [] ~@body)))
+  `(do-with-actions-enabled (fn [] ~@body)))
+
+(defmacro with-actions-test-data-and-actions-enabled
+  "Combines [[with-actions-test-data]] and [[with-actions-enabled]]."
+  {:style/indent 0}
+  [& body]
+  `(with-actions-test-data
+     (with-actions-enabled
+       (fn [] ~@body))))

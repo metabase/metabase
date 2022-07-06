@@ -10,7 +10,7 @@
 (deftest create-emitter-test
   (testing "POST /api/emitter"
     (testing "Creating an emitter with the POST endpoint should return the newly created Emitter"
-      (actions.test-util/with-actions-setup
+      (actions.test-util/with-actions-test-data-and-actions-enabled
         (actions.test-util/with-query-action [{:keys [action-id query-action-card-id]}]
           (let [expected-response {:id                 su/IntGreaterThanZero
                                    :parameter_mappings (s/eq nil)
@@ -33,7 +33,7 @@
 
 (deftest execute-custom-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
-    (actions.test-util/with-actions-setup
+    (actions.test-util/with-actions-test-data-and-actions-enabled
       (actions.test-util/with-query-action [context]
         (actions.test-util/with-card-emitter [{:keys [emitter-id]} context]
           (testing "Should be able to execute an emitter"
