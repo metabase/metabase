@@ -7,6 +7,7 @@ import { CardId, SavedCard } from "metabase-types/types/Card";
 
 export interface Dashboard {
   id: number;
+  collection_id: number | null;
   name: string;
   description: string | null;
   model?: string;
