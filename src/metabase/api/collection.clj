@@ -301,13 +301,22 @@
     (not (zero? v))
     v))
 
-(defn- fully-parametrized?
-  "Decide if the query in the card represented by the result row `row` is fully parametrized.
+(declare fully-parametrized-text?)
 
-  The rules to consider a query fully parametrized is as follows:
+(defn- fully-parametrized-snippet? [tag]
+  (and (= (keyword (:type tag)) :snippet)
+       (let [{:keys [content template_tags]} (NativeQuerySnippet (:snippet-id tag))]
+         (fully-parametrized-text? content (update-keys template_tags keyword)))))
+
+(defn- fully-parametrized-text?
+  "Decide if `text`, usually (a part of) a query, is fully parametrized given the parameter types
+  described by `template-tags` (usually the template tags of a native query or a snippet).
+
+  The rules to consider a piece of text fully parametrized is as follows:
 
   1. All parameters not in an optional block are field-filters or have a default value.
   2. All required parameters have a default value.
+  3. Rules 1 and 2 recursively apply to all snippets not in an optional block.
 
   The first rule is absolutely necessary, as queries violating it cannot be executed without
   externally supplied parameter values. The second rule is more controversial, as field-filters
@@ -317,22 +326,26 @@
   and queries that are technically executable without parameters can be unacceptably slow
   without the necessary constraints. (Marking parameters in optional blocks as required doesn't
   seem to be useful any way, but if the user said it is required, we honor this flag.)"
-  [row]
+  [text template-tags]
+  (let [obligatory-params (into #{}
+                                (comp (filter params/Param?)
+                                      (map (comp keyword :k)))
+                                (params.parse/parse text))]
+    (and (every? #(or (:default %) (= (:type %) "dimension") (fully-parametrized-snippet? %))
+                 (map template-tags obligatory-params))
+         (every? #(or (:default %) (not (:required %))) (vals template-tags)))))
+
+(defn- fully-parametrized-query? [row]
   (let [native-query (-> row :dataset_query (json/parse-string keyword) :native)]
     (if-let [template-tags (:template-tags native-query)]
-      (let [obligatory-params (into #{}
-                                    (comp (filter params/Param?)
-                                          (map (comp keyword :k)))
-                                    (-> native-query :query params.parse/parse))]
-        (and (every? #(or (:default %) (= (:type %) "dimension")) (map template-tags obligatory-params))
-             (every? #(or (:default %) (not (:required %))) (vals template-tags))))
+      (fully-parametrized-text? (:query native-query) template-tags)
       true)))
 
 (defn- post-process-card-row [row]
   (-> row
       (dissoc :authority_level :icon :personal_owner_id :dataset_query)
       (update :collection_preview bit->boolean)
-      (assoc :fully_parametrized (fully-parametrized? row))))
+      (assoc :fully_parametrized (fully-parametrized-query? row))))
 
 (defmethod post-process-collection-children :card
   [_ rows]

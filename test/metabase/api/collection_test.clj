@@ -1156,6 +1156,150 @@
                      :entity_id       (:entity_id collection)
                      :can_write       true}])
                  (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+                   (dissoc item :id))))))
+
+      (testing "using a snippet without parameters is true"
+        (mt/with-temp* [NativeQuerySnippet [snippet {:content    "table"
+                                                     :creator_id (mt/user->id :crowberto)
+                                                     :name       "snippet"}]
+                        Card [card {:name          "Business Card"
+                                    :dataset_query {:native {:template-tags {:param0  {:required false
+                                                                                       :default  0}
+                                                                             :snippet {:name         "snippet"
+                                                                                       :type         :snippet
+                                                                                       :snippet-name "snippet"
+                                                                                       :snippet-id   (:id snippet)}}
+                                                             :query "select {{param0}} from {{snippet}}"}}}]]
+          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
+                   [{:name                "Business Card"
+                     :description         nil
+                     :collection_position nil
+                     :collection_preview  true
+                     :display             "table"
+                     :moderated_status    nil
+                     :entity_id           (:entity_id card)
+                     :model               "card"
+                     :fully_parametrized  true}
+                    {:name            "Crowberto Corv's Personal Collection"
+                     :description     nil
+                     :model           "collection"
+                     :authority_level nil
+                     :entity_id       (:entity_id collection)
+                     :can_write       true}])
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+                   (dissoc item :id))))))
+
+      (testing "using a not fully parametrized snippet without parameters is false"
+        (mt/with-temp* [NativeQuerySnippet [snippet {:content    "table where x = {{param}}"
+                                                     :template_tags {"param" {:required false}}
+                                                     :creator_id (mt/user->id :crowberto)
+                                                     :name       "snippet"}]
+                        Card [card {:name          "Business Card"
+                                    :dataset_query {:native {:template-tags {:param0  {:required false
+                                                                                       :default  0}
+                                                                             :snippet {:name         "snippet"
+                                                                                       :type         :snippet
+                                                                                       :snippet-name "snippet"
+                                                                                       :snippet-id   (:id snippet)}}
+                                                             :query "select {{param0}} from {{snippet}}"}}}]]
+          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
+                   [{:name                "Business Card"
+                     :description         nil
+                     :collection_position nil
+                     :collection_preview  true
+                     :display             "table"
+                     :moderated_status    nil
+                     :entity_id           (:entity_id card)
+                     :model               "card"
+                     :fully_parametrized  false}
+                    {:name            "Crowberto Corv's Personal Collection"
+                     :description     nil
+                     :model           "collection"
+                     :authority_level nil
+                     :entity_id       (:entity_id collection)
+                     :can_write       true}])
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+                   (dissoc item :id))))))
+
+      (testing "using a nested snippet without parameters is true"
+        (mt/with-temp* [NativeQuerySnippet [snippet {:content    "table"
+                                                     :creator_id (mt/user->id :crowberto)
+                                                     :name       "snippet"}]
+                        NativeQuerySnippet [parent-snippet {:content    "{{snippet}}"
+                                                            :creator_id (mt/user->id :crowberto)
+                                                            :name       "parent-snippet"
+                                                            :template_tags
+                                                            {"snippet" {:name         "snippet"
+                                                                        :type         :snippet
+                                                                        :snippet-name "snippet"
+                                                                        :snippet-id   (:id snippet)}}}]
+                        Card [card {:name          "Business Card"
+                                    :dataset_query {:native {:template-tags {:param0  {:required false
+                                                                                       :default  0}
+                                                                             :parent-snippet
+                                                                             {:name         "parent-snippet"
+                                                                              :type         :snippet
+                                                                              :snippet-name "parent-snippet"
+                                                                              :snippet-id   (:id parent-snippet)}}
+                                                             :query "select {{param0}} from {{parent-snippet}}"}}}]]
+          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
+                   [{:name                "Business Card"
+                     :description         nil
+                     :collection_position nil
+                     :collection_preview  true
+                     :display             "table"
+                     :moderated_status    nil
+                     :entity_id           (:entity_id card)
+                     :model               "card"
+                     :fully_parametrized  true}
+                    {:name            "Crowberto Corv's Personal Collection"
+                     :description     nil
+                     :model           "collection"
+                     :authority_level nil
+                     :entity_id       (:entity_id collection)
+                     :can_write       true}])
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+                   (dissoc item :id))))))
+
+      (testing "using a not fully parametrized nested snippet without parameters is false"
+        (mt/with-temp* [NativeQuerySnippet [snippet {:content    "table where x = {{param}}"
+                                                     :template_tags {"param" {:required false}}
+                                                     :creator_id (mt/user->id :crowberto)
+                                                     :name       "snippet"}]
+                        NativeQuerySnippet [parent-snippet {:content    "{{snippet}}"
+                                                            :creator_id (mt/user->id :crowberto)
+                                                            :name       "parent-snippet"
+                                                            :template_tags
+                                                            {"snippet" {:name         "snippet"
+                                                                        :type         :snippet
+                                                                        :snippet-name "snippet"
+                                                                        :snippet-id   (:id snippet)}}}]
+                        Card [card {:name          "Business Card"
+                                    :dataset_query {:native {:template-tags {:param0  {:required false
+                                                                                       :default  0}
+                                                                             :parent-snippet
+                                                                             {:name         "parent-snippet"
+                                                                              :type         :snippet
+                                                                              :snippet-name "parent-snippet"
+                                                                              :snippet-id   (:id parent-snippet)}}
+                                                             :query "select {{param0}} from {{parent-snippet}}"}}}]]
+          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
+                   [{:name                "Business Card"
+                     :description         nil
+                     :collection_position nil
+                     :collection_preview  true
+                     :display             "table"
+                     :moderated_status    nil
+                     :entity_id           (:entity_id card)
+                     :model               "card"
+                     :fully_parametrized  false}
+                    {:name            "Crowberto Corv's Personal Collection"
+                     :description     nil
+                     :model           "collection"
+                     :authority_level nil
+                     :entity_id       (:entity_id collection)
+                     :can_write       true}])
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
                    (dissoc item :id)))))))))
 
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
