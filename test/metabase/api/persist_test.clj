@@ -10,10 +10,12 @@
 (def ^:private default-cron "0 0 0/12 * * ? *")
 
 (defn- do-with-setup [f]
-  (mt/with-temporary-setting-values [:persisted-models-enabled true]
-    (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]]
-      (task.persist-refresh/schedule-persistence-for-database! db default-cron)
-      (f db))))
+  (mt/with-temp-scheduler
+    (#'task.persist-refresh/job-init!)
+    (mt/with-temporary-setting-values [:persisted-models-enabled true]
+      (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]]
+        (task.persist-refresh/schedule-persistence-for-database! db default-cron)
+        (f db)))))
 
 (defmacro ^:private with-setup
   "Sets up a temp scheduler, a temp database and enabled persistence"
