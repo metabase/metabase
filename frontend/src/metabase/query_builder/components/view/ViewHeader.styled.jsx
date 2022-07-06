@@ -54,7 +54,7 @@ export const SavedQuestionHeaderButtonContainer = styled.div`
 export const HeaderButton = styled(Button)`
   font-size: 0.875rem;
   background-color: ${({ active, color = getDefaultColor() }) =>
-    active ? alpha(color, 0.8) : "transparent"};
+    active ? color : "transparent"};
   color: ${({ active }) => (active ? "white" : color("text-dark"))};
   &:hover {
     background-color: ${({ color = getDefaultColor() }) => alpha(color, 0.15)};
