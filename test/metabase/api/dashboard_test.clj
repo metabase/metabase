@@ -673,7 +673,7 @@
 
 (deftest copy-dashboard-cards-test
   (testing "POST /api/dashboard/:id/copy"
-    (testing "Ensure dashboard cards and parameters are copied"
+    (testing "Ensure dashboard cards and parameters are copied (#23685)"
       (mt/with-temp* [Dashboard     [{dashboard-id :id}  {:name       "Test Dashboard"
                                                           :parameters [{:name "Category ID"
                                                                         :slug "category_id"
