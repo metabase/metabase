@@ -345,7 +345,7 @@
           "seconds" amount
           "minutes" (* amount 60)
           "hours"  (* amount 3600))
-        #_(max 60)))) ; Ensure a minimum of 60 seconds so a user can't lock themselves out
+        (max 60)))) ; Ensure a minimum of 60 seconds so a user can't lock themselves out
 
 (defn session-timeout-seconds []
   (session-timeout->seconds (session-timeout)))
