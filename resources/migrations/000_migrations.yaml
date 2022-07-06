@@ -11796,6 +11796,7 @@ databaseChangeLog:
       id: v44.00-023
       author: qnkhuat
       comment: Added 0.44.0 - Add parameters to report_card
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: report_card
@@ -11810,6 +11811,7 @@ databaseChangeLog:
       id: v44.00-025
       author: qnkhuat
       comment: Added 0.44.0 - Add parameter_mappings to report_card
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: report_card
@@ -11887,6 +11889,7 @@ databaseChangeLog:
       id: v44.00-035
       author: qnkhuat
       comment: Added 0.44.0. Add type to fieldvalues
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: metabase_fieldvalues
