@@ -92,6 +92,12 @@ export function hasRequiredParameters(item: Item) {
   return item.has_required_parameters ?? true;
 }
 
+export function coerceCollectionId(
+  collectionId: number | null | undefined,
+): string | number {
+  return collectionId == null ? "root" : collectionId;
+}
+
 // API requires items in "root" collection be persisted with a "null" collection ID
 // Also ensure it's parsed as a number
 export function canonicalCollectionId(
