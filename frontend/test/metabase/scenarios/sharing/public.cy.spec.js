@@ -154,6 +154,22 @@ describe("scenarios > public", () => {
         });
     });
 
+    it("should show shared questions and dashboards in admin settings", () => {
+      cy.visit("/admin/settings/public_sharing");
+
+      cy.findByText("Enable Public Sharing");
+
+      cy.findByText(
+        "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards.",
+      );
+
+      // shared questions
+      cy.findByText("sql param");
+
+      // shared dashboard
+      cy.findByText("parameterized dashboard");
+    });
+
     Object.entries(USERS).map(([userType, setUser]) =>
       describe(`${userType}`, () => {
         beforeEach(setUser);

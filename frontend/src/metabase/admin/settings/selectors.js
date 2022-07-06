@@ -313,6 +313,7 @@ const SECTIONS = updateSectionsWithPlugins({
       {
         key: "enable-public-sharing",
         display_name: t`Enable Public Sharing`,
+        description: t`Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards.`,
         type: "boolean",
       },
       {
