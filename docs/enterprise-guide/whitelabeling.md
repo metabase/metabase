@@ -70,7 +70,7 @@ You can replace Metabase’s familiar, tasteful, inspired-yet-not-threateningly-
 
 ## Favicon
 
-The url or image that you want to use as the favicon. Note that if you use a relative path, that path isn't relative to the Metabase JAR, but to the webserver. So unless you're using a reverse-proxy, the path will be relative to the frontend resources available to the JAR.
+The URL or image that you want to use as the favicon. Note that if you use a relative path, that path isn't relative to the Metabase JAR, but to the webserver. So unless you're using a reverse-proxy, the path will be relative to the frontend resources available to the JAR.
 
 ## Landing page
 
