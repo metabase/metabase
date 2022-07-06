@@ -673,18 +673,32 @@
 
 (deftest copy-dashboard-cards-test
   (testing "POST /api/dashboard/:id/copy"
-    (testing "Ensure dashboard cards are copied"
-      (mt/with-temp* [Dashboard     [{dashboard-id :id}  {:name "Test Dashboard"}]
+    (testing "Ensure dashboard cards and parameters are copied (#23685)"
+      (mt/with-temp* [Dashboard     [{dashboard-id :id}  {:name       "Test Dashboard"
+                                                          :parameters [{:name "Category ID"
+                                                                        :slug "category_id"
+                                                                        :id   "_CATEGORY_ID_"
+                                                                        :type :category}]}]
                       Card          [{card-id :id}]
                       Card          [{card-id2 :id}]
-                      DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                      DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id2}]]
+                      DashboardCard [{dashcard-id :id} {:dashboard_id       dashboard-id,
+                                                        :card_id            card-id
+                                                        :parameter_mappings [{:parameter_id "random-id"
+                                                                              :card_id      card-id
+                                                                              :target       [:dimension [:field (mt/id :venues :name) nil]]}]}]
+                      DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id2}]]
         (let [copy-id (u/the-id (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" dashboard-id)))]
           (try
             (is (= 2
                    (count (db/select-ids DashboardCard, :dashboard_id copy-id))))
-            (finally
-              (db/delete! Dashboard :id copy-id))))))))
+            (is (= [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category}]
+                   (db/select-one-field :parameters Dashboard :id copy-id)))
+            (is (= [{:parameter_id "random-id"
+                     :card_id      card-id
+                     :target       [:dimension [:field (mt/id :venues :name) nil]]}]
+                   (db/select-one-field :parameter_mappings DashboardCard :id dashcard-id)))
+           (finally
+             (db/delete! Dashboard :id copy-id))))))))
 
 (deftest copy-dashboard-into-correct-collection-test
   (testing "POST /api/dashboard/:id/copy"
