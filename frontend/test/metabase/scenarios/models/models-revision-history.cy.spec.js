@@ -2,6 +2,7 @@ import {
   restore,
   modal,
   filter,
+  filterField,
   visitQuestion,
   openQuestionActions,
   closeQuestionActions,
@@ -48,8 +49,7 @@ describe("scenarios > models > revision history", () => {
     cy.get(".LineAreaBarChart");
 
     filter();
-    cy.findByLabelText("Discount").findByText("Between").click();
-    selectFromDropdown("Not empty");
+    filterField("Discount").changeOperator("Not empty");
 
     cy.button("Apply").click();
 

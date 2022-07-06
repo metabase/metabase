@@ -1,5 +1,11 @@
 // Ported from `segments.e2e.spec.js`
-import { restore, popover, modal, filter } from "__support__/e2e/helpers";
+import {
+  restore,
+  popover,
+  modal,
+  filter,
+  filterField,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -104,11 +110,9 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.findAllByText("37.65");
 
       filter();
-      cy.findByLabelText("Product ID")
-        .findByPlaceholderText("Enter an ID")
-        .click()
-        .type("14", { delay: 100 });
+      filterField("Product ID").changeValue("14");
       cy.findByText("Apply").click();
+
       cy.findByText("Product ID is 14");
       cy.findByText("Save").click();
       cy.findAllByText("Save").last().click();

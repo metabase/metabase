@@ -6,6 +6,7 @@ import {
   visualize,
   summarize,
   filter,
+  filterField,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -151,8 +152,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.get(".full").find(".Button").click();
 
       filter();
-
-      cy.findByLabelText("Total").findByPlaceholderText("min").type("50");
+      filterField("Total").changeValue("50", "min");
 
       cy.button("Apply").click();
       cy.findByText("Save").click();

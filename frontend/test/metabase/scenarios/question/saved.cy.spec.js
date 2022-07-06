@@ -13,6 +13,7 @@ import {
   appbar,
   getCollectionIdFromSlug,
   filter,
+  filterField,
 } from "__support__/e2e/helpers";
 
 describe("scenarios > question > saved", () => {
@@ -153,14 +154,11 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Saved Questions").click();
     cy.findByText("15808").click();
     visualize();
-    filter();
-    cy.findByLabelText("RATING").findByText("Between").click();
-    cy.findByText("Equal to").click();
-    cy.findByLabelText("RATING")
-      .findByPlaceholderText("Enter a number")
-      .type("4");
 
+    filter();
+    filterField("RATING").changeOperator("Equal to").changeValue("4");
     cy.button("Apply").click();
+
     cy.findByText("Synergistic Granite Chair");
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });
