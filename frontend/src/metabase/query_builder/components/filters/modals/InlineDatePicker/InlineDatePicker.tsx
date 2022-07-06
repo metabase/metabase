@@ -13,6 +13,7 @@ import Dimension from "metabase-lib/lib/Dimension";
 import { DATE_SHORTCUT_OPTIONS as ALL_DATE_OPTIONS } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
 
 import { BulkFilterSelect } from "../BulkFilterSelect";
+
 import {
   OptionButton,
   OptionContainer,
@@ -122,7 +123,7 @@ export function InlineDatePicker({
             </OptionButton>
           ) : (
             <OptionButton onClick={onClick} aria-label={t`more options`}>
-              <Icon name="ellipsis" size={14} />
+              <Icon name="ellipsis" size={14} style={{ marginBottom: -5 }} />
             </OptionButton>
           )
         }
