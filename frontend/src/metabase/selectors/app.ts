@@ -29,7 +29,7 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
   /\/model\//,
   /\/dashboard\//,
 ];
-const PATHS_WITH_QUESTION_LINEAGE = [/\/question\//, /\/model\//];
+const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
 
 export const getRouterPath = (state: State, props: RouterProps) => {
   return props.location.pathname;
