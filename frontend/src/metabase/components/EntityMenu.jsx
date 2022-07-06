@@ -67,6 +67,7 @@ class EntityMenu extends Component {
           hasBackground={false}
           horizontalAttachments={["left", "right"]}
           targetOffsetY={targetOffsetY || 0}
+          ignoreTrigger
         >
           {/* Note: @kdoh 10/12/17
            * React Motion has a flow type problem with children see
