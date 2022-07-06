@@ -21,6 +21,11 @@ import { BulkFilterSelect } from "../BulkFilterSelect";
 
 const mapStateToProps = (state: any, props: any) => {
   const fieldId = props.dimension?.field?.()?.id;
+
+  if (props.dimension?.field?.()?.values?.length) {
+    return { fieldValues: props.dimension?.field?.()?.values };
+  }
+
   const fieldValues =
     fieldId != null
       ? Fields.selectors.getFieldValues(state, {
@@ -76,6 +81,7 @@ export function InlineCategoryPickerComponent({
   }, [dimension, safeFetchFieldValues, shouldFetchFieldValues]);
 
   const showInlinePicker =
+    fieldValues.length > 0 &&
     fieldValues.length <= MAX_INLINE_CATEGORIES &&
     (!filter || filter?.operatorName() === "=");
 
