@@ -37,9 +37,7 @@ describe("scenarios > models metadata", () => {
     openQuestionActions();
 
     popover().within(() => {
-      //Need to wait for action menu to be fully visible before hovering
-      cy.findByTestId("tooltip-component-wrapper").should("be.visible");
-      cy.findByTestId("tooltip-component-wrapper").realHover();
+      cy.findByTextEnsureVisible("89%").trigger("mouseenter");
     });
 
     cy.findByText(
@@ -48,8 +46,6 @@ describe("scenarios > models metadata", () => {
     cy.findByText(
       "Adding metadata makes it easier for your team to explore this data.",
     );
-
-    cy.findByText("89%");
 
     cy.findByText("Edit metadata").click();
 
@@ -84,9 +80,7 @@ describe("scenarios > models metadata", () => {
     openQuestionActions();
 
     popover().within(() => {
-      //Need to wait for action menu to be fully visible before hovering
-      cy.findByTestId("tooltip-component-wrapper").should("be.visible");
-      cy.findByTestId("tooltip-component-wrapper").realHover();
+      cy.findByTextEnsureVisible("37%").trigger("mouseenter");
     });
 
     cy.findByText(
@@ -95,8 +89,6 @@ describe("scenarios > models metadata", () => {
     cy.findByText(
       "Adding metadata makes it easier for your team to explore this data.",
     );
-
-    cy.findByText("37%");
 
     cy.findByText("Edit metadata").click();
 
