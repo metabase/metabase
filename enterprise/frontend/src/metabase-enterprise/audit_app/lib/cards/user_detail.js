@@ -16,8 +16,7 @@ export const mostViewedDashboards = userId => ({
     display: "row",
     dataset_query: {
       type: "internal",
-      fn:
-        "metabase-enterprise.audit-app.pages.user-detail/most-viewed-dashboards",
+      fn: "metabase-enterprise.audit-app.pages.user-detail/most-viewed-dashboards",
       args: [userId],
     },
     visualization_settings: {
@@ -33,8 +32,7 @@ export const mostViewedQuestions = userId => ({
     display: "row",
     dataset_query: {
       type: "internal",
-      fn:
-        "metabase-enterprise.audit-app.pages.user-detail/most-viewed-questions",
+      fn: "metabase-enterprise.audit-app.pages.user-detail/most-viewed-questions",
       args: [userId],
     },
     visualization_settings: {
@@ -50,8 +48,7 @@ export const objectViewsByTime = userId => ({
     display: "line",
     dataset_query: {
       type: "internal",
-      fn:
-        "metabase-enterprise.audit-app.pages.user-detail/object-views-by-time",
+      fn: "metabase-enterprise.audit-app.pages.user-detail/object-views-by-time",
       args: [userId, "card", "day"],
     },
   },
@@ -61,8 +58,7 @@ export const objectViewsByTime = userId => ({
       display: "line",
       dataset_query: {
         type: "internal",
-        fn:
-          "metabase-enterprise.audit-app.pages.user-detail/object-views-by-time",
+        fn: "metabase-enterprise.audit-app.pages.user-detail/object-views-by-time",
         args: [userId, "dashboard", "day"],
       },
     },

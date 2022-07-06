@@ -18,10 +18,7 @@ describe("issue 18384", () => {
   it("should be able to open field properties even when one of the tables is hidden (metabase#18384)", () => {
     cy.visit(`/admin/datamodel/database/1/table/${PEOPLE_ID}`);
 
-    cy.findByDisplayValue("Address")
-      .parent()
-      .find(".Icon-gear")
-      .click();
+    cy.findByDisplayValue("Address").parent().find(".Icon-gear").click();
 
     cy.location("pathname").should(
       "eq",

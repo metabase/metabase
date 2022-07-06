@@ -58,9 +58,7 @@ describe("issue 15119", () => {
       },
     );
 
-    filterWidget()
-      .contains("Category")
-      .click();
+    filterWidget().contains("Category").click();
 
     popover().within(() => {
       cy.findByText("Gizmo").click();

@@ -57,9 +57,8 @@ export function ModerationReviewBanner({
   const relativeCreationTime = getRelativeTimeAbbreviated(
     moderationReview.created_at,
   );
-  const { name: iconName, color: iconColor } = getIconForReview(
-    moderationReview,
-  );
+  const { name: iconName, color: iconColor } =
+    getIconForReview(moderationReview);
 
   return (
     <Container backgroundColor={alpha(iconColor, 0.2)} className={className}>

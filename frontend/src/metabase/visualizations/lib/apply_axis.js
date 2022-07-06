@@ -129,9 +129,8 @@ export function applyChartTimeseriesXAxis(
     // TODO: are there any other cases where we should do this?
     let tickFormatUnit = dimensionColumn.unit;
     tickFormat = timestamp => {
-      const { column, ...columnSettings } = chart.settings.column(
-        dimensionColumn,
-      );
+      const { column, ...columnSettings } =
+        chart.settings.column(dimensionColumn);
       return waterfallTotalX && waterfallTotalX.isSame(timestamp)
         ? t`Total`
         : formatValue(timestamp, {

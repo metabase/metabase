@@ -61,9 +61,7 @@ function addJoin({
   rightColumn,
   joinType = "left",
 } = {}) {
-  cy.icon("join_left_outer")
-    .last()
-    .click();
+  cy.icon("join_left_outer").last().click();
 
   selectFromDropdown(rightTable).click();
 

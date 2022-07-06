@@ -29,10 +29,7 @@ describe.skip("issue 20624", () => {
     // Open settings for this column
     cy.findByText(renamedColumn).click();
     // Let's set a new name for it
-    cy.findByDisplayValue(renamedColumn)
-      .clear()
-      .type("Foo")
-      .blur();
+    cy.findByDisplayValue(renamedColumn).clear().type("Foo").blur();
 
     cy.button("Save changes").click();
     cy.wait("@updateCard");

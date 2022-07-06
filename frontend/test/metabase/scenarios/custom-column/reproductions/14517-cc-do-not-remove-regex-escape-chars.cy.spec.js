@@ -12,9 +12,7 @@ describe.skip("postgres > question > custom columns", () => {
     cy.signInAsAdmin();
 
     startNewQuestion();
-    cy.findByText(PG_DB_NAME)
-      .should("be.visible")
-      .click();
+    cy.findByText(PG_DB_NAME).should("be.visible").click();
     cy.findByTextEnsureVisible("People").click();
   });
 

@@ -51,8 +51,5 @@ function ccAssertion() {
 }
 
 function unselectColumn(column) {
-  cy.findByText(column)
-    .siblings()
-    .find(".Icon-check")
-    .click({ force: true });
+  cy.findByText(column).siblings().find(".Icon-check").click({ force: true });
 }

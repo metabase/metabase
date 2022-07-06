@@ -18,10 +18,8 @@ SavedQuestionHeaderButton.propTypes = {
 const ICON_SIZE = 16;
 
 function SavedQuestionHeaderButton({ className, question, onSave }) {
-  const {
-    name: reviewIconName,
-    color: reviewIconColor,
-  } = PLUGIN_MODERATION.getStatusIconForQuestion(question);
+  const { name: reviewIconName, color: reviewIconColor } =
+    PLUGIN_MODERATION.getStatusIconForQuestion(question);
 
   return (
     <HeaderRoot>

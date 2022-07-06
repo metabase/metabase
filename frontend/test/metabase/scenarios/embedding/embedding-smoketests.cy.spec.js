@@ -222,9 +222,7 @@ function getTokenValue() {
 }
 
 function enableSharing() {
-  cy.contains("Enable sharing")
-    .siblings()
-    .click();
+  cy.contains("Enable sharing").siblings().click();
 }
 
 function assertLinkMatchesUrl(text, url) {

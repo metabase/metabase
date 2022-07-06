@@ -42,9 +42,7 @@ describe("scenarios > embedding > code snippets", () => {
       "not.exist",
     );
 
-    cy.get(".ace_content")
-      .last()
-      .should("have.text", IFRAME_CODE);
+    cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
 
     cy.findAllByTestId("embed-backend-select-button")
       .should("contain", "Node.js")
@@ -109,9 +107,7 @@ describe("scenarios > embedding > code snippets", () => {
         );
     }
 
-    cy.get(".ace_content")
-      .last()
-      .should("have.text", IFRAME_CODE);
+    cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
 
     cy.findAllByTestId("embed-backend-select-button")
       .should("contain", "Node.js")

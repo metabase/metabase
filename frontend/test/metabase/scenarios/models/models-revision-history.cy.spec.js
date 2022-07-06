@@ -48,9 +48,7 @@ describe("scenarios > models > revision history", () => {
     cy.get(".LineAreaBarChart");
 
     filter();
-    cy.findByLabelText("Discount")
-      .findByText("Between")
-      .click();
+    cy.findByLabelText("Discount").findByText("Between").click();
     selectFromDropdown("Not empty");
 
     cy.button("Apply").click();

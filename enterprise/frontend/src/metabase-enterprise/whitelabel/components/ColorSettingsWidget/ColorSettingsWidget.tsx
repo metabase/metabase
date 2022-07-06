@@ -24,7 +24,7 @@ const ColorSettingsWidget = ({
   );
 };
 
-const useDebounce = function<T>(func: (value: T) => void, wait: number) {
+const useDebounce = function <T>(func: (value: T) => void, wait: number) {
   const ref = useRef(func);
   ref.current = func;
 

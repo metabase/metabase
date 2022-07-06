@@ -34,19 +34,14 @@ describe("display the relevant error message in save question modal (metabase#21
     cy.findByText("Databases").click();
     cy.findByText("Add database").click();
 
-    cy.get(".Form-field")
-      .findByTestId("select-button")
-      .first()
-      .click();
+    cy.get(".Form-field").findByTestId("select-button").first().click();
     cy.findByText("H2").click();
     cy.get(`input[name="name"]`).type(databaseCopyName);
     cy.get(`input[name="details.db"]`).type(
       "./resources/sample-database.db;USER=GUEST;PASSWORD=guest",
     );
 
-    cy.button("Save")
-      .should("not.be.disabled")
-      .click();
+    cy.button("Save").should("not.be.disabled").click();
 
     cy.wait("@createDatabase");
     cy.findByText("We're taking a look at your database!");
@@ -87,9 +82,7 @@ describe("display the relevant error message in save question modal (metabase#21
     );
 
     // Try to save the native query
-    cy.findByTestId("qb-header-action-panel")
-      .findByText("Save")
-      .click();
+    cy.findByTestId("qb-header-action-panel").findByText("Save").click();
     modal().within(() => {
       cy.findByPlaceholderText("What is the name of your card?").type(
         "The question name",

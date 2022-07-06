@@ -366,10 +366,7 @@ describe("QuestionDataSource", () => {
           );
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            question
-              .table()
-              .newQuestion()
-              .getUrl(),
+            question.table().newQuestion().getUrl(),
           );
         });
 
@@ -380,10 +377,7 @@ describe("QuestionDataSource", () => {
           );
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            question
-              .table()
-              .newQuestion()
-              .getUrl(),
+            question.table().newQuestion().getUrl(),
           );
         });
       });

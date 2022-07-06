@@ -89,10 +89,10 @@ function TableCell({
     [data, settings, rowIndex, columnIndex, isPivoted, clickedRowData],
   );
 
-  const extraData = useMemo(() => getExtraDataForClick?.(clicked) ?? {}, [
-    clicked,
-    getExtraDataForClick,
-  ]);
+  const extraData = useMemo(
+    () => getExtraDataForClick?.(clicked) ?? {},
+    [clicked, getExtraDataForClick],
+  );
 
   const cellData = useMemo(
     () =>

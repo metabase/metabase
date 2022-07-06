@@ -108,17 +108,15 @@ export default class NotebookStep extends React.Component {
   };
 
   render() {
-    const {
-      step,
-      openStep,
-      isLastStep,
-      isLastOpened,
-      updateQuery,
-    } = this.props;
+    const { step, openStep, isLastStep, isLastOpened, updateQuery } =
+      this.props;
     const { showPreview } = this.state;
 
-    const { title, getColor, component: NotebookStepComponent } =
-      STEP_UI[step.type] || {};
+    const {
+      title,
+      getColor,
+      component: NotebookStepComponent,
+    } = STEP_UI[step.type] || {};
 
     const color = getColor();
     const canPreview = step.previewQuery && step.previewQuery.isValid();

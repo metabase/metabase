@@ -52,13 +52,8 @@ class TextWidget extends React.Component<Props, State> {
   }
 
   render() {
-    const {
-      setValue,
-      className,
-      isEditing,
-      focusChanged,
-      disabled,
-    } = this.props;
+    const { setValue, className, isEditing, focusChanged, disabled } =
+      this.props;
     const defaultPlaceholder = this.state.isFocused
       ? ""
       : this.props.placeholder || t`Enter a value...`;

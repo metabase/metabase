@@ -117,9 +117,10 @@ describe("managing question from the question's details sidebar", () => {
               cy.get(".Modal").within(() => {
                 cy.findByText("Orders in a dashboard").should("not.exist");
                 cy.icon("search").click();
-                cy.findByPlaceholderText(
-                  "Search",
-                ).type("Orders in a dashboard{Enter}", { delay: 0 });
+                cy.findByPlaceholderText("Search").type(
+                  "Orders in a dashboard{Enter}",
+                  { delay: 0 },
+                );
                 cy.findByText("Orders in a dashboard").should("not.exist");
               });
             });
@@ -165,9 +166,7 @@ describe("managing question from the question's details sidebar", () => {
 });
 
 function clickButton(name) {
-  cy.button(name)
-    .should("not.be.disabled")
-    .click();
+  cy.button(name).should("not.be.disabled").click();
 }
 
 function assertOnRequest(xhr_alias) {

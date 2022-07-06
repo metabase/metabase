@@ -35,13 +35,9 @@ describe("support > permissions (metabase#8472)", () => {
     cy.icon("pencil").click();
 
     cy.icon("filter").click();
-    popover()
-      .contains("Text or Category")
-      .click();
+    popover().contains("Text or Category").click();
 
-    popover()
-      .contains("Dropdown")
-      .click();
+    popover().contains("Dropdown").click();
 
     // Filter the first card by User Address
     selectDashboardFilter(cy.get(".DashCard").first(), "Address");
