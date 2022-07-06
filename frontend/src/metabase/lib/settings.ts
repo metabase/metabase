@@ -98,6 +98,7 @@ export type SettingName =
   | "show-database-syncing-modal"
   | "premium-embedding-token"
   | "metabase-store-managed"
+  | "application-colors"
   | "application-font"
   | "available-fonts"
   | "enable-query-caching";
