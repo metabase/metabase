@@ -59,7 +59,9 @@
 (defn clear-session-cookie
   "Add a header to `response` to clear the current Metabase session cookie."
   [response]
-  (reduce clear-cookie (wrap-body-if-needed response) [metabase-session-cookie metabase-embedded-session-cookie]))
+  (reduce clear-cookie (wrap-body-if-needed response) [metabase-session-cookie
+                                                       metabase-embedded-session-cookie
+                                                       metabase-session-timeout-cookie]))
 
 (defn- use-permanent-cookies?
   "Check if we should use permanent cookies for a given request, which are not cleared when a browser sesion ends."
@@ -70,32 +72,40 @@
     ;; Otherwise check whether the user selected "remember me" during login
     (get-in request [:body :remember])))
 
-(defmulti set-session-cookie
+(defmulti set-session-cookies
   "Add an appropriate cookie to persist a newly created Session to `response`."
-  {:arglists '([request response session])}
-  (fn [_ _ {session-type :type}] (keyword session-type)))
+  {:arglists '([request response session request-time])}
+  (fn [_ _ {session-type :type} _] (keyword session-type)))
 
-(defmethod set-session-cookie :default
-  [_ _ session]
+(defmethod set-session-cookies :default
+  [_ _ session _]
   (throw (ex-info (str (tru "Invalid session. Expected an instance of Session."))
            {:session session})))
 
-(s/defmethod set-session-cookie :normal
-  [request response {session-uuid :id} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}]
+(declare session-timeout-seconds)
+
+(s/defmethod set-session-cookies :normal
+  [request
+   response
+   {session-uuid :id} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}
+   request-time]
   (let [response       (wrap-body-if-needed response)
+        timeout        (session-timeout-seconds)
         is-https?      (request.u/https? request)
         cookie-options (merge
                         {:same-site config/mb-session-cookie-samesite
-                         :http-only true
                          ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
                          ;; up breaking things
-                         :path      "/" #_ (site-path)}
-                        ;; If permanent cookies should be used, set the `Max-Age` directive; cookies with no
-                        ;; `Max-Age` and no `Expires` directives are session cookies, and are deleted when the
-                        ;; browser is closed.
-                        ;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#define_the_lifetime_of_a_cookie
-                        (when (use-permanent-cookies? request)
+                         :path      "/" #_(site-path)}
+                        (cond
+                          (some? timeout)
+                          {:expires (t/format :rfc-1123-date-time (t/plus request-time (t/seconds timeout)))}
+                          ;; If permanent cookies should be used, set the `Max-Age` directive; cookies with no
+                          ;; `Max-Age` and no `Expires` directives are session cookies, and are deleted when the
+                          ;; browser is closed.
+                          ;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#define_the_lifetime_of_a_cookie
                           ;; max-session age-is in minutes; Max-Age= directive should be in seconds
+                          (use-permanent-cookies? request)
                           {:max-age (* 60 (config/config-int :max-session-age))})
                         ;; If the authentication request request was made over HTTPS (hopefully always except for
                         ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
@@ -106,11 +116,19 @@
        (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
             " "
             "https://www.chromestatus.com/feature/5633521622188032")))
-    (response/set-cookie response metabase-session-cookie (str session-uuid) cookie-options)))
+    (-> response
+        (wrap-body-if-needed)
+        (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options)
+        (response/set-cookie metabase-session-cookie (str session-uuid) (assoc cookie-options :http-only true)))))
 
-(s/defmethod set-session-cookie :full-app-embed
-  [request response {session-uuid :id, anti-csrf-token :anti_csrf_token} :- {:id       (s/cond-pre UUID u/uuid-regex)
-                                                                             s/Keyword s/Any}]
+;; TODO: test timeout with full-app-embed
+(s/defmethod set-session-cookies :full-app-embed
+  [request
+   response
+   {session-uuid    :id
+    anti-csrf-token :anti_csrf_token} :- {:id       (s/cond-pre UUID u/uuid-regex)
+                                          s/Keyword s/Any}
+   request-time]
   (let [response       (wrap-body-if-needed response)
         cookie-options (merge
                         {:http-only true
@@ -310,7 +328,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              check-session-timeout                                             |
+;;; |                                              reset-cookie-timeout                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defsetting session-timeout
@@ -327,69 +345,35 @@
           "seconds" amount
           "minutes" (* amount 60)
           "hours"  (* amount 3600))
-        (max 60)))) ; Ensure a minimum of 60 seconds so a user can't lock themselves out
+        #_(max 60)))) ; Ensure a minimum of 60 seconds so a user can't lock themselves out
 
-(defn response-with-session-timeout-cookie
-  "Adds a cookie to the response that expires after `session-timeout-seconds` seconds."
-  [request request-time timeout-seconds response]
-  (cond
-    ;; If there is no session cookie because the user is logged out, clear the timeout cookie
-    (and (get-in request [:cookies metabase-session-timeout-cookie :value])
-         (not (or (get-in request [:cookies metabase-session-cookie :value])
-                  (get-in response [:cookies metabase-session-cookie :value]))))
-    (-> response
-        (wrap-body-if-needed)
-        (clear-cookie metabase-session-timeout-cookie))
+(defn session-timeout-seconds []
+  (session-timeout->seconds (session-timeout)))
 
-    ;; If the timeout-seconds is nil, sessions last indefinitely
-    (nil? timeout-seconds)
-    (let [cookie-options (merge
-                          {:path    "/"}
-                          (when (request.u/https? request)
-                            ;; SameSite=None is required for cross-domain full-app embedding.
-                            ;; Note that most browsers will only accept SameSite=None with secure cookies,
-                            ;; so we are setting it only over HTTPS to prevent the cookie from being rejected
-                            ;; in case of same-domain embedding. See https://github.com/metabase/metabase/issues/18553
-                            {:same-site :none
-                             :secure    true}))]
-      (-> response
-          (wrap-body-if-needed)
-          (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options)))
-
-    (or
-     ;; Either the session is just starting, so we need to set the timeout cookie for the first time
-     (get-in response [:cookies metabase-session-cookie :value])
-     ;; Or the cookie is already set and not expired, so we need to reset it.
-     (get-in request [:cookies metabase-session-timeout-cookie :value]))
-    (let [cookie-options (merge
-                          {:path      "/"
-                           :expires   (t/format :rfc-1123-date-time (t/plus request-time (t/seconds timeout-seconds)))}
-                          (when (request.u/https? request)
-                            {:same-site :none
-                             :secure    true}))]
-      (-> response
-          (wrap-body-if-needed)
-          (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options)))
-
-    ;; Clear the session cookie if the timeout cookie expired
-    (and (not (get-in request [:cookies metabase-session-timeout-cookie :value]))
-         (get-in request [:cookies metabase-session-cookie :value]))
-    (clear-session-cookie response)
-
-    :else
+(defn reset-cookie-timeout*
+  [request response request-time]
+  (if (some? (get-in request [:cookies metabase-session-timeout-cookie :value]))
+    (if-let [timeout (session-timeout-seconds)]
+      (let [new-expires (t/format :rfc-1123-date-time (t/plus request-time (t/seconds timeout)))]
+        (reduce (fn [response cookie-key]
+                  (let [old-cookie (get-in request [:cookies cookie-key])
+                        new-cookie (assoc old-cookie :expires new-expires)]
+                    (if old-cookie
+                      (response/set-cookie response cookie-key (:value new-cookie) new-cookie)
+                      response)))
+                response
+                [metabase-session-cookie metabase-session-timeout-cookie metabase-embedded-session-cookie]))
+      response)
     response))
 
-(defn reset-timeout-cookie
-  "Middleware that resets a timeout cookie that expires according to the session timeout setting."
+(defn reset-cookie-timeout
+  "Middleware that resets the expiry date on session cookies according to the session-timeout setting.
+   Will not change anything if the session-timeout setting is nil, or the timeout cookie has already expired."
   [handler]
   (fn [request respond raise]
     (let [;; The expiry time for the cookie is relative to the time the request is received, rather than the time of the response.
           request-time (t/zoned-date-time (t/zone-id "GMT"))]
       (handler request
                (fn [response]
-                 (respond (response-with-session-timeout-cookie
-                           request
-                           request-time
-                           (session-timeout->seconds (session-timeout))
-                           response)))
+                 (respond (reset-cookie-timeout* request response request-time)))
                raise))))
