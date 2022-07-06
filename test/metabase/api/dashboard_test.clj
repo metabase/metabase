@@ -908,6 +908,18 @@
            (is (= new-mappings
                   (db/select-one-field :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
 
+(deftest disallow-adding-is-write-card-to-dashboard-test
+  (testing "PUT /api/dashboard/:id/cards"
+    (testing "Disallow adding a QueryAction is_write Card to a Dashboard (#22846)"
+      (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                      Card      [{card-id :id} {:is_write true}]]
+        (is (= "You cannot add an is_write Card to a Dashboard."
+               (mt/user-http-request :crowberto :post 400
+                                     (format "dashboard/%d/cards" dashboard-id)
+                                     {:cardId card-id
+                                      :row    0
+                                      :col    0})))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        DELETE /api/dashboard/:id/cards                                         |

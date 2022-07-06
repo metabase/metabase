@@ -251,8 +251,8 @@
 
 
 (defn- update-field-values-for-on-demand-dbs!
-  "If the parameters have changed since last time this Dashboard was saved, we need to update the FieldValues
-   for any Fields that belong to an 'On-Demand' synced DB."
+  "If the parameters have changed since last time this Dashboard was saved, we need to update the FieldValues for any
+  Fields that belong to an 'On-Demand' synced DB."
   [old-param-field-ids new-param-field-ids]
   (when (and (seq new-param-field-ids)
              (not= old-param-field-ids new-param-field-ids))
@@ -264,11 +264,8 @@
 
 
 (defn add-dashcard!
-  "Add a Card to a Dashboard.
-   This function is provided for convenience and also makes sure various cleanup steps are performed when finished,
-   for example updating FieldValues for On-Demand DBs.
-   Returns newly created DashboardCard."
-  {:style/indent 2}
+  "Add a Card to a Dashboard. This function is provided for convenience and also makes sure various cleanup steps are
+  performed when finished, for example updating FieldValues for On-Demand DBs. Returns newly created DashboardCard."
   [dashboard-or-id card-or-id-or-nil & [dashcard-options]]
   (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
         dashboard-card      (-> (assoc dashcard-options
@@ -281,11 +278,9 @@
         (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
 (defn update-dashcards!
-  "Update the `dashcards` belonging to `dashboard-or-id`.
-   This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
-   are performed when finished, for example updating FieldValues for On-Demand DBs.
-   Returns `nil`."
-  {:style/indent 1}
+  "Update the `dashcards` belonging to `dashboard-or-id`. This function is provided as a convenience instead of doing
+  this yourself; it also makes sure various cleanup steps are performed when finished, for example updating
+  FieldValues for On-Demand DBs. Returns `nil`."
   [dashboard-or-id dashcards]
   (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
         dashcard-ids        (db/select-ids DashboardCard, :dashboard_id (u/the-id dashboard-or-id))]
