@@ -6,7 +6,6 @@ import { colors, lighten } from "metabase/lib/colors/palette";
 import { addCSSRule } from "metabase/lib/dom";
 
 import _ from "underscore";
-import memoize from "lodash.memoize";
 
 export const originalColors = { ...colors };
 
@@ -65,7 +64,7 @@ const replaceColors = (cssValue, matchColor, replacementColor) => {
   });
 };
 
-const getColorStyleProperties = memoize(function () {
+const getColorStyleProperties = _.memoize(function () {
   const properties = [];
   walkStyleSheets(
     document.styleSheets,
