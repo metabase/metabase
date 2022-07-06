@@ -38,6 +38,7 @@ describe("issue 17160", () => {
     cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
 
     cy.url().should("include", "/dashboard");
+    cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
     cy.findByText(TARGET_DASHBOARD_NAME);
 
     assertMultipleValuesFilterState();
@@ -80,6 +81,7 @@ describe("issue 17160", () => {
     cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
 
     cy.url().should("include", "/public/dashboard");
+    cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
     cy.findByText(TARGET_DASHBOARD_NAME);
 
     assertMultipleValuesFilterState();
@@ -166,7 +168,6 @@ function setup(shouldUsePublicLinks) {
                 },
               ],
             });
-
             visitDashboard(dashboardId);
           });
         });

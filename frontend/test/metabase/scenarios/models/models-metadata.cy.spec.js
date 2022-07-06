@@ -37,8 +37,7 @@ describe("scenarios > models metadata", () => {
     openQuestionActions();
 
     popover().within(() => {
-      cy.findByTestId("tooltip-component-wrapper").parent().realHover();
-      cy.findByText("89%");
+      cy.findByTextEnsureVisible("89%").trigger("mouseenter");
     });
 
     cy.findByText(
@@ -81,8 +80,7 @@ describe("scenarios > models metadata", () => {
     openQuestionActions();
 
     popover().within(() => {
-      cy.findByTestId("tooltip-component-wrapper").parent().realHover();
-      cy.findByText("37%");
+      cy.findByTextEnsureVisible("37%").trigger("mouseenter");
     });
 
     cy.findByText(
