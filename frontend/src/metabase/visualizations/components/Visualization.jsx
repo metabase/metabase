@@ -440,7 +440,7 @@ class Visualization extends React.PureComponent {
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
     const isHeaderEnabled = !(visualization && visualization.noHeader);
-    const isVirtual = isVirtualDashCard(dashcard);
+    const isVirtual = dashcard ? isVirtualDashCard(dashcard) : false;
 
     const hasHeader =
       (showTitle &&

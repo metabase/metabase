@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 
+import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
@@ -25,6 +26,7 @@ import {
   Header,
   TargetButton,
   TargetButtonText,
+  TextCardDefault,
   CloseIconButton,
   ChevrondownIcon,
   KeyIcon,
@@ -97,99 +99,104 @@ function DashCardCardParameterMapper({
     }
   }, [card, metadata, isVirtual]);
 
-  const { variant, tooltip, buttonText, buttonIcon } = useMemo(() => {
-    if (!hasPermissionsToMap) {
-      return {
-        variant: "unauthed",
-        tooltip: t`You don’t have permission to see this question’s columns.`,
-        text: null,
-        buttonIcon: <KeyIcon />,
-      };
-    } else if (isDisabled && !isVirtual) {
-      return {
-        variant: "disabled",
-        tooltip: t`This card doesn't have any fields or parameters that can be mapped to this parameter type.`,
-        buttonText: t`No valid fields`,
-        buttonIcon: null,
-      };
-    } else if (isDisabled && isVirtual) {
-      return {
-        variant: "disabled",
-        tooltip: t`This text card doesn't have any tags that can be linked to parameters.`,
-        buttonText: t`No valid tags`,
-        buttonIcon: null,
-      };
-    } else if (selectedMappingOption) {
-      return {
-        variant: "mapped",
-        tooltip: null,
-        buttonText: formatSelected(selectedMappingOption),
-        buttonIcon: (
-          <CloseIconButton
-            onClick={e => {
-              handleChangeTarget(null);
-              e.stopPropagation();
-            }}
-          />
-        ),
-      };
-    } else {
-      return {
-        variant: "default",
-        tooltip: null,
-        buttonText: t`Select…`,
-        buttonIcon: <ChevrondownIcon />,
-      };
-    }
-  }, [
-    hasPermissionsToMap,
-    isDisabled,
-    selectedMappingOption,
-    handleChangeTarget,
-    isVirtual,
-  ]);
+  const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
+    useMemo(() => {
+      if (!hasPermissionsToMap) {
+        return {
+          variant: "unauthed",
+          tooltip: t`You don’t have permission to see this question’s columns.`,
+          text: null,
+          buttonIcon: <KeyIcon />,
+        };
+      } else if (isDisabled && !isVirtual) {
+        return {
+          variant: "disabled",
+          tooltip: t`This card doesn't have any fields or parameters that can be mapped to this parameter type.`,
+          buttonText: t`No valid fields`,
+          buttonIcon: null,
+        };
+      } else if (selectedMappingOption) {
+        return {
+          variant: "mapped",
+          tooltip: null,
+          buttonText: formatSelected(selectedMappingOption),
+          buttonIcon: (
+            <CloseIconButton
+              onClick={e => {
+                handleChangeTarget(null);
+                e.stopPropagation();
+              }}
+            />
+          ),
+        };
+      } else {
+        return {
+          variant: "default",
+          tooltip: null,
+          buttonText: t`Select…`,
+          buttonIcon: <ChevrondownIcon />,
+        };
+      }
+    }, [
+      hasPermissionsToMap,
+      isDisabled,
+      selectedMappingOption,
+      handleChangeTarget,
+      isVirtual,
+    ]);
 
   return (
     <Container>
       {hasSeries && <CardLabel>{card.name}</CardLabel>}
-      <Header>
-        {isVirtual ? t`Variable to map to` : t`Column to filter on`}
-      </Header>
-      <Tooltip tooltip={tooltip}>
-        <TippyPopover
-          visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}
-          onClickOutside={() => setIsDropdownVisible(false)}
-          placement="bottom-start"
-          content={
-            <ParameterTargetList
-              onChange={target => {
-                handleChangeTarget(target);
-                setIsDropdownVisible(false);
-              }}
-              target={target}
-              mappingOptions={mappingOptions}
-            />
-          }
-        >
-          <TargetButton
-            variant={variant}
-            aria-haspopup="listbox"
-            aria-expanded={isDropdownVisible}
-            aria-disabled={isDisabled || !hasPermissionsToMap}
-            onClick={() => {
-              setIsDropdownVisible(true);
-            }}
-            onKeyDown={e => {
-              if (e.key === "Enter") {
-                setIsDropdownVisible(true);
+      {isVirtual && isDisabled ? (
+        <TextCardDefault>
+          <Icon name="info" size={12} className="pr1" />
+          {t`You can connect widgets to {{variables}} in text cards.`}
+        </TextCardDefault>
+      ) : (
+        <>
+          <Header>
+            {isVirtual ? t`Variable to map to` : t`Column to filter on`}
+          </Header>
+          <Tooltip tooltip={buttonTooltip}>
+            <TippyPopover
+              visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}
+              onClickOutside={() => setIsDropdownVisible(false)}
+              placement="bottom-start"
+              content={
+                <ParameterTargetList
+                  onChange={target => {
+                    handleChangeTarget(target);
+                    setIsDropdownVisible(false);
+                  }}
+                  target={target}
+                  mappingOptions={mappingOptions}
+                />
               }
-            }}
-          >
-            {buttonText && <TargetButtonText>{buttonText}</TargetButtonText>}
-            {buttonIcon}
-          </TargetButton>
-        </TippyPopover>
-      </Tooltip>
+            >
+              <TargetButton
+                variant={buttonVariant}
+                aria-haspopup="listbox"
+                aria-expanded={isDropdownVisible}
+                aria-disabled={isDisabled || !hasPermissionsToMap}
+                onClick={() => {
+                  setIsDropdownVisible(true);
+                }}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    setIsDropdownVisible(true);
+                  }
+                }}
+              >
+                {buttonText && (
+                  <TargetButtonText>{buttonText}</TargetButtonText>
+                )}
+                {buttonIcon}
+              </TargetButton>
+            </TippyPopover>
+          </Tooltip>
+        </>
+      )}
       {onlyAcceptsSingleValue && (
         <Warning>
           {t`This field only accepts a single value because it's used in a SQL query.`}
