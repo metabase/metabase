@@ -185,19 +185,19 @@
       (throw (ex-info (tru "You cannot add an is_write Card to a Dashboard.")
                       {:status-code 400})))
     (db/transaction
-      (let [dashboard-card (db/insert! DashboardCard
-                             :dashboard_id           dashboard_id
-                             :card_id                card_id
-                             :sizeX                  sizeX
-                             :sizeY                  sizeY
-                             :row                    (or row 0)
-                             :col                    (or col 0)
-                             :parameter_mappings     (or parameter_mappings [])
-                             :visualization_settings (or visualization_settings {}))]
-        ;; add series to the DashboardCard
-        (update-dashboard-card-series! dashboard-card series)
-        ;; return the full DashboardCard
-        (retrieve-dashboard-card (:id dashboard-card))))))
+     (let [dashboard-card (db/insert! DashboardCard
+                                      :dashboard_id           dashboard_id
+                                      :card_id                card_id
+                                      :sizeX                  sizeX
+                                      :sizeY                  sizeY
+                                      :row                    (or row 0)
+                                      :col                    (or col 0)
+                                      :parameter_mappings     (or parameter_mappings [])
+                                      :visualization_settings (or visualization_settings {}))]
+       ;; add series to the DashboardCard
+       (update-dashboard-card-series! dashboard-card series)
+       ;; return the full DashboardCard
+       (retrieve-dashboard-card (:id dashboard-card))))))
 
 (defn delete-dashboard-card!
   "Delete a DashboardCard."
