@@ -203,11 +203,12 @@ class FieldValuesWidgetInner extends Component {
       disablePKRemappingForSearch,
       hasIncompleteValueSet,
     );
-    const shouldSearch =
+
+    const shouldSearch = () =>
       !isExtensionOfPreviousSearch(value, lastValue, options, maxResults) ||
       hasIncompleteValueSet;
 
-    if (value && canSearch && shouldSearch) {
+    if (value && canSearch && shouldSearch()) {
       this._search(value);
     }
 
