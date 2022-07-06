@@ -298,8 +298,10 @@
    ;; JSON itself has the single number type, but Java serde of JSON is stricter
    java.lang.Long                  :type/Integer
    clojure.lang.BigInt             :type/BigInteger
+   java.math.BigInteger            :type/BigInteger
    java.lang.Integer               :type/Integer
    java.lang.Double                :type/Float
+   java.lang.Float                 :type/Float
    java.math.BigDecimal            :type/Decimal
    java.lang.Number                :type/Number
    java.lang.Boolean               :type/Boolean
