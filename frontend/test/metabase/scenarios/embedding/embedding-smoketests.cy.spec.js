@@ -10,6 +10,8 @@ import {
 const embeddingPage = "/admin/settings/embedding_in_other_applications";
 const licenseUrl = "https://metabase.com/license/embedding";
 const upgradeUrl = "https://www.metabase.com/upgrade/";
+const learnEmbeddingUrl =
+  "https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards.html";
 
 const licenseExplanations = [
   `When you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the "Powered by Metabase" visible on those embeds.`,
@@ -52,6 +54,11 @@ describe("scenarios > embedding > smoke tests", () => {
 
       // Let's examine the contents of the enabled embedding page (the url stays the same)
       cy.location("pathname").should("eq", embeddingPage);
+
+      cy.contains(
+        "Allow questions, dashboards, and more to be embedded. Learn more.",
+      );
+      assertLinkMatchesUrl("Learn more.", learnEmbeddingUrl);
       cy.findByText("Enabled");
 
       cy.findByText("Standalone embeds").click();

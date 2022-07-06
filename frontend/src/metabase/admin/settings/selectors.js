@@ -359,6 +359,11 @@ const SECTIONS = updateSectionsWithPlugins({
       {
         key: "enable-embedding",
         display_name: t`Embedding`,
+        description: jt`Allow questions, dashboards, and more to be embedded. ${(
+          <ExternalLink href="https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards.html">
+            {t`Learn more.`}
+          </ExternalLink>
+        )}`,
         type: "boolean",
         showActualValue: true,
         getProps: setting => {
