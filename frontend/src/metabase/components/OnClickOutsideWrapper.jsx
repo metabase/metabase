@@ -13,7 +13,7 @@ export default class OnClickOutsideWrapper extends Component {
     children: PropTypes.node,
     backdropElement: PropTypes.object,
     handleDismissal: PropTypes.func.isRequired,
-    ignoreElement: PropTypes.node,
+    ignoreElement: PropTypes.object,
   };
 
   componentDidMount() {
