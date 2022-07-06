@@ -14,7 +14,7 @@ title: Adding and managing databases
 
 ## Adding a database connection
 
-At the top right of the screen, click on the **gears** icon > **Admin settings**.
+At the top right of the screen, click on the **gear** icon > **Admin settings**.
 
 Once in the Admin section, select the **Databases** tab from the navigation bar at the top of the screen. You’ll see a list of your connected databases (if any). To connect a database to Metabase, click **Add database** and follow the connection instructions for your database.
 

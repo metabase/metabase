@@ -158,7 +158,7 @@ Group managers are not admins, so their powers are limited. They cannot create n
 
 To promote someone to become a group manager:
 
-1. At the top right of the screen **gear** icon > **Admin settings** > **People** > **Groups**.
+1. At the top right of the screen, click the **gear** icon > **Admin settings** > **People** > **Groups**.
 2. Select the group you want the person to manage. If the person isn't already in the group, you'll need to add that person to the group.
 3. Find the person you want to promote, hover over their member type, and click the up arrow to promote them to group manager. If you want to demote them, click on the down arrow.
 
