@@ -389,6 +389,7 @@
 
 (deftest session-timeout-tests
   (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
+        session-id   "8df268ab-00c0-4b40-9413-d66b966b696a"
         response     {:body    "some body",
                       :cookies {}}]
 
@@ -412,20 +413,26 @@
               Note if an admin changes the session-timeout from a non-nil to nil value, then all users sessions will eventually expire.
               This is a correctness bug, but we can leave it for now as it is unlikely to have much impact on UX."
       (mt/with-temporary-setting-values [session-timeout nil]
-        (let [request {:cookies {"metabase.SESSION" {:value "session-id" :expires "2025"}
-                                 "metabase.TIMEOUT" {:value "alive" :expires "2025"}}}]
+        (let [request {:cookies {"metabase.SESSION" {:value "session-id"}
+                                 "metabase.TIMEOUT" {:value "alive"}}}]
           (is (= response
                  (mw.session/reset-session-timeout-on-response request response request-time))))))
 
     (testing "non-nil `session-timeout-seconds` should set the expiry relative to the request time"
       (mt/with-temporary-setting-values [session-timeout {:amount 60 :unit "minutes"}]
-       (let [request {:cookies {"metabase.SESSION" {:value "session-id" :expires "2025"}
-                                "metabase.TIMEOUT" {:value "alive" :expires "2025"}}}]
+       (let [request {:cookies {"metabase.SESSION" {:value session-id}
+                                "metabase.TIMEOUT" {:value "alive"}}
+                      :metabase-session-id session-id}]
          (is (= {:body    "some body",
-                 :cookies {"metabase.SESSION" {:value   "session-id"
-                                               :expires "Sat, 1 Jan 2022 01:00:00 GMT"},
-                           "metabase.TIMEOUT" {:value   "alive"
-                                               :expires "Sat, 1 Jan 2022 01:00:00 GMT"}}}
+                 :cookies {"metabase.TIMEOUT" {:value     "alive"
+                                               :same-site :lax
+                                               :path      "/"
+                                               :expires   "Sat, 1 Jan 2022 01:00:00 GMT"},
+                           "metabase.SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
+                                               :same-site :lax,
+                                               :path      "/",
+                                               :expires   "Sat, 1 Jan 2022 01:00:00 GMT",
+                                               :http-only true}}}
                 (mw.session/reset-session-timeout-on-response request response request-time))))))
 
     (testing "If the request does not have a `metabase.TIMEOUT` cookie (because it has expired), it should not be reset."
