@@ -2,7 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [metabase.actions.test-util :as actions.test-util]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models
     :refer [Card CardEmitter Database Emitter EmitterAction QueryAction]]
