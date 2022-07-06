@@ -29,6 +29,7 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
   /\/model\//,
   /\/dashboard\//,
 ];
+const PATHS_WITH_QUESTION_LINEAGE = [/\/question\//, /\/model\//];
 
 export const getRouterPath = (state: State, props: RouterProps) => {
   return props.location.pathname;
@@ -139,10 +140,11 @@ export const getIsCollectionPathVisible = createSelector(
 );
 
 export const getIsQuestionLineageVisible = createSelector(
-  [getQuestion, getOriginalQuestion],
-  (question, originalQuestion) =>
+  [getQuestion, getOriginalQuestion, getRouterPath],
+  (question, originalQuestion, path) =>
     question != null &&
     !question.isSaved() &&
     originalQuestion != null &&
-    !originalQuestion.isDataset(),
+    !originalQuestion.isDataset() &&
+    PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path)),
 );
