@@ -15,6 +15,7 @@ import {
 import { AdminPathKey, State } from "metabase-types/store";
 import { User } from "metabase-types/types/User";
 import { PluginGroupManagersType } from "./types";
+import Question from "metabase-lib/lib/Question";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 const object = () => ({});
@@ -126,6 +127,11 @@ export const PLUGIN_MODERATION = {
   getStatusIconForQuestion: object,
   getStatusIcon: object,
   getModerationTimelineEvents: array,
+  getMenuItems: (
+    question?: Question,
+    isModerator?: boolean,
+    reload?: () => void,
+  ) => ({}),
 };
 
 export const PLUGIN_CACHING = {
@@ -193,4 +199,5 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
 export const PLUGIN_MODEL_PERSISTENCE = {
   isModelLevelPersistenceEnabled: () => false,
   ModelCacheControl: PluginPlaceholder as any,
+  getMenuItems: (question?: any, onChange?: any) => ({}),
 };

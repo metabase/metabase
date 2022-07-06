@@ -1,16 +1,19 @@
 import React, { useCallback, useState } from "react";
 import { t } from "ttag";
+import { connect } from "react-redux";
 
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-
-import DatasetMetadataStrengthIndicator from "./view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator/DatasetMetadataStrengthIndicator";
+import EntityMenu from "metabase/components/EntityMenu";
 
 import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 
+import { softReloadCard } from "metabase/query_builder/actions";
+import { getUserIsAdmin } from "metabase/selectors/user";
+
+import { State } from "metabase-types/store";
 import { color } from "metabase/lib/colors";
 import {
   checkCanBeModel,
@@ -21,12 +24,11 @@ import Question from "metabase-lib/lib/Question";
 
 import {
   QuestionActionsContainer,
-  PopoverContainer,
   BookmarkButton,
   AnimationStates,
+  StrengthIndicator,
 } from "./QuestionActions.styled";
 
-const MENU_ICON_SIZE = 14;
 const HEADER_ICON_SIZE = 16;
 
 const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
@@ -35,6 +37,14 @@ const TURN_INTO_DATASET_TESTID = "turn-into-dataset";
 const TOGGLE_MODEL_PERSISTENCE_TESTID = "toggle-persistence";
 const CLONE_TESTID = "clone-button";
 const ARCHIVE_TESTID = "archive-button";
+
+const mapStateToProps = (state: State, props: Props) => ({
+  isModerator: getUserIsAdmin(state),
+});
+
+const mapDispatchToProps = {
+  softReloadCard,
+};
 
 interface Props {
   isBookmarked: boolean;
@@ -49,13 +59,9 @@ interface Props {
   turnDatasetIntoQuestion: () => void;
   onInfoClick: () => void;
   onModelPersistenceChange: () => void;
+  isModerator: boolean;
+  softReloadCard: () => void;
 }
-
-const buttonProps = {
-  iconSize: MENU_ICON_SIZE,
-  borderless: true,
-  color: color("text-dark"),
-};
 
 const QuestionActions = ({
   isBookmarked,
@@ -67,6 +73,8 @@ const QuestionActions = ({
   turnDatasetIntoQuestion,
   onInfoClick,
   onModelPersistenceChange,
+  isModerator,
+  softReloadCard,
 }: Props) => {
   const [animation, setAnimation] = useState<AnimationStates>(null);
 
@@ -111,6 +119,86 @@ const QuestionActions = ({
     onOpenModal(modal);
   }, [onOpenModal, question]);
 
+  const extraButtons = [];
+
+  extraButtons.push(
+    PLUGIN_MODERATION.getMenuItems(question, isModerator, softReloadCard),
+  );
+
+  if (isDataset) {
+    extraButtons.push(
+      {
+        title: t`Edit query definition`,
+        icon: "notebook",
+        action: handleEditQuery,
+      },
+      {
+        title: (
+          <div>
+            {t`Edit metadata`} <StrengthIndicator dataset={question} />
+          </div>
+        ),
+        icon: "label",
+        action: handleEditMetadata,
+      },
+    );
+  }
+
+  if (canPersistDataset) {
+    extraButtons.push({
+      ...PLUGIN_MODEL_PERSISTENCE.getMenuItems(
+        question,
+        onModelPersistenceChange,
+      ),
+      testId: TOGGLE_MODEL_PERSISTENCE_TESTID,
+    });
+  }
+
+  if (!isDataset) {
+    extraButtons.push({
+      title: t`Add to dashboard`,
+      icon: "dashboard",
+      action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
+      testId: ADD_TO_DASH_TESTID,
+    });
+  }
+
+  if (canWrite) {
+    extraButtons.push({
+      title: t`Move`,
+      icon: "move",
+      action: () => onOpenModal(MODAL_TYPES.MOVE),
+      testId: MOVE_TESTID,
+    });
+    if (!isDataset) {
+      extraButtons.push({
+        title: t`Turn into a model`,
+        icon: "model",
+        action: handleTurnToModel,
+        testId: TURN_INTO_DATASET_TESTID,
+      });
+    }
+    if (isDataset) {
+      extraButtons.push({
+        title: t`Turn back to saved question`,
+        icon: "model_framed",
+        action: turnDatasetIntoQuestion,
+      });
+    }
+    extraButtons.push({
+      title: t`Duplicate`,
+      icon: "segment",
+      action: () => onOpenModal(MODAL_TYPES.CLONE),
+      testId: CLONE_TESTID,
+    });
+    extraButtons.push({
+      title: t`Archive`,
+      icon: "view_archive",
+      action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
+      testId: ARCHIVE_TESTID,
+    });
+  }
+
   return (
     <QuestionActionsContainer data-testid="question-action-buttons-container">
       <Tooltip tooltip={bookmarkTooltip}>
@@ -133,138 +221,9 @@ const QuestionActions = ({
           color={infoButtonColor}
         />
       </Tooltip>
-
-      <TippyPopoverWithTrigger
-        key="extra-actions-menu"
-        placement="bottom-end"
-        renderTrigger={({ onClick, visible }) => (
-          <Button
-            onClick={onClick}
-            onlyIcon
-            icon="ellipsis"
-            iconSize={HEADER_ICON_SIZE}
-            color={visible ? color("brand") : undefined}
-          />
-        )}
-        popoverContent={
-          <PopoverContainer>
-            <div>
-              <PLUGIN_MODERATION.QuestionModerationButton
-                question={question}
-                VerifyButton={Button}
-                verifyButtonProps={buttonProps}
-              />
-            </div>
-            {isDataset && (
-              <div>
-                <Button
-                  icon="notebook"
-                  onClick={handleEditQuery}
-                  data-testid={ADD_TO_DASH_TESTID}
-                  {...buttonProps}
-                >
-                  {t`Edit query definition`}
-                </Button>
-              </div>
-            )}
-            {isDataset && (
-              <div>
-                <Button
-                  icon="label"
-                  onClick={handleEditMetadata}
-                  data-testid={ADD_TO_DASH_TESTID}
-                  {...buttonProps}
-                >
-                  {t`Edit metadata`}
-                  <DatasetMetadataStrengthIndicator dataset={question} />
-                </Button>
-              </div>
-            )}
-            {canPersistDataset && (
-              <PLUGIN_MODEL_PERSISTENCE.ModelCacheControl
-                model={question}
-                onChange={onModelPersistenceChange}
-                data-testid={TOGGLE_MODEL_PERSISTENCE_TESTID}
-                {...buttonProps}
-              />
-            )}
-            {!isDataset && (
-              <div>
-                <Button
-                  icon="dashboard"
-                  onClick={() => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD)}
-                  data-testid={ADD_TO_DASH_TESTID}
-                  {...buttonProps}
-                >
-                  {t`Add to dashboard`}
-                </Button>
-              </div>
-            )}
-            {canWrite && (
-              <div>
-                <Button
-                  icon="move"
-                  onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
-                  data-testid={MOVE_TESTID}
-                  {...buttonProps}
-                >
-                  {t`Move`}
-                </Button>
-              </div>
-            )}
-            {!isDataset && canWrite && (
-              <div>
-                <Button
-                  icon="model"
-                  onClick={handleTurnToModel}
-                  data-testid={TURN_INTO_DATASET_TESTID}
-                  {...buttonProps}
-                >
-                  {t`Turn into a model`}
-                </Button>
-              </div>
-            )}
-            {isDataset && canWrite && (
-              <div>
-                <Button
-                  icon="model_framed"
-                  onClick={turnDatasetIntoQuestion}
-                  data-testid=""
-                  {...buttonProps}
-                >
-                  {t`Turn back to saved question`}
-                </Button>
-              </div>
-            )}
-            {canWrite && (
-              <div>
-                <Button
-                  icon="segment"
-                  onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
-                  data-testid={CLONE_TESTID}
-                  {...buttonProps}
-                >
-                  {t`Duplicate`}
-                </Button>
-              </div>
-            )}
-            {canWrite && (
-              <div>
-                <Button
-                  icon="view_archive"
-                  onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
-                  data-testid={ARCHIVE_TESTID}
-                  {...buttonProps}
-                >
-                  {t`Archive`}
-                </Button>
-              </div>
-            )}
-          </PopoverContainer>
-        }
-      />
+      <EntityMenu items={extraButtons} triggerIcon="ellipsis" />
     </QuestionActionsContainer>
   );
 };
 
-export default QuestionActions;
+export default connect(mapStateToProps, mapDispatchToProps)(QuestionActions);

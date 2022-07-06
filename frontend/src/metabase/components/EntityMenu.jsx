@@ -109,7 +109,7 @@ class EntityMenu extends Component {
                             return null;
                           } else if (item.content) {
                             return (
-                              <li key={item.title}>
+                              <li key={item.title} data-testid={item.testId}>
                                 <EntityMenuItem
                                   icon={item.icon}
                                   title={item.title}
@@ -126,7 +126,7 @@ class EntityMenu extends Component {
                             );
                           } else {
                             return (
-                              <li key={item.title}>
+                              <li key={item.title} data-testid={item.testId}>
                                 <EntityMenuItem
                                   icon={item.icon}
                                   title={item.title}

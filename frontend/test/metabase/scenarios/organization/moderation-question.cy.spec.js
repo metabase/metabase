@@ -21,6 +21,10 @@ describeEE("scenarios > saved question moderation", () => {
 
       popover().within(() => {
         cy.findByTestId("moderation-verify-action").click();
+      });
+
+      openQuestionActions();
+      popover().within(() => {
         cy.findByText("Remove verification");
       });
 
@@ -34,13 +38,19 @@ describeEE("scenarios > saved question moderation", () => {
 
     it("should be able to unverify a verified saved question", () => {
       openQuestionActions();
-
       popover().within(() => {
         cy.findByTestId("moderation-verify-action").click();
+      });
+
+      openQuestionActions();
+      popover().within(() => {
         cy.findByTestId("moderation-remove-verification-action").click();
       });
 
-      cy.findByText("Verify this question").should("be.visible");
+      openQuestionActions();
+      popover().within(() => {
+        cy.findByText("Verify this question").should("be.visible");
+      });
 
       cy.findByTestId("qb-header-left-side").within(() => {
         cy.icon("verified").should("not.exist");
