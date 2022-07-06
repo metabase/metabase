@@ -9,9 +9,49 @@
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (comment api.action/keep-me)
+
+(def ^:private ExpectedGetCardActionAPIResponse
+  "Expected schema for a CardAction as it should appear in the response for an API request to one of the GET endpoints."
+  {:id       su/IntGreaterThanOrEqualToZero
+   :card     {:id            su/IntGreaterThanOrEqualToZero
+              :dataset_query {:database su/IntGreaterThanOrEqualToZero
+                              :type     (s/eq "native")
+                              :native   {:query    s/Str
+                                         s/Keyword s/Any}
+                              s/Keyword s/Any}
+              s/Keyword      s/Any}
+   s/Keyword s/Any})
+
+(deftest list-actions-test
+  (testing "GET /api/action"
+    (actions.test-util/with-actions-enabled
+      (actions.test-util/with-query-action [{:keys [action-id]}]
+        (let [response (mt/user-http-request :crowberto :get 200 "action")]
+          (is (schema= [{:id       su/IntGreaterThanZero
+                         s/Keyword s/Any}]
+                       response))
+          (let [action (some (fn [action]
+                               (when (= (:id action) action-id)
+                                 action))
+                             response)]
+            (testing "Should return Card dataset_query deserialized (#23201)"
+              (is (schema= ExpectedGetCardActionAPIResponse
+                           action)))))))))
+
+(deftest get-action-test
+  (testing "GET /api/action/:id"
+    (testing "Should return Card dataset_query deserialized (#23201)"
+      (actions.test-util/with-actions-enabled
+        (actions.test-util/with-query-action [{:keys [action-id]}]
+          (let [action (mt/user-http-request :crowberto :get 200 (format "action/%d" action-id))]
+            (testing "Should return Card dataset_query deserialized (#23201)"
+              (is (schema= ExpectedGetCardActionAPIResponse
+                           action)))))))))
 
 (defn- mock-requests []
   [{:action       "action/row/create"
@@ -38,40 +78,36 @@
 
 (deftest happy-path-test
   (testing "Make sure it's possible to use known actions end-to-end if preconditions are satisfied"
-    (actions.test-util/with-actions-test-data
-      (mt/with-temporary-setting-values [experimental-enable-actions true]
-        (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-          (doseq [{:keys [action request-body expected expect-fn]} (mock-requests)]
-            (testing action
-              (let [result (mt/user-http-request :crowberto :post 200 action request-body)]
-                (when expected (is (= expected result)))
-                (when expect-fn (expect-fn result))))))))))
+    (actions.test-util/with-actions-test-data-and-actions-enabled
+      (doseq [{:keys [action request-body expected expect-fn]} (mock-requests)]
+        (testing action
+          (let [result (mt/user-http-request :crowberto :post 200 action request-body)]
+            (when expected (is (= expected result)))
+            (when expect-fn (expect-fn result))))))))
 
 (deftest create-update-delete-test
   (testing "Make sure actions are acting on rows."
-    (actions.test-util/with-actions-test-data
-      (mt/with-temporary-setting-values [experimental-enable-actions true]
-        (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-          (let [[create update delete] (mock-requests)
-                {created-id :id :as created-row}
-                (:created-row (mt/user-http-request :crowberto :post 200 (:action create) (:request-body create)))]
-            (is (= [:id :name] (keys created-row))
-                "Create should return the entire row")
-            (is (= "created_row" (:name created-row))
-                "Create should return the correct value for name")
-            (is (= "created_row" (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})) last last))
-                "The record at created-id should now have its name set to \"created_row\"")
-            (is (= (:expected update) (mt/user-http-request :crowberto :post 200 (:action update)
-                                                            (assoc (mt/mbql-query categories {:filter [:= $id created-id]})
-                                                                   :update_row {:name "updated_row"})))
-                "Update should return the right shape")
-            (is (= "updated_row" (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})) last last))
-                "The row should actually be updated")
-            (is (= (:expected delete)
-                   (mt/user-http-request :crowberto :post 200 (:action delete) (mt/mbql-query categories {:filter [:= $id created-id]})))
-                "Delete should return the right shape")
-            (is (= [] (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})))
-                "Selecting for deleted rows should return an empty result")))))))
+    (actions.test-util/with-actions-test-data-and-actions-enabled
+      (let [[create update delete] (mock-requests)
+            {created-id :id :as created-row}
+            (:created-row (mt/user-http-request :crowberto :post 200 (:action create) (:request-body create)))]
+        (is (= [:id :name] (keys created-row))
+            "Create should return the entire row")
+        (is (= "created_row" (:name created-row))
+            "Create should return the correct value for name")
+        (is (= "created_row" (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})) last last))
+            "The record at created-id should now have its name set to \"created_row\"")
+        (is (= (:expected update) (mt/user-http-request :crowberto :post 200 (:action update)
+                                                        (assoc (mt/mbql-query categories {:filter [:= $id created-id]})
+                                                               :update_row {:name "updated_row"})))
+            "Update should return the right shape")
+        (is (= "updated_row" (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})) last last))
+            "The row should actually be updated")
+        (is (= (:expected delete)
+               (mt/user-http-request :crowberto :post 200 (:action delete) (mt/mbql-query categories {:filter [:= $id created-id]})))
+            "Delete should return the right shape")
+        (is (= [] (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})))
+            "Selecting for deleted rows should return an empty result")))))
 
 ;; TODO: update test for this when we get something other than categories
 #_(deftest row-delete-row-with-constraint-fails-test
@@ -124,54 +160,49 @@
                                              :values   {:name "Toucannery"}})))))))
 
 (deftest validation-test
-  (mt/with-temporary-setting-values [experimental-enable-actions true]
-    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-      (doseq [{:keys [action request-body]} (mock-requests)
-              k [:query :type]]
-        (testing (str action " without " k)
-          (when (row-action? action)
-            (is (re= #"Value does not match schema:.*"
-                     (:message (mt/user-http-request :crowberto :post 400 action (dissoc request-body k)))))))))))
+  (actions.test-util/with-actions-enabled
+    (doseq [{:keys [action request-body]} (mock-requests)
+            k [:query :type]]
+      (testing (str action " without " k)
+        (when (row-action? action)
+          (is (re= #"Value does not match schema:.*"
+                   (:message (mt/user-http-request :crowberto :post 400 action (dissoc request-body k))))))))))
 
 (deftest row-update-action-gives-400-when-matching-more-than-one
-  (mt/with-temporary-setting-values [experimental-enable-actions true]
-    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-      (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]}) :update_row {:name "new-name"})
-            result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
-        (is (< 1 result-count))
-        (doseq [{:keys [action]} (filter #(= "action/row/update" (:action %)) (mock-requests))
-                :when (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
-          (is (re= #"Sorry, this would update [\d|,]+ rows, but you can only act on 1"
-                   (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one))))
-          (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
-              "The result-count after a rollback must remain the same!"))))))
+  (actions.test-util/with-actions-enabled
+    (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]}) :update_row {:name "new-name"})
+          result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
+      (is (< 1 result-count))
+      (doseq [{:keys [action]} (filter #(= "action/row/update" (:action %)) (mock-requests))
+              :when (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
+        (is (re= #"Sorry, this would update [\d|,]+ rows, but you can only act on 1"
+                 (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one))))
+        (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
+            "The result-count after a rollback must remain the same!")))))
 
 (deftest row-delete-action-gives-400-when-matching-more-than-one
-  (mt/with-temporary-setting-values [experimental-enable-actions true]
-    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-      (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]}) :update_row {:name "new-name"})
-            result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
-        (is (< 1 result-count))
-        (doseq [{:keys [action]} (filter #(= "action/row/delete" (:action %)) (mock-requests))
-                :when (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
-          (is (re= #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"
-                   (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one))))
-          (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
-              "The result-count after a rollback must remain the same!"))))))
+  (actions.test-util/with-actions-enabled
+    (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]}) :update_row {:name "new-name"})
+          result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
+      (is (< 1 result-count))
+      (doseq [{:keys [action]} (filter #(= "action/row/delete" (:action %)) (mock-requests))
+              :when (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
+        (is (re= #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"
+                 (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one))))
+        (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
+            "The result-count after a rollback must remain the same!")))))
 
 (deftest unknown-row-action-gives-404
-  (mt/with-temporary-setting-values [experimental-enable-actions true]
-    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-      (testing "404 for unknown Row action"
-        (is (= "Unknown row action \"fake\"."
-               (:message (mt/user-http-request :crowberto :post 404 "action/row/fake" (mt/mbql-query categories {:filter [:= $id 1]})))))))))
+  (actions.test-util/with-actions-enabled
+    (testing "404 for unknown Row action"
+      (is (= "Unknown row action \"fake\"."
+             (:message (mt/user-http-request :crowberto :post 404 "action/row/fake" (mt/mbql-query categories {:filter [:= $id 1]}))))))))
 
 (deftest four-oh-four-test
-  (mt/with-temporary-setting-values [experimental-enable-actions true]
-    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-      (doseq [{:keys [action request-body]} (mock-requests)]
-        (testing action
-          (testing "404 for unknown Table"
-            (is (= "Failed to fetch Table 2,147,483,647: Table does not exist, or belongs to a different Database."
-                   (:message (mt/user-http-request :crowberto :post 404 action
-                                                   (assoc-in request-body [:query :source-table] Integer/MAX_VALUE)))))))))))
+  (actions.test-util/with-actions-enabled
+    (doseq [{:keys [action request-body]} (mock-requests)]
+      (testing action
+        (testing "404 for unknown Table"
+          (is (= "Failed to fetch Table 2,147,483,647: Table does not exist, or belongs to a different Database."
+                 (:message (mt/user-http-request :crowberto :post 404 action
+                                                 (assoc-in request-body [:query :source-table] Integer/MAX_VALUE))))))))))

@@ -3,7 +3,8 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models.database :refer [Database]]
+   [metabase.models
+    :refer [Card CardEmitter Database Emitter EmitterAction QueryAction]]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.impl :as data.impl]
@@ -64,3 +65,84 @@
             (testing "after"
               (is (= [[74]]
                      (row-count))))))))))
+
+(defn do-with-query-action
+  "Impl for [[with-query-action]]."
+  [f]
+  (mt/with-temp* [Card [{card-id :id} {:database_id   (mt/id)
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query         (str "UPDATE categories\n"
+                                                                                      "SET name = 'Bird Shop'\n"
+                                                                                      "WHERE id = {{id}}")
+                                                                  :template-tags {"id" {:name         "id"
+                                                                                        :display-name "ID"
+                                                                                        :type         :number
+                                                                                        :required     true}}}}
+                                       :is_write      true}]]
+    (let [action-id (db/select-one-field :action_id QueryAction :card_id card-id)]
+      (f {:query-action-card-id card-id
+          :action-id            action-id}))))
+
+(defmacro with-query-action
+  "Execute `body` with a newly created QueryAction. `bindings` is a map with keys `:action-id` and
+  `:query-action-card-id`.
+
+    (with-query-action [{:keys [action-id query-action-card-id], :as context}]
+      (do-something))"
+  {:style/indent 1}
+  [[bindings] & body]
+  `(do-with-query-action (fn [~bindings] ~@body)))
+
+(defn do-with-card-emitter
+  "Impl for [[with-card-emitter]]."
+  [{:keys [action-id], :as context} f]
+  (mt/with-temp* [Card    [{emitter-card-id :id}]
+                  Emitter [{emitter-id :id} {:parameter_mappings {"my_id" [:variable [:template-tag "id"]]}}]]
+    (testing "Sanity check: emitter-id should be non-nil"
+      (is (integer? emitter-id)))
+    (testing "Sanity check: make sure parameter mappings were defined the way we'd expect"
+      (is (= {:my_id [:variable [:template-tag "id"]]}
+             (db/select-one-field :parameter_mappings Emitter :id emitter-id))))
+    ;; these are tied to the Card and Emitter above and will get cascade deleted. We can't use `with-temp*` for them
+    ;; because it doesn't seem to work with tables with compound PKs
+    (db/insert! EmitterAction {:emitter_id emitter-id
+                               :action_id action-id})
+    (db/insert! CardEmitter {:card_id   emitter-card-id
+                             :action_id action-id})
+    (f (assoc context
+              :emitter-id      emitter-id
+              :emitter-card-id emitter-card-id))))
+
+(defmacro with-card-emitter
+  "Execute `body` with a newly created CardEmitter created for an Action with `:action-id`. Intended for use with the
+  `context` returned by with [[with-query-action]]. `bindings` is bound to a map with the keys `:emitter-id` and
+  `:emitter-card-id`.
+
+    (with-query-action [{:keys [action-id query-action-card-id], :as context}]
+      (with-card-emitter [{:keys [emitter-id emitter-card-id]} context]
+        (do-something)))"
+  {:style/indent 1, :arglists '([bindings {:keys [action-id], :as _action}] & body)}
+  [[bindings action] & body]
+  `(do-with-card-emitter ~action (fn [~bindings] ~@body)))
+
+(defn do-with-actions-enabled
+  "Impl for [[with-actions-enabled]]."
+  [thunk]
+  (mt/with-temporary-setting-values [experimental-enable-actions true]
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
+      (thunk))))
+
+(defmacro with-actions-enabled
+  "Execute `body` with Actions enabled at the global level and for the current test Database."
+  {:style/indent 0}
+  [& body]
+  `(do-with-actions-enabled (fn [] ~@body)))
+
+(defmacro with-actions-test-data-and-actions-enabled
+  "Combines [[with-actions-test-data]] and [[with-actions-enabled]]."
+  {:style/indent 0}
+  [& body]
+  `(with-actions-test-data
+     (with-actions-enabled
+       (fn [] ~@body))))
