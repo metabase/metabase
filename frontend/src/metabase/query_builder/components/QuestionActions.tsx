@@ -221,7 +221,11 @@ const QuestionActions = ({
           color={infoButtonColor}
         />
       </Tooltip>
-      <EntityMenu items={extraButtons} triggerIcon="ellipsis" />
+      <EntityMenu
+        items={extraButtons}
+        triggerIcon="ellipsis"
+        tooltip={t`Move, archive, and more...`}
+      />
     </QuestionActionsContainer>
   );
 };
