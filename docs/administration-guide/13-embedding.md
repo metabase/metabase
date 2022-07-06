@@ -139,7 +139,7 @@ To change the look and feel of the embed, you can add additional parameters to t
 
 - **bordered**: true or false. Adds a visible border to the embed.
 - **titled**: true or false. Adds or removes the title to the embedding.
-- **theme**: light, transparent, or night. Shows the embedded iframe in in light (theme is null), transparent (no background, just the ), or dark mode.
+- **theme**: light, transparent, or night. Shows the embedded iframe in light (theme is null), transparent (no background), or night (dark mode).
 
 For example:
 
@@ -155,7 +155,7 @@ These settings can also be changed under **Style** when previewing the embedded 
 
 Paid plans give you additional customization options for embedded items.
 
-### Remove the Powered by Metabase banner
+### Remove the "Powered by Metabase" banner
 
 ![Powered by Metabase](images/embedding/powered-by-metabase.png)
 
