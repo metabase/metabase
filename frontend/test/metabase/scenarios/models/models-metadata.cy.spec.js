@@ -38,12 +38,10 @@ describe("scenarios > models metadata", () => {
 
     popover().within(() => {
       //Need to wait for action menu to be fully visible before hovering
-      cy.wait(500);
+      cy.findByTestId("tooltip-component-wrapper").should("be.visible");
       cy.findByTestId("tooltip-component-wrapper").realHover();
     });
 
-    //Tooltip has 700ms delay
-    cy.wait(700);
     cy.findByText(
       "Some columns are missing a column type, description, or friendly name.",
     );
@@ -87,12 +85,10 @@ describe("scenarios > models metadata", () => {
 
     popover().within(() => {
       //Need to wait for action menu to be fully visible before hovering
-      cy.wait(500);
+      cy.findByTestId("tooltip-component-wrapper").should("be.visible");
       cy.findByTestId("tooltip-component-wrapper").realHover();
     });
 
-    //Tooltip has 700ms delay
-    cy.wait(700);
     cy.findByText(
       "Most columns are missing a column type, description, or friendly name.",
     );
@@ -168,9 +164,7 @@ describe("scenarios > models metadata", () => {
 
     rightSidebar().within(() => {
       cy.findByText("History");
-      cy.findAllByTestId("question-revert-button")
-        .first()
-        .click();
+      cy.findAllByTestId("question-revert-button").first().click();
     });
 
     cy.wait("@revert");
@@ -287,18 +281,10 @@ describe("scenarios > models metadata", () => {
 });
 
 function drillFK({ id }) {
-  cy.get(".Table-FK")
-    .contains(id)
-    .first()
-    .click();
-  popover()
-    .findByText("View details")
-    .click();
+  cy.get(".Table-FK").contains(id).first().click();
+  popover().findByText("View details").click();
 }
 
 function drillDashboardFK({ id }) {
-  cy.get(".Table-FK")
-    .contains(id)
-    .first()
-    .click();
+  cy.get(".Table-FK").contains(id).first().click();
 }
