@@ -94,8 +94,9 @@ if (hasPremiumFeature("whitelabel")) {
     ...sections,
   }));
 
-  PLUGIN_APP_INIT_FUCTIONS.push(({ root }) => {
+  PLUGIN_APP_INIT_FUCTIONS.push(() => {
     updateColors();
+    MetabaseSettings.on("application-colors", updateColors);
   });
 
   enabledApplicationNameReplacement();

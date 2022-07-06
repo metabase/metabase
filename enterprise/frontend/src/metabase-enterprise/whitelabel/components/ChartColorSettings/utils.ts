@@ -46,12 +46,18 @@ const getAutoColors = (
   oldColors: (Color | undefined)[],
   fallbackColor: Color,
 ) => {
-  const baseColor = oldColors.find(color => color != null) ?? fallbackColor;
+  const oldColor = oldColors.find(color => color != null);
 
   const autoColors: Color[] = [];
-  oldColors.forEach((_, index) =>
-    autoColors.push(getNextColor(index ? autoColors[index - 1] : baseColor)),
-  );
+  oldColors.forEach((_, index) => {
+    if (index === 0 && !oldColor) {
+      autoColors.push(fallbackColor);
+    } else if (index === 0 && oldColor) {
+      autoColors.push(getNextColor(oldColor));
+    } else {
+      autoColors.push(getNextColor(autoColors[index - 1]));
+    }
+  });
 
   const availableColors = autoColors.filter(
     newColor => !isSimilarToColors(newColor, oldColors),

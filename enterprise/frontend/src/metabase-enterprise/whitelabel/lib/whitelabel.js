@@ -20,20 +20,11 @@ const JS_COLOR_UPDATORS_BY_COLOR_NAME = {};
 const RANDOM_COLOR = Color({ r: 0xab, g: 0xcd, b: 0xed });
 
 function colorScheme() {
-  // FIXME: Ugh? initially load public setting as "application_color" but if the admin updates it
-  // we need to use "application-colors"
-  return (
-    MetabaseSettings.get("application-colors") ||
-    MetabaseSettings.get("application_colors")
-  );
+  return { ...MetabaseSettings.get("application-colors"), ...originalColors };
 }
 
 function applicationName() {
-  // FIXME: Ugh? see comment in colorScheme()
-  return (
-    MetabaseSettings.get("application-name") ||
-    MetabaseSettings.get("application_name")
-  );
+  return MetabaseSettings.get("application-name");
 }
 
 function walkStyleSheets(sheets, fn) {
