@@ -30,7 +30,6 @@
             [metabase.sync.schedules :as sync.schedules]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.sync.util :as sync-util]
-            [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.util :as u]
             [metabase.util.cron :as cron-util]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
