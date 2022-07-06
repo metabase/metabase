@@ -1,5 +1,7 @@
 ---
 title: White labeling Metabase
+redirect_from:
+  - /docs/latest/administration-guide/whitelabeling
 ---
 
 # White labeling Metabase
@@ -18,31 +20,7 @@ You can change every place in the app that says “Metabase” to something like
 
 ## Font
 
-This is the primary font used in charts and throughout Metabase.
-
-You can choose from a curated set of Google Fonts that accommodate the regular and bold font weights that Metabase relies on for its various UI elements.
-
-- [Lato](https://fonts.google.com/specimen/Lato)
-- [Lora](https://fonts.google.com/specimen/Lora)
-- [Merriweather](https://fonts.google.com/specimen/Merriweather)
-- [Montserrat](https://fonts.google.com/specimen/Montserrat)
-- [Noto Sans](https://fonts.google.com/specimen/Noto+Sans)
-- [Open Sans](https://fonts.google.com/specimen/Open+Sans)
-- [Oswald](https://fonts.google.com/specimen/Oswald)
-- [Playfair Display](https://fonts.google.com/specimen/Playfair+Display)
-- [Poppins](https://fonts.google.com/specimen/Poppins)
-- [PT Sans](https://fonts.google.com/specimen/PT+Sans)
-- [PT Serif](https://fonts.google.com/specimen/PT+Serif)
-- [Raleway](https://fonts.google.com/specimen/Raleway)
-- [Roboto](https://fonts.google.com/specimen/Roboto)
-- [Roboto Condensed](https://fonts.google.com/specimen/Roboto+Condensed)
-- [Roboto Mono](https://fonts.google.com/specimen/Roboto+Mono)
-- [Roboto Slab](https://fonts.google.com/specimen/Roboto+Slab)
-- [Slabo 27px](https://fonts.google.com/specimen/Slabo+27px)
-- [Source Sans Pro](https://fonts.google.com/specimen/Source+Sans+Pro)
-- [Ubuntu](https://fonts.google.com/specimen/Ubuntu)
-
-You might need to refresh your browser to see your changes take effect.
+This is the primary font used in charts and throughout the Metabase application (your "instance font"). To set up a font, see [Fonts](../administration-guide/fonts.md).
 
 ## Color palette
 

@@ -59,14 +59,14 @@ You'll see a preview of the question or dashboard as it will appear in your appl
 
 ![Preview](images/embedding/04-preview.png)
 
-## Publishing your embedded dashboard
+## Publishing your embedded item
 
-In order for the embedding to work, you'll need to hit **Publish**. You'll need to hit the **Publish** button whenever you:
+In order for the embedding to work, you'll need to hit **Publish**. You'll need to hit the **Publish** button whenever:
 
 - You first set up a chart or dashboard for embedding
 - *and* each time you change any embedding settings.
 
- Also, any changes you make to the resource may require you to update the code in your own application so that it matches the latest code sample Metabase generates.
+ Also, any changes you make to the embedding settings may require you to update the code in your own application so that it matches the latest code sample Metabase generates.
 
 ![Code samples for embedding](images/embedding/05-code.png)
 
@@ -137,9 +137,9 @@ Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automati
 
 To change the look and feel of the embed, you can add additional parameters to the embedding URL:
 
-- **bordered**: true or false. Adds a visible border to the embed.
-- **titled**: true or false. Adds or removes the title to the embedding.
-- **theme**: light, transparent, or night. Shows the embedded iframe in light (theme is null), transparent (no background), or night (dark mode).
+- **Bordered**: true or false. Adds a visible border to the embed.
+- **Titled**: true or false. Adds or removes the title to the embedding.
+- **Theme**: light, transparent, or night. Shows the embedded iframe in light (theme is null), transparent (no background), or night (dark mode).
 
 For example:
 
@@ -161,9 +161,23 @@ Paid plans give you additional customization options for embedded items.
 
 Charts and dashboards won't show the branded Metabase label at the bottom.
 
-### Set custom fonts
+### Fonts
 
-You can set the font for the embedded chart or dashboard. See [available fonts](./fonts.md).
+You can set the font for the embedded chart or dashboard. If you've set a custom font for your Metabase, that will be selectable as the "Use instance font".
+
+#### Use instance font
+
+If you select "Use instance font", the font for your embedded item will sync with whatever you've set your Metabase font to. So if you change the font for your Metabase (your "instance"), the font used for the embedded item will change as well. There's no need to update the embedding code; the embedded item's font should update automatically (you may need to refresh your browser).
+
+If you want to use a font different from your current intance font, you can select one of the included fonts.
+
+#### Changing custom fonts
+
+If you want to use a different custom font, and by custom here we mean a font other than one of the included fonts, you'll need to change the [custom font](./fonts.md#custom-fonts) for your Metabase instance. Changing the instance font will update all embedded items that have their font set to "Use instance font".
+
+For now, you cannot have multiple custom fonts; you can only override your instance font with one of the included fonts.
+
+For more, see [fonts](./fonts.md).
 
 ### Disable data download
 
