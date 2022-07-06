@@ -103,7 +103,7 @@
   (validation/check-has-application-permission :setting)
   (when cron
     (when-not (and (string? cron)
-                   (org.quartz.CronExpression/isValidExpression c)
+                   (org.quartz.CronExpression/isValidExpression cron)
                    (str/ends-with? cron "*"))
       (throw (ex-info (tru "Must be a valid cron string not specifying a year")
                       {:status-code 400})))
