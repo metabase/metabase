@@ -19,7 +19,7 @@
   "Expected schema for a CardAction as it should appear in the response for an API request to one of the GET endpoints."
   {:id       su/IntGreaterThanOrEqualToZero
    :card     {:id            su/IntGreaterThanOrEqualToZero
-              :dataset_query {:database (s/eq (mt/id))
+              :dataset_query {:database su/IntGreaterThanOrEqualToZero
                               :type     (s/eq "native")
                               :native   {:query    s/Str
                                          s/Keyword s/Any}
