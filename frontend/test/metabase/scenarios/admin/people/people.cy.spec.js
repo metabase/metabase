@@ -15,18 +15,18 @@ const TOTAL_USERS = Object.entries(USERS).length;
 const TOTAL_GROUPS = Object.entries(USER_GROUPS).length;
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
+const TEST_USER = {
+  first_name: "Testy",
+  last_name: "McTestface",
+  email: `testy${Math.round(Math.random() * 100000)}@metabase.test`,
+  password: "12341234",
+};
+
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
-
-  const TEST_USER = {
-    first_name: "Testy",
-    last_name: "McTestface",
-    email: `testy${Math.round(Math.random() * 100000)}@metabase.test`,
-    password: "12341234",
-  };
 
   describe("user management", () => {
     it("should render (metabase-enterprise#210)", () => {
@@ -76,7 +76,6 @@ describe("scenarios > admin > people", () => {
       // first modal
       cy.findByLabelText("First name").type(first_name);
       cy.findByLabelText("Last name").type(last_name);
-      // bit of a hack since there are multiple "Email" nodes
       cy.findByLabelText("Email").type(email);
       clickButton("Create");
 
@@ -93,7 +92,6 @@ describe("scenarios > admin > people", () => {
       cy.visit("/admin/people");
       clickButton("Invite someone");
 
-      // bit of a hack since there are multiple "Email" nodes
       cy.findByLabelText("Email").type(email);
       clickButton("Create");
 
@@ -236,6 +234,78 @@ describe("scenarios > admin > people", () => {
       cy.findByText("readonly");
     });
 
+    describe("email configured", () => {
+      beforeEach(() => {
+        // Setup email server, since we show different modal message when email isn't configured
+        setupSMTP();
+
+        // Setup Google authentication
+        cy.request("PUT", "/api/setting", {
+          "google-auth-client-id": "fake-id.apps.googleusercontent.com",
+          "google-auth-auto-create-accounts-domain": "metabase.com",
+        });
+      });
+
+      it("invite member when SSO is not configured", () => {
+        const { first_name, last_name, email } = TEST_USER;
+        const FULL_NAME = `${first_name} ${last_name}`;
+        cy.visit("/admin/people");
+
+        clickButton("Invite someone");
+
+        // first modal
+        cy.findByLabelText("First name").type(first_name);
+        cy.findByLabelText("Last name").type(last_name);
+        cy.findByLabelText("Email").type(email);
+        clickButton("Create");
+
+        // second modal
+        cy.findByText(`${FULL_NAME} has been added`);
+        cy.contains(
+          `We’ve sent an invite to ${email} with instructions to set their password.`,
+        );
+        cy.findByText("Done").click();
+
+        cy.findByText(FULL_NAME);
+      });
+
+      it("invite member when SSO is configured metabase#23630", () => {
+        // Setup Google authentication
+        cy.request("PUT", "/api/setting", {
+          "enable-password-login": false,
+        });
+
+        const { first_name, last_name, email } = TEST_USER;
+        const FULL_NAME = `${first_name} ${last_name}`;
+        cy.visit("/admin/people");
+
+        clickButton("Invite someone");
+
+        // first modal
+        cy.findByLabelText("First name").type(first_name);
+        cy.findByLabelText("Last name").type(last_name);
+        cy.findByLabelText("Email").type(email);
+        clickButton("Create");
+
+        // second modal
+        cy.findByText(`${FULL_NAME} has been added`);
+        cy.contains(
+          `We’ve sent an invite to ${email} with instructions to log in. If this user is unable to authenticate then you can reset their password.`,
+        );
+        cy.url().then(url => {
+          const URL_REGEX = /\/admin\/people\/(?<userId>\d+)\/success/;
+          const { userId } = URL_REGEX.exec(url).groups;
+          assertLinkMatchesUrl(
+            "reset their password.",
+            `/admin/people/${userId}/reset`,
+          );
+        });
+        cy.findByText("Done").click();
+
+        cy.findByText(FULL_NAME);
+      });
+    });
+
     describe("pagination", () => {
       const NEW_USERS = 18;
       const NEW_TOTAL_USERS = TOTAL_USERS + NEW_USERS;
@@ -322,6 +392,9 @@ describeEE("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+  });
+
+  it("should unsubscribe a user from all subscriptions and alerts", () => {
     cy.getCurrentUser().then(({ body: { id: user_id } }) => {
       cy.createQuestionAndDashboard({
         questionDetails: getQuestionDetails(),
@@ -330,9 +403,6 @@ describeEE("scenarios > admin > people", () => {
         cy.createPulse(getPulseDetails({ card_id, dashboard_id }));
       });
     });
-  });
-
-  it("should unsubscribe a user from all subscriptions and alerts", () => {
     const { first_name, last_name } = admin;
     const fullName = `${first_name} ${last_name}`;
 
@@ -448,4 +518,10 @@ function getPulseDetails({ card_id, dashboard_id }) {
       },
     ],
   };
+}
+
+function assertLinkMatchesUrl(text, url) {
+  cy.findByRole("link", { name: text })
+    .should("have.attr", "href")
+    .and("eq", url);
 }

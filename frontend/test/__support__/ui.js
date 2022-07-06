@@ -28,8 +28,16 @@ function getUser(user = {}) {
  * helping to setup common wrappers and provider components
  * (router, redux, drag-n-drop provider, etc.)
  *
- * @param {React.ReactElement} JSX to render
- * @param {object} various wrapper settings and RTL render options
+ * @param {React.ReactElement} ui - JSX to render
+ * @param {Option}  prop - various wrapper settings and RTL render options
+ *
+ * @typedef Option
+ * @property {object} [currentUser]
+ * @property {{[key: string]: import("redux").Reducer}} [reducers]
+ * @property {object} [storeInitialState]
+ * @property {boolean} [withSampleDatabase]
+ * @property {boolean} [withRouter]
+ * @property {boolean} [withDND]
  */
 export function renderWithProviders(
   ui,

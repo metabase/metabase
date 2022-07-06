@@ -243,9 +243,13 @@
 (declare form-password-reset-url set-password-reset-token!)
 
 (defn- send-welcome-email! [new-user invitor sent-from-setup?]
-  (let [reset-token (set-password-reset-token! (u/the-id new-user))
-        ;; the new user join url is just a password reset with an indicator that this is a first time user
-        join-url    (str (form-password-reset-url reset-token) "#new")]
+  (let [reset-token               (set-password-reset-token! (u/the-id new-user))
+        should-link-to-login-page (and (public-settings/sso-configured?)
+                                       (not (public-settings/enable-password-login)))
+        join-url                  (if should-link-to-login-page
+                                    (str (public-settings/site-url) "/auth/login")
+                                    ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
+                                    (str (form-password-reset-url reset-token) "#new"))]
     (classloader/require 'metabase.email.messages)
     ((resolve 'metabase.email.messages/send-new-user-email!) new-user invitor join-url sent-from-setup?)))
 

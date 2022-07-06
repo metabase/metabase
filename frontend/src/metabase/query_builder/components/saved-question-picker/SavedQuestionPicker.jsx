@@ -69,8 +69,8 @@ function SavedQuestionPicker({
       nonPersonalOrArchivedCollection,
     );
 
-    preparedCollections.push(...nonPersonalOrArchivedCollections);
     preparedCollections.push(...userPersonalCollections);
+    preparedCollections.push(...nonPersonalOrArchivedCollections);
 
     if (currentUser.is_superuser) {
       const otherPersonalCollections = collections.filter(

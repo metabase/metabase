@@ -8,12 +8,12 @@ import {
   startNewQuestion,
   visualize,
   openQuestionActions,
-  filter,
-} from "__support__/e2e/helpers";
-import {
   questionInfoButton,
   rightSidebar,
-} from "../../../__support__/e2e/helpers/e2e-ui-elements-helpers";
+  appbar,
+  getCollectionIdFromSlug,
+  filter,
+} from "__support__/e2e/helpers";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
@@ -173,5 +173,39 @@ describe("scenarios > question > saved", () => {
     visitQuestion(1);
     cy.findByTestId("question-table-badges").trigger("mouseenter");
     cy.findByText("9 columns");
+  });
+
+  it("should show collection breadcrumbs for a saved question in the root collection", () => {
+    visitQuestion(1);
+    appbar().within(() => cy.findByText("Our analytics").click());
+
+    cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should show collection breadcrumbs for a saved question in a non-root collection", () => {
+    getCollectionIdFromSlug("second_collection", collection_id => {
+      cy.request("PUT", "/api/card/1", { collection_id });
+    });
+
+    visitQuestion(1);
+    appbar().within(() => cy.findByText("Second collection").click());
+
+    cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should show the question lineage when a saved question is changed", () => {
+    visitQuestion(1);
+
+    summarize();
+    rightSidebar().within(() => {
+      cy.findByText("Quantity").click();
+      cy.button("Done").click();
+    });
+
+    appbar().within(() => {
+      cy.findByText("Started from").should("be.visible");
+      cy.findByText("Orders").click();
+      cy.findByText("Started from").should("not.exist");
+    });
   });
 });

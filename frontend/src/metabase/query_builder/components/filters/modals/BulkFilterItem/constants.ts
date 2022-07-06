@@ -1,4 +1,5 @@
 export const FIELD_PRIORITY = [
+  "type/Boolean",
   "type/DateTime",
   "type/DateTimeWithTZ",
   "type/DateTimeWithLocalTZ",
@@ -7,7 +8,6 @@ export const FIELD_PRIORITY = [
   "list",
   "type/Integer",
   "type/Float",
-  "type/Boolean",
   "type/Category",
   "type/PK",
   "type/FK",

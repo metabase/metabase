@@ -14,6 +14,10 @@ export function sidebar() {
   return cy.get("main aside");
 }
 
+export function appbar() {
+  return cy.findByTestId("app-bar");
+}
+
 export function rightSidebar() {
   return cy.findAllByTestId("sidebar-right");
 }
@@ -28,13 +32,13 @@ export function appBar() {
 
 export function openNavigationSidebar() {
   appBar()
-    .findByTestId("sidebar-toggle-button")
+    .findByTestId("sidebar-toggle")
     .click();
 }
 
 export function closeNavigationSidebar() {
   appBar()
-    .findByTestId("sidebar-toggle-button")
+    .findByTestId("sidebar-toggle")
     .click();
 }
 

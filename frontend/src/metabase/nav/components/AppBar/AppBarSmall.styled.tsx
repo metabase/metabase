@@ -23,7 +23,7 @@ export const AppBarSubheader = styled.div`
   border-bottom: 1px solid ${color("border")};
 `;
 
-export const AppBarMainContainer = styled.header`
+export const AppBarMainContainer = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -52,4 +52,8 @@ export const AppBarLogoContainer = styled.div<AppBarLogoContainerProps>`
   visibility: ${props => (props.isVisible ? "visible" : "hidden")};
   transition: ${props =>
     props.isVisible ? "opacity 0.3s linear 0.2s" : "none"};
+`;
+
+export const AppBarProfileLinkContainer = styled.div`
+  color: ${color("text-light")};
 `;

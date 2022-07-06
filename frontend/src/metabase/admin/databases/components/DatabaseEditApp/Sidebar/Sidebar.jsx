@@ -12,6 +12,8 @@ import {
   isDatabaseWritebackEnabled,
   isWritebackSupported,
 } from "metabase/writeback/utils";
+
+import ModelCachingControl from "./ModelCachingControl";
 import { SidebarRoot } from "./Sidebar.styled";
 
 const propTypes = {
@@ -19,6 +21,7 @@ const propTypes = {
   updateDatabase: PropTypes.func.isRequired,
   deleteDatabase: PropTypes.func.isRequired,
   syncDatabaseSchema: PropTypes.func.isRequired,
+  dismissSyncSpinner: PropTypes.func.isRequired,
   rescanDatabaseFields: PropTypes.func.isRequired,
   discardSavedFieldValues: PropTypes.func.isRequired,
   persistDatabase: PropTypes.func.isRequired,
@@ -33,6 +36,7 @@ const DatabaseEditAppSidebar = ({
   deleteDatabase,
   updateDatabase,
   syncDatabaseSchema,
+  dismissSyncSpinner,
   rescanDatabaseFields,
   discardSavedFieldValues,
   persistDatabase,
@@ -82,27 +86,31 @@ const DatabaseEditAppSidebar = ({
                 successText={t`Scan triggered!`}
               />
             </li>
+            {database["initial_sync_status"] !== "complete" && (
+              <li className="mt2">
+                <ActionButton
+                  actionFn={() => dismissSyncSpinner(database.id)}
+                  className="Button Button--dismissSyncSpinner"
+                  normalText={t`Dismiss sync spinner manually`}
+                  activeText={t`Dismissing…`}
+                  failedText={t`Failed to dismiss sync spinner`}
+                  successText={t`Sync spinners dismissed!`}
+                />
+              </li>
+            )}
             {isModelPersistenceEnabled && database.supportsPersistence() && (
               <li className="mt2">
-                {database.isPersisted() ? (
-                  <ActionButton
-                    actionFn={() => unpersistDatabase(database.id)}
-                    className="Button"
-                    normalText={t`Disable model persistence`}
-                    activeText={t`Disabling…`}
-                    failedText={t`Failed`}
-                    successText={t`Done`}
-                  />
-                ) : (
-                  <ActionButton
-                    actionFn={() => persistDatabase(database.id)}
-                    className="Button"
-                    normalText={t`Enable model persistence`}
-                    activeText={t`Enabling…`}
-                    failedText={t`Failed`}
-                    successText={t`Done`}
-                  />
-                )}
+                <ModelCachingControl
+                  databaseId={database.id}
+                  isEnabled={database.isPersisted()}
+                  onToggle={isEnabled => {
+                    if (isEnabled) {
+                      return persistDatabase(database.id);
+                    } else {
+                      return unpersistDatabase(database.id);
+                    }
+                  }}
+                />
               </li>
             )}
           </ol>

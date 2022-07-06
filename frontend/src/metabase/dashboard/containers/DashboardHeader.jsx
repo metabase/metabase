@@ -32,6 +32,7 @@ import {
 } from "metabase/dashboard/selectors";
 
 import Header from "../components/DashboardHeader";
+import { SIDEBAR_NAME } from "../constants";
 
 import cx from "classnames";
 
@@ -343,27 +344,11 @@ class DashboardHeader extends Component {
     }
 
     if (!isFullscreen && !isEditing) {
-      if (canEdit) {
-        extraButtons.push({
-          title: t`Edit dashboard details`,
-          icon: "pencil",
-          link: `${location.pathname}/details`,
-          event: "Dashboard;EditDetails",
-        });
-      }
-
       extraButtons.push({
         title: t`Enter fullscreen`,
         icon: "expand",
         action: e => onFullscreenChange(!isFullscreen, !e.altKey),
         event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
-      });
-
-      extraButtons.push({
-        title: t`Revision history`,
-        icon: "history",
-        link: `${location.pathname}/history`,
-        event: "Dashboard;EditDetails",
       });
 
       extraButtons.push({
@@ -410,7 +395,7 @@ class DashboardHeader extends Component {
             onClick={() =>
               isShowingDashboardInfoSidebar
                 ? closeSidebar()
-                : setSidebar({ name: "info" })
+                : setSidebar({ name: SIDEBAR_NAME.info })
             }
           />
           <EntityMenu items={extraButtons} triggerIcon="ellipsis" />
@@ -424,12 +409,11 @@ class DashboardHeader extends Component {
   render() {
     const {
       dashboard,
-      location,
       isEditing,
       isFullscreen,
       isAdditionalInfoVisible,
-      onChangeLocation,
       setDashboardAttribute,
+      setSidebar,
     } = this.props;
 
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
@@ -450,9 +434,7 @@ class DashboardHeader extends Component {
         editingTitle={t`You're editing this dashboard.`}
         editingButtons={this.getEditingButtons()}
         setDashboardAttribute={setDashboardAttribute}
-        onLastEditInfoClick={() =>
-          onChangeLocation(`${location.pathname}/history`)
-        }
+        onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
         onSave={() => this.onSave()}
       />
     );

@@ -23,6 +23,7 @@
             [metabase.models.user :as user]
             [metabase.test :as mt]
             [metabase.test.data.users :as test.users]
+            [metabase.test.integrations.ldap :as ldap.test]
             [metabase.util :as u]
             [metabase.util.password :as u.password]
             [toucan.db :as db]
@@ -181,7 +182,13 @@
         (mt/with-temp User [user {:is_superuser true, :is_active false}]
           (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
                  (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                     (select-keys ["crowberto@metabase.com" (:email user)])))))))))
+                     (select-keys ["crowberto@metabase.com" (:email user)]))))))))
+
+  (testing "if sso enabled and password login is disabled, email should send a link to sso login"
+    (mt/with-temporary-setting-values [enable-password-login false]
+      (ldap.test/with-ldap-server
+        (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
+        (is (not (empty? (mt/regex-email-bodies #"/auth/login"))))))))
 
 (deftest ldap-user-passwords-test
   (testing (str "LDAP users should not persist their passwords. Check that if somehow we get passed an LDAP user "

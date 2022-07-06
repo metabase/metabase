@@ -734,6 +734,18 @@
             (is (= true
                    (deref analyze-called? long-timeout :analyze-never-called)))))))))
 
+(deftest dismiss-spinner-test
+  (testing "Can we dismiss the spinner? (#20863)"
+    (mt/with-temp* [Database [db    {:engine "h2", :details (:details (mt/db)) :initial_sync_status "incomplete"}]
+                    Table    [table {:db_id (u/the-id db) :initial_sync_status "incomplete"}]]
+      (mt/user-http-request :crowberto :post 200 (format "database/%d/dismiss_spinner" (u/the-id db)))
+      (testing "dismissed db spinner"
+        (is (= "complete" (:initial_sync_status
+                            (mt/user-http-request :crowberto :get 200 (format "database/%d" (u/the-id db)))))))
+      (testing "dismissed table spinner"
+        (is (= "complete" (:initial_sync_status
+                            (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table))))))))))
+
 (deftest non-admins-cant-trigger-sync
   (testing "Non-admins should not be allowed to trigger sync"
     (is (= "You don't have permissions to do that."

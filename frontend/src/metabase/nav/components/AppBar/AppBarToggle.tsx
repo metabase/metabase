@@ -15,10 +15,7 @@ const AppBarToggle = ({
 }: AppBarToggleProps): JSX.Element => {
   return (
     <Tooltip tooltip={getSidebarTooltip(isNavBarOpen)}>
-      <SidebarButton
-        onClick={onToggleClick}
-        data-testid="sidebar-toggle-button"
-      >
+      <SidebarButton onClick={onToggleClick} data-testid="sidebar-toggle">
         <SidebarIcon
           size={28}
           name={isNavBarOpen ? "sidebar_open" : "sidebar_closed"}
