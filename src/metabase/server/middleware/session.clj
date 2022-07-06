@@ -355,18 +355,11 @@
 (defn reset-session-timeout-on-response
   "Implementation for `reset-cookie-timeout` respond handler."
   [request response request-time]
-  (if (some? (get-in request [:cookies metabase-session-timeout-cookie :value]))
-    (if-let [timeout (session-timeout-seconds)]
-      (let [new-expires (t/format :rfc-1123-date-time (t/plus request-time (t/seconds timeout)))]
-        (reduce (fn [response cookie-key]
-                  (let [old-cookie (get-in request [:cookies cookie-key])
-                        new-cookie (assoc old-cookie :expires new-expires)]
-                    (if old-cookie
-                      (response/set-cookie response cookie-key (:value new-cookie) new-cookie)
-                      response)))
-                response
-                [metabase-session-cookie metabase-session-timeout-cookie metabase-embedded-session-cookie]))
-      response)
+  (if (and (some? (get-in request [:cookies metabase-session-timeout-cookie :value]))
+           (session-timeout-seconds)
+           (:metabase-session-id request))
+    ;; TODO: fix for full-app-embedded
+    (set-session-cookies request response {:id (:metabase-session-id request) :type :normal} request-time)
     response))
 
 (defn reset-session-timeout
