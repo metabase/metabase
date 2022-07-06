@@ -121,7 +121,6 @@
         (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options)
         (response/set-cookie metabase-session-cookie (str session-uuid) (assoc cookie-options :http-only true)))))
 
-;; TODO: test timeout with full-app-embed
 (s/defmethod set-session-cookies :full-app-embed
   [request
    response
@@ -130,9 +129,12 @@
                                           s/Keyword s/Any}
    request-time]
   (let [response       (wrap-body-if-needed response)
+        timeout (session-timeout-seconds)
         cookie-options (merge
                         {:http-only true
                          :path      "/"}
+                        (when (some? timeout)
+                          {:expires (t/format :rfc-1123-date-time (t/plus request-time (t/seconds timeout)))})
                         (when (request.u/https? request)
                           ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
                           ;; security is provided via anti-CSRF token. Note that most browsers will only accept
@@ -141,8 +143,9 @@
                           {:same-site :none
                            :secure    true}))]
     (-> response
-        (response/set-cookie metabase-embedded-session-cookie (str session-uuid) cookie-options)
-        (assoc-in [:headers anti-csrf-token-header] anti-csrf-token))))
+        (assoc-in [:headers anti-csrf-token-header] anti-csrf-token)
+        (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options)
+        (response/set-cookie metabase-embedded-session-cookie (str session-uuid) cookie-options))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                wrap-session-id                                                 |
@@ -161,13 +164,13 @@
   [_ {:keys [cookies headers], :as request}]
   (when-let [session (get-in cookies [metabase-embedded-session-cookie :value])]
     (when-let [anti-csrf-token (get headers anti-csrf-token-header)]
-      (assoc request :metabase-session-id session, :anti-csrf-token anti-csrf-token))))
+      (assoc request :metabase-session-id session, :anti-csrf-token anti-csrf-token :metabase-session-type :full-app-embed))))
 
 (defmethod wrap-session-id-with-strategy :normal-cookie
   [_ {:keys [cookies], :as request}]
   (when-let [session (get-in cookies [metabase-session-cookie :value])]
     (when (seq session)
-      (assoc request :metabase-session-id session))))
+      (assoc request :metabase-session-id session :metabase-session-type :normal))))
 
 (defmethod wrap-session-id-with-strategy :header
   [_ {:keys [headers], :as request}]
@@ -332,7 +335,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defsetting session-timeout
-  ;; Should be in the form {:amount 60 :unit "minutes"} where the unit is one of "seconds", "minutes" or "hours". The amount is nillable.
+  ;; Should be in the form {:amount 60 :unit "minutes"} where the unit is one of "seconds", "minutes" or "hours".
+  ;; The amount is nillable.
   (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
   :type       :json
   :default    nil)
@@ -355,12 +359,15 @@
 (defn reset-session-timeout-on-response
   "Implementation for `reset-cookie-timeout` respond handler."
   [request response request-time]
-  (if (and (:metabase-session-id request)
-           ;; Do not reset the cookie timeout if it is being edited already (such as being deleted)
-           (not (contains? (:cookies response) metabase-session-timeout-cookie))
-           (session-timeout-seconds))
-    ;; TODO: fix for full-app-embedded
-    (set-session-cookies request response {:id (:metabase-session-id request) :type :normal} request-time)
+  (if (and
+       ;; Only reset the timeout if the request includes a session cookie.
+       (:metabase-session-type request)
+       ;; Do not reset the timeout if it is being updated in the response (such as being deleted)
+       (not (contains? (:cookies response) metabase-session-timeout-cookie))
+       ;; Only reset the timeout if the setting-timeout setting is non-nil.
+       (session-timeout-seconds))
+    (set-session-cookies request response {:id   (:metabase-session-id request)
+                                           :type (:metabase-session-type request)} request-time)
     response))
 
 (defn reset-session-timeout
