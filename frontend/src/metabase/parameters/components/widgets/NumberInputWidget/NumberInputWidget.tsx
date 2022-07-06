@@ -1,6 +1,6 @@
 import React, { useState } from "react";
+import _ from "underscore";
 import { t } from "ttag";
-import { times, isEqual, isNumber, isUndefined } from "lodash";
 
 import TokenField, { parseNumberValue } from "metabase/components/TokenField";
 import NumericInput from "metabase/core/components/NumericInput";
@@ -38,9 +38,9 @@ function NumberInputWidget({
   const arrayValue = normalize(value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
     useState<(number | undefined)[]>(arrayValue);
-  const hasValueChanged = !isEqual(arrayValue, unsavedArrayValue);
-  const allValuesUnset = unsavedArrayValue.every(isUndefined);
-  const allValuesSet = unsavedArrayValue.every(isNumber);
+  const hasValueChanged = !_.isEqual(arrayValue, unsavedArrayValue);
+  const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
+  const allValuesSet = unsavedArrayValue.every(_.isNumber);
   const isValid =
     (arity === "n" || unsavedArrayValue.length === arity) &&
     (allValuesUnset || allValuesSet);
@@ -74,7 +74,7 @@ function NumberInputWidget({
           />
         </TokenFieldWrapper>
       ) : (
-        times(arity, i => (
+        _.times(arity, i => (
           <div className="inline-block" key={i}>
             <NumericInput
               className="p1"
