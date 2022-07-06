@@ -189,12 +189,8 @@ class FieldValuesWidgetInner extends Component {
   }
 
   onInputChange = value => {
-    const {
-      fields,
-      disableSearch,
-      disablePKRemappingForSearch,
-      maxResults,
-    } = this.props;
+    const { fields, disableSearch, disablePKRemappingForSearch, maxResults } =
+      this.props;
     const { lastValue, options, hasIncompleteValueSet } = this.state;
 
     const canSearch = isSearchable(
