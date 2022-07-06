@@ -6,9 +6,9 @@ import SettingHeader from "../SettingHeader";
 
 export const EmbeddingCustomizationInfo = () => {
   const setting = {
-    description: jt`In order to remove the Metabase logo from embeds, you can always upgrade to one of our ${(
+    description: jt`In order to remove the Metabase logo from embeds, you can always upgrade to ${(
       <ExternalLink href={MetabaseSettings.upgradeUrl()}>
-        {t`paid plans.`}
+        {t`one of our paid plans.`}
       </ExternalLink>
     )}`,
   };

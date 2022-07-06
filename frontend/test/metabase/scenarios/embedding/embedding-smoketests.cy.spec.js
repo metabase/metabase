@@ -60,7 +60,7 @@ describe("scenarios > embedding > smoke tests", () => {
           "In order to remove the Metabase logo from embeds, you can always upgrade to one of our paid plans.",
         );
 
-        assertLinkMatchesUrl("paid plans.", upgradeUrl);
+        assertLinkMatchesUrl("one of our paid plans.", upgradeUrl);
       }
 
       cy.findByText(/Embedding secret key/i);
