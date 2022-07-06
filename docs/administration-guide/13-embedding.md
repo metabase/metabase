@@ -43,9 +43,13 @@ Once you've enabled the embedding feature on your Metabase instance, next you'll
 
 ## Embedding charts and dashboards
 
-To make a question or dashboard embeddable, click the **arrow icon** at the bottom right.
+To make a question or dashboard embeddable, click the **Sharing icon** (the box with an arrow pointing up and to the right) at the bottom right of the question.
 
 ![Share icon](images/embedding/02-share-icon.png)
+
+For dashboards, the sharing icon is at the top of the dashboard:
+
+![Dashboard sharing icon](images/embedding/dashboard-sharing-icon.png)
 
 Then select **Embed this question in an application**.
 
@@ -55,11 +59,20 @@ You'll see a preview of the question or dashboard as it will appear in your appl
 
 ![Preview](images/embedding/04-preview.png)
 
-Important: you'll need to hit **Publish** when you first set up a chart or dashboard for embedding *and* each time you change any embedding settings. Also, any changes you make to the resource may require you to update the code in your own application so that it matches the latest code sample in this panel.
+## Publishing your embedded dashboard
+
+In order for the embedding to work, you'll need to hit **Publish**. You'll need to hit the **Publish** button whenever you:
+
+- You first set up a chart or dashboard for embedding
+- *and* each time you change any embedding settings.
+
+ Also, any changes you make to the resource may require you to update the code in your own application so that it matches the latest code sample Metabase generates.
 
 ![Code samples for embedding](images/embedding/05-code.png)
 
-Metabase provides code samples for common front-end template languages as well as some common back-end web frameworks and languages. You can also use these as starting points for writing your own versions in other platforms.
+Metabase provides code samples for common frontend template languages, as well as some common backend web frameworks and languages. You can also use these code samples as starting points for writing your own versions in other platforms.
+
+If you want to remove the **Powered by Metabase** label, you'll need to upgrade to a [paid plan](/pricing).
 
 ## Embedding charts and dashboards with locked parameters
 
@@ -126,9 +139,9 @@ To change the look and feel of the embed, you can add additional parameters to t
 
 - **bordered**: true or false. Adds a visible border to the embed.
 - **titled**: true or false. Adds or removes the title to the embedding.
-- **theme**: null or night. Shows the embedded iframe in dark mode.
+- **theme**: light, transparent, or night. Shows the embedded iframe in light (theme is null), transparent (no background), or night (dark mode).
 
-For example: 
+For example:
 
 ```
 http://yourmetabaseurl.com/embed/dashboard/a_very_huge_hashed_url#theme=night&hide_parameters=category&titled=true&bordered=false
@@ -136,10 +149,30 @@ http://yourmetabaseurl.com/embed/dashboard/a_very_huge_hashed_url#theme=night&hi
 
 These settings can also be changed under **Style** when previewing the embedded question or dashboard and its code in Metabase.
 
-## Reference applications
+## Advanced embedding features
 
-To see concrete examples of how to embed Metabase in applications under a number of common frameworks, check out our [reference implementations](https://github.com/metabase/embedding-reference-apps) on Github.
+{% plans-blockquote feature="Advanced embedding features" %}
+
+Paid plans give you additional customization options for embedded items.
+
+### Remove the "Powered by Metabase" banner
+
+![Powered by Metabase](images/embedding/powered-by-metabase.png)
+
+Charts and dashboards won't show the branded Metabase label at the bottom.
+
+### Set custom fonts
+
+You can set the font for the embedded chart or dashboard. See [available fonts](./fonts.md).
+
+### Disable data download
+
+You can remove the export icon from charts. Note that removing the icon here doesn't totally prevent people from exporting the data; treat it as a deterrent, not a security option. Removing the icon just cleans up the embedded chart a bit, and makes downloading the data a bit of a hassle.
+
+## Embedding reference applications
+
+To see code examples of how to embed Metabase in applications using a number of common frameworks, check out our [reference implementations](https://github.com/metabase/embedding-reference-apps) on Github.
 
 ## Further reading
 
-Check out the [Embedding track](/learn/embedding) in Learn Metabase.
+- [Embedding track](/learn/embedding) in Learn Metabase.
