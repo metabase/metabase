@@ -419,24 +419,51 @@
                  (mw.session/reset-session-timeout-on-response request response request-time))))))
 
     (testing "non-nil `session-timeout-seconds` should set the expiry relative to the request time"
-      (mt/with-temporary-setting-values [session-timeout {:amount 60 :unit "minutes"}]
-       (let [request {:cookies {"metabase.SESSION" {:value session-id}
-                                "metabase.TIMEOUT" {:value "alive"}}
-                      :metabase-session-id session-id}]
-         (is (= {:body    "some body",
-                 :cookies {"metabase.TIMEOUT" {:value     "alive"
-                                               :same-site :lax
-                                               :path      "/"
-                                               :expires   "Sat, 1 Jan 2022 01:00:00 GMT"},
-                           "metabase.SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
-                                               :same-site :lax,
-                                               :path      "/",
-                                               :expires   "Sat, 1 Jan 2022 01:00:00 GMT",
-                                               :http-only true}}}
-                (mw.session/reset-session-timeout-on-response request response request-time))))))
+      (mt/with-temporary-setting-values [session-timeout {:amount 60
+                                                          :unit   "minutes"}]
+        (testing "with normal sessions"
+          (let [request {:cookies               {"metabase.SESSION" {:value session-id}
+                                                 "metabase.TIMEOUT" {:value "alive"}}
+                         :metabase-session-id   session-id
+                         :metabase-session-type :normal}]
+            (is (= {:body    "some body",
+                    :cookies {"metabase.TIMEOUT" {:value     "alive"
+                                                  :same-site :lax
+                                                  :path      "/"
+                                                  :expires   "Sat, 1 Jan 2022 01:00:00 GMT"},
+                              "metabase.SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
+                                                  :same-site :lax,
+                                                  :path      "/",
+                                                  :expires   "Sat, 1 Jan 2022 01:00:00 GMT",
+                                                  :http-only true}}}
+                   (mw.session/reset-session-timeout-on-response request response request-time)))))
+
+        (testing "with embedded sessions"
+          (let [request {:cookies               {"metabase.EMBEDDED_SESSION" {:value session-id}
+                                                 "metabase.TIMEOUT"          {:value "alive"}}
+                         :metabase-session-id   session-id
+                         :metabase-session-type :full-app-embed}]
+            (is (= {:body    "some body",
+                    :cookies {"metabase.TIMEOUT"          {:value     "alive"
+                                                           :same-site :lax
+                                                           :path      "/"
+                                                           :expires   "Sat, 1 Jan 2022 01:00:00 GMT"},
+                              "metabase.EMBEDDED_SESSION" {:body    "some body",
+                                                           :cookies {"metabase.TIMEOUT"          {:value     "alive"
+                                                                                                  :http-only true
+                                                                                                  :path      "/"
+                                                                                                  :expires   "Sat, 1 Jan 2022 01:00:00 GMT"},
+                                                                     "metabase.EMBEDDED_SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
+                                                                                                  :http-only true,
+                                                                                                  :path      "/",
+                                                                                                  :expires   "Sat, 1 Jan 2022 01:00:00 GMT"}},
+                                                           :headers {"x-metabase-anti-csrf-token" nil}}}}
+                   (mw.session/reset-session-timeout-on-response request response request-time)))))))
+
 
     (testing "If the request does not have a `metabase.TIMEOUT` cookie (because it has expired), it should not be reset."
-      (mt/with-temporary-setting-values [session-timeout {:amount 60 :unit "minutes"}]
+      (mt/with-temporary-setting-values [session-timeout {:amount 60
+                                                          :unit   "minutes"}]
         (let [request {:cookies {}}]
           (is (= response
                  (mw.session/reset-session-timeout-on-response request response request-time))))))))
