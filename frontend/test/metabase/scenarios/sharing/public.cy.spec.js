@@ -67,7 +67,7 @@ describe.skip("scenarios > public", () => {
     it("should allow users to create parameterized dashboards", () => {
       visitQuestion(questionId);
 
-      cy.findByTestId("saved-question-header-button").click();
+      cy.findByTestId("saved-question-header-title").click();
       cy.findByTestId("add-to-dashboard-button").click();
       modal().contains("Create a new dashboard").click();
       modal().get('input[name="name"]').type("parameterized dashboard");

@@ -55,7 +55,7 @@ export function selectDimensionOptionFromSidebar(name) {
 }
 
 export function openDetailsSidebar() {
-  cy.findByTestId("saved-question-header-button").click();
+  cy.findByTestId("saved-question-header-title").click();
 }
 
 export function getDetailsSidebarActions() {
