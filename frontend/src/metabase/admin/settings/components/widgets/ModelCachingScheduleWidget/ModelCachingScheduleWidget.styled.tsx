@@ -7,6 +7,11 @@ import SettingSelect from "../SettingSelect";
 
 export const Root = styled.div`
   display: flex;
+  flex-direction: column;
+`;
+
+export const WidgetsRow = styled.div`
+  display: flex;
   flex-direction: row;
   gap: 1.3rem;
 `;
@@ -50,4 +55,9 @@ export const CustomScheduleLabel = styled.span`
 export const ErrorMessage = styled.span`
   color: ${color("error")};
   margin-top: 4px;
+`;
+
+export const CronExpressionExplanation = styled.span`
+  margin-top: 1.5rem;
+  color: ${color("text-medium")};
 `;

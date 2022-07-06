@@ -4,16 +4,21 @@ import { t, jt } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 
-import { validateCronExpression } from "metabase/lib/cron";
+import {
+  explainCronExpression as _explainCronExpression,
+  validateCronExpression,
+} from "metabase/lib/cron";
 
 import SettingInput from "../SettingInput";
 import {
   Root,
+  WidgetsRow,
   WidgetContainer,
   StyledSettingSelect,
   SelectLabel,
   CustomScheduleLabel,
   ErrorMessage,
+  CronExpressionExplanation,
 } from "./ModelCachingScheduleWidget.styled";
 
 const CRON_SYNTAX_DOC_URL =
@@ -41,6 +46,14 @@ function isCustomSchedule(setting) {
   const value = setting.value || setting.default;
   const defaultSchedules = setting.options.map(o => o.value);
   return !defaultSchedules.includes(value);
+}
+
+function lowerCaseFirstLetter(str) {
+  return str.charAt(0).toLowerCase() + str.slice(1);
+}
+
+function explainCronExpression(expression) {
+  return lowerCaseFirstLetter(_explainCronExpression(expression));
 }
 
 const PersistedModelRefreshIntervalWidget = ({
@@ -83,34 +96,43 @@ const PersistedModelRefreshIntervalWidget = ({
 
   return (
     <Root>
-      <WidgetContainer>
-        <SelectLabel>{t`Refresh models every…`}</SelectLabel>
-        <StyledSettingSelect
-          className="SettingsInput--short"
-          setting={{
-            ...setting,
-            value: isCustom ? "custom" : setting.value,
-            defaultValue: setting.default,
-          }}
-          disabled={disabled}
-          onChange={handleChange}
-        />
-      </WidgetContainer>
-      {isCustom && (
+      <WidgetsRow>
         <WidgetContainer>
-          <CustomScheduleInputHint />
-          <SettingInput
-            disabled={disabled}
-            errorMessage={error}
+          <SelectLabel>{t`Refresh models every…`}</SelectLabel>
+          <StyledSettingSelect
+            className="SettingsInput--short"
             setting={{
-              value: customCronSchedule,
-              placeholder: "For example 5   0   *   Aug   *",
+              ...setting,
+              value: isCustom ? "custom" : setting.value,
+              defaultValue: setting.default,
             }}
-            onChange={handleCustomInputBlur}
-            fireOnChange={false}
+            disabled={disabled}
+            onChange={handleChange}
           />
-          {error && <ErrorMessage>{error}</ErrorMessage>}
         </WidgetContainer>
+        {isCustom && (
+          <WidgetContainer>
+            <CustomScheduleInputHint />
+            <SettingInput
+              disabled={disabled}
+              errorMessage={error}
+              setting={{
+                value: customCronSchedule,
+                placeholder: "For example 5   0   *   Aug   *",
+              }}
+              onChange={handleCustomInputBlur}
+              fireOnChange={false}
+            />
+            {error && <ErrorMessage>{error}</ErrorMessage>}
+          </WidgetContainer>
+        )}
+      </WidgetsRow>
+      {isCustom && customCronSchedule && !error && (
+        <CronExpressionExplanation>
+          {t`We will refresh your models ${explainCronExpression(
+            customCronSchedule,
+          )}`}
+        </CronExpressionExplanation>
       )}
     </Root>
   );
