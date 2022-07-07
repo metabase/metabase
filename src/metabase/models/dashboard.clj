@@ -17,6 +17,7 @@
             [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
             [metabase.models.revision :as revision]
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.moderation :as moderation]
             [metabase.public-settings :as public-settings]
@@ -414,3 +415,41 @@
                                {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
     (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
                [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               SERIALIZATION                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+(defmethod serdes.base/extract-query "Dashboard" [_ {:keys [user]}]
+  ;; TODO This join over the subset of collections this user can see is shared by a few things - factor it out?
+  (serdes.base/raw-reducible-query
+    "Dashboard"
+    {:select     [:dash.*]
+     :from       [[:report_dashboard :dash]]
+     :left-join  [[:collection :coll] [:= :coll.id :dash.collection_id]]
+     :where      (if user
+                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
+                   [:is :coll.personal_owner_id nil])}))
+
+;; TODO Maybe nest collections -> dashboards -> dashcards?
+(defmethod serdes.base/extract-one "Dashboard"
+  [_ _ {:keys [collection_id creator_id] :as dash}]
+  (let [email                (db/select-one-field :email 'User :id creator_id)
+        coll                 (db/select-one 'Collection :id collection_id)
+        {collection-eid :id} (serdes.base/infer-self-path "Collection" coll)]
+    (-> (serdes.base/extract-one-basics "Dashboard" dash)
+        (assoc :collection_id collection-eid
+               :creator_id    email))))
+
+(defmethod serdes.base/load-xform "Dashboard"
+  [{email          :creator_id
+    collection-eid :collection_id
+    :as dash}]
+  (let [coll-id   (serdes.base/lookup-by-id 'Collection collection-eid)
+        user-id   (db/select-one-id 'User :email email)]
+    (-> dash
+        (assoc :collection_id coll-id
+               :creator_id    user-id))))
+
+(defmethod serdes.base/serdes-dependencies "Dashboard"
+  [{:keys [collection_id]}]
+  [[{:model "Collection" :id collection_id}]])

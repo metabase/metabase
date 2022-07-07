@@ -115,7 +115,9 @@
                                                     {:database_id   (keyword (str "db" db))
                                                      :table_id      (keyword (str "t" (+ t (* 10 db))))
                                                      :collection_id (random-key "coll" 100)
-                                                     :creator_id    (random-key "u" 10)})}]]})
+                                                     :creator_id    (random-key "u" 10)})}]]
+                         :dashboard  [[100 {:refs {:collection_id   (random-key "coll" 100)
+                                                   :creator_id      (random-key "u" 10)}}]]})
       (let [extraction (into [] (extract/extract-metabase {}))
             entities   (reduce (fn [m entity]
                                  (update m (-> entity :serdes/meta last :model)
@@ -186,6 +188,17 @@
                          (update :created_at u.date/format)
                          (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Card" filename))))))
+
+          (testing "for dashboards"
+            (is (= 100 (count (dir->file-set (io/file dump-dir "Dashboard")))))
+            (doseq [{:keys [collection_id creator_id entity_id]
+                     :as   dash}                                (get entities "Dashboard")
+                    :let [filename (str entity_id ".yaml")]]
+              (is (= (-> dash
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Dashboard" filename))))))
 
           (testing "for settings"
             (is (= (into {} (for [{:keys [key value]} (get entities "Setting")]

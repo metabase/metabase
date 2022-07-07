@@ -116,7 +116,11 @@
 
 ;; * native-query-snippet
 (s/def ::content ::not-empty-string)
-(s/def ::parameters #{[{:id "a"}]})
+
+(s/def :parameter/id   ::not-empty-string)
+(s/def :parameter/type ::base_type)
+(s/def ::parameter  (s/keys :req-un [:parameter/id :parameter/type]))
+(s/def ::parameters (s/coll-of ::parameter))
 
 ;; * pulse
 (s/def ::row pos-int?)

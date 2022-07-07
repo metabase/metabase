@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
-            [metabase.models :refer [Card Collection Database Table User]]
+            [metabase.models :refer [Card Collection Dashboard Database Table User]]
             [metabase.models.serialization.base :as serdes.base]))
 
 (defn- select-one [model-name where]
@@ -76,28 +76,56 @@
   (ts/with-empty-h2-app-db
     (ts/with-temp-dpc [Collection [{coll-id    :id
                                     coll-eid   :entity_id
-                                    coll-slug  :slug}      {:name "Some Collection"}]
-                       User       [{mark-id :id}           {:first_name "Mark"
-                                                            :last_name  "Knopfler"
-                                                            :email      "mark@direstrai.ts"}]
-                       Database   [{db-id      :id}        {:name "My Database"}]
-                       Table      [{no-schema-id :id}      {:name "Schemaless Table" :db_id db-id}]
-                       Table      [{schema-id    :id}      {:name        "Schema'd Table"
-                                                            :db_id       db-id
-                                                            :schema      "PUBLIC"}]
+                                    coll-slug  :slug
+                                    :as common-coll}          {:name "Some Collection"}]
+                       User       [{mark-id :id}              {:first_name "Mark"
+                                                               :last_name  "Knopfler"
+                                                               :email      "mark@direstrai.ts"}]
+                       User       [{dave-id :id}              {:first_name "David"
+                                                               :last_name  "Knopfler"
+                                                               :email      "david@direstrai.ts"}]
+                       Collection [{mark-coll-id  :id
+                                    mark-coll-eid :entity_id
+                                    :as mark-coll}            {:name "MK Personal"
+                                                               :personal_owner_id mark-id}]
+                       Collection [{dave-coll-id  :id
+                                    dave-coll-eid :entity_id
+                                    :as dave-coll}            {:name "DK Personal"
+                                                               :personal_owner_id dave-id}]
+
+                       Database   [{db-id      :id}           {:name "My Database"}]
+                       Table      [{no-schema-id :id}         {:name "Schemaless Table" :db_id db-id}]
+                       Table      [{schema-id    :id}         {:name        "Schema'd Table"
+                                                               :db_id       db-id
+                                                               :schema      "PUBLIC"}]
                        Card       [{c1-id  :id
-                                    c1-eid :entity_id}     {:name          "Some Question"
-                                                            :database_id   db-id
-                                                            :table_id      no-schema-id
-                                                            :collection_id coll-id
-                                                            :creator_id    mark-id
-                                                            :dataset_query "{\"json\": \"string values\"}"}]
+                                    c1-eid :entity_id}        {:name          "Some Question"
+                                                               :database_id   db-id
+                                                               :table_id      no-schema-id
+                                                               :collection_id coll-id
+                                                               :creator_id    mark-id
+                                                               :dataset_query "{\"json\": \"string values\"}"}]
                        Card       [{c2-id  :id
-                                    c2-eid :entity_id}     {:name          "Second Question"
-                                                            :database_id   db-id
-                                                            :table_id      schema-id
-                                                            :collection_id coll-id
-                                                            :creator_id    mark-id}]]
+                                    c2-eid :entity_id}        {:name          "Second Question"
+                                                               :database_id   db-id
+                                                               :table_id      schema-id
+                                                               :collection_id coll-id
+                                                               :creator_id    mark-id}]
+                       Dashboard  [{dash-id  :id
+                                    dash-eid :entity_id}      {:name          "Shared Dashboard"
+                                                               :collection_id coll-id
+                                                               :creator_id    mark-id
+                                                               :parameters    []}]
+                       Dashboard  [{mark-dash-id  :id
+                                    mark-dash-eid :entity_id} {:name          "Mark's Dashboard"
+                                                               :collection_id mark-coll-id
+                                                               :creator_id    mark-id
+                                                               :parameters    []}]
+                       Dashboard  [{dave-dash-id  :id
+                                    dave-dash-eid :entity_id} {:name          "Dave's Dashboard"
+                                                               :collection_id dave-coll-id
+                                                               :creator_id    dave-id
+                                                               :parameters    []}]]
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c1-id]))]
           (is (= {:serdes/meta   [{:model "Card" :id c1-eid}]
@@ -128,4 +156,23 @@
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Schema'd Table"}]
                      [{:model "Collection" :id coll-eid}]}
-                   (set (serdes.base/serdes-dependencies ser))))))))))
+                   (set (serdes.base/serdes-dependencies ser)))))))
+
+      (testing "collection filtering based on :user option"
+        (testing "only unowned collections are returned with no user"
+          (is (= ["Some Collection"]
+                 (->> (serdes.base/extract-all "Collection" {})
+                      (into [])
+                      (map :name)))))
+        (testing "unowned collections and the personal one with a user"
+          (is (= #{"Some Collection" "MK Personal"}
+                 (->> (serdes.base/extract-all "Collection" {:user mark-id})
+                      (eduction (map :name))
+                      (into #{}))))
+          (is (= #{"Some Collection" "DK Personal"}
+                 (->> (serdes.base/extract-all "Collection" {:user dave-id})
+                      (eduction (map :name))
+                      (into #{}))))))
+
+      (testing "dashboards are retrieved properly"
+        ))))
