@@ -382,8 +382,8 @@
              (search-request-data :rasta :q "test")))))
 
   (testing "Databases for which the user does not have access to should not show up in results"
-    (mt/with-temp* [Database       [db-1 {:name "db-1"}]
-                    Database       [_db-2 {:name "db-2"}]]
+    (mt/with-temp* [Database [db-1 {:name "db-1"}]
+                    Database [_db-2 {:name "db-2"}]]
       (perms/revoke-data-perms! (perms-group/all-users) (:id db-1))
       (is (= #{"db-2"}
              (set (map :name (search-request-data-with sorted-results :rasta :q "db"))))))))

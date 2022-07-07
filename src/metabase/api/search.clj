@@ -7,6 +7,7 @@
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
             [metabase.db :as mdb]
+            [metabase.models :refer [Database]]
             [metabase.models.bookmark :refer [CardBookmark CollectionBookmark DashboardBookmark]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.interface :as mi]
@@ -279,16 +280,8 @@
       (add-collection-join-and-where-clauses :collection.id search-ctx)))
 
 (s/defmethod search-query-for-model "database"
-  [model {:keys [current-user-perms] :as search-ctx} :- SearchContext]
-  (let [base-query (base-query-for-model model search-ctx)]
-    (if (contains? current-user-perms "/")
-      base-query
-      (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
-        (hh/merge-where base-query
-                        (if (seq data-perms)
-                          (into [:or] (for [path data-perms]
-                                        [:like (hx/concat (hx/literal "/db/") :id (hx/literal "/")) (str path "%")]))
-                          [:= 0 1]))))))
+  [model search-ctx :- SearchContext]
+  (base-query-for-model model search-ctx))
 
 (s/defmethod search-query-for-model "dashboard"
   [model search-ctx :- SearchContext]
@@ -377,6 +370,10 @@
 (defmethod check-permissions-for-model :segment
   [{:keys [id]}]
   (-> id Segment mi/can-read?))
+
+(defmethod check-permissions-for-model :database
+  [{:keys [id]}]
+  (-> id Database mi/can-read?))
 
 (defn- query-model-set
   "Queries all models with respect to query for one result, to see if we get a result or not"
