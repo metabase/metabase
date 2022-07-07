@@ -48,19 +48,15 @@
                     (mapcat (partial build-metas root-dir)))
               (file-seq root-dir)))
 
-  (ingest-one [_ meta-maps]
-    (let [{:keys [model id]} (first meta-maps)]
-      (if (and (= 1 (count meta-maps))
+  (ingest-one [_ abs-path]
+    (let [{:keys [model id]} (first abs-path)]
+      (if (and (= 1 (count abs-path))
                (= "Setting" model))
-        {:serdes/meta meta-maps :key (keyword id) :value (get settings (keyword id))}
-        (ingest-entity root-dir meta-maps)))))
+        {:serdes/meta abs-path :key (keyword id) :value (get settings (keyword id))}
+        (ingest-entity root-dir abs-path)))))
 
 (defn ingest-yaml
   "Creates a new Ingestable on a directory of YAML files, as created by
   [[metabase-enterprise.serialization.v2.storage.yaml]]."
   [root-dir]
   (->YamlIngestion (io/file root-dir) (yaml/from-file (io/file root-dir "settings.yaml"))))
-
-(comment
-  (into [] (ingest/ingest-list (ingest-yaml (io/file "/tmp/serdesv2-EHDVDKJCFOTQTVXCJJMD"))))
-  )

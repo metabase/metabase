@@ -85,15 +85,15 @@
                (into #{} (ingest/ingest-list ingestable)))))
 
       (testing "individual reads in any order are correct"
-        (doseq [meta-maps (->> exp-files
-                               keys
-                               (repeat 10)
-                               (into [] cat)
-                               shuffle)]
+        (doseq [abs-path (->> exp-files
+                              keys
+                              (repeat 10)
+                              (into [] cat)
+                              shuffle)]
           (is (= (-> exp-files
-                     (get meta-maps)
-                     (assoc :serdes/meta (mapv #(dissoc % :label) meta-maps)))
-                 (ingest/ingest-one ingestable meta-maps))))))))
+                     (get abs-path)
+                     (assoc :serdes/meta (mapv #(dissoc % :label) abs-path)))
+                 (ingest/ingest-one ingestable abs-path))))))))
 
 (deftest e2e-storage-ingestion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

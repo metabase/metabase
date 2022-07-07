@@ -129,7 +129,7 @@
           (when (.exists (io/file dump-dir))
             (.delete (io/file dump-dir))))))))
 
-(defmacro with-random-dump-dir {:style/indent 1} [[dump-dir-binding prefix] & body]
+(defmacro with-random-dump-dir {:style/indent 2} [[dump-dir-binding prefix] & body]
   `(do-with-random-dump-dir ~prefix (fn [~dump-dir-binding] ~@body)))
 
 (defmacro with-world
