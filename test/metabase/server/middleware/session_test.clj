@@ -24,6 +24,7 @@
                       (thunk)))
 
 (def ^:private session-cookie @#'mw.session/metabase-session-cookie)
+(def ^:private session-timeout-cookie @#'mw.session/metabase-session-timeout-cookie)
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")
 
@@ -134,10 +135,11 @@
     (testing "test that we can set a full-app-embedding session cookie"
       (is (= {:body    {}
               :status  200
-              :cookies {embedded-session-cookie
-                        {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
-                         :http-only true
-                         :path      "/"}}
+              :cookies {embedded-session-cookie {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
+                                                 :http-only true
+                                                 :path      "/"}
+                        session-timeout-cookie  {:value     "alive"
+                                                 :path      "/"}}
               :headers {anti-csrf-token-header test-anti-csrf-token}}
              (mw.session/set-session-cookies {}
                                             {}
@@ -146,12 +148,15 @@
     (testing "test that we can set a full-app-embedding session cookie with SameSite=None over HTTPS"
       (is (= {:body    {}
               :status  200
-              :cookies {embedded-session-cookie
-                        {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
-                         :http-only true
-                         :path      "/"
-                         :same-site :none
-                         :secure    true}}
+              :cookies {embedded-session-cookie {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
+                                                 :http-only true
+                                                 :path      "/"
+                                                 :same-site :none
+                                                 :secure    true}
+                        session-timeout-cookie  {:value     "alive"
+                                                 :path      "/"
+                                                 :same-site :none
+                                                 :secure    true}}
               :headers {anti-csrf-token-header test-anti-csrf-token}}
              (mw.session/set-session-cookies {:headers {"x-forwarded-protocol" "https"}}
                                             {}
@@ -411,10 +416,12 @@
 
     (testing "We don't update cookie expires attributes if `session-timeout-seconds` is nil.
               Note if an admin changes the session-timeout from a non-nil to nil value, then all users sessions will eventually expire.
-              This is a correctness bug, but we can leave it for now as it is unlikely to have much impact on UX."
+              This is a correctness bug, but we can leave it for now as it is unlikely to have much impact on UX.
+              The alternative is to try to remove the session-timeout-cookie on every request if `session-timeout-seconds` is nil, or
+              to set it without an expires attribute."
       (mt/with-temporary-setting-values [session-timeout nil]
-        (let [request {:cookies {"metabase.SESSION" {:value "session-id"}
-                                 "metabase.TIMEOUT" {:value "alive"}}}]
+        (let [request {:cookies {session-cookie         {:value "session-id"}
+                                 session-timeout-cookie {:value "alive"}}}]
           (is (= response
                  (mw.session/reset-session-timeout-on-response request response request-time))))))
 
@@ -422,37 +429,36 @@
       (mt/with-temporary-setting-values [session-timeout {:amount 60
                                                           :unit   "minutes"}]
         (testing "with normal sessions"
-          (let [request {:cookies               {"metabase.SESSION" {:value session-id}
-                                                 "metabase.TIMEOUT" {:value "alive"}}
+          (let [request {:cookies               {session-cookie         {:value session-id}
+                                                 session-timeout-cookie {:value "alive"}}
                          :metabase-session-id   session-id
                          :metabase-session-type :normal}]
             (is (= {:body    "some body",
-                    :cookies {"metabase.TIMEOUT" {:value     "alive"
-                                                  :same-site :lax
-                                                  :path      "/"
-                                                  :expires   "Sat, 1 Jan 2022 01:00:00 GMT"},
-                              "metabase.SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
-                                                  :same-site :lax,
-                                                  :path      "/",
-                                                  :expires   "Sat, 1 Jan 2022 01:00:00 GMT",
-                                                  :http-only true}}}
+                    :cookies {session-timeout-cookie {:value     "alive"
+                                                      :same-site :lax
+                                                      :path      "/"
+                                                      :expires   "Sat, 1 Jan 2022 01:00:00 GMT"},
+                              session-cookie         {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
+                                                      :same-site :lax,
+                                                      :path      "/",
+                                                      :expires   "Sat, 1 Jan 2022 01:00:00 GMT",
+                                                      :http-only true}}}
                    (mw.session/reset-session-timeout-on-response request response request-time)))))
 
         (testing "with embedded sessions"
-          (let [request {:cookies               {"metabase.EMBEDDED_SESSION" {:value session-id}
-                                                 "metabase.TIMEOUT"          {:value "alive"}}
+          (let [request {:cookies               {embedded-session-cookie {:value session-id}
+                                                 session-timeout-cookie  {:value "alive"}}
                          :metabase-session-id   session-id
                          :metabase-session-type :full-app-embed}]
             (is (= {:body    "some body",
                     :headers {"x-metabase-anti-csrf-token" nil}
-                    :cookies {"metabase.TIMEOUT"          {:value     "alive"
-                                                           :http-only true
-                                                           :path      "/"
-                                                           :expires   "Sat, 1 Jan 2022 01:00:00 GMT"},
-                              "metabase.EMBEDDED_SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
-                                                           :http-only true,
-                                                           :path      "/",
-                                                           :expires   "Sat, 1 Jan 2022 01:00:00 GMT"}}}
+                    :cookies {session-timeout-cookie  {:value   "alive"
+                                                       :path    "/"
+                                                       :expires "Sat, 1 Jan 2022 01:00:00 GMT"},
+                              embedded-session-cookie {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
+                                                       :http-only true,
+                                                       :path      "/",
+                                                       :expires   "Sat, 1 Jan 2022 01:00:00 GMT"}}}
                    (mw.session/reset-session-timeout-on-response request response request-time)))))))
 
 

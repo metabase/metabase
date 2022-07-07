@@ -131,8 +131,7 @@
   (let [response       (wrap-body-if-needed response)
         timeout (session-timeout-seconds)
         cookie-options (merge
-                        {:http-only true
-                         :path      "/"}
+                        {:path "/"}
                         (when (some? timeout)
                           {:expires (t/format :rfc-1123-date-time (t/plus request-time (t/seconds timeout)))})
                         (when (request.u/https? request)
@@ -145,7 +144,7 @@
     (-> response
         (assoc-in [:headers anti-csrf-token-header] anti-csrf-token)
         (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options)
-        (response/set-cookie metabase-embedded-session-cookie (str session-uuid) cookie-options))))
+        (response/set-cookie metabase-embedded-session-cookie (str session-uuid) (assoc cookie-options :http-only true)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                wrap-session-id                                                 |
