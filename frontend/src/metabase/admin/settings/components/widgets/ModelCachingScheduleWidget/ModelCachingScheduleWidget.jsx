@@ -18,6 +18,8 @@ const propTypes = {
   onChange: PropTypes.func.isRequired,
 };
 
+const DEFAULT_CUSTOM_SCHEDULE = "0 0 * * * ?";
+
 function isCustomSchedule(setting) {
   const value = setting.value || setting.default;
   const defaultSchedules = setting.options.map(o => o.value);
@@ -46,6 +48,7 @@ const PersistedModelRefreshIntervalWidget = ({
     nextValue => {
       if (nextValue === "custom") {
         setCustom(true);
+        setCustomCronSchedule(DEFAULT_CUSTOM_SCHEDULE);
       } else {
         setCustom(false);
         setCustomCronSchedule("");
