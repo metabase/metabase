@@ -5,6 +5,7 @@
   ["Card"
    "Collection"
    "Dashboard"
+   "DashboardCard"
    "Database"
    "Field"
    "Setting"

@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
-            [metabase.models :refer [Card Collection Dashboard Database Table User]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Table User]]
             [metabase.models.serialization.base :as serdes.base]))
 
 (defn- select-one [model-name where]
@@ -115,10 +115,15 @@
                                                                :collection_id coll-id
                                                                :creator_id    mark-id
                                                                :parameters    []}]
-                       Dashboard  [{other-dash :entity_id}    {:name          "Dave's Dash"
+                       Dashboard  [{other-dash-id :id
+                                    other-dash :entity_id}    {:name          "Dave's Dash"
                                                                :collection_id dave-coll-id
                                                                :creator_id    mark-id
-                                                               :parameters    []}]]
+                                                               :parameters    []}]
+                       DashboardCard [{dc1-eid :entity_id}    {:card_id      c1-id
+                                                               :dashboard_id dash-id}]
+                       DashboardCard [{dc2-eid :entity_id}    {:card_id      c2-id
+                                                               :dashboard_id other-dash-id}]]
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c1-id]))]
           (is (= {:serdes/meta   [{:model "Card" :id c1-eid}]
@@ -171,4 +176,14 @@
                  (by-model "Dashboard" (serdes.base/extract-all "Dashboard" {:user mark-id})))))
         (testing "dashboards in personal collections are returned for the :user"
           (is (= #{dash-eid other-dash}
-                 (by-model "Dashboard" (serdes.base/extract-all "Dashboard" {:user dave-id})))))))))
+                 (by-model "Dashboard" (serdes.base/extract-all "Dashboard" {:user dave-id}))))))
+
+      (testing "dashboard cards are filtered based on :user"
+        (testing "dashboard cards whose dashboards are in unowned collections are always returned"
+          (is (= #{dc1-eid}
+                 (by-model "DashboardCard" (serdes.base/extract-all "DashboardCard" {}))))
+          (is (= #{dc1-eid}
+                 (by-model "DashboardCard" (serdes.base/extract-all "DashboardCard" {:user mark-id})))))
+        (testing "dashboard cards whose dashboards are in personal collections are returned for the :user"
+          (is (= #{dc1-eid dc2-eid}
+                 (by-model "DashboardCard" (serdes.base/extract-all "DashboardCard" {:user dave-id})))))))))
