@@ -12,7 +12,7 @@
             [metabase.api.pivots :as api.pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as client]
-            [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview Pulse PersistedInfo
+            [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview PersistedInfo Pulse
                                      PulseCard PulseChannel PulseChannelRecipient Table Timeline TimelineEvent ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
