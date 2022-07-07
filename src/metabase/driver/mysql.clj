@@ -240,10 +240,9 @@
   (hsql/call :char_length (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/json-query :mysql
-  [_ identifier stored-field]
+  [_ unwrapped-identifier stored-field]
   (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
     (let [nfc-path             (:nfc_path stored-field)
-          unwrapped-identifier (:form identifier)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
           jsonpath-query       (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))]
       (reify
