@@ -384,9 +384,15 @@
   (testing "Databases for which the user does not have access to should not show up in results"
     (mt/with-temp* [Database [db-1 {:name "db-1"}]
                     Database [_db-2 {:name "db-2"}]]
+      (is (= #{"db-2" "db-1"}
+             (->> (search-request-data-with sorted-results :rasta :q "db")
+                  (map :name)
+                  set)))
       (perms/revoke-data-perms! (perms-group/all-users) (:id db-1))
       (is (= #{"db-2"}
-             (set (map :name (search-request-data-with sorted-results :rasta :q "db"))))))))
+             (->> (search-request-data-with sorted-results :rasta :q "db")
+                  (map :name)
+                  set))))))
 
 (deftest bookmarks-test
   (testing "Bookmarks are per user, so other user's bookmarks don't cause search results to be altered"
