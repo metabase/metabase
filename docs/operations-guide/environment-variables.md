@@ -99,6 +99,31 @@ Default: `"frontend_client/favicon.ico"`
 
 Path or URL to favicon file.
 
+### `MB_APPLICATION_FONT_FILES`
+
+Only available in [some plans](https://www.metabase.com/pricing)<br>
+Type: string<br>
+Default: `"{}"`
+
+Tell Metabase which font files to use for different styles. Example value:
+
+```
+[
+  {
+     "src": "https://example.com/resources/font-400",
+     "fontFormat": "ttf",
+     "fontWeight": 400,
+  },
+  {
+     "src": "https://example.com/resources/font-700",
+     "fontFormat": "woff",
+     "fontWeight": 700,
+  }
+]
+```
+
+See [fonts](../administration-guide/fonts.md).
+
 ### `MB_APPLICATION_LOGO_URL`
 
 Only available in [some plans](https://www.metabase.com/pricing)<br>

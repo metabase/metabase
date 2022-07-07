@@ -11,7 +11,7 @@ You can set fonts for:
 
 ## Included fonts
 
-The following fonts are included with your Metabase:
+To change your Metabase font, click on the **gear** icon in the upper right of the screen and select **Admin settings** > **Settings** > **Appearance**. Under **Font**, select from a list of included fonts.
 
 - [Lato](https://fonts.google.com/specimen/Lato)
 - [Lora](https://fonts.google.com/specimen/Lora)
@@ -38,9 +38,13 @@ Comic Sans is currently not included.
 
 ## Custom fonts
 
-To use a custom font, you'll need to retrieve font file(s) from a server accessible to your Metabase.
+To set a custom font, click on the **gear** icon in the upper right of the screen and select **Admin settings** > **Settings** > **Appearance**.
 
-You can set three different font styles within the same font family at three different URLs, one for each font style (size and weight) that Metabase will use in order to display its user interface properly. The font weights are:
+For **Font**, select **Custom...** and enter URLs to your font files.
+
+## Font style options
+
+You can set three different font styles with three different URLs, one for each font style (size and weight) that Metabase will use in order to display its user interface properly. The font weights are:
 
 - Regular 400.
 - Bold 700.
@@ -49,6 +53,50 @@ You can set three different font styles within the same font family at three dif
 You only need to set the first style (Regular 400); the browser will fill in the other styles.
 
 For best results, set at least the 400 and 700 styles. If you have a single font file that contains multiple font styles within the same family, enter the URL in multiple fields to tell Metabase to prefer the weights in that font file. Metabase will use those styles to override the font styles set by the browser.
+
+### Supported font file formats
+
+For custom fonts, Metabase supports woff, woff2, ttf files. If the URL you provide lacks a specific file extension, Metabase will assume it's a woff2 file.
+
+## Google Font URLs
+
+To get a URL for a [Google Font](https://fonts.google.com/), visit the Google Font page and select the style you want to use. Then make an HTTP request to get the URL of the tff file. For example, say we want to use Roboto Mono: here's how we could get the font file URLs for both the 400 and 700 styles:
+
+Paste the URL https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap". This URL will return a response like:
+
+```
+* cyrillic-ext */
+@font-face {
+  font-family: 'Roboto Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSV0me8iUI0lkQ.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Roboto Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSx0me8iUI0lkQ.woff2) format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+...
+```
+
+For latin text, copy the src URLs for each style, in this case:
+
+- For 400: https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2
+- For 700: https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2
+
+
+And paste those URLS in the relevant input fields in **Admin settings** > **Settings** > **Appearance** > **Font** section where it says "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do."
+
+## Supporting multiple languages
+
+To support multiple character sets, for example both Latin and Cyrillic, you'll need to merge font files.
 
 ## Embedding fonts
 
