@@ -670,7 +670,7 @@
     (testing "test that updating a user's email to an existing inactive user's email fails"
       (let [trashbird (mt/fetch-user :trashbird)
             rasta     (mt/fetch-user :rasta)]
-        (is (= {:errors {:first_name "ASDF"}}
+        (is (= {:errors {:email "Email address already associated to another user."}}
                (mt/user-http-request :crowberto :put 400 (str "user/" (u/the-id rasta))
                                      (select-keys trashbird [:email]))))))))
 
