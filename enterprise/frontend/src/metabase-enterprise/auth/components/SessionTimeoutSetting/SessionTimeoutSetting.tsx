@@ -1,4 +1,4 @@
-import React, { ChangeEventHandler } from "react";
+import React, { ChangeEventHandler, useState } from "react";
 import { t } from "ttag";
 
 import Toggle from "metabase/core/components/Toggle";
@@ -8,6 +8,8 @@ import {
   SessionTimeoutInput,
   SessionTimeoutInputContainer,
   SessionTimeoutSettingRoot,
+  SessionTimeoutSettingContainer,
+  ErrorMessage,
 } from "./SessionTimeoutSetting.styled";
 
 const UNITS = [
@@ -17,54 +19,83 @@ const UNITS = [
 
 const DEFAULT_VALUE = { amount: 30, unit: UNITS[0].value };
 
-type TimeoutValue = { amount: number; unit: string } | null;
+type TimeoutValue = { amount: number; unit: string };
 interface SessionTimeoutSettingProps {
   setting: {
     key: string;
-    value: TimeoutValue;
+    value: TimeoutValue | null;
     default: string;
   };
 
-  onChange: (value: TimeoutValue) => void;
+  onChange: (value: TimeoutValue | null) => void;
 }
+
+const validate = (
+  setting: SessionTimeoutSettingProps["setting"],
+  value: TimeoutValue,
+) =>
+  setting.value == null || value.amount > 0
+    ? null
+    : t`Timeout must be greater than 0`;
 
 const SessionTimeoutSetting = ({
   setting,
   onChange,
 }: SessionTimeoutSettingProps) => {
-  const isEnabled = setting.value != null;
-  const unit = setting.value?.unit ?? DEFAULT_VALUE.unit;
-  const amount = setting.value?.amount ?? DEFAULT_VALUE.amount;
+  const [value, setValue] = useState(setting.value ?? DEFAULT_VALUE);
 
-  const handleValueChange: ChangeEventHandler<HTMLInputElement> = e => {
-    onChange({
-      ...(setting.value ?? DEFAULT_VALUE),
-      amount: parseInt(e.target.value, 10),
-    });
+  const handleValueChange = (newValue: Partial<TimeoutValue>) => {
+    setValue(prev => ({ ...prev, ...newValue }));
+  };
+
+  const error = validate(setting, value);
+
+  const handleCommitSettings = (value: TimeoutValue | null) => {
+    !error && onChange(value);
+  };
+
+  const handleBlurChange: ChangeEventHandler<HTMLInputElement> = () => {
+    handleCommitSettings(value);
   };
 
   const handleUnitChange: ChangeEventHandler<HTMLInputElement> = e => {
-    onChange({ ...(setting.value ?? DEFAULT_VALUE), unit: e.target.value });
+    const unit = e.target.value;
+    handleValueChange({ unit });
+    handleCommitSettings({ ...value, unit });
   };
 
   const handleToggle = (isEnabled: boolean) => {
     onChange(isEnabled ? DEFAULT_VALUE : null);
+    setValue(DEFAULT_VALUE);
   };
+
+  const isEnabled = setting.value != null;
 
   return (
     <SessionTimeoutSettingRoot>
-      <Toggle value={setting.value != null} onChange={handleToggle} />
+      <SessionTimeoutSettingContainer>
+        <Toggle value={setting.value != null} onChange={handleToggle} />
 
-      {isEnabled && (
-        <SessionTimeoutInputContainer>
-          <SessionTimeoutInput
-            className="input"
-            defaultValue={amount.toString()}
-            onBlurChange={handleValueChange}
-          />
-          <Select value={unit} options={UNITS} onChange={handleUnitChange} />
-        </SessionTimeoutInputContainer>
-      )}
+        {isEnabled && (
+          <SessionTimeoutInputContainer>
+            <SessionTimeoutInput
+              type="number"
+              placeholder=""
+              value={value?.amount.toString()}
+              onChange={value =>
+                handleValueChange({ amount: parseInt(value, 10) })
+              }
+              onBlur={handleBlurChange}
+            />
+            <Select
+              value={value?.unit.toString()}
+              options={UNITS}
+              onChange={handleUnitChange}
+            />
+          </SessionTimeoutInputContainer>
+        )}
+      </SessionTimeoutSettingContainer>
+      {error && <ErrorMessage>{error}</ErrorMessage>}
     </SessionTimeoutSettingRoot>
   );
 };
