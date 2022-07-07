@@ -12,7 +12,7 @@ import ModerationReviewIcon, {
 describe("ModerationReviewIcon", () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    jest.setSystemTime(new Date(2022, 6, 7));
+    jest.setSystemTime(new Date(2022, 1, 7));
   });
 
   afterEach(() => {
@@ -20,9 +20,7 @@ describe("ModerationReviewIcon", () => {
   });
 
   it("should render correctly when moderator is loading", () => {
-    const props = getProps({
-      currentUser: createMockUser({ id: 1 }),
-    });
+    const props = getProps();
 
     render(<ModerationReviewIcon {...props} />);
 
@@ -31,15 +29,19 @@ describe("ModerationReviewIcon", () => {
 
   it("should show a tooltip on hover when moderator is loaded", () => {
     const props = getProps({
-      currentUser: createMockUser({ id: 1 }),
+      review: createMockModerationReview({
+        moderator_id: 1,
+        created_at: "2021-01-01T20:10:30.200",
+      }),
       moderator: createMockUser({ id: 1 }),
+      currentUser: createMockUser({ id: 1 }),
     });
 
     render(<ModerationReviewIcon {...props} />);
     userEvent.hover(screen.getByLabelText("verified icon"));
 
     expect(screen.getByText("You verified this")).toBeInTheDocument();
-    expect(screen.getByText("8 years ago")).toBeInTheDocument();
+    expect(screen.getByText("a year ago")).toBeInTheDocument();
   });
 });
 
