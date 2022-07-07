@@ -71,6 +71,10 @@ export const TableHeaderCellContent = styled.button<{
   isRightAligned: boolean;
 }>`
   display: flex;
+  justify-content: ${props =>
+    props.isRightAligned ? "space-between" : "flex-start"};
+  width: 100%;
+
   margin-left: ${props => (props.isRightAligned ? "auto" : "unset")};
 
   color: ${props => (props.isSorted ? color("brand") : color("text-medium"))};
