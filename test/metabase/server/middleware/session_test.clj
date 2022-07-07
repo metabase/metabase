@@ -444,20 +444,15 @@
                          :metabase-session-id   session-id
                          :metabase-session-type :full-app-embed}]
             (is (= {:body    "some body",
+                    :headers {"x-metabase-anti-csrf-token" nil}
                     :cookies {"metabase.TIMEOUT"          {:value     "alive"
-                                                           :same-site :lax
+                                                           :http-only true
                                                            :path      "/"
                                                            :expires   "Sat, 1 Jan 2022 01:00:00 GMT"},
-                              "metabase.EMBEDDED_SESSION" {:body    "some body",
-                                                           :cookies {"metabase.TIMEOUT"          {:value     "alive"
-                                                                                                  :http-only true
-                                                                                                  :path      "/"
-                                                                                                  :expires   "Sat, 1 Jan 2022 01:00:00 GMT"},
-                                                                     "metabase.EMBEDDED_SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
-                                                                                                  :http-only true,
-                                                                                                  :path      "/",
-                                                                                                  :expires   "Sat, 1 Jan 2022 01:00:00 GMT"}},
-                                                           :headers {"x-metabase-anti-csrf-token" nil}}}}
+                              "metabase.EMBEDDED_SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
+                                                           :http-only true,
+                                                           :path      "/",
+                                                           :expires   "Sat, 1 Jan 2022 01:00:00 GMT"}}}
                    (mw.session/reset-session-timeout-on-response request response request-time)))))))
 
 
