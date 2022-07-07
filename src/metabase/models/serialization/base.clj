@@ -61,7 +61,7 @@
   (fn [model _] model))
 
 (defmulti extract-query
-  "Performs the select query, possibly filtered, for all the entities of this type that should be serialized. Called
+  "Performs the select query, possibly filtered, for all the entities of this model that should be serialized. Called
   from [[extract-all]]'s default implementation.
 
   `(extract-query \"ModelName\" opts)`
@@ -87,8 +87,8 @@
 (defmulti extract-one
   "Extracts a single entity retrieved from the database into a portable map with `:serdes/meta` attached.
 
-  The default implementation uses the model name as the `:type` and either `:entity_id` or [[serdes.hash/identity-hash]]
-  as the `:id`. It also strips off the database's numeric primary key.
+  The default implementation uses the model name as the `:model` and either `:entity_id` or
+  [[serdes.hash/identity-hash]] as the `:id`. It also strips off the database's numeric primary key.
 
   That suffices for a few simple entities, but most entities will need to override this.
   They should follow the pattern of:
@@ -132,9 +132,9 @@
   (let [model (db/resolve-model (symbol model-name))
         pk    (models/primary-key model)]
     (-> entity
-        (assoc :serdes/meta {:type model-name
-                             :id   (or (:entity_id entity)
-                                       (serdes.hash/identity-hash (model (get entity pk))))})
+        (assoc :serdes/meta {:model model-name
+                             :id    (or (:entity_id entity)
+                                        (serdes.hash/identity-hash (model (get entity pk))))})
         (dissoc pk))))
 
 (defmethod extract-one :default [model-name entity]
@@ -198,10 +198,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information
 ;;; about the serialized entity. The value is always a map like:
-;;; `{:type "ModelName" :id "entity ID or identity hash string" :label "Human-readable name"}`
-;;; `:type` and `:id` are required; `:label` is optional.
+;;; `{:model "ModelName" :id "entity ID or identity hash string" :label "Human-readable name"}`
+;;; `:model` and `:id` are required; `:label` is optional.
 ;;;
-;;; Many of the multimethods are keyed on the `:type` field.
+;;; Many of the multimethods are keyed on the `:model` field.
 
 (defmulti load-prescan-all
   "Returns a reducible stream of `[entity_id identity-hash primary-key]` triples for the entire table.
@@ -235,9 +235,9 @@
      key]))
 
 (defn- ingested-model
-  "The dispatch function for several of the load multimethods: dispatching on the type of the incoming entity."
+  "The dispatch function for several of the load multimethods: dispatching on the model of the incoming entity."
   [ingested]
-  (-> ingested :serdes/meta :type))
+  (-> ingested :serdes/meta :model))
 
 (defmulti serdes-dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
