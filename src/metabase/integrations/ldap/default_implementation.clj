@@ -124,8 +124,8 @@
                    (let [old-first-name (:first_name user)
                          old-last-name  (:last_name user)
                          user-changes   (merge
-                                          (when (and first-name (not= first-name old-first-name)) {:first_name first-name})
-                                          (when (and last-name (not= last-name old-last-name)) {:last_name last-name}))]
+                                          (when (not= first-name old-first-name) {:first_name first-name})
+                                          (when (not= last-name old-last-name) {:last_name last-name}))]
                      (if (seq user-changes)
                        (do
                          (db/update! User (:id user) user-changes)

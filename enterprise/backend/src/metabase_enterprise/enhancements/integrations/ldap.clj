@@ -45,9 +45,9 @@
                   user-changes (merge
                                 (when-not (= syncable-attributes (:login_attributes user))
                                           {:login_attributes syncable-attributes})
-                                (when (and first-name (not= first-name old-first-name))
+                                (when (not= first-name old-first-name)
                                           {:first_name first-name})
-                                (when (and last-name (not= last-name old-last-name))
+                                (when (not= last-name old-last-name)
                                           {:last_name last-name}))]
               (if (seq user-changes)
                 (do
