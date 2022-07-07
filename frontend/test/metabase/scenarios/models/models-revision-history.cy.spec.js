@@ -86,10 +86,7 @@ describe("scenarios > models > revision history", () => {
 
     filter();
     cy.findByLabelText("Count").click();
-    cy.findByText("Equal to").click();
-    selectFromDropdown("Greater than");
-    cy.findByPlaceholderText("Enter a number").type("2000");
-    cy.button("Add filter").click();
+    cy.findByPlaceholderText("min").type("2000");
     cy.button("Apply").click();
 
     assertQuestionIsBasedOnModel({
