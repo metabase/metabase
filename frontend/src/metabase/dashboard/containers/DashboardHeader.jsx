@@ -367,7 +367,7 @@ class DashboardHeader extends Component {
       );
     }
 
-    return [buttons];
+    return buttons;
   }
 
   render() {
