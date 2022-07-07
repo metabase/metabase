@@ -30,7 +30,7 @@ export const BulkFilterItem = ({
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterItemProps): JSX.Element => {
-  const fieldPicker = useMemo(
+  const fieldPickerType = useMemo(
     () => getFieldPickerType(dimension.field()),
     [dimension],
   );
@@ -53,7 +53,7 @@ export const BulkFilterItem = ({
     }
   }, [filter, onRemoveFilter]);
 
-  switch (fieldPicker) {
+  switch (fieldPickerType) {
     case "boolean":
       return (
         <BooleanPickerCheckbox
