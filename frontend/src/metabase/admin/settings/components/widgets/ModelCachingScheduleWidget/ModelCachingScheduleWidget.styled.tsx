@@ -19,16 +19,16 @@ export const WidgetsRow = styled.div`
 export const WidgetContainer = styled.div`
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  height: 75.5px;
+  min-height: 75.5px;
 `;
 
 export const StyledSettingSelect = styled(SettingSelect)`
   width: 125px;
   min-height: 45.5px; // should match SettingInput height
+  margin-top: 12px;
 `;
 
-const commonLabelStyle = css`
+export const commonLabelStyle = css`
   display: block;
   color: ${color("text-medium")};
 `;
@@ -42,22 +42,7 @@ export const SelectLabel = styled.span`
   margin-top: 4px;
 `;
 
-export const CustomScheduleLabel = styled.span`
-  ${commonLabelStyle}
-  color: ${color("text-medium")};
-  font-size: 0.875rem;
-  font-weight: 400;
-  line-height: 1.5rem;
-
-  margin-bottom: 6px;
-`;
-
-export const ErrorMessage = styled.span`
-  color: ${color("error")};
-  margin-top: 4px;
-`;
-
-export const CronExpressionExplanation = styled.span`
+export const Description = styled.span`
   margin-top: 1.5rem;
   color: ${color("text-medium")};
 `;

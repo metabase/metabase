@@ -1,40 +1,16 @@
 import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-
-import {
-  explainCronExpression as _explainCronExpression,
-  validateCronExpression,
-} from "metabase/lib/cron";
-
-import SettingInput from "../SettingInput";
+import CronExpressionInput from "./CronExpressionInput";
+import CustomScheduleExplainer from "./CustomScheduleExplainer";
 import {
   Root,
   WidgetsRow,
   WidgetContainer,
   StyledSettingSelect,
   SelectLabel,
-  CustomScheduleLabel,
-  ErrorMessage,
-  CronExpressionExplanation,
 } from "./ModelCachingScheduleWidget.styled";
-
-const CRON_SYNTAX_DOC_URL =
-  "https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html";
-
-function CustomScheduleInputHint() {
-  const cronSyntaxDocsLink = (
-    <ExternalLink
-      key="doc"
-      href={CRON_SYNTAX_DOC_URL}
-    >{t`cron syntax`}</ExternalLink>
-  );
-  return (
-    <CustomScheduleLabel>{jt`Enter ${cronSyntaxDocsLink} here`}</CustomScheduleLabel>
-  );
-}
 
 const propTypes = {
   setting: PropTypes.object.isRequired,
@@ -48,25 +24,10 @@ function isCustomSchedule(setting) {
   return !defaultSchedules.includes(value);
 }
 
-function lowerCaseFirstLetter(str) {
-  return str.charAt(0).toLowerCase() + str.slice(1);
-}
-
-function explainCronExpression(expression) {
-  return lowerCaseFirstLetter(_explainCronExpression(expression));
-}
-
-function formatCronExpression(expression) {
-  const parts = expression.split(" ");
+function formatCronExpression(cronExpression) {
+  const parts = cronExpression.split(" ");
   const partsWithoutYear = parts.slice(0, -1);
   return partsWithoutYear.join(" ");
-}
-
-function validateExpressionHasNoYearComponent(expression) {
-  const parts = expression.split(" ");
-  if (parts.length === 7) {
-    return t`Year property is not configurable`;
-  }
 }
 
 const PersistedModelRefreshIntervalWidget = ({
@@ -80,9 +41,8 @@ const PersistedModelRefreshIntervalWidget = ({
     // So we need to cut it visually to avoid confusion
     isCustom ? formatCronExpression(setting.value) : "",
   );
-  const [error, setError] = useState(null);
 
-  const handleChange = useCallback(
+  const handleScheduleChange = useCallback(
     nextValue => {
       if (nextValue === "custom") {
         setCustom(true);
@@ -90,26 +50,6 @@ const PersistedModelRefreshIntervalWidget = ({
         setCustom(false);
         setCustomCronSchedule("");
         onChange(nextValue);
-      }
-    },
-    [onChange],
-  );
-
-  const handleCustomInputBlur = useCallback(
-    cronExpression => {
-      setCustomCronSchedule(cronExpression);
-      let error = validateCronExpression(cronExpression);
-      if (!error) {
-        error = validateExpressionHasNoYearComponent(cronExpression);
-      }
-      if (error) {
-        setError(error);
-      } else {
-        setError(null);
-
-        // We don't allow to specify the "year" component, but it's present in the value
-        // and we need to append it before sending a new value to the backend
-        onChange(`${cronExpression} *`);
       }
     },
     [onChange],
@@ -128,32 +68,23 @@ const PersistedModelRefreshIntervalWidget = ({
               defaultValue: setting.default,
             }}
             disabled={disabled}
-            onChange={handleChange}
+            onChange={handleScheduleChange}
           />
         </WidgetContainer>
         {isCustom && (
           <WidgetContainer>
-            <CustomScheduleInputHint />
-            <SettingInput
+            <CronExpressionInput
+              value={customCronSchedule}
+              placeholder="For example 5   0   *   Aug   *"
               disabled={disabled}
-              errorMessage={error}
-              setting={{
-                value: customCronSchedule,
-                placeholder: "For example 5   0   *   Aug   *",
-              }}
-              onChange={handleCustomInputBlur}
-              fireOnChange={false}
+              onChange={setCustomCronSchedule}
+              onBlurChange={onChange}
             />
-            {error && <ErrorMessage>{error}</ErrorMessage>}
           </WidgetContainer>
         )}
       </WidgetsRow>
-      {isCustom && customCronSchedule && !error && (
-        <CronExpressionExplanation>
-          {t`We will refresh your models ${explainCronExpression(
-            customCronSchedule,
-          )}`}
-        </CronExpressionExplanation>
+      {isCustom && customCronSchedule && (
+        <CustomScheduleExplainer cronExpression={customCronSchedule} />
       )}
     </Root>
   );
