@@ -38,7 +38,11 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ _] true)
+(defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ _]
+  (let [json-setting (get-in database [:details :json-unfolding])
+        ;; If not set at all, default to true, actually
+        setting-nil? (nil? json-setting)]
+    (or json-setting setting-nil?)))
 
 (defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
 
@@ -110,6 +114,7 @@
     default-ssl-cert-details
     driver.common/ssh-tunnel-preferences
     driver.common/advanced-options-start
+    driver.common/json-unfolding
     (assoc driver.common/additional-options
            :placeholder  "tinyInt1isBit=false")
     driver.common/default-advanced-options]
