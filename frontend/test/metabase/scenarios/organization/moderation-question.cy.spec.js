@@ -132,15 +132,6 @@ describeEE("scenarios > saved question moderation", () => {
 
       cy.findByText("Orders, Count").icon("verified");
     });
-
-    it("should be able to see the question verification in the question's timeline", () => {
-      visitQuestion(2);
-
-      questionInfoButton().click();
-      cy.findByText("History");
-
-      cy.findAllByText("Bobby Tables verified this").should("be.visible");
-    });
   });
 });
 
