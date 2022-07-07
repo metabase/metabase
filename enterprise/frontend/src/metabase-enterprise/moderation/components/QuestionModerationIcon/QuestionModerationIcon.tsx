@@ -1,6 +1,6 @@
 import React from "react";
 import Question from "metabase-lib/lib/Question";
-import { getLatestModerationReview } from "metabase-enterprise/moderation/service";
+import { getLatestModerationReview } from "../../service";
 import ModerationReviewIcon from "../../containers/ModerationReviewIcon";
 
 export interface QuestionModerationIconProps {
