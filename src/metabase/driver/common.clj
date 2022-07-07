@@ -170,10 +170,12 @@
 (def json-unfolding
   "Map representing the `json-unfolding` option in a DB connection form"
   {:name         "json-unfolding"
-   :display-name (trs "Unfold JSON Columns")
+   :display-name (deferred-tru "Unfold JSON Columns")
    :type         :boolean
    :visible-if   {"advanced-options" true}
-   :description  (trs "We unfold JSON columns into component fields. This is on by default but you can turn it off if performance is slow.")
+   :description  (deferred-tru
+                   (str "We unfold JSON columns into component fields."
+                        "This is on by default but you can turn it off if performance is slow."))
    :default      true})
 
 (def refingerprint
