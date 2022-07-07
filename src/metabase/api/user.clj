@@ -279,12 +279,18 @@
     (not ldap_auth))))
 
 (defn- valid-name-update?
-  "This predicate tests whether or not the user is allowed to update the first/last name associated with this account."
-  [{:keys [google_auth ldap_auth sso_source]}]
-  (and
-   (not sso_source)
-   (not google_auth)
-   (not ldap_auth)))
+  "This predicate tests whether or not the user is allowed to update the first/last name associated with this account.
+  If the user is an SSO user, no name edits are allowed, but we accept if the new names are equal to the existing names."
+  [{:keys [google_auth ldap_auth sso_source first_name last_name]} new-first-name new-last-name]
+  (or
+   ;; allow the update if the names are the same as existing names, since nothing changes
+   (and
+    (or (nil? new-first-name) (= first_name new-first-name))
+    (or (nil? new-last-name) (= last_name new-last-name)))
+   (and
+    (not sso_source)
+    (not google_auth)
+    (not ldap_auth))))
 
 (api/defendpoint PUT "/:id"
   "Update an existing, active `User`.
@@ -312,7 +318,8 @@
     ;; SSO users (JWT, SAML, LDAP, Google) can't change their first/last names
     (when (or (contains? body :first_name)
               (contains? body :last_name))
-      (api/check-403 (valid-name-update? user-before-update)))
+      (api/checkp (valid-name-update? user-before-update first_name last_name)
+        "name" (tru "Editing names is not allowed for SSO users.")))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
     (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
                 "email" (tru "Email address already associated to another user."))

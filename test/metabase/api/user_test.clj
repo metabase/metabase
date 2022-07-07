@@ -642,12 +642,35 @@
                    (change-user-via-api! {:first_name "Blue"
                                           :last_name  nil})))))))))
 
+(deftest update-sso-user-test
+  (testing "PUT /api/user/:id"
+    (testing "Test that we do not update a user's first and last names if they are an SSO user."
+      (mt/with-temp User [{user-id :id} {:first_name   "SSO"
+                                         :last_name    "User"
+                                         :email        "sso-user@metabase.com"
+                                         :sso_source   "jwt"
+                                         :is_superuser true}]
+        (letfn [(change-user-via-api! [m]
+                  (-> (mt/user-http-request :crowberto :put 400 (str "user/" user-id) m)))]
+          (testing "`:first_name` changes are rejected"
+            (is (= {:errors {:name "Editing names is not allowed for SSO users."}}
+                   (change-user-via-api! {:first_name "NOT-SSO"}))))
+          (testing "`:last_name` changes are rejected"
+            (is (= {:errors {:name "Editing names is not allowed for SSO users."}}
+                   (change-user-via-api! {:last_name "USER"}))))
+          (testing "New names that are the same as existing names succeed because there is no change."
+            (is (= {:first_name "SSO"
+                    :last_name  "User"}
+                   (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:first_name "SSO"
+                                                                                        :last_name  "User"})
+                       (select-keys [:first_name :last_name]))))))))))
+
 (deftest update-email-check-if-already-used-test
   (testing "PUT /api/user/:id"
     (testing "test that updating a user's email to an existing inactive user's email fails"
       (let [trashbird (mt/fetch-user :trashbird)
             rasta     (mt/fetch-user :rasta)]
-        (is (= {:errors {:email "Email address already associated to another user."}}
+        (is (= {:errors {:first_name "ASDF"}}
                (mt/user-http-request :crowberto :put 400 (str "user/" (u/the-id rasta))
                                      (select-keys trashbird [:email]))))))))
 
