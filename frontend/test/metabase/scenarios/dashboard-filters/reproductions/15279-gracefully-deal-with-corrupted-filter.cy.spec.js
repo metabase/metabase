@@ -96,6 +96,6 @@ describe("issue 15279", () => {
 
     // The corrupted filter is now present in the UI, but it doesn't work (as expected)
     // People can now easily remove it
-    cy.findByPlaceholderText("Enter a value...");
+    cy.findByText("Select…");
   });
 });
