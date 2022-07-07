@@ -3,12 +3,9 @@ import { t } from "ttag";
 
 import { BookmarksType, Collection, User } from "metabase-types/api";
 
-import Link from "metabase/core/components/Link";
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-
-import ProfileLink from "metabase/nav/components/ProfileLink";
 
 import {
   getCollectionIcon,
@@ -27,7 +24,6 @@ import {
   CollectionsMoreIcon,
   CollectionMenuList,
   HomePageLink,
-  ProfileLinkContainer,
   SidebarContentRoot,
   SidebarHeading,
   SidebarSection,
@@ -40,6 +36,7 @@ interface CollectionTreeItem extends Collection {
 }
 
 type Props = {
+  isAdmin: boolean;
   isOpen: boolean;
   currentUser: User;
   bookmarks: BookmarksType;
@@ -65,7 +62,7 @@ const ARCHIVE_URL = "/archive";
 const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
 function MainNavbarView({
-  isOpen,
+  isAdmin,
   currentUser,
   bookmarks,
   collections,
@@ -75,7 +72,6 @@ function MainNavbarView({
   reorderBookmarks,
   handleCreateNewCollection,
   handleCloseNavbar,
-  handleLogout,
 }: Props) {
   const isNonEntityLinkSelected = selectedItem.type === "non-entity";
   const isCollectionSelected =
@@ -147,7 +143,7 @@ function MainNavbarView({
               >
                 {t`Browse data`}
               </BrowseLink>
-              {!hasOwnDatabase && (
+              {!hasOwnDatabase && isAdmin && (
                 <AddYourOwnDataLink
                   icon="add"
                   url={ADD_YOUR_OWN_DATA_URL}
@@ -165,15 +161,6 @@ function MainNavbarView({
           )}
         </ul>
       </div>
-      {!IFRAMED && (
-        <ProfileLinkContainer isOpen={isOpen}>
-          <ProfileLink
-            user={currentUser}
-            handleCloseNavbar={onItemSelect}
-            handleLogout={handleLogout}
-          />
-        </ProfileLinkContainer>
-      )}
     </SidebarContentRoot>
   );
 }

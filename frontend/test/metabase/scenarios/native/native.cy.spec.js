@@ -6,12 +6,15 @@ import {
   visitQuestionAdhoc,
   summarize,
   sidebar,
-} from "__support__/e2e/cypress";
+  filter,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
+    cy.intercept("POST", "api/dataset").as("dataset");
+    cy.intercept("POST", "api/card").as("card");
     restore();
     cy.signInAsNormalUser();
   });
@@ -77,6 +80,46 @@ describe("scenarios > question > native", () => {
     cy.contains("18,760");
   });
 
+  it("should handle template tags", () => {
+    openNativeEditor().type("select * from PRODUCTS where RATING > {{Stars}}", {
+      parseSpecialCharSequences: false,
+    });
+    cy.get("input[placeholder*='Stars']").type("3");
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset");
+    cy.contains("Showing 168 rows");
+  });
+
+  it("should modify parameters accordingly when tags are modified", () => {
+    openNativeEditor().type("select * from PRODUCTS where CATEGORY = {{cat}}", {
+      parseSpecialCharSequences: false,
+    });
+    cy.findByTestId("sidebar-right")
+      .findByText("Required?")
+      .parent()
+      .find("input")
+      .click();
+    cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset");
+
+    cy.contains("Save").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Name").type("Products on Category");
+      cy.findByText("Save").click();
+
+      cy.wait("@card").should(xhr => {
+        const requestBody = xhr.request?.body;
+        expect(requestBody?.parameters?.length).to.equal(1);
+        const parameter = requestBody.parameters[0];
+        expect(parameter.default).to.equal("Gizmo");
+      });
+    });
+
+    cy.findByText("Not now").click();
+  });
+
   it("can save a question with no rows", () => {
     openNativeEditor().type("select * from people where false");
     cy.get(".NativeQueryEditor .Icon-play").click();
@@ -118,25 +161,20 @@ describe("scenarios > question > native", () => {
 
     cy.findByText("This has a value");
 
-    FILTERS.forEach(filter => {
+    FILTERS.forEach(operator => {
       cy.log("Apply a filter");
-      cy.findAllByText("Filter")
-        .first()
-        .click();
-      cy.get(".List-item-title")
-        .contains("V")
-        .click();
-      cy.findByText("Is").click();
+      filter();
+      cy.findByText("Contains").click();
       popover().within(() => {
-        cy.findByText(filter).click();
+        cy.findByText(operator).click();
       });
       cy.findByPlaceholderText("Enter some text").type("This has a value");
-      cy.findByText("Add filter").click();
+      cy.findByText("Apply").click();
 
       cy.log(
-        `**Mid-point assertion for "${filter}" filter| FAILING in v0.36.6**`,
+        `**Mid-point assertion for "${operator}" filter| FAILING in v0.36.6**`,
       );
-      cy.findByText(`V ${filter.toLowerCase()} This has a value`);
+      cy.findByText(`V ${operator.toLowerCase()} This has a value`);
       cy.findByText("No results!").should("not.exist");
 
       cy.log(
@@ -172,6 +210,42 @@ describe("scenarios > question > native", () => {
     cy.get("@editor").type("{movetoend}, 3 as added");
     cy.get("@runQuery").click();
     cy.get("@sidebar").contains(/added/i);
+  });
+
+  it("should recognize template tags and save them as parameters", () => {
+    openNativeEditor().type(
+      "select * from PRODUCTS where CATEGORY={{cat}} and RATING >= {{stars}}",
+      {
+        parseSpecialCharSequences: false,
+      },
+    );
+    cy.get("input[placeholder*='Cat']").type("Gizmo");
+    cy.get("input[placeholder*='Stars']").type("3");
+
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset");
+
+    cy.contains("Save").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Name").type("SQL Products");
+      cy.findByText("Save").click();
+
+      // parameters[] should reflect the template tags
+      cy.wait("@card").should(xhr => {
+        const requestBody = xhr.request?.body;
+        expect(requestBody?.parameters?.length).to.equal(2);
+      });
+    });
+    cy.findByText("Not now").click();
+
+    // Now load the question again and parameters[] should still be there
+    cy.intercept("GET", "/api/card/4").as("cardQuestion");
+    cy.visit("/question/4?cat=Gizmo&stars=3");
+    cy.wait("@cardQuestion").should(xhr => {
+      const responseBody = xhr.response?.body;
+      expect(responseBody?.parameters?.length).to.equal(2);
+    });
   });
 
   it("should link correctly from the variables sidebar (metabase#16212)", () => {

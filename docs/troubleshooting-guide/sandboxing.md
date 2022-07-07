@@ -1,3 +1,7 @@
+---
+title: Troubleshooting sandbox access to rows and columns
+---
+
 # Troubleshooting sandbox access to rows and columns
 
 [Sandboxing data][sandboxing-your-data] gives some people access to only a subset of the data. (The term comes from the practice of putting children in a sandbox to play safely.) To implement sandboxing, Metabase runs a query that filters rows and/or selects a subset of columns from a table based on [the person's permissions][permissions]; the person's query then runs on the initial query's result (i.e., it runs on the sandboxed data).
@@ -36,7 +40,7 @@ For the person in question, check to see which groups they belong to. Do any of 
 
 ### Is the question available via Signed Embedding or Public Sharing?
 
-**Root cause**: The question is public. [Public questions][public-sharing], even those that use [Signed Embedding][signed-embedding], can't be sandboxed. If someone doesn't have to log into Metabase to view the question, Metabase doesn't have user attributes or group information available for filtering the data, so all results will be shown.
+**Root cause**: The question is public. [Public questions][public-sharing], even those that use [Signed Embedding][signed-embedding], can't be sandboxed. If someone views the question without logging into Metabase, Metabase lacks user attributes or group information for filtering the data, so it will show all results.
 
 **Steps to take**:
 
@@ -120,7 +124,7 @@ Go to **Admin** > **Data model** and find the table. Check to make sure that the
 
 ### Is a field remapped to display info from a restricted table?
 
-**Root cause:** If a table which the person _does_ have sandboxed access has a field that uses remapping to display information from another table which the person does _not_ have sandboxed access to, they won't be able to see the table. For example, if you have remapped an ID field to display a product's name instead, but the person does not have access to the product table, they won't be able to see the column.
+**Root cause:** If a table which the person _does_ have sandboxed access has a field that uses remapping to display information from another table which the person lacks sandboxed access to, they won't be able to see the table. For example, if you have remapped an ID field to display a product's name instead, but the person lacks access to the product table, they won't be able to see the column.
 
 **Steps to take:**
 
@@ -159,7 +163,7 @@ The administrator can [create a new group][groups] to capture precisely who's al
 [column-permissions]: /learn/permissions/data-sandboxing-column-permissions.html
 [data-model]: ../administration-guide/03-metadata-editing.html
 [data-permissions]: /learn/permissions/data-permissions.html
-[groups]: ../administration-guide/05-setting-permissions.html#groups
+[groups]: ../administration-guide/04-managing-users.html#groups
 [jwt-auth]: ../enterprise-guide/authenticating-with-jwt.html
 [permissions]: /learn/permissions/data-permissions.html
 [public-sharing]: ../administration-guide/12-public-links.html

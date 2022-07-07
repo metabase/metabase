@@ -9,10 +9,10 @@ import { IconProps } from "metabase/components/Icon";
 import Modal from "metabase/components/Modal";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { BookmarksType, Collection, User } from "metabase-types/api";
+import { Bookmark, BookmarksType, Collection, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
-import Bookmarks from "metabase/entities/bookmarks";
+import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import Collections, {
   ROOT_COLLECTION,
   getCollectionIcon,
@@ -20,11 +20,12 @@ import Collections, {
 } from "metabase/entities/collections";
 import { openNavbar, closeNavbar } from "metabase/redux/app";
 import { logout } from "metabase/auth/actions";
+import { getUserIsAdmin, getUser } from "metabase/selectors/user";
 import {
   getHasOwnDatabase,
   getHasDataAccess,
 } from "metabase/new_query/selectors";
-import { getUser } from "metabase/selectors/user";
+
 import {
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
@@ -47,8 +48,10 @@ type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 function mapStateToProps(state: State) {
   return {
     currentUser: getUser(state),
+    isAdmin: getUserIsAdmin(state),
     hasDataAccess: getHasDataAccess(state),
     hasOwnDatabase: getHasOwnDatabase(state),
+    bookmarks: getOrderedBookmarks(state),
   };
 }
 
@@ -57,6 +60,7 @@ const mapDispatchToProps = {
   closeNavbar,
   logout,
   onChangeLocation: push,
+  onReorderBookmarks: Bookmarks.actions.reorder,
 };
 
 interface CollectionTreeItem extends Collection {
@@ -66,6 +70,7 @@ interface CollectionTreeItem extends Collection {
 
 type Props = {
   isOpen: boolean;
+  isAdmin: boolean;
   currentUser: User;
   bookmarks: BookmarksType;
   collections: Collection[];
@@ -83,10 +88,12 @@ type Props = {
   closeNavbar: () => void;
   logout: () => void;
   onChangeLocation: (location: LocationDescriptor) => void;
+  onReorderBookmarks: (bookmarks: Bookmark[]) => void;
 };
 
 function MainNavbarContainer({
   bookmarks,
+  isAdmin,
   isOpen,
   currentUser,
   hasOwnDatabase,
@@ -100,16 +107,10 @@ function MainNavbarContainer({
   closeNavbar,
   logout,
   onChangeLocation,
+  onReorderBookmarks,
   ...props
 }: Props) {
-  const [orderedBookmarks, setOrderedBookmarks] = useState([]);
   const [modal, setModal] = useState<NavbarModal>(null);
-
-  useEffect(() => {
-    if (bookmarks?.length !== orderedBookmarks?.length) {
-      setOrderedBookmarks(bookmarks as any);
-    }
-  }, [orderedBookmarks, bookmarks]);
 
   useEffect(() => {
     function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
@@ -174,17 +175,15 @@ function MainNavbarContainer({
 
   const reorderBookmarks = useCallback(
     ({ newIndex, oldIndex }) => {
-      const bookmarksToBeReordered =
-        orderedBookmarks.length > 0 ? [...orderedBookmarks] : [...bookmarks];
-      const element = bookmarksToBeReordered[oldIndex];
+      const newBookmarks = [...bookmarks];
+      const movedBookmark = newBookmarks[oldIndex];
 
-      bookmarksToBeReordered.splice(oldIndex, 1);
-      bookmarksToBeReordered.splice(newIndex, 0, element);
+      newBookmarks.splice(oldIndex, 1);
+      newBookmarks.splice(newIndex, 0, movedBookmark);
 
-      setOrderedBookmarks(bookmarksToBeReordered as any);
-      Bookmarks.actions.reorder(bookmarksToBeReordered);
+      onReorderBookmarks(newBookmarks);
     },
-    [bookmarks, orderedBookmarks],
+    [bookmarks, onReorderBookmarks],
   );
 
   const onCreateNewCollection = useCallback(() => {
@@ -215,9 +214,8 @@ function MainNavbarContainer({
           {allFetched && rootCollection ? (
             <MainNavbarView
               {...props}
-              bookmarks={
-                orderedBookmarks.length > 0 ? orderedBookmarks : bookmarks
-              }
+              bookmarks={bookmarks}
+              isAdmin={isAdmin}
               isOpen={isOpen}
               currentUser={currentUser}
               collections={collectionTree}

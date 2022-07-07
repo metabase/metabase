@@ -70,7 +70,7 @@
 
 ;;; --------------------------------------------------- RENDERING ----------------------------------------------------
 
-(defn- ^BufferedImage create-tile [zoom points]
+(defn- create-tile ^BufferedImage [zoom points]
   (let [num-tiles (bit-shift-left 1 zoom)
         tile      (BufferedImage. tile-size tile-size (BufferedImage/TYPE_INT_ARGB))
         graphics  (.getGraphics tile)

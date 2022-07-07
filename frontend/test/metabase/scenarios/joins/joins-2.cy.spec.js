@@ -9,7 +9,7 @@ import {
   summarize,
   filter,
   visitQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -98,8 +98,8 @@ describe("scenarios > question > joined questions", () => {
 
       cy.log("Attempt to filter on the joined table");
       filter();
-      cy.contains("Email").click();
-      cy.contains("People – Email");
+
+      cy.findByText("People - User").click();
       cy.findByPlaceholderText("Search by Email")
         .type("wo")
         .then($el => {
@@ -112,13 +112,11 @@ describe("scenarios > question > joined questions", () => {
           }
         });
       cy.findByText("wolf.dina@yahoo.com").click();
-      cy.button("Add filter").click();
+      cy.button("Apply").click();
       cy.contains("Showing 1 row");
     });
 
     it("should join on field literals", () => {
-      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
-
       // create two native questions
       cy.createNativeQuestion({
         name: "question a",
@@ -137,10 +135,9 @@ describe("scenarios > question > joined questions", () => {
 
       // join to question b
       cy.icon("join_left_outer").click();
-      cy.wait("@schema");
 
       popover().within(() => {
-        cy.findByTextEnsureVisible("Sample Database").click();
+        cy.findByTextEnsureVisible("Sample Database").click({ force: true });
         cy.findByTextEnsureVisible("Saved Questions").click();
         cy.findByText("question b").click();
       });

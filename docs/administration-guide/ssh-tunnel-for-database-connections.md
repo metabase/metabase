@@ -1,6 +1,10 @@
+---
+title: SSH tunneling in Metabase
+---
+
 ## SSH tunneling in Metabase
 
-Metabase has the ability to connect to some databases by first establishing a connection to a server in between Metabase and a data warehouse, then connecting to the data warehouse using that connection as a bridge. This makes connecting to some data warehouses possible in situations that would otherwise prevent the use of Metabase.
+Metabase can connect to some databases by first establishing a connection to a server in between Metabase and a data warehouse, then connecting to the data warehouse using that connection as a bridge. This makes connecting to some data warehouses possible in situations that would otherwise prevent the use of Metabase.
 
 - [When to use SSH tunneling](#when-to-use-ssh-tunneling)
 - [How to use SSH tunneling](#how-to-use-ssh-tunneling)
@@ -33,7 +37,7 @@ If you're unable to connect test your SSH credentials by connecting to the SSH s
 ssh <SSH tunnel username>@<SSH tunnel host> -p <SSH tunnel port>
 ```
 
-Another common case where direct connections are not possible is when connecting to a data warehouse that is only accessible locally and does not allow remote connections. In this case you will be opening an SSH connection to the data warehouse, then from there connecting back to the same computer.
+Another common case where direct connections are impossible is when connecting to a data warehouse that is only accessible locally and does not allow remote connections. In this case you will be opening an SSH connection to the data warehouse, then from there connecting back to the same computer.
 
 - Answer yes to the "Use an SSH-tunnel for database connections" parameter.
 - Enter `localhost` in the `Host` parameter. This is the name the server.

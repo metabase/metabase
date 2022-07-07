@@ -5,7 +5,7 @@ import {
   filterWidget,
   showDashboardCardActions,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -242,6 +242,37 @@ describe("scenarios > dashboard > dashboard drill", () => {
       });
   });
 
+  it("should open the same dashboard when a custom URL click behavior points to the same dashboard (metabase#22702)", () => {
+    createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
+    cy.icon("pencil").click();
+    showDashboardCardActions();
+    cy.icon("click").click();
+
+    cy.findByText("On-click behavior for each column")
+      .parent()
+      .parent()
+      .within(() => cy.findByText("MY_NUMBER").click());
+    cy.findByText("Go to a custom destination").click();
+    cy.findByText("URL").click();
+
+    modal().within(() => {
+      cy.get("input")
+        .first()
+        .type("/dashboard/2?my_param=Aaron Hand");
+      cy.get("input")
+        .last()
+        .type("Click behavior");
+      cy.findByText("Done").click();
+    });
+
+    cy.findByText("Save").click();
+
+    cy.findByText("Click behavior").click();
+
+    cy.location("pathname").should("eq", "/dashboard/2");
+    cy.location("search").should("eq", "?my_param=Aaron%20Hand");
+  });
+
   // This was flaking. Example: https://dashboard.cypress.io/projects/a394u1/runs/2109/test-results/91a15b66-4b80-40bf-b569-de28abe21f42
   it.skip("should handle cross-filter on a table", () => {
     createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
@@ -332,15 +363,82 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.findByText("=").click();
 
       cy.findByText("Reviewer is xavier");
-      cy.findByText("Rating is equal to 2 selections");
+      cy.findByText("Rating is 2 selections");
       cy.contains("Reprehenderit non error"); // xavier's review
     });
 
     it("when clicking on the card title (metabase#13062-2)", () => {
       cy.findByText(questionDetails.name).click();
-      cy.findByText("Rating is equal to 2 selections");
+      cy.findByText("Rating is 2 selections");
       cy.contains("Ad perspiciatis quis et consectetur."); // 5 star review
     });
+  });
+
+  it("should drill-through on a primary key out of 2000 rows", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    // In this test we're using already present dashboard ("Orders in a dashboard")
+    const FILTER_ID = "7c9ege62";
+    const PK_VALUE = "7602";
+
+    cy.request("PUT", "/api/dashboard/1", {
+      parameters: [
+        {
+          id: FILTER_ID,
+          name: "Category",
+          slug: "category",
+          type: "category",
+          default: ["Gadget"],
+        },
+      ],
+    });
+    cy.request("PUT", "/api/dashboard/1/cards", {
+      cards: [
+        {
+          id: 1,
+          card_id: 1,
+          row: 0,
+          col: 0,
+          sizeX: 12,
+          sizeY: 8,
+          parameter_mappings: [
+            {
+              parameter_id: FILTER_ID,
+              card_id: 1,
+              target: [
+                "dimension",
+                [
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  { "source-field": ORDERS.PRODUCT_ID },
+                ],
+              ],
+            },
+          ],
+          visualization_settings: {},
+        },
+      ],
+    });
+
+    visitDashboard(1);
+    cy.findAllByTestId("column-header")
+      .contains("ID")
+      .click()
+      .click();
+
+    cy.get(".Table-ID")
+      .contains(PK_VALUE)
+      .first()
+      .click();
+
+    cy.wait("@dataset");
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findAllByText(PK_VALUE);
+    });
+
+    const pattern = new RegExp(`/question\\?objectId=${PK_VALUE}#*`);
+    cy.url().should("match", pattern);
   });
 
   it("should drill-through on a foreign key (metabase#8055)", () => {
@@ -400,7 +498,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).not.to.exist;
     });
-    cy.findByText("Fantastic Wool Shirt");
+    cy.findByTestId("object-detail").findByText("Fantastic Wool Shirt");
   });
 
   it("should apply correct date range on a graph drill-through (metabase#13785)", () => {
@@ -594,8 +692,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it('should drill-through on PK/FK to the "object detail" when filtered by explicit joined column (metabase#15331)', () => {
-    cy.server();
-    cy.route("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     cy.createQuestion({
       name: "15331",
@@ -672,7 +769,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .contains("1")
       .click();
 
-    cy.wait("@cardQuery").then(xhr => {
+    cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).to.not.exist;
     });
     cy.findByTestId("object-detail");

@@ -247,7 +247,8 @@
   "Check whether we can connect to a `Database` with `details-map` and perform a simple query. For example, a SQL
   database might try running a query like `SELECT 1;`. This function should return truthy if a connection to the DB
   can be made successfully, otherwise it should return falsey or throw an appropriate Exception. Exceptions if a
-  connection cannot be made."
+  connection cannot be made. Throw an `ex-info` containing a truthy `::can-connect-message?` in `ex-data`
+  in order to suppress logging expected driver validation messages during setup."
   {:arglists '([driver details])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -405,6 +406,11 @@
     ;; subselects in SQL queries.
     :nested-queries
 
+    ;; Does the driver support persisting models
+    :persist-models
+    ;; Is persisting enabled?
+    :persist-models-enabled
+
     ;; Does the driver support binning as specified by the `binning-strategy` clause?
     :binning
 
@@ -505,9 +511,10 @@
 
 (defmulti humanize-connection-error-message
   "Return a humanized (user-facing) version of an connection error message.
-  Generic error messages are provided in [[metabase.driver.common/connection-error-messages]]; return one of these
-  whenever possible.
-  Error messages can be strings, or localized strings, as returned by [[metabase.util.i18n/trs]] and
+  Generic error messages provided in [[metabase.driver.util/connection-error-messages]]; should be returned
+  as keywords whenever possible. This provides for both unified error messages and categories which let us point
+  users to the erroneous input fields.
+  Error messages can also be strings, or localized strings, as returned by [[metabase.util.i18n/trs]] and
   `metabase.util.i18n/tru`."
   {:arglists '([this message])}
   dispatch-on-initialized-driver
@@ -653,8 +660,9 @@
 
 (defmethod default-field-order ::driver [_] :database)
 
+;; TODO -- this can vary based on session variables or connection options
 (defmulti db-start-of-week
-  "Return start of week for given database"
+  "Return the day that is considered to be the start of week by `driver`. Should return a keyword such as `:sunday`."
   {:added "0.37.0" :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

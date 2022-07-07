@@ -2,9 +2,12 @@ export type CollectionId = number | "root";
 
 export type CollectionContentModel = "card" | "dataset";
 
+export type CollectionAuthorityLevel = "official" | null;
+
 export interface Collection {
   id: CollectionId;
   name: string;
+  description: string | null;
   can_write: boolean;
   archived: boolean;
   children?: Collection[];
@@ -19,4 +22,5 @@ export interface Collection {
 
   // Assigned on FE
   originalName?: string;
+  path?: CollectionId[];
 }

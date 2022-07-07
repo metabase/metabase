@@ -12,6 +12,7 @@ import Visualization, {
   ERROR_MESSAGE_PERMISSION,
 } from "metabase/visualizations/components/Visualization";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
@@ -133,7 +134,10 @@ export default class DashCard extends Component {
         card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD,
     }));
 
-    const loading = !(series.length > 0 && _.every(series, s => s.data));
+    const loading =
+      !(series.length > 0 && _.every(series, s => s.data)) &&
+      !isVirtualDashCard(dashcard);
+
     const expectedDuration = Math.max(
       ...series.map(s => s.card.query_average_duration || 0),
     );
@@ -142,10 +146,17 @@ export default class DashCard extends Component {
       loading &&
       _.some(series, s => s.isSlow) &&
       (usuallyFast ? "usually-fast" : "usually-slow");
+
+    const isAccessRestricted = series.some(
+      s =>
+        s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
+        s.error?.status === 403,
+    );
+
     const errors = series.map(s => s.error).filter(e => e);
 
     let errorMessage, errorIcon;
-    if (_.any(errors, e => e && e.status === 403)) {
+    if (isAccessRestricted) {
       errorMessage = ERROR_MESSAGE_PERMISSION;
       errorIcon = "key";
     } else if (errors.length > 0) {
@@ -267,12 +278,13 @@ export default class DashCard extends Component {
           mode={mode}
           onChangeCardAndRun={
             navigateToNewCardFromDashboard
-              ? ({ nextCard, previousCard }) => {
+              ? ({ nextCard, previousCard, objectId }) => {
                   // navigateToNewCardFromDashboard needs `dashcard` for applying active filters to the query
                   navigateToNewCardFromDashboard({
                     nextCard,
                     previousCard,
                     dashcard,
+                    objectId,
                   });
                 }
               : null
@@ -428,7 +440,7 @@ const RemoveButton = ({ onRemove }) => (
 const AddSeriesButton = ({ series, onAddSeries }) => (
   <a
     data-testid="add-series-button"
-    data-metabase-event={"Dashboard;Edit Series Modal;open"}
+    data-metabase-event="Dashboard;Edit Series Modal;open"
     className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
     onClick={onAddSeries}
     style={HEADER_ACTION_STYLE}
@@ -452,7 +464,7 @@ const AddSeriesButton = ({ series, onAddSeries }) => (
 const ToggleCardPreviewButton = ({ isPreviewing, onPreviewToggle }) => {
   return (
     <a
-      data-metabase-event={"Dashboard;Text;edit"}
+      data-metabase-event="Dashboard;Text;edit"
       className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
       onClick={onPreviewToggle}
       style={HEADER_ACTION_STYLE}

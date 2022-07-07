@@ -60,6 +60,7 @@ describe("Object Detail", () => {
         settings={{
           column: () => null,
         }}
+        hasRelationships={false}
         onVisualizationClick={() => null}
         visualizationIsClickable={() => false}
         tableForeignKeys={[]}
@@ -93,6 +94,7 @@ describe("Object Detail", () => {
         settings={{
           column: () => null,
         }}
+        canZoom={true}
         canZoomPreviousRow={false}
         canZoomNextRow={false}
         followForeignKey={() => null}

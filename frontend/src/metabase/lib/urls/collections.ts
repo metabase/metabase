@@ -1,6 +1,6 @@
 import slugg from "slugg";
 
-import { Collection, CollectionId } from "metabase-types/api";
+import { Collection as BaseCollection, CollectionId } from "metabase-types/api";
 
 import { appendSlug, extractEntityId } from "./utils";
 
@@ -8,6 +8,11 @@ export const newCollection = (collectionId: CollectionId) =>
   `/collection/${collectionId}/new_collection`;
 
 export const otherUsersPersonalCollections = () => "/collection/users";
+
+type Collection = Pick<
+  BaseCollection,
+  "id" | "name" | "originalName" | "personal_owner_id"
+>;
 
 function slugifyPersonalCollection(collection: Collection) {
   // Current user's personal collection name is replaced with "Your personal collection"

@@ -1,3 +1,7 @@
+---
+title: Account settings
+---
+
 # Account settings
 
 You can view your account settings by clicking on the **gears** icon in the upper right of the main navigation bar, then selecting **Account settings**. Here you'll find three tabs:
@@ -23,7 +27,7 @@ If you see any suspicious login attempts, change your password and notify your a
 
 ### A note about new login emails
 
-Whenever you log in from a new device, Metabase will send you an email just to let you know someone (hopefully you) has logged in from an unrecognized device. If you see this email, but don't remember logging in, or don't recognize the device, change your password and let your administrator know. 
+Whenever you log in from a new device, Metabase will send you an email just to let you know someone (presumably you) has logged in from an unrecognized device. If you see this email, but don't remember logging in, or don't recognize the device, change your password and let your administrator know. 
 
 ## Disable animations in Metabase
 

@@ -253,7 +253,6 @@
   {:pre [(or (string? route) (vector? route))]}
   `(def ~(vary-meta fn-name
                     assoc
-
                     :doc          docstr
                     :is-endpoint? true)
      (~(symbol "compojure.core" (name method)) ~route ~args
@@ -324,8 +323,10 @@
   {:style/indent 0}
   [& middleware]
   (let [api-route-fns (namespace->api-route-fns *ns*)
-        routes        `(compojure/routes ~@api-route-fns)]
+        routes        `(compojure/routes ~@api-route-fns)
+        docstring     (str "Routes for " *ns*)]
     `(def ~(vary-meta 'routes assoc :doc (api-routes-docstring *ns* api-route-fns middleware))
+       ~docstring
        ~(if (seq middleware)
           `(-> ~routes ~@middleware)
           routes))))

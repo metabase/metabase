@@ -1,3 +1,7 @@
+---
+title: Thank you
+---
+
 ## Thank you
 
 First off, thanks for your interest in Metabase and for wanting to contribute!
@@ -31,7 +35,7 @@ Once a feature has been defined, typically it will be taken on by a product desi
 
 Once the main UX flows have been dialed in, there will be a hi-fidelity visual design.
 
-Features that are ready for design are are tagged [Design Needed](https://github.com/metabase/metabase/labels/.Design%20Needed). Once a feature has had a reasonably complete visual design it should be tagged [Help Wanted](https://github.com/metabase/metabase/labels/.Help%20Wanted).
+Features that are ready for design are tagged [Design Needed](https://github.com/metabase/metabase/labels/.Design%20Needed). Once a feature has had a reasonably complete visual design it should be tagged [Help Wanted](https://github.com/metabase/metabase/labels/.Help%20Wanted).
 
 ### D) Build the feature
 

@@ -1,3 +1,7 @@
+---
+title: Application permissions
+---
+
 # Application permissions
 
 {% include plans-blockquote.html feature="Application permissions" %}
@@ -23,7 +27,7 @@ Settings access defines which groups can view and edit the settings under the Ad
 - [Public sharing](12-public-links.md)
 - [Embedding in other applications](13-embedding.md)
 - [Caching](14-caching.md)
-- [Whitelabel](15-whitelabeling.md)
+- [White labeling](15-whitelabeling.md)
 
 ## Monitoring access
 

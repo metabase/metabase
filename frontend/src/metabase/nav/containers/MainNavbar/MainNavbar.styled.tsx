@@ -30,7 +30,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   flex-shrink: 0;
   align-items: center;
   padding: 0.5rem 0;
-  background-color: ${color("nav")};
+  background-color: ${color("white")};
 
   overflow: auto;
   overflow-x: hidden;
@@ -131,20 +131,6 @@ export const LoadingTitle = styled.h2`
   color: ${color("text-light")};
   font-weight: 400;
   margin-top: ${space(1)};
-`;
-
-export const ProfileLinkContainer = styled.div<{ isOpen: boolean }>`
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  padding: ${space(0)};
-  width: ${props => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
-  border-top: 1px solid ${color("border")};
-  background-color: ${color("white")};
-  display: flex;
-  align-items: center;
-  margin-right: ${space(2)};
-  color: ${color("text-light")};
 `;
 
 export const HomePageLink = styled(SidebarLink)`

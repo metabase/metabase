@@ -1,7 +1,9 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { push, replace } from "react-router-redux";
+import _ from "underscore";
 
 import { t } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -54,15 +56,7 @@ const mapDispatchToProps = {
     Metrics.actions.setArchived({ id }, true, rest),
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@Databases.load({
-  id: (state, props) => props.databaseId,
-  query: {
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  },
-  loadingAndErrorWrapper: false,
-})
-class MetadataEditor extends Component {
+class MetadataEditorInner extends Component {
   constructor(props, context) {
     super(props, context);
     this.toggleShowSchema = this.toggleShowSchema.bind(this);
@@ -133,6 +127,17 @@ class MetadataEditor extends Component {
     );
   }
 }
+
+const MetadataEditor = _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  Databases.load({
+    id: (state, props) => props.databaseId,
+    query: {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
+    loadingAndErrorWrapper: false,
+  }),
+)(MetadataEditorInner);
 
 MetadataEditor.propTypes = propTypes;
 

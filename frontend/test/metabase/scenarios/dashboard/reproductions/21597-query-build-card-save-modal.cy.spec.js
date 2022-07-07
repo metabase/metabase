@@ -3,7 +3,7 @@ import {
   popover,
   modal,
   openNativeEditor,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const databaseName = "Sample Database";
 const databaseCopyName = `${databaseName} copy`;
@@ -29,7 +29,7 @@ describe("display the relevant error message in save question modal (metabase#21
 
     // Second DB (copy)
     cy.visit("/");
-    cy.get(".Nav .Icon-gear").click();
+    cy.icon("gear").click();
     cy.findByText("Admin settings").click();
     cy.findByText("Databases").click();
     cy.findByText("Add database").click();

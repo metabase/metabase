@@ -9,8 +9,7 @@ import CollectionOptionsButton from "./CollectionOptionsButton";
 
 const ICON_SIZE = 16;
 
-@SnippetCollections.load({ id: (state, props) => props.item.id, wrapped: true })
-export default class CollectionRow extends React.Component {
+class CollectionRow extends React.Component {
   render() {
     const {
       snippetCollection: collection,
@@ -33,3 +32,8 @@ export default class CollectionRow extends React.Component {
     );
   }
 }
+
+export default SnippetCollections.load({
+  id: (state, props) => props.item.id,
+  wrapped: true,
+})(CollectionRow);

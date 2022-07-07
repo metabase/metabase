@@ -8,24 +8,34 @@ import ActionButton from "metabase/components/ActionButton";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Button from "metabase/core/components/Button";
+
+import ModelCachingControl from "./ModelCachingControl";
 import { SidebarRoot } from "./Sidebar.styled";
 
 const propTypes = {
   database: PropTypes.object.isRequired,
   deleteDatabase: PropTypes.func.isRequired,
   syncDatabaseSchema: PropTypes.func.isRequired,
+  dismissSyncSpinner: PropTypes.func.isRequired,
   rescanDatabaseFields: PropTypes.func.isRequired,
   discardSavedFieldValues: PropTypes.func.isRequired,
+  persistDatabase: PropTypes.func.isRequired,
+  unpersistDatabase: PropTypes.func.isRequired,
   isAdmin: PropTypes.bool,
+  isModelPersistenceEnabled: PropTypes.bool,
 };
 
 const DatabaseEditAppSidebar = ({
   database,
   deleteDatabase,
   syncDatabaseSchema,
+  dismissSyncSpinner,
   rescanDatabaseFields,
   discardSavedFieldValues,
+  persistDatabase,
+  unpersistDatabase,
   isAdmin,
+  isModelPersistenceEnabled,
 }) => {
   const discardSavedFieldValuesModal = useRef();
   const deleteDatabaseModal = useRef();
@@ -61,6 +71,33 @@ const DatabaseEditAppSidebar = ({
                 successText={t`Scan triggered!`}
               />
             </li>
+            {database["initial_sync_status"] !== "complete" && (
+              <li className="mt2">
+                <ActionButton
+                  actionFn={() => dismissSyncSpinner(database.id)}
+                  className="Button Button--dismissSyncSpinner"
+                  normalText={t`Dismiss sync spinner manually`}
+                  activeText={t`Dismissing…`}
+                  failedText={t`Failed to dismiss sync spinner`}
+                  successText={t`Sync spinners dismissed!`}
+                />
+              </li>
+            )}
+            {isModelPersistenceEnabled && database.supportsPersistence() && (
+              <li className="mt2">
+                <ModelCachingControl
+                  databaseId={database.id}
+                  isEnabled={database.isPersisted()}
+                  onToggle={isEnabled => {
+                    if (isEnabled) {
+                      return persistDatabase(database.id);
+                    } else {
+                      return unpersistDatabase(database.id);
+                    }
+                  }}
+                />
+              </li>
+            )}
           </ol>
         </div>
 

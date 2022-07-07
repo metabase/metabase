@@ -3,7 +3,7 @@ import {
   filterWidget,
   popover,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -79,7 +79,7 @@ describe("scenarios > dashboard > filters", () => {
   it("should work properly when connected to the explicitly joined field", () => {
     filterWidget().click();
 
-    cy.findByPlaceholderText(/^Search by/).type("Awe");
+    cy.findByPlaceholderText("Search the list").type("Awe");
 
     selectFromDropdown(["Awesome Concrete Shoes", "Awesome Iron Hat"]);
 

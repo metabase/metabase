@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -12,7 +12,7 @@ const questionDetails = {
   },
 };
 
-describe.skip("issue 21135", () => {
+describe("issue 21135", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -32,7 +32,7 @@ describe.skip("issue 21135", () => {
 
     // We should probably use data-testid or some better selector but it is crucial
     // to narrow the results to the preview area to avoid false positive result.
-    cy.get("[class*=PreviewRoot]").within(() => {
+    cy.get("[class*=TableInteractive]").within(() => {
       cy.findByText("Rustic Paper Wallet");
 
       cy.findAllByText("Price").should("have.length", 2);

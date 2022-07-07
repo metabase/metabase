@@ -32,20 +32,19 @@ export const IconWrapper = styled.div<IconWrapperProps>`
   & > .icon.icon-share {
     transform: translateY(-2px);
   }
-  ${hover};
+
+  &:hover {
+    color: ${({ hover }) => hover?.color ?? c("brand")};
+    background-color: ${({ hover }) =>
+      hover?.backgroundColor ?? c("bg-medium")};
+  }
+
   transition: all 300ms ease-in-out;
 
   @media (prefers-reduced-motion) {
     transition: none;
   }
 `;
-
-IconWrapper.defaultProps = {
-  hover: {
-    backgroundColor: c("bg-medium"),
-    color: c("brand"),
-  },
-};
 
 const stringOrNumberPropType = PropTypes.oneOfType([
   PropTypes.number,

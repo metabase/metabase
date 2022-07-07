@@ -5,21 +5,12 @@
 
    Functions for generating URLs not related to Metabase *objects* generally do not belong here, unless they are used in many places in the
    codebase; one-off URL-generation functions should go in the same namespaces or modules where they are used."
-  (:require [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]))
-
-;; we want to load this at the top level so the Setting the namespace defines gets loaded
-(def ^:private site-url*
-  (or (u/ignore-exceptions
-        (classloader/require 'metabase-enterprise.embedding.utils)
-        (resolve 'metabase-enterprise.embedding.utils/notification-link-base-url))
-      (constantly nil)))
+  (:require [metabase.public-settings :as public-settings]))
 
 (defn- site-url
   "Return the Notification Link Base URL if set by enterprise env var, or Site URL."
   []
-  (or (site-url*) (public-settings/site-url)))
+  (or (public-settings/notification-link-base-url) (public-settings/site-url)))
 
 (defn pulse-url
   "Return an appropriate URL for a `Pulse` with ID.
@@ -63,3 +54,15 @@
   "URL for the notification management page in account settings."
   []
   (str (site-url) "/account/notifications"))
+
+(defn collection-url
+  "Return an appropriate URL for a `Collection` with ID or nil for root.
+     (collection-url 10) -> \"http://localhost:3000/question/10\"
+     (collection-url nil) -> \"http://localhost:3000/question/root\""
+  [collection-id-or-nil]
+  (format "%s/collection/%s" (site-url) (or collection-id-or-nil "root")))
+
+(defn tools-caching-details-url
+  "Return an appropriate URL for linking to caching log details."
+  [^Integer persisted-info-id]
+  (format "%s/admin/tools/model-caching/%d" (site-url) persisted-info-id))

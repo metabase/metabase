@@ -3,6 +3,7 @@
   (:require [cemerick.friend.credentials :as creds]
             [clojure.test :as t]
             [medley.core :as m]
+            [metabase.db.connection :as mdb.connection]
             [metabase.http-client :as client]
             [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
@@ -89,7 +90,7 @@
 
     (user->id)        ; -> {:rasta 4, ...}
     (user->id :rasta) ; -> 4"
-  (memoize
+  (mdb.connection/memoize-for-application-db
    (fn
      ([]
       (zipmap usernames (map user->id usernames)))
@@ -240,6 +241,6 @@
   `(do-with-group-for-user ~group :rasta (fn [~group-binding] ~@body)))
 
 (defmacro with-group-for-user
-  "Like `with-group`, but for any test user (by passing in a test username keyword e.g. `:rasta`) or User ID."
+  "Like [[with-group]], but for any test user (by passing in a test username keyword e.g. `:rasta`) or User ID."
   [[group-binding test-user-name-or-user-id group] & body]
   `(do-with-group-for-user ~group ~test-user-name-or-user-id (fn [~group-binding] ~@body)))

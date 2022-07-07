@@ -4,7 +4,7 @@ import {
   describeEE,
   mockSessionProperty,
   isEE,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 function typeField(label, value) {
   cy.findByLabelText(label)
@@ -105,7 +105,8 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.button("Save").click();
     cy.wait("@createDatabase");
-    cy.findByText(/Hmm, we couldn't connect to the database/);
+    cy.findByText(": check your connection string");
+    cy.findByText("Implicitly relative file paths are not allowed.");
   });
 
   it("should show scheduling settings if you enable the toggle", () => {

@@ -1,4 +1,4 @@
-import { restore, setupSMTP, visitQuestion } from "__support__/e2e/cypress";
+import { restore, setupSMTP, visitQuestion } from "__support__/e2e/helpers";
 
 describe("scenarios > alert > alert permissions", () => {
   // Intentional use of before (not beforeEach) hook because the setup is quite long.
@@ -67,7 +67,7 @@ describe("scenarios > alert > alert permissions", () => {
       visitQuestion(2);
       cy.icon("bell").click();
 
-      cy.findByText("You're receiving Bobby's alerts");
+      cy.findByText("You're receiving Bobby Tables's alerts");
       cy.findByText("Set up your own alert");
     });
 

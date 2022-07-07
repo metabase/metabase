@@ -1,3 +1,7 @@
+---
+title: Handling timezones in Metabase
+---
+
 # Handling timezones in Metabase
 
 Metabase does its best to ensure proper and accurate reporting in whatever timezone you desire, but timezones are a complicated beast so it's important to abide by some recommendations listed below to ensure your reports come out as intended.
@@ -18,6 +22,6 @@ To ensure proper reporting it's important that timezones be set consistently in 
 Common Pitfalls:
 
 1. Your database is using date/time columns without any timezone information. Typically when this happens your database will assume all the data is from whatever timezone the database is configured in or possible just default to UTC (check your database vendor to be sure).
-2. Your JVM timezone is not the same as your Metabase `Report Timezone` choice. This is a very common issue and can be corrected by launching java with the `-Duser.timezone=<timezone>` option properly set to match your Metabase report timezone.
+2. Your JVM timezone is different from your Metabase `Report Timezone` choice. This is a very common issue and can be corrected by launching java with the `-Duser.timezone=<timezone>` option properly set to match your Metabase report timezone.
 
 If you are still experiencing timezone problems, then have a look at the [timezone troubleshooting guide](../troubleshooting-guide/timezones.md).

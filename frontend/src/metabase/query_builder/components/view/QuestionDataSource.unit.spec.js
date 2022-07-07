@@ -503,7 +503,10 @@ describe("QuestionDataSource", () => {
     });
   });
 
-  describe("Object Detail", () => {
+  describe.skip("Object Detail", () => {
+    // these tests do not apply to the new modal object detail view
+    // but will be useful when we implement the new version of full page
+    // object detail
     [
       GUI_TEST_CASE.SAVED_OBJECT_DETAIL,
       GUI_TEST_CASE.AD_HOC_OBJECT_DETAIL,

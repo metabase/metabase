@@ -14,6 +14,14 @@ export function sidebar() {
   return cy.get("main aside");
 }
 
+export function appbar() {
+  return cy.findByTestId("app-bar");
+}
+
+export function rightSidebar() {
+  return cy.findAllByTestId("sidebar-right");
+}
+
 export function navigationSidebar() {
   return cy.get("#root aside").first();
 }
@@ -24,13 +32,13 @@ export function appBar() {
 
 export function openNavigationSidebar() {
   appBar()
-    .findByTestId("sidebar-toggle-button")
+    .findByTestId("sidebar-toggle")
     .click();
 }
 
 export function closeNavigationSidebar() {
   appBar()
-    .findByTestId("sidebar-toggle-button")
+    .findByTestId("sidebar-toggle")
     .click();
 }
 
@@ -61,3 +69,19 @@ export function browse() {
 export function filterWidget() {
   return cy.get("fieldset");
 }
+
+export const openQuestionActions = () => {
+  cy.findByTestId("question-action-buttons-container").within(() => {
+    cy.icon("ellipsis").click();
+  });
+};
+
+export const closeQuestionActions = () => {
+  cy.findByTestId("qb-header").click();
+};
+
+export const questionInfoButton = () => {
+  return cy.findByTestId("question-action-buttons-container").within(() => {
+    return cy.icon("info");
+  });
+};

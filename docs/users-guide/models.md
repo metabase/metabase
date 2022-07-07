@@ -1,3 +1,7 @@
+---
+title: Models
+---
+
 # Models
 
 Models are a fundamental building block in Metabase. Models curate data from another table or tables from the same database to anticipate the kinds of questions people will ask of the data. You can think of them as derived tables, or a special kind of saved question meant to be used as the starting point for new questions. You can base a model on a SQL or query builder question, which means you can include custom, calculated columns in your model.
@@ -31,7 +35,7 @@ First, search for models that already exist. If you can't find one that meets yo
 
 ## Add metadata to columns in a model
 
-Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able to drill-through the results, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its drill-through magic. Metadata will also make filtering nicer by by showing the correct filter widget, and it will help Metabase to pick the right visualization for the results.
+Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able to drill-through the results, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its drill-through magic. Metadata will also make filtering nicer by showing the correct filter widget, and it will help Metabase to pick the right visualization for the results.
 
 If you only set one kind of metadata, set the **Column type** to let Metabase know what kind of data it's working with.
 
@@ -105,8 +109,13 @@ Just like with a question, admins can verify models. Verifying a model will give
 
 - [Models in Metabase][learn-models]
 
+## Need help?
+
+If you're having trouble with your model, go to the [Models troubleshooting guide][troubleshooting-models].
+
 [column-type]: ./field-types.md
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte
 [measures-dimensions]: https://www.metabase.com/learn/databases/dimensions-and-measures
 [question]: 04-asking-questions.md
 [learn-models]: /learn/getting-started/models
+[troubleshooting-models]: ../troubleshooting-guide/models.html

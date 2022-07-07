@@ -1,4 +1,4 @@
-import { restore, openNativeEditor } from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/helpers";
 
 const ORIGINAL_QUERY = "select 1 from orders";
 const SELECTED_TEXT = "select 1";

@@ -424,13 +424,11 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
 
 export function formatDateTimeWithUnit(value, unit, options = {}) {
   if (options.isExclude && unit === "hour-of-day") {
-    return moment(value)
-      .utc()
-      .format("h A");
+    return moment.utc(value).format("h A");
   } else if (options.isExclude && unit === "day-of-week") {
-    const date = moment(value);
+    const date = moment.utc(value);
     if (date.isValid()) {
-      return date.utc().format("dddd");
+      return date.format("dddd");
     }
   }
 
@@ -746,9 +744,6 @@ export function formatValueRaw(value, options = {}) {
 
   if (value === NULL_NUMERIC_VALUE) {
     return NULL_DISPLAY_VALUE;
-  } else if (value === null && isBoolean(column)) {
-    // Custom expressions returning the False literal return null
-    return JSON.stringify(false);
   } else if (value == null) {
     return null;
   } else if (

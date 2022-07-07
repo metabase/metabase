@@ -24,8 +24,7 @@ const SEND_TEST_BUTTON_STATES = {
   success: t`Sent!`,
 };
 
-@connect(null, { sendTestEmail, updateEmailSettings, clearEmailSettings })
-export default class SettingsEmailForm extends Component {
+class SettingsEmailForm extends Component {
   state = {
     sendingEmail: "default",
   };
@@ -75,12 +74,14 @@ export default class SettingsEmailForm extends Component {
 
   render() {
     const { sendingEmail } = this.state;
-
+    const { elements } = this.props;
+    const visibleElements = elements.filter(setting => !setting.getHidden?.());
     return (
       <EmailFormRoot>
         <SettingsBatchForm
           ref={form => (this._form = form && form.getWrappedInstance())}
           {...this.props}
+          elements={visibleElements}
           updateSettings={this.props.updateEmailSettings}
           disable={sendingEmail !== "default"}
           renderExtraButtons={({ disabled, valid, pristine, submitting }) => (
@@ -112,3 +113,9 @@ export default class SettingsEmailForm extends Component {
     );
   }
 }
+
+export default connect(null, {
+  sendTestEmail,
+  updateEmailSettings,
+  clearEmailSettings,
+})(SettingsEmailForm);

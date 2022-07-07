@@ -5,7 +5,8 @@ import {
   openOrdersTable,
   visualize,
   summarize,
-} from "__support__/e2e/cypress";
+  filter,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -92,6 +93,43 @@ describe("scenarios > admin > datamodel > metrics", () => {
       );
       cy.findByText("Learn how to create metrics");
     });
+
+    it("custom expression aggregation should work in metrics (metabase#22700)", () => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
+      const customExpression = "Count / Distinct([Product ID])";
+
+      cy.visit("/admin/datamodel/metrics");
+
+      cy.button("New metric").click();
+      cy.findByText("Select a table").click();
+      cy.findByText("Orders").click();
+      // It sees that there is one dataset query for each of the fields:
+      // `data`, `filtered by` and `view`
+      cy.wait(["@dataset", "@dataset", "@dataset"]);
+
+      cy.findByText("Count").click();
+      popover()
+        .contains("Custom Expression")
+        .click();
+
+      cy.get(".ace_text-input")
+        .click()
+        .type(`{selectall}{del}${customExpression}`)
+        .blur();
+
+      cy.findByPlaceholderText("Name (required)").type("Foo");
+
+      cy.button("Done").click();
+      cy.wait("@dataset");
+
+      // The test should fail on this step first
+      cy.findByText("Result: 93.8");
+
+      // Let's make sure the custom expression is still preserved
+      cy.findByText("Foo").click();
+      cy.get(".ace_content").should("contain", customExpression);
+    });
   });
 
   describe("with metrics", () => {
@@ -125,12 +163,14 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.get(".full")
         .find(".Button")
         .click();
-      cy.findByText("Filter").click();
-      cy.findByText("Total").click();
-      cy.findByText("Equal to").click();
-      cy.findByText("Greater than").click();
-      cy.findByPlaceholderText("Enter a number").type("50");
-      cy.findByText("Add filter").click();
+
+      filter();
+
+      cy.findByLabelText("Total")
+        .findByPlaceholderText("min")
+        .type("50");
+
+      cy.button("Apply").click();
       cy.findByText("Save").click();
       cy.findAllByText("Save")
         .last()

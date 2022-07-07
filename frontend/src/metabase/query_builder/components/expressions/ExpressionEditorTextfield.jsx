@@ -43,8 +43,7 @@ const ErrorMessage = ({ error }) => {
   );
 };
 
-@ExplicitSize()
-export default class ExpressionEditorTextfield extends React.Component {
+class ExpressionEditorTextfield extends React.Component {
   constructor() {
     super();
     this.input = React.createRef();
@@ -57,6 +56,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       PropTypes.number,
       PropTypes.array,
     ]),
+    name: PropTypes.string,
     onChange: PropTypes.func.isRequired,
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
@@ -279,22 +279,22 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   compileExpression() {
     const { source } = this.state;
+    const { query, startRule, name } = this.props;
     if (!source || source.length === 0) {
       return null;
     }
-    const { query, startRule } = this.props;
-    const { expression } = processSource({ source, query, startRule });
+    const { expression } = processSource({ name, source, query, startRule });
 
     return expression;
   }
 
   diagnoseExpression() {
     const { source } = this.state;
+    const { query, startRule, name } = this.props;
     if (!source || source.length === 0) {
       return { message: "Empty expression" };
     }
-    const { query, startRule } = this.props;
-    return diagnose(source, startRule, query);
+    return diagnose(source, startRule, query, name);
   }
 
   commitExpression() {
@@ -461,3 +461,5 @@ export default class ExpressionEditorTextfield extends React.Component {
     );
   }
 }
+
+export default ExplicitSize()(ExpressionEditorTextfield);

@@ -4,7 +4,8 @@
   `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
   To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
   `?namespace=snippet`)."
-  (:require [clojure.string :as str]
+  (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [compojure.core :refer [GET POST PUT]]
             [honeysql.core :as hsql]
             [honeysql.helpers :as hh]
@@ -69,19 +70,21 @@
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
+  ```
   [{:name     \"A\"
   :below    #{:card :dataset}
   :children [{:name \"B\"}
-  {:name     \"C\"
-  :here     #{:dataset :card}
-  :below    #{:dataset :card}
-  :children [{:name     \"D\"
-  :here     #{:dataset}
-  :children [{:name \"E\"}]}
-  {:name     \"F\"
-  :here     #{:card}
-  :children [{:name \"G\"}]}]}]}
+             {:name     \"C\"
+              :here     #{:dataset :card}
+              :below    #{:dataset :card}
+              :children [{:name     \"D\"
+                          :here     #{:dataset}
+                          :children [{:name \"E\"}]}
+                         {:name     \"F\"
+                          :here     #{:card}
+                          :children [{:name \"G\"}]}]}]}
   {:name \"H\"}]
+  ```
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
@@ -183,6 +186,7 @@
   [_ collection {:keys [archived? pinned-state]}]
   (-> {:select    [:p.id
                    :p.name
+                   :p.entity_id
                    :p.collection_position
                    [(hx/literal "pulse") :model]]
        :modifiers [:distinct]
@@ -200,11 +204,13 @@
 (defmethod post-process-collection-children :pulse
   [_ rows]
   (for [row rows]
-    (dissoc row :description :display :authority_level :moderated_status :icon :personal_owner_id)))
+    (dissoc row
+            :description :display :authority_level :moderated_status :icon :personal_owner_id
+            :collection_preview :dataset_query)))
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived?]}]
-  {:select [:id :name [(hx/literal "snippet") :model]]
+  {:select [:id :name :entity_id [(hx/literal "snippet") :model]]
    :from   [[NativeQuerySnippet :nqs]]
    :where  [:and
             [:= :collection_id (:id collection)]
@@ -212,7 +218,7 @@
 
 (defmethod collection-children-query :timeline
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:id :name [(hx/literal "timeline") :model] :description :icon]
+  {:select [:id :name [(hx/literal "timeline") :model] :description :entity_id :icon]
    :from   [[Timeline :timeline]]
    :where  [:and
             (poison-when-pinned-clause pinned-state)
@@ -222,17 +228,21 @@
 (defmethod post-process-collection-children :timeline
   [_ rows]
   (for [row rows]
-    (dissoc row :description :display :collection_position :authority_level :moderated_status)))
+    (dissoc row
+            :description :display :collection_position :authority_level :moderated_status
+            :collection_preview :dataset_query)))
 
 (defmethod post-process-collection-children :snippet
   [_ rows]
   (for [row rows]
     (dissoc row
             :description :collection_position :display :authority_level
-            :moderated_status :icon :personal_owner_id)))
+            :moderated_status :icon :personal_owner_id :collection_preview
+            :dataset_query)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:c.id :c.name :c.description :c.collection_position :c.display
+  (-> {:select    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                   :c.dataset_query
                    [(hx/literal (if dataset? "dataset" "card")) :model]
                    [:u.id :last_edit_user] [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
@@ -279,13 +289,31 @@
   [_ collection options]
   (card-query false collection options))
 
+(defn- bit->boolean
+  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
+  [v]
+  (if (number? v)
+    (not (zero? v))
+    v))
+
+(defn- has-required-parameters? [row]
+  (if-let [template-tags (-> row :dataset_query (json/parse-string keyword) :native :template-tags)]
+    (every? #(or (not (:required %)) (:default %)) (vals template-tags))
+    true))
+
+(defn- post-process-card-row [row]
+  (-> row
+      (dissoc :authority_level :icon :personal_owner_id :dataset_query)
+      (update :collection_preview bit->boolean)
+      (assoc :has_required_parameters (has-required-parameters? row))))
+
 (defmethod post-process-collection-children :card
   [_ rows]
-  (map #(dissoc % :authority_level :icon :personal_owner_id) rows))
+  (map post-process-card-row rows))
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:d.id :d.name :d.description :d.collection_position [(hx/literal "dashboard") :model]
+  (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position [(hx/literal "dashboard") :model]
                    [:u.id :last_edit_user] [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]]
@@ -308,7 +336,10 @@
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
-  (map #(dissoc % :display :authority_level :moderated_status :icon :personal_owner_id) rows))
+  (map #(dissoc %
+                :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
+                :dataset_query)
+       rows))
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace pinned-state]}]
@@ -321,6 +352,7 @@
              :select [:id
                       :name
                       :description
+                      :entity_id
                       :personal_owner_id
                       [(hx/literal "collection") :model]
                       :authority_level])
@@ -338,7 +370,8 @@
       ;; when fetching root collection, we might have personal collection
       (:personal_owner_id row) (assoc :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
       true                     (assoc :can_write (mi/can-write? Collection (:id row)))
-      true                     (dissoc :collection_position :display :moderated_status :icon :personal_owner_id))))
+      true                     (dissoc :collection_position :display :moderated_status :icon :personal_owner_id
+                                       :collection_preview :dataset_query))))
 
 (s/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
@@ -396,7 +429,8 @@
   "All columns that need to be present for the union-all. Generated with the comment form below. Non-text columns that
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
-  [:id :name :description :display :model :collection_position :authority_level [:personal_owner_id :integer]
+  [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
+   :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
 
@@ -427,7 +461,7 @@
   ;; generate the set of columns across all child queries. Remember to add type info if not a text column
   (into []
         (comp cat (map select-name) (distinct))
-        (for [model [:card :dashboard :snippet :pulse :collection]]
+        (for [model [:card :dashboard :snippet :pulse :collection :timeline]]
           (:select (collection-children-query model {:id 1 :location "/"} nil)))))
 
 

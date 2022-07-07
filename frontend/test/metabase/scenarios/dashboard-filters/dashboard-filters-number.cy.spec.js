@@ -6,7 +6,7 @@ import {
   saveDashboard,
   setFilter,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { DASHBOARD_NUMBER_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";

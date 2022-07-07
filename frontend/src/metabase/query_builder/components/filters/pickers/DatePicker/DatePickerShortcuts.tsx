@@ -25,7 +25,7 @@ function getDateTimeField(field: Field, bucketing?: string) {
 
 type Option = {
   displayName: string;
-  init: (filter: any) => any[];
+  init: (filter: Filter) => any;
 };
 
 const DAY_OPTIONS: Option[] = [
@@ -127,11 +127,16 @@ const MISC_OPTIONS: Option[] = [
     displayName: t`Relative dates...`,
     init: filter => ["time-interval", getDateTimeField(filter[1]), -30, "day"],
   },
+  {
+    displayName: t`Exclude...`,
+    init: filter => ["!=", getDateTimeField(filter[1])],
+  },
 ];
 
-const EXCLUDE_OPTION: Option = {
-  displayName: t`Exclude...`,
-  init: filter => ["!=", getDateTimeField(filter[1])],
+export const OPTIONS = {
+  DAY_OPTIONS,
+  MONTH_OPTIONS,
+  MISC_OPTIONS,
 };
 
 type Props = {
@@ -139,7 +144,6 @@ type Props = {
   primaryColor?: string;
 
   filter: Filter;
-  hideExcludeOperators?: boolean;
   onCommit: (value: FilterExpression[]) => void;
   onFilterChange: (filter: FilterExpression[]) => void;
   onBack?: () => void;
@@ -150,13 +154,9 @@ export default function DatePickerShortcuts({
   onFilterChange,
   filter,
   onCommit,
-  hideExcludeOperators,
   onBack,
+  primaryColor,
 }: Props) {
-  const options = hideExcludeOperators
-    ? MISC_OPTIONS
-    : [...MISC_OPTIONS, EXCLUDE_OPTION];
-
   const dimension = filter.dimension?.();
   let title = "";
   if (dimension) {
@@ -170,7 +170,7 @@ export default function DatePickerShortcuts({
     <div className={className}>
       {onBack ? (
         <SidebarHeader
-          className={"text-default py1 mb1"}
+          className="text-default py1 mb1"
           title={title}
           onBack={onBack}
         />
@@ -178,6 +178,7 @@ export default function DatePickerShortcuts({
       {DAY_OPTIONS.map(({ displayName, init }) => (
         <ShortcutButton
           key={displayName}
+          primaryColor={primaryColor}
           onClick={() => {
             onCommit(init(filter));
           }}
@@ -189,6 +190,7 @@ export default function DatePickerShortcuts({
       {MONTH_OPTIONS.map(({ displayName, init }) => (
         <ShortcutButton
           key={displayName}
+          primaryColor={primaryColor}
           onClick={() => {
             onCommit(init(filter));
           }}
@@ -197,9 +199,10 @@ export default function DatePickerShortcuts({
         </ShortcutButton>
       ))}
       <Separator />
-      {options.map(({ displayName, init }) => (
+      {MISC_OPTIONS.map(({ displayName, init }) => (
         <ShortcutButton
           key={displayName}
+          primaryColor={primaryColor}
           onClick={() => {
             onFilterChange(init(filter));
           }}

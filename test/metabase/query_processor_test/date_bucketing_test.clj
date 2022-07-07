@@ -1163,6 +1163,24 @@
                         :breakout    [!day-of-week.date]
                         :filter      [:between $date "2013-01-03" "2013-01-20"]}))))))))))
 
+(deftest first-day-of-week-for-day-of-week-bucketing-test
+  (testing "First day of week for `:day-of-week` bucketing should be the consistent (#17801)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+      (let [query (mt/mbql-query checkins
+                    {:aggregation [[:count]]
+                     :breakout    [!day-of-week.date]})]
+        (doseq [[first-day-of-week expected-rows] {:sunday    [[1 135] [2 143] [3 153] [4 136] [5 139] [6 160] [7 134]]
+                                                   :monday    [[1 143] [2 153] [3 136] [4 139] [5 160] [6 134] [7 135]]
+                                                   :tuesday   [[1 153] [2 136] [3 139] [4 160] [5 134] [6 135] [7 143]]
+                                                   :wednesday [[1 136] [2 139] [3 160] [4 134] [5 135] [6 143] [7 153]]
+                                                   :thursday  [[1 139] [2 160] [3 134] [4 135] [5 143] [6 153] [7 136]]
+                                                   :friday    [[1 160] [2 134] [3 135] [4 143] [5 153] [6 136] [7 139]]
+                                                   :saturday  [[1 134] [2 135] [3 143] [4 153] [5 136] [6 139] [7 160]]}]
+          (mt/with-temporary-setting-values [start-of-week first-day-of-week]
+            (mt/with-native-query-testing-context query
+              (is (= expected-rows
+                     (mt/formatted-rows [int int] (qp/process-query query)))))))))))
+
 (deftest filter-by-current-quarter-test
   ;; Oracle doesn't work on March 31st because March 31st + 3 months = June 31st, which doesn't exist. See #10072
   (mt/test-drivers (disj (mt/normal-drivers) :oracle)

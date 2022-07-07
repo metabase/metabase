@@ -1,3 +1,7 @@
+---
+title: Plugin manifests
+---
+
 # Plugin manifests
 
 Metabase plugin JARs contain a _plugin manifest_ -- a top-level file named `metabase-plugin.yaml`. When Metabase launches, it iterates over every JAR in the plugins directory, and looks for the manifest in each. This manifest tells Metabase what the plugin provides and how to initialize it.
@@ -142,7 +146,7 @@ dependencies:
 # with the DriverManager, which is certainly not ideal but does not actually
 # hurt anything.
 #
-# In the near future I think I might move init steps into driver itself (or
+# In the near future I might move init steps into driver itself (or
 # at least allow them there)
 driver:
 

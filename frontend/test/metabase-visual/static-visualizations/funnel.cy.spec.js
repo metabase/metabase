@@ -4,7 +4,7 @@ import {
   openEmailPage,
   sendSubscriptionsEmail,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 

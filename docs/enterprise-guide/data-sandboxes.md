@@ -1,3 +1,7 @@
+---
+title: Data sandboxes
+---
+
 # Data sandboxes
 
 {% include plans-blockquote.html feature="Data sandboxes" %}
@@ -55,7 +59,7 @@ To test this out, we’ll open up a new incognito browser window and log in with
 
 ![Filtered table](images/sandboxing/filtered-table.png)
 
-If this user views any charts, dashboards, or even automated x-ray explorations that include this sandboxed Orders data, those will also be correctly filtered to only show the data they’re allowed to see.
+If this user views any charts, dashboards, or even automated X-ray explorations that include this sandboxed Orders data, those will also be correctly filtered to only show the data they’re allowed to see.
 
 Another great thing about sandboxing is that this user can still use all of the easy and powerful exploration and charting features of Metabase to explore this sandboxed data. For example, they can create a chart like this one to see a breakdown of their orders by product type:
 
@@ -155,7 +159,7 @@ __Note__: An important distinction to make is that you can use a saved SQL query
 
 ### Data sandboxes and public sharing don't play well together
 
-Public questions and dashboards can't be sandboxed. Sandboxing works by filtering data based on the group membership and user attributes of an authenticated user — so since a user doesn't have to log in to see a public question or dashboard, Metabase has no knowledge of who that user is.
+Public questions and dashboards can't be sandboxed. Sandboxing works by filtering data based on the group membership and user attributes of an authenticated user. Since someone can see a public question or dashboard without logging in, Metabase won't know who that person is.
 
 ## Further reading
 

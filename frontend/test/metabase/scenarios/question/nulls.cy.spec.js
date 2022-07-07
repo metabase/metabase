@@ -5,7 +5,7 @@ import {
   sidebar,
   summarize,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -22,7 +22,10 @@ describe("scenarios > question > null", () => {
       name: "13571",
       query: {
         "source-table": ORDERS_ID,
-        fields: [["field", ORDERS.DISCOUNT, null]],
+        fields: [
+          ["field", ORDERS.ID, null],
+          ["field", ORDERS.DISCOUNT, null],
+        ],
         filter: ["=", ["field", ORDERS.ID, null], 1],
       },
     });
@@ -32,6 +35,7 @@ describe("scenarios > question > null", () => {
     cy.findByText("13571").click();
 
     cy.log("'No Results since at least v0.34.3");
+    cy.get("#detail-shortcut").click();
     cy.findByText("Discount");
     cy.findByText("Empty");
   });

@@ -1,3 +1,7 @@
+---
+title: Securing database connections using an SSL certificate
+---
+
 ## Securing database connections using an SSL certificate
 
 If you'd like to connect your Metabase Cloud or self-hosted instance to a database, you can secure the connection using Secure Socket Layer (SSL) encryption with a certificate.
@@ -78,4 +82,4 @@ If a truststore is provided to verify credentials, the client (your Metabase) ca
 
 ### Keystores
 
-If a keystore is used to provide credentials, then the server (the database server) can request the client (your Metabase) authenticate itself using that keystore. Keystores are used less frequently, and in some cases it's not possible to use a keystore (Amazon's RDS doesn't allow keystores, for example). But you may want to use a keystore if you're hosting on prem.
+If a keystore is used to provide credentials, then the server (the database server) can request the client (your Metabase) authenticate itself using that keystore. Keystores are used less frequently, and in some cases it's impossible to use a keystore (Amazon's RDS forbids keystores, for example). But you may want to use a keystore if you're hosting on prem.

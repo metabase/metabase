@@ -22,7 +22,9 @@
    :email-smtp-security (setting/get :email-smtp-security)
    :email-smtp-username (setting/get :email-smtp-username)
    :email-smtp-password (setting/get :email-smtp-password)
-   :email-from-address  (setting/get :email-from-address)})
+   :email-from-address  (setting/get :email-from-address)
+   :email-from-name     (setting/get :email-from-name)
+   :email-reply-to      (setting/get :email-reply-to)})
 
 (def ^:private default-email-settings
   {:email-smtp-host     "foobar"
@@ -30,11 +32,15 @@
    :email-smtp-security :tls
    :email-smtp-username "munchkin"
    :email-smtp-password "gobble gobble"
-   :email-from-address  "eating@hungry.com"})
+   :email-from-address  "eating@hungry.com"
+   :email-from-name     "Eating"
+   :email-reply-to      ["reply-to@hungry.com"]})
 
 (deftest test-email-settings-test
   (testing "POST /api/email/test -- send a test email"
-    (mt/with-temporary-setting-values [email-from-address "notifications@metabase.com"]
+    (mt/with-temporary-setting-values [email-from-address "notifications@metabase.com"
+                                       email-from-name    "Sender Name"
+                                       email-reply-to     ["reply-to@metabase.com"]]
       (mt/with-fake-inbox
         (testing "Non-admin -- request should fail"
           (is (= "You don't have permissions to do that."
@@ -44,10 +50,11 @@
         (is (= {:ok true}
                (mt/user-http-request :crowberto :post 200 "email/test")))
         (is (= {"crowberto@metabase.com"
-                [{:from    "notifications@metabase.com",
-                  :to      ["crowberto@metabase.com"],
-                  :subject "Metabase Test Email",
-                  :body    "Your Metabase emails are working — hooray!"}]}
+                [{:from     "Sender Name <notifications@metabase.com>",
+                  :to       ["crowberto@metabase.com"],
+                  :reply-to ["reply-to@metabase.com"]
+                  :subject  "Metabase Test Email",
+                  :body     "Your Metabase emails are working — hooray!"}]}
                @mt/inbox))))))
 
 (deftest update-email-settings-test
@@ -66,7 +73,7 @@
                                   (with-redefs [email/retry-delay-ms 0]
                                     (thunk)))}]
       (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
-                                   email-smtp-password email-from-address]
+                                   email-smtp-password email-from-address email-from-name email-reply-to]
         (testing (format "SMTP connection is valid? %b\n" success?)
           (f (fn []
                (testing "API request"
@@ -88,7 +95,7 @@
 (deftest clear-email-settings-test
   (testing "DELETE /api/email"
     (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
-                                 email-smtp-password email-from-address]
+                                 email-smtp-password email-from-address email-from-name email-reply-to]
       (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
         (is (= (-> default-email-settings
                    (assoc :with-corrections {})
@@ -97,11 +104,13 @@
         (let [new-email-settings (email-settings)]
           (is (nil? (mt/user-http-request :crowberto :delete 204 "email")))
           (is (= default-email-settings
-                 new-email-settings))
+                new-email-settings))
           (is (= {:email-smtp-host     nil
                   :email-smtp-port     nil
                   :email-smtp-security :none
                   :email-smtp-username nil
                   :email-smtp-password nil
-                  :email-from-address  "notifications@metabase.com"}
+                  :email-from-address  "notifications@metabase.com"
+                  :email-from-name     nil
+                  :email-reply-to      nil}
                  (email-settings))))))))

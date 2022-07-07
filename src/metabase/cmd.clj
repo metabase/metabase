@@ -120,7 +120,7 @@
   ([]
    (classloader/require 'metabase.cmd.driver-methods)
    ((resolve 'metabase.cmd.driver-methods/print-available-multimethods) false))
-  ([docs]
+  ([_docs]
    (classloader/require 'metabase.cmd.driver-methods)
    ((resolve 'metabase.cmd.driver-methods/print-available-multimethods) true)))
 
@@ -174,24 +174,60 @@
       (log/error "ERROR ROTATING KEY.")
       (system-exit! 1))))
 
+;;; ------------------------------------------------ Validate Commands ----------------------------------------------
+
+(defn- cmd->var [command-name]
+  (ns-resolve 'metabase.cmd (symbol command-name)))
+
+(defn- arg-list-count-ok? [arg-list arg-count]
+  (if (some #{'&} arg-list)
+    ;; subtract 1 for the & and 1 for the symbol after &
+    ;; e.g. [a b & c] => 2
+    (>= arg-count (- (count arg-list) 2))
+    (= arg-count (count arg-list))))
+
+(defn- arg-count-good? [command-name args]
+  (let [arg-lists (-> command-name cmd->var meta :arglists)
+        arg-count-matches (mapv #(arg-list-count-ok? % (count args)) arg-lists)]
+    (if (some true? arg-count-matches)
+      [true]
+      [false (str "The '" command-name "' command requires "
+                  (when (> 1 (count arg-lists)) "one of ")
+                  "the following arguments: "
+                  (str/join " | " (map pr-str arg-lists))
+                  ", but received: " (pr-str (vec args)) ".")])))
+
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------
 
-(defn- cmd->fn [command-name]
-  (or (when (seq command-name)
-        (when-let [varr (ns-resolve 'metabase.cmd (symbol command-name))]
-          (when (:command (meta varr))
-            @varr)))
-      (do (println (u/format-color 'red "Unrecognized command: %s" command-name))
-          (help)
-          (System/exit 1))))
+(defn- cmd->fn
+  "Returns [error-message] if there is an error, otherwise [nil command-fn]"
+  [command-name args]
+  (cond
+    (not (seq command-name))
+    ["No command given."]
+
+    (nil? (:command (meta (cmd->var command-name))))
+    [(str "Unrecognized command: '" command-name "'")]
+
+    (let [[ok? _message] (arg-count-good? command-name args)]
+      (not ok?))
+    [(second (arg-count-good? command-name args))]
+
+    :else
+    [nil @(cmd->var command-name)]))
 
 (defn run-cmd
   "Run `cmd` with `args`. This is a function above. e.g. `clojure -M:run metabase migrate force` becomes
   `(migrate \"force\")`."
   [cmd args]
-  (try (apply (cmd->fn cmd) args)
-       (catch Throwable e
-         (.printStackTrace e)
-         (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
-         (System/exit 1)))
+  (let [[error-msg command-fn] (cmd->fn cmd args)]
+    (if error-msg
+      (do
+        (println (u/format-color 'red error-msg))
+        (System/exit 1))
+      (try (apply command-fn args)
+           (catch Throwable e
+             (.printStackTrace e)
+             (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
+             (System/exit 1)))))
   (System/exit 0))

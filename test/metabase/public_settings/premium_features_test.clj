@@ -2,11 +2,13 @@
   (:require [cheshire.core :as json]
             [clj-http.fake :as http-fake]
             [clojure.test :refer :all]
+            [metabase.config :as config]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features]
+            [metabase.public-settings.premium-features :as premium-features :refer [defenterprise defenterprise-schema]]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
+            [schema.core :as s]
             [toucan.util.test :as tt]))
 
 (defn do-with-premium-features [features f]
@@ -73,3 +75,134 @@
     ;; for bug reports to come in
     (is (partial= {:valid false, :status "Token does not exist."}
                   (#'premium-features/fetch-token-status* random-fake-token)))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Defenterprise Macro Tests                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defenterprise greeting
+  "Returns a greeting for a user."
+  metabase-enterprise.util-test
+  [username]
+  (format "Hi %s, you're an OSS customer!" (name username)))
+
+(defenterprise greeting-with-valid-token
+  "Returns a non-special greeting for OSS users, and EE users who don't have a valid premium token"
+  metabase-enterprise.util-test
+  [username]
+  (format "Hi %s, you're not extra special :(" (name username)))
+
+(defenterprise special-greeting
+  "Returns a non-special greeting for OSS users, and EE users who don't have the :special-greeting feature token."
+  metabase-enterprise.util-test
+  [username]
+  (format "Hi %s, you're not extra special :(" (name username)))
+
+(defenterprise special-greeting-or-custom
+  "Returns a non-special greeting for OSS users."
+  metabase-enterprise.util-test
+  [username]
+  (format "Hi %s, you're not extra special :(" (name username)))
+
+(def ^:private missing-feature-error-msg
+  #"The special-greeting-or-error function requires a valid premium token with the special-greeting feature")
+
+(deftest defenterprise-test
+  (when-not config/ee-available?
+   (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
+     (is (= "Hi rasta, you're an OSS customer!"
+            (greeting :rasta)))))
+
+  (when config/ee-available?
+    (testing "When EE code is available"
+      (testing "a call to a defenterprise function calls the EE version"
+        (is (= "Hi rasta, you're running the Enterprise Edition of Metabase!"
+               (greeting :rasta))))
+
+     (testing "if :feature = :any or nil, it will check if any feature exists, and fall back to the OSS version by default"
+       (with-premium-features #{:some-feature}
+         (is (= "Hi rasta, you're an EE customer with a valid token!"
+                (greeting-with-valid-token :rasta))))
+
+       (with-premium-features #{}
+         (is (= "Hi rasta, you're not extra special :("
+                (greeting-with-valid-token :rasta)))))
+
+     (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
+       (with-premium-features #{:special-greeting}
+         (is (= "Hi rasta, you're an extra special EE customer!"
+                (special-greeting :rasta))))
+
+       (with-premium-features #{}
+         (is (= "Hi rasta, you're not extra special :("
+                (special-greeting :rasta)))))
+
+     (testing "when :fallback is a function, it is run when the required token is not present"
+       (with-premium-features #{:special-greeting}
+         (is (= "Hi rasta, you're an extra special EE customer!"
+                (special-greeting-or-custom :rasta))))
+
+       (with-premium-features #{}
+         (is (= "Hi rasta, you're an EE customer but not extra special."
+                (special-greeting-or-custom :rasta))))))))
+
+(defenterprise-schema greeting-with-schema :- s/Str
+  "Returns a greeting for a user."
+  metabase-enterprise.util-test
+  [username :- s/Keyword]
+  (format "Hi %s, the argument was valid" (name username)))
+
+(defenterprise-schema greeting-with-invalid-oss-return-schema :- s/Keyword
+  "Returns a greeting for a user. The OSS implementation has an invalid return schema"
+  metabase-enterprise.util-test
+  [username :- s/Keyword]
+  (format "Hi %s, the return value was valid" (name username)))
+
+(defenterprise-schema greeting-with-invalid-ee-return-schema :- s/Str
+  "Returns a greeting for a user."
+  metabase-enterprise.util-test
+  [username :- s/Keyword]
+  (format "Hi %s, the return value was valid" (name username)))
+
+(defenterprise greeting-with-only-ee-schema
+  "Returns a greeting for a user. Only EE version is defined with defenterprise-schema."
+  metabase-enterprise.util-test
+  [username]
+  (format "Hi %s, you're an OSS customer!"))
+
+(deftest defenterprise-schema-test
+  (when-not config/ee-available?
+    (testing "Argument schemas are validated for OSS implementations"
+      (is (= "Hi rasta, the argument was valid" (greeting-with-schema :rasta)))
+
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Input to greeting-with-schema does not match schema"
+                            (greeting-with-schema "rasta"))))
+
+   (testing "Return schemas are validated for OSS implementations"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Output of greeting-with-invalid-oss-return-schema does not match schema"
+                            (greeting-with-invalid-oss-return-schema :rasta)))))
+
+  (when config/ee-available?
+    (testing "Argument schemas are validated for EE implementations"
+      (is (= "Hi rasta, the schema was valid, and you're running the Enterprise Edition of Metabase!"
+             (greeting-with-schema :rasta)))
+
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Input to greeting-with-schema does not match schema"
+                            (greeting-with-schema "rasta"))))
+
+    (testing "Only EE schema is validated if EE implementation is called"
+      (is (= "Hi rasta, the schema was valid, and you're running the Enterprise Edition of Metabase!"
+             (greeting-with-invalid-oss-return-schema :rasta)))
+
+      (with-premium-features #{:custom-feature}
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Output of greeting-with-invalid-ee-return-schema does not match schema"
+                              (greeting-with-invalid-ee-return-schema :rasta)))))
+
+    (testing "EE schema is not validated if OSS fallback is called"
+      (is (= "Hi rasta, the return value was valid"
+             (greeting-with-invalid-ee-return-schema :rasta))))))

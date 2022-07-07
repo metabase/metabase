@@ -1,3 +1,7 @@
+---
+title: Frontend
+---
+
 # Frontend
 
 ## Entity Loaders
@@ -141,7 +145,7 @@ Pass a form definition to the `form` prop:
 />
 ```
 
-If `<Form>` doesn't have any children elements then it will use the [`metabase/components/StandardLayout`](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/components/StandardLayout) component to provide a default form layout.
+If `<Form>` lacks any children elements then it will use the [`metabase/components/StandardLayout`](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/components/StandardLayout) component to provide a default form layout.
 
 The schema for this object is defined in [`Form.jsx`](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/containers/Form.jsx#L41-L60).
 
@@ -400,7 +404,7 @@ function getFoo(a, b, c) {
 }
 ```
 
-- Be conservative with what comments you add to the codebase. Comments shouldn't be used as reminders or as TODOs--record those by creating a new issue in Github. Ideally, code should be written in such a way that it explains itself clearly. When it does not, you should first try rewriting the code. If for whatever reason you are unable to write something clearly, add a comment to explain the "why".
+- Be conservative with what comments you add to the codebase. Comments shouldn't be used as reminders or as todos--record those by creating a new issue in Github. Ideally, code should be written in such a way that it explains itself clearly. When it does not, you should first try rewriting the code. If for whatever reason you are unable to write something clearly, add a comment to explain the "why".
 
 ```javascript
 

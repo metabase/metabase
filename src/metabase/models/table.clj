@@ -1,5 +1,6 @@
 (ns metabase.models.table
   (:require [honeysql.core :as hsql]
+            [metabase.db.connection :as mdb.connection]
             [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
@@ -10,6 +11,7 @@
             [metabase.models.metric :refer [Metric retrieve-metrics]]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.segment :refer [retrieve-segments Segment]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -47,8 +49,10 @@
 
 (defn- perms-objects-set [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
   ;; To read (e.g., fetch metadata) a Table you must have either self-service data permissions for the Table, or write
-  ;; permissions for the Table (detailed below). Since a user can have one or the other, we use `i/has-any-permissions?`
-  ;; to check both read and write permission sets in the `can-read?` implementation.
+  ;; permissions for the Table (detailed below). `can-read?` checks the former, while `can-write?` checks the latter;
+  ;; the permission-checking function to call when reading a Table depends on the context of the request. When reading
+  ;; Tables to power the admin data model page; `can-write?` should be called; in other contexts, `can-read?` should
+  ;; be called. (TODO: is there a way to clear up the semantics here?)
   ;;
   ;; To write a Table (e.g. update its metadata):
   ;;   * If Enterprise Edition code is available and the :advanced-permissions feature is enabled, you must have
@@ -70,11 +74,12 @@
           :pre-delete     pre-delete})
   mi/IObjectPermissions
   (merge mi/IObjectPermissionsDefaults
-         {:can-read?         (mi/has-any-permissions?
-                              (partial mi/current-user-has-full-permissions? :read)
-                              (partial mi/current-user-has-full-permissions? :write))
+         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
           :can-write?        (partial mi/current-user-has-full-permissions? :write)
-          :perms-objects-set perms-objects-set}))
+          :perms-objects-set perms-objects-set})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:schema :name (serdes.hash/hydrated-hash :db)])})
 
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
@@ -221,7 +226,7 @@
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
-  (memoize
+  (mdb.connection/memoize-for-application-db
    (fn [table-id]
      {:pre [(integer? table-id)]}
      (db/select-one-field :db_id Table, :id table-id))))

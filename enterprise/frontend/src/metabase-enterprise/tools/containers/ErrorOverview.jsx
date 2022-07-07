@@ -69,46 +69,49 @@ export default function ErrorOverview(props) {
   };
 
   return (
-    <AuditParameters
-      parameters={[
-        { key: "errorFilter", placeholder: t`Error contents` },
-        { key: "dbFilter", placeholder: t`DB name` },
-        { key: "collectionFilter", placeholder: t`Collection name` },
-      ]}
-      buttons={[
-        {
-          key: "reloadSelected",
-          label: t`Rerun Selected`,
-          disabled: Object.values(rowChecked).every(isChecked => !isChecked),
-          onClick: handleReloadSelected,
-        },
-      ]}
-      hasResults={hasResults}
-    >
-      {({ errorFilter, dbFilter, collectionFilter }) => (
-        <AuditTable
-          {...props}
-          reloadRef={reloadRef}
-          pageSize={50}
-          isSortable
-          isSelectable
-          rowChecked={rowChecked}
-          sorting={sorting}
-          onSortingChange={handleSortingChange}
-          onAllSelectClick={handleAllSelectClick}
-          onRowSelectClick={handleRowSelectClick}
-          onLoad={handleLoad}
-          mode={ErrorMode}
-          table={Queries.bad_table(
-            errorFilter,
-            dbFilter,
-            collectionFilter,
-            sorting.column,
-            getSortOrder(sorting.isAscending),
-          )}
-          className="mt2 bounded-overflow-x-auto"
-        />
-      )}
-    </AuditParameters>
+    <>
+      <h2>{t`Questions that errored when last run`}</h2>
+      <AuditParameters
+        parameters={[
+          { key: "errorFilter", placeholder: t`Error contents` },
+          { key: "dbFilter", placeholder: t`DB name` },
+          { key: "collectionFilter", placeholder: t`Collection name` },
+        ]}
+        buttons={[
+          {
+            key: "reloadSelected",
+            label: t`Rerun Selected`,
+            disabled: Object.values(rowChecked).every(isChecked => !isChecked),
+            onClick: handleReloadSelected,
+          },
+        ]}
+        hasResults={hasResults}
+      >
+        {({ errorFilter, dbFilter, collectionFilter }) => (
+          <AuditTable
+            {...props}
+            reloadRef={reloadRef}
+            pageSize={50}
+            isSortable
+            isSelectable
+            rowChecked={rowChecked}
+            sorting={sorting}
+            onSortingChange={handleSortingChange}
+            onAllSelectClick={handleAllSelectClick}
+            onRowSelectClick={handleRowSelectClick}
+            onLoad={handleLoad}
+            mode={ErrorMode}
+            table={Queries.bad_table(
+              errorFilter,
+              dbFilter,
+              collectionFilter,
+              sorting.column,
+              getSortOrder(sorting.isAscending),
+            )}
+            className="mt2 bounded-overflow-x-scroll"
+          />
+        )}
+      </AuditParameters>
+    </>
   );
 }

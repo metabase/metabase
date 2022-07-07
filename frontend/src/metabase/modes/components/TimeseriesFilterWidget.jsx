@@ -18,6 +18,7 @@ import _ from "underscore";
 
 export default class TimeseriesFilterWidget extends Component {
   state = {
+    dimension: null,
     filter: null,
     filterIndex: -1,
     currentFilter: null,
@@ -34,34 +35,34 @@ export default class TimeseriesFilterWidget extends Component {
       const filters = query.filters();
 
       const dimensions = breakouts.map(b => b.dimension());
-      const dimension = dimensions[0];
+      const firstDimension = dimensions[0];
 
-      const timeseriesDimension =
-        dimension instanceof FieldDimension
-          ? dimension.withoutTemporalBucketing()
-          : dimension;
+      const dimension =
+        firstDimension instanceof FieldDimension
+          ? firstDimension.withoutTemporalBucketing()
+          : firstDimension;
 
       const filterIndex = _.findIndex(
         filters,
         filter =>
           Filter.isFieldFilter(filter) &&
-          _.isEqual(filter[1], timeseriesDimension.mbql()),
+          _.isEqual(filter[1], dimension.mbql()),
       );
 
       let filter, currentFilter;
       if (filterIndex >= 0) {
         filter = currentFilter = filters[filterIndex];
       } else {
-        filter = ["time-interval", timeseriesDimension.mbql(), -30, "day"];
+        filter = null; // All time
       }
 
-      this.setState({ filter, filterIndex, currentFilter });
+      this.setState({ dimension, filter, filterIndex, currentFilter });
     }
   }
 
   render() {
     const { className, card, setDatasetQuery } = this.props;
-    const { filter, filterIndex, currentFilter } = this.state;
+    const { dimension, filter, filterIndex, currentFilter } = this.state;
     let currentDescription;
 
     if (currentFilter) {
@@ -94,7 +95,8 @@ export default class TimeseriesFilterWidget extends Component {
       >
         <DatePicker
           className="m2"
-          filter={this.state.filter}
+          dimension={dimension}
+          filter={filter}
           onFilterChange={newFilter => {
             this.setState({ filter: newFilter });
           }}

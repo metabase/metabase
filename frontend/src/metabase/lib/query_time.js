@@ -1,3 +1,4 @@
+import _ from "underscore";
 import moment from "moment";
 import { assoc } from "icepick";
 import inflection from "inflection";
@@ -29,17 +30,30 @@ export const DATETIME_UNITS = [
 
 export function computeFilterTimeRange(filter) {
   let expandedFilter;
+  let defaultUnit;
   if (filter[0] === "time-interval") {
+    defaultUnit = filter[3];
     expandedFilter = expandTimeIntervalFilter(filter);
   } else {
     expandedFilter = filter;
   }
 
   const [operator, field, ...values] = expandedFilter;
-  const bucketing = parseFieldBucketing(field, "day");
+  const bucketing = parseFieldBucketing(field, defaultUnit ?? "day");
 
   let start, end;
-  if (operator === "=" && values[0]) {
+  if (isStartingFrom(filter)) {
+    const [startingFrom, startingFromUnit] = getStartingFrom(filter);
+    const [value, unit] = getRelativeDatetimeInterval(filter);
+    const now = moment()
+      .startOf(unit)
+      .add(-startingFrom, startingFromUnit);
+    start = now.clone().add(value < 0 ? value : 0, unit);
+    end = now.clone().add(value < 0 ? 0 : value, unit);
+    if (["day", "week", "month", "quarter", "year"].indexOf(unit) > -1) {
+      end = end.add(-1, "day");
+    }
+  } else if (operator === "=" && values[0]) {
     const point = absolute(values[0]);
     start = point.clone().startOf(bucketing);
     end = point.clone().endOf(bucketing);
@@ -52,11 +66,6 @@ export function computeFilterTimeRange(filter) {
   } else if (operator === "between" && values[0] && values[1]) {
     start = absolute(values[0]).startOf(bucketing);
     end = absolute(values[1]).endOf(bucketing);
-  }
-  if (isStartingFrom(filter)) {
-    const [value, unit] = getStartingFrom(filter);
-    start = start.add(-value, unit);
-    end = end.add(-value, unit);
   }
 
   return [start, end];
@@ -87,7 +96,7 @@ export function expandTimeIntervalFilter(filter) {
     return [
       "between",
       field,
-      ["relative-datetime", n - 1, unit],
+      ["relative-datetime", n, unit],
       ["relative-datetime", includeCurrent ? 0 : -1, unit],
     ];
   } else if (n > 1) {
@@ -176,7 +185,11 @@ export function generateTimeIntervalDescription(n, unit) {
 }
 
 export function generateTimeValueDescription(value, bucketing, isExclude) {
-  if (typeof value === "string") {
+  if (typeof value === "number" && bucketing === "hour-of-day") {
+    return moment()
+      .hour(value)
+      .format("h A");
+  } else if (typeof value === "string") {
     const m = parseTimestamp(value, bucketing);
     if (bucketing) {
       return formatDateTimeWithUnit(value, bucketing, { isExclude });
@@ -216,40 +229,49 @@ export function formatBucketing(bucketing = "", n = 1) {
   if (!bucketing) {
     return "";
   }
+
+  // ngettext requires all plural messages to have an argument
+  const arg = "";
+
   switch (bucketing) {
     case "default":
-      return ngettext(msgid`Default period`, `Default periods`, n);
+      return ngettext(msgid`Default period${arg}`, `Default periods${arg}`, n);
     case "minute":
-      return ngettext(msgid`Minute`, `Minutes`, n);
+      return ngettext(msgid`Minute${arg}`, `Minutes${arg}`, n);
     case "hour":
-      return ngettext(msgid`Hour`, `Hours`, n);
+      return ngettext(msgid`Hour${arg}`, `Hours${arg}`, n);
     case "day":
-      return ngettext(msgid`Day`, `Days`, n);
+      return ngettext(msgid`Day${arg}`, `Days${arg}`, n);
     case "week":
-      return ngettext(msgid`Week`, `Weeks`, n);
+      return ngettext(msgid`Week${arg}`, `Weeks${arg}`, n);
     case "month":
-      return ngettext(msgid`Month`, `Months`, n);
+      return ngettext(msgid`Month${arg}`, `Months${arg}`, n);
     case "quarter":
-      return ngettext(msgid`Quarter`, `Quarters`, n);
+      return ngettext(msgid`Quarter${arg}`, `Quarters${arg}`, n);
     case "year":
-      return ngettext(msgid`Year`, `Years`, n);
+      return ngettext(msgid`Year${arg}`, `Years${arg}`, n);
     case "minute-of-hour":
-      return ngettext(msgid`Minute of hour`, `Minutes of hour`, n);
+      return ngettext(msgid`Minute of hour${arg}`, `Minutes of hour${arg}`, n);
     case "hour-of-day":
-      return ngettext(msgid`Hour of day`, `Hours of day`, n);
+      return ngettext(msgid`Hour of day${arg}`, `Hours of day${arg}`, n);
     case "day-of-week":
-      return ngettext(msgid`Day of week`, `Days of week`, n);
+      return ngettext(msgid`Day of week${arg}`, `Days of week${arg}`, n);
     case "day-of-month":
-      return ngettext(msgid`Day of month`, `Days of month`, n);
+      return ngettext(msgid`Day of month${arg}`, `Days of month${arg}`, n);
     case "day-of-year":
-      return ngettext(msgid`Day of year`, `Days of year`, n);
+      return ngettext(msgid`Day of year${arg}`, `Days of year${arg}`, n);
     case "week-of-year":
-      return ngettext(msgid`Week of year`, `Weeks of year`, n);
+      return ngettext(msgid`Week of year${arg}`, `Weeks of year${arg}`, n);
     case "month-of-year":
-      return ngettext(msgid`Month of year`, `Months of year`, n);
+      return ngettext(msgid`Month of year${arg}`, `Months of year${arg}`, n);
     case "quarter-of-year":
-      return ngettext(msgid`Quarter of year`, `Quarters of year`, n);
+      return ngettext(
+        msgid`Quarter of year${arg}`,
+        `Quarters of year${arg}`,
+        n,
+      );
   }
+
   const words = bucketing.split("-");
   words[0] = inflection.capitalize(words[0]);
   return words.join(" ");
@@ -270,8 +292,11 @@ export function absolute(date) {
  */
 export function parseFieldBucketing(field, defaultUnit = null) {
   const dimension = FieldDimension.parseMBQLOrWarn(field);
+  const isStartingFromExpr = field?.[0] === "+" && field?.[1]?.[0] === "field";
   if (dimension) {
     return dimension.temporalUnit() || defaultUnit;
+  } else if (isStartingFromExpr) {
+    return parseFieldBucketing(field[1], defaultUnit);
   }
   return defaultUnit;
 }
@@ -402,20 +427,16 @@ export function setStartingFrom(mbql, num, unit) {
   if (interval) {
     const [field, intervalNum, intervalUnit] = interval;
     const newUnit = unit || intervalUnit;
-    const expr = [
-      "+",
-      field,
-      ["interval", num ?? getDefaultDatetimeValue(newUnit), newUnit],
-    ];
-    const newInterval = ["relative-datetime", intervalNum, intervalUnit];
-    if (intervalNum === -1 || intervalNum === 1) {
-      return ["=", expr, newInterval];
-    } else {
-      const zeroed = ["relative-datetime", 0, intervalUnit];
-      const left = intervalNum < 0 ? newInterval : zeroed;
-      const right = intervalNum < 0 ? zeroed : newInterval;
-      return ["between", expr, left, right];
+    let newValue = num;
+    if (typeof newValue !== "number") {
+      newValue = (intervalNum < 0 ? 1 : -1) * getDefaultDatetimeValue(newUnit);
     }
+    const expr = ["+", field, ["interval", newValue, newUnit]];
+    const newInterval = ["relative-datetime", intervalNum, intervalUnit];
+    const zeroed = ["relative-datetime", 0, intervalUnit];
+    const left = intervalNum < 0 ? newInterval : zeroed;
+    const right = intervalNum < 0 ? zeroed : newInterval;
+    return ["between", expr, left, right];
   }
 
   return mbql;
@@ -501,10 +522,9 @@ export function updateRelativeDatetimeFilter(filter, positive) {
     const [value, unit] = getRelativeDatetimeInterval(filter);
     const absValue = Math.abs(value);
     const newValue = positive ? absValue : -absValue;
-    const newField = [fieldOp, field, [intervalOp, -intervalNum, intervalUnit]];
-    if (absValue === 1) {
-      return ["=", newField, ["relative-datetime", newValue, unit]];
-    }
+    const absInterval = Math.abs(intervalNum);
+    const newInterval = positive ? -absInterval : absInterval;
+    const newField = [fieldOp, field, [intervalOp, newInterval, intervalUnit]];
     const zeroed = ["relative-datetime", 0, unit];
     const interval = ["relative-datetime", newValue, unit];
     const left = newValue < 0 ? interval : zeroed;
@@ -518,9 +538,14 @@ export function setRelativeDatetimeUnit(filter, unit) {
   if (filter[0] === "time-interval") {
     return assoc(filter, 3, unit);
   }
-  if (isStartingFrom(filter)) {
+  const startingFrom = getStartingFrom(filter);
+  if (startingFrom) {
     const [op, field, start, end] = filter;
-    return [op, field, assoc(start, 2, unit), end ? assoc(end, 2, unit) : end];
+    return setStartingFrom(
+      [op, field, assoc(start, 2, unit), end ? assoc(end, 2, unit) : end],
+      startingFrom[0],
+      unit,
+    );
   }
   return filter;
 }
@@ -530,15 +555,13 @@ export function setRelativeDatetimeValue(filter, value) {
     return assoc(filter, 2, value);
   }
   if (isStartingFrom(filter)) {
-    const [_op, field, start, end] = filter;
-    if (value === 1 || value === -1) {
-      return ["=", field, assoc(start, 1, value)];
-    }
+    const [_op, field] = filter;
+    const [_num, unit] = getRelativeDatetimeInterval(filter);
     return [
       "between",
       field,
-      assoc(start, 1, value < 0 ? value : 0),
-      assoc(end, 1, value < 0 ? 0 : value),
+      ["relative-datetime", value < 0 ? value : 0, unit],
+      ["relative-datetime", value < 0 ? 0 : value, unit],
     ];
   }
   return filter;
@@ -591,3 +614,95 @@ export const setTimeComponent = (value, hours, minutes) => {
 
 export const TIME_SELECTOR_DEFAULT_HOUR = 12;
 export const TIME_SELECTOR_DEFAULT_MINUTE = 30;
+
+export const EXCLUDE_UNITS = {
+  days: "day-of-week",
+  months: "month-of-year",
+  quarters: "quarter-of-year",
+  hours: "hour-of-day",
+};
+
+export const EXCLUDE_OPTIONS = {
+  [EXCLUDE_UNITS["days"]]: () => {
+    const now = moment()
+      .utc()
+      .hours(0)
+      .minutes(0)
+      .seconds(0)
+      .milliseconds(0);
+    return [
+      _.range(0, 7).map(day => {
+        const date = now.day(day + 1);
+        const displayName = date.format("dddd");
+        const value = date.format("YYYY-MM-DD");
+        return {
+          displayName,
+          value,
+          serialized: date.format("ddd"),
+          test: val => value === val,
+        };
+      }),
+    ];
+  },
+  [EXCLUDE_UNITS["months"]]: () => {
+    const now = moment()
+      .utc()
+      .date(1)
+      .hours(0)
+      .minutes(0)
+      .seconds(0)
+      .milliseconds(0);
+    const func = month => {
+      const date = now.month(month);
+      const displayName = date.format("MMMM");
+      const value = date.format("YYYY-MM-DD");
+      return {
+        displayName,
+        value,
+        serialized: date.format("MMM"),
+        test: value => moment(value).format("MMMM") === displayName,
+      };
+    };
+    return [_.range(0, 6).map(func), _.range(6, 12).map(func)];
+  },
+  [EXCLUDE_UNITS["quarters"]]: () => {
+    const now = moment()
+      .utc()
+      .hours(0)
+      .minutes(0)
+      .seconds(0)
+      .milliseconds(0);
+    const suffix = " " + t`quarter`;
+    return [
+      _.range(1, 5).map(quarter => {
+        const date = now.quarter(quarter);
+        const displayName = date.format("Qo");
+        const value = date.format("YYYY-MM-DD");
+        return {
+          displayName: displayName + suffix,
+          value,
+          serialized: date.format("Q"),
+          test: value => moment(value).format("Qo") === displayName,
+        };
+      }),
+    ];
+  },
+  [EXCLUDE_UNITS["hours"]]: () => {
+    const now = moment()
+      .utc()
+      .minutes(0)
+      .seconds(0)
+      .milliseconds(0);
+    const func = hour => {
+      const date = now.hour(hour);
+      const displayName = date.format("h A");
+      return {
+        displayName,
+        value: hour,
+        serialized: hour.toString(),
+        test: value => value === hour,
+      };
+    };
+    return [_.range(0, 12).map(func), _.range(12, 24).map(func)];
+  },
+};

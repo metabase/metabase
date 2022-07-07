@@ -35,13 +35,14 @@ const HomeGreeting = ({
   );
 };
 
-const getMessage = (name: string): string => {
+const getMessage = (name: string | null): string => {
+  const namePart = name ? `, ${name}` : "";
   const options = [
-    t`Hey there, ${name}`,
-    t`How's it going, ${name}?`,
-    t`Howdy, ${name}`,
-    t`Greetings, ${name}`,
-    t`Good to see you, ${name}`,
+    t`Hey there${namePart}`,
+    t`How's it going${namePart}?`,
+    t`Howdy${namePart}`,
+    t`Greetings${namePart}`,
+    t`Good to see you${namePart}`,
   ];
 
   return _.sample(options) ?? "";

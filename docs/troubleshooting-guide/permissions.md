@@ -1,3 +1,7 @@
+---
+title: Fixing permissions issues
+---
+
 # Fixing permissions issues
 
 This troubleshooting guide has you covered if you've [connected your database][connecting-database] to Metabase, set up [groups][groups] for new people, and granted [data permissions][data-permissions] and [collection permissions][setting-collection-permissions] to those groups, but:
@@ -17,7 +21,7 @@ If they're a member of two groups — one which grants [Unrestricted][unrestrict
 1. In the **People tab** of the **Admin Panel**, take a look at which groups the person is in.
 2. Either remove the person from the group with wider permissions, or adjust that group's data permissions to grant them no-self service access to the table you want restricted.
 
-Remember that everyone is a member of the **All Users** group; this is why we recommend you revoke permissions from the **All users** group, and create new groups to selectively apply permissions to your data sources.
+Remember that everyone is a member of the **All Users** group. We recommend you revoke permissions from the **All users** group, and create new groups to selectively apply permissions to your data sources.
 
 ## A person who needs to access the SQL editor can't
 
@@ -57,7 +61,7 @@ Keep in mind that if a person belongs to another group that does have data acces
 [granular]: ../administration-guide/data-permissions.html#granular-access
 [groups]: ../administration-guide/04-managing-users.html#groups
 [learn-permissions]: /learn/permissions/index.html
-[native-query-editing]: ../administration-guide/data-permissions.html#native-query-editing
+[native-query-editing]: ../administration-guide/data-permissions.html#native-querying
 [no-self-service]: ../administration-guide/data-permissions.html#no-self-service-access
 [sandboxing]: ./sandboxing.html
 [setting-collection-permissions]: ../administration-guide/06-collections.html#setting-permissions-for-collections

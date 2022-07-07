@@ -2,6 +2,10 @@ import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import { getRelativeTime } from "metabase/lib/time";
+import { t } from "ttag";
+
+import Button from "metabase/core/components/Button";
+import Tooltip from "metabase/components/Tooltip";
 
 import {
   TimelineContainer,
@@ -27,11 +31,17 @@ Timeline.propTypes = {
     }),
   ),
   renderFooter: PropTypes.func,
+  revertFn: PropTypes.func,
+  "data-testid": PropTypes.string,
 };
 
-export default Timeline;
-
-function Timeline({ className, items = [], renderFooter }) {
+function Timeline({
+  className,
+  items = [],
+  renderFooter,
+  revertFn,
+  "data-testid": dataTestId,
+}) {
   const iconSize = 16;
   const halfIconSize = iconSize / 2;
 
@@ -51,6 +61,7 @@ function Timeline({ className, items = [], renderFooter }) {
       leftShift={halfIconSize}
       bottomShift={halfIconSize}
       className={className}
+      data-testid={dataTestId}
     >
       {sortedFormattedItems.map((item, index) => {
         const {
@@ -59,6 +70,8 @@ function Timeline({ className, items = [], renderFooter }) {
           description,
           timestamp,
           formattedTimestamp,
+          isRevertable,
+          revision,
         } = item;
         const key = item.key == null ? index : item.key;
         const isNotLastEvent = index !== sortedFormattedItems.length - 1;
@@ -73,7 +86,20 @@ function Timeline({ className, items = [], renderFooter }) {
             {isNotLastEvent && <Border borderShift={halfIconSize} />}
             <ItemIcon {...iconProps} size={iconSize} />
             <ItemBody>
-              <ItemHeader>{title}</ItemHeader>
+              <ItemHeader>
+                {title}
+                {isRevertable && revertFn && (
+                  <Tooltip tooltip={t`Revert to this version`}>
+                    <Button
+                      icon="revert"
+                      onlyIcon
+                      borderless
+                      onClick={() => revertFn(revision)}
+                      data-testid="question-revert-button"
+                    />
+                  </Tooltip>
+                )}
+              </ItemHeader>
               <Timestamp datetime={timestamp}>{formattedTimestamp}</Timestamp>
               <div>{description}</div>
               {_.isFunction(renderFooter) && (
@@ -86,3 +112,9 @@ function Timeline({ className, items = [], renderFooter }) {
     </TimelineContainer>
   );
 }
+
+export default Object.assign(Timeline, {
+  ItemBody,
+  ItemHeader,
+  ItemIcon,
+});

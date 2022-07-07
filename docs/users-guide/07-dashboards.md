@@ -1,3 +1,7 @@
+---
+title: Dashboards
+---
+
 # Dashboards
 
 ![Interactive dashboard](images/dashboards/interactive-dashboard.png)

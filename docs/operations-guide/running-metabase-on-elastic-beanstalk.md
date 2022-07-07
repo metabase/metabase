@@ -1,4 +1,8 @@
-**Covered in this guide:**
+---
+title: Running Metabase on AWS Elastic Beanstalk
+---
+
+# Running Metabase on AWS Elastic Beanstalk
 
 - [Running Metabase on AWS Elastic Beanstalk](#running-metabase-on-aws-elastic-beanstalk)
   - [Quick Launch](#quick-launch)
@@ -19,9 +23,6 @@
   - [Notifications](#notifications)
 - [Deploying New Versions of Metabase on Elastic Beanstalk](#deploying-new-versions-of-metabase-on-elastic-beanstalk)
 
-# Running Metabase on AWS Elastic Beanstalk
-
-
 This quick launch setup is intended for testing purposes only, and is not intended for production use. We'll focus on deploying Metabase with a single instance and the embedded H2 database with the following components:
 - a region (where your Metabase application will exist)
 - a network (where your application will reside and interact with other applications or servers if needed)
@@ -29,7 +30,7 @@ This quick launch setup is intended for testing purposes only, and is not intend
 - a load balancer (to make this deployment future proof and also provide features like HTTPS or Web Application Firewall security features)
 If you want to see a high-level architectural diagram of what you will achieve once you follow this guide, [click here](images/Metabase-AWS-H2.png).
 
-If you would like a reliable, scalable and fully managed Metabase, please consider [Metabase Cloud](https://www.metabase.com/start/hosted/).
+If you would like a reliable, scalable and fully managed Metabase, please consider [Metabase Cloud](https://www.metabase.com/start/).
 
 ## Quick Launch
 

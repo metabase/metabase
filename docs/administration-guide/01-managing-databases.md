@@ -1,9 +1,12 @@
+---
+title: Adding and managing databases
+---
+
 # Adding and managing databases
 
 - [Adding a database connection](#adding-a-database-connection)
 - [Databases](#databases)
 - [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
-- [Errors when connecting to your database](#errors-when-connecting-to-your-database)
 - [Database connection options](#database-connection-options)
 - [Re-scanning a single table or field](#re-scanning-a-single-table-or-field)
 - [Deleting databases](#deleting-databases)
@@ -50,10 +53,6 @@ The following databases have official drivers maintained by the Metabase team. C
 For provider-specific connection details, like connecting to a PostgreSQL data warehouse on RDS:
 
 - [AWS's Relational Database Service (RDS)](databases/aws-rds.md)
-
-## Errors when connecting to your database
-
-Check our [troubleshooting guide](../troubleshooting-guide/datawarehouse.md).
 
 ## Database connection options
 

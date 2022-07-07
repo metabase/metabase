@@ -25,7 +25,7 @@
 
 (api/defendpoint GET "/"
   "SSO entry-point for an SSO user that has not logged in yet"
-  {:as req}
+  [:as req]
   (throw-if-no-premium-features-token)
   (try
     (sso.i/sso-get req)
@@ -45,7 +45,7 @@
 
 (api/defendpoint POST "/"
   "Route the SSO backends call with successful login details"
-  {:as req}
+  [:as req]
   (throw-if-no-premium-features-token)
   (try
     (sso.i/sso-post req)

@@ -40,7 +40,7 @@ jobs:
     strategy:
       matrix:
         edition: [ee, oss]
-        java-version: [8, 11, 17]
+        java-version: [11, 17]
     steps:
     - name: Prepare JRE (Java Run-time Environment)
       uses: actions/setup-java@v3
@@ -114,9 +114,53 @@ jobs:
     - name: Retag and push images if master or main (ee)
       if: ${{ (github.ref_name == 'master' || github.ref_name == 'main') && matrix.edition == 'ee' }}
       run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee metabase/metabase-enterprise-head:latest && docker push metabase/metabase-enterprise-head:latest
+
     - name: Retag and push images if master or main (oss)
       if: ${{ (github.ref_name == 'master' || github.ref_name == 'main') && matrix.edition == 'oss' }}
       run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss metabase/metabase-head:latest && docker push metabase/metabase-head:latest
+
     - name: Retag and push images if branch
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'main') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
       run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }} && docker push metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+
+    - name: Run Trivy vulnerability scanner if master or main (ee)
+      if: ${{ (github.ref_name == 'master' || github.ref_name == 'main') && matrix.edition == 'ee' }}
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: docker.io/metabase/metabase-enterprise-head:latest
+        format: sarif
+        output: trivy-results.sarif
+
+    - name: Run Trivy vulnerability scanner if master or main (oss)
+      if: ${{ (github.ref_name == 'master' || github.ref_name == 'main') && matrix.edition == 'oss' }}
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: docker.io/metabase/metabase-head:latest
+        format: sarif
+        output: trivy-results.sarif
+
+    - name: Run Trivy vulnerability scanner if dev branch
+      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'main') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: docker.io/metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+        format: sarif
+        output: trivy-results.sarif
+
+    - name: Upload Trivy scan results to GitHub Security tab if master or main (ee)
+      if: ${{ (github.ref_name == 'master' || github.ref_name == 'main') && matrix.edition == 'ee' }}
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab if master or main (oss)
+      if: ${{ (github.ref_name == 'master' || github.ref_name == 'main') && matrix.edition == 'oss' }}
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab  if dev branch
+      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'main') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'

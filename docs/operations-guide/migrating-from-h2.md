@@ -1,3 +1,7 @@
+---
+title: Migrating from the default H2 database to a production database
+---
+
 # Migrating from the default H2 database to a production database
 
 - [Metabase's application database](#metabases-application-database)

@@ -1,4 +1,9 @@
-import { popover, modal } from "__support__/e2e/cypress";
+import {
+  popover,
+  modal,
+  openQuestionActions,
+  interceptIfNotPreviouslyDefined,
+} from "__support__/e2e/helpers";
 
 export function assertQuestionIsBasedOnModel({
   questionName,
@@ -63,12 +68,11 @@ export function getDetailsSidebarActions() {
   return cy.findByTestId("question-action-buttons");
 }
 
-// Requires model details sidebar to be open
+// Requires model actions to be open
 export function assertIsModel() {
-  getDetailsSidebarActions().within(() => {
+  popover().within(() => {
     cy.icon("model").should("not.exist");
   });
-  cy.findByText("Model management");
   cy.findByText("Sample Database").should("not.exist");
 
   // For native
@@ -76,23 +80,29 @@ export function assertIsModel() {
   cy.get("ace_content").should("not.exist");
 }
 
-// Requires question details sidebar to be open
+// Requires question actions to be open
 export function assertIsQuestion() {
-  getDetailsSidebarActions().within(() => {
+  popover().within(() => {
     cy.icon("model");
   });
-  cy.findByText("Model management").should("not.exist");
   cy.findByText("Sample Database");
 }
 
 export function turnIntoModel() {
-  openDetailsSidebar();
-  getDetailsSidebarActions().within(() => {
+  interceptIfNotPreviouslyDefined({
+    method: "POST",
+    url: "/api/dataset",
+    alias: "dataset",
+  });
+
+  openQuestionActions();
+  popover().within(() => {
     cy.icon("model").click();
   });
   modal().within(() => {
     cy.button("Turn this into a model").click();
   });
+  cy.wait("@dataset");
 }
 
 export function selectFromDropdown(option, clickOpts) {

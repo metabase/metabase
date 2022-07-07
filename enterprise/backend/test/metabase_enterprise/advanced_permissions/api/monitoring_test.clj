@@ -83,3 +83,29 @@
             (get-stats user 200)
             (get-bug-report-detail user 200)
             (get-db-connection-info user 200))))))))
+
+(deftest persistence-test
+  (testing "/api/persist"
+    (mt/with-user-in-groups [group {:name "New Group"}
+                             user [group]]
+      (letfn [(fetch-persisted-info [user status]
+                (testing (format "persist with %s user" (mt/user-descriptor user))
+                  (mt/user-http-request user :get status "persist")))]
+
+        (testing "if `advanced-permissions` is disabled, require admins,"
+          (fetch-persisted-info :crowberto 200)
+          (fetch-persisted-info user 403)
+          (fetch-persisted-info :rasta 403))
+
+        (testing "if `advanced-permissions` is enabled"
+          (premium-features-test/with-premium-features #{:advanced-permissions}
+            (testing "still fail if user's group doesn't have `setting` permission,"
+              (fetch-persisted-info :crowberto 200)
+              (fetch-persisted-info user 403)
+              (fetch-persisted-info :rasta 403))
+
+            (testing "succeed if user's group has `monitoring` permission,"
+              (perms/grant-application-permissions! group :monitoring)
+              (fetch-persisted-info :crowberto 200)
+              (fetch-persisted-info user 200)
+              (fetch-persisted-info :rasta 403))))))))

@@ -1,6 +1,7 @@
 (ns metabase.driver.common.parameters.dates
   "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
-  (:require [java-time :as t]
+  (:require [clojure.string :as str]
+            [java-time :as t]
             [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
@@ -68,7 +69,11 @@
 (defn- year-range [start end]
   (comparison-range start end :year))
 
-(defn- quarter-range
+(defn- relative-quarter-range
+  [start end]
+  (comparison-range start end :quarter))
+
+(defn- absolute-quarter-range
   [quarter year]
   (let [year-quarter (t/year-quarter year (case quarter
                                             "Q1" 1
@@ -79,20 +84,22 @@
      :end   (.atEndOfQuarter year-quarter)}))
 
 (def ^:private operations-by-date-unit
-  {"second" {:unit-range second-range
-             :to-period  t/seconds}
-   "minute" {:unit-range minute-range
-             :to-period  t/minutes}
-   "hour"   {:unit-range hour-range
-             :to-period  t/hours}
-   "day"    {:unit-range day-range
-             :to-period  t/days}
-   "week"   {:unit-range week-range
-             :to-period  t/weeks}
-   "month"  {:unit-range month-range
-             :to-period  t/months}
-   "year"   {:unit-range year-range
-             :to-period  t/years}})
+  {"second"  {:unit-range second-range
+              :to-period  t/seconds}
+   "minute"  {:unit-range minute-range
+              :to-period  t/minutes}
+   "hour"    {:unit-range hour-range
+              :to-period  t/hours}
+   "day"     {:unit-range day-range
+              :to-period  t/days}
+   "week"    {:unit-range week-range
+              :to-period  t/weeks}
+   "month"   {:unit-range month-range
+              :to-period  t/months}
+   "quarter" {:unit-range relative-quarter-range
+              :to-period  (comp t/months (partial * 3))}
+   "year"    {:unit-range year-range
+              :to-period  t/years}})
 
 (defn- maybe-reduce-resolution [unit dt]
   (if
@@ -109,12 +116,13 @@
 
 (defn- expand-parser-groups
   [group-label group-value]
-  (case group-label
-    :unit (conj (seq (get operations-by-date-unit group-value))
-                [group-label group-value])
-    :int-value [[group-label (Integer/parseInt group-value)]]
-    (:date :date-1 :date-2) [[group-label (u.date/parse group-value)]]
-    [[group-label group-value]]))
+  (when group-value
+    (case group-label
+      :unit (conj (seq (get operations-by-date-unit group-value))
+                  [group-label group-value])
+      (:int-value :int-value-1) [[group-label (Integer/parseInt group-value)]]
+      (:date :date-1 :date-2) [[group-label (u.date/parse group-value)]]
+      [[group-label group-value]])))
 
 (s/defn ^:private regex->parser :- (s/pred fn?)
   "Takes a regex and labels matching the regex capturing groups. Returns a parser which takes a parameter value,
@@ -122,7 +130,7 @@
   names:
 
       :unit – finds a matching date unit and merges date unit operations to the result
-      :int-value – converts the group value to integer
+      :int-value, :int-value-1 – converts the group value to integer
       :date, :date1, date2 – converts the group value to absolute date"
   [regex :- java.util.regex.Pattern group-labels]
   (fn [param-value]
@@ -134,8 +142,8 @@
 ;; 2) Range decoder which takes the parser output and produces a date range relative to the given datetime
 ;; 3) Filter decoder which takes the parser output and produces a mbql clause for a given mbql field reference
 
-(def ^:private relative-temporal-units-regex #"(millisecond|second|minute|hour|day|week|month|quarter|year)")
-(def ^:private include-current-regex         #"(~?)")
+(def ^:private temporal-units-regex #"(millisecond|second|minute|hour|day|week|month|quarter|year)")
+(def ^:private relative-suffix-regex (re-pattern (format "(|~|-from-([0-9]+)%ss)" temporal-units-regex)))
 
 (def ^:private relative-date-string-decoders
   [{:parser #(= % "today")
@@ -154,28 +162,46 @@
     :filter (fn [_ field-clause]
               [:= (mbql.u/with-temporal-unit field-clause :day) [:relative-datetime -1 :day]])}
 
-   ;; adding a tilde (~) at the end of a past<n><unit> filter means we should include the current day/etc.
+   ;; Adding a tilde (~) at the end of a past<n><unit>s filter means we should include the current day/etc.
    ;; e.g. past30days  = past 30 days, not including partial data for today ({:include-current false})
-   ;;      past30days~ = past 30 days, *including* partial data for today   ({:include-current true})
-   {:parser (regex->parser (re-pattern (str #"past([0-9]+)" relative-temporal-units-regex #"s" include-current-regex))
-                           [:int-value :unit :include-current?])
-    :range  (fn [{:keys [unit int-value unit-range to-period include-current?]} dt]
-              (let [dt-res (maybe-reduce-resolution unit dt)]
+   ;;      past30days~ = past 30 days, *including* partial data for today   ({:include-current true}).
+   ;; Adding a -from-<n><unit>s suffix at the end of the filter means we want to offset the range in the
+   ;; case of past filters into the past, in the case of next filters into the future.
+   ;; The implementation below uses the fact that if the relative suffix is not empty, then the
+   ;; include-current flag is true.
+   {:parser (regex->parser (re-pattern (str #"past([0-9]+)" temporal-units-regex #"s" relative-suffix-regex))
+                           [:int-value :unit :relative-suffix :int-value-1 :unit-1])
+    :range  (fn [{:keys [unit int-value unit-range to-period relative-suffix unit-1 int-value-1]} dt]
+              (let [dt-off (cond-> dt
+                             unit-1 (t/minus ((get-in operations-by-date-unit [unit-1 :to-period]) int-value-1)))
+                    dt-res (maybe-reduce-resolution unit dt-off)]
                 (unit-range (t/minus dt-res (to-period int-value))
-                            (t/minus dt-res (to-period (if (seq include-current?) 0 1))))))
-    :filter (fn [{:keys [unit int-value include-current?]} field-clause]
-              [:time-interval field-clause (- int-value) (keyword unit) {:include-current (boolean (seq include-current?))}])}
+                            (t/minus dt-res (to-period (if (seq relative-suffix) 0 1))))))
+    :filter (fn [{:keys [unit int-value relative-suffix unit-1 int-value-1]} field-clause]
+              (if unit-1
+                [:between
+                 [:+ field-clause [:interval int-value-1 (keyword unit-1)]]
+                 [:relative-datetime (- int-value) (keyword unit)]
+                 [:relative-datetime 0 (keyword unit)]]
+                [:time-interval field-clause (- int-value) (keyword unit) {:include-current (boolean (seq relative-suffix))}]))}
 
-   {:parser (regex->parser (re-pattern (str #"next([0-9]+)" relative-temporal-units-regex #"s" include-current-regex))
-                           [:int-value :unit :include-current?])
-    :range  (fn [{:keys [unit int-value unit-range to-period include-current?]} dt]
-              (let [dt-res (maybe-reduce-resolution unit dt)]
-                (unit-range (t/plus dt-res (to-period (if (seq include-current?) 0 1)))
+   {:parser (regex->parser (re-pattern (str #"next([0-9]+)" temporal-units-regex #"s" relative-suffix-regex))
+                           [:int-value :unit :relative-suffix :int-value-1 :unit-1])
+    :range  (fn [{:keys [unit int-value unit-range to-period relative-suffix unit-1 int-value-1]} dt]
+              (let [dt-off (cond-> dt
+                             unit-1 (t/plus ((get-in operations-by-date-unit [unit-1 :to-period]) int-value-1)))
+                    dt-res (maybe-reduce-resolution unit dt-off)]
+                (unit-range (t/plus dt-res (to-period (if (seq relative-suffix) 0 1)))
                             (t/plus dt-res (to-period int-value)))))
-    :filter (fn [{:keys [unit int-value include-current?]} field-clause]
-              [:time-interval field-clause int-value (keyword unit) {:include-current (boolean (seq include-current?))}])}
+    :filter (fn [{:keys [unit int-value relative-suffix unit-1 int-value-1]} field-clause]
+              (if unit-1
+                [:between
+                 [:+ field-clause [:interval (- int-value-1) (keyword unit-1)]]
+                 [:relative-datetime 0 (keyword unit)]
+                 [:relative-datetime int-value (keyword unit)]]
+                [:time-interval field-clause int-value (keyword unit) {:include-current (boolean (seq relative-suffix))}]))}
 
-   {:parser (regex->parser (re-pattern (str #"last" relative-temporal-units-regex))
+   {:parser (regex->parser (re-pattern (str #"last" temporal-units-regex))
                            [:unit])
     :range  (fn [{:keys [unit unit-range to-period]} dt]
               (let [last-unit (t/minus (maybe-reduce-resolution unit dt) (to-period 1))]
@@ -183,7 +209,7 @@
     :filter (fn [{:keys [unit]} field-clause]
               [:time-interval field-clause :last (keyword unit)])}
 
-   {:parser (regex->parser (re-pattern (str #"this" relative-temporal-units-regex))
+   {:parser (regex->parser (re-pattern (str #"this" temporal-units-regex))
                            [:unit])
     :range  (fn [{:keys [unit unit-range]} dt]
               (let [dt-adj (maybe-reduce-resolution unit dt)]
@@ -199,6 +225,46 @@
   [{:keys [start end]} field-clause]
   [:between (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date start) (->iso-8601-date end)])
 
+(def ^:private short-day->day
+  {"Mon" :monday
+   "Tue" :tuesday
+   "Wed" :wednesday
+   "Thu" :thursday
+   "Fri" :friday
+   "Sat" :saturday
+   "Sun" :sunday})
+
+(def ^:private short-month->month
+  (into {}
+        (map-indexed (fn [i m] [m (inc i)]))
+        ["Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"]))
+
+(defn- parse-int-in-range [s min-val max-val]
+  (try
+    (let [i (Integer/parseInt s)]
+      (when (<= min-val i max-val)
+        i))
+    (catch NumberFormatException _)))
+
+(defn- excluded-datetime [unit date exclusion]
+  (let [year (t/year date)]
+    (case unit
+      :hour (when-let [hour (parse-int-in-range exclusion 0 23)]
+              (format "%sT%02d:00:00Z" date hour))
+      :day (when-let [day (short-day->day exclusion)]
+             (str (t/adjust date :next-or-same-day-of-week day)))
+      :month (when-let [month (short-month->month exclusion)]
+               (format "%s-%02d-01" year month))
+      :quarter (when-let [quarter (parse-int-in-range exclusion 1 4)]
+                 (format "%s-%02d-01" year (inc (* 3 (dec quarter)))))
+      nil)))
+
+(def ^:private excluded-temporal-unit
+  {:hour    :hour-of-day
+   :day     :day-of-week
+   :month   :month-of-year
+   :quarter :quarter-of-year})
+
 (def ^:private absolute-date-string-decoders
   ;; year and month
   [{:parser (regex->parser #"([0-9]{4}-[0-9]{2})" [:date])
@@ -209,9 +275,9 @@
    ;; quarter year
    {:parser (regex->parser #"(Q[1-4]{1})-([0-9]{4})" [:quarter :year])
     :range  (fn [{:keys [quarter year]} _]
-              (quarter-range quarter (Integer/parseInt year)))
+              (absolute-quarter-range quarter (Integer/parseInt year)))
     :filter (fn [{:keys [quarter year]} field-clause]
-              (range->filter (quarter-range quarter (Integer/parseInt year))
+              (range->filter (absolute-quarter-range quarter (Integer/parseInt year))
                              field-clause))}
    ;; single day
    {:parser (regex->parser #"([0-9-T:]+)" [:date])
@@ -237,7 +303,15 @@
     :range  (fn [{:keys [date]} _]
               {:start date})
     :filter (fn [{:keys [date]} field-clause]
-              [:> (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date)])}])
+              [:> (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date)])}
+   ;; exclusions
+   {:parser (regex->parser (re-pattern (str "exclude-" temporal-units-regex #"s-([-\p{Alnum}]+)")) [:unit :exclusions])
+    :filter (fn [{:keys [unit exclusions]} field-clause]
+              (let [unit (keyword unit)
+                    exclusions (map (partial excluded-datetime unit (t/local-date))
+                                    (str/split exclusions #"-"))]
+                (when (and (seq exclusions) (every? some? exclusions))
+                  (into [:!= (mbql.u/with-temporal-unit field-clause (excluded-temporal-unit unit))] exclusions))))}])
 
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
@@ -248,7 +322,7 @@
   dox for [[date-string->range]] for more details."
   [decoders, decoder-type :- (s/enum :range :filter), decoder-param, date-string :- s/Str]
   (some (fn [{parser :parser, parser-result-decoder decoder-type}]
-          (when-let [parser-result (parser date-string)]
+          (when-let [parser-result (and parser-result-decoder (parser date-string))]
             (parser-result-decoder parser-result decoder-param)))
         decoders))
 

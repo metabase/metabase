@@ -6,6 +6,7 @@ import { t } from "ttag";
 import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 import ViewPill from "./ViewPill";
 import ViewButton from "./ViewButton";
@@ -148,20 +149,15 @@ export function FilterHeader({ className, question, expanded }) {
   );
 }
 
-export function QuestionFilterWidget({
-  isShowingFilterSidebar,
-  onAddFilter,
-  onCloseFilter,
-  ...props
-}) {
+export function QuestionFilterWidget({ onOpenModal }) {
   return (
     <HeaderButton
       large
       labelBreakpoint="sm"
       color={color("filter")}
-      onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}
-      active={isShowingFilterSidebar}
-      {...props}
+      onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
+      aria-label={t`Show more filters`}
+      data-metabase-event="View Mode; Open Filter Modal"
     >
       {t`Filter`}
     </HeaderButton>
@@ -205,8 +201,10 @@ QuestionFilterWidget.shouldRender = ({
   question,
   queryBuilderMode,
   isObjectDetail,
+  isActionListVisible,
 }) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
   question.query().isEditable() &&
-  !isObjectDetail;
+  !isObjectDetail &&
+  isActionListVisible;

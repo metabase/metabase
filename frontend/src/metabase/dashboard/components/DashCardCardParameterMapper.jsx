@@ -14,7 +14,6 @@ import Question from "metabase-lib/lib/Question";
 
 import {
   getEditingParameter,
-  getMappingsByParameter,
   getParameterTarget,
   makeGetParameterMappingOptions,
 } from "../selectors";
@@ -43,7 +42,6 @@ const mapStateToProps = (state, props) => ({
   editingParameter: getEditingParameter(state, props),
   target: getParameterTarget(state, props),
   mappingOptions: makeGetParameterMappingOptions()(state, props),
-  mappingsByParameter: getMappingsByParameter(state, props),
   metadata: getMetadata(state),
 });
 
@@ -57,7 +55,6 @@ DashCardCardParameterMapper.propTypes = {
   editingParameter: PropTypes.object.isRequired,
   target: PropTypes.object,
   mappingOptions: PropTypes.array.isRequired,
-  mappingsByParameter: PropTypes.object.isRequired,
   metadata: PropTypes.object.isRequired,
   setParameterMapping: PropTypes.func.isRequired,
 };
@@ -67,7 +64,6 @@ function DashCardCardParameterMapper({
   dashcard,
   editingParameter,
   target,
-  mappingsByParameter,
   mappingOptions,
   metadata,
   setParameterMapping,

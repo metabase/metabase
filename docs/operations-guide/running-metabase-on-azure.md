@@ -1,3 +1,7 @@
+---
+title: Running Metabase on Microsoft Azure
+---
+
 # Running Metabase on Microsoft Azure
 
 This guide covers the basics for running your Metabase instance in Microsoft Azure using Docker.
@@ -150,7 +154,7 @@ postgresql://10.0.2.4:5432/postgres?user=metabase@metabase-app-database&password
 
 Click **Save** and the instance will restart. 
 
-Once it finishes, you should be able to visit your Metabase at the URL shown in the the "Overview" tab in the web app (under the URL section). 
+Once it finishes, you should be able to visit your Metabase at the URL shown in the "Overview" tab in the web app (under the URL section). 
 
 ## Additional configurations
 

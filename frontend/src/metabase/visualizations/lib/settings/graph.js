@@ -154,7 +154,6 @@ export const GRAPH_DATA_SETTINGS = {
     getDefault: (series, vizSettings) => getDefaultColumns(series).metrics,
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings) => {
-      const value = vizSettings["graph.dimensions"];
       const options = data.cols
         .filter(vizSettings["graph._metric_filter"])
         .map(getOptionFromColumn);
@@ -163,7 +162,7 @@ export const GRAPH_DATA_SETTINGS = {
       const addedMetricsCount = vizSettings["graph.metrics"].length;
       const maxMetricsSupportedCount = getMaxMetricsSupported(card.display);
 
-      const hasMetricsToAdd = options.length > value.length;
+      const hasMetricsToAdd = options.length > addedMetricsCount;
       const canAddAnother =
         addedMetricsCount < maxMetricsSupportedCount &&
         hasMetricsToAdd &&

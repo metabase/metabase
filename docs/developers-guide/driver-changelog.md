@@ -1,3 +1,7 @@
+---
+title: Driver interface changelog
+---
+
 # Driver Interface Changelog
 
 ## Metabase 0.43.0
@@ -119,7 +123,7 @@ The following methods and vars are slated for removal in Metabase 0.45.0 unless 
 
 ## Older versions
 
-Prior to 0.42.0, this information was tracked in our Wiki. You can find changes for versions prior to 0.42.0 in the
+Before 0.42.0, this information was tracked in our Wiki. You can find changes for versions before 0.42.0 in the
 table below:
 
 | Version | Wiki page |

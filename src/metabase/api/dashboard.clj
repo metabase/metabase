@@ -69,7 +69,7 @@
   "Create a new Dashboard."
   [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
   {name                su/NonBlankString
-   parameters          [su/Map]
+   parameters          (s/maybe [su/Parameter])
    description         (s/maybe s/Str)
    cache_ttl           (s/maybe su/IntGreaterThanZero)
    collection_id       (s/maybe su/IntGreaterThanZero)
@@ -147,7 +147,7 @@
   [{:keys [dataset_query]}]
   (u/ignore-exceptions
     [(qp.util/query-hash dataset_query)
-     (qp.util/query-hash (assoc dataset_query :constraints qp.constraints/default-query-constraints))]))
+     (qp.util/query-hash (assoc dataset_query :constraints (qp.constraints/default-query-constraints)))]))
 
 (defn- dashcard->query-hashes
   "Return a sequence of all the query hashes for this `dashcard`, including the top-level Card and any Series."
@@ -205,7 +205,7 @@
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
-      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series] :collection_authority_level :can_write :param_fields :param_values)
+      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series] :collection_authority_level :can_write :param_fields)
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
@@ -275,7 +275,7 @@
    show_in_getting_started (s/maybe s/Bool)
    enable_embedding        (s/maybe s/Bool)
    embedding_params        (s/maybe su/EmbeddingParams)
-   parameters              (s/maybe [su/Map])
+   parameters              (s/maybe [su/Parameter])
    position                (s/maybe su/IntGreaterThanZero)
    archived                (s/maybe s/Bool)
    collection_id           (s/maybe su/IntGreaterThanZero)
@@ -590,12 +590,14 @@
    (let [dashboard (hydrate dashboard :resolved-params)]
      (when-not (get (:resolved-params dashboard) param-key)
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
-                       {:resolved-params (keys (:resolved-params dashboard))})))
+                       {:resolved-params (keys (:resolved-params dashboard))
+                        :status-code     400})))
      (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
            field-ids   (param-key->field-ids dashboard param-key)]
        (when (empty? field-ids)
          (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                         {:param (get (:resolved-params dashboard) param-key)})))
+                         {:param       (get (:resolved-params dashboard) param-key)
+                          :status-code 400})))
        ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
        ;; separate query for each Field (for parameters that are mapped to more than one Field)
        (try

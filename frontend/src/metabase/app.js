@@ -1,5 +1,6 @@
 import "core-js/stable";
 import "regenerator-runtime/runtime";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 // Use of classList.add and .remove in Background and FitViewPort Hocs requires
 // this polyfill so that those work in older browsers
@@ -52,6 +53,8 @@ import { syncHistoryWithStore } from "react-router-redux";
 import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
 
+import GlobalStyles from "metabase/styled-components/containers/GlobalStyles";
+
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
 
@@ -70,17 +73,23 @@ function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
   const history = syncHistoryWithStore(browserHistory, store);
-  createTracker(store);
+  const googleAuthClientId = MetabaseSettings.get("google-auth-client-id");
 
   let root;
+
+  createTracker(store);
+
   ReactDOM.render(
-    <Provider store={store} ref={ref => (root = ref)}>
-      <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
-        <ThemeProvider theme={theme}>
-          <Router history={history}>{routes}</Router>
-        </ThemeProvider>
-      </DragDropContextProvider>
-    </Provider>,
+    <GoogleOAuthProvider clientId={googleAuthClientId}>
+      <Provider store={store} ref={ref => (root = ref)}>
+        <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
+          <ThemeProvider theme={theme}>
+            <GlobalStyles />
+            <Router history={history}>{routes}</Router>
+          </ThemeProvider>
+        </DragDropContextProvider>
+      </Provider>
+    </GoogleOAuthProvider>,
     document.getElementById("root"),
   );
 

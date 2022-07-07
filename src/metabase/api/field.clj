@@ -200,15 +200,16 @@
 (defn field->values
   "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
   use-cases."
-  [{has-field-values-type :has_field_values, field-id :id, :as field}]
+  [{has-field-values-type :has_field_values, field-id :id, has_more_values :has_more_values, :as field}]
   ;; if there's a human-readable remapping, we need to do all sorts of nonsense to make this work and return pairs of
   ;; `[original remapped]`. The code for this exists in the [[search-values]] function below. So let's just use
   ;; [[search-values]] without a search term to fetch all values.
   (if-let [human-readable-field-id (when (= has-field-values-type :list)
                                      (db/select-one-field :human_readable_field_id Dimension :field_id (u/the-id field)))]
-    {:values   (search-values (api/check-404 field)
-                              (api/check-404 (Field human-readable-field-id)))
-     :field_id field-id}
+    {:values          (search-values (api/check-404 field)
+                                     (api/check-404 (Field human-readable-field-id)))
+     :field_id        field-id
+     :has_more_values has_more_values}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
 
 (defn- check-perms-and-return-field-values
@@ -257,6 +258,7 @@
   [field-or-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
     (db/insert! FieldValues
+      :type :full
       :field_id (u/the-id field-or-id)
       :values (map first value-pairs)
       :human_readable_values (when human-readable-values?
@@ -271,7 +273,7 @@
     (api/check (field-values/field-should-have-field-values? field)
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                 "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
-    (if-let [field-value-id (db/select-one-id FieldValues, :field_id id)]
+    (if-let [field-value-id (db/select-one-id FieldValues, :field_id id :type :full)]
       (update-field-values! field-value-id value-pairs)
       (create-field-values! field value-pairs)))
   {:status :success})
@@ -285,16 +287,15 @@
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (field-values/create-or-update-field-values! field)))
+      (field-values/create-or-update-full-field-values! field)))
   {:status :success})
 
 (api/defendpoint POST "/:id/discard_values"
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
-  (field-values/clear-field-values! (api/write-check (Field id)))
+  (field-values/clear-field-values-for-field! (api/write-check (Field id)))
   {:status :success})
-
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 

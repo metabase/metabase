@@ -22,7 +22,7 @@ function getIndicationColor(percentage: number, isHovered: boolean): string {
     return color("danger");
   }
   if (!isHovered) {
-    return color("bg-medium");
+    return color("text-medium");
   }
   return percentage >= 0.9 ? color("success") : color("warning");
 }
@@ -75,14 +75,12 @@ function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
         delay={TOOLTIP_DELAY}
         placement="bottom"
       >
-        <PercentageLabel color={indicationColor}>
+        <PercentageLabel
+          color={indicationColor}
+          data-testid="tooltip-component-wrapper"
+        >
           {formatPercentage(percentage)}
         </PercentageLabel>
-        <ProgressBar
-          percentage={percentage}
-          color={indicationColor}
-          height="8px"
-        />
       </Tooltip>
     </Root>
   );

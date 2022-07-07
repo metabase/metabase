@@ -1,3 +1,7 @@
+---
+title: What are you having trouble with?
+---
+
 # What are you having trouble with?
 
 This page collects resources for getting you unstuck.
@@ -23,27 +27,38 @@ Problems, their causes, how to detect them, and how to fix them.
 - [Fixing permissions issues][permissions].
 - [Managing data sandboxing][sandbox].
 
-### Data Sources
+### Databases
 
-- [Connecting to data warehouses with Metabase][datawarehouse].
+- [I can't connect to a database][datawarehouse].
 - [I can't see my tables][cant-see-tables].
-- [Fixing missing or out-of-sync tables and columns][sync-fingerprint-scan].
+- [The data in Metabase doesn't match my database][sync-fingerprint-scan].
+- [My connection or query is timing out][timeout].
 
 ### Questions and dashboards
 
-- [Saving questions or dashboards][proxies].
-- [My dashboard is slow][slow-dashboard].
+- [I can't save my question or dashboard][proxies].
+- [My dashboard is slow or failing to load][slow-dashboard].
+- [My SQL question doesn't work][sql].
 - [The dates and times in my questions and charts are wrong][incorrect-times].
 - [My dashboard filters don't work][filters].
 - [My dashboard's linked filters don't work][linked-filters].
+
+### Models
+
+- [My model doesn't work][models].
 
 ### Email and alerts
 
 - [Metabase isn't sending email][not-sending-email].
 
+### Error messages
+
+- [I'm getting an error message][error-message].
+
 ## Think you found a bug?
 
-Let us know by [filing a bug report][bugs].
+- [How to find known bugs or limitations][known-issues].
+- [Filing a bug report][bugs].
 
 ## Feature requests
 
@@ -82,15 +97,18 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [datawarehouse]: ./datawarehouse.html
 [docker]: ./docker.html
 [edge]: https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium
+[error-message]: error-message.html
 [feature-request]: requesting-new-features.html
 [filters]: ./filters.html
 [firefox]: https://developer.mozilla.org/en-US/docs/Tools/Web_Console/Opening_the_Web_Console
 [forum]: https://discourse.metabase.com/
 [incorrect-times]: ./timezones.html
+[known-issues]: ./known-issues.html
 [ldap]: ./ldap.html
 [learn]: https://www.metabase.com/learn
 [linked-filters]: ./linked-filters.html
 [login]: ./cant-log-in.html
+[models]: ./models.html
 [not-sending-email]: ./cant-send-email.html
 [permissions]: ./permissions.html
 [proxies]: ./proxies.html
@@ -101,5 +119,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [saml]: ./saml.md
 [sandbox]: ./sandboxing.html
 [slow-dashboard]: ./my-dashboard-is-slow.html
+[sql]: ./sql.html
 [sync-fingerprint-scan]: ./sync-fingerprint-scan.html
+[timeout]: ./timeout.html
 [upgrade]: ../operations-guide/upgrading-metabase.html

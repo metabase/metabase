@@ -7,7 +7,8 @@ import {
   getCollectionIdFromSlug,
   openNavigationSidebar,
   closeNavigationSidebar,
-} from "__support__/e2e/cypress";
+  openCollectionMenu,
+} from "__support__/e2e/helpers";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -224,7 +225,7 @@ describe("scenarios > collection defaults", () => {
         });
       });
 
-      it.skip("should be able to choose a child collection when saving a question (metabase#14052)", () => {
+      it("should be able to choose a child collection when saving a question (metabase#14052)", () => {
         openOrdersTable();
         cy.findByText("Save").click();
         // Click to choose which collection should this question be saved to
@@ -471,24 +472,16 @@ function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
 }
 
 function moveOpenedCollectionTo(newParent) {
-  cy.icon("pencil").click();
-  cy.findByTextEnsureVisible("Edit this collection").click();
-
-  // Open the select dropdown menu
-  modal()
-    .findByTestId("select-button")
-    .click();
+  openCollectionMenu();
+  popover().within(() => cy.findByText("Move").click());
 
   cy.findAllByTestId("item-picker-item")
     .contains(newParent)
     .click();
 
-  // Make sure the correct value is selected
-  cy.findAllByTestId("select-button-content").contains(newParent);
-
-  cy.button("Update").click();
+  cy.button("Move").click();
   // Make sure modal closed
-  cy.button("Update").should("not.exist");
+  cy.button("Move").should("not.exist");
 }
 
 function dragAndDrop(subjectAlias, targetAlias) {

@@ -100,7 +100,7 @@
           (.write out v)))
       tmp-file)))
 
-(def ^:private uploaded-base-64-prefix "data:application/x-x509-ca-cert;base64,")
+(def ^:private uploaded-base-64-pattern #"^data:application/([^;]*);base64,")
 
 (defn db-details-prop->secret-map
   "Returns a map containing `:value` and `:source` for the given `conn-prop-nm`. `conn-prop-nm` is expected to be the
@@ -126,9 +126,14 @@
         id-kw      (sub-prop "-id")
         value      (cond
                      ;; ssl-root-certs will need their prefix removed, and to be base 64 decoded (#20319)
-                     (and (value-kw details) (= "ssl-root-cert" conn-prop-nm)
-                          (str/starts-with? (value-kw details) uploaded-base-64-prefix))
-                     (-> (value-kw details) (str/replace-first uploaded-base-64-prefix "") u/decode-base64)
+                     (and (value-kw details) (#{"ssl-client-cert" "ssl-root-cert"} conn-prop-nm)
+                          (re-find uploaded-base-64-pattern (value-kw details)))
+                     (-> (value-kw details) (str/replace-first uploaded-base-64-pattern "") u/decode-base64)
+
+                     (and (value-kw details) (#{"ssl-key"} conn-prop-nm)
+                          (re-find uploaded-base-64-pattern (value-kw details)))
+                     (.decode (java.util.Base64/getDecoder)
+                              (str/replace-first (value-kw details) uploaded-base-64-pattern ""))
 
                      ;; the -value suffix was specified; use that
                      (value-kw details)
@@ -155,6 +160,22 @@
       value
       (assoc :value value
              :source source))))
+
+(defn get-secret-string
+  "Get the value of a secret property from the database details as a string."
+  [details secret-property]
+  (let [value-key (keyword (str secret-property "-value"))
+        options-key (keyword (str secret-property "-options"))
+        path-key (keyword (str secret-property "-path"))
+        id-key (keyword (str secret-property "-id"))
+        id (id-key details)
+        value (if id
+                (String. ^bytes (:value (Secret id)) "UTF-8")
+                (value-key details))]
+    (case (options-key details)
+      "uploaded" (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
+      "local" (slurp (if id value (path-key details)))
+      value)))
 
 (def
   ^{:doc "The attributes of a secret which, if changed, will result in a version bump" :private true}
@@ -245,7 +266,7 @@
                       (instance? (class Secret) secret-or-id)
                       secret-or-id
 
-                      true ; default; app DB look up from the ID in db-details
+                      :else ; default; app DB look up from the ID in db-details
                       (latest-for-id (get db-details (subprop "-id"))))
         src     (:source secret*)]
     ;; always populate the -source, -creator-id, and -created-at sub properties

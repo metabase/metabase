@@ -792,3 +792,13 @@
     [:aggregation 0]                              [:aggregation 0]
     [:aggregation 0 {::namespaced true}]          [:aggregation 0]
     [:aggregation 0 {::namespaced true, :a 1}]    [:aggregation 0 {:a 1}]))
+
+(t/deftest with-temporal-unit-test
+  (t/is (= [:field 1 {:temporal-unit :day}]
+           (mbql.u/with-temporal-unit [:field 1 nil] :day)))
+  (t/is (= [:field "t" {:base-type :type/Date, :temporal-unit :day}]
+           (mbql.u/with-temporal-unit [:field "t" {:base-type :type/Date}] :day)))
+  (t/testing "Ignore invalid temporal units if `:base-type` is specified (#16485)"
+    ;; `:minute` doesn't make sense for a DATE
+    (t/is (= [:field "t" {:base-type :type/Date}]
+             (mbql.u/with-temporal-unit [:field "t" {:base-type :type/Date}] :minute)))))

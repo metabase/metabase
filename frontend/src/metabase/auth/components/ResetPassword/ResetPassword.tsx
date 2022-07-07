@@ -120,7 +120,7 @@ const ResetPasswordSuccess = (): JSX.Element => {
       <InfoMessage>{t`You've updated your password.`}</InfoMessage>
       <Link
         className="Button Button--primary"
-        to={"/"}
+        to="/"
       >{t`Sign in with your new password`}</Link>
     </InfoBody>
   );

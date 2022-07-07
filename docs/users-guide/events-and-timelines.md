@@ -1,3 +1,7 @@
+---
+title: Events and timelines
+---
+
 # Events and timelines
 
 A lot of discussions around data have a moment when someone asks a question related to a specific point in time: "Wait, what's the spike in March again?", or "When did the new widget launch?"
@@ -63,4 +67,4 @@ To permanently delete an event or timeline, you must first archive the event or 
 
 ## Disabling events for a question
 
-If a collection includes timelines, those events will show up for any time series in that collection (provided the timeline and the question's date range overlap). If you want to disable the visibility of events by default for a particular question, you'll need to move that question to a collection that doesn't have any timelines or events.
+If a collection includes timelines, those events will show up for any time series in that collection (provided the timeline and the question's date range overlap). If you want to disable the visibility of events by default for a particular question, you'll need to move that question to a collection that lacks timelines and events.

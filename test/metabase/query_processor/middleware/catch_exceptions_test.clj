@@ -61,7 +61,18 @@
   (testing "No Exception -- should return response as-is"
     (is (= {:data {}, :row_count 0, :status :completed}
            (catch-exceptions
-            (fn []))))))
+            (fn [])))))
+
+  (testing "compile and preprocess should not be called if no exception occurs"
+    (let [compile-call-count (atom 0)
+          preprocess-call-count (atom 0)]
+     (with-redefs [qp/compile    (fn [_] (swap! compile-call-count inc))
+                   qp/preprocess (fn [_] (swap! preprocess-call-count inc))]
+      (is (= {:data {}, :row_count 0, :status :completed}
+             (catch-exceptions
+              (fn []))))
+      (is (= 0 @compile-call-count))
+      (is (= 0 @preprocess-call-count))))))
 
 (deftest sync-exception-test
   (testing "if the QP throws an Exception (synchronously), should format the response appropriately"
@@ -93,37 +104,50 @@
                  :metadata
                  (update :stacktrace boolean)))))))
 
-(deftest include-query-execution-info-test
-  (testing "Should include info from QueryExecution if added to the thrown/raised Exception"
+(deftest catch-exceptions-test
+  (testing "include-query-execution-info-test"
+    (testing "Should include info from QueryExecution if added to the thrown/raised Exception"
+      (tu.log/suppress-output
+       (is (= {:status     :failed
+               :class      java.lang.Exception
+               :error      "Something went wrong"
+               :stacktrace true
+               :card_id    300
+               :json_query {}
+               :row_count  0
+               :data       {:cols []}
+               :a          100
+               :b          200}
+              (-> (mt/test-qp-middleware catch-exceptions/catch-exceptions
+                                         {} {} []
+                                         {:runf (fn [_ _ context]
+                                                  (qp.context/raisef (ex-info "Something went wrong."
+                                                                              {:query-execution {:a            100
+                                                                                                 :b            200
+                                                                                                 :card_id      300
+                                                                                                 ;; these keys should all get removed
+                                                                                                 :result_rows  400
+                                                                                                 :hash         500
+                                                                                                 :executor_id  500
+                                                                                                 :dashboard_id 700
+                                                                                                 :pulse_id     800
+                                                                                                 :native       900}}
+                                                                              (Exception. "Something went wrong"))
+                                                                     context))})
+                  :metadata
+                  (update :stacktrace boolean)))))))
+  (testing "Should always include :error (#23258, #23281)"
     (tu.log/suppress-output
-      (is (= {:status     :failed
-              :class      java.lang.Exception
-              :error      "Something went wrong"
-              :stacktrace true
-              :card_id    300
-              :json_query {}
-              :row_count  0
-              :data       {:cols []}
-              :a          100
-              :b          200}
-             (-> (mt/test-qp-middleware catch-exceptions/catch-exceptions
-                                        {} {} []
-                                        {:runf (fn [_ _ context]
-                                                 (qp.context/raisef (ex-info "Something went wrong."
-                                                                             {:query-execution {:a            100
-                                                                                                :b            200
-                                                                                                :card_id      300
-                                                                                                ;; these keys should all get removed
-                                                                                                :result_rows  400
-                                                                                                :hash         500
-                                                                                                :executor_id  500
-                                                                                                :dashboard_id 700
-                                                                                                :pulse_id     800
-                                                                                                :native       900}}
-                                                                             (Exception. "Something went wrong"))
-                                                                    context))})
-                 :metadata
-                 (update :stacktrace boolean)))))))
+     (testing "Uses error message if present"
+       (is (= "Something went wrong"
+              (-> (fn [] (throw (Exception. "Something went wrong")))
+                  (catch-exceptions)
+                  :error))))
+     (testing "Has a default if no message on error"
+       (is (= "Error running query"
+              (-> (fn [] (throw (ex-info nil {})))
+                  (catch-exceptions)
+                  :error)))))))
 
 (deftest permissions-test
   (data/with-temp-copy-of-db

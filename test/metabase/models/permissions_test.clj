@@ -716,6 +716,24 @@
                    (perms)))))))))
 
 
+(deftest get-graph-should-unescape-slashes-test
+  (testing "If a schema name contains slash, getting graph should unescape it"
+    (testing "slash"
+      (mt/with-temp PermissionsGroup [group]
+        (perms/grant-permissions! group (perms/data-perms-path (mt/id) "schema/with_slash" (mt/id :venues)))
+        (is (= "schema/with_slash"
+               (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas])
+                   keys
+                   first)))))
+
+    (testing "back slash"
+      (mt/with-temp PermissionsGroup [group]
+        (perms/grant-permissions! group (perms/data-perms-path (mt/id) "schema\\with_backslash" (mt/id :venues)))
+        (is (= "schema\\with_backslash"
+               (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas])
+                   keys
+                   first)))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Granting/Revoking Permissions Helper Functions                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+

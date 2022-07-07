@@ -34,20 +34,20 @@ const mapStateToProps = (state, props) => ({
   isApplicationEmbeddingEnabled: getIsApplicationEmbeddingEnabled(state, props),
 });
 
-@connect(mapStateToProps)
-export default class EmbedModalContent extends Component {
+class EmbedModalContent extends Component {
   constructor(props) {
     super(props);
+    const displayOptions = {
+      font: null,
+      theme: null,
+      bordered: true,
+      titled: true,
+    };
     this.state = {
       pane: "preview",
       embedType: null,
       embeddingParams: props.resource.embedding_params || {},
-      displayOptions: {
-        theme: null,
-        bordered: true,
-        titled: true,
-      },
-
+      displayOptions,
       parameterValues: {},
     };
   }
@@ -240,6 +240,8 @@ export default class EmbedModalContent extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps)(EmbedModalContent);
 
 export const EmbedTitle = ({ type, onClick }) => (
   <a className="flex align-center" onClick={onClick}>

@@ -1,4 +1,8 @@
-# Creating SQL templates
+---
+title: SQL variables
+---
+
+# SQL variables 
 
 You can create SQL templates by adding variables to your SQL queries in the [Native/SQL editor][sql-editor]. These variables will create filter widgets that you can use to change the variable's value in the query. You can also add parameters to your question's URL to set the filters' values, so that when the question loads, those values are inserted into the variables.
 
@@ -263,6 +267,7 @@ More on [Dashboard filters][dashboard-filters].
 
 - [Create filter widgets for charts using SQL variables][sql-variables].
 - [Field Filters: create smart filter widgets for SQL questions][field-filter].
+- [Troubleshooting SQL][troubleshooting-sql].
 - [Troubleshooting filters][troubleshooting-filters].
 - [Dashboard filters][dashboard-filters].
 
@@ -279,4 +284,5 @@ Learn how to [refer to a saved question in a SQL query](referencing-saved-questi
 [filtering-on-this-field]: ../administration-guide/03-metadata-editing.html#picking-the-filter-user-interface-for-a-column
 [sql-variables]: /learn/sql-questions/sql-variables.html
 [troubleshooting-filters]: ../troubleshooting-guide/filters.html
+[troubleshooting-sql]: ../troubleshooting-guide/sql.html
 [basic-input]: /learn/sql-questions/sql-variables.html#basic-input-variable-text

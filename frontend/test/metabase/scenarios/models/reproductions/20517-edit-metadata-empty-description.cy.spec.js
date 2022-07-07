@@ -1,6 +1,6 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
-describe.skip("issue 20517", () => {
+describe("issue 20517", () => {
   beforeEach(() => {
     cy.intercept("PUT", "/api/card/1").as("updateCard");
 

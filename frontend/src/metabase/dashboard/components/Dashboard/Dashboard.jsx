@@ -26,11 +26,12 @@ import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
 
 // NOTE: move DashboardControls HoC to container
-@DashboardControls
-export default class Dashboard extends Component {
+
+class Dashboard extends Component {
   state = {
     error: null,
     isParametersWidgetSticky: false,
+    parametersListLength: 0,
   };
 
   static propTypes = {
@@ -45,6 +46,8 @@ export default class Dashboard extends Component {
       .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
     isNavbarOpen: PropTypes.bool.isRequired,
+    isHeaderVisible: PropTypes.bool,
+    isAdditionalInfoVisible: PropTypes.bool,
 
     dashboard: PropTypes.object,
     dashboardId: PropTypes.number,
@@ -96,6 +99,12 @@ export default class Dashboard extends Component {
     super(props);
     this.parametersWidgetRef = React.createRef();
     this.parametersAndCardsContainerRef = React.createRef();
+  }
+
+  static getDerivedStateFromProps(props, state) {
+    return props.parameters.length !== state.parametersListLength
+      ? { parametersListLength: props.parameters.length }
+      : null;
   }
 
   throttleParameterWidgetStickiness = _.throttle(
@@ -206,13 +215,14 @@ export default class Dashboard extends Component {
       isNightMode,
       isSharing,
       parameters,
+      parameterValues,
       isNavbarOpen,
       showAddQuestionSidebar,
-      parameterValues,
       editingParameter,
       setParameterValue,
       setParameterIndex,
       setEditingParameter,
+      isHeaderVisible,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -254,27 +264,32 @@ export default class Dashboard extends Component {
       >
         {() => (
           <DashboardStyled>
-            <HeaderContainer
-              isFullscreen={isFullscreen}
-              isNightMode={shouldRenderAsNightMode}
-            >
-              <DashboardHeader
-                {...this.props}
-                onEditingChange={this.setEditing}
-                setDashboardAttribute={this.setDashboardAttribute}
-                addParameter={addParameter}
-                parametersWidget={parametersWidget}
-                onSharingClick={this.onSharingClick}
-                onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
-                showAddQuestionSidebar={showAddQuestionSidebar}
-              />
+            {isHeaderVisible && (
+              <HeaderContainer
+                isFullscreen={isFullscreen}
+                isNightMode={shouldRenderAsNightMode}
+              >
+                <DashboardHeader
+                  {...this.props}
+                  onEditingChange={this.setEditing}
+                  setDashboardAttribute={this.setDashboardAttribute}
+                  addParameter={addParameter}
+                  parametersWidget={parametersWidget}
+                  onSharingClick={this.onSharingClick}
+                  onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
+                  showAddQuestionSidebar={showAddQuestionSidebar}
+                />
 
-              {shouldRenderParametersWidgetInEditMode && (
-                <ParametersWidgetContainer isEditing={isEditing}>
-                  {parametersWidget}
-                </ParametersWidgetContainer>
-              )}
-            </HeaderContainer>
+                {shouldRenderParametersWidgetInEditMode && (
+                  <ParametersWidgetContainer
+                    data-testid="edit-dashboard-parameters-widget-container"
+                    isEditing={isEditing}
+                  >
+                    {parametersWidget}
+                  </ParametersWidgetContainer>
+                )}
+              </HeaderContainer>
+            )}
 
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
               <ParametersAndCardsContainer
@@ -283,6 +298,7 @@ export default class Dashboard extends Component {
               >
                 {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer
+                    data-testid="dashboard-parameters-widget-container"
                     ref={element => (this.parametersWidgetRef = element)}
                     isNavbarOpen={isNavbarOpen}
                     isSticky={isParametersWidgetSticky}
@@ -311,6 +327,7 @@ export default class Dashboard extends Component {
                 {...this.props}
                 onCancel={this.onCancel}
                 showAddQuestionSidebar={showAddQuestionSidebar}
+                setDashboardAttribute={this.setDashboardAttribute}
               />
             </DashboardBody>
           </DashboardStyled>
@@ -319,3 +336,5 @@ export default class Dashboard extends Component {
     );
   }
 }
+
+export default DashboardControls(Dashboard);

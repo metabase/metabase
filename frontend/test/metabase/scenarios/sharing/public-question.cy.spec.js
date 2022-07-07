@@ -1,4 +1,10 @@
-import { restore, filterWidget, visitQuestion } from "__support__/e2e/cypress";
+import {
+  restore,
+  filterWidget,
+  visitQuestion,
+  downloadAndAssert,
+  assertSheetRowsCount,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -66,6 +72,33 @@ describe("scenarios > question > public", () => {
     cy.wait("@publicQuery");
     // Name of a city from the expected results
     cy.findByText("Winner");
+  });
+
+  it("allows downloading publicly shared questions (metabase#21993)", () => {
+    const questionData = {
+      name: "21993",
+      native: {
+        query: "select * from orders",
+      },
+    };
+
+    cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
+      enableSharingQuestion(id);
+      visitQuestion(id);
+
+      cy.icon("share").click();
+      visitPublicURL();
+      cy.icon("download").click();
+
+      cy.url().then(url => {
+        const publicUid = url.split("/").pop();
+
+        downloadAndAssert(
+          { fileType: "xlsx", questionId: id, publicUid },
+          assertSheetRowsCount(18760),
+        );
+      });
+    });
   });
 });
 

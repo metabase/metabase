@@ -1,8 +1,10 @@
-import { restore, modal, openNativeEditor } from "__support__/e2e/cypress";
 import {
-  openDetailsSidebar,
-  getDetailsSidebarActions,
-} from "../helpers/e2e-models-helpers";
+  restore,
+  modal,
+  openNativeEditor,
+  popover,
+  openQuestionActions,
+} from "__support__/e2e/helpers";
 
 const snippetName = `string 'test'`;
 const questionName = "Converting questions with snippets to models";
@@ -45,8 +47,8 @@ describe("issue 20963", () => {
     cy.findByText("Not now").click();
 
     // Convert into to a model
-    openDetailsSidebar();
-    getDetailsSidebarActions().within(() => {
+    openQuestionActions();
+    popover().within(() => {
       cy.icon("model").click();
     });
 

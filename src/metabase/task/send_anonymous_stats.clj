@@ -9,8 +9,7 @@
             [metabase.task :as task]
             [metabase.util.i18n :refer [trs]]))
 
-;; if we can collect usage data, do so and send it home
-(jobs/defjob SendAnonymousUsageStats [_]
+(jobs/defjob ^{:doc "If we can collect usage data, do so and send it home"} SendAnonymousUsageStats [_]
   (when (public-settings/anon-tracking-enabled)
     (log/debug (trs "Sending anonymous usage stats."))
     (try

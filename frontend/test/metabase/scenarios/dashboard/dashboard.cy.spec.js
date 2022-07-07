@@ -3,13 +3,16 @@ import {
   restore,
   selectDashboardFilter,
   expectedRouteCalls,
+  editDashboard,
   showDashboardCardActions,
   filterWidget,
   sidebar,
   modal,
   openNewCollectionItemFlowFor,
   visitDashboard,
-} from "__support__/e2e/cypress";
+  appbar,
+  rightSidebar,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -28,9 +31,8 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should create new dashboard and navigate to it from the nav bar and from the root collection (metabase#20638)", () => {
-    // Create dashboard
     cy.visit("/");
-    cy.icon("add").click();
+    cy.findByText("New").click();
     cy.findByText("Dashboard").click();
 
     createDashboardUsingUI("Dash A", "Desc A");
@@ -56,29 +58,53 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should update the name and description", () => {
+    cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
     visitDashboard(1);
+
+    cy.findByTestId("dashboard-name-heading")
+      .click()
+      .type("{selectall}Orders per year")
+      .blur();
+
+    cy.wait("@updateDashboard");
 
     cy.get("main header").within(() => {
-      cy.icon("ellipsis").click();
-    });
-    // update title
-    popover().within(() => cy.findByText("Edit dashboard details").click());
-
-    modal().within(() => {
-      cy.findByText("Edit dashboard details");
-      cy.findByLabelText("Name").type("{selectall}Orders per year");
-      cy.findByLabelText("Description").type(
-        "{selectall}How many orders were placed in each year?",
-      );
-      cy.findByText("Update").click();
+      cy.icon("info").click();
     });
 
+    rightSidebar().within(() => {
+      cy.findByPlaceholderText("Add description")
+        .click()
+        .type("{selectall}How many orders were placed in each year?")
+        .blur();
+    });
+    cy.wait("@updateDashboard");
     // refresh page and check that title/desc were updated
     visitDashboard(1);
-    cy.findByText("Orders per year")
-      .next()
-      .trigger("mouseenter");
-    cy.findByText("How many orders were placed in each year?");
+    cy.findByDisplayValue("Orders per year");
+
+    cy.get("main header").within(() => {
+      cy.icon("info").click();
+    });
+    cy.findByDisplayValue("How many orders were placed in each year?");
+  });
+
+  it("should allow empty card title (metabase#12013)", () => {
+    visitDashboard(1);
+
+    cy.findByTextEnsureVisible("Orders");
+    cy.findByTestId("legend-caption").should("exist");
+
+    editDashboard();
+    showDashboardCardActions();
+    cy.icon("palette").click();
+
+    cy.findByDisplayValue("Orders")
+      .click()
+      .clear();
+    cy.get("[data-metabase-event='Chart Settings;Done']").click();
+
+    cy.findByTestId("legend-caption").should("not.exist");
   });
 
   it("should add a filter", () => {
@@ -469,6 +495,13 @@ describe("scenarios > dashboard", () => {
 
     cy.findByTestId("loading-spinner").should("not.exist");
     cy.findAllByText("18,760").should("have.length", 2);
+  });
+
+  it("should show collection breadcrumbs for a dashboard", () => {
+    visitDashboard(1);
+    appbar().within(() => cy.findByText("Our analytics").click());
+
+    cy.findByText("Orders").should("be.visible");
   });
 });
 

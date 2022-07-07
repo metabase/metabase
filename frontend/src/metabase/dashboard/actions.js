@@ -18,8 +18,7 @@ import {
   createParameter,
   setParameterName as setParamName,
   setParameterDefaultValue as setParamDefaultValue,
-  getMappingsByParameter,
-  getDashboardParametersWithFieldMetadata,
+  getDashboardUiParameters,
   getParametersMappedToDashcard,
   getFilteringParameterValuesMap,
   getParameterValuesSearchKey,
@@ -29,7 +28,6 @@ import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
 } from "metabase/parameters/utils/parameter-values";
-import * as Urls from "metabase/lib/urls";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import Utils from "metabase/lib/utils";
@@ -60,6 +58,7 @@ import {
   getParameterValues,
   getDashboardParameterValuesSearchCache,
   getLoadingDashCards,
+  getDashboardParameterValuesCache,
 } from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -70,6 +69,7 @@ import {
   getAllDashboardCards,
   getDashboardType,
   fetchDataOrError,
+  getDatasetQueryParams,
 } from "./utils";
 
 const DATASET_SLOW_TIMEOUT = 15 * 1000;
@@ -136,8 +136,8 @@ export const SHOW_ADD_PARAMETER_POPOVER =
 export const HIDE_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";
 
-export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES =
-  "metabase/dashboard/FETCH_DASHBOARD_PARAMETER_FIELD_VALUES";
+export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE =
+  "metabase/dashboard/FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE";
 
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
@@ -572,10 +572,12 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
     if (!reload) {
       // if reload not set, check to see if the last result has the same query dict and return that
       const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
-      // "constraints" is added by the backend, remove it when comparing
       if (
         lastResult &&
-        Utils.equals(_.omit(lastResult.json_query, "constraints"), datasetQuery)
+        Utils.equals(
+          getDatasetQueryParams(lastResult.json_query),
+          getDatasetQueryParams(datasetQuery),
+        )
       ) {
         return {
           dashcard_id: dashcard.id,
@@ -781,13 +783,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     }
 
     const metadata = getMetadata(getState());
-    const mappingsByParameter = getMappingsByParameter(metadata, result);
-
-    const parameters = getDashboardParametersWithFieldMetadata(
-      metadata,
-      result,
-      mappingsByParameter,
-    );
+    const parameters = getDashboardUiParameters(result, metadata);
 
     const parameterValuesById = preserveParameters
       ? getParameterValues(getState())
@@ -1032,7 +1028,7 @@ export const deletePublicLink = createAction(
 const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardFromDashboard = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
-  ({ nextCard, previousCard, dashcard }) => (dispatch, getState) => {
+  ({ nextCard, previousCard, dashcard, objectId }) => (dispatch, getState) => {
     const metadata = getMetadata(getState());
     const { dashboardId, dashboards, parameterValues } = getState().dashboard;
     const dashboard = dashboards[dashboardId];
@@ -1059,11 +1055,22 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       dashcard,
     );
 
-    // when the query is for a specific object it does not make sense to apply parameter filters
-    // because we'll be navigating to the details view of a specific row on a table
-    const url = question.isObjectDetail()
-      ? Urls.serializedQuestion(question.card())
-      : question.getUrlWithParameters(parametersMappedToCard, parameterValues);
+    // When drilling from a native model, the drill can return a new question
+    // querying a table for which we don't have any metadata for
+    // When building a question URL, it'll usually clean the query and
+    // strip clauses referencing fields from tables without metadata
+    const previousQuestion = new Question(previousCard, metadata);
+    const isDrillingFromNativeModel =
+      previousQuestion.isDataset() && previousQuestion.isNative();
+
+    const url = question.getUrlWithParameters(
+      parametersMappedToCard,
+      parameterValues,
+      {
+        clean: !isDrillingFromNativeModel,
+        objectId,
+      },
+    );
 
     dispatch(openUrl(url));
   },
@@ -1072,16 +1079,21 @@ export const navigateToNewCardFromDashboard = createThunkAction(
 const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
   const metadata = getMetadata(getState());
 
-  const queries = dashCards
+  const questions = dashCards
     .filter(dc => !isVirtualDashCard(dc) && dc.card.dataset_query) // exclude text cards and queries without perms
     .flatMap(dc => [dc.card].concat(dc.series || []))
-    .map(card => new Question(card, metadata).query());
+    .map(card => new Question(card, metadata));
 
-  return dispatch(loadMetadataForQueries(queries));
+  return dispatch(
+    loadMetadataForQueries(
+      questions.map(question => question.query()),
+      questions.map(question => question.dependentMetadata()),
+    ),
+  );
 };
 
-export const fetchDashboardParameterValues = createThunkAction(
-  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+export const fetchDashboardParameterValuesWithCache = createThunkAction(
+  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
   ({ dashboardId, parameter, parameters, query }) => async (
     dispatch,
     getState,
@@ -1117,6 +1129,29 @@ export const fetchDashboardParameterValues = createThunkAction(
     return {
       cacheKey,
       results: results.map(result => [].concat(result)),
+    };
+  },
+);
+
+export const fetchDashboardParameterValues = args => async (
+  dispatch,
+  getState,
+) => {
+  await dispatch(fetchDashboardParameterValuesWithCache(args));
+  const dashboardParameterValuesCache = getDashboardParameterValuesCache(
+    getState(),
+  );
+  return dashboardParameterValuesCache.get(args) || [];
+};
+
+export const REVERT_TO_REVISION = "metabase/dashboard/REVERT_TO_REVISION";
+export const revertToRevision = createThunkAction(
+  REVERT_TO_REVISION,
+  revision => {
+    return async dispatch => {
+      await revision.revert();
+      await dispatch(fetchDashboard(revision.model_id, null));
+      await dispatch(fetchDashboardCardData({ reload: false, clear: true }));
     };
   },
 );

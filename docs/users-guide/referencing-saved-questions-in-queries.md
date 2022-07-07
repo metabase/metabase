@@ -1,6 +1,10 @@
+---
+title: Referencing models and saved questions in SQL queries
+---
+
 ## Referencing models and saved questions in SQL queries
 
-With SQL databases, we can use a [model][model] or an an existing question as the basis for a new query, or as a common table expression [CTE][CTE].
+With SQL databases, we can use a [model][model] or an existing question as the basis for a new query, or as a common table expression [CTE][CTE].
 
 For example, let's say we have a lot of data spread across a number of tables, but our users are most interested in a subset of that data. We can perform a complicated query once to return those results, and save that question as a model, which people can refer to in their queries just like they would with any other table.
 
@@ -89,6 +93,10 @@ For other ways to standardize analytics, check out:
 - You can only reference a saved question in a query when working with a SQL database like PostgreSQL, MySQL, or SQL Server.
 - The saved question you select has to be one that's based on the same database as the one you've currently selected in the native query editor.
 - You cannot reference variables in sub-queries. You only have access to the _results_ of the saved question, not the saved question's query. For example, if you have a saved question that uses a [field filter](https://www.metabase.com/learn/building-analytics/sql-templates/field-filters), you won't be able to reference that variable. If you need to change how the saved question has filtered the results, you'll need to update (or duplicate) that question and apply the filter.
+
+## Need help?
+
+If you're having trouble with your SQL query, go to the [SQL troubleshooting guide](../troubleshooting-guide/sql.html).
 
 ---
 

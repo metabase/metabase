@@ -33,8 +33,8 @@ import TableBrowser from "metabase/browse/containers/TableBrowser";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 
-import CollectionEdit from "metabase/collections/containers/CollectionEdit";
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
+import MoveCollectionModal from "metabase/collections/containers/MoveCollectionModal";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import UserCollectionList from "metabase/containers/UserCollectionList";
@@ -77,14 +77,12 @@ import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
 import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
-import DashboardHistoryModal from "metabase/dashboard/components/DashboardHistoryModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
-import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import HomePage from "metabase/home/homepage/containers/HomePage";
-import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
+import CollectionLanding from "metabase/collections/components/CollectionLanding";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
@@ -217,7 +215,7 @@ export const getRoutes = store => (
         </Route>
 
         <Route path="collection/:slug" component={CollectionLanding}>
-          <ModalRoute path="edit" modal={CollectionEdit} />
+          <ModalRoute path="move" modal={MoveCollectionModal} />
           <ModalRoute path="archive" modal={ArchiveCollectionModal} />
           <ModalRoute path="new_collection" modal={CollectionCreate} />
           <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
@@ -232,10 +230,8 @@ export const getRoutes = store => (
           title={t`Dashboard`}
           component={DashboardApp}
         >
-          <ModalRoute path="history" modal={DashboardHistoryModal} />
           <ModalRoute path="move" modal={DashboardMoveModal} />
           <ModalRoute path="copy" modal={DashboardCopyModal} />
-          <ModalRoute path="details" modal={DashboardDetailsModal} />
           <ModalRoute path="archive" modal={ArchiveDashboardModal} />
         </Route>
 
@@ -272,89 +268,92 @@ export const getRoutes = store => (
         {/* INDIVIDUAL DASHBOARDS */}
 
         <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
-      </Route>
 
-      <Route path="/collections">
-        <Route path="create" component={CollectionCreate} />
-      </Route>
-
-      {/* REFERENCE */}
-      <Route path="/reference" title={`Data Reference`}>
-        <IndexRedirect to="/reference/databases" />
-        <Route path="metrics" component={MetricListContainer} />
-        <Route path="metrics/:metricId" component={MetricDetailContainer} />
-        <Route
-          path="metrics/:metricId/edit"
-          component={MetricDetailContainer}
-        />
-        <Route
-          path="metrics/:metricId/questions"
-          component={MetricQuestionsContainer}
-        />
-        <Route
-          path="metrics/:metricId/revisions"
-          component={MetricRevisionsContainer}
-        />
-        <Route path="segments" component={SegmentListContainer} />
-        <Route path="segments/:segmentId" component={SegmentDetailContainer} />
-        <Route
-          path="segments/:segmentId/fields"
-          component={SegmentFieldListContainer}
-        />
-        <Route
-          path="segments/:segmentId/fields/:fieldId"
-          component={SegmentFieldDetailContainer}
-        />
-        <Route
-          path="segments/:segmentId/questions"
-          component={SegmentQuestionsContainer}
-        />
-        <Route
-          path="segments/:segmentId/revisions"
-          component={SegmentRevisionsContainer}
-        />
-        <Route path="databases" component={DatabaseListContainer} />
-        <Route
-          path="databases/:databaseId"
-          component={DatabaseDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables"
-          component={TableListContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId"
-          component={TableDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/fields"
-          component={FieldListContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/fields/:fieldId"
-          component={FieldDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/questions"
-          component={TableQuestionsContainer}
-        />
-      </Route>
-
-      {/* PULSE */}
-      <Route path="/pulse" title={t`Pulses`}>
-        {/* NOTE: legacy route, not linked to in app */}
-        <IndexRedirect to="/search" query={{ type: "pulse" }} />
-        <Route path="create" component={PulseEditApp} />
-        <Route path=":pulseId">
-          <IndexRoute component={PulseEditApp} />
+        <Route path="/collections">
+          <Route path="create" component={CollectionCreate} />
         </Route>
+
+        {/* REFERENCE */}
+        <Route path="/reference" title={t`Data Reference`}>
+          <IndexRedirect to="/reference/databases" />
+          <Route path="metrics" component={MetricListContainer} />
+          <Route path="metrics/:metricId" component={MetricDetailContainer} />
+          <Route
+            path="metrics/:metricId/edit"
+            component={MetricDetailContainer}
+          />
+          <Route
+            path="metrics/:metricId/questions"
+            component={MetricQuestionsContainer}
+          />
+          <Route
+            path="metrics/:metricId/revisions"
+            component={MetricRevisionsContainer}
+          />
+          <Route path="segments" component={SegmentListContainer} />
+          <Route
+            path="segments/:segmentId"
+            component={SegmentDetailContainer}
+          />
+          <Route
+            path="segments/:segmentId/fields"
+            component={SegmentFieldListContainer}
+          />
+          <Route
+            path="segments/:segmentId/fields/:fieldId"
+            component={SegmentFieldDetailContainer}
+          />
+          <Route
+            path="segments/:segmentId/questions"
+            component={SegmentQuestionsContainer}
+          />
+          <Route
+            path="segments/:segmentId/revisions"
+            component={SegmentRevisionsContainer}
+          />
+          <Route path="databases" component={DatabaseListContainer} />
+          <Route
+            path="databases/:databaseId"
+            component={DatabaseDetailContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables"
+            component={TableListContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId"
+            component={TableDetailContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId/fields"
+            component={FieldListContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId/fields/:fieldId"
+            component={FieldDetailContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId/questions"
+            component={TableQuestionsContainer}
+          />
+        </Route>
+
+        {/* PULSE */}
+        <Route path="/pulse" title={t`Pulses`}>
+          {/* NOTE: legacy route, not linked to in app */}
+          <IndexRedirect to="/search" query={{ type: "pulse" }} />
+          <Route path="create" component={PulseEditApp} />
+          <Route path=":pulseId">
+            <IndexRoute component={PulseEditApp} />
+          </Route>
+        </Route>
+
+        {/* ACCOUNT */}
+        {getAccountRoutes(store, IsAuthenticated)}
+
+        {/* ADMIN */}
+        {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
       </Route>
-
-      {/* ACCOUNT */}
-      {getAccountRoutes(store, IsAuthenticated)}
-
-      {/* ADMIN */}
-      {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
     </Route>
 
     {/* INTERNAL */}
@@ -384,7 +383,7 @@ export const getRoutes = store => (
         })
       }
     />
-    <Redirect from="/dash/:dashboardId" to="/dashboard/:slug" />
+    <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
     <Redirect
       from="/collections/permissions"
       to="/admin/permissions/collections"

@@ -43,7 +43,7 @@ cn: Fred Taylor
 # intetionally having some attributes not properly cased to test case-insensitive when querying users
 sN: Taylor
 givenname: Fred
-uid: ftaylor300
+# no uid for this user to test login without uid
 mAiL: fred.taylor@metabase.com
 userpassword: pa$$word
 
@@ -99,6 +99,7 @@ objectClass: groupOfNames
 cn: Accounting
 member: cn=John Smith,ou=People,dc=metabase,dc=com
 member: cn=Rasta Toucan,ou=Birds,dc=metabase,dc=com
+member: cn=Fred Taylor,ou=People,dc=metabase,dc=com
 
 dn: cn=Engineering,ou=Groups,dc=metabase,dc=com
 objectClass: posixGroup

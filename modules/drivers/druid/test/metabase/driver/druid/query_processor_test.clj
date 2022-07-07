@@ -106,7 +106,7 @@
                             :granularity      :all
                             :dataSource       "checkins"
                             :dimension        "venue_price"
-                            :context          {:timeout 60000, :queryId "<Query ID>"}
+                            :context          {:queryId "<Query ID>"}
                             :postAggregations [{:type   :arithmetic
                                                 :name   "expression"
                                                 :fn     :*
@@ -135,7 +135,7 @@
                             :granularity  :all
                             :dataSource   "checkins"
                             :dimension    "venue_category_name"
-                            :context      {:timeout 60000, :queryId "<Query ID>"}
+                            :context      {:queryId "<Query ID>"}
                             :intervals    ["1900-01-01/2100-01-01"]
                             :metric       "__count_0"
                             :aggregations [{:type       :cardinality
@@ -159,7 +159,7 @@
                             :granularity  :all
                             :dataSource   "checkins"
                             :dimensions   ["venue_category_name", "user_name"]
-                            :context      {:timeout 60000, :queryId "<Query ID>"}
+                            :context      {:queryId "<Query ID>"}
                             :intervals    ["1900-01-01/2100-01-01"]
                             :aggregations [{:type       :cardinality
                                             :name       "__count_0"
@@ -186,7 +186,7 @@
                             :granularity  :all
                             :dataSource   "checkins"
                             :dimensions   ["venue_category_name", "user_name"]
-                            :context      {:timeout 60000, :queryId "<Query ID>"}
+                            :context      {:queryId "<Query ID>"}
                             :intervals    ["1900-01-01/2100-01-01"]
                             :aggregations [{:type       :cardinality
                                             :name       "__count_0"
@@ -214,7 +214,7 @@
                 :query       {:queryType        :timeseries
                               :granularity      :all
                               :dataSource       "checkins"
-                              :context          {:timeout 60000, :queryId "<Query ID>"}
+                              :context          {:queryId "<Query ID>"}
                               :intervals        ["1900-01-01/2100-01-01"]
                               :aggregations     [{:type       :cardinality
                                                   :name       "__distinct_0"

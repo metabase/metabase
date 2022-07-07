@@ -19,6 +19,10 @@ const VALIDATIONS = {
     validate: value => MetabaseUtils.isEmail(value),
     message: t`That's not a valid email address`,
   },
+  email_list: {
+    validate: value => value.every(MetabaseUtils.isEmail),
+    message: t`That's not a valid list of email addresses`,
+  },
   integer: {
     validate: value => !isNaN(parseInt(value)),
     message: t`That's not a valid integer`,
@@ -31,16 +35,7 @@ const SAVE_SETTINGS_BUTTONS_STATES = {
   success: t`Changes saved!`,
 };
 
-@connect(
-  null,
-  (dispatch, { updateSettings }) => ({
-    updateSettings:
-      updateSettings || (settings => dispatch(defaultUpdateSettings(settings))),
-  }),
-  null,
-  { withRef: true }, // HACK: needed so consuming components can call methods on the component :-/
-)
-export default class SettingsBatchForm extends Component {
+class SettingsBatchForm extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {
@@ -310,6 +305,16 @@ export default class SettingsBatchForm extends Component {
     );
   }
 }
+
+export default connect(
+  null,
+  (dispatch, { updateSettings }) => ({
+    updateSettings:
+      updateSettings || (settings => dispatch(defaultUpdateSettings(settings))),
+  }),
+  null,
+  { withRef: true }, // HACK: needed so consuming components can call methods on the component :-/
+)(SettingsBatchForm);
 
 const StandardSection = ({ title, children }) => (
   <div>

@@ -17,6 +17,14 @@ const activeInputCSS = css`
   justify-content: flex-start;
 `;
 
+export const SearchBarRoot = styled.div`
+  width: 100%;
+
+  ${breakpointMinSmall} {
+    position: relative;
+  }
+`;
+
 export const SearchInputContainer = styled.div<{ isActive: boolean }>`
   display: flex;
   flex: 1 1 auto;
@@ -66,6 +74,8 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
   border: none;
   color: ${color("text-dark")};
   font-weight: 700;
+
+  width: 100%;
 
   &:focus {
     outline: none;
