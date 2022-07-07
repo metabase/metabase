@@ -21,11 +21,6 @@ type State = {
 };
 
 class TextWidget extends React.Component<Props, State> {
-  state: State = {
-    value: null,
-    isFocused: false,
-  };
-
   static defaultProps = {
     isEditing: false,
     commitImmediately: false,
@@ -34,6 +29,11 @@ class TextWidget extends React.Component<Props, State> {
 
   constructor(props: Props) {
     super(props);
+
+    this.state = {
+      value: props.value,
+      isFocused: false,
+    };
   }
 
   static noPopover = true;
@@ -43,7 +43,7 @@ class TextWidget extends React.Component<Props, State> {
   }
 
   UNSAFE_componentWillReceiveProps(nextProps: Props) {
-    if (nextProps.value !== this.state.value) {
+    if (nextProps.value !== this.props.value) {
       this.setState({ value: nextProps.value }, () => {
         // HACK: Address Safari rendering bug which causes https://github.com/metabase/metabase/issues/5335
         forceRedraw(ReactDOM.findDOMNode(this));
