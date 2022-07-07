@@ -142,6 +142,6 @@ describe("scenarios > dashboard > text-box", () => {
 
     // confirm text box and filter are still there
     cy.findByText("text text text");
-    cy.findByPlaceholderText("Text");
+    cy.findByText("Text");
   });
 });
