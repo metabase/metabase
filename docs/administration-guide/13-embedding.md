@@ -153,7 +153,7 @@ These settings can also be changed under **Style** when previewing the embedded 
 
 To see code examples of how to embed Metabase in applications using a number of common frameworks, check out our [reference implementations](https://github.com/metabase/embedding-reference-apps) on Github.
 
-## Customize embeds
+## Customizing embeds
 
 Paid plans include additional features for [customizing the appearance](./customize-embeds.md) of embedded items.
 
