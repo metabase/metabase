@@ -58,6 +58,8 @@ export const BulkFilterItem = ({
     }
   }, [filter, onRemoveFilter]);
 
+  const currentOperator = (filter ?? newFilter).operatorName();
+
   switch (fieldPickerType) {
     case "boolean":
       return (
