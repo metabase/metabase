@@ -33,9 +33,8 @@ function StringInputWidget({
   label,
 }: StringInputWidgetProps) {
   const arrayValue = normalize(value);
-  const [unsavedArrayValue, setUnsavedArrayValue] = useState<string[]>(
-    arrayValue,
-  );
+  const [unsavedArrayValue, setUnsavedArrayValue] =
+    useState<string[]>(arrayValue);
   const multi = arity === "n";
   const hasValueChanged = !isEqual(arrayValue, unsavedArrayValue);
   const isValid = unsavedArrayValue.every(isString);
