@@ -1,6 +1,8 @@
 import _ from "underscore";
 import Utils from "metabase/lib/utils";
 
+import { has_valid_tags } from "cljs/metabase.shared.util.parameters";
+
 export function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters && before.embedding_params) {
     return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
@@ -49,6 +51,17 @@ export function expandInlineCard(card) {
 
 export function isVirtualDashCard(dashcard) {
   return _.isObject(dashcard.visualization_settings.virtual_card);
+}
+
+export function showVirtualDashcardHeader(dashcard) {
+  if (isVirtualDashCard(dashcard)) {
+    return (
+      dashcard.sizeY !== 1 ||
+      !has_valid_tags(dashcard.visualization_settings.text)
+    );
+  } else {
+    return true;
+  }
 }
 
 export function getAllDashboardCards(dashboard) {

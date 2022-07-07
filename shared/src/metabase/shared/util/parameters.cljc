@@ -11,13 +11,18 @@
   #"\{\{\s*([A-Za-z0-9_\.]+?)\s*\}\}")
 
 (defn ^:export tag_names
-  "Given the context of a text dashboard card, return a set of the unique names of template tags in the text."
+  "Given the content of a text dashboard card, return a set of the unique names of template tags in the text."
   [text]
   (let [tag-set (->> (re-seq template-tag-regex text)
                      (map second)
                      set)]
-    #? (:clj tag-set
-        :cljs (clj->js tag-set))))
+    #?(:clj tag-set
+       :cljs (clj->js tag-set))))
+
+(defn ^:export has_valid_tags
+  "Given the content of a text dashboard card, returns true if it contains any valid template tags; else returns false."
+  [text]
+  (boolean (seq (tag_names text))))
 
 (defn- normalize-parameter
   "Normalize a single parameter by calling [[mbql.normalize/normalize-fragment]] on it, and converting all string keys

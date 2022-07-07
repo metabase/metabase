@@ -7,7 +7,10 @@ import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  isVirtualDashCard,
+  showVirtualDashcardHeader,
+} from "metabase/dashboard/utils";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { t, jt } from "ttag";
@@ -308,6 +311,7 @@ class Visualization extends React.PureComponent {
     }
   };
 
+  /* eslint-disable complexity */
   render() {
     const {
       actionButtons,
@@ -440,13 +444,15 @@ class Visualization extends React.PureComponent {
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
     const isHeaderEnabled = !(visualization && visualization.noHeader);
+
     const isVirtual = dashcard ? isVirtualDashCard(dashcard) : false;
+    const showVirtualHeader = isVirtual && showVirtualDashcardHeader(dashcard);
 
     const hasHeader =
       (showTitle &&
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
-      (isVirtual && isEditingParameter);
+      (isVirtual && isEditingParameter && showVirtualHeader);
     replacementContent;
 
     return (
