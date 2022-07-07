@@ -155,7 +155,7 @@ To see code examples of how to embed Metabase in applications using a number of 
 
 ## Customizing embeds
 
-Paid plans include additional features for [customizing the appearance](./customize-embeds.md) of embedded items.
+Paid plans include additional features for [customizing the appearance](../enterprise-guide/customize-embeds.md) of embedded items.
 
 ## Further reading
 

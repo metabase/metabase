@@ -62,7 +62,7 @@ For custom fonts, Metabase supports woff, woff2, ttf files. If the URL you provi
 
 To get a URL for a [Google Font](https://fonts.google.com/), visit the Google Font page and select the style you want to use. Then make an HTTP request to get the URL of the tff file. For example, say we want to use Roboto Mono: here's how we could get the font file URLs for both the 400 and 700 styles:
 
-Paste the URL https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap". This URL will return a response like:
+Paste the URL https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap. This URL will return a response like:
 
 ```
 * cyrillic-ext */
@@ -86,7 +86,7 @@ Paste the URL https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&
 ...
 ```
 
-For latin text, copy the src URLs for each style, in this case:
+For latin text, copy the relevant src URLs for each style, in this case:
 
 - For 400: https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2
 - For 700: https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2
@@ -100,7 +100,7 @@ To support multiple character sets, for example both Latin and Cyrillic, you'll 
 
 ## Customizing the font for individual embedded items
 
-In addition to the [included fonts](#included-fonts), if you set a custom font for your Metabase, that font will be selectable as the "Default font" in menus. See [Customize embeds](../administration-guide/customize-embeds.md).
+In addition to the [included fonts](#included-fonts), if you set a custom font for your Metabase, that font will be selectable as the "Default font" in menus. See [Customize embeds](../enterprise-guide/customize-embeds.md).
 
 ## Further reading
 
