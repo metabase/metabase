@@ -22,14 +22,27 @@ describe("issue 22695 ", () => {
 
   // https://github.com/metabase/metaboat/issues/159
   it("should not expose database names to which the user has no access permissions (metabase#22695)", () => {
+    // Nocollection user belongs to a "data" group which we blocked for this repro,
+    // but they have access to data otherwise (as name suggests)
     cy.signIn("nocollection");
-    cy.visit("/");
+    assert();
 
-    cy.findByPlaceholderText("Search…").click().type("S");
-    cy.wait("@searchResults");
+    cy.signOut();
 
-    cy.findAllByTestId("search-result-item-name")
-      .should("have.length", 1)
-      .and("not.contain", "Sample Database");
+    // Nodata user belongs to the group that has access to collections,
+    // but has no-self-service data permissions
+    cy.signIn("nodata");
+    assert();
   });
 });
+
+function assert() {
+  cy.visit("/");
+
+  cy.findByPlaceholderText("Search…").click().type("S");
+  cy.wait("@searchResults");
+
+  cy.findAllByTestId("search-result-item-name")
+    .should("have.length.above", 0)
+    .and("not.contain", "Sample Database");
+}
