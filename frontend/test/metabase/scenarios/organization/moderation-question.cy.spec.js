@@ -6,6 +6,11 @@ import {
   questionInfoButton,
 } from "__support__/e2e/helpers";
 
+import { USERS } from "__support__/e2e/cypress_data";
+
+const { admin } = USERS;
+const adminFullName = `${admin.first_name} ${admin.last_name}`;
+
 describeEE("scenarios > saved question moderation", () => {
   describe("as an admin", () => {
     beforeEach(() => {
@@ -103,7 +108,7 @@ describeEE("scenarios > saved question moderation", () => {
       cy.icon("verified").should("not.exist");
 
       questionInfoButton().click();
-      cy.findByText("Bobby Tables verified this").should("not.exist");
+      cy.findByText(`${adminFullName} verified this`).should("not.exist");
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
       cy.findByText("Orders, Count, Grouped by Created At (year)")
