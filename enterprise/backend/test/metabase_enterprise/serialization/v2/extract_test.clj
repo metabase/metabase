@@ -11,8 +11,7 @@
 (defn- by-model [model-name extraction]
   (->> extraction
        (into [])
-       (map (comp last :serdes/meta))
-       (filter #(= model-name (:model %)))
+       (map (comp last :serdes/meta)) (filter #(= model-name (:model %)))
        (map :id)
        set))
 
@@ -116,15 +115,9 @@
                                                                :collection_id coll-id
                                                                :creator_id    mark-id
                                                                :parameters    []}]
-                       Dashboard  [{mark-dash-id  :id
-                                    mark-dash-eid :entity_id} {:name          "Mark's Dashboard"
-                                                               :collection_id mark-coll-id
-                                                               :creator_id    mark-id
-                                                               :parameters    []}]
-                       Dashboard  [{dave-dash-id  :id
-                                    dave-dash-eid :entity_id} {:name          "Dave's Dashboard"
+                       Dashboard  [{other-dash :entity_id}    {:name          "Dave's Dash"
                                                                :collection_id dave-coll-id
-                                                               :creator_id    dave-id
+                                                               :creator_id    mark-id
                                                                :parameters    []}]]
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c1-id]))]
@@ -165,14 +158,17 @@
                       (into [])
                       (map :name)))))
         (testing "unowned collections and the personal one with a user"
-          (is (= #{"Some Collection" "MK Personal"}
-                 (->> (serdes.base/extract-all "Collection" {:user mark-id})
-                      (eduction (map :name))
-                      (into #{}))))
-          (is (= #{"Some Collection" "DK Personal"}
-                 (->> (serdes.base/extract-all "Collection" {:user dave-id})
-                      (eduction (map :name))
-                      (into #{}))))))
+          (is (= #{coll-eid mark-coll-eid}
+                 (by-model "Collection" (serdes.base/extract-all "Collection" {:user mark-id}))))
+          (is (= #{coll-eid dave-coll-eid}
+                 (by-model "Collection" (serdes.base/extract-all "Collection" {:user dave-id}))))))
 
-      (testing "dashboards are retrieved properly"
-        ))))
+      (testing "dashboards are filtered based on :user"
+        (testing "dashboards in unowned collections are always returned"
+          (is (= #{dash-eid}
+                 (by-model "Dashboard" (serdes.base/extract-all "Dashboard" {}))))
+          (is (= #{dash-eid}
+                 (by-model "Dashboard" (serdes.base/extract-all "Dashboard" {:user mark-id})))))
+        (testing "dashboards in personal collections are returned for the :user"
+          (is (= #{dash-eid other-dash}
+                 (by-model "Dashboard" (serdes.base/extract-all "Dashboard" {:user dave-id})))))))))
