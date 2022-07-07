@@ -3,6 +3,8 @@ import {
   visitQuestion,
   saveDashboard,
   popover,
+  openNavigationSidebar,
+  navigationSidebar,
   openQuestionActions,
   questionInfoButton,
 } from "__support__/e2e/helpers";
@@ -58,14 +60,84 @@ describe("managing question from the question's details sidebar", () => {
               cy.findByText("foo");
             });
 
-            it("should be able to move the question (metabase#11719-2)", () => {
-              // cy.skipOn(user === "nodata");
-              openQuestionActions();
-              cy.findByTestId("move-button").click();
-              cy.findByText("My personal collection").click();
-              clickButton("Move");
-              assertOnRequest("updateQuestion");
-              cy.contains("37.65");
+            describe("move", () => {
+              it("should be able to move the question (metabase#11719-2)", () => {
+                // cy.skipOn(user === "nodata");
+                openNavigationSidebar();
+                navigationSidebar().within(() => {
+                  // Highlight "Our analytics"
+                  cy.findByText("Our analytics")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "true");
+                  cy.findByText("Your personal collection")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "false");
+                });
+
+                openQuestionActions();
+                cy.findByTestId("move-button").click();
+                cy.findByText("My personal collection").click();
+                clickButton("Move");
+                assertOnRequest("updateQuestion");
+                cy.contains("37.65");
+
+                cy.contains(
+                  `Question moved to ${getPersonalCollectionName(USERS[user])}`,
+                );
+
+                navigationSidebar().within(() => {
+                  // Highlight "Your personal collection" after move
+                  cy.findByText("Our analytics")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "false");
+                  cy.findByText("Your personal collection")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "true");
+                });
+              });
+
+              it("should be able to move models", () => {
+                cy.request("PUT", "/api/card/1", {
+                  name: "Orders Model",
+                  dataset: true,
+                });
+                // to refresh state of the question after being turned into a model
+                cy.intercept("POST", `/api/dataset`).as("modelQuery1");
+                cy.reload();
+                cy.wait("@modelQuery1");
+
+                openNavigationSidebar();
+                navigationSidebar().within(() => {
+                  // Highlight "Our analytics"
+                  cy.findByText("Our analytics")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "true");
+                  cy.findByText("Your personal collection")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "false");
+                });
+
+                openQuestionActions();
+                cy.findByTestId("move-button").click();
+                cy.findByText("My personal collection").click();
+                clickButton("Move");
+                assertOnRequest("updateQuestion");
+                cy.contains("37.65");
+
+                cy.contains(
+                  `Model moved to ${getPersonalCollectionName(USERS[user])}`,
+                );
+
+                navigationSidebar().within(() => {
+                  // Highlight "Your personal collection" after move
+                  cy.findByText("Our analytics")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "false");
+                  cy.findByText("Your personal collection")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "true");
+                });
+              });
             });
 
             it("should be able to archive the question (metabase#11719-3, metabase#16512, metabase#20133)", () => {
@@ -181,4 +253,10 @@ function assertOnRequest(xhr_alias) {
   cy.findByText("Sorry, you don’t have permission to see that.").should(
     "not.exist",
   );
+}
+
+function getPersonalCollectionName(user) {
+  const name = [user.first_name, user.last_name].join(" ");
+
+  return `${name}'s Personal Collection`;
 }
