@@ -483,13 +483,10 @@
       (testing "Deal with complicated identifier (#22967, but for mysql)"
         (mt/dataset json
           (let [database (mt/db)
-                table    (db/select-one Table :db_id (u/id (mt/db)) :name "json")]
+                table    (db/select-one Table :db_id (u/id database) :name "json")]
             (sync/sync-table! table)
             (let [field    (db/select-one Field :table_id (u/id table) :name "json_bit → 1234")]
-              (qp.store/with-store
-                (qp.store/fetch-and-store-database! (u/the-id database))
-                (qp.store/fetch-and-store-tables! [(u/the-id table)])
-                (qp.store/fetch-and-store-fields! [(u/the-id field)])
+              (mt/with-everything-store
                 (let [field-clause [:field (u/the-id field) {:binning
                                                              {:strategy :num-bins,
                                                               :num-bins 100,

@@ -4,6 +4,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
@@ -27,7 +28,8 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [deferred-tru trs]])
   (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
-           [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]))
+           [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]
+           metabase.util.honeysql_extensions.Identifier))
 (comment
   ddl.mysql/keep-me)
 
@@ -38,7 +40,7 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ _]
+(defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
   (let [json-setting (get-in database [:details :json-unfolding])
         ;; If not set at all, default to true, actually
         setting-nil? (nil? json-setting)]
@@ -259,7 +261,10 @@
     (if (field/json-field? stored-field)
       (if (::sql.qp/forced-alias opts)
         (keyword (::add/source-alias opts))
-        (sql.qp/json-query :mysql identifier stored-field))
+        (walk/postwalk #(if (instance? Identifier %)
+                          (sql.qp/json-query :mysql % stored-field)
+                          %)
+                       identifier))
       identifier)))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting

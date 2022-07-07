@@ -174,7 +174,7 @@
    :type         :boolean
    :visible-if   {"advanced-options" true}
    :description  (trs "We unfold JSON columns into component fields. This is on by default but you can turn it off if performance is slow.")
-   :default      true}
+   :default      true})
 
 (def refingerprint
   "Map representing the `refingerprint` option in a DB connection form."
