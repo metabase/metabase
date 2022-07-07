@@ -96,6 +96,7 @@ title: Metabase documentation
 
 - [Public links for dashboards and questions](./administration-guide/12-public-links.md)
 - [Embedding Metabase in other applications](./administration-guide/13-embedding.md)
+- [Customizing the appearance of embedded items](./administration-guide/customize-embeds.md)
 - [Embedding the entire Metabase app in your own web app](./enterprise-guide/full-app-embedding.md)
 - [Embedding example apps](https://github.com/metabase/embedding-reference-apps)
 - [White labeling charts (branding)](./enterprise-guide/whitelabeling.md)

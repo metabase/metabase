@@ -46,8 +46,8 @@ For **Font**, select **Custom...** and enter URLs to your font files.
 
 You can set three different font styles with three different URLs, one for each font style (size and weight) that Metabase will use in order to display its user interface properly. The font weights are:
 
-- Regular 400.
-- Bold 700.
+- Regular 400
+- Bold 700
 - Heavy 900 (sometimes called Black 900)
 
 You only need to set the first style (Regular 400); the browser will fill in the other styles.
