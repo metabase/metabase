@@ -105,6 +105,7 @@ export default class DashCard extends Component {
       clickBehaviorSidebarDashcard,
       isEditingParameter,
       isFullscreen,
+      isMobile,
       onAddSeries,
       onRemove,
       navigateToNewCardFromDashboard,
@@ -239,6 +240,7 @@ export default class DashCard extends Component {
           isEditing={isEditing}
           isPreviewing={this.state.isPreviewingCard}
           isEditingParameter={isEditingParameter}
+          isMobile={isMobile}
           gridSize={gridSize}
           totalNumGridCols={this.props.totalNumGridCols}
           actionButtons={
@@ -264,7 +266,10 @@ export default class DashCard extends Component {
                 <h4 className="text-medium">{t`Text card`}</h4>
               </div>
             ) : isEditingParameter ? (
-              <DashCardParameterMapper dashcard={dashcard} />
+              <DashCardParameterMapper
+                dashcard={dashcard}
+                isMobile={isMobile}
+              />
             ) : clickBehaviorSidebarDashcard != null ? (
               <ClickBehaviorSidebarOverlay
                 dashcard={dashcard}

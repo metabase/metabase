@@ -11,7 +11,11 @@ import ParameterTargetList from "metabase/parameters/components/ParameterTargetL
 import { isVariableTarget } from "metabase/parameters/utils/targets";
 import { isDateParameter } from "metabase/parameters/utils/parameter-type";
 import { getMetadata } from "metabase/selectors/metadata";
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  isVirtualDashCard,
+  showVirtualDashCardEditingHeaders,
+  showVirtualDashCardInfoText,
+} from "metabase/dashboard/utils";
 import Question from "metabase-lib/lib/Question";
 
 import {
@@ -60,6 +64,7 @@ DashCardCardParameterMapper.propTypes = {
   mappingOptions: PropTypes.array.isRequired,
   metadata: PropTypes.object.isRequired,
   setParameterMapping: PropTypes.func.isRequired,
+  isMobile: PropTypes.bool,
 };
 
 function DashCardCardParameterMapper({
@@ -70,6 +75,7 @@ function DashCardCardParameterMapper({
   mappingOptions,
   metadata,
   setParameterMapping,
+  isMobile,
 }) {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
@@ -145,19 +151,40 @@ function DashCardCardParameterMapper({
       isVirtual,
     ]);
 
+  const headerContent = useMemo(() => {
+    if (!isVirtual) {
+      return t`Column to filter on`;
+    } else if (showVirtualDashCardEditingHeaders(dashcard, isMobile)) {
+      return t`Variable to map to`;
+    } else {
+      return null;
+    }
+  }, [dashcard, isVirtual, isMobile]);
+
+  const mappingInfoText = t`You can connect widgets to {{variables}} in text cards.`;
+
   return (
     <Container>
       {hasSeries && <CardLabel>{card.name}</CardLabel>}
       {isVirtual && isDisabled ? (
-        <TextCardDefault>
-          <Icon name="info" size={12} className="pr1" />
-          {t`You can connect widgets to {{variables}} in text cards.`}
-        </TextCardDefault>
+        showVirtualDashCardInfoText(dashcard, isMobile) ? (
+          <TextCardDefault>
+            <Icon name="info" size={12} className="pr1" />
+            {mappingInfoText}
+          </TextCardDefault>
+        ) : (
+          <TextCardDefault>
+            <Icon
+              name="info"
+              size={16}
+              className="text-dark-hover"
+              tooltip={mappingInfoText}
+            />
+          </TextCardDefault>
+        )
       ) : (
         <>
-          <Header>
-            {isVirtual ? t`Variable to map to` : t`Column to filter on`}
-          </Header>
+          {headerContent && <Header>{headerContent}</Header>}
           <Tooltip tooltip={buttonTooltip}>
             <TippyPopover
               visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}

@@ -1,8 +1,6 @@
 import _ from "underscore";
 import Utils from "metabase/lib/utils";
 
-import { has_valid_tags } from "cljs/metabase.shared.util.parameters";
-
 export function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters && before.embedding_params) {
     return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
@@ -53,12 +51,21 @@ export function isVirtualDashCard(dashcard) {
   return _.isObject(dashcard.visualization_settings.virtual_card);
 }
 
-export function showVirtualDashcardHeader(dashcard) {
+// For a virtual (text) dashcard, returns a boolean indicating whether to display the "Text card" header, as well as the
+// text above the dropdown for selecting parameter mappings when in parameter mapping mode.
+export function showVirtualDashCardEditingHeaders(dashcard, isMobile) {
   if (isVirtualDashCard(dashcard)) {
-    return (
-      dashcard.sizeY !== 1 ||
-      !has_valid_tags(dashcard.visualization_settings.text)
-    );
+    return isMobile || dashcard.sizeY !== 1;
+  } else {
+    return true;
+  }
+}
+
+// For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
+// info text about parameter mapping in the card itself or as a tooltip.
+export function showVirtualDashCardInfoText(dashcard, isMobile) {
+  if (isVirtualDashCard(dashcard)) {
+    return isMobile || dashcard.sizeY > 2 || dashcard.sizeX > 5;
   } else {
     return true;
   }

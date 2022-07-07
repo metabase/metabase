@@ -9,7 +9,7 @@ import ChartClickActions from "metabase/visualizations/components/ChartClickActi
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import {
   isVirtualDashCard,
-  showVirtualDashcardHeader,
+  showVirtualDashCardEditingHeaders,
 } from "metabase/dashboard/utils";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
@@ -325,6 +325,7 @@ class Visualization extends React.PureComponent {
       errorIcon,
       isSlow,
       isEditingParameter,
+      isMobile,
       expectedDuration,
       replacementContent,
       onOpenChartSettings,
@@ -446,7 +447,8 @@ class Visualization extends React.PureComponent {
     const isHeaderEnabled = !(visualization && visualization.noHeader);
 
     const isVirtual = dashcard ? isVirtualDashCard(dashcard) : false;
-    const showVirtualHeader = isVirtual && showVirtualDashcardHeader(dashcard);
+    const showVirtualHeader =
+      isVirtual && showVirtualDashCardEditingHeaders(dashcard, isMobile);
 
     const hasHeader =
       (showTitle &&
