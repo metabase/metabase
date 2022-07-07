@@ -161,17 +161,6 @@ class Visualization extends React.PureComponent {
     });
   }
 
-  isLoading = series => {
-    !(
-      series &&
-      series.length > 0 &&
-      _.every(
-        series,
-        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
-      )
-    );
-  };
-
   handleHoverChange = hovered => {
     if (hovered) {
       const { yAxisSplit } = this.state;
@@ -344,7 +333,15 @@ class Visualization extends React.PureComponent {
     }
 
     let error = this.props.error || this.state.error;
-    const loading = this.isLoading(series);
+    const loading = !(
+      series &&
+      series.length > 0 &&
+      _.every(
+        series,
+        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
+      )
+    );
+
     let noResults = false;
     let isPlaceholder = false;
 
@@ -447,15 +444,16 @@ class Visualization extends React.PureComponent {
     const isHeaderEnabled = !(visualization && visualization.noHeader);
 
     const isVirtual = dashcard ? isVirtualDashCard(dashcard) : false;
-    const showVirtualHeader =
-      isVirtual && showVirtualDashCardEditingHeaders(dashcard, isMobile);
+    const showVirtualHeader = isVirtual
+      ? showVirtualDashCardEditingHeaders(dashcard, isMobile)
+      : true;
 
     const hasHeader =
       (showTitle &&
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
-      (isVirtual && isEditingParameter && showVirtualHeader);
-    replacementContent;
+      (isVirtual && isEditingParameter && showVirtualHeader) ||
+      replacementContent;
 
     return (
       <div
