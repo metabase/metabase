@@ -2,87 +2,89 @@ import {
   describeEE,
   restore,
   visitQuestion,
-  popover,
   openQuestionActions,
   questionInfoButton,
 } from "__support__/e2e/helpers";
+
+import { USERS } from "__support__/e2e/cypress_data";
+
+const { admin } = USERS;
+const adminFullName = `${admin.first_name} ${admin.last_name}`;
 
 describeEE("scenarios > saved question moderation", () => {
   describe("as an admin", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+    });
 
+    it("should be able to verify and unverify a saved question", () => {
       visitQuestion(2);
-    });
 
-    it("should be able to verify a saved question", () => {
-      openQuestionActions();
+      verifyQuestion();
 
-      popover().within(() => {
-        cy.findByTestId("moderation-verify-action").click();
-      });
+      // 1. Question title
+      cy.findByTestId("qb-header-left-side").find(".Icon-verified");
 
-      openQuestionActions();
-      popover().within(() => {
-        cy.findByText("Remove verification");
-      });
-
-      cy.findByPlaceholderText("Search…").type("orders{enter}");
-      cy.findByText("Orders, Count").icon("verified");
-
-      cy.visit("/collection/root");
-
-      cy.findByText("Orders, Count").icon("verified");
-    });
-
-    it("should be able to unverify a verified saved question", () => {
-      openQuestionActions();
-      popover().within(() => {
-        cy.findByTestId("moderation-verify-action").click();
-      });
-
-      openQuestionActions();
-      popover().within(() => {
-        cy.findByTestId("moderation-remove-verification-action").click();
-      });
-
-      openQuestionActions();
-      popover().within(() => {
-        cy.findByText("Verify this question").should("be.visible");
-      });
-
-      cy.findByTestId("qb-header-left-side").within(() => {
-        cy.icon("verified").should("not.exist");
-      });
-
-      cy.findByPlaceholderText("Search…").type("orders{enter}");
-      cy.findByText("Orders, Count").find(".Icon-verified").should("not.exist");
-
-      cy.visit("/collection/root");
-
-      cy.findByText("Orders, Count").find(".Icon-verified").should("not.exist");
-    });
-
-    it("should be able to see evidence of verification/unverification in the question's timeline", () => {
-      openQuestionActions();
-
-      popover().within(() => {
-        cy.findByTestId("moderation-verify-action").click();
-      });
-
+      // 2. Question's history
       questionInfoButton().click();
       cy.findByText("History");
+      cy.findAllByText("You verified this")
+        .should("have.length", 2)
+        .and("be.visible");
 
-      cy.findAllByText("You verified this").should("be.visible");
+      // 3. Recently viewed list
+      cy.findByPlaceholderText("Search…").click();
+      cy.findByTestId("recently-viewed-item")
+        .should("contain", "Orders, Count")
+        .find(".Icon-verified");
 
-      openQuestionActions();
+      // 4. Search results
+      cy.findByPlaceholderText("Search…").type("orders{enter}");
+      cy.findAllByTestId("search-result-item")
+        .contains("Orders, Count")
+        .siblings(".Icon-verified");
 
-      popover().within(() => {
-        cy.findByTestId("moderation-remove-verification-action").click();
-      });
+      // 5. Question's collection
+      cy.visit("/collection/root");
+      cy.findByText("Orders, Count").closest("a").find(".Icon-verified");
 
-      cy.findByText("You removed verification").should("be.visible");
+      // Let's go back to the question and remove the verification
+      visitQuestion(2);
+
+      removeQuestionVerification();
+
+      // 1. Question title
+      cy.findByTestId("qb-header-left-side")
+        .find(".Icon-verified")
+        .should("not.exist");
+
+      // 2. Question's history
+      questionInfoButton().click();
+      cy.findByText("History");
+      cy.findByText("You removed verification");
+      cy.findByText("You verified this"); // Implicit assertion - there can be only one :)
+
+      // 3. Recently viewed list
+      cy.findByPlaceholderText("Search…").click();
+      cy.findByTestId("recently-viewed-item")
+        .should("contain", "Orders, Count")
+        .find(".Icon-verified")
+        .should("not.exist");
+
+      // 4. Search results
+      cy.findByPlaceholderText("Search…").type("orders{enter}");
+      cy.findAllByTestId("search-result-item")
+        .contains("Orders, Count")
+        .siblings(".Icon-verified")
+        .should("not.exist");
+
+      // 5. Question's collection
+      cy.visit("/collection/root");
+      cy.findByText("Orders, Count")
+        .closest("a")
+        .find(".Icon-verified")
+        .should("not.exist");
     });
   });
 
@@ -106,7 +108,7 @@ describeEE("scenarios > saved question moderation", () => {
       cy.icon("verified").should("not.exist");
 
       questionInfoButton().click();
-      cy.findByText("Bobby Tables verified this").should("not.exist");
+      cy.findByText(`${adminFullName} verified this`).should("not.exist");
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
       cy.findByText("Orders, Count, Grouped by Created At (year)")
@@ -135,14 +137,15 @@ describeEE("scenarios > saved question moderation", () => {
 
       cy.findByText("Orders, Count").icon("verified");
     });
-
-    it("should be able to see the question verification in the question's timeline", () => {
-      visitQuestion(2);
-
-      questionInfoButton().click();
-      cy.findByText("History");
-
-      cy.findAllByText("Bobby Tables verified this").should("be.visible");
-    });
   });
 });
+
+function verifyQuestion() {
+  openQuestionActions();
+  cy.findByTextEnsureVisible("Verify this question").click();
+}
+
+function removeQuestionVerification() {
+  openQuestionActions();
+  cy.findByTextEnsureVisible("Remove verification").click();
+}
