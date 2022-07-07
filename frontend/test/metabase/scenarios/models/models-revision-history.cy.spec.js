@@ -48,7 +48,9 @@ describe("scenarios > models > revision history", () => {
     cy.get(".LineAreaBarChart");
 
     filter();
-    cy.findByLabelText("Discount").findByText("Between").click();
+    cy.findByLabelText("Discount")
+      .findByText("Between")
+      .click();
     selectFromDropdown("Not empty");
 
     cy.button("Apply").click();
@@ -86,10 +88,7 @@ describe("scenarios > models > revision history", () => {
 
     filter();
     cy.findByLabelText("Count").click();
-    cy.findByText("Equal to").click();
-    selectFromDropdown("Greater than");
-    cy.findByPlaceholderText("Enter a number").type("2000");
-    cy.button("Add filter").click();
+    cy.findByPlaceholderText("min").type("2000");
     cy.button("Apply").click();
 
     assertQuestionIsBasedOnModel({
