@@ -278,6 +278,14 @@
     (not google_auth)
     (not ldap_auth))))
 
+(defn- valid-name-update?
+  "This predicate tests whether or not the user is allowed to update the first/last name associated with this account."
+  [{:keys [google_auth ldap_auth sso_source]}]
+  (and
+   (not sso_source)
+   (not google_auth)
+   (not ldap_auth)))
+
 (api/defendpoint PUT "/:id"
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
@@ -301,6 +309,10 @@
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
     (api/check-403 (valid-email-update? user-before-update email))
+    ;; SSO users (JWT, SAML, LDAP, Google) can't change their first/last names
+    (when (or (contains? body :first_name)
+              (contains? body :last_name))
+      (api/check-403 (valid-name-update? user-before-update)))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
     (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
                 "email" (tru "Email address already associated to another user."))

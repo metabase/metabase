@@ -35,6 +35,7 @@
       :is_active        true
       :last_login       false
       :ldap_auth        false
+      :sso_source       nil
       :login_attributes nil
       :updated_at       true
       :locale           nil})))
