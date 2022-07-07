@@ -151,7 +151,7 @@ These settings can also be changed under **Style** when previewing the embedded 
 
 ## Advanced embedding features
 
-{% plans-blockquote feature="Advanced embedding features" %}
+{% include plans-blockquote.html feature="Advanced embedding features" %}
 
 Paid plans give you additional customization options for embedded items.
 
