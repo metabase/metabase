@@ -912,7 +912,12 @@
   "Refresh the persisted model caching `card-id`."
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (api/let-404 [persisted-info (db/select-one PersistedInfo :card_id card-id)]
+  (api/let-404 [card           (Card card-id)
+                persisted-info (db/select-one PersistedInfo :card_id card-id)]
+    (when (not (:dataset card))
+      (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
+    (when (:archived card)
+      (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))
     (api/write-check (Database (:database_id persisted-info)))
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))

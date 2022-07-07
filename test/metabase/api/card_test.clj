@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [clojure.tools.macro :as tools.macro]
+            [clojurewerkz.quartzite.scheduler :as qs]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
             [medley.core :as m]
@@ -11,8 +12,8 @@
             [metabase.api.pivots :as api.pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as client]
-            [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview Pulse PulseCard
-                                     PulseChannel PulseChannelRecipient Table Timeline TimelineEvent ViewLog]]
+            [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview Pulse PersistedInfo
+                                     PulseCard PulseChannel PulseChannelRecipient Table Timeline TimelineEvent ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
@@ -24,6 +25,9 @@
             [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.server.middleware.util :as mw.util]
+            [metabase.task :as task]
+            [metabase.task.persist-refresh :as task.persist-refresh]
+            [metabase.task.sync-databases :as task.sync-databases]
             [metabase.test :as mt]
             [metabase.test.data.users :as test.users]
             [metabase.util :as u]
@@ -32,7 +36,8 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]])
   (:import java.io.ByteArrayInputStream
-           java.util.UUID))
+           java.util.UUID
+           org.quartz.impl.StdSchedulerFactory))
 
 (comment api.card/keep-me)
 
@@ -2265,3 +2270,56 @@
                                                                      (map #(assoc % :description "") m))))
                             :result_metadata
                             (map :description))))))))))))
+
+(defn- do-with-persistence-setup [f]
+  ;; mt/with-temp-scheduler actually just reuses the current scheduler. The scheduler factory caches by name set in
+  ;; the resources/quartz.properties file and we reuse that scheduler
+  (let [sched (.getScheduler
+               (StdSchedulerFactory. (doto (java.util.Properties.)
+                                       (.setProperty "org.quartz.scheduler.instanceName" (str (gensym "card-api-test")))
+                                       (.setProperty "org.quartz.scheduler.instanceID" "AUTO")
+                                       (.setProperty "org.quartz.properties" "non-existant")
+                                       (.setProperty "org.quartz.threadPool.threadCount" "6")
+                                       (.setProperty "org.quartz.threadPool.class" "org.quartz.simpl.SimpleThreadPool"))))]
+    ;; a binding won't work since we need to cross thread boundaries
+    (with-redefs [task/scheduler (constantly sched)]
+      (try
+        (qs/standby sched)
+        (#'task.persist-refresh/job-init!)
+        (#'task.sync-databases/job-init)
+        (mt/with-temporary-setting-values [:persisted-models-enabled true]
+          (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]]
+            (f db)))
+        (finally
+          (qs/shutdown sched))))))
+
+(defmacro ^:private with-persistence-setup
+  "Sets up a temp scheduler, a temp database and enabled persistence. Scheduler will be in standby mode so that jobs
+  won't run. Just check for trigger presence."
+  [db-binding & body]
+  `(do-with-persistence-setup (fn [~db-binding] ~@body)))
+
+(deftest refresh-persistence
+  (testing "Can schedule refreshes for models"
+    (with-persistence-setup db
+      (mt/with-temp* [Card          [unmodeled {:dataset false :database_id (u/the-id db)}]
+                      Card          [archived {:dataset true :archived true :database_id (u/the-id db)}]
+                      Card          [model {:dataset true :database_id (u/the-id db)}]
+                      PersistedInfo [pmodel  {:card_id (u/the-id model) :database_id (u/the-id db)}]
+                      PersistedInfo [punmodeled  {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}]
+                      PersistedInfo [parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}]]
+        (testing "Can refresh models"
+          (mt/user-http-request :crowberto :post 204 (format "card/%d/refresh" (u/the-id model)))
+          (is (contains? (task.persist-refresh/job-info-for-individual-refresh)
+                         (u/the-id pmodel))
+              "Missing refresh of model"))
+        (testing "Won't refresh archived models"
+          (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id archived)))
+          (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
+                              (u/the-id punmodeled)))
+              "Scheduled refresh of archived model"))
+        (testing "Won't refresh cards no longer models"
+          (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id unmodeled)))
+          (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
+                              (u/the-id parchived)))
+              "Scheduled refresh of archived model"))))))

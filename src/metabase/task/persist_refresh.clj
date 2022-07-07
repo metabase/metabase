@@ -374,6 +374,17 @@
            :triggers
            (u/key-by (comp #(get % "db-id") qc/from-job-data :data))))
 
+(defn job-info-for-individual-refresh
+  "Return a set of PersistedInfo ids of all jobs scheduled for individual refreshes."
+  []
+  (some->> refresh-job-key
+           task/job-info
+           :triggers
+           (map (comp qc/from-job-data :data))
+           (filter (comp #{"individual"} #(get % "type")))
+           (map #(get % "persisted-id"))
+           set))
+
 (defn unschedule-persistence-for-database!
   "Stop refreshing tables for a given database. Should only be called when marking the database as not
   persisting. Tables will be left over and up to the caller to clean up."
