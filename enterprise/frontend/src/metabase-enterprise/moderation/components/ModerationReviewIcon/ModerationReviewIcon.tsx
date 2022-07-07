@@ -1,7 +1,10 @@
 import React from "react";
+import { color } from "metabase/lib/colors";
 import { getRelativeTimeAbbreviated } from "metabase/lib/time";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
 import { ModerationReview, User } from "metabase-types/api";
-import { getModeratorDisplayText } from "../../service";
+import { getIconForReview, getModeratorDisplayText } from "../../service";
 import {
   TooltipContainer,
   TooltipText,
@@ -19,14 +22,23 @@ const ModerationReviewIcon = ({
   moderator,
   currentUser,
 }: ModerationReviewIconProps): JSX.Element => {
-  const text = moderator && getModeratorDisplayText(moderator, currentUser);
-  const createdAt = getRelativeTimeAbbreviated(review.created_at);
+  const { name: iconName, color: iconColor } = getIconForReview(review);
+
+  const tooltip = moderator && (
+    <TooltipContainer>
+      <TooltipText>
+        {getModeratorDisplayText(moderator, currentUser)}
+      </TooltipText>
+      <TooltipTime dateTime={review.created_at}>
+        {getRelativeTimeAbbreviated(review.created_at)}
+      </TooltipTime>
+    </TooltipContainer>
+  );
 
   return (
-    <TooltipContainer>
-      <TooltipText>{text}</TooltipText>
-      <TooltipTime dateTime={review.created_at}>{createdAt}</TooltipTime>
-    </TooltipContainer>
+    <Tooltip tooltip={tooltip}>
+      <Icon name={iconName} color={color(iconColor)} />
+    </Tooltip>
   );
 };
 

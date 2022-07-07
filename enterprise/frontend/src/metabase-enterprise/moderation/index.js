@@ -3,14 +3,14 @@ import { t } from "ttag";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import QuestionModerationSection from "./components/QuestionModerationSection/QuestionModerationSection";
-import QuestionModerationButton from "./components/QuestionModerationButton/QuestionModerationButton";
-import ModerationReviewBanner from "./components/ModerationReviewBanner/ModerationReviewBanner";
-import ModerationStatusIcon from "./components/ModerationStatusIcon/ModerationStatusIcon";
+import QuestionModerationIcon from "./components/QuestionModerationIcon";
+import QuestionModerationSection from "./components/QuestionModerationSection";
+import QuestionModerationButton from "./components/QuestionModerationButton";
+import ModerationReviewBanner from "./components/ModerationReviewBanner";
+import ModerationStatusIcon from "./components/ModerationStatusIcon";
 
 import {
   MODERATION_STATUS,
-  getStatusIconForQuestion,
   getStatusIcon,
   getModerationTimelineEvents,
   verifyItem,
@@ -22,11 +22,11 @@ import {
 if (hasPremiumFeature("content_management")) {
   Object.assign(PLUGIN_MODERATION, {
     isEnabled: () => true,
+    QuestionModerationIcon,
     QuestionModerationSection,
     QuestionModerationButton,
     ModerationReviewBanner,
     ModerationStatusIcon,
-    getStatusIconForQuestion,
     getStatusIcon,
     getModerationTimelineEvents,
     getMenuItems: (model, isModerator, reload) => {
