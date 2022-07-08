@@ -334,8 +334,11 @@
                 (testing (format "persist/disable with %s user" (mt/user-descriptor user))
                   (mt/user-http-request user :post status "persist/disable")))
               (set-interval [user status]
-                (testing (format "persist/set-interval with %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :post status "persist/set-interval" {"hours" 1})))]
+                (testing (format "persist/set-refresh-schedule with %s user"
+                                 (mt/user-descriptor user))
+                  (mt/user-http-request user :post status
+                                        "persist/set-refresh-schedule"
+                                        {"cron" "0 0 0/1 * * ? *"})))]
 
         (testing "if `advanced-permissions` is disabled, require admins,"
           (enable-persist :crowberto 204)
