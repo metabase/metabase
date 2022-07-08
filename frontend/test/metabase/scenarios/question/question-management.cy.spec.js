@@ -97,14 +97,10 @@ describe("managing question from the question's details sidebar", () => {
               });
 
               it("should be able to move models", () => {
-                cy.request("PUT", "/api/card/1", {
-                  name: "Orders Model",
-                  dataset: true,
-                });
-                // to refresh state of the question after being turned into a model
-                cy.intercept("POST", `/api/dataset`).as("modelQuery1");
-                cy.reload();
-                cy.wait("@modelQuery1");
+                // TODO: Currently nodata users can't turn a question into a model
+                cy.skipOn(user === "nodata");
+
+                turnIntoModel();
 
                 openNavigationSidebar();
                 navigationSidebar().within(() => {
@@ -259,4 +255,10 @@ function getPersonalCollectionName(user) {
   const name = [user.first_name, user.last_name].join(" ");
 
   return `${name}'s Personal Collection`;
+}
+
+function turnIntoModel() {
+  openQuestionActions();
+  cy.findByText("Turn into a model").click();
+  cy.findByText("Turn this into a model").click();
 }
