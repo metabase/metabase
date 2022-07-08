@@ -2,6 +2,7 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.test.check.generators :as gen]
             [java-time :as t]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
                                      Dimension Field Metric NativeQuerySnippet PermissionsGroup
                                      PermissionsGroupMembership Pulse PulseCard PulseChannel Table User]]
@@ -80,9 +81,11 @@
             (rand-nth reserved-words)
             (cond-> (random-desc)
               (coin-toss 0.1)
-              (str (rand-nth "áîëç£¢™🍒"))
+              (str (rand-nth "áîëç£¢™"))
               (coin-toss 0.01)
-              (str (subs (tt/lorem-ipsum) 1 200))
+              (str "🍒") ; This one can't be merged with the above, `rand-nth` treats it as two (broken) characters.
+              (coin-toss 0.01)
+              (str (subs (tt/lorem-ipsum) 1 120))
               (coin-toss 0.01)
               (-> first str))))
         (gen/return nil)))))
@@ -205,8 +208,7 @@
    :field                        {:prefix      :field
                                   :spec        ::field
                                   :insert!     {:model Field}
-                                  :relations   {:table_id [:table :id]}
-                                  :constraints {:table_id #{:uniq}}}
+                                  :relations   {:table_id [:table :id]}}
    :metric                       {:prefix    :metric
                                   :spec      ::metric
                                   :insert!   {:model Metric}
@@ -241,6 +243,8 @@
   [query]
   (rsg/ent-db-spec-gen {:schema schema} query))
 
+(def ^:private unique-name (mbql.u/unique-name-generator))
+
 (def ^:private field-positions (atom {:table-fields {}}))
 (defn- adjust
   "Some fields have to be semantically correct, or db correct. fields have position, and they do have to be unique.
@@ -254,6 +258,14 @@
     (assoc :position
            (-> (swap! field-positions update-in [:table-fields (:table_id visit-val)] (fnil inc 0))
                (get-in [:table-fields (:table_id visit-val)])))
+
+    ;; Table names need to be unique within their database. This enforces it, and appends junk to names if needed.
+    (= :table ent-type)
+    (update :name unique-name)
+
+    ;; Field names need to be unique within their table. This enforces it, and appends junk to names if needed.
+    (= :field ent-type)
+    (update :name unique-name)
 
     (and (:description visit-val) (coin-toss 0.2))
     (dissoc :description)))
