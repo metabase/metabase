@@ -364,7 +364,7 @@
   "Add a `Card` to a Dashboard."
   [id :as {{:keys [cardId parameter_mappings], :as dashboard-card} :body}]
   {cardId             (s/maybe su/IntGreaterThanZero)
-   parameter_mappings [dashboard-card/ParamMapping]}
+   parameter_mappings (s/maybe [dashboard-card/ParamMapping])}
   (api/check-not-archived (api/write-check Dashboard id))
   (when cardId
     (api/check-not-archived (api/read-check Card cardId)))
@@ -398,10 +398,8 @@
                                          (let [[mapping]         (mi/normalize-parameters-list [mapping])
                                                existing-mappings (get dashcard-id->existing-mappings dashcard-id)]
                                            (contains? existing-mappings (select-keys mapping [:target :parameter_id]))))
-        new-mappings                   (for [{mappings :parameter_mappings, dashcard-id :id, card-id :card_id} dashcards
+        new-mappings                   (for [{mappings :parameter_mappings, dashcard-id :id} dashcards
                                              mapping mappings
-                                             ;; nil card-id means the DashboardCard is a text card, so we don't need to check permissions
-                                             :when card-id
                                              :when (not (existing-mapping? dashcard-id mapping))]
                                          (assoc mapping :dashcard-id dashcard-id))
         ;; need to add the appropriate `:card-id` for all the new mappings we're going to check.
@@ -409,8 +407,14 @@
                                          (db/select-id->field :card_id DashboardCard
                                            :dashboard_id dashboard-id
                                            :id           [:in (set (map :dashcard-id new-mappings))]))
-        new-mappings (for [{:keys [dashcard-id], :as mapping} new-mappings]
-                       (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
+        new-mappings                   (reduce (fn [new-mappings {:keys [dashcard-id] :as mapping}]
+                                                 ;; nil card-id means the DashboardCard is a text card, so we don't
+                                                 ;; need to check permissions
+                                                 (if-let [card-id (get dashcard-id->card-id dashcard-id)]
+                                                   (conj new-mappings (assoc mapping :card-id card-id))
+                                                   new-mappings))
+                                               []
+                                               new-mappings)]
     (check-parameter-mapping-permissions new-mappings)))
 
 (def ^:private UpdatedDashboardCard
