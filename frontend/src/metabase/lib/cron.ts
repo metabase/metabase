@@ -47,10 +47,18 @@ export function validateCronExpression(
   if (typeof errorMessage === "string") {
     return translateErrorMessage(errorMessage) || t`Invalid cron expression`;
   }
-  const [firstErrorMessage] = errorMessage
+
+  // Picking up the last error message
+  // as a workaround for https://github.com/anushaihalapathirana/cron-expression-validator/issues/17
+  // For some reason, cron-expression-validator uses a global `errorMessages` variable,
+  // and it's value is preserved between validation calls
+  // So the most relevant message is always pushed to the end of the list
+  const [lastErrorMessage] = errorMessage
     .map(translateErrorMessage)
-    .filter(Boolean);
-  return firstErrorMessage || t`Invalid cron expression`;
+    .filter(Boolean)
+    .reverse();
+
+  return lastErrorMessage || t`Invalid cron expression`;
 }
 
 export function explainCronExpression(cronExpression: string) {
