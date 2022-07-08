@@ -33,9 +33,10 @@ function PersistedModelAnchorTimeWidget({
   const [hours, minutes] = anchor.split(":").map(value => parseInt(value, 10));
   const value = moment({ hours, minutes });
 
-  const onChangeDebounced = useMemo(() => _.debounce(onChange, 300), [
-    onChange,
-  ]);
+  const onChangeDebounced = useMemo(
+    () => _.debounce(onChange, 300),
+    [onChange],
+  );
 
   const handleChange = useCallback(
     (value: Moment) => {

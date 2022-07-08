@@ -34,9 +34,7 @@ describe("metabase > scenarios > home > activity-page", () => {
     });
     cy.findByText("Save").click();
     cy.get("[value='Products, Filtered by Rating']");
-    cy.findAllByText("Save")
-      .last()
-      .click();
+    cy.findAllByText("Save").last().click();
     cy.findByText("Not now").click();
 
     // View a dashboard
@@ -63,9 +61,7 @@ describe("metabase > scenarios > home > activity-page", () => {
 
     editDashboard();
 
-    cy.icon("add")
-      .last()
-      .click();
+    cy.icon("add").last().click();
 
     sidebar().within(() => {
       cy.findByTestId("loading-spinner").should("not.exist");

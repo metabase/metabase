@@ -48,9 +48,7 @@ type PredefinedRelativeDatePickerProps = {
   onFilterChange: (filter: any[]) => void;
 };
 
-export class PredefinedRelativeDatePicker extends React.Component<
-  PredefinedRelativeDatePickerProps
-> {
+export class PredefinedRelativeDatePicker extends React.Component<PredefinedRelativeDatePickerProps> {
   constructor(props: PredefinedRelativeDatePickerProps) {
     super(props);
 

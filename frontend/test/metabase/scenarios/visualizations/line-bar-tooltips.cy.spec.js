@@ -461,10 +461,7 @@ function showTooltipForFirstBarInSeries(series_index) {
 }
 
 function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1)
-    .closest("td")
-    .siblings("td")
-    .findByText(val2);
+  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }
 
 function testTooltipText(rowPairs = []) {
@@ -482,10 +479,7 @@ function openDashCardVisualizationOptions() {
 }
 
 function updateColumnTitle(originalText, updatedText) {
-  cy.findByDisplayValue(originalText)
-    .clear()
-    .type(updatedText)
-    .blur();
+  cy.findByDisplayValue(originalText).clear().type(updatedText).blur();
 }
 
 function saveDashCardVisualizationOptions() {

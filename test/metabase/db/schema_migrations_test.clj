@@ -595,7 +595,8 @@
                                              :database_id            database-id
                                              :collection_id          nil})]
        (migrate!)
-       (is (= [] (:parameters (first (db/simple-select Card {:where [:= :id card-id]})))))))))
+       (is (= nil
+              (:parameters (first (db/simple-select Card {:where [:= :id card-id]})))))))))
 
 (deftest add-parameter-mappings-to-cards-test
   (testing "Migration v44.00-024: Add parameter_mappings to cards"
@@ -619,7 +620,7 @@
                                      :database_id            database-id
                                      :collection_id          nil})]
         (migrate!)
-        (is (= []
+        (is (= nil
                (:parameter_mappings (first (db/simple-select Card {:where [:= :id card-id]})))))))))
 
 (deftest grant-all-users-root-snippets-collection-readwrite-perms-test

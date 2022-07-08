@@ -18,13 +18,8 @@ const mapDispatchToProps = {
 
 class Formula extends Component {
   render() {
-    const {
-      type,
-      entity,
-      isExpanded,
-      expandFormula,
-      collapseFormula,
-    } = this.props;
+    const { type, entity, isExpanded, expandFormula, collapseFormula } =
+      this.props;
 
     return (
       <div

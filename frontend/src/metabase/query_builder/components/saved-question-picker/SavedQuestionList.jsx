@@ -57,24 +57,25 @@ function SavedQuestionList({
                 : schema.tables;
             return (
               <React.Fragment>
-                {_.sortBy(tables, "display_name").map(t => (
-                  <SavedQuestionListItem
-                    id={t.id}
-                    isSelected={selectedId === t.id}
-                    key={t.id}
-                    size="small"
-                    name={t.display_name}
-                    icon={{
-                      name: isDatasets ? "model" : "table2",
-                      size: 16,
-                    }}
-                    onSelect={() => onSelect(t)}
-                    rightIcon={PLUGIN_MODERATION.getStatusIcon(
-                      t.moderated_status,
-                    )}
-                  />
-                ))}
-
+                {tables
+                  .sort((a, b) => a.display_name.localeCompare(b.display_name))
+                  .map(t => (
+                    <SavedQuestionListItem
+                      id={t.id}
+                      isSelected={selectedId === t.id}
+                      key={t.id}
+                      size="small"
+                      name={t.display_name}
+                      icon={{
+                        name: isDatasets ? "model" : "table2",
+                        size: 16,
+                      }}
+                      onSelect={() => onSelect(t)}
+                      rightIcon={PLUGIN_MODERATION.getStatusIcon(
+                        t.moderated_status,
+                      )}
+                    />
+                  ))}
                 {tables.length === 0 ? emptyState : null}
               </React.Fragment>
             );

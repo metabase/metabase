@@ -113,9 +113,10 @@ export function getParameterValuesByIdFromQueryParams(
     getParameterValueFromQueryParams(parameter, queryParams, metadata),
   ]);
 
-  const transformedPairs = forcefullyUnsetDefaultedParametersWithEmptyStringValue
-    ? removeAllEmptyStringParameters(parameterValuePairs)
-    : removeUndefaultedEmptyStringParameters(parameterValuePairs);
+  const transformedPairs =
+    forcefullyUnsetDefaultedParametersWithEmptyStringValue
+      ? removeAllEmptyStringParameters(parameterValuePairs)
+      : removeUndefaultedEmptyStringParameters(parameterValuePairs);
 
   const idValuePairs = transformedPairs.map(([parameter, value]) => [
     parameter.id,

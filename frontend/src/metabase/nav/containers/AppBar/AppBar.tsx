@@ -24,7 +24,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isNewButtonVisible: getIsNewButtonVisible(state),
   isProfileLinkVisible: getIsProfileLinkVisible(state),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
-  isQuestionLineageVisible: getIsQuestionLineageVisible(state),
+  isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
 });
 
 const mapDispatchToProps = {

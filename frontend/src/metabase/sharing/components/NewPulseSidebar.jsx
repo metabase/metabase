@@ -26,7 +26,8 @@ function NewPulseSidebar({
         <Card
           flat
           className={cx("mt1 mb3", {
-            "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit": emailConfigured,
+            "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
+              emailConfigured,
           })}
           onClick={onNewEmailPulse}
         >
@@ -66,7 +67,8 @@ function NewPulseSidebar({
         <Card
           flat
           className={cx({
-            "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit": slackConfigured,
+            "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
+              slackConfigured,
           })}
           onClick={onNewSlackPulse}
         >

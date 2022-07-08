@@ -27,9 +27,7 @@ describe("scenarios > question > saved", () => {
     summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    popover()
-      .findByText("Total")
-      .click();
+    popover().findByText("Total").click();
     // Save the question
     cy.findByText("Save").click();
     modal().within(() => {
@@ -156,9 +154,7 @@ describe("scenarios > question > saved", () => {
     cy.findByText("15808").click();
     visualize();
     filter();
-    cy.findByLabelText("RATING")
-      .findByText("Between")
-      .click();
+    cy.findByLabelText("RATING").findByText("Between").click();
     cy.findByText("Equal to").click();
     cy.findByLabelText("RATING")
       .findByPlaceholderText("Enter a number")

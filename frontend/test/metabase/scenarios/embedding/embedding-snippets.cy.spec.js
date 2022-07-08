@@ -28,26 +28,21 @@ describe("scenarios > embedding > code snippets", () => {
     cy.get(".ace_content")
       .first()
       .invoke("text")
-      .should("match", JS_CODE({ type: "dashboard", isEE }));
+      .should("match", JS_CODE({ type: "dashboard" }));
 
     // set transparent background metabase#23477
     cy.findByText("Transparent").click();
     cy.get(".ace_content")
       .first()
       .invoke("text")
-      .should(
-        "match",
-        JS_CODE({ type: "dashboard", isEE, theme: "transparent" }),
-      );
+      .should("match", JS_CODE({ type: "dashboard", theme: "transparent" }));
 
     // No download button for dashboards even for pro/enterprise users metabase#23477
     cy.findByLabelText("Enable users to download data from this embed?").should(
       "not.exist",
     );
 
-    cy.get(".ace_content")
-      .last()
-      .should("have.text", IFRAME_CODE);
+    cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
 
     cy.findAllByTestId("embed-backend-select-button")
       .should("contain", "Node.js")
@@ -84,17 +79,14 @@ describe("scenarios > embedding > code snippets", () => {
     cy.get(".ace_content")
       .first()
       .invoke("text")
-      .should("match", JS_CODE({ type: "question", isEE }));
+      .should("match", JS_CODE({ type: "question" }));
 
     // set transparent background metabase#23477
     cy.findByText("Transparent").click();
     cy.get(".ace_content")
       .first()
       .invoke("text")
-      .should(
-        "match",
-        JS_CODE({ type: "question", isEE, theme: "transparent" }),
-      );
+      .should("match", JS_CODE({ type: "question", theme: "transparent" }));
 
     // hide download button for pro/enterprise users metabase#23477
     if (isEE) {
@@ -109,16 +101,13 @@ describe("scenarios > embedding > code snippets", () => {
           "match",
           JS_CODE({
             type: "question",
-            isEE,
             theme: "transparent",
             hideDownloadButton: true,
           }),
         );
     }
 
-    cy.get(".ace_content")
-      .last()
-      .should("have.text", IFRAME_CODE);
+    cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
 
     cy.findAllByTestId("embed-backend-select-button")
       .should("contain", "Node.js")

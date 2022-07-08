@@ -46,13 +46,8 @@ export default class QueryModals extends React.Component {
   };
 
   render() {
-    const {
-      modal,
-      modalContext,
-      question,
-      onCloseModal,
-      onOpenModal,
-    } = this.props;
+    const { modal, modalContext, question, onCloseModal, onOpenModal } =
+      this.props;
 
     return modal === MODAL_TYPES.SAVE ? (
       <Modal form onClose={onCloseModal}>

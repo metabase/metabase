@@ -313,14 +313,8 @@ class UpdateAlertModalContentInner extends Component {
   };
 
   render() {
-    const {
-      onCancel,
-      question,
-      visualizationSettings,
-      alert,
-      user,
-      isAdmin,
-    } = this.props;
+    const { onCancel, question, visualizationSettings, alert, user, isAdmin } =
+      this.props;
     const { modifiedAlert } = this.state;
 
     const isCurrentUser = alert.creator.id === user.id;

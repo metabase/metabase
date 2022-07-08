@@ -159,11 +159,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     popover().within(() => {
-      cy.findByRole("textbox")
-        .click()
-        .type("30")
-        .clear()
-        .type("25");
+      cy.findByRole("textbox").click().type("30").clear().type("25");
 
       cy.button("Update filter").click();
     });
@@ -398,10 +394,7 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Before").click();
 
       popover().within(() => {
-        cy.get("input")
-          .eq(0)
-          .clear()
-          .type("01/01/2017", { delay: 0 });
+        cy.get("input").eq(0).clear().type("01/01/2017", { delay: 0 });
 
         cy.findByText("Add filter").click();
       });

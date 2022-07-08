@@ -366,6 +366,7 @@
            metabase.test/with-user-in-groups clojure.core/let
            metabase.test.data.interface/defdataset clojure.core/def
            metabase.test.data.interface/defdataset-edn clojure.core/def
+           metabase-enterprise.serialization.test-util/with-random-dump-dir clojure.core/fn
            metabase.driver.mongo.util/with-mongo-connection clojure.core/let
            metabase.driver.mongo.query-processor/mongo-let clojure.core/let
            toucan.db/with-call-counting clojure.core/fn

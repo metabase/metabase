@@ -418,16 +418,16 @@
                                            :moderator_id        user-id
                                            :most_recent         true}]]
         (is (= (mt/obj->json->obj
-                [{:id                      card-id
-                  :name                    (:name card)
-                  :collection_position     nil
-                  :collection_preview      true
-                  :display                 "table"
-                  :description             nil
-                  :entity_id               (:entity_id card)
-                  :moderated_status        "verified"
-                  :model                   "card"
-                  :has_required_parameters true}])
+                [{:id                  card-id
+                  :name                (:name card)
+                  :collection_position nil
+                  :collection_preview  true
+                  :display             "table"
+                  :description         nil
+                  :entity_id           (:entity_id card)
+                  :moderated_status    "verified"
+                  :model               "card"
+                  :fully_parametrized  true}])
                (mt/obj->json->obj
                 (:data (mt/user-http-request :crowberto :get 200
                                              (str "collection/" (u/the-id collection) "/items"))))))))
@@ -472,7 +472,7 @@
                                           :collection_preview false, :display "table", :entity_id true}
                                          {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true}
                                          {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id true}])
-                     (assoc-in [1 :has_required_parameters] true))
+                     (assoc-in [1 :fully_parametrized] true))
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
 
@@ -489,7 +489,7 @@
             (is (= [(-> {:name "Birthday Card", :description nil, :model "card",
                          :collection_preview false, :display "table", :entity_id true}
                         default-item
-                        (assoc :has_required_parameters true))
+                        (assoc :fully_parametrized true))
                     (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))))))
@@ -940,7 +940,7 @@
       (is (= [(-> {:name "Birthday Card", :description nil, :model "card",
                    :collection_preview false, :display "table"}
                   default-item
-                  (assoc :has_required_parameters true))
+                  (assoc :fully_parametrized true))
               (collection-item "Crowberto Corv's Personal Collection")
               (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
               (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
@@ -986,7 +986,7 @@
               (is (= [(-> {:name "Birthday Card", :description nil, :model "card",
                            :collection_preview false, :display "table"}
                           default-item
-                          (assoc :has_required_parameters true))
+                          (assoc :fully_parametrized true))
                       (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
                       (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
                       (collection-item "Rasta Toucan's Personal Collection")]
@@ -1047,34 +1047,35 @@
 
       (testing "Can we look for `archived` stuff with this endpoint?"
         (mt/with-temp Card [card {:name "Business Card", :archived true}]
-          (is (= [{:name                    "Business Card"
-                   :description             nil
-                   :collection_position     nil
-                   :collection_preview      true
-                   :display                 "table"
-                   :moderated_status        nil
-                   :entity_id               (:entity_id card)
-                   :model                   "card"
-                   :has_required_parameters true}]
+          (is (= [{:name                "Business Card"
+                   :description         nil
+                   :collection_position nil
+                   :collection_preview  true
+                   :display             "table"
+                   :moderated_status    nil
+                   :entity_id           (:entity_id card)
+                   :model               "card"
+                   :fully_parametrized  true}]
                  (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
                    (dissoc item :id)))))))
 
-    (testing "has_required_parameters of a card"
+    (testing "fully_parametrized of a card"
       (testing "can be false"
-        (mt/with-temp Card [card {:name "Business Card"
-                                  :dataset_query {:native {:template-tags {:param0 {:required true, :default 0}
-                                                                           :param1 {:required true}
-                                                                           :param2 {:required false}}}}}]
+        (mt/with-temp Card [card {:name          "Business Card"
+                                  :dataset_query {:native {:template-tags {:param0 {:default 0}
+                                                                           :param1 {:required false}
+                                                                           :param2 {:required false}}
+                                                           :query         "select {{param0}}, {{param1}} [[ , {{param2}} ]]"}}}]
           (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
-                   [{:name                    "Business Card"
-                     :description             nil
-                     :collection_position     nil
-                     :collection_preview      true
-                     :display                 "table"
-                     :moderated_status        nil
-                     :entity_id               (:entity_id card)
-                     :model                   "card"
-                     :has_required_parameters false}
+                   [{:name                "Business Card"
+                     :description         nil
+                     :collection_position nil
+                     :collection_preview  true
+                     :display             "table"
+                     :moderated_status    nil
+                     :entity_id           (:entity_id card)
+                     :model               "card"
+                     :fully_parametrized  false}
                     {:name            "Crowberto Corv's Personal Collection"
                      :description     nil
                      :model           "collection"
@@ -1084,21 +1085,71 @@
                  (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
                    (dissoc item :id))))))
 
-      (testing "is true if all required parameters have defaults"
-        (mt/with-temp Card [card {:name "Business Card"
-                                  :dataset_query {:native {:template-tags {:param0 {:required true, :default 0}
-                                                                           :param1 {:required true, :default 1}
-                                                                           :param2 {:required false}}}}}]
+      (testing "is false even if a required field-filter parameter has no default"
+        (mt/with-temp Card [card {:name          "Business Card"
+                                  :dataset_query {:native {:template-tags {:param0 {:default 0}
+                                                                           :param1 {:type "dimension", :required true}}
+                                                           :query         "select {{param0}}, {{param1}}"}}}]
           (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
-                   [{:name                    "Business Card"
-                     :description             nil
-                     :collection_position     nil
-                     :collection_preview      true
-                     :display                 "table"
-                     :moderated_status        nil
-                     :entity_id               (:entity_id card)
-                     :model                   "card"
-                     :has_required_parameters true}
+                   [{:name                "Business Card"
+                     :description         nil
+                     :collection_position nil
+                     :collection_preview  true
+                     :display             "table"
+                     :moderated_status    nil
+                     :entity_id           (:entity_id card)
+                     :model               "card"
+                     :fully_parametrized  false}
+                    {:name            "Crowberto Corv's Personal Collection"
+                     :description     nil
+                     :model           "collection"
+                     :authority_level nil
+                     :entity_id       (:entity_id collection)
+                     :can_write       true}])
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+                   (dissoc item :id))))))
+
+      (testing "is false even if an optional required parameter has no default"
+        (mt/with-temp Card [card {:name          "Business Card"
+                                  :dataset_query {:native {:template-tags {:param0 {:default 0}
+                                                                           :param1 {:required true}}
+                                                           :query         "select {{param0}}, [[ , {{param1}} ]]"}}}]
+          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
+                   [{:name                "Business Card"
+                     :description         nil
+                     :collection_position nil
+                     :collection_preview  true
+                     :display             "table"
+                     :moderated_status    nil
+                     :entity_id           (:entity_id card)
+                     :model               "card"
+                     :fully_parametrized  false}
+                    {:name            "Crowberto Corv's Personal Collection"
+                     :description     nil
+                     :model           "collection"
+                     :authority_level nil
+                     :entity_id       (:entity_id collection)
+                     :can_write       true}])
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+                   (dissoc item :id))))))
+
+      (testing "is true if all obligatory parameters have defaults"
+        (mt/with-temp Card [card {:name          "Business Card"
+                                  :dataset_query {:native {:template-tags {:param0 {:required false, :default 0}
+                                                                           :param1 {:required true, :default 1}
+                                                                           :param2 {}
+                                                                           :param3 {:type "dimension"}}
+                                                           :query "select {{param0}}, {{param1}} [[ , {{param2}} ]] from t {{param3}}"}}}]
+          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
+                   [{:name                "Business Card"
+                     :description         nil
+                     :collection_position nil
+                     :collection_preview  true
+                     :display             "table"
+                     :moderated_status    nil
+                     :entity_id           (:entity_id card)
+                     :model               "card"
+                     :fully_parametrized  true}
                     {:name            "Crowberto Corv's Personal Collection"
                      :description     nil
                      :model           "collection"

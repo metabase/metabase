@@ -991,11 +991,8 @@ export class UnconnectedDataSelector extends Component {
   };
 
   getSearchInputPlaceholder = () => {
-    const {
-      activeStep,
-      selectedDataBucketId,
-      isSavedQuestionPickerShown,
-    } = this.state;
+    const { activeStep, selectedDataBucketId, isSavedQuestionPickerShown } =
+      this.state;
     if (activeStep === DATA_BUCKET_STEP) {
       return t`Search for some data…`;
     }

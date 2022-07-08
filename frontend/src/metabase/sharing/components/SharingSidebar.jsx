@@ -251,14 +251,8 @@ class SharingSidebarInner extends React.Component {
 
   render() {
     const { editingMode } = this.state;
-    const {
-      pulse,
-      pulses,
-      formInput,
-      testPulse,
-      users,
-      dashboard,
-    } = this.props;
+    const { pulse, pulses, formInput, testPulse, users, dashboard } =
+      this.props;
 
     const isLoading = !pulses || !users || !pulse || !formInput?.channels;
 

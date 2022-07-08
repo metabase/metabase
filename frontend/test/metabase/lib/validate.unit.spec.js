@@ -31,11 +31,9 @@ describe("validate", () => {
     );
   });
   describe("all", () => {
-    expect(
-      validate
-        .required()
-        .email()
-        .all()(),
-    ).toEqual(["required", "must be a valid email address"]);
+    expect(validate.required().email().all()()).toEqual([
+      "required",
+      "must be a valid email address",
+    ]);
   });
 });

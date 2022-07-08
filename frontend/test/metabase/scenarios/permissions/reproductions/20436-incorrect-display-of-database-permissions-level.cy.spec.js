@@ -45,13 +45,9 @@ describe("issue 20436", () => {
 });
 
 function changePermissions(from, to) {
-  cy.findAllByText(from)
-    .first()
-    .click();
+  cy.findAllByText(from).first().click();
 
-  popover()
-    .contains(to)
-    .click();
+  popover().contains(to).click();
 }
 
 function saveChanges() {

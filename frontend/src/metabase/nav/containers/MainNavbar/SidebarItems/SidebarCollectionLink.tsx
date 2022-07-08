@@ -85,7 +85,7 @@ const SidebarCollectionLink = React.forwardRef<HTMLLIElement, Props>(
 
     const icon = getCollectionIcon(collection);
     const isRegularCollection = PLUGIN_COLLECTIONS.isRegularCollection(
-      (collection as unknown) as Collection,
+      collection as unknown as Collection,
     );
 
     return (
@@ -123,7 +123,7 @@ const DroppableSidebarCollectionLink = React.forwardRef<
   { item, ...props }: TreeNodeProps,
   ref,
 ) {
-  const collection = (item as unknown) as Collection;
+  const collection = item as unknown as Collection;
   return (
     <div data-testid="sidebar-collection-link-root">
       <CollectionDropTarget collection={collection}>

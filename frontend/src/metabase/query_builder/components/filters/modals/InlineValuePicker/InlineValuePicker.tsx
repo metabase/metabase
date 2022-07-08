@@ -32,7 +32,9 @@ export function InlineValuePicker({
 
   const changeArguments = useCallback(
     (newArguments: (string | number)[]) => {
-      handleChange(filter.setArguments(newArguments));
+      handleChange(
+        filter.setArguments(newArguments).setOptions(filter.options()),
+      );
     },
     [filter, handleChange],
   );

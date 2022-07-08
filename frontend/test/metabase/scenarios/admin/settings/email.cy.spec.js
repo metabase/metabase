@@ -8,24 +8,12 @@ describe("scenarios > admin > settings > email settings", () => {
 
   it("should be able to save email settings (metabase#17615)", () => {
     cy.visit("/admin/settings/email");
-    cy.findByLabelText("SMTP Host")
-      .type("localhost")
-      .blur();
-    cy.findByLabelText("SMTP Port")
-      .type("25")
-      .blur();
-    cy.findByLabelText("SMTP Username")
-      .type("admin")
-      .blur();
-    cy.findByLabelText("SMTP Password")
-      .type("admin")
-      .blur();
-    cy.findByLabelText("From Address")
-      .type("mailer@metabase.test")
-      .blur();
-    cy.findByLabelText("From Name")
-      .type("Sender Name")
-      .blur();
+    cy.findByLabelText("SMTP Host").type("localhost").blur();
+    cy.findByLabelText("SMTP Port").type("25").blur();
+    cy.findByLabelText("SMTP Username").type("admin").blur();
+    cy.findByLabelText("SMTP Password").type("admin").blur();
+    cy.findByLabelText("From Address").type("mailer@metabase.test").blur();
+    cy.findByLabelText("From Name").type("Sender Name").blur();
     cy.findByLabelText("Reply-To Address")
       .type("reply-to@metabase.test")
       .blur();
@@ -100,18 +88,10 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByLabelText("SMTP Host")
       .type("foo") // Invalid SMTP host
       .blur();
-    cy.findByLabelText("SMTP Port")
-      .type("25")
-      .blur();
-    cy.findByLabelText("SMTP Username")
-      .type("admin")
-      .blur();
-    cy.findByLabelText("SMTP Password")
-      .type("admin")
-      .blur();
-    cy.findByLabelText("From Address")
-      .type("mailer@metabase.test")
-      .blur();
+    cy.findByLabelText("SMTP Port").type("25").blur();
+    cy.findByLabelText("SMTP Username").type("admin").blur();
+    cy.findByLabelText("SMTP Password").type("admin").blur();
+    cy.findByLabelText("From Address").type("mailer@metabase.test").blur();
 
     // Trying to save will trigger the error (as it should)
     cy.button("Save changes").click();

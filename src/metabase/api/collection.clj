@@ -14,6 +14,8 @@
             [metabase.api.common :as api]
             [metabase.api.timeline :as api.timeline]
             [metabase.db :as mdb]
+            [metabase.driver.common.parameters :as params]
+            [metabase.driver.common.parameters.parse :as params.parse]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.collection.graph :as graph]
@@ -296,16 +298,38 @@
     (not (zero? v))
     v))
 
-(defn- has-required-parameters? [row]
-  (if-let [template-tags (-> row :dataset_query (json/parse-string keyword) :native :template-tags)]
-    (every? #(or (not (:required %)) (:default %)) (vals template-tags))
-    true))
+(defn- fully-parametrized?
+  "Decide if the query in the card represented by the result row `row` is fully parametrized.
+
+  The rules to consider a query fully parametrized is as follows:
+
+  1. All parameters not in an optional block are field-filters or have a default value.
+  2. All required parameters have a default value.
+
+  The first rule is absolutely necessary, as queries violating it cannot be executed without
+  externally supplied parameter values. The second rule is more controversial, as field-filters
+  outside of optional blocks ([[ ... ]]) don't prevent the query from being executed without
+  external parameter values (neither do parameters in optional blocks). The rule has been added
+  nonetheless, because marking a parameter as required is something the user does intentionally
+  and queries that are technically executable without parameters can be unacceptably slow
+  without the necessary constraints. (Marking parameters in optional blocks as required doesn't
+  seem to be useful any way, but if the user said it is required, we honor this flag.)"
+  [row]
+  (let [native-query (-> row :dataset_query (json/parse-string keyword) :native)]
+    (if-let [template-tags (:template-tags native-query)]
+      (let [obligatory-params (into #{}
+                                    (comp (filter params/Param?)
+                                          (map (comp keyword :k)))
+                                    (-> native-query :query params.parse/parse))]
+        (and (every? #(or (:default %) (= (:type %) "dimension")) (map template-tags obligatory-params))
+             (every? #(or (:default %) (not (:required %))) (vals template-tags))))
+      true)))
 
 (defn- post-process-card-row [row]
   (-> row
       (dissoc :authority_level :icon :personal_owner_id :dataset_query)
       (update :collection_preview bit->boolean)
-      (assoc :has_required_parameters (has-required-parameters? row))))
+      (assoc :fully_parametrized (fully-parametrized? row))))
 
 (defmethod post-process-collection-children :card
   [_ rows]

@@ -38,12 +38,8 @@ describe("issue 18512", () => {
       cy.findByText("18512#2").click();
     });
 
-    popover()
-      .findByText("Products → Created At")
-      .click();
-    popover()
-      .findByText("Products → Created At")
-      .click();
+    popover().findByText("Products → Created At").click();
+    popover().findByText("Products → Created At").click();
 
     visualize(response => {
       expect(response.body.error).to.not.exist;

@@ -37,9 +37,7 @@ Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(
         setFilter("Location", filter);
 
         cy.findByText("Select…").click();
-        popover()
-          .contains("Filter")
-          .click();
+        popover().contains("Filter").click();
       });
 
       it(`should work for "${filter}" when set through the filter widget`, () => {
@@ -54,9 +52,7 @@ Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(
       });
 
       it(`should work for "${filter}" when set as the default filter`, () => {
-        cy.findByText("Default value")
-          .next()
-          .click();
+        cy.findByText("Default value").next().click();
 
         addWidgetStringFilter(value);
 

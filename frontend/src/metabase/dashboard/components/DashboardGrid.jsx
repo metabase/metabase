@@ -304,11 +304,8 @@ class DashboardGrid extends Component {
   }
 
   get isEditingLayout() {
-    const {
-      isEditing,
-      isEditingParameter,
-      clickBehaviorSidebarDashcard,
-    } = this.props;
+    const { isEditing, isEditingParameter, clickBehaviorSidebarDashcard } =
+      this.props;
     return (
       isEditing && !isEditingParameter && clickBehaviorSidebarDashcard == null
     );

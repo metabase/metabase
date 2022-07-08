@@ -24,9 +24,7 @@ Object.entries(DASHBOARD_TEXT_FILTERS).forEach(
         setFilter("Text or Category", filter);
 
         cy.findByText("Select…").click();
-        popover()
-          .contains("Source")
-          .click();
+        popover().contains("Source").click();
       });
 
       it(`should work for "${filter}" when set through the filter widget`, () => {
@@ -42,9 +40,7 @@ Object.entries(DASHBOARD_TEXT_FILTERS).forEach(
       });
 
       it(`should work for "${filter}" when set as the default filter`, () => {
-        cy.findByText("Default value")
-          .next()
-          .click();
+        cy.findByText("Default value").next().click();
 
         applyFilterByType(filter, value);
 
