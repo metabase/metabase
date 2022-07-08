@@ -1,3 +1,7 @@
+---
+title: Customizing embedded charts
+---
+
 # Customizing embedded charts
 
 {% include plans-blockquote.html feature="Advanced embedding features" %}

@@ -1,8 +1,12 @@
+---
+title: Fonts
+---
+
 # Fonts
 
 {% include plans-blockquote.html feature="Customizable font" %}
 
-On paid plans, you can customize the font Metabase uses. You can choose from a curated set of Google Fonts that accommodate the regular, bold, and heavy font weights that Metabase relies on for its various UI elements.
+On paid plans, you can customize the font Metabase uses (the default is [Lato](https://fonts.google.com/specimen/Lato)). You can choose from a curated set of Google Fonts that accommodate the regular, bold, and heavy font weights that Metabase relies on for its various UI elements.
 
 You can set fonts for:
 
