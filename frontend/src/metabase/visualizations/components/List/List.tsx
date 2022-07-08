@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { getIn } from "icepick";
 import _ from "lodash";
+import { t } from "ttag";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 
@@ -20,6 +21,7 @@ import {
   Table,
   TableContainer,
   ListRow,
+  RowActionButton,
 } from "./List.styled";
 
 function getBoundingClientRectSafe(ref: React.RefObject<HTMLBaseElement>) {
@@ -134,6 +136,16 @@ function List({
               onVisualizationClick={onVisualizationClick}
             />
           ))}
+          {settings["buttons.edit"] && (
+            <td>
+              <RowActionButton>{t`Edit`}</RowActionButton>
+            </td>
+          )}
+          {settings["buttons.delete"] && (
+            <td>
+              <RowActionButton danger>{t`Delete`}</RowActionButton>
+            </td>
+          )}
         </ListRow>
       );
     },
