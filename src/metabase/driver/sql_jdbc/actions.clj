@@ -199,8 +199,8 @@
                     (assoc e-data :status-code 400))))))))
 
 (defmethod actions/row-action! [:create :sql-jdbc]
-  [_action driver {database-id :database :keys [create-row] :as query}]
-  (let [conn        (sql-jdbc.conn/db->pooled-connection-spec database-id)
+  [_action driver {database-id :database :keys [create-row] :as query} & [conn]]
+  (let [conn        (or conn (sql-jdbc.conn/db->pooled-connection-spec database-id))
         raw-hsql    (qp.store/with-store
                       (try
                         (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
@@ -233,3 +233,29 @@
                                   :driver     driver
                                   :raw-hsql   raw-hsql
                                   :create-sql create-hsql}))))}))
+
+(defmethod actions/bulk-action! [:create :sql-jdbc]
+  [_action driver source-table-id row-data]
+  (if-let [db-id (db/select-one-field :db_id 'Table :id source-table-id)]
+    (let [db-spec (database->connection-spec driver db-id)
+          errors (atom {})]
+      (jdbc/with-db-transaction [tx db-spec]
+        (.setAutoCommit tx false)
+        (doall
+         (map-indexed
+          (fn [idx row]
+            (try
+              (actions/row-action! :create driver {:database db-id :create-row row} tx)
+              (catch Exception e
+                (swap! errors conj (-> (if (= (ex-message e) "Create action error.") ;; todo improve errors thrown by row-action!
+                                         (ex-data e)
+                                         {:unknown-ex e})
+                                       (assoc :index idx))))))
+          row-data))
+        (if (= {} @errors)
+          (do
+            (.setAutoCommit tx true)
+            {:status 200 :created-rows [(count row-data)]})
+          {:message "Bulk create error."
+           :errors (m/index-by :index @errors)})))
+    (throw (ex-info "Source table doesn't exist" {:source-table-id source-table-id}))))

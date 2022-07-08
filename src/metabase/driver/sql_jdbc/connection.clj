@@ -124,7 +124,7 @@
   (ssh/close-tunnel! pool-spec))
 
 (defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by Database `:id`."}
-  database-id->connection-pool
+  database-id->jdbc-spec-hashdatabase-id->connection-pool
   (atom {}))
 
 (defonce ^:private ^{:doc "A map of DB details hash values, keyed by Database `:id`."}
