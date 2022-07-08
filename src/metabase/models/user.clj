@@ -261,8 +261,8 @@
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  {(s/optional-key :first_name)       su/NonBlankString
-   (s/optional-key :last_name)        su/NonBlankString
+  {(s/optional-key :first_name)       (s/maybe su/NonBlankString)
+   (s/optional-key :last_name)        (s/maybe su/NonBlankString)
    :email                             su/Email
    (s/optional-key :password)         (s/maybe su/NonBlankString)
    (s/optional-key :login_attributes) (s/maybe LoginAttributes)

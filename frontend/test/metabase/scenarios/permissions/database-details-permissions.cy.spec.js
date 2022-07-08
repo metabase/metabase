@@ -43,9 +43,7 @@ describeEE(
 
       cy.visit("/");
       cy.icon("gear").click();
-      cy.findByText("Admin settings")
-        .should("be.visible")
-        .click();
+      cy.findByText("Admin settings").should("be.visible").click();
 
       cy.location("pathname").should("eq", "/admin/databases");
 

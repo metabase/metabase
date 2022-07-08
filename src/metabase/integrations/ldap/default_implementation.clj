@@ -7,7 +7,6 @@
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings.premium-features :refer [defenterprise-schema]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
@@ -114,37 +113,26 @@
       flatten
       set))
 
-(defn updated-name-part
-  "Given a first or last name returned by LDAP, and the equivalent name currently stored by Metabase, return the new
-  name that should be stored by Metabase."
-  [ldap-name mb-name]
-  (if (and mb-name (nil? ldap-name))
-    ;; Don't overwrite a stored name if no name was returned by LDAP
-    mb-name
-    (or ldap-name (trs "Unknown"))))
-
 (defenterprise-schema fetch-or-create-user! :- (class User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   metabase-enterprise.enhancements.integrations.ldap
   [{:keys [first-name last-name email groups]} :- i/UserInfo
    {:keys [sync-groups?], :as settings}        :- i/LDAPSettings]
-  (let [user (db/select-one [User :id :last_login :first_name :last_name :is_active]
-                            :%lower.email (u/lower-case-en email))
+  (let [user     (db/select-one [User :id :last_login :first_name :last_name :is_active]
+                   :%lower.email (u/lower-case-en email))
         new-user (if user
                    (let [old-first-name (:first_name user)
                          old-last-name  (:last_name user)
-                         new-first-name (updated-name-part first-name old-first-name)
-                         new-last-name  (updated-name-part last-name old-last-name)
                          user-changes   (merge
-                                          (when-not (= new-first-name old-first-name) {:first_name new-first-name})
-                                          (when-not (= new-last-name old-last-name) {:last_name new-last-name}))]
+                                          (when (not= first-name old-first-name) {:first_name first-name})
+                                          (when (not= last-name old-last-name) {:last_name last-name}))]
                      (if (seq user-changes)
                        (do
                          (db/update! User (:id user) user-changes)
                          (db/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
                        user))
-                   (-> (user/create-new-ldap-auth-user! {:first_name (or first-name (trs "Unknown"))
-                                                         :last_name  (or last-name (trs "Unknown"))
+                   (-> (user/create-new-ldap-auth-user! {:first_name first-name
+                                                         :last_name  last-name
                                                          :email      email})
                        (assoc :is_active true)))]
     (u/prog1 new-user

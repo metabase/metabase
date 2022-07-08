@@ -2,12 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { color } from "metabase/lib/colors";
-import {
-  HeaderRoot,
-  HeaderReviewIcon,
-  HeaderTitle,
-} from "./SavedQuestionHeaderButton.styled";
+import { HeaderRoot, HeaderTitle } from "./SavedQuestionHeaderButton.styled";
 
 SavedQuestionHeaderButton.propTypes = {
   className: PropTypes.string,
@@ -15,14 +10,7 @@ SavedQuestionHeaderButton.propTypes = {
   onSave: PropTypes.func,
 };
 
-const ICON_SIZE = 16;
-
-function SavedQuestionHeaderButton({ className, question, onSave }) {
-  const {
-    name: reviewIconName,
-    color: reviewIconColor,
-  } = PLUGIN_MODERATION.getStatusIconForQuestion(question);
-
+function SavedQuestionHeaderButton({ question, onSave }) {
   return (
     <HeaderRoot>
       <HeaderTitle
@@ -31,13 +19,7 @@ function SavedQuestionHeaderButton({ className, question, onSave }) {
         onChange={onSave}
         data-testid="saved-question-header-title"
       />
-      {reviewIconName && (
-        <HeaderReviewIcon
-          name={reviewIconName}
-          color={color(reviewIconColor)}
-          size={ICON_SIZE}
-        />
-      )}
+      <PLUGIN_MODERATION.QuestionModerationIcon question={question} />
     </HeaderRoot>
   );
 }

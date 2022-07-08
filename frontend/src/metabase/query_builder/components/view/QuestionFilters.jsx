@@ -149,11 +149,12 @@ export function FilterHeader({ className, question, expanded }) {
   );
 }
 
-export function QuestionFilterWidget({ onOpenModal }) {
+export function QuestionFilterWidget({ onOpenModal, className }) {
   return (
     <HeaderButton
       large
       labelBreakpoint="sm"
+      className={className}
       color={color("filter")}
       onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
       aria-label={t`Show more filters`}

@@ -71,10 +71,7 @@ const getNextColor = (color: Color) => {
   const newHue = (color.hue() + newHueChange) % 360;
   const newSaturation = newHue <= 65 || newHue >= 345 ? 55 : 40;
 
-  return color
-    .hue(newHue)
-    .saturationv(newSaturation)
-    .value(90);
+  return color.hue(newHue).saturationv(newSaturation).value(90);
 };
 
 const isSimilarColor = (newColor: Color, oldColor: Color) => {

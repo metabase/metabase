@@ -20,11 +20,10 @@ export default function ColumnFilterDrill({ question, clicked }) {
   }
 
   const { column } = clicked;
-  const initialFilter = new Filter(
-    [],
-    null,
-    query,
-  ).setDimension(column.field_ref, { useDefaultOperator: true });
+  const initialFilter = new Filter([], null, query).setDimension(
+    column.field_ref,
+    { useDefaultOperator: true },
+  );
 
   return [
     {
@@ -40,10 +39,7 @@ export default function ColumnFilterDrill({ question, clicked }) {
           filter={initialFilter}
           onClose={onClose}
           onChangeFilter={filter => {
-            const nextCard = query
-              .filter(filter)
-              .question()
-              .card();
+            const nextCard = query.filter(filter).question().card();
             onChangeCardAndRun({ nextCard });
             onClose();
           }}

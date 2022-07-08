@@ -75,9 +75,8 @@ function chartOptionsToStr(options) {
 
 export default function StaticVizPage() {
   const [staticChartType, setStaticChartType] = useState(null);
-  const [staticChartCustomOptions, setStaticChartCustomOptions] = useState(
-    null,
-  );
+  const [staticChartCustomOptions, setStaticChartCustomOptions] =
+    useState(null);
   const [staticChartError, setStaticChartError] = useState(null);
 
   function chartOptionsToObj(optionsStr) {

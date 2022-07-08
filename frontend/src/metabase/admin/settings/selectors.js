@@ -306,13 +306,14 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-  public_sharing: {
+  "public-sharing": {
     name: t`Public Sharing`,
     order: 9,
     settings: [
       {
         key: "enable-public-sharing",
         display_name: t`Enable Public Sharing`,
+        description: t`Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards.`,
         type: "boolean",
       },
       {
@@ -329,7 +330,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-  embedding_in_other_applications: {
+  "embedding-in-other-applications": {
     name: t`Embedding`,
     order: 10,
     settings: [
@@ -358,6 +359,14 @@ const SECTIONS = updateSectionsWithPlugins({
       {
         key: "enable-embedding",
         display_name: t`Embedding`,
+        description: jt`Allow questions, dashboards, and more to be embedded. ${(
+          <ExternalLink
+            key="learn-embedding-link"
+            href="https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards.html"
+          >
+            {t`Learn more.`}
+          </ExternalLink>
+        )}`,
         type: "boolean",
         showActualValue: true,
         getProps: setting => {
@@ -387,7 +396,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-  "embedding_in_other_applications/standalone": {
+  "embedding-in-other-applications/standalone": {
     settings: [
       {
         widget: () => {
@@ -397,7 +406,7 @@ const SECTIONS = updateSectionsWithPlugins({
               crumbs={[
                 [
                   t`Embedding`,
-                  "/admin/settings/embedding_in_other_applications",
+                  "/admin/settings/embedding-in-other-applications",
                 ],
                 [t`Standalone embeds`],
               ]}
@@ -432,13 +441,13 @@ const SECTIONS = updateSectionsWithPlugins({
       },
       {
         widget: () => (
-          <RedirectWidget to="/admin/settings/embedding_in_other_applications" />
+          <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
         getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
       },
     ],
   },
-  "embedding_in_other_applications/full-app": {
+  "embedding-in-other-applications/full-app": {
     settings: [
       {
         widget: () => {
@@ -448,7 +457,7 @@ const SECTIONS = updateSectionsWithPlugins({
               crumbs={[
                 [
                   t`Embedding`,
-                  "/admin/settings/embedding_in_other_applications",
+                  "/admin/settings/embedding-in-other-applications",
                 ],
                 [t`Full-app embedding`],
               ]}
@@ -464,7 +473,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
       {
         widget: () => (
-          <RedirectWidget to="/admin/settings/embedding_in_other_applications" />
+          <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
         getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
       },
@@ -615,7 +624,7 @@ export const getSections = createSelector(
         continue;
       }
 
-      const settings = section.settings.map(function(setting) {
+      const settings = section.settings.map(function (setting) {
         const apiSetting =
           settingsByKey[setting.key] && settingsByKey[setting.key][0];
 

@@ -48,9 +48,7 @@ describeEE("issue 21695", () => {
       visitDashboard(id);
     });
 
-    cy.get(".Card")
-      .findByText(questionDetails.name)
-      .click();
+    cy.get(".Card").findByText(questionDetails.name).click();
 
     cy.wait("@cardQuery").then(({ response: { body } }) => {
       expect(body.error).not.to.exist;

@@ -147,7 +147,10 @@ jobs:
 
     - name: Run EE Cypress tests on ${{ matrix.folder }}
       if: matrix.edition == 'ee'
-      run: yarn run test-cypress-run --folder ${{ matrix.folder }}
+      run: |
+        yarn run test-cypress-run \
+        --env grepTags="-@quarantine" \
+        --folder ${{ matrix.folder }}
       env:
         TERM: xterm
 

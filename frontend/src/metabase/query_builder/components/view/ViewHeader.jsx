@@ -45,6 +45,7 @@ import {
   StyledLastEditInfoLabel,
   StyledQuestionDataSource,
   SavedQuestionLeftSideRoot,
+  HeaderDivider,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -116,11 +117,7 @@ export function ViewTitleHeader(props) {
   const isDataset = question.isDataset();
 
   const isSummarized =
-    isStructured &&
-    question
-      .query()
-      .topLevelQuery()
-      .hasAggregations();
+    isStructured && question.query().topLevelQuery().hasAggregations();
 
   return (
     <>
@@ -188,6 +185,7 @@ function SavedQuestionLeftSide(props) {
   });
 
   const hasLastEditInfo = question.lastEditInfo() != null;
+  const isDataset = question.isDataset();
 
   const onHeaderChange = useCallback(
     name => {
@@ -204,16 +202,31 @@ function SavedQuestionLeftSide(props) {
       showSubHeader={showSubHeader}
     >
       <ViewHeaderMainLeftContentContainer>
-        <SavedQuestionHeaderButtonContainer>
-          <SavedQuestionHeaderButton
-            question={question}
-            onSave={onHeaderChange}
+        <SavedQuestionHeaderButtonContainer isDataset={isDataset}>
+          <HeadBreadcrumbs
+            divider={<HeaderDivider>/</HeaderDivider>}
+            parts={[
+              ...(isAdditionalInfoVisible && isDataset
+                ? [
+                    <DatasetCollectionBadge
+                      key="collection"
+                      dataset={question}
+                    />,
+                  ]
+                : []),
+
+              <SavedQuestionHeaderButton
+                key="question-title"
+                question={question}
+                onSave={onHeaderChange}
+              />,
+            ]}
           />
         </SavedQuestionHeaderButtonContainer>
       </ViewHeaderMainLeftContentContainer>
       {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
-          {QuestionDataSource.shouldRender(props) && (
+          {QuestionDataSource.shouldRender(props) && !isDataset && (
             <StyledQuestionDataSource
               question={question}
               isObjectDetail={isObjectDetail}

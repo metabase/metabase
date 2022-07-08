@@ -34,7 +34,7 @@ describe("scenarios > question > native", () => {
   it("displays an error when running selected text", () => {
     openNativeEditor().type(
       "select * from orders" +
-      "{leftarrow}".repeat(3) + // move left three
+        "{leftarrow}".repeat(3) + // move left three
         "{shift}{leftarrow}".repeat(19), // highlight back to the front
     );
     cy.get(".NativeQueryEditor .Icon-play").click();
@@ -55,9 +55,7 @@ describe("scenarios > question > native", () => {
       .click({ force: true });
 
     // selecting a question should update the query
-    popover()
-      .contains("Orders")
-      .click();
+    popover().contains("Orders").click();
 
     cy.contains("select * from {{#1}}");
 
@@ -70,10 +68,7 @@ describe("scenarios > question > native", () => {
     cy.get(".ace_content:visible").type("{leftarrow}{leftarrow}{backspace}2");
 
     // sidebar should show updated question title and name
-    cy.contains("Question #2")
-      .parent()
-      .parent()
-      .contains("Orders, Count");
+    cy.contains("Question #2").parent().parent().contains("Orders, Count");
 
     // run query again and see new result
     cy.get(".NativeQueryEditor .Icon-play").click();
@@ -198,9 +193,7 @@ describe("scenarios > question > native", () => {
 
   it("should be able to add new columns after hiding some (metabase#15393)", () => {
     openNativeEditor().type("select 1 as visible, 2 as hidden");
-    cy.get(".NativeQueryEditor .Icon-play")
-      .as("runQuery")
-      .click();
+    cy.get(".NativeQueryEditor .Icon-play").as("runQuery").click();
     cy.findByText("Settings").click();
     cy.findByTestId("sidebar-left")
       .as("sidebar")

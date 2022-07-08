@@ -86,4 +86,4 @@ function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   );
 }
 
-export default DatasetMetadataStrengthIndicator;
+export default Object.assign(DatasetMetadataStrengthIndicator, { Root });

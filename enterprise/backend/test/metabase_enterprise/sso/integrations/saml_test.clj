@@ -242,6 +242,9 @@
 (defn- new-user-with-groups-saml-test-response []
   (saml-response-from-file "test_resources/saml-test-response-new-user-with-groups.xml"))
 
+(defn- new-user-with-groups-in-separate-attribute-nodes-saml-test-response []
+  (saml-response-from-file "test_resources/saml-test-response-new-user-with-groups-in-separate-attribute-nodes.xml"))
+
 (defn- saml-post-request-options [saml-response relay-state]
   {:request-options {:content-type     :x-www-form-urlencoded
                      :redirect-strategy :none
@@ -479,28 +482,52 @@
 
 (deftest login-should-sync-multiple-group-membership
   (testing "saml group sync works when there are multiple groups, which gets interpreted as a list of strings"
-    (with-saml-default-setup
-      (do-with-some-validators-disabled
-        (fn []
-          (mt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
-                          PermissionsGroup [group-2 {:name (str ::group-2)}]]
-            (mt/with-temporary-setting-values [saml-group-sync      true
-                                               saml-group-mappings  {"group_1" [(u/the-id group-1)]
-                                                                     "group_2" [(u/the-id group-2)]}
-                                               saml-attribute-group "GroupMembership"]
-              (try
-                (testing "user doesn't exist until SAML request"
-                  (is (not (db/select-one-id User :%lower.email "newuser@metabase.com"))))
-                (let [req-options (saml-post-request-options (new-user-with-groups-saml-test-response)
-                                                             (saml/str->base64 default-redirect-uri))
-                      response    (client-full-response :post 302 "/auth/sso" req-options)]
-                  (is (successful-login? response))
-                  (is (= #{"All Users"
-                           ":metabase-enterprise.sso.integrations.saml-test/group-1"
-                           ":metabase-enterprise.sso.integrations.saml-test/group-2"}
-                         (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
-                (finally
-                  (db/delete! User :%lower.email "newuser@metabase.com"))))))))))
+    (testing "when only one Attribute node exists"
+      (with-saml-default-setup
+        (do-with-some-validators-disabled
+          (fn []
+            (mt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
+                            PermissionsGroup [group-2 {:name (str ::group-2)}]]
+              (mt/with-temporary-setting-values [saml-group-sync      true
+                                                 saml-group-mappings  {"group_1" [(u/the-id group-1)]
+                                                                       "group_2" [(u/the-id group-2)]}
+                                                 saml-attribute-group "GroupMembership"]
+                (try
+                  (testing "user doesn't exist until SAML request"
+                    (is (not (db/select-one-id User :%lower.email "newuser@metabase.com"))))
+                  (let [req-options (saml-post-request-options (new-user-with-groups-saml-test-response)
+                                                               (saml/str->base64 default-redirect-uri))
+                        response    (client-full-response :post 302 "/auth/sso" req-options)]
+                    (is (successful-login? response))
+                    (is (= #{"All Users"
+                             ":metabase-enterprise.sso.integrations.saml-test/group-1"
+                             ":metabase-enterprise.sso.integrations.saml-test/group-2"}
+                           (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
+                  (finally
+                    (db/delete! User :%lower.email "newuser@metabase.com")))))))))
+    (testing "when several Attribute nodes exist (issue #20744)"
+      (with-saml-default-setup
+        (do-with-some-validators-disabled
+          (fn []
+            (mt/with-temp* [PermissionsGroup [group-1 {:name (str ::group-1)}]
+                            PermissionsGroup [group-2 {:name (str ::group-2)}]]
+              (mt/with-temporary-setting-values [saml-group-sync      true
+                                                 saml-group-mappings  {"group_1" [(u/the-id group-1)]
+                                                                       "group_2" [(u/the-id group-2)]}
+                                                 saml-attribute-group "GroupMembership"]
+                (try
+                  (testing "user doesn't exist until SAML request"
+                    (is (not (db/select-one-id User :%lower.email "newuser@metabase.com"))))
+                  (let [req-options (saml-post-request-options (new-user-with-groups-in-separate-attribute-nodes-saml-test-response)
+                                                               (saml/str->base64 default-redirect-uri))
+                        response    (client-full-response :post 302 "/auth/sso" req-options)]
+                    (is (successful-login? response))
+                    (is (= #{"All Users"
+                             ":metabase-enterprise.sso.integrations.saml-test/group-1"
+                             ":metabase-enterprise.sso.integrations.saml-test/group-2"}
+                           (group-memberships (db/select-one-id User :email "newuser@metabase.com")))))
+                  (finally
+                    (db/delete! User :%lower.email "newuser@metabase.com")))))))))))
 
 (deftest relay-state-e2e-test
   (testing "Redirect URL (RelayState) should work correctly end-to-end (#13666)"

@@ -49,16 +49,16 @@ export const AppBarRightContainer = styled.div`
 `;
 
 export interface AppBarInfoContainerProps {
-  isNavBarOpen?: boolean;
+  isVisible?: boolean;
 }
 
 export const AppBarInfoContainer = styled.div<AppBarInfoContainerProps>`
   display: flex;
   min-width: 0;
-  opacity: ${props => (props.isNavBarOpen ? 0 : 1)};
-  visibility: ${props => (props.isNavBarOpen ? "hidden" : "visible")};
+  opacity: ${props => (props.isVisible ? 1 : 0)};
+  visibility: ${props => (props.isVisible ? "visible" : "hidden")};
   transition: ${props =>
-    props.isNavBarOpen ? `opacity 0.5s, visibility 0s` : `opacity 0.5s`};
+    props.isVisible ? `opacity 0.5s` : `opacity 0.5s, visibility 0s`};
 `;
 
 export const AppBarProfileLinkContainer = styled.div`

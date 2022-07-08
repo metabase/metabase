@@ -8,7 +8,6 @@ import { color, alpha } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
 import QuestionDataSource from "./QuestionDataSource";
-import SavedQuestionHeaderButton from "../SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 
 export const ViewHeaderContainer = styled(ViewSection)`
   border-bottom: 1px solid ${color("border")};
@@ -47,8 +46,7 @@ export const SaveButton = styled(Link)`
 `;
 
 export const SavedQuestionHeaderButtonContainer = styled.div`
-  position: relative;
-  right: 0.38rem;
+  right: ${props => (props.isDataset ? "0px" : "0.38rem")};
 `;
 
 export const HeaderButton = styled(Button)`
@@ -105,7 +103,7 @@ export const ViewSubHeaderRoot = styled(ViewSection)`
 
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
   color: ${color("text-light")};
-  margin-left: 4px;
+  //margin-left: 4px;
 
   ${breakpointMaxSmall} {
     margin-left: 0;
@@ -124,7 +122,7 @@ export const StyledQuestionDataSource = styled(QuestionDataSource)`
 `;
 
 export const SavedQuestionLeftSideRoot = styled.div`
-  ${SavedQuestionHeaderButton.Root} {
+  ${SavedQuestionHeaderButtonContainer} {
     transition: all 400ms ease;
     position: relative;
     top: ${props => (props.showSubHeader ? "0" : "10px")};
@@ -137,7 +135,7 @@ export const SavedQuestionLeftSideRoot = styled.div`
 
   &:hover,
   &:focus-within {
-    ${SavedQuestionHeaderButton.Root} {
+    ${SavedQuestionHeaderButtonContainer} {
       top: 0px;
     }
 
@@ -145,4 +143,13 @@ export const SavedQuestionLeftSideRoot = styled.div`
       opacity: 1;
     }
   }
+`;
+
+export const HeaderDivider = styled.span`
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-weight: 700;
+  color: ${color("text-medium")};
+  padding-left: 0.5rem;
+  padding-right: 0.25rem;
 `;
