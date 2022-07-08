@@ -149,6 +149,7 @@ export function formatRelativeWidget(value: string) {
     : "";
 }
 
+// This should miror the logic in `metabase.shared.util.parameters`
 export function formatDateValue(value: string, parameter: UiParameter) {
   switch (parameter.type) {
     case "date/range":

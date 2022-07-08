@@ -1,8 +1,15 @@
 (ns metabase.shared.util.parameters
   "Util functions for dealing with parameters"
-  (:require [clojure.string :as str]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.shared.util.i18n :refer [trs]]))
+  #?@
+      (:clj
+       [(:require [clojure.string :as str]
+                  [metabase.mbql.normalize :as mbql.normalize]
+                  [metabase.shared.util.i18n :refer [trs]])]
+       :cljs
+       [(:require ["moment" :as moment]
+                  [clojure.string :as str]
+                  [metabase.mbql.normalize :as mbql.normalize]
+                  [metabase.shared.util.i18n :refer [trs]])]))
 
 (def ^:private template-tag-regex
   "A regex to find template tags in a text card on a dashboard. This should mirror the regex used to find template
@@ -28,9 +35,35 @@
        first
        (reduce-kv (fn [acc k v] (assoc acc (keyword k) v)) {})))
 
+(defn- formatted-list
+  [values]
+  (trs "{0} and {1}" (str/join ", " (butlast values)) (last values)))
+
 (defmulti formatted-value
-  "Formats a value appropriately for inclusion in a text card, based on its type. Does not do any escaping."
+  "Formats a value appropriately for inclusion in a text card, based on its type. Does not do any escaping.
+  For datetime parameters, the logic here should mirror the logic (as best as possible) in
+  frontend/src/metabase/parameters/utils/date-formatting.ts"
   (fn [tyype _value] (keyword tyype)))
+
+(defmethod formatted-value :date/single
+  [_ value]
+  #? (:cljs (.format (moment value) "MMMM D, YYYY")
+      :clj value))
+
+(defmethod formatted-value :date/month-year
+  [_ value]
+  #?(:cljs (let [m (moment value "YYYY-MM")]
+             (if (.isValid m) (.format m "MMMM, YYYY") ""))
+     :clj value))
+
+(defmethod formatted-value :date/range
+  [_ value]
+  (let [[start end] (str/split value "~")]
+    (if (and start end)
+      (str (formatted-value :date/single start)
+           " - "
+           (formatted-value :date/single end))
+      "")))
 
 (defmethod formatted-value :date/relative
   [_ value]
@@ -48,11 +81,16 @@
     ;; Always fallback to default formatting, just in case
     (formatted-value :default value)))
 
+(defmethod formatted-value :date/all options
+  [_ value]
+  ;; TODO: this is much more complex, so punting on it temporarily
+  value)
+
 (defmethod formatted-value :default
   [_ value]
   (cond
     (and (sequential? value) (> (count value) 1))
-    (str/join ", " value)
+    (formatted-list value)
 
     (sequential? value)
     (first value)
