@@ -879,6 +879,10 @@ class QuestionInner {
     return this._card && this._card["last-edit-info"];
   }
 
+  lastQueryStart() {
+    return this._card && this._card["last_query_start"];
+  }
+
   isSaved(): boolean {
     return !!this.id();
   }
