@@ -100,7 +100,7 @@ To support multiple character sets, for example both Latin and Cyrillic, you'll 
 
 ## Customizing the font for individual embedded items
 
-In addition to the [included fonts](#included-fonts), if you set a custom font for your Metabase, that font will be selectable as the "Instance font" in menus. See [Customize embeds](./customize-embeds.md).
+In addition to the [included fonts](#included-fonts), if you set a custom font for your Metabase, that font will be selectable as the "Use instance font" in menus. See [Customize embeds](./customize-embeds.md).
 
 ## Further reading
 

@@ -14,13 +14,13 @@ Charts and dashboards won't show the branded Metabase label at the bottom.
 
 You can set the font for the embedded chart or dashboard. You can select from a list of [included fonts](./fonts.md).
 
-If you've set a custom font for your Metabase, that will be selectable as "Use instance font".
+If you've set a custom font for your Metabase, that font will be selectable as "Use instance font".
 
 ### Use instance font
 
 If you select "Use instance font", the font for your embedded item will sync with whatever you've set your Metabase font to. So if you change the font for your Metabase (your "instance"), the font used for the embedded item will change as well. There's no need to update the embedding code; the embedded item's font should update automatically (though you may need to refresh your browser).
 
-If you want to use a font different from your current instance font, you can select one of the [included fonts](./fonts.md).
+If you want to use a font different from your current instance font, you can select one of the [included fonts](./fonts.md). You cannot have multiple custom fonts.
 
 ### Changing custom fonts
 
@@ -34,7 +34,7 @@ You can remove the export icon from charts. Note that removing the icon here doe
 
 ## Further reading
 
-- [Embedding Metabase in other applications](./13-embedding.md)
-- [White labeling Metabase](../enterprise-guide/whitelabeling.md)
+- [Embedding Metabase in other applications](../administration-guide/13-embedding.md)
+- [White labeling Metabase](./whitelabeling.md)
 - [Learn embedding](https://www.metabase.com/learn/embedding)
 
