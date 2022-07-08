@@ -342,7 +342,7 @@
               (setting/set-value-of-type! :string :application-font new-value)))
 
 (defsetting application-font-files
-  (deferred-tru "Tell us where to find the font file for each required style.")
+  (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
   :visibility :public
   :type       :json
   :enabled?   premium-features/enable-whitelabeling?)
