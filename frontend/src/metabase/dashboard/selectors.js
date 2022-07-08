@@ -132,8 +132,7 @@ export const getParameterTarget = createSelector(
       return null;
     }
     const mapping = _.findWhere(dashcard.parameter_mappings, {
-      // TODO: ok to skip this check?
-      //card_id: card.id,
+      card_id: card ? card.id : null,
       parameter_id: parameter.id,
     });
     return mapping && mapping.target;

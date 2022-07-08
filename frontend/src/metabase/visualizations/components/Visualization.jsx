@@ -449,10 +449,12 @@ class Visualization extends React.PureComponent {
       : true;
 
     const hasHeader =
-      (showTitle &&
-        hasHeaderContent &&
-        (loading || error || noResults || isHeaderEnabled)) ||
-      (isVirtual && isEditingParameter && showVirtualHeader);
+      (isVirtual && isEditingParameter && showVirtualHeader) ||
+      (!isVirtual &&
+        ((showTitle &&
+          hasHeaderContent &&
+          (loading || error || noResults || isHeaderEnabled)) ||
+          replacementContent));
 
     return (
       <div

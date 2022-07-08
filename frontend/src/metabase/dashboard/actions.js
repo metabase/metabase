@@ -420,11 +420,11 @@ export const saveDashboardAndCards = createThunkAction(
                   // filter out mappings for deleted parameters
                   _.findWhere(dashboard.parameters, {
                     id: mapping.parameter_id,
-                  }), //&&
-                //  TODO: re-add this logic
-                // filter out mappings for deleted series
-                // (card_id === mapping.card_id ||
-                //   _.findWhere(series, { id: mapping.card_id })),
+                  }) &&
+                  // filter out mappings for deleted series
+                  (!card_id ||
+                    card_id === mapping.card_id ||
+                    _.findWhere(series, { id: mapping.card_id })),
               ),
           }),
         );
