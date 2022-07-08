@@ -191,6 +191,7 @@ class QueryModals extends React.Component {
                       collectionId={collection.id || ROOT_COLLECTION.id}
                     />
                   ),
+                  undo: false,
                 },
               },
             );
