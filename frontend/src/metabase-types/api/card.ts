@@ -26,4 +26,5 @@ export interface ModerationReview {
 }
 
 export type CardId = number;
+export type Card = SavedCard | UnsavedCard;
 export type ModerationReviewStatus = "verified";

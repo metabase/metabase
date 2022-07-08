@@ -36,7 +36,7 @@
  *
  * Say we want to create a "books" entity, to be able to fetch a list of "books".
  *
- * Add the following line to `frontend/src/metabase/entities.index.ts`:
+ * Add the following line to `frontend/src/metabase/entities.index.js`:
  *
  *   export { default as books } from "./books"
  *
