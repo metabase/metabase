@@ -84,7 +84,7 @@ const Fields = createEntity({
       const {
         field_id: id,
         values,
-        has_more_values = false,
+        has_more_values,
       } = await MetabaseApi.field_values({
         fieldId,
       });
