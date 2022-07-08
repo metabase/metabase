@@ -9,6 +9,8 @@ const CATEGORY_FILTER_PARAMETER_ID = "7c9ege62";
 
 describe("issue 17160", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
     restore();
     cy.signInAsAdmin();
   });
@@ -26,6 +28,7 @@ describe("issue 17160", () => {
 
     // Check click behavior connected to a question
     cy.findAllByText("click-behavior-question-label").eq(0).click();
+    cy.wait("@cardQuery");
 
     cy.url().should("include", "/question");
 
