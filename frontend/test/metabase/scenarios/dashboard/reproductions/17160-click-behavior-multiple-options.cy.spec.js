@@ -298,5 +298,7 @@ function visitSourceDashboard() {
 function visitPublicSourceDashboard() {
   cy.get("@sourceDashboardUUID").then(uuid => {
     cy.visit(`/public/dashboard/${uuid}`);
+
+    cy.findByTextEnsureVisible("Enormous Wool Car");
   });
 }
