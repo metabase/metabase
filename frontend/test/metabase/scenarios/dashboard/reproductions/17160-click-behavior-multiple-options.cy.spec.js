@@ -1,4 +1,4 @@
-import { restore, popover, visitDashboard } from "__support__/e2e/helpers";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -17,14 +17,6 @@ describe("issue 17160", () => {
 
   it("should pass multiple filter values to questions and dashboards (metabase#17160-1)", () => {
     setup(false);
-    cy.findByText("Category").click();
-
-    popover().within(() => {
-      cy.findByText("Doohickey").click();
-      cy.findByText("Gadget").click();
-
-      cy.button("Add filter").click();
-    });
 
     // Check click behavior connected to a question
     cy.findAllByText("click-behavior-question-label").eq(0).click();
@@ -60,15 +52,6 @@ describe("issue 17160", () => {
           cy.visit(input.val());
         });
       });
-
-    cy.findByText("Category").click();
-
-    popover().within(() => {
-      cy.findByText("Doohickey").click();
-      cy.findByText("Gadget").click();
-
-      cy.button("Add filter").click();
-    });
 
     // Check click behavior connected to a question
     cy.findAllByText("click-behavior-question-label").eq(0).click();
@@ -136,6 +119,7 @@ function setup(shouldUsePublicLinks) {
           cy.request("PUT", `/api/dashboard/${dashboardId}`, {
             parameters: [
               {
+                default: ["Doohickey", "Gadget"],
                 id: CATEGORY_FILTER_PARAMETER_ID,
                 name: "Category",
                 slug: "category",
