@@ -166,28 +166,5 @@ describe("parameters/utils/mapping-options", () => {
         },
       ]);
     });
-    it("should return variables for text tags in virtual (text) cards", () => {
-      const options = getParameterMappingOptions(
-        metadata,
-        { type: "date/single" },
-        null,
-        {
-          text: "card with variable {{foo}}",
-          visualization_settings: {
-            virtual_card: {
-              display: "text",
-            },
-          },
-        },
-      );
-      expect(options).toEqual([
-        {
-          name: "foo",
-          icon: "string",
-          target: ["variable", ["text-tag", "foo"]],
-          isForeign: false,
-        },
-      ]);
-    });
   });
 });
