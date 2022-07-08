@@ -18,10 +18,10 @@ import {
   PopoverText,
 } from "./CronExpressionInput.styled";
 
-function validateExpressionHasNoYearComponent(cronExpression: string) {
+function validateExpressionComponents(cronExpression: string) {
   const parts = cronExpression.split(" ");
-  if (parts.length === 7) {
-    return t`Year property is not configurable`;
+  if (parts.length === 6 || parts.length === 7) {
+    return t`Seconds and year properties are not allowed`;
   }
 }
 
@@ -115,9 +115,11 @@ function CronExpressionInput({ onChange, onBlurChange, ...props }: InputProps) {
 
   const handleChange = useCallback(
     (cronExpression: string) => {
-      let error = validateCronExpression(cronExpression);
+      // We don't allow to specify "seconds" and "year" components,
+      // "seconds" are mandatory for validation, so we're appending it at the beginning
+      let error = validateCronExpression(`0 ${cronExpression}`);
       if (!error) {
-        error = validateExpressionHasNoYearComponent(cronExpression);
+        error = validateExpressionComponents(cronExpression);
       }
       if (error) {
         setError(error);
@@ -132,9 +134,9 @@ function CronExpressionInput({ onChange, onBlurChange, ...props }: InputProps) {
   const handleBlur = useCallback(
     (cronExpression: string) => {
       if (!error) {
-        // We don't allow to specify the "year" component, but it's present in the value
-        // and we need to append it before sending a new value to the backend
-        onBlurChange(`${cronExpression} *`);
+        // We don't allow to specify "seconds" and "year" components, but they're present in the value
+        // and we need to append them before sending a new value to the backend
+        onBlurChange(`0 ${cronExpression} *`);
       }
     },
     [error, onBlurChange],

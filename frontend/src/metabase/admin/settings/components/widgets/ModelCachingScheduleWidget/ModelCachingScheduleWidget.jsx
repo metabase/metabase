@@ -18,7 +18,7 @@ const propTypes = {
   onChange: PropTypes.func.isRequired,
 };
 
-const DEFAULT_CUSTOM_SCHEDULE = "0 0 * * * ?";
+const DEFAULT_CUSTOM_SCHEDULE = "0 * * * ?";
 
 function isCustomSchedule(setting) {
   const value = setting.value || setting.default;
@@ -27,9 +27,9 @@ function isCustomSchedule(setting) {
 }
 
 function formatCronExpression(cronExpression) {
-  const parts = cronExpression.split(" ");
-  const partsWithoutYear = parts.slice(0, -1);
-  return partsWithoutYear.join(" ");
+  const [, ...partsWithoutSeconds] = cronExpression.split(" ");
+  const partsWithoutSecondsAndYear = partsWithoutSeconds.slice(0, -1);
+  return partsWithoutSecondsAndYear.join(" ");
 }
 
 const PersistedModelRefreshIntervalWidget = ({
