@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import styles from "./Text.css";
 
+import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
 
@@ -113,7 +114,7 @@ export default class Text extends Component {
     let parametersByTag = {};
     if (dashcard && dashcard.parameter_mappings) {
       parametersByTag = dashcard.parameter_mappings.reduce((acc, mapping) => {
-        const tagId = mapping.target[1];
+        const tagId = mapping.target[1][1];
         const parameter = dashboard.parameters.find(
           p => p.id === mapping.parameter_id,
         );
@@ -129,11 +130,14 @@ export default class Text extends Component {
       }, {});
     }
 
-    // Temporarily override language to use site language, so that all viewers of a dashboard see parameter values
-    // translated the same way.
-    const textWithParams = withInstanceLocalization(() => {
-      return substitute_tags(settings["text"], parametersByTag);
-    });
+    let content = settings["text"];
+    if (!_.isEmpty(parametersByTag)) {
+      // Temporarily override language to use site language, so that all viewers of a dashboard see parameter values
+      // translated the same way.
+      content = withInstanceLocalization(() => {
+        return substitute_tags(content, parametersByTag);
+      });
+    }
 
     if (isEditing) {
       return (
@@ -151,7 +155,7 @@ export default class Text extends Component {
                 getSettingsStyle(settings),
               )}
             >
-              {textWithParams}
+              {content}
             </ReactMarkdown>
           ) : (
             <textarea
@@ -190,7 +194,7 @@ export default class Text extends Component {
             getSettingsStyle(settings),
           )}
         >
-          {textWithParams}
+          {content}
         </ReactMarkdown>
       </div>
     );

@@ -46,12 +46,6 @@ function updateMomentStartOfWeek() {
   if (startOfWeekDayNumber === -1) {
     return;
   }
-  console.log(
-    "Setting moment.js start of week for Locale",
-    moment.locale(),
-    "to",
-    startOfWeekDayName,
-  );
 
   moment.updateLocale(moment.locale(), {
     week: {

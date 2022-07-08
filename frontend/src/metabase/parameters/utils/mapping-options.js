@@ -7,7 +7,9 @@ import {
   getTagOperatorFilterForParameter,
   variableFilterForParameter,
 } from "./filters";
-//
+
+import { isVirtualDashCard } from "metabase/dashboard/utils";
+
 import { tag_names } from "cljs/metabase.shared.util.parameters";
 
 function buildStructuredQuerySectionOptions(section) {
@@ -46,18 +48,17 @@ function buildTextTagOption(tagName) {
     name: tagName,
     icon: "string",
     isForeign: false,
-    target: ["text-tag", tagName],
+    target: ["variable", ["text-tag", tagName]],
   };
 }
 
-// TODO update more callsites?
 export function getParameterMappingOptions(
   metadata,
   parameter = null,
   card,
   dashcard = null,
 ) {
-  if (card.display === "text") {
+  if (isVirtualDashCard(dashcard)) {
     const tagNames = tag_names(dashcard.visualization_settings.text || "");
     return tagNames ? tagNames.map(buildTextTagOption) : [];
   }
