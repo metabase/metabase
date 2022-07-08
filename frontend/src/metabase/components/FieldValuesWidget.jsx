@@ -209,7 +209,7 @@ class FieldValuesWidgetInner extends Component {
       maxResults,
     )
       ? "list"
-      : "search";
+      : valuesMode;
 
     if (valuesMode === "search") {
       this._search(value);
