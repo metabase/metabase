@@ -245,6 +245,26 @@ function ActionsViz({
     }
   }
 
+  function handleBulkDelete() {
+    if (!table) {
+      return;
+    }
+
+    const rowCount = bulkActions.selectedRowIndexes.length;
+    const objectName = table?.displayName();
+
+    requestConfirmation({
+      title: t`Delete ${rowCount} ${objectName}?`,
+      message: t`This can't be undone`,
+      onConfirm: async () => {
+        alert(
+          "Delete rows at positions: " +
+            bulkActions.selectedRowIndexes.join(", "),
+        );
+      },
+    });
+  }
+
   function handleDelete() {
     if (
       !question ||
@@ -285,6 +305,14 @@ function ActionsViz({
     });
   }
 
+  function onDeleteClick() {
+    if (isBulkSelectActive) {
+      handleBulkDelete();
+    } else {
+      handleDelete();
+    }
+  }
+
   return (
     <>
       <Root horizontalAlignment={horizontalAlignment}>
@@ -297,7 +325,7 @@ function ActionsViz({
         {hasDeleteButton && (
           <Button
             disabled={!canDelete}
-            onClick={handleDelete}
+            onClick={onDeleteClick}
             danger
           >{t`Delete`}</Button>
         )}
