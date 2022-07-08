@@ -58,13 +58,15 @@ function Input({
   onBlurChange,
   ...props
 }: InputProps) {
-  const handleChange = useCallback(event => onChange(event.target.value), [
-    onChange,
-  ]);
+  const handleChange = useCallback(
+    event => onChange(event.target.value),
+    [onChange],
+  );
 
-  const handleBlur = useCallback(event => onBlurChange(event.target.value), [
-    onBlurChange,
-  ]);
+  const handleBlur = useCallback(
+    event => onBlurChange(event.target.value),
+    [onBlurChange],
+  );
 
   return (
     <StyledInput
