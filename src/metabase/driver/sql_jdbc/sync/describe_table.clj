@@ -307,7 +307,8 @@
    java.lang.Boolean               :type/Boolean
    java.time.LocalDateTime         :type/DateTime
    clojure.lang.PersistentVector   :type/Array
-   clojure.lang.PersistentArrayMap :type/Structured})
+   clojure.lang.PersistentArrayMap :type/Structured
+   clojure.lang.PersistentHashMap  :type/Structured})
 
 (def db-type-map
   "Map from MBQL types to database types.
