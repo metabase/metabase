@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -10,6 +10,8 @@ import { useToggle } from "metabase/hooks/use-toggle";
 
 // TODO ActionsViz should ideally be independent from dashboard
 import { getCardData } from "metabase/dashboard/selectors";
+
+import { useDataAppContext } from "metabase/writeback/containers/DataAppContext";
 import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm";
 
 // TODO This should better be extracted to metabase/lib/somewhere
@@ -156,14 +158,20 @@ function ActionsViz({
   const { modalContent: confirmationModalContent, show: requestConfirmation } =
     useConfirmation();
 
+  const { bulkActions } = useDataAppContext();
+
   const connectedDashCardId = settings["actions.linked_card"];
   const connectedDashCard = dashboard.ordered_cards.find(
     dashCard => dashCard.id === connectedDashCardId,
   );
 
-  const question = connectedDashCard
-    ? new Question(connectedDashCard?.card, metadata)
-    : null;
+  const question = useMemo(
+    () =>
+      connectedDashCard
+        ? new Question(connectedDashCard?.card, metadata)
+        : null,
+    [connectedDashCard, metadata],
+  );
 
   const isObjectDetailView = question?.display() === "object";
   const table = question?.table();
@@ -176,15 +184,34 @@ function ActionsViz({
       : undefined;
   const row = connectedCardData?.rows[0];
 
+  const isBulkSelectActive = bulkActions.cardId === connectedDashCard?.card_id;
+
   const hasCreateButton =
     settings["actions.create_enabled"] &&
     (!isObjectDetailView || !connectedDashCardId);
-  const hasUpdateButton =
-    settings["actions.update_enabled"] &&
-    (isObjectDetailView || !connectedDashCardId);
-  const hasDeleteButton =
-    settings["actions.delete_enabled"] &&
-    (isObjectDetailView || !connectedDashCardId);
+  const canCreate = !!question;
+
+  const hasUpdateButton = settings["actions.update_enabled"];
+  const canUpdate = useMemo(() => {
+    if (!question) {
+      return false;
+    }
+    if (isObjectDetailView) {
+      return true;
+    }
+    return isBulkSelectActive && bulkActions.selectedRowIndexes.length > 0;
+  }, [question, isObjectDetailView, isBulkSelectActive, bulkActions]);
+
+  const hasDeleteButton = settings["actions.delete_enabled"];
+  const canDelete = useMemo(() => {
+    if (!question) {
+      return false;
+    }
+    if (isObjectDetailView) {
+      return true;
+    }
+    return isBulkSelectActive && bulkActions.selectedRowIndexes.length > 0;
+  }, [question, isObjectDetailView, isBulkSelectActive, bulkActions]);
 
   const horizontalAlignment = settings[
     "actions.align_horizontal"
@@ -262,14 +289,14 @@ function ActionsViz({
     <>
       <Root horizontalAlignment={horizontalAlignment}>
         {hasCreateButton && (
-          <Button disabled={!question} onClick={showModal}>{t`New`}</Button>
+          <Button disabled={!canCreate} onClick={showModal}>{t`New`}</Button>
         )}
         {hasUpdateButton && (
-          <Button disabled={!question} onClick={showModal}>{t`Edit`}</Button>
+          <Button disabled={!canUpdate} onClick={showModal}>{t`Edit`}</Button>
         )}
         {hasDeleteButton && (
           <Button
-            disabled={!question}
+            disabled={!canDelete}
             onClick={handleDelete}
             danger
           >{t`Delete`}</Button>
