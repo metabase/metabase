@@ -880,7 +880,7 @@ class QuestionInner {
   }
 
   lastQueryStart() {
-    return this._card && this._card["last_query_start"];
+    return this._card?.last_query_start;
   }
 
   isSaved(): boolean {

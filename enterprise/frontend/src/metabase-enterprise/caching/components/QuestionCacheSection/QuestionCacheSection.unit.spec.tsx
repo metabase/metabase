@@ -27,9 +27,8 @@ describe("QuestionCacheSection", () => {
 
     render(<QuestionCacheSection {...props} />);
 
-    expect(
-      screen.getByText("Question last cached 5 days ago"),
-    ).toBeInTheDocument();
+    const cacheLabel = screen.getByText("Question last cached 5 days ago");
+    expect(cacheLabel).toBeInTheDocument();
   });
 });
 
