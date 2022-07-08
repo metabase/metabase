@@ -5,7 +5,7 @@ import Question from "metabase-lib/lib/Question";
 import CacheSection from "../CacheSection";
 import { QueryStartLabel } from "./QuestionCacheSection.styled";
 
-interface QuestionCacheSectionProps {
+export interface QuestionCacheSectionProps {
   question: Question;
   onSave: (cache_ttl: number | null) => Promise<Question>;
 }

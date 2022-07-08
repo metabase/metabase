@@ -6,7 +6,7 @@ import {
 } from "metabase-types/api";
 import { createMockStructuredDatasetQuery } from "./query";
 
-export const createCard = (opts?: Partial<Card>): Card => ({
+export const createMockCard = (opts?: Partial<Card>): Card => ({
   id: 1,
   name: "Question",
   description: null,
@@ -15,10 +15,11 @@ export const createCard = (opts?: Partial<Card>): Card => ({
   visualization_settings: createMockVisualizationSettings(),
   dataset: false,
   can_write: false,
+  last_query_start: null,
   ...opts,
 });
 
-export const createUnsavedCard = (
+export const createMockUnsavedCard = (
   opts?: Partial<UnsavedCard>,
 ): UnsavedCard => ({
   display: "table",
