@@ -20,7 +20,7 @@ You can change every place in the app that says “Metabase” to something like
 
 ## Font
 
-This is the primary font used in charts and throughout the Metabase application (your "instance font"). To set up a font, see [Fonts](../administration-guide/fonts.md).
+This is the primary font used in charts and throughout the Metabase application (your "instance font"). See [Fonts](../enterprise-guide/fonts.md).
 
 ## Color palette
 

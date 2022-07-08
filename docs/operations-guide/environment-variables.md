@@ -122,7 +122,7 @@ Tell Metabase which font files to use for different styles. Example value:
 ]
 ```
 
-See [fonts](../administration-guide/fonts.md).
+See [fonts](../enterprise-guide/fonts.md).
 
 ### `MB_APPLICATION_LOGO_URL`
 

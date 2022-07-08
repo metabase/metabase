@@ -2,11 +2,11 @@
 
 {% include plans-blockquote.html feature="Advanced embedding features" %}
 
-Some paid plans give you additional customization options for [embedded items](./13-embedding.md).
+Some paid plans give you additional customization options for [embedded items](../administration-guide//13-embedding.md).
 
 ## Remove the "Powered by Metabase" banner
 
-![Powered by Metabase](images/embedding/powered-by-metabase.png)
+![Powered by Metabase](../administration-guide/images/embedding/powered-by-metabase.png)
 
 Charts and dashboards won't show the branded Metabase label at the bottom.
 

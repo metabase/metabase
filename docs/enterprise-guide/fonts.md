@@ -6,7 +6,7 @@ On paid plans, you can customize the font Metabase uses. You can choose from a c
 
 You can set fonts for:
 
-- [Your entire Metabase](../enterprise-guide/whitelabeling.md)
+- [Your entire Metabase](./whitelabeling.md)
 - [Individual embedded charts and dashboards](#customizing-the-font-for-individual-embedded-items)
 
 ## Included fonts
@@ -100,11 +100,11 @@ To support multiple character sets, for example both Latin and Cyrillic, you'll 
 
 ## Customizing the font for individual embedded items
 
-In addition to the [included fonts](#included-fonts), if you set a custom font for your Metabase, that font will be selectable as the "Default font" in menus. See [Customize embeds](../enterprise-guide/customize-embeds.md).
+In addition to the [included fonts](#included-fonts), if you set a custom font for your Metabase, that font will be selectable as the "Instance font" in menus. See [Customize embeds](./customize-embeds.md).
 
 ## Further reading
 
-- [White labeling Metabase](../enterprise-guide/whitelabeling.md)
+- [White labeling Metabase](./whitelabeling.md)
 
 
 
