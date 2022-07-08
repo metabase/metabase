@@ -80,6 +80,7 @@ class FieldValuesWidgetInner extends Component {
       options: [],
       loadingState: "INIT",
       lastValue: "",
+      valuesMode: getValuesMode(props),
     };
   }
 
@@ -107,24 +108,20 @@ class FieldValuesWidgetInner extends Component {
     });
 
     let options = [];
-    let hasIncompleteValueSet;
+    let valuesMode = this.state.valuesMode;
     try {
       if (usesChainFilterEndpoints(this.props.dashboard)) {
         options = await this.fetchDashboardParamValues(query);
-        // not yet implemented for dashboard parameter values endpoint
-        hasIncompleteValueSet = false;
       } else {
         options = await this.fetchFieldValues(query);
-        hasIncompleteValueSet = this.props.fields.some(
-          field => field.has_more_values,
-        );
+        valuesMode = getValuesMode(this.props);
       }
     } finally {
       this.updateRemappings(options);
       this.setState({
         loadingState: "LOADED",
         options,
-        hasIncompleteValueSet,
+        valuesMode,
       });
     }
   }
@@ -189,22 +186,21 @@ class FieldValuesWidgetInner extends Component {
   }
 
   onInputChange = value => {
-    const { fields, disableSearch, disablePKRemappingForSearch, maxResults } =
-      this.props;
-    const { lastValue, options, hasIncompleteValueSet } = this.state;
+    const { maxResults } = this.props;
+    const { lastValue, options } = this.state;
+    let { valuesMode } = this.state;
 
-    const canSearch = isSearchable(
-      fields,
-      disableSearch,
-      disablePKRemappingForSearch,
-      hasIncompleteValueSet,
-    );
+    // override "search" mode when searching is unnecessary
+    valuesMode = isExtensionOfPreviousSearch(
+      value,
+      lastValue,
+      options,
+      maxResults,
+    )
+      ? "list"
+      : "search";
 
-    const shouldSearch = () =>
-      !isExtensionOfPreviousSearch(value, lastValue, options, maxResults) ||
-      hasIncompleteValueSet;
-
-    if (value && canSearch && shouldSearch()) {
+    if (valuesMode === "search") {
       this._search(value);
     }
 
@@ -252,7 +248,7 @@ class FieldValuesWidgetInner extends Component {
       placeholder,
       showOptionsInPopover,
     } = this.props;
-    const { loadingState, options = [], hasIncompleteValueSet } = this.state;
+    const { loadingState, options = [] } = this.state;
 
     const tokenFieldPlaceholder = getTokenFieldPlaceholder({
       fields,
@@ -261,18 +257,10 @@ class FieldValuesWidgetInner extends Component {
       disablePKRemappingForSearch,
       loadingState,
       options,
-      hasIncompleteValueSet,
     });
 
     const isLoading = loadingState === "LOADING";
-    const isFetchingList =
-      shouldList(this.props.fields, this.props.disableSearch) && isLoading;
-    const hasExhaustedListData =
-      hasList({
-        fields,
-        disableSearch,
-        options,
-      }) && !hasIncompleteValueSet;
+    const isInListMode = this.state.valuesMode === "list";
 
     return (
       <div
@@ -282,22 +270,24 @@ class FieldValuesWidgetInner extends Component {
           maxWidth: this.props.maxWidth,
         }}
       >
-        {hasExhaustedListData && isFetchingList && <LoadingState />}
-        {hasExhaustedListData && (
-          <ListField
-            isDashboardFilter={parameter}
-            placeholder={tokenFieldPlaceholder}
-            value={value.filter(v => v != null)}
-            onChange={onChange}
-            options={options}
-            optionRenderer={option =>
-              renderValue(fields, formatOptions, option[0], {
-                autoLoad: false,
-              })
-            }
-          />
-        )}
-        {!hasExhaustedListData && (
+        {isInListMode &&
+          (isLoading ? (
+            <LoadingState />
+          ) : (
+            <ListField
+              isDashboardFilter={parameter}
+              placeholder={tokenFieldPlaceholder}
+              value={value.filter(v => v != null)}
+              onChange={onChange}
+              options={options}
+              optionRenderer={option =>
+                renderValue(fields, formatOptions, option[0], {
+                  autoLoad: false,
+                })
+              }
+            />
+          ))}
+        {!isInListMode && (
           <TokenField
             prefix={prefix}
             value={value.filter(v => v != null)}
@@ -493,12 +483,7 @@ function isExtensionOfPreviousSearch(value, lastValue, options, maxResults) {
   );
 }
 
-function isSearchable(
-  fields,
-  disableSearch,
-  disablePKRemappingForSearch,
-  hasIncompleteValueSet,
-) {
+function isSearchable(fields, disableSearch, disablePKRemappingForSearch) {
   return (
     !disableSearch &&
     // search is available if:
@@ -508,7 +493,7 @@ function isSearchable(
     fields.some(
       f =>
         f.has_field_values === "search" ||
-        (f.has_field_values === "list" && hasIncompleteValueSet),
+        (f.has_field_values === "list" && f.has_more_values === true),
     ) &&
     // and all fields are either "search" or "list"
     fields.every(
@@ -524,7 +509,6 @@ function getTokenFieldPlaceholder({
   disablePKRemappingForSearch,
   loadingState,
   options,
-  hasIncompleteValueSet,
 }) {
   if (placeholder) {
     return placeholder;
@@ -540,14 +524,7 @@ function getTokenFieldPlaceholder({
     })
   ) {
     return t`Search the list`;
-  } else if (
-    isSearchable(
-      fields,
-      disableSearch,
-      disablePKRemappingForSearch,
-      hasIncompleteValueSet,
-    )
-  ) {
+  } else if (isSearchable(fields, disableSearch, disablePKRemappingForSearch)) {
     return getSearchableTokenFieldPlaceholder(
       fields,
       firstField,
@@ -569,7 +546,7 @@ function renderOptions(
     disableSearch,
     disablePKRemappingForSearch,
   } = props;
-  const { loadingState, options, hasIncompleteValueSet } = state;
+  const { loadingState, options } = state;
 
   if (alwaysShowOptions || isFocused) {
     if (optionsList) {
@@ -585,12 +562,7 @@ function renderOptions(
         return <EveryOptionState />;
       }
     } else if (
-      isSearchable(
-        fields,
-        disableSearch,
-        disablePKRemappingForSearch,
-        hasIncompleteValueSet,
-      )
+      isSearchable(fields, disableSearch, disablePKRemappingForSearch)
     ) {
       if (loadingState === "LOADING") {
         return <LoadingState />;
@@ -618,4 +590,20 @@ function renderValue(fields, formatOptions, value, options) {
       {...options}
     />
   );
+}
+
+function getValuesMode({ fields, disableSearch, disablePKRemappingForSearch }) {
+  if (fields.length === 0) {
+    return "none";
+  }
+
+  if (isSearchable(fields, disableSearch, disablePKRemappingForSearch)) {
+    return "search";
+  }
+
+  if (shouldList(fields, disableSearch)) {
+    return "list";
+  }
+
+  return "none";
 }
