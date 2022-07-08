@@ -76,11 +76,16 @@ async function searchFieldValues(
 class FieldValuesWidgetInner extends Component {
   constructor(props) {
     super(props);
+    const { fields, disableSearch, disablePKRemappingForSearch } = props;
     this.state = {
       options: [],
       loadingState: "INIT",
       lastValue: "",
-      valuesMode: getValuesMode(props),
+      valuesMode: getValuesMode(
+        fields,
+        disableSearch,
+        disablePKRemappingForSearch,
+      ),
     };
   }
 
@@ -114,7 +119,13 @@ class FieldValuesWidgetInner extends Component {
         options = await this.fetchDashboardParamValues(query);
       } else {
         options = await this.fetchFieldValues(query);
-        valuesMode = getValuesMode(this.props);
+        const { fields, disableSearch, disablePKRemappingForSearch } =
+          this.props;
+        valuesMode = getValuesMode(
+          fields,
+          disableSearch,
+          disablePKRemappingForSearch,
+        );
       }
     } finally {
       this.updateRemappings(options);
@@ -596,7 +607,7 @@ function renderValue(fields, formatOptions, value, options) {
   );
 }
 
-function getValuesMode({ fields, disableSearch, disablePKRemappingForSearch }) {
+function getValuesMode(fields, disableSearch, disablePKRemappingForSearch) {
   if (fields.length === 0) {
     return "none";
   }
