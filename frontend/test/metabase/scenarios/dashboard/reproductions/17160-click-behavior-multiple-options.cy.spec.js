@@ -126,7 +126,7 @@ function setup(shouldUsePublicLinks) {
             ],
           });
 
-          createTargetDashboardForClickBehavior().then(targetDashboardId => {
+          createTargetDashboard().then(targetDashboardId => {
             // Create a click behavior and resize the question card
             cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
               cards: [
@@ -217,7 +217,7 @@ function getVisualSettingsWithClickBehavior(
   };
 }
 
-function createTargetDashboardForClickBehavior() {
+function createTargetDashboard() {
   return cy
     .createQuestionAndDashboard({
       dashboardDetails: {
