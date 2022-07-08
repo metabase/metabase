@@ -40,6 +40,7 @@ To qualify as a partner driver, the driver must:
 
 Current partner drivers:
 
+- [Exasol](https://github.com/exasol/metabase-driver)
 - [Firebolt](https://github.com/firebolt-db/metabase-firebolt-driver)
 - [Starburst (compatible with Trino)](https://github.com/starburstdata/metabase-driver)
 
