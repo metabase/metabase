@@ -306,7 +306,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-  public_sharing: {
+  "public-sharing": {
     name: t`Public Sharing`,
     order: 9,
     settings: [
@@ -329,7 +329,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-  embedding_in_other_applications: {
+  "embedding-in-other-applications": {
     name: t`Embedding`,
     order: 10,
     settings: [
@@ -387,7 +387,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-  "embedding_in_other_applications/standalone": {
+  "embedding-in-other-applications/standalone": {
     settings: [
       {
         widget: () => {
@@ -397,7 +397,7 @@ const SECTIONS = updateSectionsWithPlugins({
               crumbs={[
                 [
                   t`Embedding`,
-                  "/admin/settings/embedding_in_other_applications",
+                  "/admin/settings/embedding-in-other-applications",
                 ],
                 [t`Standalone embeds`],
               ]}
@@ -432,13 +432,13 @@ const SECTIONS = updateSectionsWithPlugins({
       },
       {
         widget: () => (
-          <RedirectWidget to="/admin/settings/embedding_in_other_applications" />
+          <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
         getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
       },
     ],
   },
-  "embedding_in_other_applications/full-app": {
+  "embedding-in-other-applications/full-app": {
     settings: [
       {
         widget: () => {
@@ -448,7 +448,7 @@ const SECTIONS = updateSectionsWithPlugins({
               crumbs={[
                 [
                   t`Embedding`,
-                  "/admin/settings/embedding_in_other_applications",
+                  "/admin/settings/embedding-in-other-applications",
                 ],
                 [t`Full-app embedding`],
               ]}
@@ -464,7 +464,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
       {
         widget: () => (
-          <RedirectWidget to="/admin/settings/embedding_in_other_applications" />
+          <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
         getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
       },

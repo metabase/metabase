@@ -7,7 +7,7 @@ import {
   visitIframe,
 } from "__support__/e2e/helpers";
 
-const embeddingPage = "/admin/settings/embedding_in_other_applications";
+const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const licenseUrl = "https://metabase.com/license/embedding";
 const upgradeUrl = "https://www.metabase.com/upgrade/";
 

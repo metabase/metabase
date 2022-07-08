@@ -40,7 +40,7 @@ const APP_ORIGIN_SETTING = {
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   updateIn(
     sections,
-    ["embedding_in_other_applications/full-app", "settings"],
+    ["embedding-in-other-applications/full-app", "settings"],
     settings => {
       return [...settings, APP_ORIGIN_SETTING];
     },
