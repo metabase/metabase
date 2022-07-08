@@ -95,6 +95,7 @@ const getDefaultColor = () => color("brand");
 
 export const FilterHeaderContainer = styled.div`
   padding: ${space(2)} ${space(3)} ${space(1)} ${space(3)};
+  border-bottom: 1px solid ${color("border")};
 `;
 
 export const ViewSubHeaderRoot = styled(ViewSection)`
