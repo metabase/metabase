@@ -313,6 +313,7 @@ const SECTIONS = updateSectionsWithPlugins({
       {
         key: "enable-public-sharing",
         display_name: t`Enable Public Sharing`,
+        description: t`Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards.`,
         type: "boolean",
       },
       {
@@ -358,6 +359,14 @@ const SECTIONS = updateSectionsWithPlugins({
       {
         key: "enable-embedding",
         display_name: t`Embedding`,
+        description: jt`Allow questions, dashboards, and more to be embedded. ${(
+          <ExternalLink
+            key="learn-embedding-link"
+            href="https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards.html"
+          >
+            {t`Learn more.`}
+          </ExternalLink>
+        )}`,
         type: "boolean",
         showActualValue: true,
         getProps: setting => {
