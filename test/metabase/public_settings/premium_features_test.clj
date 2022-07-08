@@ -61,6 +61,15 @@
       (testing "With the backend unavailable"
         (let [result (token-status-response random-fake-token {:status 500})]
           (is (false? (:valid result)))))
+      (testing "On other errors"
+        (binding [clj-http.client/request (fn [& args]
+                                            ;; note originally the code caught clojure.lang.ExceptionInfo so don't
+                                            ;; throw an ex-info here
+                                            (throw (Exception. "network issues")))]
+          (is (= {:valid         false
+                  :status        "Unable to validate token"
+                  :error-details "network issues"}
+                 (premium-features/fetch-token-status (apply str (repeat 64 "b")))))))
 
       (testing "With a valid token"
         (let [result (token-status-response random-fake-token {:status 200
