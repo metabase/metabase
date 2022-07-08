@@ -2,7 +2,6 @@
 import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
-import cx from "classnames";
 import Icon from "metabase/components/Icon";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
@@ -95,10 +94,7 @@ const ChartTypeOption = ({
     <OptionIconContainer
       isSelected={isSelected}
       onClick={onClick}
-      className={cx(
-        "cursor-pointer bg-brand-hover text-brand text-white-hover",
-        { "text-white": isSelected },
-      )}
+      className="cursor-pointer bg-brand-hover text-brand text-white-hover"
       data-testid={`${visualization.uiName}-button`}
       data-is-sensible={isSensible}
     >

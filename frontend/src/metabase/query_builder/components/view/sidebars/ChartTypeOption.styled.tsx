@@ -21,6 +21,7 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  color: ${props => props.isSelected && color("text-white")};
   background-color: ${props =>
     props.isSelected ? color("brand") : lighten("brand")};
   padding: 0.75rem;
