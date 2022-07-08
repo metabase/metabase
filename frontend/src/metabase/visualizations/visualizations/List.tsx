@@ -61,6 +61,18 @@ export default Object.assign(ListViz, {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     ...columnSettings({ hidden: true }),
+    "buttons.edit": {
+      section: t`Actions`,
+      title: t`Edit button`,
+      widget: "toggle",
+      default: true,
+    },
+    "buttons.delete": {
+      section: t`Actions`,
+      title: t`Delete button`,
+      widget: "toggle",
+      default: true,
+    },
     "list.columns": {
       section: t`Columns`,
       title: t`Columns`,
@@ -70,12 +82,12 @@ export default Object.assign(ListViz, {
           data: { cols },
         },
       ]: Series) => {
-        const columns = cols.filter(col => col.visibility_type === "normal");
+        const columns = cols.filter((col) => col.visibility_type === "normal");
         const firstThreeColumns = columns.slice(0, 3).filter(Boolean);
         const nextThreeColumns = columns.slice(3, 6).filter(Boolean);
         return {
-          left: firstThreeColumns.map(col => col.id || col.field_ref),
-          right: nextThreeColumns.map(col => col.id || col.field_ref),
+          left: firstThreeColumns.map((col) => col.id || col.field_ref),
+          right: nextThreeColumns.map((col) => col.id || col.field_ref),
         };
       },
       getProps: ([
@@ -83,7 +95,7 @@ export default Object.assign(ListViz, {
           data: { cols },
         },
       ]: Series) => ({
-        columns: cols.filter(col => col.visibility_type === "normal"),
+        columns: cols.filter((col) => col.visibility_type === "normal"),
       }),
     },
   },
