@@ -48,7 +48,7 @@ function buildTextTagOption(tagName) {
     name: tagName,
     icon: "string",
     isForeign: false,
-    target: ["variable", ["text-tag", tagName]],
+    target: ["text-tag", tagName],
   };
 }
 

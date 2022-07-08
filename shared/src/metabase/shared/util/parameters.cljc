@@ -37,7 +37,7 @@
 
 (defn- formatted-list
   [values]
-  (trs "{0} and {1}" (str/join ", " (butlast values)) (last values)))
+  (str (str/join ", " (butlast values)) " " (trs "and") " " (last values)))
 
 (defmulti formatted-value
   "Formats a value appropriately for inclusion in a text card, based on its type. Does not do any escaping.
@@ -93,10 +93,10 @@
     (formatted-list value)
 
     (sequential? value)
-    (first value)
+    (str (first value))
 
     :else
-    value))
+    (str value)))
 
 (def ^:private escaped-chars-regex
   #"[\\/*_`'\[\](){}<>#+-.!$@%^&=|\?~]")

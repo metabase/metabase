@@ -114,7 +114,7 @@ export default class Text extends Component {
     let parametersByTag = {};
     if (dashcard && dashcard.parameter_mappings) {
       parametersByTag = dashcard.parameter_mappings.reduce((acc, mapping) => {
-        const tagId = mapping.target[1][1];
+        const tagId = mapping.target[1];
         const parameter = dashboard.parameters.find(
           p => p.id === mapping.parameter_id,
         );
