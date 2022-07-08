@@ -260,7 +260,11 @@ class FieldValuesWidgetInner extends Component {
     });
 
     const isLoading = loadingState === "LOADING";
-    const isInListMode = this.state.valuesMode === "list";
+    const usesListField = hasList({
+      fields,
+      disableSearch,
+      options,
+    });
 
     return (
       <div
@@ -270,7 +274,7 @@ class FieldValuesWidgetInner extends Component {
           maxWidth: this.props.maxWidth,
         }}
       >
-        {isInListMode &&
+        {usesListField &&
           (isLoading ? (
             <LoadingState />
           ) : (
@@ -287,7 +291,7 @@ class FieldValuesWidgetInner extends Component {
               }
             />
           ))}
-        {!isInListMode && (
+        {!usesListField && (
           <TokenField
             prefix={prefix}
             value={value.filter(v => v != null)}
