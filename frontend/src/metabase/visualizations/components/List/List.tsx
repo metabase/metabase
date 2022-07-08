@@ -11,6 +11,7 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 
 import Button from "metabase/core/components/Button";
+import CheckBox from "metabase/core/components/CheckBox";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 
@@ -23,6 +24,8 @@ import {
   deleteRowFromDataApp,
   updateRowFromDataApp,
 } from "metabase/dashboard/writeback-actions";
+
+import { useDataAppContext } from "metabase/writeback/containers/DataAppContext";
 
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -95,6 +98,8 @@ function List({
 
   const footerRef = useRef(null);
   const firstRowRef = useRef(null);
+
+  const { bulkActions } = useDataAppContext();
 
   useLayoutEffect(() => {
     const { height: footerHeight = 0 } = getBoundingClientRectSafe(footerRef);
@@ -223,6 +228,35 @@ function List({
   const hasEditButton = settings["buttons.edit"];
   const hasDeleteButton = settings["buttons.delete"];
 
+  const hasBulkSelection = useMemo(() => {
+    return (
+      !bulkActions.cardId || bulkActions.cardId === connectedDashCard?.card_id
+    );
+  }, [connectedDashCard, bulkActions]);
+
+  const renderBulkSelectionControl = useCallback(
+    (rowIndex: number) => {
+      const isSelected = bulkActions.selectedRowIndexes.includes(rowIndex);
+
+      return (
+        <CheckBox
+          checked={isSelected}
+          onChange={event => {
+            const isSelectedNow = event.target.checked;
+            if (isSelectedNow) {
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore
+              bulkActions.addRow(card.id, rowIndex);
+            } else {
+              bulkActions.removeRow(rowIndex);
+            }
+          }}
+        />
+      );
+    },
+    [card, bulkActions],
+  );
+
   const renderListItemCell = useCallback(
     (rowIndex: number, columnIndex: number | null, slot: CellSlot) => {
       if (columnIndex === null) {
@@ -251,6 +285,7 @@ function List({
         const [firstColumnIndex, secondColumnIndex, thirdColumnIndex] = left;
         return (
           <ListItemContent>
+            {hasBulkSelection && renderBulkSelectionControl(rowIndex)}
             {renderListItemCell(rowIndex, firstColumnIndex, "left")}
             <div>
               {renderListItemCell(rowIndex, secondColumnIndex, "left")}
@@ -262,13 +297,20 @@ function List({
 
       return (
         <ListItemContent>
+          {hasBulkSelection && renderBulkSelectionControl(rowIndex)}
           {left.map(columnIndex =>
             renderListItemCell(rowIndex, columnIndex, "left"),
           )}
         </ListItemContent>
       );
     },
-    [settings, listColumnIndexes, renderListItemCell],
+    [
+      settings,
+      listColumnIndexes,
+      hasBulkSelection,
+      renderListItemCell,
+      renderBulkSelectionControl,
+    ],
   );
 
   const renderListItem = useCallback(
