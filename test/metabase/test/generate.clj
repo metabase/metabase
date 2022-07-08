@@ -2,6 +2,7 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.test.check.generators :as gen]
             [java-time :as t]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
                                      Dimension Field Metric NativeQuerySnippet PermissionsGroup
                                      PermissionsGroupMembership Pulse PulseCard PulseChannel Table User]]
@@ -242,15 +243,7 @@
   [query]
   (rsg/ent-db-spec-gen {:schema schema} query))
 
-(def ^:private unique-names (atom {}))
-
-(defn- make-unique-name [old-name prefix]
-  (let [names    (get @unique-names prefix #{})
-        new-name (if (names old-name)
-                   (str (gensym old-name))
-                   old-name)]
-    (swap! unique-names update prefix (fnil conj #{}) new-name)
-    new-name))
+(def ^:private unique-name (mbql.u/unique-name-generator))
 
 (def ^:private field-positions (atom {:table-fields {}}))
 (defn- adjust
@@ -268,11 +261,11 @@
 
     ;; Table names need to be unique within their database. This enforces it, and appends junk to names if needed.
     (= :table ent-type)
-    (update :name make-unique-name [:db (:db_id visit-val)])
+    (update :name unique-name)
 
     ;; Field names need to be unique within their table. This enforces it, and appends junk to names if needed.
     (= :field ent-type)
-    (update :name make-unique-name [:table (:table_id visit-val)])
+    (update :name unique-name)
 
     (and (:description visit-val) (coin-toss 0.2))
     (dissoc :description)))
@@ -289,7 +282,6 @@
   - Adjust entites, in case some fields need extra tunning like incremental position, or collections.location
   - Insert entity into the db using `toucan.core/insert!` "
   [query]
-  (reset! unique-names {})
   (-> (spec-gen query)
       (rs/visit-ents :spec-gen remove-ids)
       (rs/visit-ents :spec-gen adjust)

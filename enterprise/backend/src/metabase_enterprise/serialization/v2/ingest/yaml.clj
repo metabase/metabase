@@ -32,14 +32,20 @@
        (filter #(.endsWith (name %) "_at"))
        (reduce #(update %1 %2 u.date/parse) entity)))
 
-(defn- ingest-entity [root-dir hierarchy]
-  (let [entity    (-> (u.yaml/hierarchy->file root-dir hierarchy)
-                      yaml/from-file
-                      (assoc :serdes/meta hierarchy)
-                      (read-timestamps))
-        ;; Strip the labels off the hierarchy; they might have been manipulated (eg. truncated) by the storage system.
-        hierarchy (mapv #(dissoc % :label) hierarchy)]
-    (assoc entity :serdes/meta hierarchy)))
+(defn- ingest-entity
+  "Given a hierarchy, read in the YAML file it identifies. Clean it up (eg. parsing timestamps) and attach the
+  hierarchy as `:serdes/meta`.
+  The returned entity is in \"extracted\" form, ready to be passed to the `load` step.
+
+  The labels are removed from the hierarchy attached at `:serdes/meta`, since the storage system might have damaged the
+  original labels by eg. truncating them to keep the file names from getting too long. The labels aren't used at all on
+  the loading side, so it's fine to drop them."
+  [root-dir hierarchy]
+  (let [unlabeled (mapv #(dissoc % :label) hierarchy)]
+    (-> (u.yaml/hierarchy->file root-dir hierarchy) ; Use the original hierarchy for the filesystem.
+        yaml/from-file
+        read-timestamps
+        (assoc :serdes/meta unlabeled)))) ; But return the hierarchy without labels.
 
 (deftype YamlIngestion [^File root-dir settings]
   ingest/Ingestable
@@ -50,8 +56,8 @@
 
   (ingest-one [_ abs-path]
     (let [{:keys [model id]} (first abs-path)]
-      (if (and (= 1 (count abs-path))
-               (= "Setting" model))
+      (if (and (= (count abs-path) 1)
+               (= model "Setting"))
         {:serdes/meta abs-path :key (keyword id) :value (get settings (keyword id))}
         (ingest-entity root-dir abs-path)))))
 
