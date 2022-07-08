@@ -1,9 +1,9 @@
-import { restore } from "__support__/e2e/helpers";
+import { restore, describeEE } from "__support__/e2e/helpers";
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
 
-describe("issue 22695 ", () => {
+describeEE("issue 22695 ", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/search?*").as("searchResults");
 
