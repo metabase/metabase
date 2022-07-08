@@ -17,6 +17,7 @@ describe("issue 17160", () => {
 
   it("should pass multiple filter values to questions and dashboards (metabase#17160-1)", () => {
     setup(false);
+    visitSourceDashboard();
 
     // Check click behavior connected to a question
     cy.findAllByText("click-behavior-question-label").eq(0).click();
@@ -27,7 +28,7 @@ describe("issue 17160", () => {
     assertMultipleValuesFilterState();
 
     // Go back to the dashboard
-    cy.go("back");
+    visitSourceDashboard();
 
     // Check click behavior connected to a dashboard
     cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
@@ -42,16 +43,7 @@ describe("issue 17160", () => {
   it("should pass multiple filter values to public questions and dashboards (metabase#17160-2)", () => {
     setup(true);
 
-    cy.icon("share").click();
-
-    // Open the dashboard public link
-    cy.findByText("Public link")
-      .parent()
-      .within(() => {
-        cy.get("input").then(input => {
-          cy.visit(input.val());
-        });
-      });
+    visitPublicSourceDashboard();
 
     // Check click behavior connected to a question
     cy.findAllByText("click-behavior-question-label").eq(0).click();
@@ -60,8 +52,8 @@ describe("issue 17160", () => {
 
     assertMultipleValuesFilterState();
 
-    // Go back to the dashboard
-    cy.go("back");
+    // Go back to the source dashboard
+    visitPublicSourceDashboard();
 
     // Check click behavior connected to a dashboard
     cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
@@ -109,7 +101,12 @@ function setup(shouldUsePublicLinks) {
     cy.createDashboard({ name: "17160D" }).then(
       ({ body: { id: dashboardId } }) => {
         // Share the dashboard
-        cy.request("POST", `/api/dashboard/${dashboardId}/public_link`);
+        cy.request("POST", `/api/dashboard/${dashboardId}/public_link`).then(
+          ({ body: { uuid } }) => {
+            cy.wrap(uuid).as("sourceDashboardUUID");
+          },
+        );
+        cy.wrap(dashboardId).as("sourceDashboardId");
 
         // Add the question to the dashboard
         cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
@@ -155,7 +152,6 @@ function setup(shouldUsePublicLinks) {
                 },
               ],
             });
-            visitDashboard(dashboardId);
           });
         });
       },
@@ -275,4 +271,16 @@ function createTargetDashboardForClickBehavior() {
           return dashboard_id;
         });
     });
+}
+
+function visitSourceDashboard() {
+  cy.get("@sourceDashboardId").then(id => {
+    visitDashboard(id);
+  });
+}
+
+function visitPublicSourceDashboard() {
+  cy.get("@sourceDashboardUUID").then(uuid => {
+    cy.visit(`/public/dashboard/${uuid}`);
+  });
 }
