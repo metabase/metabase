@@ -16,10 +16,7 @@ interface CacheSectionProps {
   onSave: (cache_ttl: number | null) => Promise<any>;
 }
 
-export const CacheSection = ({
-  initialCacheTTL,
-  onSave,
-}: CacheSectionProps) => {
+const CacheSection = ({ initialCacheTTL, onSave }: CacheSectionProps) => {
   const [cacheTTL, setCacheTTL] = useState(initialCacheTTL);
 
   const handleChange = useCallback(
@@ -70,3 +67,5 @@ export const CacheSection = ({
     </CacheSectionRoot>
   );
 };
+
+export default CacheSection;

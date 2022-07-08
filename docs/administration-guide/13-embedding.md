@@ -59,14 +59,14 @@ You'll see a preview of the question or dashboard as it will appear in your appl
 
 ![Preview](images/embedding/04-preview.png)
 
-## Publishing your embedded dashboard
+## Publishing your embedded item
 
-In order for the embedding to work, you'll need to hit **Publish**. You'll need to hit the **Publish** button whenever you:
+In order for the embedding to work, you'll need to hit **Publish**. You'll need to hit the **Publish** button whenever:
 
 - You first set up a chart or dashboard for embedding
 - *and* each time you change any embedding settings.
 
- Also, any changes you make to the resource may require you to update the code in your own application so that it matches the latest code sample Metabase generates.
+ Also, any changes you make to the embedding settings may require you to update the code in your own application so that it matches the latest code sample Metabase generates.
 
 ![Code samples for embedding](images/embedding/05-code.png)
 
@@ -137,9 +137,9 @@ Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automati
 
 To change the look and feel of the embed, you can add additional parameters to the embedding URL:
 
-- **bordered**: true or false. Adds a visible border to the embed.
-- **titled**: true or false. Adds or removes the title to the embedding.
-- **theme**: light, transparent, or night. Shows the embedded iframe in light (theme is null), transparent (no background), or night (dark mode).
+- **Bordered**: true or false. Adds a visible border to the embed.
+- **Titled**: true or false. Adds or removes the title to the embedding.
+- **Theme**: light, transparent, or night. Shows the embedded iframe in light (theme is null), transparent (no background), or night (dark mode).
 
 For example:
 
@@ -149,29 +149,13 @@ http://yourmetabaseurl.com/embed/dashboard/a_very_huge_hashed_url#theme=night&hi
 
 These settings can also be changed under **Style** when previewing the embedded question or dashboard and its code in Metabase.
 
-## Advanced embedding features
-
-{% plans-blockquote feature="Advanced embedding features" %}
-
-Paid plans give you additional customization options for embedded items.
-
-### Remove the "Powered by Metabase" banner
-
-![Powered by Metabase](images/embedding/powered-by-metabase.png)
-
-Charts and dashboards won't show the branded Metabase label at the bottom.
-
-### Set custom fonts
-
-You can set the font for the embedded chart or dashboard. See [available fonts](./fonts.md).
-
-### Disable data download
-
-You can remove the export icon from charts. Note that removing the icon here doesn't totally prevent people from exporting the data; treat it as a deterrent, not a security option. Removing the icon just cleans up the embedded chart a bit, and makes downloading the data a bit of a hassle.
-
 ## Embedding reference applications
 
 To see code examples of how to embed Metabase in applications using a number of common frameworks, check out our [reference implementations](https://github.com/metabase/embedding-reference-apps) on Github.
+
+## Customizing embeds
+
+Paid plans include additional features for [customizing the appearance](../enterprise-guide/customize-embeds.md) of embedded items.
 
 ## Further reading
 

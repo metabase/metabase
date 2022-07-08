@@ -6,6 +6,7 @@ export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
 export * from "./models";
+export * from "./query";
 export * from "./table";
 export * from "./timeline";
 export * from "./settings";

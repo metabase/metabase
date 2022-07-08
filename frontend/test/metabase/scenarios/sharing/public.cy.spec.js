@@ -155,7 +155,7 @@ describe("scenarios > public", () => {
     });
 
     it("should show shared questions and dashboards in admin settings", () => {
-      cy.visit("/admin/settings/public_sharing");
+      cy.visit("/admin/settings/public-sharing");
 
       cy.findByText("Enable Public Sharing").should("be.visible");
 

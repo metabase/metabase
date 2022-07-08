@@ -101,7 +101,8 @@ export type SettingName =
   | "application-colors"
   | "application-font"
   | "available-fonts"
-  | "enable-query-caching";
+  | "enable-query-caching"
+  | "start-of-week";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 
