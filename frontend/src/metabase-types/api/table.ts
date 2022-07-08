@@ -1,4 +1,4 @@
-import { ForeignKey } from "../api/foreignKey";
+import { ForeignKey } from "./foreign-key";
 import { Database } from "./database";
 import { Field } from "./field";
 
