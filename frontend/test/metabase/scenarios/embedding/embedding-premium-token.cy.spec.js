@@ -1,6 +1,6 @@
 import { restore, isOSS } from "__support__/e2e/helpers";
 
-const embeddingPage = "/admin/settings/embedding_in_other_applications";
+const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const licensePage = "/admin/settings/premium-embedding-license";
 
 // A random embedding token with valid format

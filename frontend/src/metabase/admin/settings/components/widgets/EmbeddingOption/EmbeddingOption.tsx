@@ -21,7 +21,7 @@ interface EmbeddingOptionProps {
 export default function EmbeddingOption({ setting }: EmbeddingOptionProps) {
   return (
     <Link
-      to={`/admin/settings/embedding_in_other_applications/${setting.embedType}`}
+      to={`/admin/settings/embedding-in-other-applications/${setting.embedType}`}
     >
       <StyledCard compact>
         {setting.embedType === "full-app" && <Label>{t`Paid`}</Label>}

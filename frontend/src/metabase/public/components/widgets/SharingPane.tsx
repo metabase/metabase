@@ -222,7 +222,7 @@ function getEmbeddingHelperText({
     return jt`In order to embed your question, you have to first ${(
       <a
         className="link"
-        href="/admin/settings/embedding_in_other_applications"
+        href="/admin/settings/embedding-in-other-applications"
       >
         enable embedding in your Admin settings.
       </a>
