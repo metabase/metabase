@@ -57,9 +57,7 @@ const MetadataTable = ({
     }
   };
 
-  const handleDescriptionChange: ChangeEventHandler<
-    HTMLInputElement
-  > = event => {
+  const handleDescriptionChange: ChangeEventHandler<HTMLInputElement> = event => {
     handlePropertyUpdate("description", event.target.value);
   };
 
@@ -171,6 +169,7 @@ export default _.compose(
     id: (_state: State, { tableId }: { tableId: number }) => tableId,
     query: {
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+      ignore_view: true,
     },
     wrapped: true,
     selectorName: "getObjectUnfiltered",
