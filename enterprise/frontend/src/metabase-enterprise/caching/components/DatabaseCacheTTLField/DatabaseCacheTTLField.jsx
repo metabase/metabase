@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Select, { Option } from "metabase/core/components/Select";
-import { CacheTTLField } from "../CacheTTLField";
+import CacheTTLField from "../CacheTTLField";
 import {
   CacheFieldContainer,
   FieldContainer,
@@ -20,7 +20,7 @@ const propTypes = {
   field: PropTypes.object.isRequired,
 };
 
-export function DatabaseCacheTTLField({ field }) {
+function DatabaseCacheTTLField({ field }) {
   const [mode, setMode] = useState(
     field.value > 0 ? MODE.CUSTOM : MODE.INSTANCE_DEFAULT,
   );
@@ -55,3 +55,5 @@ export function DatabaseCacheTTLField({ field }) {
 }
 
 DatabaseCacheTTLField.propTypes = propTypes;
+
+export default DatabaseCacheTTLField;

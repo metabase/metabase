@@ -1,1 +1,1 @@
-export * from "./QuestionCacheTTLField";
+export { default } from "./QuestionCacheTTLField";

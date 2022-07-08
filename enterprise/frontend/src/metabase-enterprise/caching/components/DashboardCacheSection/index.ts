@@ -1,1 +1,1 @@
-export * from "./DashboardCacheSection";
+export { default } from "./DashboardCacheSection";

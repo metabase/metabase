@@ -15,7 +15,7 @@ module.exports = {
 
   entry: {
     "lib-static-viz": {
-      import: "./static-viz/index.js",
+      import: "./static-viz/index.ts",
       library: {
         name: "StaticViz",
         type: "var",
