@@ -152,7 +152,10 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.get(".full").find(".Button").click();
 
       filter();
-      filterField("Total").changeValue("50", "min");
+      filterField("Total", {
+        placeholder: "min",
+        value: "50",
+      });
 
       cy.button("Apply").click();
       cy.findByText("Save").click();

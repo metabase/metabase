@@ -156,7 +156,10 @@ describe("scenarios > question > saved", () => {
     visualize();
 
     filter();
-    filterField("RATING").changeOperator("Equal to").changeValue("4");
+    filterField("RATING", {
+      operator: "Equal to",
+      value: "4",
+    });
     cy.button("Apply").click();
 
     cy.findByText("Synergistic Granite Chair");

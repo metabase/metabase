@@ -110,7 +110,9 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.findAllByText("37.65");
 
       filter();
-      filterField("Product ID").changeValue("14");
+      filterField("Product ID", {
+        value: "14",
+      });
       cy.findByText("Apply").click();
 
       cy.findByText("Product ID is 14");

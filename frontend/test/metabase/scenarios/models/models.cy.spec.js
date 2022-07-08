@@ -47,7 +47,9 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     filter();
-    filterField("Discount").changeOperator("Not empty");
+    filterField("Discount", {
+      operator: "Not empty",
+    });
 
     cy.button("Apply").click();
     cy.wait("@dataset");
@@ -94,7 +96,9 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     filter();
-    filterField("DISCOUNT").changeOperator("Not empty");
+    filterField("DISCOUNT", {
+      operator: "Not empty",
+    });
 
     cy.button("Apply").click();
     cy.wait("@dataset");
@@ -302,7 +306,9 @@ describe("scenarios > models", () => {
       cy.wait("@dataset");
 
       filter();
-      filterField("Discount").changeOperator("Not empty");
+      filterField("Discount", {
+        operator: "Not empty",
+      });
       cy.button("Apply").click();
       cy.wait("@dataset");
 

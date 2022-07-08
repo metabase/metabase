@@ -8,40 +8,51 @@ export function filter({ mode } = {}) {
   initiateAction("Filter", mode);
 }
 
-export function filterField(fieldName) {
-  return cy.findByLabelText(`filter-field-${fieldName}`);
+export function filterField(fieldName, { operator, value, placeholder } = {}) {
+  if (operator) {
+    changeOperator(getFilterField(fieldName), operator);
+  }
+
+  if (value) {
+    changeValue(getFilterField(fieldName), value, placeholder);
+  }
+
+  return getFilterField(fieldName);
 }
 
-export function filterFieldPopover(fieldName) {
-  cy.findByLabelText(`filter-field-${fieldName}`).within(() => {
+export function filterFieldPopover(fieldName, { value, placeholder } = {}) {
+  getFilterField(fieldName).within(() => {
     cy.findByTestId("select-button").click();
   });
+
+  if (value) {
+    changeValue(popover(), value, placeholder);
+  }
   return popover();
 }
 
+function getFilterField(fieldName) {
+  return cy.findByLabelText(`filter-field-${fieldName}`);
+}
+
 function changeOperator(subject, operator) {
-  cy.wrap(subject).findByTestId("operator-select").click();
+  subject.findByTestId("operator-select").click();
 
   cy.findByTestId("operator-options")
     .findAllByText(new RegExp(operator, "i"))
     .first()
     .click();
-  return cy.wrap(subject);
 }
 
 function changeValue(subject, newValue, placeholder) {
-  cy.wrap(subject).within(() => {
+  subject.within(() => {
     const input = placeholder
       ? cy.findByPlaceholderText(new RegExp(placeholder, "i"))
       : cy.get("input").first();
 
     input.clear().type(newValue);
   });
-  return cy.wrap(subject);
 }
-
-Cypress.Commands.add("changeOperator", { prevSubject: true }, changeOperator);
-Cypress.Commands.add("changeValue", { prevSubject: true }, changeValue);
 
 /**
  * Initiate a certain action such as filtering or summarizing taking the question's mode into account.

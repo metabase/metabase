@@ -98,7 +98,7 @@ describe("scenarios > filters > bulk filtering", () => {
     visitQuestionAdhoc(rawQuestionDetails);
     filter();
 
-    filterFieldPopover("Quantity").changeValue("20");
+    filterFieldPopover("Quantity", { value: "20" });
 
     cy.findByLabelText("20").click();
     cy.button("Add filter").click();
@@ -114,8 +114,11 @@ describe("scenarios > filters > bulk filtering", () => {
 
     modal().within(() => {
       cy.findByText("Summaries").click();
+    });
 
-      filterField("Count").changeValue("500", "min");
+    filterField("Count", {
+      placeholder: "min",
+      value: "500",
     });
 
     applyFilters();
@@ -432,7 +435,9 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("filters by primary keys", () => {
-      filterField("ID").changeValue("17, 18");
+      filterField("ID", {
+        value: "17, 18",
+      });
 
       applyFilters();
 
@@ -442,7 +447,9 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("filters by a foreign key", () => {
-      filterField("Product ID").changeValue("65");
+      filterField("Product ID", {
+        value: "65",
+      });
 
       applyFilters();
 
@@ -457,7 +464,9 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("adds a contains text filter", () => {
-      filterField("City").changeValue("Indian");
+      filterField("City", {
+        value: "Indian",
+      });
 
       applyFilters();
 
@@ -465,7 +474,10 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("adds an ends with text filter", () => {
-      filterField("City").changeOperator("ends with").changeValue("Valley");
+      filterField("City", {
+        operator: "ends with",
+        value: "Valley",
+      });
 
       applyFilters();
 
@@ -473,9 +485,10 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("adds multiple is text filters", () => {
-      filterField("City")
-        .changeOperator("is")
-        .changeValue("Indianeown, Indian Valley");
+      filterField("City", {
+        operator: "is",
+        value: "Indianeown, Indian Valley",
+      });
 
       applyFilters();
 
@@ -491,7 +504,15 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("applies a between filter", () => {
-      filterField("Price").changeValue("50", "min").changeValue("80", "max");
+      filterField("Price", {
+        placeholder: "min",
+        value: "50",
+      });
+
+      filterField("Price", {
+        placeholder: "max",
+        value: "80",
+      });
 
       applyFilters();
 
@@ -500,7 +521,10 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("applies a greater than filter", () => {
-      filterField("Price").changeOperator("Greater than").changeValue("50");
+      filterField("Price", {
+        operator: "greater than",
+        value: "50",
+      });
 
       applyFilters();
 
@@ -509,7 +533,10 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("infers a <= filter from an invalid between filter", () => {
-      filterField("Price").changeValue("50", "max");
+      filterField("Price", {
+        placeholder: "max",
+        value: "50",
+      });
 
       applyFilters();
 

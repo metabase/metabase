@@ -394,7 +394,9 @@ describe("scenarios > question > notebook", () => {
     filter();
     cy.findByText("Summaries").click();
 
-    filterField("Max of Name").changeOperator("Starts with");
+    filterField("Max of Name", {
+      operator: "Starts with",
+    });
   });
 
   it("should treat max/min on a category as a string filter (metabase#22154)", () => {
@@ -412,7 +414,9 @@ describe("scenarios > question > notebook", () => {
 
     filter();
     cy.findByText("Summaries").click();
-    filterField("Min of Vendor").changeOperator("Ends with");
+    filterField("Min of Vendor", {
+      operator: "ends with",
+    });
   });
 
   // flaky test
