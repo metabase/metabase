@@ -8,10 +8,24 @@ import React, {
 import { getIn } from "icepick";
 import _ from "lodash";
 import { t } from "ttag";
+import { connect } from "react-redux";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 
+import { useConfirmation } from "metabase/hooks/use-confirmation";
+
+import {
+  DeleteRowFromDataAppPayload,
+  deleteRowFromDataApp,
+} from "metabase/dashboard/writeback-actions";
+
+import Question from "metabase-lib/lib/Question";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+
+import { DashboardWithCards } from "metabase-types/types/Dashboard";
 import { VisualizationProps } from "metabase-types/types/Visualization";
+import { State } from "metabase-types/store";
 
 import ListCell from "./ListCell";
 import TableFooter from "../TableSimple/TableFooter";
@@ -28,24 +42,44 @@ function getBoundingClientRectSafe(ref: React.RefObject<HTMLBaseElement>) {
   return ref.current?.getBoundingClientRect?.() ?? ({} as DOMRect);
 }
 
-export interface ListVizProps extends VisualizationProps {
+interface ListVizDispatchProps {
+  deleteRow: (payload: DeleteRowFromDataAppPayload) => void;
+}
+
+interface ListVizOwnProps extends VisualizationProps {
+  dashboard?: DashboardWithCards;
+  isDataApp?: boolean;
+  metadata: Metadata;
   getColumnTitle: (columnIndex: number) => string;
 }
 
+export type ListVizProps = ListVizOwnProps & ListVizDispatchProps;
+
+const mapDispatchToProps = {
+  deleteRow: deleteRowFromDataApp,
+};
+
 function List({
   card,
+  dashboard,
   data,
   series,
   settings,
+  metadata,
   height,
   className,
+  isDataApp,
   getColumnTitle,
   onVisualizationClick,
   visualizationIsClickable,
   getExtraDataForClick,
+  deleteRow,
 }: ListVizProps) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(1);
+
+  const { modalContent: confirmationModalContent, show: requestConfirmation } =
+    useConfirmation();
 
   const headerRef = useRef(null);
   const footerRef = useRef(null);
@@ -65,8 +99,50 @@ function List({
   }, [height, pageSize]);
 
   const checkIsVisualizationClickable = useCallback(
-    clickedItem => visualizationIsClickable?.(clickedItem),
+    (clickedItem) => visualizationIsClickable?.(clickedItem),
     [visualizationIsClickable],
+  );
+
+  const table = useMemo(() => {
+    const question = new Question(card, metadata);
+    if (question.isNative()) {
+      return null;
+    }
+    const query = question.query() as StructuredQuery;
+    if (!query.isRaw()) {
+      return null;
+    }
+    return query.table();
+  }, [card, metadata]);
+
+  const connectedDashCard = useMemo(() => {
+    return dashboard?.ordered_cards.find((dc) => dc.card_id === card.id);
+  }, [dashboard, card]);
+
+  const handleDelete = useCallback(
+    (row: unknown[]) => {
+      if (!table || !connectedDashCard) {
+        return;
+      }
+      const pkColumnIndex = table.fields.findIndex((field) => field.isPK());
+      const pkValue = row[pkColumnIndex];
+
+      if (typeof pkValue !== "string" && typeof pkValue !== "number") {
+        return;
+      }
+      requestConfirmation({
+        title: t`Delete?`,
+        message: t`This can't be undone.`,
+        onConfirm: async () => {
+          deleteRow({
+            id: pkValue,
+            table,
+            dashCard: connectedDashCard,
+          });
+        },
+      });
+    },
+    [table, connectedDashCard, deleteRow, requestConfirmation],
   );
 
   const { rows, cols } = data;
@@ -76,11 +152,11 @@ function List({
   const end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
 
   const handlePreviousPage = useCallback(() => {
-    setPage(p => p - 1);
+    setPage((p) => p - 1);
   }, []);
 
   const handleNextPage = useCallback(() => {
-    setPage(p => p + 1);
+    setPage((p) => p + 1);
   }, []);
 
   const rowIndexes = useMemo(() => _.range(0, rows.length), [rows]);
@@ -102,13 +178,13 @@ function List({
   const listColumnIndexes = useMemo(() => {
     const left = settings["list.columns"].left.map((idOrFieldRef: any) =>
       cols.findIndex(
-        col =>
+        (col) =>
           col.id === idOrFieldRef || _.isEqual(col.field_ref, idOrFieldRef),
       ),
     );
     const right = settings["list.columns"].right.map((idOrFieldRef: any) =>
       cols.findIndex(
-        col =>
+        (col) =>
           col.id === idOrFieldRef || _.isEqual(col.field_ref, idOrFieldRef),
       ),
     );
@@ -119,6 +195,12 @@ function List({
     (rowIndex, index) => {
       const ref = index === 0 ? firstRowRef : null;
       const row = data.rows[rowIndex];
+
+      const onDeleteClick = (event: React.SyntheticEvent) => {
+        handleDelete(row);
+        event.stopPropagation();
+      };
+
       return (
         <ListRow key={rowIndex} ref={ref} data-testid="table-row">
           {listColumnIndexes.map((columnIndex, slotIndex) => (
@@ -143,7 +225,10 @@ function List({
           )}
           {settings["buttons.delete"] && (
             <td>
-              <RowActionButton danger>{t`Delete`}</RowActionButton>
+              <RowActionButton
+                onClick={onDeleteClick}
+                danger
+              >{t`Delete`}</RowActionButton>
             </td>
           )}
         </ListRow>
@@ -157,39 +242,53 @@ function List({
       checkIsVisualizationClickable,
       getExtraDataForClick,
       onVisualizationClick,
+      handleDelete,
     ],
   );
 
   return (
-    <Root className={className}>
-      <ContentContainer>
-        <TableContainer className="scroll-show scroll-show--hover">
-          <Table className="fullscreen-normal-text fullscreen-night-text">
-            <thead ref={headerRef} className="hide">
-              <tr>{cols.map(renderColumnHeader)}</tr>
-            </thead>
-            <tbody>{paginatedRowIndexes.map(renderRow)}</tbody>
-          </Table>
-        </TableContainer>
-      </ContentContainer>
-      {pageSize < rows.length && (
-        <TableFooter
-          start={start}
-          end={end}
-          limit={limit}
-          total={rows.length}
-          handlePreviousPage={handlePreviousPage}
-          handleNextPage={handleNextPage}
-          ref={footerRef}
-        />
-      )}
-    </Root>
+    <>
+      <Root className={className}>
+        <ContentContainer>
+          <TableContainer className="scroll-show scroll-show--hover">
+            <Table className="fullscreen-normal-text fullscreen-night-text">
+              <thead ref={headerRef} className="hide">
+                <tr>{cols.map(renderColumnHeader)}</tr>
+              </thead>
+              <tbody>{paginatedRowIndexes.map(renderRow)}</tbody>
+            </Table>
+          </TableContainer>
+        </ContentContainer>
+        {pageSize < rows.length && (
+          <TableFooter
+            start={start}
+            end={end}
+            limit={limit}
+            total={rows.length}
+            handlePreviousPage={handlePreviousPage}
+            handleNextPage={handleNextPage}
+            ref={footerRef}
+          />
+        )}
+      </Root>
+      {confirmationModalContent}
+    </>
   );
 }
+
+const ConnectedList = connect<
+  unknown,
+  ListVizDispatchProps,
+  ListVizOwnProps,
+  State
+>(
+  null,
+  mapDispatchToProps,
+)(List);
 
 export default ExplicitSize({
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   refreshMode: (props: VisualizationProps) =>
     props.isDashboard && !props.isEditing ? "debounce" : "throttle",
-})(List);
+})(ConnectedList);
