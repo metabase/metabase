@@ -16,6 +16,12 @@ export const ArgumentSelector = styled(FieldValuesWidget)`
 
 export const ValuesPickerContainer = styled.div`
   grid-column: 2;
+  ul.input {
+    margin-bottom: 0;
+  }
+  input {
+    color: ${color("brand")};
+  }
 `;
 
 export const BetweenContainer = styled.div`
@@ -32,6 +38,5 @@ export const NumberSeparator = styled.span`
 `;
 
 export const NumberInput = styled(NumericInput)`
-  border-color: ${color("border")};
   width: 10rem;
 `;
