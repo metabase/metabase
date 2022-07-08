@@ -1,17 +1,17 @@
 import { DatasetQuery } from "./query";
 
-export interface UnsavedCard {
-  display: string;
-  dataset_query: DatasetQuery;
-  visualization_settings: VisualizationSettings;
-}
-
-export interface SavedCard extends UnsavedCard {
+export interface Card extends UnsavedCard {
   id: CardId;
   name: string;
   description: string | null;
   dataset: boolean;
   can_write: boolean;
+}
+
+export interface UnsavedCard {
+  display: string;
+  dataset_query: DatasetQuery;
+  visualization_settings: VisualizationSettings;
 }
 
 export type VisualizationSettings = {
@@ -26,5 +26,4 @@ export interface ModerationReview {
 }
 
 export type CardId = number;
-export type Card = SavedCard | UnsavedCard;
 export type ModerationReviewStatus = "verified";

@@ -1,4 +1,37 @@
-import { ModerationReview } from "metabase-types/api";
+import {
+  ModerationReview,
+  Card,
+  UnsavedCard,
+  VisualizationSettings,
+} from "metabase-types/api";
+import { createMockStructuredDatasetQuery } from "./query";
+
+export const createCard = (opts?: Partial<Card>): Card => ({
+  id: 1,
+  name: "Question",
+  description: null,
+  display: "table",
+  dataset_query: createMockStructuredDatasetQuery(),
+  visualization_settings: createMockVisualizationSettings(),
+  dataset: false,
+  can_write: false,
+  ...opts,
+});
+
+export const createUnsavedCard = (
+  opts?: Partial<UnsavedCard>,
+): UnsavedCard => ({
+  display: "table",
+  dataset_query: createMockStructuredDatasetQuery(),
+  visualization_settings: createMockVisualizationSettings(),
+  ...opts,
+});
+
+export const createMockVisualizationSettings = (
+  opts?: Partial<VisualizationSettings>,
+): VisualizationSettings => ({
+  ...opts,
+});
 
 export const createMockModerationReview = (
   opts?: Partial<ModerationReview>,
