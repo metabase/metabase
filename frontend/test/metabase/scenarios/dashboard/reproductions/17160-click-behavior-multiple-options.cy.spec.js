@@ -15,7 +15,7 @@ describe("issue 17160", () => {
   });
 
   it("should pass multiple filter values to questions and dashboards (metabase#17160-1)", () => {
-    setup(false);
+    setupRegularDashboards();
 
     // 1. Check click behavior connected to a question
     visitSourceDashboard();
@@ -47,7 +47,7 @@ describe("issue 17160", () => {
   });
 
   it("should pass multiple filter values to public questions and dashboards (metabase#17160-2)", () => {
-    setup(true);
+    setupPublicDashboards();
 
     // 1. Check click behavior connected to a public question
     visitPublicSourceDashboard();
@@ -279,6 +279,14 @@ function createTargetDashboard() {
           return dashboard_id;
         });
     });
+}
+
+function setupRegularDashboards() {
+  return setup(false);
+}
+
+function setupPublicDashboards() {
+  return setup(true);
 }
 
 function visitSourceDashboard() {
