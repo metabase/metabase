@@ -348,6 +348,7 @@
   [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl is_write], :as body} :body}]
   {name                   su/NonBlankString
+   dataset_query          su/Map
    parameters             (s/maybe [su/Parameter])
    parameter_mappings     (s/maybe [su/ParameterMapping])
    description            (s/maybe su/NonBlankString)
@@ -394,6 +395,10 @@
   (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
             (api/column-will-change? :embedding_params card-before-updates card-updates))
     (validation/check-embedding-enabled)
+    ;; you can't embed an is_write (QueryAction) Card because they can't be ran by the normal QP pathway for results
+    (when (:is_write card-before-updates)
+      (throw (ex-info (tru "You cannot enable embedding for an is_write Card.")
+                      {:status-code 400})))
     (api/check-superuser)))
 
 (defn- publish-card-update!
@@ -878,11 +883,17 @@
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Card card-id))
-  {:uuid (or (db/select-one-field :public_uuid Card :id card-id)
-             (u/prog1 (str (UUID/randomUUID))
-               (db/update! Card card-id
-                 :public_uuid       <>
-                 :made_public_by_id api/*current-user-id*)))})
+  (let [{existing-public-uuid :public_uuid, is-write? :is_write} (db/select-one [Card :public_uuid :is_write] :id card-id)]
+    ;; don't allow sharing `is_write` (QueryAction) Cards, since they can't be executed for results under the public QP
+    ;; pathway
+    (when is-write?
+      (throw (ex-info (tru "You cannot share an is_write Card.")
+                      {:status-code 400})))
+    {:uuid (or existing-public-uuid
+               (u/prog1 (str (UUID/randomUUID))
+                 (db/update! Card card-id
+                   :public_uuid       <>
+                   :made_public_by_id api/*current-user-id*)))}))
 
 (api/defendpoint DELETE "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."

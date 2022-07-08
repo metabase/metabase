@@ -384,6 +384,21 @@
           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
                                                              :parameters             "abc"})))))
 
+(deftest create-card-disallow-setting-enable-embedding-test
+  (testing "POST /api/card"
+    (testing "Ignore values of `enable_embedding` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
+      ;; should be ignored regardless of the value of the `enable-embedding` Setting.
+      (doseq [enable-embedding? [true false]]
+        (mt/with-temporary-setting-values [enable-embedding enable-embedding?]
+          (mt/with-model-cleanup [Card]
+            (is (schema= {:enable_embedding (s/eq false)
+                          s/Keyword         s/Any}
+                         (mt/user-http-request :crowberto :post 202 "card" {:name                   "My Card"
+                                                                            :display                :table
+                                                                            :dataset_query          (mt/mbql-query venues)
+                                                                            :visualization_settings {}
+                                                                            :enable_embedding       true})))))))))
+
 (deftest save-empty-card-test
   (testing "POST /api/card"
     (testing "Should be able to save an empty Card"
@@ -2081,6 +2096,24 @@
       (testing "Cannot share a Card that doesn't exist"
         (is (= "Not found."
                (mt/user-http-request :crowberto :post 404 (format "card/%d/public_link" Integer/MAX_VALUE))))))))
+
+(deftest disallow-sharing-is-write-card-test
+  (testing "POST /api/card/:id/public_link"
+    (testing "Disallow sharing an is_write (QueryAction) Card (#22846)"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp Card [{card-id :id} {:is_write true}]
+          (is (= "You cannot share an is_write Card."
+                 (mt/user-http-request :crowberto :post 400 (format "card/%d/public_link" card-id)))))))))
+
+(deftest disallow-embbeding-is-write-card-test
+  (testing "PUT /api/card/:id"
+    (testing "Disallow making an is_write (QueryAction) Card embeddable (#22846)"
+      (mt/with-temporary-setting-values [enable-embedding true]
+        (mt/with-temp Card [{card-id :id} {:is_write true}]
+          (is (= "You cannot enable embedding for an is_write Card."
+                 (mt/user-http-request :crowberto :put 400
+                                       (format "card/%d" card-id)
+                                       {:enable_embedding true}))))))))
 
 (deftest share-already-shared-card-test
   (testing "POST /api/card/:id/public_link"

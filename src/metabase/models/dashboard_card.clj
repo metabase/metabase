@@ -8,6 +8,7 @@
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -178,6 +179,11 @@
   [dashboard-card :- NewDashboardCard]
   (let [{:keys [dashboard_id card_id parameter_mappings visualization_settings sizeX sizeY row col series]
          :or   {sizeX 2, sizeY 2, series []}} dashboard-card]
+    ;; make sure the Card isn't a writeback QueryAction. It doesn't make sense to add these to a Dashboard since we're
+    ;; not supposed to be executing them for results
+    (when (db/select-one-field :is_write Card :id card_id)
+      (throw (ex-info (tru "You cannot add an is_write Card to a Dashboard.")
+                      {:status-code 400})))
     (db/transaction
      (let [dashboard-card (db/insert! DashboardCard
                                       :dashboard_id           dashboard_id
