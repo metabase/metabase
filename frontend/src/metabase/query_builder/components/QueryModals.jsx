@@ -2,11 +2,11 @@
 import React from "react";
 import { connect } from "react-redux";
 
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import Questions from "metabase/entities/questions";
-import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 
@@ -29,9 +29,7 @@ import BulkFilterModal from "metabase/query_builder/components/filters/modals/Bu
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
-import { ToastRoot } from "metabase/dashboard/components/DashboardMoveModal.styled";
-import Icon from "metabase/components/Icon";
-import { color } from "metabase/lib/colors";
+import QuestionMoveToast from "./QuestionMoveToast";
 
 const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
@@ -257,20 +255,5 @@ class QueryModals extends React.Component {
     ) : null;
   }
 }
-
-const QuestionMoveToast = ({ isModel, collectionId }) => {
-  return (
-    <ToastRoot>
-      <Icon name="all" mr={1} color="white" />
-      {isModel
-        ? jt`Model moved to ${(
-            <Collections.Link id={collectionId} ml={1} color={color("brand")} />
-          )}`
-        : jt`Question moved to ${(
-            <Collections.Link id={collectionId} ml={1} color={color("brand")} />
-          )}`}
-    </ToastRoot>
-  );
-};
 
 export default connect(null, mapDispatchToProps)(QueryModals);
