@@ -194,6 +194,9 @@ describe("scenarios > public", () => {
           cy.contains("Add filter").click();
 
           cy.contains(COUNT_DOOHICKEY);
+
+          // Enter full-screen button
+          cy.icon("expand");
         });
       }),
     );
