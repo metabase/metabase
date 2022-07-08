@@ -7,7 +7,7 @@ const { REVIEWS_ID } = SAMPLE_DATABASE;
 
 const reviewsDataModelPage = `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${REVIEWS_ID}`;
 
-describe.skip("issue 21984", () => {
+describe("issue 21984", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/table/*/query_metadata?**").as("tableMetadata");
 
