@@ -1,5 +1,4 @@
 import { restore, visitDashboard } from "__support__/e2e/helpers";
-
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -17,9 +16,10 @@ describe("issue 17160", () => {
 
   it("should pass multiple filter values to questions and dashboards (metabase#17160-1)", () => {
     setup(false);
+
+    // 1. Check click behavior connected to a question
     visitSourceDashboard();
 
-    // Check click behavior connected to a question
     cy.findAllByText("click-behavior-question-label").eq(0).click();
     cy.wait("@cardQuery");
 
@@ -27,10 +27,9 @@ describe("issue 17160", () => {
 
     assertMultipleValuesFilterState();
 
-    // Go back to the dashboard
+    // 2. Check click behavior connected to a dashboard
     visitSourceDashboard();
 
-    // Check click behavior connected to a dashboard
     cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
 
     cy.url().should("include", "/dashboard");
@@ -43,23 +42,23 @@ describe("issue 17160", () => {
   it("should pass multiple filter values to public questions and dashboards (metabase#17160-2)", () => {
     setup(true);
 
+    // 1. Check click behavior connected to a public question
     visitPublicSourceDashboard();
 
-    // Check click behavior connected to a question
     cy.findAllByText("click-behavior-question-label").eq(0).click();
 
     cy.url().should("include", "/public/question");
 
     assertMultipleValuesFilterState();
 
-    // Go back to the source dashboard
+    // 2. Check click behavior connected to a publicdashboard
     visitPublicSourceDashboard();
 
-    // Check click behavior connected to a dashboard
     cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
 
     cy.url().should("include", "/public/dashboard");
     cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
+
     cy.findByText(TARGET_DASHBOARD_NAME);
 
     assertMultipleValuesFilterState();
@@ -246,7 +245,7 @@ function createTargetDashboard() {
         ],
       });
 
-      // Create a click behavior and resize the question card
+      // Resize the question card and connect the filter to it
       return cy
         .request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
           cards: [
