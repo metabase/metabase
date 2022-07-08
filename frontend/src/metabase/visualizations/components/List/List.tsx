@@ -220,12 +220,13 @@ function List({
           ))}
           {settings["buttons.edit"] && (
             <td>
-              <RowActionButton>{t`Edit`}</RowActionButton>
+              <RowActionButton disabled={!isDataApp}>{t`Edit`}</RowActionButton>
             </td>
           )}
           {settings["buttons.delete"] && (
             <td>
               <RowActionButton
+                disabled={!isDataApp}
                 onClick={onDeleteClick}
                 danger
               >{t`Delete`}</RowActionButton>
@@ -239,6 +240,7 @@ function List({
       data,
       series,
       settings,
+      isDataApp,
       checkIsVisualizationClickable,
       getExtraDataForClick,
       onVisualizationClick,
@@ -271,7 +273,7 @@ function List({
           />
         )}
       </Root>
-      {confirmationModalContent}
+      {isDataApp && confirmationModalContent}
     </>
   );
 }
