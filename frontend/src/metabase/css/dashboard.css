@@ -58,6 +58,7 @@
 
 .Dashboard.Dashboard--night .DashCard .Card svg text {
   fill: color-mod(var(--color-text-white) alpha(-14%)) !important;
+  stroke: none !important;
 }
 
 .Dashboard.Dashboard--night .DashCard .Card {
