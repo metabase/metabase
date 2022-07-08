@@ -117,7 +117,7 @@
           (testing "for Collections"
             (is (= 100 (count (dir->file-set (io/file dump-dir "Collection")))))
             (doseq [{:keys [entity_id slug] :as coll} (get entities "Collection")
-                    :let [filename (str entity_id "+" (#'u.yaml/clean-string slug) ".yaml")]]
+                    :let [filename (str entity_id "+" (#'u.yaml/truncate-label slug) ".yaml")]]
               (is (= (dissoc coll :serdes/meta)
                      (yaml/from-file (io/file dump-dir "Collection" filename))))))
 
@@ -173,7 +173,7 @@
               (is (= (into #{} (comp cat
                                      (map (fn [entity]
                                             (mapv #(cond-> %
-                                                     (:label %) (update :label #'u.yaml/clean-string))
+                                                     (:label %) (update :label #'u.yaml/truncate-label))
                                                   (serdes.base/serdes-path entity)))))
                            (vals entities))
                      (into #{} (ingest/ingest-list ingestable)))))

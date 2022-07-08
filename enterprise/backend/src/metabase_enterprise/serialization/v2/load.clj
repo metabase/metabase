@@ -28,7 +28,7 @@
   [{:keys [expanding ingestion seen] :as ctx} path]
   (cond
     (expanding path) (throw (ex-info (format "Circular dependency on %s" (pr-str path)) {:path path}))
-    (seen path)      ctx ; Already been done, just skip it.
+    (seen path) ctx ; Already been done, just skip it.
     :else (let [ingested (serdes.ingest/ingest-one ingestion path)
                 deps     (serdes.base/serdes-dependencies ingested)
                 ctx      (-> ctx

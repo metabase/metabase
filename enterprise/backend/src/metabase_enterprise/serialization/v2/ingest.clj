@@ -7,7 +7,7 @@
 
 (p/defprotocol+ Ingestable
   ;; Represents a data source for deserializing previously-exported appdb content into this Metabase instance.
-  ;; This is written as a protocol since overriding it with [[reify]] if useful for testing.
+  ;; This is written as a protocol since overriding it with [[reify]] is useful for testing.
   (ingest-list
     [this]
     "Return a reducible stream of `:serdes/meta`-style abstract paths, one for each entity in the dump.

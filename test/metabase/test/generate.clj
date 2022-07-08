@@ -207,9 +207,7 @@
    :field                        {:prefix      :field
                                   :spec        ::field
                                   :insert!     {:model Field}
-                                  :relations   {:table_id [:table :id]}
-                                  ;:constraints {:table_id #{:uniq}}
-                                  }
+                                  :relations   {:table_id [:table :id]}}
    :metric                       {:prefix    :metric
                                   :spec      ::metric
                                   :insert!   {:model Metric}
