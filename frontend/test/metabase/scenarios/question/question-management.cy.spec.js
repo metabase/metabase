@@ -37,7 +37,6 @@ describe("managing question from the question's details sidebar", () => {
             });
 
             it("should be able to edit question details (metabase#11719-1)", () => {
-              // cy.skipOn(user === "nodata");
               cy.findByTestId("saved-question-header-title")
                 .click()
                 .type("1")
@@ -47,8 +46,6 @@ describe("managing question from the question's details sidebar", () => {
             });
 
             it("should be able to edit a question's description", () => {
-              // cy.skipOn(user === "nodata");
-
               questionInfoButton().click();
 
               cy.findByPlaceholderText("Add description")
@@ -62,7 +59,6 @@ describe("managing question from the question's details sidebar", () => {
 
             describe("move", () => {
               it("should be able to move the question (metabase#11719-2)", () => {
-                // cy.skipOn(user === "nodata");
                 openNavigationSidebar();
                 navigationSidebar().within(() => {
                   // Highlight "Our analytics"
