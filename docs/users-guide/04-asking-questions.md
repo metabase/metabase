@@ -92,6 +92,12 @@ If your Metabase administrators have created special named filters for the table
 
 If you have a more complex filter you're trying to express, you can pick **Custom Expression** from the add filter menu to create a filter expression. You can use comparison operators like greater than, `>`, or less than ,`<`, as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`. Learn more about writing [expressions](./expressions.md) or skip right to the [list of expressions](expressions-list.md).
 
+### Filter modal
+
+When visualizing a question, if you click on the **Filter** button, Metabase will pop up a filter modal. The options for filtering will differ depending on the field type.
+
+![Filter modal](./images/asking-questions/filter-modal.png)
+
 ## Summarizing and grouping by
 
 ![Summarizing](./images/notebook/summarize-step.png)
