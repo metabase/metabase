@@ -9,7 +9,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
 import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
 import Tooltip from "metabase/components/Tooltip";
-import Button from "metabase/core/components/Button";
+import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
 
 import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
 
@@ -137,20 +137,24 @@ export const getDashboardActions = (
     );
   }
 
-  if (!isEditing && !isEmpty && isFullscreen) {
+  if (!isEditing && !isEmpty && (isPublic || isFullscreen)) {
     // option click to enter fullscreen without making the browser go fullscreen
     buttons.push(
-      <Tooltip key="fullscreen" tooltip={t`Exit fullscreen`}>
+      <Tooltip
+        key="fullscreen"
+        tooltip={isFullscreen ? t`Exit fullscreen` : t`Enter fullscreen`}
+      >
         <span
           data-metabase-event={"Dashboard;Fullscreen Mode;" + !isFullscreen}
         >
-          <Button
+          <DashboardHeaderButton
             onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
-            borderless
-            icon="contract"
-            iconSize={16}
-            onlyIcon
-          />
+          >
+            <FullscreenIcon
+              className="text-brand-hover"
+              isFullscreen={isFullscreen}
+            />
+          </DashboardHeaderButton>
         </span>
       </Tooltip>,
     );
