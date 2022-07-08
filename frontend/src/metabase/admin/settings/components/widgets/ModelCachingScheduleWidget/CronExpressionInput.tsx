@@ -3,13 +3,19 @@ import cx from "classnames";
 import { t, jt } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import { validateCronExpression } from "metabase/lib/cron";
 
 import {
   CustomScheduleLabel,
   ErrorMessage,
+  InputContainer,
+  InfoIcon,
   StyledInput,
+  PopoverContent,
+  PopoverTitle,
+  PopoverText,
 } from "./CronExpressionInput.styled";
 
 function validateExpressionHasNoYearComponent(cronExpression: string) {
@@ -30,7 +36,7 @@ function CustomScheduleInputHint() {
     >{t`cron syntax`}</ExternalLink>
   );
   return (
-    <CustomScheduleLabel>{jt`Enter ${cronSyntaxDocsLink} here`}</CustomScheduleLabel>
+    <CustomScheduleLabel>{jt`Our ${cronSyntaxDocsLink} is a string of 5 fields separated by white spaces`}</CustomScheduleLabel>
   );
 }
 
@@ -78,6 +84,32 @@ function Input({
   );
 }
 
+function CronFormatPopover({ children }: { children: React.ReactElement }) {
+  const descriptions = [
+    t`Minutes` + ": 0-59 , - * /",
+    t`Hours` + ": 0-23 , - * /",
+    t`Day of month` + ": 1-31 , - * ? / L W",
+    t`Month` + ": 1-12 or JAN-DEC , - * /",
+    t`Day of week` + ": 1-7 or SUN-SAT , - * ? / L #",
+  ];
+
+  return (
+    <TippyPopover
+      placement="top"
+      content={
+        <PopoverContent>
+          <PopoverTitle>{t`Allowed values`}</PopoverTitle>
+          {descriptions.map((text, i) => (
+            <PopoverText key={i}>{text}</PopoverText>
+          ))}
+        </PopoverContent>
+      }
+    >
+      {children}
+    </TippyPopover>
+  );
+}
+
 function CronExpressionInput({ onChange, onBlurChange, ...props }: InputProps) {
   const [error, setError] = useState<string | null>(null);
 
@@ -111,12 +143,17 @@ function CronExpressionInput({ onChange, onBlurChange, ...props }: InputProps) {
   return (
     <>
       <CustomScheduleInputHint />
-      <Input
-        {...props}
-        hasError={!!error}
-        onChange={handleChange}
-        onBlurChange={handleBlur}
-      />
+      <InputContainer>
+        <Input
+          {...props}
+          hasError={!!error}
+          onChange={handleChange}
+          onBlurChange={handleBlur}
+        />
+        <CronFormatPopover>
+          <InfoIcon name="info" />
+        </CronFormatPopover>
+      </InputContainer>
       {error && <ErrorMessage>{error}</ErrorMessage>}
     </>
   );
