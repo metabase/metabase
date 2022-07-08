@@ -22,7 +22,7 @@ If you've set a custom font for your Metabase, that font will be selectable as "
 
 ### Use instance font
 
-If you select "Use instance font", the font for your embedded item will sync with whatever you've set your Metabase font to. So if you change the font for your Metabase (your "instance"), the font used for the embedded item will change as well. There's no need to update the embedding code; the embedded item's font should update automatically (though you may need to refresh your browser).
+If you select "Use instance font", the font for your embedded item will sync with whatever you've set your [Metabase font](./fonts.md) to. So if you change the font for your Metabase (your "instance"), the font used for the embedded item will change as well. There's no need to update the embedding code; the embedded item's font should update automatically (though you may need to refresh your browser).
 
 If you want to use a font different from your current instance font, you can select one of the [included fonts](./fonts.md). You cannot have multiple custom fonts.
 
@@ -40,5 +40,6 @@ You can remove the export icon from charts. Note that removing the icon here doe
 
 - [Embedding Metabase in other applications](../administration-guide/13-embedding.md)
 - [White labeling Metabase](./whitelabeling.md)
+- [Fonts](./fonts.md)
 - [Learn embedding](https://www.metabase.com/learn/embedding)
 

@@ -11,12 +11,13 @@ On paid plans, you can customize the font Metabase uses (the default is [Lato](h
 You can set fonts for:
 
 - [Your entire Metabase](./whitelabeling.md)
-- [Individual embedded charts and dashboards](#customizing-the-font-for-individual-embedded-items)
+- [Individual embedded charts and dashboards](./customize-embeds.md#setting-fonts-for-embedded-items)
 
 ## Included fonts
 
 To change your Metabase font, click on the **gear** icon in the upper right of the screen and select **Admin settings** > **Settings** > **Appearance**. Under **Font**, select from a list of included fonts.
 
+- [Custom font](#custom-fonts)
 - [Lato](https://fonts.google.com/specimen/Lato)
 - [Lora](https://fonts.google.com/specimen/Lora)
 - [Merriweather](https://fonts.google.com/specimen/Merriweather)
@@ -36,7 +37,6 @@ To change your Metabase font, click on the **gear** icon in the upper right of t
 - [Slabo 27px](https://fonts.google.com/specimen/Slabo+27px)
 - [Source Sans Pro](https://fonts.google.com/specimen/Source+Sans+Pro)
 - [Ubuntu](https://fonts.google.com/specimen/Ubuntu)
-- [Custom](#custom-fonts)
 
 Comic Sans is currently not included.
 
@@ -66,7 +66,7 @@ For custom fonts, Metabase supports woff, woff2, ttf files. If the URL you provi
 
 To get a URL for a [Google Font](https://fonts.google.com/), visit the Google Font page and select the style you want to use. Then make an HTTP request to get the URL of the tff file. For example, say we want to use Roboto Mono: here's how we could get the font file URLs for both the 400 and 700 styles:
 
-Paste the URL https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap. This URL will return a response like:
+We'd paste the URL [https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap](https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap) into our browser's address bar. This URL will return a response like:
 
 ```
 * cyrillic-ext */
@@ -90,10 +90,10 @@ Paste the URL https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&
 ...
 ```
 
-For latin text, copy the relevant src URLs for each style, in this case:
+For latin text, we'd copy the relevant src URLs for each style, in this case:
 
-- For 400: https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2
-- For 700: https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2
+- For 400: [https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2](https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2)
+- For 700: [https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2](https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2)
 
 
 And paste those URLS in the relevant input fields in **Admin settings** > **Settings** > **Appearance** > **Font** section where it says "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do."

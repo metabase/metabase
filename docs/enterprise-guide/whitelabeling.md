@@ -64,8 +64,10 @@ This message is the text Metabase presents when it's loading a query. Options in
 
 ## Metabot
 
+![Metabot toggle](./images/appearance/metabot.png)
+
 You can decide whether to display our little friend on the home page.
 
 ## Further reading
 
-To learn more, check out this article on [branding your Metabase instance](https://www.metabase.com/blog/white-label/index.html).
+- [Brand your Metabase](https://www.metabase.com/blog/white-label/index.html).
