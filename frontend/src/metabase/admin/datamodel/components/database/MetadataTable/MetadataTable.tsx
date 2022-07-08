@@ -57,7 +57,9 @@ const MetadataTable = ({
     }
   };
 
-  const handleDescriptionChange: ChangeEventHandler<HTMLInputElement> = event => {
+  const handleDescriptionChange: ChangeEventHandler<
+    HTMLInputElement
+  > = event => {
     handlePropertyUpdate("description", event.target.value);
   };
 
