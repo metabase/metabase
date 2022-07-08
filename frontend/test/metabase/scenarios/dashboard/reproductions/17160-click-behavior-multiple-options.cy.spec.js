@@ -30,7 +30,14 @@ describe("issue 17160", () => {
     // 2. Check click behavior connected to a dashboard
     visitSourceDashboard();
 
-    cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
+    cy.get("@targetDashboardId").then(id => {
+      cy.intercept("POST", `/api/dashboard/${id}/dashcard/*/card/*/query`).as(
+        "targetDashcardQuery",
+      );
+
+      cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
+      cy.wait("@targetDashcardQuery");
+    });
 
     cy.url().should("include", "/dashboard");
     cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
@@ -126,6 +133,8 @@ function setup(shouldUsePublicLinks) {
           });
 
           createTargetDashboard().then(targetDashboardId => {
+            cy.wrap(targetDashboardId).as("targetDashboardId");
+
             // Create a click behavior and resize the question card
             cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
               cards: [
