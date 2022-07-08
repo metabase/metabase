@@ -32,6 +32,8 @@ export const HeaderRoot = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   ${breakpointMaxSmall} {
     flex-direction: column;
     align-items: baseline;
+    padding-left: 0px;
+    padding-right: 0px;
   }
 `;
 
@@ -90,6 +92,19 @@ export const HeaderContent = styled.div<HeaderContentProps>`
       opacity: 1;
     }
   }
+
+  ${breakpointMaxSmall} {
+    padding-top: 0;
+    padding-left: 1rem;
+    padding-right: 1rem;
+
+    ${HeaderCaptionContainer} {
+      top: 0px;
+    }
+    ${HeaderLastEditInfoLabel} {
+      opacity: 1;
+    }
+  }
 `;
 
 export const HeaderBadgesDivider = styled.span`
@@ -125,6 +140,10 @@ export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBar
   ${breakpointMaxSmall} {
     width: 100%;
     margin-bottom: 6px;
+    padding-top: 0.375rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    border-top: 1px solid ${color("border")};
   }
 
   ${Button.Root} {
