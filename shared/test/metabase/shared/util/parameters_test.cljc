@@ -1,11 +1,6 @@
 (ns metabase.shared.util.parameters-test
-  #?@
-   (:clj
-    [(:require [clojure.test :as t]
-               [metabase.shared.util.parameters :as params])]
-    :cljs
-    [(:require [clojure.test :as t]
-               [metabase.shared.util.parameters :as params])]))
+  (:require [clojure.test :as t]
+            [metabase.shared.util.parameters :as params]))
 
 (t/deftest parse-tag-names-test
   (t/testing "Tag names are correctly parsed from text card contents"
