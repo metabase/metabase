@@ -59,7 +59,6 @@ export function getParameterMappingOptions(
   dashcard = null,
 ) {
   if (dashcard && isVirtualDashCard(dashcard)) {
-    console.log(dashcard);
     const tagNames = tag_names(dashcard.visualization_settings.text || "");
     return tagNames ? tagNames.map(buildTextTagOption) : [];
   }

@@ -28,7 +28,7 @@
   "Given the content of a text dashboard card, return a set of the unique names of template tags in the text."
   [text]
   #? (:clj (tag-names-impl text)
-      :cljs (clj->js tag-names-impl text)))
+      :cljs (clj->js (tag-names-impl text))))
 
 (defn- normalize-parameter
   "Normalize a single parameter by calling [[mbql.normalize/normalize-fragment]] on it, and converting all string keys
