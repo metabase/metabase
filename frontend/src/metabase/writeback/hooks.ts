@@ -1,13 +1,8 @@
 import React from "react";
 import { t } from "ttag";
-import cx from "classnames";
-import { useMutation } from "react-query";
-
-import { ActionsApi } from "metabase/services";
-import { ActionType, CreateAction } from "./types";
 import { isEqual } from "lodash";
 
-type CreateActionOpts = { onSuccess?: () => void; onError?: () => void };
+import { ActionType, WritebackAction } from "./types";
 
 type Data = any;
 
@@ -15,68 +10,59 @@ export type CreateActionHook = {
   type: ActionType;
 
   name: string;
-  setName: (name: string) => void;
+  onNameChange: (name: string) => void;
 
   description: string;
-  setDescription: (description: string) => void;
+  onDescriptionChange: (description: string) => void;
 
   data: Data;
-  setData: (data: Data) => void;
+  onDataChange: (data: Data) => void;
 
-  save: () => void;
   isDirty: boolean;
   isValid: boolean;
-  isSaving: boolean;
 };
 
-export const useCreateAction = (
-  type: ActionType,
-  { onSuccess, onError }: CreateActionOpts = {},
+const getName = (action: Partial<WritebackAction>): string => {
+  if (action.type === "http") {
+    return action.name || t`New Action`;
+  } else if (action.type === "row") {
+    return action.card?.name || t`New Action`;
+  } else {
+    throw new Error("Action type is not supported");
+  }
+};
+
+const getDescription = (action: Partial<WritebackAction>): string => {
+  if (action.type === "http") {
+    return action?.description || "";
+  } else if (action.type === "row") {
+    return action.card?.description || "";
+  } else {
+    throw new Error("Action type is not supported");
+  }
+};
+
+const getData = (action: Partial<WritebackAction>): unknown => {
+  if (action.type === "http") {
+    const { name, description, ...rest } = action;
+    return rest || {};
+  } else if (action.type === "row") {
+    return action.card || {};
+  } else {
+    throw new Error("Action type is not supported");
+  }
+};
+
+export const useWritebackAction = (
+  action: Partial<WritebackAction> & { type: ActionType },
 ): CreateActionHook => {
-  const [name, setName] = React.useState<string>("New Action");
-  const [description, setDescription] = React.useState<string>("");
-  const [data, setData] = React.useState<Data>({});
-  const [isDirty, setIsDirty] = React.useState<boolean>(false);
-
-  const mutation = useMutation(
-    (actionData: CreateAction<ActionType>) => {
-      return ActionsApi.create(actionData);
-    },
-    {
-      onSuccess: () => {
-        setIsDirty(false);
-        onSuccess?.();
-      },
-      onError: () => {
-        onError?.();
-      },
-    },
+  const { type } = action;
+  const [name, setName] = React.useState<string>(getName(action));
+  const [description, setDescription] = React.useState<string>(
+    getDescription(action),
   );
-
-  const save = React.useCallback(() => {
-    if (type === "http") {
-      const template = {
-        method: data.template.method || "GET",
-        url: data.template.url,
-        body: data.template.body || "{}",
-        headers: data.template.headers || "{}",
-        parameters: {},
-        parameter_mappings: {},
-      };
-      const error_handle = data.error_handle || {};
-      const response_handle = data.error_handle || {};
-      mutation.mutate({
-        name,
-        type,
-        description,
-        template,
-        error_handle,
-        response_handle,
-      });
-    } else {
-      throw new Error(`Unknown action type: ${type}`);
-    }
-  }, [name, type, description, mutation, data]);
+  const [data, setData] = React.useState<Data>(getData(action));
+  const [isDirty, setIsDirty] = React.useState<boolean>(false);
 
   const isValid = React.useMemo(() => {
     if (!name) {
@@ -95,7 +81,7 @@ export const useCreateAction = (
 
   return {
     name,
-    setName: newName => {
+    onNameChange: newName => {
       if (name !== newName) {
         setName(newName);
         setIsDirty(true);
@@ -103,15 +89,14 @@ export const useCreateAction = (
     },
     type,
     description,
-    setDescription: newDescription => {
+    onDescriptionChange: newDescription => {
       if (newDescription !== description) {
         setDescription(newDescription);
         setIsDirty(true);
       }
     },
-    save,
     data,
-    setData: newData => {
+    onDataChange: newData => {
       if (!isEqual(data, newData)) {
         setData(newData);
         setIsDirty(true);
@@ -119,6 +104,5 @@ export const useCreateAction = (
     },
     isDirty,
     isValid,
-    isSaving: mutation.isLoading,
   };
 };

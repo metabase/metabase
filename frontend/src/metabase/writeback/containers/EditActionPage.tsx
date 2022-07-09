@@ -1,23 +1,25 @@
 import React from "react";
-import { connect, Dispatch } from "react-redux";
 
 import Header from "metabase/writeback/components/HttpAction/Header";
 import HttpAction from "metabase/writeback/components/HttpAction/HttpAction";
-import { ActionType } from "metabase/writeback/types";
+import { ActionType, WritebackAction } from "metabase/writeback/types";
 import { useWritebackAction } from "../hooks";
+import _ from "underscore";
 import Actions from "metabase/entities/actions";
-import {
-  createHttpAction,
-  CreateHttpActionPayload,
-} from "metabase/query_builder/actions";
+import { State } from "metabase-types/store/state";
+import { connect } from "react-redux";
 
 type Props = {
-  createHttpAction: (payload: CreateHttpActionPayload) => void;
+  action: WritebackAction;
+  updateAction: (
+    action: WritebackAction,
+    values: Partial<WritebackAction>,
+  ) => void;
 };
 
-const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
-  const [type, setType] = React.useState<ActionType>("http");
+const EditActionPage: React.FC<Props> = ({ action, updateAction }) => {
   const {
+    type,
     name,
     onNameChange,
     description,
@@ -26,18 +28,15 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
     onDataChange,
     isDirty,
     isValid,
-  } = useWritebackAction({ type });
+  } = useWritebackAction(action);
 
-  console.log(Actions);
+  console.log({ action });
 
-  const onCommit = React.useCallback(() => {
-    if (type === "http") {
-      const entity = { name, description, ...data };
-      createHttpAction(entity);
-    } else {
-      throw new Error("Action type is not supported");
-    }
-  }, [type, name, description, data]);
+  const onCommit = () => {
+    console.log("Eddit on commit");
+    const update = (action as any).update;
+    updateAction(action, { name, description, ...data });
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -45,12 +44,11 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
         name={name}
         onNameChange={onNameChange}
         type={type}
-        setType={setType}
         canSave={isDirty && isValid}
         onCommit={onCommit}
       />
       <div className="flex-grow bg-white">
-        <CreateAction
+        <EditAction
           type={type}
           description={description}
           onDescriptionChange={onDescriptionChange}
@@ -71,7 +69,7 @@ type InnerProps = {
   onDataChange: any;
 };
 
-const CreateAction: React.FC<InnerProps> = ({
+const EditAction: React.FC<InnerProps> = ({
   type,
   description,
   onDescriptionChange,
@@ -96,8 +94,19 @@ const CreateAction: React.FC<InnerProps> = ({
 };
 
 const mapDispatchToProps = (dispatch: any) => ({
-  createHttpAction: (payload: CreateHttpActionPayload) =>
-    dispatch(createHttpAction(payload)),
+  updateAction: async (
+    action: WritebackAction,
+    values: Partial<WritebackAction>,
+  ) => {
+    await dispatch(Actions.actions.update(action, values));
+  },
 });
 
-export default connect(null, mapDispatchToProps)(CreateActionPage);
+export default _.compose(
+  connect(null, mapDispatchToProps),
+  Actions.load({
+    id: (_state: State, { params }: { params: { actionId: number } }) =>
+      params.actionId,
+    wrapped: true,
+  }),
+)(EditActionPage);

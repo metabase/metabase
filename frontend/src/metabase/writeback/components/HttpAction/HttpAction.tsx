@@ -10,20 +10,21 @@ import UrlInput from "./UrlInput";
 import Selector from "./Selector";
 import EditableText from "metabase/core/components/EditableText";
 import ParametersTab from "./ParametersTab";
+import Actions from "metabase/entities/actions";
 
 type Props = {
   description: string;
-  setDescription: (description: string) => void;
+  onDescriptionChange: (description: string) => void;
 
   data: any;
-  setData: (data: any) => void;
+  onDataChange: (data: any) => void;
 };
 
-const CreateHttpAction: React.FC<Props> = ({
-  setData,
+const HttpAction: React.FC<Props> = ({
+  onDataChange,
   data,
   description,
-  setDescription,
+  onDescriptionChange,
 }) => {
   const { protocol, url, method, initialHeaders, body } = React.useMemo(() => {
     const [protocol, url] = (data.url || "https://").split("://", 2);
@@ -41,29 +42,29 @@ const CreateHttpAction: React.FC<Props> = ({
   const [headers, setHeaders] = React.useState<Headers>(initialHeaders);
 
   return (
-    <CreateHttpActionInner
+    <HttpActionInner
       description={description}
-      setDescription={setDescription}
+      onDescriptionChange={onDescriptionChange}
       method={method}
       setMethod={value => {
-        setData({ method: value });
+        onDataChange({ method: value });
       }}
       url={url}
       setUrl={value => {
-        setData({ url: `${protocol}://${value}` });
+        onDataChange({ url: `${protocol}://${value}` });
       }}
       protocol={protocol}
       setProtocol={value => {
-        setData({ url: `${value}://${url}` });
+        onDataChange({ url: `${value}://${url}` });
       }}
       body={body}
       setBody={value => {
-        setData({ body: value });
+        onDataChange({ body: value });
       }}
       headers={headers}
       setHeaders={value => {
         setHeaders(value);
-        setData({
+        onDataChange({
           headers: Object.fromEntries(
             value.map(({ key, value }) => [key, value]),
           ),
@@ -90,10 +91,10 @@ type InnerProps = {
   setHeaders: (newValue: Headers) => void;
 
   description: string;
-  setDescription: (description: string) => void;
+  onDescriptionChange: (description: string) => void;
 };
 
-const CreateHttpActionInner: React.FC<InnerProps> = ({
+const HttpActionInner: React.FC<InnerProps> = ({
   method,
   setMethod,
   url,
@@ -105,7 +106,7 @@ const CreateHttpActionInner: React.FC<InnerProps> = ({
   headers,
   setHeaders,
   description,
-  setDescription,
+  onDescriptionChange,
 }) => {
   const [currentParamTab, setCurrentParamTab] = React.useState(
     PARAM_TABS[0].name,
@@ -114,7 +115,7 @@ const CreateHttpActionInner: React.FC<InnerProps> = ({
     CONFIG_TABS[0].name,
   );
   const [contentType, setContentType] = React.useState("application/json");
-
+  console.log(Actions);
   return (
     <div className="grid w-full h-full grid-cols-2 md:flex-row">
       <div className="flex flex-col border-t border-r border-border bg-content">
@@ -146,7 +147,7 @@ const CreateHttpActionInner: React.FC<InnerProps> = ({
             className="text-sm text-text-light"
             placeholder={t`Enter an action description...`}
             initialValue={description}
-            onChange={setDescription}
+            onChange={onDescriptionChange}
           />
         </div>
       </div>
@@ -203,4 +204,4 @@ const CONTENT_TYPE = [
   },
 ];
 
-export default CreateHttpAction;
+export default HttpAction;

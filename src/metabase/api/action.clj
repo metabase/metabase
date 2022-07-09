@@ -93,10 +93,10 @@
   api/generic-204-no-content)
 
 (api/defendpoint POST "/"
-  [action database]
+  [:as {action :body} database]
   (when database
     (do-check-actions-enabled database nil))
-  (when (not= :http (:type action))
+  (when (not= "http" (:type action))
     (throw (ex-info (trs "Action type is not supported") action)))
   (let [http-action (db/insert! HTTPAction action)]
     (first (action/select-actions nil :id (:action_id http-action)))))

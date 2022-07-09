@@ -8,22 +8,22 @@ import Selector from "./Selector";
 
 type Props = {
   name: string;
-  setName: (name: string) => void;
+  onNameChange: (name: string) => void;
 
   type: ActionType;
-  setType: (type: ActionType) => void;
+  setType?: (type: ActionType) => void;
 
-  save: () => void;
+  onCommit: () => void;
   canSave: boolean;
 };
 
 const Header: React.FC<Props> = ({
   name,
-  setName,
+  onNameChange,
   type,
   setType,
   canSave,
-  save,
+  onCommit,
 }) => {
   return (
     <div className="flex items-center justify-between w-full py-3 pl-8 pr-4 bg-white">
@@ -31,14 +31,20 @@ const Header: React.FC<Props> = ({
         <EditableText
           className="text-sm font-bold"
           initialValue={name}
-          onChange={setName}
+          onChange={onNameChange}
         />
-        <Selector
-          className="text-text-light"
-          options={OPTS}
-          value={type}
-          setValue={value => setType(value as ActionType)}
-        />
+        {setType ? (
+          <Selector
+            className="text-text-light"
+            options={OPTS}
+            value={type}
+            setValue={value => setType(value as ActionType)}
+          />
+        ) : (
+          <h2 className="text-light">
+            {OPTS.find(({ value }) => value === type)?.label}
+          </h2>
+        )}
       </div>
       <button
         className={cx(
@@ -46,7 +52,7 @@ const Header: React.FC<Props> = ({
           canSave ? "text-brand hover:text-opacity-50" : "text-text-medium",
         )}
         disabled={!canSave}
-        onClick={canSave ? save : undefined}
+        onClick={canSave ? onCommit : undefined}
       >
         Save
       </button>

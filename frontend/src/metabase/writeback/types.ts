@@ -1,6 +1,10 @@
 import Field from "metabase-lib/lib/metadata/Field";
 import { SavedCard, NativeDatasetQuery } from "metabase-types/types/Card";
-import { ParameterId, ParameterTarget } from "metabase-types/types/Parameter";
+import {
+  Parameter,
+  ParameterId,
+  ParameterTarget,
+} from "metabase-types/types/Parameter";
 
 export interface CategoryWidgetProps {
   field: {
@@ -16,14 +20,38 @@ export type WritebackActionCard = SavedCard<NativeDatasetQuery> & {
   is_write: true;
 };
 
-export interface WritebackAction {
+export interface WritebackActionBase {
   id: number;
-  type: "row";
-  card: WritebackActionCard;
-  card_id: number;
   "updated-at": string;
   "created-at": string;
 }
+
+export interface RowAction {
+  type: "row";
+  card: WritebackActionCard;
+  card_id: number;
+}
+
+export interface HttpAction {
+  type: "http";
+  name: string;
+  description: string;
+  template: HttpActionTemplate;
+}
+
+export type HttpActionResponseHandle = any;
+export type HttpActionErrorHandle = any;
+
+export interface HttpActionTemplate {
+  method: string;
+  url: string;
+  body: string;
+  headers: string;
+  parameters: Record<ParameterId, Parameter>;
+  parameter_mappings: Record<ParameterId, ParameterTarget>;
+}
+
+export type WritebackAction = WritebackActionBase & (RowAction | HttpAction);
 
 export interface WritebackActionEmitter {
   id: number;
@@ -36,32 +64,4 @@ export interface WritebackActionEmitter {
   created_at: string;
 }
 
-export type ActionType = "http";
-
-export type ResponseHandler = {};
-export type ErrorHandler = {};
-export type Parameters = {};
-export type ParameterMapping = {};
-
-export type CreateActionData<T extends ActionType> = T extends "http"
-  ? CreateHttpActionData
-  : never;
-
-export type CreateHttpActionData = {
-  template: {
-    method: string;
-    url: string;
-    body: string;
-    headers: string;
-    parameters: Parameters;
-    parameter_mappings: ParameterMapping;
-  };
-  response_handle: ResponseHandler;
-  error_handle: ErrorHandler;
-};
-
-export type CreateAction<T extends ActionType> = {
-  type: T;
-  name: string;
-  description: string;
-} & CreateActionData<T>;
+export type ActionType = "http" | "row";

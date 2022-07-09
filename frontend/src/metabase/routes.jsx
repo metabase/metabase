@@ -90,6 +90,7 @@ import { trackPageView } from "metabase/lib/analytics";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 
 import CreateActionPage from "metabase/writeback/containers/CreateActionPage";
+import EditActionPage from "metabase/writeback/containers/EditActionPage";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
@@ -356,8 +357,9 @@ export const getRoutes = store => (
         {/* ADMIN */}
         {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
 
-        <Route path="/actions">
+        <Route path="/action">
           <Route path="create" component={CreateActionPage} />
+          <Route path=":actionId" component={EditActionPage} />
         </Route>
       </Route>
     </Route>

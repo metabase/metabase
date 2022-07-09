@@ -1,5 +1,6 @@
 import _ from "underscore";
 import { t } from "ttag";
+import { push } from "react-router-redux";
 
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -19,6 +20,12 @@ import { apiUpdateQuestion } from "./core";
 import { closeObjectDetail } from "./object-detail";
 import { runQuestionQuery } from "./querying";
 import { setUIControls } from "./ui";
+import Actions from "metabase/entities/actions";
+import {
+  HttpActionErrorHandle,
+  HttpActionResponseHandle,
+  HttpActionTemplate,
+} from "metabase/writeback/types";
 
 export const INSERT_ROW_FROM_TABLE_VIEW =
   "metabase/qb/INSERT_ROW_FROM_TABLE_VIEW";
@@ -90,4 +97,44 @@ export const turnActionIntoQuestion = () => async (
       actions: [apiUpdateQuestion(action, { rerunQuery: true })],
     }),
   );
+};
+
+export type CreateHttpActionPayload = {
+  name: string;
+  description: string;
+  template: HttpActionTemplate;
+  response_handle: HttpActionResponseHandle;
+  error_handle: HttpActionErrorHandle;
+};
+
+export const createHttpAction = (payload: CreateHttpActionPayload) => async (
+  dispatch: Dispatch,
+  getState: GetState,
+) => {
+  const {
+    name,
+    description,
+    template,
+    error_handle = null,
+    response_handle = null,
+  } = payload;
+  const data = {
+    method: template.method || "GET",
+    url: template.url,
+    body: template.body || {},
+    headers: template.headers || {},
+    parameters: {},
+    parameter_mappings: {},
+  };
+  const newAction = {
+    name,
+    type: "http",
+    description,
+    template: data,
+    error_handle,
+    response_handle,
+  };
+  const response = await dispatch(Actions.actions.create(newAction));
+  const action = Actions.HACK_getObjectFromAction(response);
+  dispatch(push(`/action/${action.id}`));
 };

@@ -25,7 +25,7 @@ const ParametersTab: React.FC<Props> = ({
       ...recognizeTemplateTags(body),
       ...recognizeTemplateTags(headers),
     ]);
-    const params = Object.entries(parameters).map(
+    const params = Object.entries(parameters || {}).map(
       ([key, value]) => value,
     ) as Parameter[];
     allParams.forEach(param => {
