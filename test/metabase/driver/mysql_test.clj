@@ -493,7 +493,7 @@
                                                               :min-value 0.75,
                                                               :max-value 54.0,
                                                               :bin-width 0.75}}]]
-                  (is (= ["((floor((((complicated_identifiers.jsons#>> ?::text[])::integer  - 0.75) / 0.75)) * 0.75) + 0.75)" "{values,qty}"]
+                  (is (= ["((floor(((JSON_EXTRACT(json.json_bit, ?) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
                          (hsql/format (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
 (deftest ddl.execute-with-timeout-test
