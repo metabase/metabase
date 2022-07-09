@@ -17,15 +17,18 @@
   `recognizeTemplateTags` for that regex)."
   #"\{\{\s*([A-Za-z0-9_\.]+?)\s*\}\}")
 
+(defn tag-names-impl
+  "Impl function for tag_names"
+  [text]
+  (->> (re-seq template-tag-regex (or text ""))
+       (map second)
+       set))
+
 (defn ^:export tag_names
   "Given the content of a text dashboard card, return a set of the unique names of template tags in the text."
   [text]
-  (let [text    (or text "")
-        tag-set (->> (re-seq template-tag-regex text)
-                     (map second)
-                     set)]
-    #?(:clj tag-set
-       :cljs (clj->js tag-set))))
+  #? (:clj (tag-names-impl text)
+      :cljs (clj->js tag-names-impl text)))
 
 (defn- normalize-parameter
   "Normalize a single parameter by calling [[mbql.normalize/normalize-fragment]] on it, and converting all string keys
