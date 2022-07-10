@@ -228,7 +228,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.icon("pencil").click();
       cy.icon("string").click();
       cy.findByPlaceholderText(
-        "Write here, and use Markdown if you'd like",
+        "You can use Markdown here, and include variables {{like_this}}",
       ).type(TEXT_CARD);
       cy.button("Save").click();
       cy.findByText("You're editing this dashboard.").should("not.exist");
