@@ -23,8 +23,8 @@
 
 (defmethod formatted-value :date/single
   [_ value]
-  #? (:cljs (.format (moment value) "MMMM D, YYYY")
-      :clj value))
+  #?(:cljs (.format (moment value) "MMMM D, YYYY")
+     :clj value))
 
 (defmethod formatted-value :date/month-year
   [_ value]
@@ -141,5 +141,5 @@
 (defn ^:export tag_names
   "Given the content of a text dashboard card, return a set of the unique names of template tags in the text."
   [text]
-  #? (:clj (tag-names-impl text)
-      :cljs (clj->js (tag-names-impl text))))
+  #?(:clj (tag-names-impl text)
+     :cljs (clj->js (tag-names-impl text))))
