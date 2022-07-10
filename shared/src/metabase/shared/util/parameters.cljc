@@ -11,33 +11,6 @@
                   [metabase.mbql.normalize :as mbql.normalize]
                   [metabase.shared.util.i18n :refer [trs]])]))
 
-(def ^:private template-tag-regex
-  "A regex to find template tags in a text card on a dashboard. This should mirror the regex used to find template
-  tags in native queries, with the exception of snippets and card ID references (see the metabase-lib function
-  `recognizeTemplateTags` for that regex)."
-  #"\{\{\s*([A-Za-z0-9_\.]+?)\s*\}\}")
-
-(defn tag-names-impl
-  "Impl function for tag_names"
-  [text]
-  (->> (re-seq template-tag-regex (or text ""))
-       (map second)
-       set))
-
-(defn ^:export tag_names
-  "Given the content of a text dashboard card, return a set of the unique names of template tags in the text."
-  [text]
-  #? (:clj (tag-names-impl text)
-      :cljs (clj->js (tag-names-impl text))))
-
-(defn- normalize-parameter
-  "Normalize a single parameter by calling [[mbql.normalize/normalize-fragment]] on it, and converting all string keys
-  to keywords."
-  [parameter]
-  (->> (mbql.normalize/normalize-fragment [:parameters] [parameter])
-       first
-       (reduce-kv (fn [acc k v] (assoc acc (keyword k) v)) {})))
-
 (defn- formatted-list
   [values]
   (str (str/join ", " (butlast values)) " " (trs "and") " " (last values)))
@@ -59,6 +32,12 @@
              (if (.isValid m) (.format m "MMMM, YYYY") ""))
      :clj value))
 
+(defmethod formatted-value :date/quarter-year
+  [_ value]
+  #?(:cljs (let [m (moment value "[Q]Q-YYYY")]
+             (if (.isValid m) (.format m "[Q]Q, YYYY") ""))
+     :clj value))
+
 (defmethod formatted-value :date/range
   [_ value]
   (let [[start end] (str/split value "~")]
@@ -78,16 +57,22 @@
     "lastweek"   (trs "Last Week")
     "lastmonth"  (trs "Last Month")
     "lastyear"   (trs "Last Year")
+    "thisday"    (trs "Today")
     "thisweek"   (trs "This Week")
     "thismonth"  (trs "This Month")
     "thisyear"   (trs "This Year")
     ;; Always fallback to default formatting, just in case
     (formatted-value :default value)))
 
-(defmethod formatted-value :date/all options
+(defmethod formatted-value :date/all-options
   [_ value]
-  ;; TODO: this is much more complex, so punting on it temporarily
-  value)
+  ;; Test value against a series of regexes (similar to those in metabase/parameters/utils/mbql.js) to determine
+  ;; the appropriate formatting, since it is not encoded in the parameter type.
+  ;; TODO: this is a partial implementation that only handles simple dates
+  (condp (fn [re value] (->> (re-find re value) second)) value
+    #"^~?([0-9-T:]+)~?$"       :>> (partial formatted-value :date/single)
+    #"^([0-9-T:]+~[0-9-T:]+)$" :>> (partial formatted-value :date/range)
+    (str value)))
 
 (defmethod formatted-value :default
   [_ value]
@@ -120,6 +105,20 @@
       ;; If this parameter has no value, return the original {{tag}} so that no substitution is done.
       (first match))))
 
+(defn- normalize-parameter
+  "Normalize a single parameter by calling [[mbql.normalize/normalize-fragment]] on it, and converting all string keys
+  to keywords."
+  [parameter]
+  (->> (mbql.normalize/normalize-fragment [:parameters] [parameter])
+       first
+       (reduce-kv (fn [acc k v] (assoc acc (keyword k) v)) {})))
+
+(def ^:private template-tag-regex
+  "A regex to find template tags in a text card on a dashboard. This should mirror the regex used to find template
+  tags in native queries, with the exception of snippets and card ID references (see the metabase-lib function
+  `recognizeTemplateTags` for that regex)."
+  #"\{\{\s*([A-Za-z0-9_\.]+?)\s*\}\}")
+
 (defn ^:export substitute_tags
   "Given the context of a text dashboard card, replace all template tags in the text with their corresponding values,
   formatted and escaped appropriately."
@@ -131,3 +130,16 @@
                                          {}
                                          tag->param)]
      (str/replace text template-tag-regex (partial replacement tag->normalized-param))))
+
+(defn tag-names-impl
+  "Impl function for tag_names"
+  [text]
+  (->> (re-seq template-tag-regex (or text ""))
+       (map second)
+       set))
+
+(defn ^:export tag_names
+  "Given the content of a text dashboard card, return a set of the unique names of template tags in the text."
+  [text]
+  #? (:clj (tag-names-impl text)
+      :cljs (clj->js (tag-names-impl text))))
