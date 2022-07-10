@@ -18,6 +18,7 @@
             [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models.secret :as secret]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -208,18 +209,22 @@
       remove-blank-vals
       (set/rename-keys kerb-props->url-param-names))))
 
-(defn- prepare-addl-opts [{:keys [SSL kerberos additional-options] :as details}]
+(defn- append-additional-options [additional-options props]
+  (let [opts-str (sql-jdbc.common/additional-opts->string :url props)]
+    (if (str/blank? additional-options)
+      opts-str
+      (str additional-options "&" opts-str))))
+
+(defn- prepare-addl-opts [{:keys [SSL kerberos] :as details}]
   (let [det (if kerberos
               (if-not SSL
                 (throw (ex-info (trs "SSL must be enabled to use Kerberos authentication")
                                 {:db-details details}))
+                ;; convert Kerberos options map to URL string
                 (update details
                         :additional-options
-                        str
-                        ;; add separator if there are already additional-options
-                        (when-not (str/blank? additional-options) "&")
-                        ;; convert Kerberos options map to URL string
-                        (sql-jdbc.common/additional-opts->string :url (details->kerberos-url-params details))))
+                        append-additional-options
+                        (details->kerberos-url-params details)))
               details)]
     ;; in any case, remove the standalone Kerberos properties from details map
     (apply dissoc (cons det (keys kerb-props->url-param-names)))))
@@ -250,36 +255,57 @@
               :subname     (mdb.spec/make-subname host port (db-name catalog schema))})
       prepare-addl-opts
       (dissoc :host :port :db :catalog :schema :tunnel-enabled :engine :kerberos)
-    sql-jdbc.common/handle-additional-options))
+      sql-jdbc.common/handle-additional-options))
 
 (defn- str->bool [v]
   (if (string? v)
     (Boolean/parseBoolean v)
     v))
 
+(defn- maybe-add-ssl-stores [details-map]
+  (let [props
+        (cond-> {}
+          (str->bool (:ssl-use-keystore details-map))
+          (assoc :SSLKeyStorePath (-> (secret/db-details-prop->secret-map details-map "ssl-keystore")
+                                      (secret/value->file! :presto-jdbc)
+                                      .getCanonicalPath)
+                 :SSLKeyStorePassword (secret/value->string
+                                       (secret/db-details-prop->secret-map details-map "ssl-keystore-password")))
+          (str->bool (:ssl-use-truststore details-map))
+          (assoc :SSLTrustStorePath (-> (secret/db-details-prop->secret-map details-map "ssl-truststore")
+                                        (secret/value->file! :presto-jdbc)
+                                        .getCanonicalPath)
+                 :SSLTrustStorePassword (secret/value->string
+                                         (secret/db-details-prop->secret-map details-map "ssl-truststore-password"))))]
+    (cond-> details-map
+      (seq props)
+      (update :additional-options append-additional-options props))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :presto-jdbc
   [_ details-map]
   (let [props (-> details-map
-                (update :port (fn [port]
-                                (if (string? port)
-                                  (Integer/parseInt port)
-                                  port)))
-                (update :ssl str->bool)
-                (update :kerberos str->bool)
-                (assoc :SSL (:ssl details-map))
-                ;; remove any Metabase specific properties that are not recognized by the PrestoDB JDBC driver, which is
-                ;; very picky about properties (throwing an error if any are unrecognized)
-                ;; all valid properties can be found in the JDBC Driver source here:
-                ;; https://github.com/prestodb/presto/blob/master/presto-jdbc/src/main/java/com/facebook/presto/jdbc/ConnectionProperties.java
-                (select-keys (concat
-                              [:host :port :catalog :schema :additional-options ; needed for `jdbc-spec`
-                               ;; JDBC driver specific properties
-                               :kerberos ; we need our boolean property indicating if Kerberos is enabled
-                                         ; but the rest of them come from `kerb-props->url-param-names` (below)
-                               :user :password :socksProxy :httpProxy :applicationNamePrefix :disableCompression :SSL
-                               :SSLKeyStorePath :SSLKeyStorePassword :SSLTrustStorePath :SSLTrustStorePassword
-                               :accessToken :extraCredentials :sessionProperties :protocols :queryInterceptors]
-                              (keys kerb-props->url-param-names))))]
+                  (update :port (fn [port]
+                                  (if (string? port)
+                                    (Integer/parseInt port)
+                                    port)))
+                  (update :ssl str->bool)
+                  (update :kerberos str->bool)
+                  (assoc :SSL (:ssl details-map))
+                  maybe-add-ssl-stores
+                  ;; remove any Metabase specific properties that are not recognized by the PrestoDB JDBC driver, which is
+                  ;; very picky about properties (throwing an error if any are unrecognized)
+                  ;; all valid properties can be found in the JDBC Driver source here:
+                  ;; https://github.com/prestodb/presto/blob/master/presto-jdbc/src/main/java/com/facebook/presto/jdbc/ConnectionProperties.java
+                  (select-keys (concat
+                                [:host :port :catalog :schema :additional-options ; needed for `jdbc-spec`
+                                 ;; JDBC driver specific properties
+                                 :kerberos ; we need our boolean property indicating if Kerberos is enabled
+                                           ; but the rest of them come from `kerb-props->url-param-names` (below)
+                                 :user :password :socksProxy :httpProxy :applicationNamePrefix :disableCompression :SSL
+                                 ;; Passing :SSLKeyStorePath :SSLKeyStorePassword :SSLTrustStorePath :SSLTrustStorePassword
+                                 ;; in the properties map doesn't seem to work, they are included as additional options.
+                                 :accessToken :extraCredentials :sessionProperties :protocols :queryInterceptors]
+                                (keys kerb-props->url-param-names))))]
     (jdbc-spec props)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

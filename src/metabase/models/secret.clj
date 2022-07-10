@@ -63,7 +63,7 @@
   resolved, in order to render a more user-friendly error message (by looking up the display names of the connection
   properties involved)."
   {:added "0.42.0"}
-  [{:keys [connection-property-name id value] :as secret} driver?]
+  ^File [{:keys [connection-property-name id value] :as secret} driver?]
   (if (= :file-path (:source secret))
     (let [secret-val          (value->string secret)
           ^File existing-file (File. secret-val)]
