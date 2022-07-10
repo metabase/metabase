@@ -341,7 +341,6 @@ class Visualization extends React.PureComponent {
         s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
       )
     );
-
     let noResults = false;
     let isPlaceholder = false;
 
