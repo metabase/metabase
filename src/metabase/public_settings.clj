@@ -175,7 +175,7 @@
   :visibility :public)
 
 (defsetting landing-page
-  (deferred-tru "Default page to show the user")
+  (deferred-tru "Default page to show people when they log in.")
   :visibility :public
   :type       :string
   :default    "")
@@ -213,16 +213,10 @@
   :default    false
   :visibility :authenticated)
 
-(defsetting persisted-model-refresh-interval-hours
-  (deferred-tru "Hour interval to refresh persisted models.")
-  :type       :integer
-  :default    6
-  :visibility :admin)
-
-(defsetting persisted-model-refresh-anchor-time
-  (deferred-tru "Anchor time to begin refreshing persisted models.")
+(defsetting persisted-model-refresh-cron-schedule
+  (deferred-tru "cron syntax string to schedule refreshing persisted models.")
   :type       :string
-  :default    "00:00"
+  :default    "0 0 0/6 * * ? *"
   :visibility :admin)
 
 (def ^:private ^:const global-max-caching-kb
@@ -330,9 +324,7 @@
                   new-colors)))))
 
 (defsetting application-font
-  (deferred-tru
-   (str "This is the primary font used in charts and throughout Metabase. "
-        "You might need to refresh your browser to see your changes take effect."))
+  (deferred-tru "This will replace “Lato” as the font family.")
   :visibility :public
   :type       :string
   :default    "Lato"
@@ -342,6 +334,12 @@
                 (when-not (u.fonts/available-font? new-value)
                   (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
               (setting/set-value-of-type! :string :application-font new-value)))
+
+(defsetting application-font-files
+  (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
+  :visibility :public
+  :type       :json
+  :enabled?   premium-features/enable-whitelabeling?)
 
 (defn application-color
   "The primary color, a.k.a. brand color"

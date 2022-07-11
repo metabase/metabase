@@ -31,11 +31,7 @@ describe("scenarios > question > trendline", () => {
       cy.icon("line").click();
     });
     cy.findByText("Display").click();
-    cy.findByText("Trend line")
-      .parent()
-      .children()
-      .last()
-      .click();
+    cy.findByText("Trend line").parent().children().last().click();
 
     // Check graph is still there
     cy.get("rect");
@@ -43,9 +39,7 @@ describe("scenarios > question > trendline", () => {
     // Remove sum of total
     sidebar().within(() => {
       cy.findByText("Data").click();
-      cy.icon("close")
-        .last()
-        .click();
+      cy.icon("close").last().click();
       cy.findByText("Done").click();
     });
 

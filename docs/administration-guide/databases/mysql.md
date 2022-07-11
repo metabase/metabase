@@ -64,3 +64,12 @@ mysql:
       - $PWD/mysql:/var/lib/mysql
     command: ['--default-authentication-plugin=mysql_native_password']
 ```
+
+## Note on syncing records that include JSON
+
+1. **Metabase will infer the JSON "schema" based on the keys in the first five hundred rows of a table.** MySQL JSON fields lack schema, so Metabase can't rely on table metadata to define which keys a JSON field has. To work around the lack of schema, Metabase will get the first five hundred records and parse the JSON in those records to infer the JSON's "schema". The reason Metabase limits itself to five hundred records is so that syncing metadata doesn't put unnecessary strain on your database.
+
+The problem is that if the keys in the JSON vary record to record, the first five hundred rows may not capture all the keys used by JSON objects in that JSON field. To get Metabase to infer all the JSON keys, you'll need to add the additional keys to the JSON objects in the first five hundred rows.
+
+2. **This JSON support doesn't work with MariaDB**, due to implementation differences between MySQL and MariaDB.
+

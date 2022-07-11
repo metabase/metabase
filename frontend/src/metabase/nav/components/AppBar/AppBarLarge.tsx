@@ -49,7 +49,9 @@ const AppBarLarge = ({
           isToggleVisible={isNavBarVisible}
           onToggleClick={onToggleNavbar}
         />
-        <AppBarInfoContainer isNavBarOpen={isNavBarOpen}>
+        <AppBarInfoContainer
+          isVisible={!isNavBarOpen || isQuestionLineageVisible}
+        >
           {isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (

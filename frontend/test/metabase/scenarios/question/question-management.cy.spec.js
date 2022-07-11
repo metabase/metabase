@@ -68,7 +68,7 @@ describe("managing question from the question's details sidebar", () => {
               cy.contains("37.65");
             });
 
-            it("should be able to archive the question (metabase#11719-3, metabase#16512)", () => {
+            it("should be able to archive the question (metabase#11719-3, metabase#16512, metabase#20133)", () => {
               cy.intercept("GET", "/api/collection/root/items**").as(
                 "getItems",
               );
@@ -80,6 +80,10 @@ describe("managing question from the question's details sidebar", () => {
               cy.wait("@getItems"); // unpinned items
               cy.location("pathname").should("eq", "/collection/root");
               cy.findByText("Orders").should("not.exist");
+
+              cy.findByPlaceholderText("Search…").click();
+              cy.findByText("Recently viewed");
+              cy.findByText("Nothing here");
 
               // Check page for archived questions
               cy.visit("/question/1");
@@ -117,9 +121,10 @@ describe("managing question from the question's details sidebar", () => {
               cy.get(".Modal").within(() => {
                 cy.findByText("Orders in a dashboard").should("not.exist");
                 cy.icon("search").click();
-                cy.findByPlaceholderText(
-                  "Search",
-                ).type("Orders in a dashboard{Enter}", { delay: 0 });
+                cy.findByPlaceholderText("Search").type(
+                  "Orders in a dashboard{Enter}",
+                  { delay: 0 },
+                );
                 cy.findByText("Orders in a dashboard").should("not.exist");
               });
             });
@@ -165,9 +170,7 @@ describe("managing question from the question's details sidebar", () => {
 });
 
 function clickButton(name) {
-  cy.button(name)
-    .should("not.be.disabled")
-    .click();
+  cy.button(name).should("not.be.disabled").click();
 }
 
 function assertOnRequest(xhr_alias) {

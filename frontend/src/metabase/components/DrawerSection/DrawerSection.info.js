@@ -44,32 +44,24 @@ const items = [
     icon: "verified",
     title: "John Someone verified this",
     description: "idk lol",
-    timestamp: moment()
-      .subtract(1, "day")
-      .valueOf(),
+    timestamp: moment().subtract(1, "day").valueOf(),
     numComments: 5,
   },
   {
     icon: "pencil",
     title: "Foo edited this",
     description: "Did a thing.",
-    timestamp: moment()
-      .subtract(1, "week")
-      .valueOf(),
+    timestamp: moment().subtract(1, "week").valueOf(),
   },
   {
     icon: "close",
     title: "foo foo foo",
-    timestamp: moment()
-      .subtract(2, "month")
-      .valueOf(),
+    timestamp: moment().subtract(2, "month").valueOf(),
   },
   {
     icon: "number",
     title: "bar bar bar",
-    timestamp: moment()
-      .subtract(1, "year")
-      .valueOf(),
+    timestamp: moment().subtract(1, "year").valueOf(),
     numComments: 123,
   },
 ];

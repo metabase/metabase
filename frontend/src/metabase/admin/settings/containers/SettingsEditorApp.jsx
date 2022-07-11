@@ -136,12 +136,8 @@ class SettingsEditorApp extends Component {
   };
 
   renderSettingsPane() {
-    const {
-      activeSection,
-      settings,
-      settingValues,
-      derivedSettingValues,
-    } = this.props;
+    const { activeSection, settings, settingValues, derivedSettingValues } =
+      this.props;
     const isLoading = settings.length === 0;
 
     if (isLoading) {

@@ -880,8 +880,6 @@
                             :qp-runner qp.pivot/run-pivot-query
                             :ignore_cache ignore_cache))
 
-;;; ----------------------------------------------- Persistence ------------------------------------------------
-
 (api/defendpoint POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
   query in place of the model's query."

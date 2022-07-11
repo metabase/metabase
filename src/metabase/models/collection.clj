@@ -925,7 +925,7 @@
   ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.
   ;; Also transform :personal_owner_id from a database ID to the email string, if it's defined.
   ;; Use the :slug as the human-readable label.
-  [_ coll]
+  [_ _ coll]
   (let [parent       (some-> coll
                              :id
                              Collection
@@ -939,7 +939,7 @@
     (-> (serdes.base/extract-one-basics "Collection" coll)
         (dissoc :location)
         (assoc :parent_id parent-id :personal_owner_id owner-email)
-        (assoc-in [:serdes/meta :label] (:slug coll)))))
+        (assoc-in [:serdes/meta 0 :label] (:slug coll)))))
 
 (defmethod serdes.base/load-xform "Collection" [{:keys [parent_id personal_owner_id] :as contents}]
   (let [loc        (if parent_id
@@ -956,8 +956,12 @@
 (defmethod serdes.base/serdes-dependencies "Collection"
   [{:keys [parent_id]}]
   (if parent_id
-    [parent_id]
+    [[{:model "Collection" :id parent_id}]]
     []))
+
+(defmethod serdes.base/serdes-generate-path "Collection" [_ {:keys [slug] :as coll}]
+  [(cond-> (serdes.base/infer-self-path "Collection" coll)
+     slug  (assoc :label slug))])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |

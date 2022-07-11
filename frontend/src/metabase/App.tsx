@@ -1,4 +1,4 @@
-import React, { ErrorInfo, ReactNode, useState } from "react";
+import React, { ErrorInfo, ReactNode, useRef, useState } from "react";
 import { connect } from "react-redux";
 import { Location } from "history";
 
@@ -25,6 +25,7 @@ import { initializeIframeResizer } from "metabase/lib/dom";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import StatusListing from "metabase/status/containers/StatusListing";
+import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 
 import { AppErrorDescriptor, State } from "metabase-types/store";
 
@@ -89,6 +90,7 @@ function App({
   isNavBarVisible,
   children,
 }: AppProps) {
+  const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
   const [errorInfo, setErrorInfo] = useState<ErrorInfo | null>(null);
 
   useOnMount(() => {
@@ -105,8 +107,10 @@ function App({
             isAppBarVisible={isAppBarVisible}
           >
             {isNavBarVisible && <Navbar />}
-            <AppContent>
-              {errorPage ? getErrorComponent(errorPage) : children}
+            <AppContent ref={setViewportElement}>
+              <ContentViewportContext.Provider value={viewportElement ?? null}>
+                {errorPage ? getErrorComponent(errorPage) : children}
+              </ContentViewportContext.Provider>
             </AppContent>
             <UndoListing />
             <StatusListing />

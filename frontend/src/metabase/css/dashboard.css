@@ -23,6 +23,7 @@
 /* Fullscreen mode */
 .Dashboard.Dashboard--fullscreen {
   min-height: 100vh;
+  height: auto;
 }
 
 .Dashboard.Dashboard--fullscreen .Header-button {

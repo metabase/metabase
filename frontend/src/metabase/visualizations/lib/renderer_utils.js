@@ -325,8 +325,8 @@ export function getXInterval({ settings, series }, xValues, warn) {
   } else if (isQuantitative(settings) || isHistogram(settings)) {
     // Get the bin width from binning_info, if available
     // TODO: multiseries?
-    const binningInfo = getFirstNonEmptySeries(series).data.cols[0]
-      .binning_info;
+    const binningInfo =
+      getFirstNonEmptySeries(series).data.cols[0].binning_info;
     if (binningInfo) {
       return binningInfo.bin_width;
     }

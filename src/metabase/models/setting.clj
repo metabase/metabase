@@ -151,9 +151,12 @@
 (defmethod serdes.base/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings
                               :getter (partial get-value-of-type :string))]
-    {:serdes/meta {:type "Setting" :id (name key)}
+    {:serdes/meta [{:model "Setting" :id (name key)}]
      :key key
      :value value}))
+
+(defmethod serdes.base/load-find-local "Setting" [[{:keys [id]}]]
+  (get-value-of-type :string (keyword id)))
 
 (defmethod serdes.base/load-one! "Setting" [{:keys [key value]} _]
   (set-value-of-type! :string key value))

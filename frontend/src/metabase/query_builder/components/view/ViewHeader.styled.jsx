@@ -8,7 +8,6 @@ import { color, alpha } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
 import QuestionDataSource from "./QuestionDataSource";
-import SavedQuestionHeaderButton from "../SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 
 export const ViewHeaderContainer = styled(ViewSection)`
   border-bottom: 1px solid ${color("border")};
@@ -47,14 +46,13 @@ export const SaveButton = styled(Link)`
 `;
 
 export const SavedQuestionHeaderButtonContainer = styled.div`
-  position: relative;
-  right: 0.38rem;
+  right: ${props => (props.isDataset ? "0px" : "0.38rem")};
 `;
 
 export const HeaderButton = styled(Button)`
   font-size: 0.875rem;
   background-color: ${({ active, color = getDefaultColor() }) =>
-    active ? alpha(color, 0.8) : "transparent"};
+    active ? color : "transparent"};
   color: ${({ active }) => (active ? "white" : color("text-dark"))};
   &:hover {
     background-color: ${({ color = getDefaultColor() }) => alpha(color, 0.15)};
@@ -96,7 +94,8 @@ export const FilterHeaderButton = styled(Button)`
 const getDefaultColor = () => color("brand");
 
 export const FilterHeaderContainer = styled.div`
-  padding: ${space(2)} ${space(3)} ${space(1)} ${space(3)};
+  padding: ${space(1)} ${space(3)} 0 ${space(3)};
+  border-bottom: 1px solid ${color("border")};
 `;
 
 export const ViewSubHeaderRoot = styled(ViewSection)`
@@ -105,7 +104,7 @@ export const ViewSubHeaderRoot = styled(ViewSection)`
 
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
   color: ${color("text-light")};
-  margin-left: 4px;
+  //margin-left: 4px;
 
   ${breakpointMaxSmall} {
     margin-left: 0;
@@ -124,7 +123,7 @@ export const StyledQuestionDataSource = styled(QuestionDataSource)`
 `;
 
 export const SavedQuestionLeftSideRoot = styled.div`
-  ${SavedQuestionHeaderButton.Root} {
+  ${SavedQuestionHeaderButtonContainer} {
     transition: all 400ms ease;
     position: relative;
     top: ${props => (props.showSubHeader ? "0" : "10px")};
@@ -137,7 +136,7 @@ export const SavedQuestionLeftSideRoot = styled.div`
 
   &:hover,
   &:focus-within {
-    ${SavedQuestionHeaderButton.Root} {
+    ${SavedQuestionHeaderButtonContainer} {
       top: 0px;
     }
 
@@ -145,4 +144,13 @@ export const SavedQuestionLeftSideRoot = styled.div`
       opacity: 1;
     }
   }
+`;
+
+export const HeaderDivider = styled.span`
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-weight: 700;
+  color: ${color("text-medium")};
+  padding-left: 0.5rem;
+  padding-right: 0.25rem;
 `;

@@ -37,6 +37,7 @@ You can embed all of Metabase in your app.
 
 - [Embedding the entire Metabase app in your app](full-app-embedding.html)
 - [Customizing how Metabase looks with white labeling](whitelabeling.html)
+- [Customizing embedded items](./customize-embeds.md)
 
 ## Dashboard subscription customization
 

@@ -46,9 +46,7 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
 
     cy.log("Make sure we can change download results permission for a table");
 
-    sidebar()
-      .contains("Orders")
-      .click();
+    sidebar().contains("Orders").click();
 
     modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "1 million rows");
 

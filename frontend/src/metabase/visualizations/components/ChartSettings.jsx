@@ -29,8 +29,9 @@ const DEFAULT_TAB_PRIORITY = [t`Display`];
 
 const withTransientSettingState = ComposedComponent =>
   class extends React.Component {
-    static displayName = `withTransientSettingState[${ComposedComponent.displayName ||
-      ComposedComponent.name}]`;
+    static displayName = `withTransientSettingState[${
+      ComposedComponent.displayName || ComposedComponent.name
+    }]`;
 
     constructor(props) {
       super(props);

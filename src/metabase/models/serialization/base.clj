@@ -15,10 +15,97 @@
             [toucan.models :as models]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              :serdes/meta                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information
+;;; about the serialized entity. The value is always a vector of maps that give a "path" to the entity. This is not a
+;;; filesystem path; rather it defines the nesting of some entities inside others.
+;;;
+;;; Most paths are a single layer:
+;;; `[{:model "ModelName" :id "entity ID or identity hash string" :label "Human-readable name"}]`
+;;; `:model` and `:id` are required; `:label` is optional.
+;;;
+;;; But for some entities, it can be deeper. For example Fields belong to Tables, which are in Schemas (which don't
+;;; really exist in appdb, but are reflected here for namespacing of table names), which are in Databases:
+;;; `[{:model "Database" :id "my_db"}
+;;;   {:model "Schema"   :id "PUBLIC"}
+;;;   {:model "Table"    :id "Users"}
+;;;   {:model "Field"    :id "email"}]`
+;;;
+;;; Many of the multimethods are keyed on the `:model` field of the leaf entry (the last).
+
+(defmulti serdes-entity-id
+  "Given the model name and an entity, returns its entity ID (which might be nil).
+
+  This abstracts over the exact definition of the \"entity ID\" for a given entity.
+  By default this is a column, `:entity_id`.
+
+  Models that have a different portable ID should override this."
+  (fn [model-name _] model-name))
+
+(defmethod serdes-entity-id :default [_ {:keys [entity_id]}]
+  entity_id)
+
+(defmulti serdes-generate-path
+  "Given the model name and raw entity from the database, returns a vector giving its *path*.
+  `(serdes-generate-path \"ModelName\" entity)`
+
+  The path is a vector of maps, root first and this entity itself last. Each map looks like:
+  `{:model \"ModelName\" :id \"entity ID, identity hash, or custom ID\" :label \"optional human label\"}`
+
+  Some entities stand alone, while some are naturally nested inside others. For example, fields belong in tables, which
+  belong in databases. Further, since these use eg. column names as entity IDs, they can collide if all the fields get
+  poured into one namespace (like a directory of YAML files).
+
+  Finally, it's often useful to delete the databases from an export, since the receiving end has its own different, but
+  compatible, database definitions. (For example, staging and prod instances of Metabase.) It's convenient for human
+  understanding and editing to group fields under tables under databases.
+
+  Therefore we provide an abstract path on the entities, which will generally be stored in a directory tree.
+  (This is not strictly required - for a different medium like protobufs the path might be encoded some other way.)
+
+  The path is reconstructed by ingestion and used as the key to read entities with `ingest-one`, and to match
+  against existing entities.
+
+  The default implementation is a single level, using the model name provided and the ID from either
+  [[serdes-entity-id]] or [[serdes.hash/identity-hash]].
+
+  Implementation notes:
+  - `:serdes/meta` might be defined - if so it's coming from ingestion and might have truncated values in it, and should
+    be reconstructed from the rest of the data.
+  - The primary key might still be attached, during extraction.
+  - `:label` is optional
+  - The logic to guess the leaf part of the path is in [[infer-self-path]], for use in overriding."
+  (fn [model _] model))
+
+(defn infer-self-path
+  "Implements the default logic from [[serdes-generate-path]] that guesses the `:id` of this entity. Factored out
+  so it can be called by implementors of [[serdes-generate-path]].
+
+  The guesses are:
+  - [[serdes-entity-id]]
+  - [[serdes.hash/identity-hash]] after looking up the Toucan entity by primary key
+
+  Returns `{:model \"ModelName\" :id \"id-string\"}`; throws if the inference fails, since it indicates a programmer
+  error and not a runtime one."
+  [model-name entity]
+  (let [model (db/resolve-model (symbol model-name))
+        pk    (models/primary-key model)]
+    {:model model-name
+     :id    (or (serdes-entity-id model-name entity)
+                (some-> (get entity pk) model serdes.hash/identity-hash)
+                (throw (ex-info "Could not infer-self-path on this entity - maybe implement serdes-entity-id ?"
+                                {:model model-name :entity entity})))}))
+
+(defmethod serdes-generate-path :default [model-name entity]
+  ;; This default works for most models, but needs overriding for nested ones.
+  [(infer-self-path model-name entity)])
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Serialization Process                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; Serialization happens in two stages: extraction and storage. These are independent and deliberately decoupled.
-;;; The result of extraction is a reducible stream of Clojure maps with `:serdes/meta` keys on them (see below).
+;;; The result of extraction is a reducible stream of Clojure maps with `:serdes/meta` keys on them (see above).
 ;;; In particular, extraction does not care about file formats or other such things.
 ;;;
 ;;; Storage takes the stream from extraction and actually stores it or sends it. Traditionally we have serialized to a
@@ -61,7 +148,7 @@
   (fn [model _] model))
 
 (defmulti extract-query
-  "Performs the select query, possibly filtered, for all the entities of this type that should be serialized. Called
+  "Performs the select query, possibly filtered, for all the entities of this model that should be serialized. Called
   from [[extract-all]]'s default implementation.
 
   `(extract-query \"ModelName\" opts)`
@@ -86,9 +173,10 @@
 
 (defmulti extract-one
   "Extracts a single entity retrieved from the database into a portable map with `:serdes/meta` attached.
+  `(extract-one \"ModelName\" opts entity)`
 
-  The default implementation uses the model name as the `:type` and either `:entity_id` or [[serdes.hash/identity-hash]]
-  as the `:id`. It also strips off the database's numeric primary key.
+  The default implementation uses [[serdes-generate-path]] to build the `:serdes/meta`. It also strips off the
+  database's numeric primary key.
 
   That suffices for a few simple entities, but most entities will need to override this.
   They should follow the pattern of:
@@ -96,20 +184,19 @@
   - Drop the numeric database primary key
   - Replace any foreign keys with portable values (eg. entity IDs or `identity-hash`es, owning user's ID with their
     email, etc.)
-  - Consider attaching a human-friendly `:label` under `:serdes/meta`. (Eg. a Collection's `:slug`)
 
   When overriding this, [[extract-one-basics]] is probably a useful starting point.
 
   Keyed by the model name of the entity, the first argument."
-  (fn [model _] model))
+  (fn [model _ _] model))
 
 (defmethod extract-all :default [model opts]
-  (eduction (map (partial extract-one model))
+  (eduction (map (partial extract-one model opts))
             (extract-query model opts)))
 
 (defn raw-reducible-query
   "Helper for calling Toucan's raw [[db/reducible-query]]. With just the model name, fetches everything. You can filter
-  with a HoneySQL map like {:where [:= :archived true]}.
+  with a HoneySQL map like `{:where [:= :archived true]}`.
 
   Returns a reducible stream of JDBC row maps."
   ([model-name]
@@ -118,13 +205,21 @@
    (db/reducible-query (merge {:select [:*] :from [(symbol model-name)]}
                               honeysql-form))))
 
+(defn- model-name->table
+  "The model name is not necessarily the table name. This pulls the table name from the Toucan model."
+  [model-name]
+  (-> model-name
+      symbol
+      db/resolve-model
+      :table))
+
 (defmethod extract-query :default [model-name _]
-  (raw-reducible-query model-name))
+  (raw-reducible-query (model-name->table model-name)))
 
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:
   - Convert to a vanilla Clojure map.
-  - Add `:serdes/meta`.
+  - Add `:serdes/meta` by calling [[serdes-generate-path]].
   - Drop the primary key.
 
   Returns the Clojure map."
@@ -132,12 +227,10 @@
   (let [model (db/resolve-model (symbol model-name))
         pk    (models/primary-key model)]
     (-> entity
-        (assoc :serdes/meta {:type model-name
-                             :id   (or (:entity_id entity)
-                                       (serdes.hash/identity-hash (model (get entity pk))))})
+        (assoc :serdes/meta (serdes-generate-path model-name entity))
         (dissoc pk))))
 
-(defmethod extract-one :default [model-name entity]
+(defmethod extract-one :default [model-name _opts entity]
   (extract-one-basics model-name entity))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -152,32 +245,27 @@
 ;;; usage for testing in-memory deserialization.
 ;;;
 ;;; Factory functions consume some details (like a file path) and return an [[Ingestable]], with its two methods:
-;;; - `(ingest-list ingestable)` returns a reducible stream of `:serdes/meta` maps in any order.
-;;; - `(ingest-one ingestable meta-map)` ingests a single entity into memory, returning it as a map.
+;;; - `(ingest-list ingestable)` returns a reducible stream of `:serdes/meta` paths in any order.
+;;; - `(ingest-one ingestable meta-path)` ingests a single entity into memory, returning it as a map.
 ;;;
 ;;; This two-stage design avoids needing all the data in memory at once, where that's practical with the underlying
 ;;; storage media (eg. files).
 ;;;
 ;;; Loading:
-;;; Loading tries to find corresponding entities in the destination appdb by `entity_id` or `identity-hash`, and update
+;;; Loading tries to find corresponding entities in the destination appdb by entity ID or identity hash, and update
 ;;; those rows rather than duplicating.
 ;;; The entry point is [[metabase-enterprise.serialization.v2.load/load-metabase]]. The top-level process works like
 ;;; this:
-;;; - `(load-prescan-all "ModelName")` is called, which selects the entire collection as a reducible stream and calls
-;;;   [[load-prescan-one]] on each entry.
-;;;     - The default for that usually is the right thing.
-;;; - `(load-prescan-one entity)` turns a particular entity into an `[entity_id identity-hash primary-key]` triple.
-;;;     - The default will work for models with a literal `entity_id` field; those with alternative IDs (database,
-;;;       table, field, setting, etc.) should override this method.
-;;; - Prescanning complete, `(ingest-list ingestable)` gets the metadata for every exported entity in arbitrary order.
+;;; - `(ingest-list ingestable)` gets the `:serdes/meta` "path" for every exported entity in arbitrary order.
 ;;;     - `(ingest-one meta-map opts)` is called on each first to ingest the value into memory, then
-;;;     - `(serdes-dependencies ingested)` to get a list of other IDs (entity IDs or identity hashes).
+;;;     - `(serdes-dependencies ingested)` to get a list of other paths that need to be loaded first.
 ;;;         - The default is an empty list.
 ;;;     - The idea of dependencies is eg. a database must be loaded before its tables, a table before its fields, a
 ;;;       collection's ancestors before the collection itself.
 ;;;     - Dependencies are loaded recursively in postorder; circular dependencies cause the process to throw.
-;;; - Having found an entity it can really load, the core code will check its table of IDs found by prescanning.
-;;;     - Then it calls `(load-one! ingested maybe-local-entity)`, passing the `ingested` value and either `nil` or the
+;;; - Having found an entity it can really load, check for any existing one:
+;;;     - `(load-find-local path)` returns the corresponding primary key, or nil.
+;;; - Then it calls `(load-one! ingested maybe-local-entity)`, passing the `ingested` value and either `nil` or the
 ;;;       Toucan entity corresponding to the incoming map.
 ;;;     - `load-one!` is a side-effecting black box to the rest of the deserialization process.
 ;;;       It returns the primary key of the new or existing entity, which is necessary to resolve foreign keys between
@@ -193,57 +281,45 @@
 ;;;     - `(load-insert! ingested)` if the entity is new.
 ;;;   Both of these have the obvious defaults of [[jdbc/update!]] or [[jdbc/insert!]].
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                            :serdes/meta maps                                                   |
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information
-;;; about the serialized entity. The value is always a map like:
-;;; `{:type "ModelName" :id "entity ID or identity hash string" :label "Human-readable name"}`
-;;; `:type` and `:id` are required; `:label` is optional.
-;;;
-;;; Many of the multimethods are keyed on the `:type` field.
-
-(defmulti load-prescan-all
-  "Returns a reducible stream of `[entity_id identity-hash primary-key]` triples for the entire table.
-
-  Defaults to running [[load-prescan-one]] over each entity returned by [[jdbc/reducible-query]] for this model.
-  Override this method if filtering is needed.
-
-  Keyed on the model name."
-  identity)
-
-(defmulti load-prescan-one
-  "Converts a database entity into a `[entity_id identity-hash primary-key]` triple for the deserialization machinery.
-  Called with the Toucan model (*not* this entity), and the JDBC map for the entity in question.
-
-  Defaults to using a literal `:entity_id` column. For models with a different entity ID (eg. a Table's name, a
-  Setting's key), override this method.
-
-  Keyed on the model name."
-  (fn [model _] (name model)))
-
-(defmethod load-prescan-all :default [model-name]
-  (let [model (db/resolve-model (symbol model-name))]
-    (eduction (map (partial load-prescan-one model))
-              (raw-reducible-query model-name))))
-
-(defmethod load-prescan-one :default [model entity]
-  (let [pk  (models/primary-key model)
-        key (get entity pk)]
-    [(:entity_id entity)
-     (serdes.hash/identity-hash (db/select-one model pk key)) ; TODO This sucks for identity-hash!
-     key]))
-
 (defn- ingested-model
-  "The dispatch function for several of the load multimethods: dispatching on the type of the incoming entity."
+  "The dispatch function for several of the load multimethods: dispatching on the model of the incoming entity."
   [ingested]
-  (-> ingested :serdes/meta :type))
+  (-> ingested :serdes/meta last :model))
+
+(defn serdes-path
+  "Given an exported or imported entity with a `:serdes/meta` key on it, return the abstract path (not a filesystem
+  path)."
+  [entity]
+  (:serdes/meta entity))
+
+(defmulti load-find-local
+  "Given a path, tries to look up any corresponding local entity.
+
+  Returns nil, or the primary key of the local entity.
+  Keyed on the model name at the leaf of the path.
+
+  By default, this tries to look up the entity by its `:entity_id` column, or identity hash, depending on the shape of
+  the incoming key. For the identity hash, this scans the entire table and builds a cache of
+  [[serdes.hash/identity-hash]] to primary keys, since the identity hash cannot be queried directly.
+  This cache is cleared at the beginning and end of the deserialization process."
+  (fn [path]
+    (-> path last :model)))
+
+(declare lookup-by-id)
+
+(defmethod load-find-local :default [path]
+  (let [{id :id model-name :model} (last path)
+        model                      (db/resolve-model (symbol model-name))
+        pk                         (models/primary-key model)]
+    (some-> model
+            (lookup-by-id id)
+            (get pk))))
 
 (defmulti serdes-dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
-  dependency is represented by either the entity ID or identity hash of the target entity.
+  dependency is represented by its abstract path (its `:serdes/meta` value).
 
-  Keyed on the model name.
+  Keyed on the model name for this entity.
   Default implementation returns an empty vector, so only models that have dependencies need to implement this."
   ingested-model)
 
@@ -276,8 +352,7 @@
 
 (defmulti load-update!
   "Called by the default [[load-one!]] if there is a corresponding entity already in the appdb.
-  The first argument is the model name, the second the incoming map we're deserializing, and the third is the Toucan
-  entity found in the appdb.
+  `(load-update! \"ModelName\" ingested-and-xformed local-Toucan-entity)`
 
   Defaults to a straightforward [[db/update!]], and you may not need to update it.
 
@@ -289,20 +364,17 @@
 (defmethod load-update! :default [model-name ingested local]
   (let [model (db/resolve-model (symbol model-name))
         pk    (models/primary-key model)
-        id    (get local pk)
-        ; Get a WHERE clause, but then strip off the WHERE part to include it in the JDBC call below.
-        ;where (update (db/honeysql->sql {:where [:= pk id]}) 0
-        ;              #(.substring 5))
-        ]
+        id    (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
     ; Using the two-argument form of [[db/update!]] that takes the model and a HoneySQL form for the actual update.
     ; It works differently from the more typical `(db/update! 'Model id updates...)` form: this form doesn't run any of
     ; the pre-update magic, it just updates the database directly.
     (db/update! (symbol model-name) {:where [:= pk id] :set ingested})
-    pk))
+    id))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
+  `(load-insert! \"ModelName\" ingested-and-xformed)`
 
   Defaults to a straightforward [[db/simple-insert!]], and you probably don't need to implement this.
   Note that [[db/insert!]] should be avoided - we don't want to populate the `:entity_id` field if it wasn't already
@@ -315,7 +387,8 @@
 
 (defmethod load-insert! :default [model ingested]
   (log/tracef "Inserting %s: %s" model (pr-str ingested))
-  ; Toucan's simple-insert! actually does the right thing for our purposes: it doesn't call pre-insert or post-insert.
+  ; Toucan's simple-insert! actually does the right thing for our purposes: it doesn't call pre-insert or post-insert,
+  ; and it returns the new primary key.
   (db/simple-insert! (symbol model) ingested))
 
 (defmulti load-one!
@@ -347,12 +420,13 @@
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."
   [id-str]
-  (boolean (re-matches #"^[A-Za-z0-9_-]{21}$" id-str)))
+  (boolean (and id-str (re-matches #"^[A-Za-z0-9_-]{21}$" id-str))))
 
 (defn- find-by-identity-hash
   "Given a model and a target identity hash, this scans the appdb for any instance of the model corresponding to the
   hash. Does a complete scan, so this should be called sparingly!"
   ;; TODO This should be able to use a cache of identity-hash values from the start of the deserialization process.
+  ;; Note that it needs to include either updates (or worst-case, invalidation) at [[load-one!]] time.
   [model id-hash]
   (->> (db/select-reducible model)
        (into [] (comp (filter #(= id-hash (serdes.hash/identity-hash %)))

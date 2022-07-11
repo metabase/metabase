@@ -14,27 +14,29 @@ export const setUIControls = createAction(SET_UI_CONTROLS);
 export const RESET_UI_CONTROLS = "metabase/qb/RESET_UI_CONTROLS";
 export const resetUIControls = createAction(RESET_UI_CONTROLS);
 
-export const setQueryBuilderMode = (
-  queryBuilderMode,
-  { shouldUpdateUrl = true, datasetEditorTab = "query" } = {},
-) => async dispatch => {
-  await dispatch(
-    setUIControls({
-      queryBuilderMode,
-      datasetEditorTab,
-      isShowingChartSettingsSidebar: false,
-    }),
-  );
-  if (shouldUpdateUrl) {
-    await dispatch(updateUrl(null, { queryBuilderMode, datasetEditorTab }));
-  }
-  if (queryBuilderMode === "notebook") {
-    dispatch(cancelQuery());
-  }
-  if (queryBuilderMode === "dataset") {
-    dispatch(runQuestionQuery());
-  }
-};
+export const setQueryBuilderMode =
+  (
+    queryBuilderMode,
+    { shouldUpdateUrl = true, datasetEditorTab = "query" } = {},
+  ) =>
+  async dispatch => {
+    await dispatch(
+      setUIControls({
+        queryBuilderMode,
+        datasetEditorTab,
+        isShowingChartSettingsSidebar: false,
+      }),
+    );
+    if (shouldUpdateUrl) {
+      await dispatch(updateUrl(null, { queryBuilderMode, datasetEditorTab }));
+    }
+    if (queryBuilderMode === "notebook") {
+      dispatch(cancelQuery());
+    }
+    if (queryBuilderMode === "dataset") {
+      dispatch(runQuestionQuery());
+    }
+  };
 
 export const onEditSummary = createAction("metabase/qb/EDIT_SUMMARY");
 export const onCloseSummary = createAction("metabase/qb/CLOSE_SUMMARY");

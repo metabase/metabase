@@ -43,20 +43,13 @@ export function setAdHocFilter({
   }
 
   if (quantity) {
-    cy.findByPlaceholderText("30")
-      .clear()
-      .type(quantity);
+    cy.findByPlaceholderText("30").clear().type(quantity);
   }
 
   if (timeBucket) {
-    cy.findAllByTestId("relative-datetime-unit")
-      .contains("days")
-      .click();
+    cy.findAllByTestId("relative-datetime-unit").contains("days").click();
 
-    popover()
-      .last()
-      .contains(timeBucket)
-      .click();
+    popover().last().contains(timeBucket).click();
   }
 
   if (includeCurrent) {

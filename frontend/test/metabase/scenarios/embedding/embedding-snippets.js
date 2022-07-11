@@ -1,4 +1,4 @@
-export const JS_CODE = ({ type, isEE, hideDownloadButton, theme }) => {
+export const JS_CODE = ({ type, hideDownloadButton, theme }) => {
   return new RegExp(
     `// you will need to install via 'npm install jsonwebtoken' or in your package.json
 
@@ -15,7 +15,7 @@ var token = jwt.sign(payload, METABASE_SECRET_KEY);
 
 var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token + "#${getThemeParameter(
       theme,
-    )}bordered=true&titled=true${getParameter({ isEE, hideDownloadButton })}";`
+    )}bordered=true&titled=true${getParameter({ hideDownloadButton })}";`
       .split("\n")
       .join("")
       .replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
@@ -34,12 +34,8 @@ export const IFRAME_CODE = `<iframe
   .split("\n")
   .join("");
 
-function getParameter({ isEE, hideDownloadButton }) {
+function getParameter({ hideDownloadButton }) {
   let parameter = "";
-
-  if (isEE) {
-    parameter += "&font=Lato";
-  }
 
   if (hideDownloadButton) {
     parameter += "&hide_download_button=true";
