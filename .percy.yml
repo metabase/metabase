@@ -3,5 +3,8 @@ snapshot:
   widths:
     - 1280
   min-height: 800
+  waitForTimeout: 500
+  execute: "document.querySelectorAll('[data-server-date]').forEach(el => el.innerHTML = '<server-side date>')"
+
 discovery:
   disable-cache: true
