@@ -4,8 +4,9 @@
 
 (defn- tag-names
   [text]
-  #?(:clj (params/tag-names text)
-     :cljs (set (js->clj (params/tag-names text)))))
+  (let [result (params/tag_names text)]
+    #?(:clj result
+       :cljs (set (js->clj result)))))
 
 (t/deftest parse-tag-names-test
   (t/testing "Tag names are correctly parsed from text card contents"
