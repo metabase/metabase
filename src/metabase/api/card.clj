@@ -250,6 +250,11 @@
 saved later when it is ready."
   1500)
 
+(def ^:private metadata-async-timeout
+  "Duration in milliseconds to wait for the metadata before abandoning the asynchronous metadata saving. Default is 15
+  minutes."
+  (* 1000 60 15))
+
 (defn- create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
   the card will be saved without metadata and it will be saved to the card in the future when it is ready."
@@ -293,12 +298,17 @@ saved later when it is ready."
                  ^Runnable
                  (fn []
                    (try
-                     (let [metadata      (a/<!! result-metadata-chan)
-                           id            (:id <>)
-                           current-query (db/select-one-field :dataset_query Card :id id)]
-                       (cond (and (seq metadata) (= current-query (:dataset_query <>)))
+                     (let [timeoutc        (a/timeout metadata-async-timeout)
+                           [metadata port] (a/alts!! [result-metadata-chan timeoutc])
+                           id              (:id <>)
+                           current-query   (db/select-one-field :dataset_query Card :id id)]
+                       (cond (= port timeoutc)
+                             (log/info (trs "Metadata not ready in 15 minutes, abandoning"))
+
+                             (and (seq metadata) (= current-query (:dataset_query <>)))
                              (do (db/update! Card id {:result_metadata metadata})
                                  (log/info (trs "Metadata updated asynchronously for card {0}" id)))
+
                              (not= current-query (:dataset_query <>))
                              (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
                                             id))
@@ -562,16 +572,16 @@ saved later when it is ready."
     (check-allowed-to-modify-query                 card-before-update card-updates)
     (check-allowed-to-change-embedding             card-before-update card-updates)
     ;; make sure we have the correct `result_metadata`
-    (let [result-metadata-chan (result-metadata-async {:original-query    (:dataset_query card-before-update)
-                                                       :query             dataset_query
-                                                       :metadata          result_metadata
-                                                       :original-metadata (:result_metadata card-before-update)
-                                                       :dataset?          (if (some? dataset)
-                                                                            dataset
-                                                                            (:dataset card-before-update))})
-          card-updates         (merge card-updates
-                                      (when dataset
-                                        {:display :table}))
+    (let [result-metadata-chan  (result-metadata-async {:original-query    (:dataset_query card-before-update)
+                                                        :query             dataset_query
+                                                        :metadata          result_metadata
+                                                        :original-metadata (:result_metadata card-before-update)
+                                                        :dataset?          (if (some? dataset)
+                                                                             dataset
+                                                                             (:dataset card-before-update))})
+          card-updates          (merge card-updates
+                                       (when dataset
+                                         {:display :table}))
           metadata-timeout      (a/timeout metadata-sync-wait-ms)
           [fresh-metadata port] (a/alts!! [result-metadata-chan metadata-timeout])
           timed-out?            (= port metadata-timeout)
@@ -585,11 +595,16 @@ saved later when it is ready."
                    ^Runnable
                    (fn []
                      (try
-                       (let [metadata (a/<!! result-metadata-chan)
-                             current-query (db/select-one-field :dataset_query Card :id id)]
-                         (cond (and (seq metadata) (= current-query (:dataset_query <>)))
+                       (let [timeoutc        (a/timeout metadata-async-timeout)
+                             [metadata port] (a/alts!! [result-metadata-chan timeoutc])
+                             current-query   (db/select-one-field :dataset_query Card :id id)]
+                         (cond (= port timeoutc)
+                               (log/info (trs "Metadata not ready in 15 minutes, abandoning"))
+
+                               (and (seq metadata) (= current-query (:dataset_query <>)))
                                (do (db/update! Card id {:result_metadata metadata})
                                    (log/info (trs "Metadata updated asynchronously for card {0}" id)))
+
                                (not= current-query (:dataset_query <>))
                                (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
                                               id))
