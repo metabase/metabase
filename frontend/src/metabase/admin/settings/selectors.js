@@ -21,8 +21,7 @@ import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import { PremiumEmbeddingLinkWidget } from "./components/widgets/PremiumEmbeddingLinkWidget";
-import PersistedModelAnchorTimeWidget from "./components/widgets/PersistedModelAnchorTimeWidget";
-import PersistedModelRefreshIntervalWidget from "./components/widgets/PersistedModelRefreshIntervalWidget";
+import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
@@ -58,8 +57,6 @@ function updateSectionsWithPlugins(sections) {
     return sections;
   }
 }
-
-const CACHING_MIN_REFRESH_HOURS_FOR_ANCHOR_TIME_SETTING = 6;
 
 const SECTIONS = updateSectionsWithPlugins({
   setup: {
@@ -538,43 +535,44 @@ const SECTIONS = updateSectionsWithPlugins({
         },
       },
       {
-        key: "persisted-model-refresh-interval-hours",
-        description: "",
-        display_name: t`Refresh every`,
-        type: "radio",
-        options: {
-          1: t`Hour`,
-          2: t`2 hours`,
-          3: t`3 hours`,
-          6: t`6 hours`,
-          12: t`12 hours`,
-          24: t`24 hours`,
-        },
+        key: "persisted-model-refresh-cron-schedule",
+        noHeader: true,
+        type: "select",
+        options: [
+          {
+            value: "0 0 0/1 * * ? *",
+            name: t`Hour`,
+          },
+          {
+            value: "0 0 0/2 * * ? *",
+            name: t`2 hours`,
+          },
+          {
+            value: "0 0 0/3 * * ? *",
+            name: t`3 hours`,
+          },
+          {
+            value: "0 0 0/6 * * ? *",
+            name: t`6 hours`,
+          },
+          {
+            value: "0 0 0/12 * * ? *",
+            name: t`12 hours`,
+          },
+          {
+            value: "0 0 0 ? * * *",
+            name: t`24 hours`,
+          },
+          {
+            value: "custom",
+            name: t`Custom…`,
+          },
+        ],
+        widget: ModelCachingScheduleWidget,
         disableDefaultUpdate: true,
-        widget: PersistedModelRefreshIntervalWidget,
         getHidden: settings => !settings["persisted-models-enabled"],
-        onChanged: (oldHours, hours) =>
-          PersistedModelsApi.setRefreshInterval({ hours }),
-      },
-      {
-        key: "persisted-model-refresh-anchor-time",
-        display_name: t`Anchoring time`,
-        disableDefaultUpdate: true,
-        widget: PersistedModelAnchorTimeWidget,
-        getHidden: settings => {
-          if (!settings["persisted-models-enabled"]) {
-            return true;
-          }
-          const DEFAULT_REFRESH_INTERVAL = 6;
-          const refreshInterval =
-            settings["persisted-model-refresh-interval-hours"] ||
-            DEFAULT_REFRESH_INTERVAL;
-          return (
-            refreshInterval < CACHING_MIN_REFRESH_HOURS_FOR_ANCHOR_TIME_SETTING
-          );
-        },
-        onChanged: (oldAnchor, anchor) =>
-          PersistedModelsApi.setRefreshInterval({ anchor }),
+        onChanged: (previousValue, value) =>
+          PersistedModelsApi.setRefreshSchedule({ cron: value }),
       },
     ],
   },

@@ -111,14 +111,14 @@ export function FilterHeaderToggle({
   );
 }
 
-export function FilterHeader({ className, question, expanded }) {
+export function FilterHeader({ question, expanded }) {
   const query = question.query();
   const filters = query.topLevelFilters();
   if (filters.length === 0 || !expanded) {
     return null;
   }
   return (
-    <FilterHeaderContainer className={className} data-testid="qb-filters-panel">
+    <FilterHeaderContainer data-testid="qb-filters-panel">
       <div className="flex flex-wrap align-center">
         {filters.map((filter, index) => (
           <PopoverWithTrigger
