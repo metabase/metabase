@@ -2,6 +2,8 @@ import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
+import { API_UPDATE_QUESTION } from "metabase/query_builder/actions";
+
 import Collections, {
   getCollectionType,
   normalizedCollection,
@@ -41,6 +43,11 @@ const Questions = createEntity({
         dispatch(
           Collections.actions.fetchList({ tree: true }, { reload: true }),
         );
+
+        const card = result?.payload?.question;
+        if (card) {
+          dispatch.action(API_UPDATE_QUESTION, card);
+        }
 
         return result;
       };
