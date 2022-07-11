@@ -4,14 +4,20 @@ import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { LogoLink } from "./AppBarLogo.styled";
 import { SidebarButton } from "./AppBarToggle.styled";
 
-export const AppBarRoot = styled.div`
+interface AppBarRootProps {
+  isNavBarOpen?: boolean;
+}
+
+export const AppBarRoot = styled.div<AppBarRootProps>`
   display: flex;
   align-items: center;
   gap: 1rem;
   height: ${APP_BAR_HEIGHT};
   padding: 0 1rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid
+    ${props => (props.isNavBarOpen ? color("border") : "transparent")};
   background-color: ${color("bg-white")};
+  transition: border-bottom-color 200ms ease;
 `;
 
 export interface AppBarLeftContainerProps {

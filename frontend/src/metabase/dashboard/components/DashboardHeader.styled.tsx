@@ -11,12 +11,15 @@ import {
   breakpointMaxMedium,
 } from "metabase/styled-components/theme";
 import EditableText from "metabase/core/components/EditableText";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;
 }
 
-export const HeaderRoot = styled.div<TypeForItemsThatRespondToNavBarOpen>`
+export const HeaderRoot = styled(
+  FullWidthContainer,
+)<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
 
@@ -40,6 +43,7 @@ export const HeaderCaptionContainer = styled.div`
   transition: top 400ms ease;
   display: flex;
   padding-right: 2rem;
+  right: 0.25rem;
 `;
 
 export const HeaderCaption = styled(EditableText)`
