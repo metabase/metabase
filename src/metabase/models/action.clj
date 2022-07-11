@@ -27,7 +27,7 @@
   [action]
   ;; All possible sub-type columns
   (when-let [sub-type-action (not-empty (select-keys action [:card_id :name :description :template :response_handle :error_handle]))]
-    (assoc sub-type-action :action_id (:id action))))
+    (assoc sub-type-action :action_id (or (:id action) (:action_id action)))))
 
 (defn- pre-delete
   [action]

@@ -99,6 +99,19 @@
   (when (not= :http (:type action))
     (throw (ex-info (trs "Action type is not supported") action)))
   (let [http-action (db/insert! HTTPAction action)]
-    (first (action/select-actions nil :id (:action_id http-action)))))
+    (if-let [action-id  (:action_id http-action)]
+      (first (action/select-actions nil :id action-id))
+      ;; db/insert! does not return a value when used with h2
+      ;; so we return the most recently updated http action.
+      (last (action/select-actions nil :type "http")))))
+
+(api/defendpoint PUT "/:id"
+  [id :as {action :body} database]
+  (when database
+    (do-check-actions-enabled database nil))
+  (when (not= "http" (:type action))
+    (throw (ex-info (trs "Action type is not supported") action)))
+  (db/update! HTTPAction id action)
+  (first (action/select-actions nil :id id)))
 
 (api/define-routes actions/+check-actions-enabled api/+check-superuser)
