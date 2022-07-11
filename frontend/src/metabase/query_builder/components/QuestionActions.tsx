@@ -220,6 +220,7 @@ const QuestionActions = ({
           iconSize={HEADER_ICON_SIZE}
           onClick={onInfoClick}
           color={infoButtonColor}
+          data-testId="qb-header-info-button"
         />
       </Tooltip>
       <QuestionEntityMenu

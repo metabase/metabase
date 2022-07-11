@@ -482,7 +482,7 @@ function ViewTitleHeaderRightSide(props) {
       {hasRunButton && (
         <RunButtonWithTooltip
           className={cx("text-brand-hover text-dark", {
-            "sm-show": isNative,
+            "sm-show": !isShowingNotebook || isNative,
             "text-white-hover": isResultDirty,
           })}
           medium

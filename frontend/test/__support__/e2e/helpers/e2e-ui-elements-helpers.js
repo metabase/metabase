@@ -77,7 +77,5 @@ export const closeQuestionActions = () => {
 };
 
 export const questionInfoButton = () => {
-  return cy.findByTestId("qb-header-action-panel").within(() => {
-    return cy.icon("info");
-  });
+  return cy.findByTestId("qb-header-info-button");
 };
