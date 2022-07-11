@@ -30,7 +30,7 @@ import {
 } from "./BulkFilterModal.styled";
 
 import { fixBetweens, getSearchHits } from "./utils";
-import { useDebouncedFunction } from "metabase/hooks/use-debounced-function";
+import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
 
 export interface BulkFilterModalProps {
   question: Question;
@@ -54,7 +54,7 @@ const BulkFilterModal = ({
     return query.topLevelFilterFieldOptionSections(null, 2, true);
   }, [query]);
 
-  const searchItems = useDebouncedFunction(
+  const searchItems = useDebouncedEffect(
     () => getSearchHits(searchQuery, sections),
     200,
     [searchQuery, sections],
@@ -253,7 +253,7 @@ const FieldSearch = ({
         onChange={onChange}
         padding="sm"
         borderRadius="md"
-        icon={<Icon name="search" size={16} />}
+        icon={<Icon name="search" size={13} style={{ marginTop: 2 }} />}
       />
     </SearchContainer>
   );

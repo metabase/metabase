@@ -21,7 +21,6 @@ import {
   ListRow,
   ListRowLabel,
   FilterDivider,
-  EmptyStateText,
 } from "./BulkFilterList.styled";
 import { sortDimensions } from "./utils";
 
@@ -66,7 +65,7 @@ const BulkFilterList = ({
         }}
       >
         <EmptyState
-          message={<EmptyStateText>{t`Didn't find anything`}</EmptyStateText>}
+          message={<strong>{t`Didn't find anything`}</strong>}
           illustrationElement={
             <Icon name="search" size={40} color={color("text-light")} />
           }

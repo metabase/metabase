@@ -61,6 +61,12 @@ export const BulkFilterItem = ({
   }, [filter, onRemoveFilter]);
 
   const currentOperator = (filter ?? newFilter).operatorName();
+  const tableName = useMemo(
+    () =>
+      (isSearch ? dimension.field()?.table?.displayName() : undefined) ??
+      undefined,
+    [dimension, isSearch],
+  );
 
   switch (fieldPickerType) {
     case "boolean":
@@ -68,7 +74,7 @@ export const BulkFilterItem = ({
         <>
           <InlineOperatorSelector
             fieldName={dimension.displayName()}
-            tableName={isSearch && dimension.field().table?.displayName()}
+            tableName={tableName}
           />
           <BooleanPickerCheckbox
             filter={filter ?? newFilter}
@@ -81,7 +87,7 @@ export const BulkFilterItem = ({
         <>
           <InlineOperatorSelector
             fieldName={dimension.displayName()}
-            tableName={isSearch && dimension.field().table?.displayName()}
+            tableName={tableName}
           />
           <InlineCategoryPicker
             query={query}
@@ -98,7 +104,7 @@ export const BulkFilterItem = ({
         <>
           <InlineOperatorSelector
             fieldName={dimension.displayName()}
-            tableName={isSearch && dimension.field().table?.displayName()}
+            tableName={tableName}
             value={currentOperator}
             operators={dimension.filterOperators(currentOperator)}
             onChange={changeOperator}
@@ -115,7 +121,7 @@ export const BulkFilterItem = ({
         <>
           <InlineOperatorSelector
             fieldName={dimension.displayName()}
-            tableName={isSearch && dimension.field().table?.displayName()}
+            tableName={tableName}
           />
           <InlineDatePicker
             query={query}
@@ -132,7 +138,7 @@ export const BulkFilterItem = ({
         <>
           <InlineOperatorSelector
             fieldName={dimension.displayName()}
-            tableName={isSearch && dimension.field().table?.displayName()}
+            tableName={tableName}
           />
           <BulkFilterSelect
             query={query}

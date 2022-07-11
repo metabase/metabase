@@ -69,7 +69,7 @@ export const hasBackwardsArguments = (filter: Filter) => {
   return lowerArgument > upperArgument;
 };
 
-export const searchByDimensionName = (
+const searchByDimensionName = (
   option: DimensionOption,
   searchQuery: string,
 ): boolean =>
@@ -78,12 +78,12 @@ export const searchByDimensionName = (
     ?.toLowerCase()
     ?.includes(searchQuery?.toLowerCase());
 
-export const searchBySegmentName = (
-  segment: SegmentOption,
+const searchBySegmentName = (
+  option: SegmentOption,
   searchQuery: string,
 ): boolean =>
   "segments".includes(searchQuery?.toLowerCase()) ||
-  segment?.name?.toLowerCase()?.includes(searchQuery?.toLowerCase());
+  option?.name?.toLowerCase()?.includes(searchQuery?.toLowerCase());
 
 export const getSearchHits = (
   searchQuery: string,
@@ -94,8 +94,7 @@ export const getSearchHits = (
   }
 
   return sections
-    .map(s => s.items)
-    .flat()
+    .flatMap(section => section.items)
     .filter((option: DimensionOption | SegmentOption) =>
       isDimensionOption(option)
         ? searchByDimensionName(option, searchQuery)

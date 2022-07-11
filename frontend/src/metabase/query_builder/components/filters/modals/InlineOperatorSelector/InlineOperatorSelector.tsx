@@ -14,7 +14,7 @@ import { FilterOperatorName } from "metabase-types/types/Metadata";
 
 interface InlineOperatorSelectorProps {
   fieldName: string;
-  tableName?: string | false;
+  tableName?: string;
   value?: FilterOperatorName;
   operators?: any[];
   onChange?: (operatorName: string) => void;

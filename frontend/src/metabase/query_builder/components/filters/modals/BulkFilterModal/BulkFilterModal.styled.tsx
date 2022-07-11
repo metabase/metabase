@@ -16,7 +16,7 @@ export const ModalRoot = styled.div`
 export const ModalHeader = styled.div`
   display: flex;
   align-items: center;
-  padding: 2rem 2rem 0rem 1.75rem;
+  padding: 2rem 2rem 0 2rem;
 `;
 
 export const ModalBody = styled.div`
@@ -69,10 +69,5 @@ export const SearchContainer = styled.div`
   input {
     font-weight: bold;
     padding: 12px ${space(3)};
-  }
-
-  .Icon-search {
-    margin-top: 2px;
-    transform: scale(0.8);
   }
 `;
