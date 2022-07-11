@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.v2.yaml-test
+(ns metabase-enterprise.serialization.v2.e2e.yaml-test
   (:require [clojure.java.io :as io]
             [clojure.test :refer :all]
             [metabase-enterprise.serialization.test-util :as ts]
@@ -7,12 +7,10 @@
             [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
             [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
             [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
-            [metabase.models.collection :refer [Collection]]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.test.generate :as test-gen]
             [metabase.util.date-2 :as u.date]
             [reifyhealth.specmonstah.core :as rs]
-            [toucan.db :as db]
             [yaml.core :as yaml]))
 
 (defn- dir->file-set [dir]
@@ -30,78 +28,13 @@
 (defn- strip-labels [path]
   (mapv #(dissoc % :label) path))
 
-(deftest basic-dump-test
-  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (ts/with-empty-h2-app-db
-      (ts/with-temp-dpc [Collection [parent {:name "Some Collection"}]
-                         Collection [child  {:name "Child Collection" :location (format "/%d/" (:id parent))}]]
-        (let [export          (into [] (extract/extract-metabase nil))
-              parent-filename (format "%s+some_collection.yaml"  (:entity_id parent))
-              child-filename  (format "%s+child_collection.yaml" (:entity_id child))]
-          (storage.yaml/store! export dump-dir)
-          (testing "the right files in the right places"
-            (is (= #{parent-filename child-filename}
-                   (dir->file-set (io/file dump-dir "Collection")))
-                "Entities go in subdirectories")
-            (is (= #{"settings.yaml"}
-                   (dir->file-set (io/file dump-dir)))
-                "A few top-level files are expected"))
-
-          (testing "the Collections properly exported"
-            (is (= (-> (into {} (Collection (:id parent)))
-                       (dissoc :id :location)
-                       (assoc :parent_id nil))
-                   (yaml/from-file (io/file dump-dir "Collection" parent-filename))))
-
-            (is (= (-> (into {} (Collection (:id child)))
-                       (dissoc :id :location)
-                       (assoc :parent_id (:entity_id parent)))
-                   (yaml/from-file (io/file dump-dir "Collection" child-filename))))))))))
-
-(deftest basic-ingest-test
-  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (io/make-parents dump-dir "Collection" "fake") ; Prepare the right directories.
-    (spit (io/file dump-dir "settings.yaml")
-          (yaml/generate-string {:some-key "with string value"
-                                 :another-key 7
-                                 :blank-key nil}))
-    (spit (io/file dump-dir "Collection" "fake-id+the_label.yaml")
-          (yaml/generate-string {:some "made up" :data "here" :entity_id "fake-id" :slug "the_label"}))
-    (spit (io/file dump-dir "Collection" "no-label.yaml")
-          (yaml/generate-string {:some "other" :data "in this one" :entity_id "no-label"}))
-
-    (let [ingestable (ingest.yaml/ingest-yaml dump-dir)
-          exp-files  {[{:model "Collection" :id "fake-id" :label "the_label"}] {:some "made up"
-                                                                                :data "here"
-                                                                                :entity_id "fake-id"
-                                                                                :slug "the_label"}
-                      [{:model "Collection" :id "no-label"}]                   {:some "other"
-                                                                                :data "in this one"
-                                                                                :entity_id "no-label"}
-                      [{:model "Setting" :id "some-key"}]                      {:key :some-key :value "with string value"}
-                      [{:model "Setting" :id "another-key"}]                   {:key :another-key :value 7}
-                      [{:model "Setting" :id "blank-key"}]                     {:key :blank-key :value nil}}]
-      (testing "the right set of file is returned by ingest-list"
-        (is (= (set (keys exp-files))
-               (into #{} (ingest/ingest-list ingestable)))))
-
-      (testing "individual reads in any order are correct"
-        (doseq [abs-path (->> exp-files
-                              keys
-                              (repeat 10)
-                              (into [] cat)
-                              shuffle)]
-          (is (= (-> exp-files
-                     (get abs-path)
-                     (assoc :serdes/meta (mapv #(dissoc % :label) abs-path)))
-                 (ingest/ingest-one ingestable abs-path))))))))
-
 (defn- random-key [prefix n]
   (keyword (str prefix (rand-int n))))
 
 (deftest e2e-storage-ingestion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (ts/with-empty-h2-app-db
+      ;; TODO Generating some nested collections would make these tests more robust.
       (test-gen/insert! {:collection [[100 {:refs {:personal_owner_id ::rs/omit}}]]
                          :database   [[10]]
                          :table      (into [] (for [db [:db0 :db1 :db2 :db3 :db4 :db5 :db6 :db7 :db8 :db9]]
@@ -179,12 +112,8 @@
 
           (testing "for cards"
             (is (= 100 (count (dir->file-set (io/file dump-dir "Card")))))
-            (doseq [{[db-name schema table] :table
-                     :keys [collection_id creator_id entity_id]
-                     :as   card}                                (get entities "Card")
-                    :let [filename (str entity_id ".yaml")
-                          db       (db/select-one 'Database :name db-name)
-                          table    (db/select-one 'Table :db_id (:id db) :name table :schema schema)]]
+            (doseq [{:keys [entity_id] :as card} (get entities "Card")
+                    :let [filename (str entity_id ".yaml")]]
               (is (= (-> card
                          (dissoc :serdes/meta)
                          (update :created_at u.date/format)
@@ -193,8 +122,7 @@
 
           (testing "for dashboards"
             (is (= 100 (count (dir->file-set (io/file dump-dir "Dashboard")))))
-            (doseq [{:keys [collection_id creator_id entity_id]
-                     :as   dash}                                (get entities "Dashboard")
+            (doseq [{:keys [entity_id] :as dash} (get entities "Dashboard")
                     :let [filename (str entity_id ".yaml")]]
               (is (= (-> dash
                          (dissoc :serdes/meta)
