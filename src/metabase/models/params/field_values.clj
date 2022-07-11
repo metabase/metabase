@@ -1,7 +1,8 @@
 (ns metabase.models.params.field-values
-  "Code related to fetching *cached* FieldValues for Fields to populate parameter widgets. Always used by the field
+  "Code related to fetching FieldValues for Fields to populate parameter widgets. Always used by the field
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
   (:require [metabase.api.common :as api]
+            [metabase.models :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
             [metabase.plugins.classloader :as classloader]
@@ -25,6 +26,14 @@
   [field]
   ;; read permissions for a Field = partial permissions for its parent Table (including EE segmented permissions)
   (mi/can-read? field))
+
+(defn current-user-can-fetch-field-values-for-field-ids?
+  "Check if current user has permissions to fetch FieldValues for all `field` in `field-ids`."
+  [field-ids]
+  (->> field-ids
+       (map Field)
+       (map current-user-can-fetch-field-values?)
+       (every? true?)))
 
 (defn- format-field-values
   "Format a FieldValues to use by params functions.
@@ -53,7 +62,7 @@
       {:values          ((resolve 'metabase.models.params.chain-filter/unremapped-chain-filter)
                          (:id field) constraints {})
        ;; TODO: refactor [unremapped-chain-filter] to returns has_more_values
-       ;; currently default to `true` to makes sure chain-filter-search to do a MBQL search
+       ;; currently default to `true` to makes sure chain-filter-search do a MBQL search
        :has_more_values true})
 
     :sandbox
@@ -69,7 +78,10 @@
     :sandbox
     (field-values/hash-key-for-sandbox field-id api/*current-user-id* @api/*current-user-permissions-set*)))
 
-(defn- create-advanced-field-values!
+(defn create-advanced-field-values!
+  "Fetch and create a FieldValues for `field` with type `fv-type`.
+  The human_readable_values of Advanced FieldValues will be automatically fixed up based on the
+  list of values and human_readable_values of the full FieldValues of the same field."
   [fv-type field hash-key constraints]
   (when-let [{:keys [values has_more_values]} (fetch-advanced-field-values fv-type field constraints)]
     (let [;; If the full FieldValues of this field has a human-readable-values, fix it with the new values
@@ -87,7 +99,8 @@
                   :values values))))
 
 (defn get-or-create-advanced-field-values!
-  "blablo"
+  "Fetch an Advanced FieldValues with type `fv-type` for a `field`, creating them if needed.
+  If the fetched FieldValues is expired, we delete them then try to create it."
   ([fv-type field]
    (get-or-create-advanced-field-values! fv-type field nil))
 

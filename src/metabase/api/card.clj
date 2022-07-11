@@ -779,29 +779,24 @@
      (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-id))
                      {:status-code 400})))
    (let [field-ids (param-id->field-ids card param-id)]
-     ;; make sure has permissions to read values of these fields
-     (->> field-ids
-          (map Field)
-          (map params.field-values/current-user-can-fetch-field-values?)
-          (every? true?)
-          api/check-403)
-    (when (empty? field-ids)
-      (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-id))
-                      {:param-id    param-id
-                       :status-code 400})))
-    (try
-        (let [results (distinct (mapcat (if (seq query)
-                                          #(chain-filter/chain-filter-search % {} query :limit result-limit)
-                                          #(chain-filter/chain-filter % {} :limit result-limit))
-                                        field-ids))]
-          ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
-          (if (sequential? (first results))
-            (sort-by second results)
-            (sort results)))
-        (catch clojure.lang.ExceptionInfo e
-          (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-            (api/throw-403 e)
-            (throw e)))))))
+     (api/check-403 (params.field-values/current-user-can-fetch-field-values-for-field-ids? field-ids))
+     (when (empty? field-ids)
+       (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-id))
+                       {:param-id    param-id
+                        :status-code 400})))
+     (try
+       (let [results (distinct (mapcat (if (seq query)
+                                         #(chain-filter/chain-filter-search % {} query :limit result-limit)
+                                         #(chain-filter/chain-filter % {} :limit result-limit))
+                                       field-ids))]
+         ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
+         (if (sequential? (first results))
+           (sort-by second results)
+           (sort results)))
+       (catch clojure.lang.ExceptionInfo e
+         (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+           (api/throw-403 e)
+           (throw e)))))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-id`.

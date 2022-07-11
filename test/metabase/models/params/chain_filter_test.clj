@@ -1,8 +1,10 @@
 (ns metabase.models.params.chain-filter-test
-  (:require [clojure.test :refer :all]
+  (:require [cheshire.core :as json]
+            [clojure.test :refer :all]
             [metabase.models :refer [Field FieldValues]]
             [metabase.models.field-values :as field-values]
             [metabase.models.params.chain-filter :as chain-filter]
+            [metabase.models.params.field-values :as params.field-values]
             [metabase.test :as mt]
             [toucan.db :as db]))
 
@@ -11,6 +13,14 @@
      (mt/$ids nil ~(symbol (str \% (name field))))
      (mt/$ids nil ~(into {} (for [[k v] field->value]
                               [(symbol (str \% k)) v])))
+     ~@options))
+
+(defmacro ^:private chain-filter-search [field field->value query & options]
+  `(chain-filter/chain-filter-search
+     (mt/$ids nil ~(symbol (str \% (name field))))
+     (mt/$ids nil ~(into {} (for [[k v] field->value]
+                              [(symbol (str \% k)) v])))
+     ~query
      ~@options))
 
 (deftest chain-filter-test
@@ -386,29 +396,55 @@
   (testing "chain-filter should use cached FieldValues if applicable (#13832)"
     (let [field-id (mt/id :categories :name)]
       (mt/with-model-cleanup [FieldValues]
-        (testing "without constraints"
+        (testing "should created a full FieldValues when constraints is `nil`"
+          ;; warm up the cache
           (chain-filter categories.name nil)
-          (with-redefs [field-values/distinct-values (fn [_]
-                                                       (assert false "Should not be called"))]
+          (with-redefs [params.field-values/create-advanced-field-values! (fn [& _args]
+                                                                            (assert false "Should not be called"))]
             (is (= ["African" "American"]
-                   (take 2 (chain-filter categories.name nil))))))
+                   (take 2 (chain-filter categories.name nil))))
+            (is (= 1 (db/count FieldValues :field_id field-id :type :full)))))
+
         (testing "should create a linked-filter FieldValues when have constraints"
           ;; make sure we have a clean start
           (field-values/clear-advanced-field-values-for-field! field-id)
-          (is (= ["Japanese" "Steakhouse"]
-                 (chain-filter categories.name {venues.price 4})))
-          (is (= 1 (db/count FieldValues :field_id field-id :type :linked-filter))))
+          ;; warm up the cache
+          (chain-filter categories.name {venues.price 4})
+          (with-redefs [params.field-values/create-advanced-field-values! (fn [& _args]
+                                                                            (assert false "Should not be called"))]
+            (is (= ["Japanese" "Steakhouse"]
+                   (chain-filter categories.name {venues.price 4})))
+            (is (= 1 (db/count FieldValues :field_id field-id :type :linked-filter)))))
 
-        #_(testing "search"
+        (testing "should do in-memory search with the cached FieldValues when search without constraints"
+          (mt/with-temp-vals-in-db FieldValues (db/select-one-id FieldValues :field_id field-id :type "full") {:values ["Good" "Bad"]}
             (is (= ["Good"]
-                   (mt/$ids (chain-filter/chain-filter-search %categories.name nil "ood"))))
-            (testing "shouldn't use cached FieldValues for queries with constraints"
-              (is (= ["Steakhouse"]
-                     (mt/$ids (chain-filter/chain-filter-search %categories.name {%venues.price 4} "o")))))
-            #_(testing "Shouldn't use cached FieldValues if has_more_values=true"
-                (db/update! FieldValues field-values-id :has_more_values true)
-                (is (= "Coffee Shop"
-                       (first (mt/$ids (chain-filter/chain-filter-search %categories.name nil "o")))))))))))
+                   (chain-filter-search categories.name nil "ood")))))
+
+        (testing "search with constraitns"
+          ;; make sure we have a clean start
+          (field-values/clear-advanced-field-values-for-field! field-id)
+          (testing "should create a linked-filter FieldValues"
+            ;; warm up the cache
+            (chain-filter categories.name {venues.price 4})
+            (is (= 1 (db/count FieldValues :field_id field-id :type "linked-filter"))))
+
+          (testing "should search for the values of linked-filter FieldValues"
+            (db/update-where! FieldValues {:field_id field-id
+                                           :type     "linked-filter"}
+                              :values (json/generate-string ["Good" "Bad"])
+                              ;; HACK: currently this is hardcoded to true for linked-filter
+                              ;; in [[params.field-values/fetch-advanced-field-values]]
+                              ;; we want this to false to test this case
+                              :has_more_values false)
+            (is (= ["Good"]
+                   (chain-filter-search categories.name {venues.price 4} "o")))
+            (testing "Shouldn't use cached FieldValues if has_more_values=true"
+              (db/update-where! FieldValues {:field_id field-id
+                                             :type     "linked-filter"}
+                                :has_more_values true)
+              (is (= "Steakhouse"
+                     (first (chain-filter-search categories.name {venues.price 4} "o")))))))))))
 
 (deftest time-interval-test
   (testing "chain-filter should accept time interval strings like `past32weeks` for temporal Fields"

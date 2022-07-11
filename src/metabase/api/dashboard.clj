@@ -595,11 +595,7 @@
                         :status-code     400})))
      (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
            field-ids   (param-key->field-ids dashboard param-key)]
-      (->> field-ids
-                (map Field)
-                (map params.field-values/current-user-can-fetch-field-values?)
-                (every? true?)
-                api/check-403)
+      (api/check-403 (params.field-values/current-user-can-fetch-field-values-for-field-ids? field-ids))
       (when (empty? field-ids)
         (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
                         {:param       (get (:resolved-params dashboard) param-key)
