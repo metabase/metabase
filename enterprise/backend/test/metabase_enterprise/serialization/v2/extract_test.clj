@@ -74,22 +74,17 @@
 (deftest dashboard-and-cards-test
   (ts/with-empty-h2-app-db
     (ts/with-temp-dpc [Collection [{coll-id    :id
-                                    coll-eid   :entity_id
-                                    coll-slug  :slug
-                                    :as common-coll}          {:name "Some Collection"}]
+                                    coll-eid   :entity_id}    {:name "Some Collection"}]
                        User       [{mark-id :id}              {:first_name "Mark"
                                                                :last_name  "Knopfler"
                                                                :email      "mark@direstrai.ts"}]
                        User       [{dave-id :id}              {:first_name "David"
                                                                :last_name  "Knopfler"
                                                                :email      "david@direstrai.ts"}]
-                       Collection [{mark-coll-id  :id
-                                    mark-coll-eid :entity_id
-                                    :as mark-coll}            {:name "MK Personal"
+                       Collection [{mark-coll-eid :entity_id} {:name "MK Personal"
                                                                :personal_owner_id mark-id}]
                        Collection [{dave-coll-id  :id
-                                    dave-coll-eid :entity_id
-                                    :as dave-coll}            {:name "DK Personal"
+                                    dave-coll-eid :entity_id} {:name "DK Personal"
                                                                :personal_owner_id dave-id}]
 
                        Database   [{db-id      :id}           {:name "My Database"}]
