@@ -3,29 +3,6 @@ import { color } from "metabase/lib/colors";
 
 import Button from "metabase/core/components/Button";
 
-export const DashboardHeaderButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 12px;
-  border-radius: 6px;
-  color: ${props => (props.isActive ? color("brand") : color("text-dark"))};
-  background-color: ${props =>
-    props.isActive ? color("brand-light") : "transparent"};
-  transition: all 200ms;
-
-  &:hover:enabled {
-    cursor: pointer;
-    color: ${props => (props.isActive ? color("white") : color("brand"))};
-    background-color: ${props =>
-      props.isActive ? color("brand") : "transparent"};
-  }
-
-  &:disabled {
-    color: ${color("text-light")};
-  }
-`;
-
 export const DashboardHeaderActionDivider = styled.div`
   height: 1.25rem;
   padding-left: 0.75rem;
@@ -34,7 +11,23 @@ export const DashboardHeaderActionDivider = styled.div`
   border-left: 1px solid ${color("border-dark")};
 `;
 
-export const DashboardHeaderInfoButton = styled(Button)`
-  color: ${props =>
-    props.isShowingDashboardInfoSidebar ? color("brand") : color("text-dark")};
+export const DashboardHeaderButton = styled(Button)`
+  padding: 0.5rem 0.75rem;
+  box-sizing: content-box;
+  height: 1.5rem;
+  color: ${props => (props.isActive ? color("brand") : color("text-dark"))};
+
+  &:hover {
+    color: ${color("brand")};
+    background-color: ${color("bg-medium")};
+  }
+
+  svg {
+    vertical-align: middle;
+  }
 `;
+
+DashboardHeaderButton.defaultProps = {
+  onlyIcon: true,
+  iconSize: 18,
+};

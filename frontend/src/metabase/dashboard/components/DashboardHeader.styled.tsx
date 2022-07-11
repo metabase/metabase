@@ -149,13 +149,6 @@ export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBar
     padding-right: 1rem;
     border-top: 1px solid ${color("border")};
   }
-
-  ${Button.Root} {
-    padding: 0.5rem 0.75rem;
-    &:hover {
-      color: ${color("brand")};
-    }
-  }
 `;
 
 export const HeaderButtonSection = styled.div<TypeForItemsThatRespondToNavBarOpen>`

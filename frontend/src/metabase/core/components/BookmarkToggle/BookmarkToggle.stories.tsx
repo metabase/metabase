@@ -8,14 +8,13 @@ export default {
   component: BookmarkToggle,
 };
 
-const Template: ComponentStory<typeof BookmarkToggle> = args => {
+const Template: ComponentStory<typeof BookmarkToggle> = () => {
   const [{ isBookmarked }, updateArgs] = useArgs();
   const handleCreateBookmark = () => updateArgs({ isBookmarked: true });
   const handleDeleteBookmark = () => updateArgs({ isBookmarked: false });
 
   return (
     <BookmarkToggle
-      {...args}
       isBookmarked={isBookmarked}
       onCreateBookmark={handleCreateBookmark}
       onDeleteBookmark={handleDeleteBookmark}
