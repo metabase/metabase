@@ -13,7 +13,7 @@ const getRedirectUrl = () => {
 
   return redirectUrlParam != null && isSameOrigin(redirectUrlParam)
     ? redirectUrlParam
-    : "/";
+    : null;
 };
 
 export const createSessionMiddleware = (
@@ -35,9 +35,12 @@ export const createSessionMiddleware = (
           wasLoggedIn = isLoggedIn;
 
           if (isLoggedIn) {
-            const redirectUrl = getRedirectUrl();
             await store.dispatch(refreshSession());
-            store.dispatch(replace(redirectUrl));
+            const redirectUrl = getRedirectUrl();
+
+            if (redirectUrl !== null) {
+              store.dispatch(replace(redirectUrl));
+            }
           } else {
             const url = location.pathname + location.search + location.hash;
             store.dispatch(logout(url, true));
