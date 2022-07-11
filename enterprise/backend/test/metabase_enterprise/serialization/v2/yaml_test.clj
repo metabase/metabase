@@ -115,7 +115,11 @@
                                                     {:database_id   (keyword (str "db" db))
                                                      :table_id      (keyword (str "t" (+ t (* 10 db))))
                                                      :collection_id (random-key "coll" 100)
-                                                     :creator_id    (random-key "u" 10)})}]]})
+                                                     :creator_id    (random-key "u" 10)})}]]
+                         :dashboard  [[100 {:refs {:collection_id   (random-key "coll" 100)
+                                                   :creator_id      (random-key "u" 10)}}]]
+                         :dashboard-card [[300 {:refs {:card_id      (random-key "c" 100)
+                                                       :dashboard_id (random-key "d" 100)}}]]})
       (let [extraction (into [] (extract/extract-metabase {}))
             entities   (reduce (fn [m entity]
                                  (update m (-> entity :serdes/meta last :model)
@@ -186,6 +190,34 @@
                          (update :created_at u.date/format)
                          (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Card" filename))))))
+
+          (testing "for dashboards"
+            (is (= 100 (count (dir->file-set (io/file dump-dir "Dashboard")))))
+            (doseq [{:keys [collection_id creator_id entity_id]
+                     :as   dash}                                (get entities "Dashboard")
+                    :let [filename (str entity_id ".yaml")]]
+              (is (= (-> dash
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Dashboard" filename))))))
+
+          (testing "for dashboard cards"
+            (is (= 300
+                   (reduce + (for [dash (get entities "Dashboard")
+                                   :let [card-dir (io/file dump-dir "Dashboard" (:entity_id dash) "DashboardCard")]]
+                               (if (.exists card-dir)
+                                 (count (dir->file-set card-dir))
+                                 0)))))
+
+            (doseq [{:keys [dashboard_id entity_id]
+                     :as   dashcard}                (get entities "DashboardCard")
+                    :let [filename (str entity_id ".yaml")]]
+              (is (= (-> dashcard
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Dashboard" dashboard_id "DashboardCard" filename))))))
 
           (testing "for settings"
             (is (= (into {} (for [{:keys [key value]} (get entities "Setting")]

@@ -4,6 +4,8 @@
   "The list of models which are exported by serialization. Used for production code and by tests."
   ["Card"
    "Collection"
+   "Dashboard"
+   "DashboardCard"
    "Database"
    "Field"
    "Setting"
