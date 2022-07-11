@@ -14,6 +14,8 @@ import { capitalize } from "metabase/lib/formatting";
 const propTypes = {
   entityType: PropTypes.string,
   entityQuery: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
+  // We generally expect booleans here,
+  // but a parent entity loader may pass `reload` as a function.
   reload: PropTypes.oneOfType([PropTypes.bool, PropTypes.func]),
   reloadInterval: PropTypes.oneOfType([PropTypes.number, PropTypes.func]),
   wrapped: PropTypes.bool,
