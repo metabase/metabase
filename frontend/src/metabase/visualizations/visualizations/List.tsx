@@ -1,9 +1,7 @@
-import React, { useLayoutEffect, useCallback, useMemo, useState } from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "lodash";
-import cx from "classnames";
 
-import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 import { formatColumn } from "metabase/lib/formatting";
 import {
   isNumber,
@@ -13,58 +11,20 @@ import {
   isAvatarURL,
 } from "metabase/lib/schema_metadata";
 
-import { usePrevious } from "metabase/hooks/use-previous";
-import { useOnMount } from "metabase/hooks/use-on-mount";
-
 import List from "metabase/visualizations/components/List/List";
-import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
+import ChartSettingsListColumns from "metabase/visualizations/components/settings/ChartSettingsListColumns";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { VisualizationSettings } from "metabase-types/api/card";
-import { Column, DatasetData } from "metabase-types/types/Dataset";
+import { Column } from "metabase-types/types/Dataset";
 import { Series, VisualizationProps } from "metabase-types/types/Visualization";
-import { Field, FieldLiteral } from "metabase-types/types/Query";
-
-type ColumnSetting = {
-  fieldRef: Field | FieldLiteral;
-  enabled: boolean;
-};
 
 function ListViz(props: VisualizationProps) {
-  const { data, series, settings, isDashboard } = props;
-
-  const [formattedData, setFormattedData] = useState<DatasetData | null>(null);
-  const previousSeries = usePrevious(series);
-  const previousSettings = usePrevious(settings);
-
-  const formatData = useCallback(() => {
-    const { cols, rows } = data;
-
-    const columnSettings = settings["table.columns"] as ColumnSetting[];
-    const columnIndexes = columnSettings
-      .filter(columnSetting => columnSetting.enabled)
-      .map(columnSetting =>
-        findColumnIndexForColumnSetting(cols, columnSetting),
-      )
-      .filter(columnIndex => columnIndex >= 0 && columnIndex < cols.length);
-
-    setFormattedData({
-      cols: columnIndexes.map(i => cols[i]),
-      rows: rows.map(row => columnIndexes.map(i => row[i])),
-    });
-  }, [data, settings]);
-
-  const areAllColumnsHidden = useMemo(() => {
-    const columnSettings = settings["table.columns"] || [];
-    return !columnSettings.some(
-      (columnSetting: { enabled?: boolean }) => columnSetting.enabled,
-    );
-  }, [settings]);
+  const { data, settings } = props;
 
   const getColumnTitle = useCallback(
     (columnIndex: number) => {
-      const columns = formattedData?.cols || [];
-      const column = columns[columnIndex];
+      const column = data.cols[columnIndex];
       if (!column) {
         return null;
       }
@@ -72,48 +32,14 @@ function ListViz(props: VisualizationProps) {
         settings.column(column)["_column_title_full"] || formatColumn(column)
       );
     },
-    [formattedData, settings],
+    [data, settings],
   );
 
-  useOnMount(() => {
-    formatData();
-  });
-
-  useLayoutEffect(() => {
-    if (series !== previousSeries || !_.isEqual(settings, previousSeries)) {
-      formatData();
-    }
-  }, [series, settings, previousSeries, previousSettings, formatData]);
-
-  if (!formattedData) {
+  if (!data) {
     return null;
   }
 
-  if (areAllColumnsHidden) {
-    return (
-      <div
-        className={cx(
-          "flex-full px1 pb1 text-centered flex flex-column layout-centered",
-          { "text-slate-light": isDashboard, "text-slate": !isDashboard },
-        )}
-      >
-        <img
-          width={99}
-          src="app/assets/img/hidden-field.png"
-          srcSet="
-            app/assets/img/hidden-field.png     1x,
-            app/assets/img/hidden-field@2x.png  2x
-          "
-          className="mb2"
-        />
-        <span className="h4 text-bold">{t`Every field is hidden right now`}</span>
-      </div>
-    );
-  }
-
-  return (
-    <List {...props} data={formattedData} getColumnTitle={getColumnTitle} />
-  );
+  return <List {...props} data={data} getColumnTitle={getColumnTitle} />;
 }
 
 export default Object.assign(ListViz, {
@@ -135,46 +61,31 @@ export default Object.assign(ListViz, {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     ...columnSettings({ hidden: true }),
-    "table.columns": {
+    "list.columns": {
       section: t`Columns`,
-      title: t`Visible columns`,
-      widget: ChartSettingOrderedColumns,
-      getHidden: (series: Series, vizSettings: VisualizationSettings) =>
-        vizSettings["table.pivot"],
-      isValid: ([{ card, data }]: Series) => {
-        const tableColumns = card.visualization_settings["table.columns"] || [];
-        const columnSettings = tableColumns as ColumnSetting[];
-        // If "table.columns" happened to be an empty array,
-        // it will be treated as "all columns are hidden",
-        // This check ensures it's not empty,
-        // otherwise it will be overwritten by `getDefault` below
-        return (
-          columnSettings.length !== 0 &&
-          columnSettings.every(
-            columnSetting =>
-              findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-          )
-        );
-      },
+      title: t`Columns`,
+      widget: ChartSettingsListColumns,
       getDefault: ([
         {
           data: { cols },
         },
-      ]: Series) =>
-        cols.map(col => ({
-          name: col.name,
-          fieldRef: col.field_ref,
-          enabled: col.visibility_type !== "details-only",
-        })),
+      ]: Series) => {
+        const columns = cols.filter(col => col.visibility_type === "normal");
+        const firstThreeColumns = columns.slice(0, 3).filter(Boolean);
+        const nextThreeColumns = columns.slice(3, 6).filter(Boolean);
+        return {
+          left: firstThreeColumns.map(col => col.id || col.field_ref),
+          right: nextThreeColumns.map(col => col.id || col.field_ref),
+        };
+      },
       getProps: ([
         {
           data: { cols },
         },
       ]: Series) => ({
-        columns: cols,
+        columns: cols.filter(col => col.visibility_type === "normal"),
       }),
     },
-    "table.column_widths": {},
   },
 
   columnSettings: (column: Column) => {
