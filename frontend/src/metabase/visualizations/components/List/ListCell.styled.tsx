@@ -9,11 +9,8 @@ function getCellWidth(type: CellType) {
   if (type === "image") {
     return "5%";
   }
-  if (type === "pk") {
-    return "2%";
-  }
   if (type === "primary") {
-    return "30%";
+    return "10%";
   }
   return "unset";
 }
@@ -24,7 +21,7 @@ export const CellRoot = styled.td<{ type: CellType }>`
 
   color: ${color("text-dark")};
   font-weight: bold;
-  text-align: ${props => (props.type === "secondary" ? "right" : "unset")};
+  text-align: ${props => (props.type === "secondary" ? "right" : "left")};
   white-space: nowrap;
 
   width: ${props => getCellWidth(props.type)};

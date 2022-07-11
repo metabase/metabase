@@ -97,15 +97,33 @@ function List({
     [getColumnTitle],
   );
 
+  const listColumnIndexes = useMemo(() => {
+    const left = settings["list.columns"].left.map((idOrFieldRef: any) =>
+      cols.findIndex(
+        col =>
+          col.id === idOrFieldRef || _.isEqual(col.field_ref, idOrFieldRef),
+      ),
+    );
+    const right = settings["list.columns"].right.map((idOrFieldRef: any) =>
+      cols.findIndex(
+        col =>
+          col.id === idOrFieldRef || _.isEqual(col.field_ref, idOrFieldRef),
+      ),
+    );
+    return [...left, ...right];
+  }, [cols, settings]);
+
   const renderRow = useCallback(
     (rowIndex, index) => {
       const ref = index === 0 ? firstRowRef : null;
+      const row = data.rows[rowIndex];
       return (
         <ListRow key={rowIndex} ref={ref} data-testid="table-row">
-          {data.rows[rowIndex].map((value, columnIndex) => (
+          {listColumnIndexes.map((columnIndex, slotIndex) => (
             <ListCell
               key={`${rowIndex}-${columnIndex}`}
-              value={value}
+              value={row[columnIndex]}
+              slot={slotIndex <= 2 ? "left" : "right"}
               data={data}
               series={series}
               settings={settings}
@@ -120,6 +138,7 @@ function List({
       );
     },
     [
+      listColumnIndexes,
       data,
       series,
       settings,
