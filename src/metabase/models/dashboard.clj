@@ -19,6 +19,7 @@
             [metabase.models.revision.diff :refer [build-sentence]]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.moderation :as moderation]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.async :as qp.async]
@@ -432,23 +433,16 @@
 
 ;; TODO Maybe nest collections -> dashboards -> dashcards?
 (defmethod serdes.base/extract-one "Dashboard"
-  [_ _ {:keys [collection_id creator_id] :as dash}]
-  (let [email                (db/select-one-field :email 'User :id creator_id)
-        coll                 (db/select-one 'Collection :id collection_id)
-        {collection-eid :id} (serdes.base/infer-self-path "Collection" coll)]
-    (-> (serdes.base/extract-one-basics "Dashboard" dash)
-        (assoc :collection_id collection-eid
-               :creator_id    email))))
+  [_ _ dash]
+  (-> (serdes.base/extract-one-basics "Dashboard" dash)
+      (update :collection_id serdes.util/export-fk 'Collection)
+      (update :creator_id    serdes.util/export-fk-field 'User :email)))
 
 (defmethod serdes.base/load-xform "Dashboard"
-  [{email          :creator_id
-    collection-eid :collection_id
-    :as dash}]
-  (let [coll-id   (serdes.base/lookup-by-id 'Collection collection-eid)
-        user-id   (db/select-one-id 'User :email email)]
-    (-> dash
-        (assoc :collection_id coll-id
-               :creator_id    user-id))))
+  [dash]
+  (-> dash
+      (update :collection_id serdes.util/import-fk 'Collection)
+      (update :creator_id    serdes.util/import-fk-field 'User :email)))
 
 (defmethod serdes.base/serdes-dependencies "Dashboard"
   [{:keys [collection_id]}]

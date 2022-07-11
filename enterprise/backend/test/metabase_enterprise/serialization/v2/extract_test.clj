@@ -123,11 +123,11 @@
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c1-id]))]
           (is (= {:serdes/meta   [{:model "Card" :id c1-eid}]
-                  :table         ["My Database" nil "Schemaless Table"]
+                  :table_id      ["My Database" nil "Schemaless Table"]
                   :creator_id    "mark@direstrai.ts"
                   :collection_id coll-eid
                   :dataset_query "{\"json\": \"string values\"}"} ; Undecoded, still a string.
-                 (select-keys ser [:serdes/meta :table :creator_id :collection_id :dataset_query])))
+                 (select-keys ser [:serdes/meta :table_id :creator_id :collection_id :dataset_query])))
           (is (not (contains? ser :id)))
 
           (testing "cards depend on their Table and Collection"
@@ -138,11 +138,11 @@
 
         (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c2-id]))]
           (is (= {:serdes/meta   [{:model "Card" :id c2-eid}]
-                  :table         ["My Database" "PUBLIC" "Schema'd Table"]
+                  :table_id      ["My Database" "PUBLIC" "Schema'd Table"]
                   :creator_id    "mark@direstrai.ts"
                   :collection_id coll-eid
                   :dataset_query "{}"} ; Undecoded, still a string.
-                 (select-keys ser [:serdes/meta :table :creator_id :collection_id :dataset_query])))
+                 (select-keys ser [:serdes/meta :table_id :creator_id :collection_id :dataset_query])))
           (is (not (contains? ser :id)))
 
           (testing "cards depend on their Table and Collection"

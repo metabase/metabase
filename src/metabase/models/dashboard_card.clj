@@ -8,6 +8,7 @@
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -227,15 +228,13 @@
    (serdes.base/infer-self-path "DashboardCard" dashcard)])
 
 (defmethod serdes.base/extract-one "DashboardCard"
-  [_ _ {:keys [card_id dashboard_id] :as dashcard}]
-  (let [card (db/select-one 'Card :id card_id)
-        dash (db/select-one 'Dashboard :id dashboard_id)]
-    (-> (serdes.base/extract-one-basics "DashboardCard" dashcard)
-        (assoc :card_id      (or (:entity_id card) (serdes.hash/identity-hash card)))
-        (assoc :dashboard_id (or (:entity_id dash) (serdes.hash/identity-hash dash))))))
+  [_ _ dashcard]
+  (-> (serdes.base/extract-one-basics "DashboardCard" dashcard)
+      (update :card_id      serdes.util/export-fk 'Card)
+      (update :dashboard_id serdes.util/export-fk 'Dashboard)))
 
 (defmethod serdes.base/load-xform "DashboardCard"
-  [{:keys [card_id dashboard_id] :as dashcard}]
+  [dashcard]
   (-> (serdes.base/load-xform-basics dashcard)
-      (assoc :card_id      (serdes.base/lookup-by-id 'Card card_id))
-      (assoc :dashboard_id (serdes.base/lookup-by-id 'Dashboard dashboard_id))))
+      (update :card_id      serdes.util/import-fk 'Card)
+      (update :dashboard_id serdes.util/import-fk 'Dashboard)))
