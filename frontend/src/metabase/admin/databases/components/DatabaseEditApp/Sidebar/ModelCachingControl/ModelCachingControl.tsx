@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { t, jt } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -18,10 +18,17 @@ import {
   PopoverContent,
   FeatureTitle,
   FeatureDescriptionText,
+  ErrorMessage,
 } from "./ModelCachingControl.styled";
 
 interface Props {
   database: Database;
+}
+
+interface ErrorResponse {
+  data?: {
+    message?: string;
+  };
 }
 
 function FeatureDescription({ schemaName }: { schemaName: string }) {
@@ -39,7 +46,13 @@ function FeatureDescription({ schemaName }: { schemaName: string }) {
   );
 }
 
+function isLackPermissionsError(response: ErrorResponse) {
+  return response?.data?.message?.startsWith("Lack permissions");
+}
+
 function ModelCachingControl({ database }: Props) {
+  const [error, setError] = useState<string | null>(null);
+
   const databaseId = database.id;
   const isEnabled = database.isPersisted();
 
@@ -50,29 +63,45 @@ function ModelCachingControl({ database }: Props) {
   const cacheSchemaName = getModelCacheSchemaName(databaseId);
 
   const handleCachingChange = async () => {
-    if (isEnabled) {
-      await MetabaseApi.db_unpersist({ dbId: databaseId });
-    } else {
-      await MetabaseApi.db_persist({ dbId: databaseId });
+    setError(null);
+    try {
+      if (isEnabled) {
+        await MetabaseApi.db_unpersist({ dbId: databaseId });
+      } else {
+        await MetabaseApi.db_persist({ dbId: databaseId });
+      }
+    } catch (error) {
+      const response = error as ErrorResponse;
+      if (isLackPermissionsError(response)) {
+        setError(
+          t`For models to be cached, the user should have create table permission or create schema permission in this database.`,
+        );
+      } else {
+        setError(response.data?.message || t`An error occurred`);
+      }
+      throw error;
     }
   };
 
   return (
-    <ControlContainer>
-      <ActionButton
-        className="Button"
-        normalText={normalText}
-        failedText={t`Failed`}
-        successText={t`Done`}
-        actionFn={handleCachingChange}
-      />
-      <TippyPopover
-        placement="right-end"
-        content={<FeatureDescription schemaName={cacheSchemaName} />}
-      >
-        <HoverableIcon name="info" />
-      </TippyPopover>
-    </ControlContainer>
+    <div>
+      <ControlContainer>
+        <ActionButton
+          className="Button"
+          normalText={normalText}
+          failedText={t`Failed`}
+          successText={t`Done`}
+          actionFn={handleCachingChange}
+        />
+        <TippyPopover
+          placement="right-end"
+          content={<FeatureDescription schemaName={cacheSchemaName} />}
+        >
+          <HoverableIcon name="info" />
+        </TippyPopover>
+      </ControlContainer>
+      {error && <ErrorMessage>{error}</ErrorMessage>}
+    </div>
   );
 }
 
