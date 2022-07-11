@@ -85,17 +85,7 @@ const DatabaseEditAppSidebar = ({
             )}
             {isModelPersistenceEnabled && database.supportsPersistence() && (
               <li className="mt2">
-                <ModelCachingControl
-                  databaseId={database.id}
-                  isEnabled={database.isPersisted()}
-                  onToggle={isEnabled => {
-                    if (isEnabled) {
-                      return persistDatabase(database.id);
-                    } else {
-                      return unpersistDatabase(database.id);
-                    }
-                  }}
-                />
+                <ModelCachingControl database={database} />
               </li>
             )}
           </ol>

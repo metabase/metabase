@@ -5,6 +5,10 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import ActionButton from "metabase/components/ActionButton";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
+import { MetabaseApi } from "metabase/services";
+
+import Database from "metabase-lib/lib/metadata/Database";
+
 import { getModelCacheSchemaName } from "metabase/lib/data-modeling/utils";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -17,9 +21,7 @@ import {
 } from "./ModelCachingControl.styled";
 
 interface Props {
-  databaseId: number;
-  isEnabled: boolean;
-  onToggle: (isEnabled: boolean) => Promise<void>;
+  database: Database;
 }
 
 function FeatureDescription({ schemaName }: { schemaName: string }) {
@@ -37,11 +39,24 @@ function FeatureDescription({ schemaName }: { schemaName: string }) {
   );
 }
 
-function ModelCachingControl({ databaseId, isEnabled, onToggle }: Props) {
+function ModelCachingControl({ database }: Props) {
+  const databaseId = database.id;
+  const isEnabled = database.isPersisted();
+
   const normalText = isEnabled
     ? t`Turn model caching off`
     : t`Turn model caching on`;
+
   const cacheSchemaName = getModelCacheSchemaName(databaseId);
+
+  const handleCachingChange = async () => {
+    if (isEnabled) {
+      await MetabaseApi.db_unpersist({ dbId: databaseId });
+    } else {
+      await MetabaseApi.db_persist({ dbId: databaseId });
+    }
+  };
+
   return (
     <ControlContainer>
       <ActionButton
@@ -49,7 +64,7 @@ function ModelCachingControl({ databaseId, isEnabled, onToggle }: Props) {
         normalText={normalText}
         failedText={t`Failed`}
         successText={t`Done`}
-        actionFn={() => onToggle(!isEnabled)}
+        actionFn={handleCachingChange}
       />
       <TippyPopover
         placement="right-end"
