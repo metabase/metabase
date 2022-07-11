@@ -131,7 +131,7 @@
                                          tag->param)]
      (str/replace text template-tag-regex (partial replacement tag->normalized-param))))
 
-(defn tag-names-impl
+(defn ^:export tag-names
   "Impl function for tag_names"
   [text]
   (->> (re-seq template-tag-regex (or text ""))
@@ -141,5 +141,8 @@
 (defn ^:export tag_names
   "Given the content of a text dashboard card, return a set of the unique names of template tags in the text."
   [text]
-  #?(:clj (tag-names-impl text)
-     :cljs (clj->js (tag-names-impl text))))
+  (let [tag-names (->> (re-seq template-tag-regex (or text ""))
+                       (map second)
+                       set)]
+    #?(:clj  tag-names
+       :cljs (clj->js tag-names))))

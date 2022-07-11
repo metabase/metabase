@@ -2,9 +2,14 @@
   (:require [clojure.test :as t]
             [metabase.shared.util.parameters :as params]))
 
+(defn- tag-names
+  [text]
+  #?(:clj (params/tag-names text)
+     :cljs (set (js->clj (params/tag-names text)))))
+
 (t/deftest parse-tag-names-test
   (t/testing "Tag names are correctly parsed from text card contents"
-    (t/are [text tags] (= tags (@#'params/tag-names-impl text))
+    (t/are [text tags] (= tags (tag-names text))
       ;; Valid tags
       "{{foo}}"           #{"foo"}
       "{{ foo }}"         #{"foo"}
