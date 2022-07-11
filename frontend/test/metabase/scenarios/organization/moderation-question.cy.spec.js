@@ -141,6 +141,8 @@ describeEE("scenarios > saved question moderation", () => {
 });
 
 function verifyQuestion() {
+  cy.intercept("GET", "/api/card/*").as("loadCard");
+
   openQuestionActions();
   cy.findByTextEnsureVisible("Verify this question").click();
 
