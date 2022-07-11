@@ -11,7 +11,8 @@
 (defn- by-model [model-name extraction]
   (->> extraction
        (into [])
-       (map (comp last :serdes/meta)) (filter #(= model-name (:model %)))
+       (map (comp last :serdes/meta))
+       (filter #(= model-name (:model %)))
        (map :id)
        set))
 
