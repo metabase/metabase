@@ -94,9 +94,6 @@ const BulkFilterModal = ({
       <ModalHeader>
         <ModalTitle>{getTitle(question, query)}</ModalTitle>
         <FieldSearch value={searchQuery} onChange={setSearchQuery} />
-        <ModalCloseButton onClick={onClose}>
-          <Icon name="close" />
-        </ModalCloseButton>
       </ModalHeader>
       {sections.length === 1 || searchItems ? (
         <BulkFilterModalSection
