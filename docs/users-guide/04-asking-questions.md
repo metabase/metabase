@@ -92,12 +92,6 @@ If your Metabase administrators have created special named filters for the table
 
 If you have a more complex filter you're trying to express, you can pick **Custom Expression** from the add filter menu to create a filter expression. You can use comparison operators like greater than, `>`, or less than ,`<`, as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`. Learn more about writing [expressions](./expressions.md) or skip right to the [list of expressions](expressions-list.md).
 
-### Filter modal
-
-When visualizing a question, if you click on the **Filter** button, Metabase will pop up a filter modal. The options for filtering will differ depending on the field type.
-
-![Filter modal](./images/asking-questions/filter-modal.png)
-
 ## Summarizing and grouping by
 
 ![Summarizing](./images/notebook/summarize-step.png)
@@ -175,9 +169,11 @@ To see more info about a given record (a user, order, venue, etc.), click on a r
 
 ## Custom expressions
 
+Custom expressions allow you to use spreadsheet-like functions and simple arithmetic within or between aggregation functions.
+
 ![Custom expression](./images/expressions/aggregation-expression.png)
 
-Custom expressions allow you to use spreadsheet-like functions and simple arithmetic within or between aggregation functions. For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md).
+ For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md).
 
 ### Creating custom columns
 
