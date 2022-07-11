@@ -53,6 +53,8 @@ describe("scenarios > dashboard > parameters in text cards", () => {
   });
 
   it("should translate parameter values into the instance language", () => {
+    // Set user locale to English explicitly so that we can change the site locale separately, without the user
+    // locale following it (by default, user locale matches site locale)
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
     });
@@ -75,5 +77,10 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     });
 
     cy.findByText("Variable: 1 et 2").should("exist");
+
+    // Let's make sure the localization was reset back to the user locale by checking that specific text exists in
+    // English on the homepage.
+    cy.visit("/");
+    cy.findByText("Pick up where you left off").should("exist");
   });
 });
