@@ -467,4 +467,19 @@
                                                           :unit   "minutes"}]
         (let [request {:cookies {}}]
           (is (= response
-                 (mw.session/reset-session-timeout-on-response request response request-time))))))))
+                 (mw.session/reset-session-timeout-on-response request response request-time))))))
+
+    (testing "If [[public-settings/session-cookies]] is true, then the session and timeout cookies shouldn't have a max age or expires attribute."
+      (mt/with-temporary-setting-values [session-timeout nil
+                                         public-settings/session-cookies true]
+        (let [request {:cookies {}}
+              session {:id session-id, :type :normal}]
+          (is (= {:body    "some body"
+                  :cookies {"metabase.TIMEOUT" {:value     "alive"
+                                                :same-site :lax
+                                                :path      "/"},
+                            "metabase.SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a"
+                                                :same-site :lax
+                                                :path      "/"
+                                                :http-only true}}}
+                 (mw.session/set-session-cookies request response session request-time))))))))
