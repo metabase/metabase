@@ -119,6 +119,15 @@
   `recognizeTemplateTags` for that regex)."
   #"\{\{\s*([A-Za-z0-9_\.]+?)\s*\}\}")
 
+(defn ^:export tag_names
+  "Given the content of a text dashboard card, return a set of the unique names of template tags in the text."
+  [text]
+  (let [tag-names (->> (re-seq template-tag-regex (or text ""))
+                       (map second)
+                       set)]
+    #?(:clj  tag-names
+       :cljs (clj->js tag-names))))
+
 (defn ^:export substitute_tags
   "Given the context of a text dashboard card, replace all template tags in the text with their corresponding values,
   formatted and escaped appropriately."
@@ -131,18 +140,3 @@
                                          tag->param)]
      (str/replace text template-tag-regex (partial replacement tag->normalized-param))))
 
-(defn ^:export tag-names
-  "Impl function for tag_names"
-  [text]
-  (->> (re-seq template-tag-regex (or text ""))
-       (map second)
-       set))
-
-(defn ^:export tag_names
-  "Given the content of a text dashboard card, return a set of the unique names of template tags in the text."
-  [text]
-  (let [tag-names (->> (re-seq template-tag-regex (or text ""))
-                       (map second)
-                       set)]
-    #?(:clj  tag-names
-       :cljs (clj->js tag-names))))

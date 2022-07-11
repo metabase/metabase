@@ -134,9 +134,9 @@ export default class Text extends Component {
     if (!_.isEmpty(parametersByTag)) {
       // Temporarily override language to use site language, so that all viewers of a dashboard see parameter values
       // translated the same way.
-      content = withInstanceLocalization(() => {
-        return substitute_tags(content, parametersByTag);
-      });
+      content = withInstanceLocalization(() =>
+        substitute_tags(content, parametersByTag),
+      );
     }
 
     if (isEditing) {
