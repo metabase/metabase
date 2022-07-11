@@ -23,14 +23,11 @@ describe("issue 21984", () => {
   it('should not show data model visited tables in search or in "Pick up where you left off" items on homepage (metabase#21984)', () => {
     cy.visit("/");
 
-    cy.findByText("Pick up where you left off")
-      .parent()
-      .within(() => {
-        cy.findByText("Reviews").should("not.exist");
-      });
+    cy.findByText("Metabase tips");
+    cy.findByText("Pick up where you left off").should("not.exist");
 
     cy.findByPlaceholderText("Search…").click();
     cy.findByText("Recently viewed");
-    cy.findAllByTestId("recently-viewed-item").should("not.contain", "Reviews");
+    cy.findByText("Nothing here");
   });
 });
