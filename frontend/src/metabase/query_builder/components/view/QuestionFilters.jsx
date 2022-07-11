@@ -6,7 +6,6 @@ import { t } from "ttag";
 import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
-import { MODAL_TYPES } from "metabase/query_builder/constants";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 import ViewPill from "./ViewPill";
 import ViewButton from "./ViewButton";
@@ -149,16 +148,21 @@ export function FilterHeader({ question, expanded }) {
   );
 }
 
-export function QuestionFilterWidget({ onOpenModal, className }) {
+export function QuestionFilterWidget({
+  className,
+  isShowingFilterSidebar,
+  onAddFilter,
+  onCloseFilter,
+}) {
   return (
     <HeaderButton
       large
-      labelBreakpoint="sm"
       className={className}
+      labelBreakpoint="sm"
       color={color("filter")}
-      onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
-      aria-label={t`Show more filters`}
-      data-metabase-event="View Mode; Open Filter Modal"
+      active={isShowingFilterSidebar}
+      onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}
+      data-metabase-event="View Mode; Open Filter Widget"
     >
       {t`Filter`}
     </HeaderButton>

@@ -86,8 +86,8 @@ describe("scenarios > question > joined questions", () => {
 
       cy.log("Attempt to filter on the joined table");
       filter();
-
-      cy.findByText("People - User").click();
+      cy.contains("Email").click();
+      cy.contains("People – Email");
       cy.findByPlaceholderText("Search by Email")
         .type("wo")
         .then($el => {
@@ -100,7 +100,7 @@ describe("scenarios > question > joined questions", () => {
           }
         });
       cy.findByText("wolf.dina@yahoo.com").click();
-      cy.button("Apply").click();
+      cy.button("Add filter").click();
       cy.contains("Showing 1 row");
     });
 

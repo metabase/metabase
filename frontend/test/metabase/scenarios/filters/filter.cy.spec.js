@@ -121,8 +121,6 @@ describe("scenarios > question > filter", () => {
     popover().contains("Aerodynamic Linen Coat").click();
     cy.findByText("Add filter").click();
 
-    cy.button("Apply").click();
-
     cy.log("Reported failing on v0.36.4 and v0.36.5.1");
     cy.findByTestId("loading-spinner").should("not.exist");
     cy.findAllByText("148.23"); // one of the subtotals for this product
@@ -199,7 +197,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText(AGGREGATED_FILTER);
   });
 
-  it.skip("in a simple question should display popup for custom expression options (metabase#14341) (metabase#15244)", () => {
+  it("in a simple question should display popup for custom expression options (metabase#14341) (metabase#15244)", () => {
     openProductsTable();
     filter();
     cy.findByText("Custom Expression").click();
@@ -572,8 +570,8 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should reject a number literal", () => {
-    openProductsTable({ mode: "notebook" });
-    filter({ mode: "notebook" });
+    openProductsTable();
+    filter();
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: "3.14159" });
@@ -582,8 +580,8 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should reject a string literal", () => {
-    openProductsTable({ mode: "notebook" });
-    filter({ mode: "notebook" });
+    openProductsTable();
+    filter();
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: '"TheAnswer"' });
@@ -895,7 +893,7 @@ describe("scenarios > question > filter", () => {
         assertOnTheResult();
       });
 
-      it.skip("from the simple question (metabase#16386-2)", () => {
+      it("from the simple question (metabase#16386-2)", () => {
         filter();
 
         cy.findByTestId("sidebar-right").within(() => {

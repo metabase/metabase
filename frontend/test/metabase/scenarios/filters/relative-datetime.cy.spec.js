@@ -25,7 +25,7 @@ describe("scenarios > question > relative-datetime", () => {
     cy.signInAsNormalUser();
   });
 
-  describe.skip("sidebar", () => {
+  describe("sidebar", () => {
     it("should go to field selection with one click", () => {
       openOrdersTable();
 

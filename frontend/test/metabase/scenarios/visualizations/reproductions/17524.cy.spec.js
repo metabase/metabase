@@ -75,7 +75,7 @@ describe("issue 17524", () => {
       cy.findByText("Greater than").click();
 
       cy.findByPlaceholderText("Enter an ID").type("1");
-      cy.button("Apply").click();
+      cy.button("Add filter").click();
 
       cy.get("polygon");
     });

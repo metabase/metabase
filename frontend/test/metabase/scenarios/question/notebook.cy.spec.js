@@ -390,8 +390,12 @@ describe("scenarios > question > notebook", () => {
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    filter();
-    cy.findByText("Summaries").click();
+    cy.findByText("Filter").click();
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("Max of Name").click();
+
+      cy.findByText("Is").click();
+    });
 
     cy.findByLabelText("Max of Name").click();
     cy.findByText("Contains").click();

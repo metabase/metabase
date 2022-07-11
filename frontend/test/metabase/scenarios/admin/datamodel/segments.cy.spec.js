@@ -1,5 +1,5 @@
 // Ported from `segments.e2e.spec.js`
-import { restore, popover, modal, filter } from "__support__/e2e/helpers";
+import { restore, popover, modal } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -102,13 +102,15 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.visit("/reference/segments/1/questions");
       cy.get(".full .Button").click();
       cy.findAllByText("37.65");
-
-      filter();
-      cy.findByLabelText("Product ID")
-        .findByPlaceholderText("Enter an ID")
+      cy.findAllByText("Filter").first().click();
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.contains("Product ID").click();
+      });
+      cy.findByText("Cancel");
+      cy.findByPlaceholderText("Enter an ID")
         .click()
         .type("14", { delay: 100 });
-      cy.findByText("Apply").click();
+      cy.findByText("Add filter").click();
       cy.findByText("Product ID is 14");
       cy.findByText("Save").click();
       cy.findAllByText("Save").last().click();

@@ -47,9 +47,8 @@ describeEE("visual tests > admin > colors", () => {
     visitQuestionAdhoc(questionDetails);
     cy.percySnapshot("chart");
 
-    cy.icon("notebook").click();
+    cy.findByText("Filter").click();
     cy.percySnapshot("filters");
-    cy.icon("notebook").click();
 
     cy.findByText("Summarize").click();
     cy.percySnapshot("summarize");
@@ -67,9 +66,8 @@ describeEE("visual tests > admin > colors", () => {
     visitQuestionAdhoc(questionDetails);
     cy.percySnapshot("chart");
 
-    cy.icon("notebook").click();
+    cy.findByText("Filter").click();
     cy.percySnapshot("filters");
-    cy.icon("notebook").click();
 
     cy.findByText("Summarize").click();
     cy.percySnapshot("summarize");
