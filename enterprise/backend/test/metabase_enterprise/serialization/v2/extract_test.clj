@@ -106,7 +106,13 @@
                   :collection_id coll-eid
                   :dataset_query "{\"json\": \"string values\"}"} ; Undecoded, still a string.
                  (select-keys ser [:serdes/meta :table :creator_id :collection_id :dataset_query])))
-          (is (not (contains? ser :id))))
+          (is (not (contains? ser :id)))
+
+          (testing "cards depend on their Table and Collection"
+            (is (= #{[{:model "Database"   :id "My Database"}
+                      {:model "Table"      :id "Schemaless Table"}]
+                     [{:model "Collection" :id coll-eid}]}
+                   (set (serdes.base/serdes-dependencies ser))))))
 
         (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c2-id]))]
           (is (= {:serdes/meta   [{:model "Card" :id c2-eid}]
@@ -115,4 +121,11 @@
                   :collection_id coll-eid
                   :dataset_query "{}"} ; Undecoded, still a string.
                  (select-keys ser [:serdes/meta :table :creator_id :collection_id :dataset_query])))
-          (is (not (contains? ser :id))))))))
+          (is (not (contains? ser :id)))
+
+          (testing "cards depend on their Table and Collection"
+            (is (= #{[{:model "Database"   :id "My Database"}
+                      {:model "Schema"     :id "PUBLIC"}
+                      {:model "Table"      :id "Schema'd Table"}]
+                     [{:model "Collection" :id coll-eid}]}
+                   (set (serdes.base/serdes-dependencies ser))))))))))
