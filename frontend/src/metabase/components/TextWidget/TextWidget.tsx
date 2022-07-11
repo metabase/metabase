@@ -43,7 +43,7 @@ class TextWidget extends React.Component<Props, State> {
   }
 
   UNSAFE_componentWillReceiveProps(nextProps: Props) {
-    if (nextProps.value !== this.props.value) {
+    if (!this.state.value && nextProps.value) {
       this.setState({ value: nextProps.value }, () => {
         // HACK: Address Safari rendering bug which causes https://github.com/metabase/metabase/issues/5335
         forceRedraw(ReactDOM.findDOMNode(this));
