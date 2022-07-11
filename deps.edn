@@ -190,7 +190,7 @@
     ring/ring-mock                                        {:mvn/version "0.4.0"}
     talltale/talltale                                     {:mvn/version "0.5.8"}}
 
-   :extra-paths ["dev/src" "local/src" "test" "shared/test" "test_resources"]
+   :extra-paths ["dev/src" "dev/test" "local/src" "test" "shared/test" "test_resources"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
