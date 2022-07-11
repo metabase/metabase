@@ -60,7 +60,8 @@
 (def ^:private excluded-directories
   "When searching the classpath for tests (i.e., if no `:only` options were passed), don't look for tests in any
   directories with these name (as the last path component)."
-  #{"src"
+  #{"dev"
+    "src"
     "test_config"
     "resources"
     "test_resources"
