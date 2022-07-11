@@ -187,8 +187,10 @@
    :card                         {:prefix    :c
                                   :spec      ::card
                                   :insert!   {:model Card}
-                                  :relations {:creator_id  [:core-user :id]
-                                              :database_id [:database :id]}}
+                                  :relations {:creator_id    [:core-user :id]
+                                              :database_id   [:database :id]
+                                              :table_id      [:table :id]
+                                              :collection_id [:collection :id]}}
    :dashboard                    {:prefix    :d
                                   :spec      ::dashboard
                                   :insert!   {:model Dashboard}
