@@ -100,4 +100,3 @@
                   (when schema {:model "Schema" :id schema})
                   {:model "Table" :id table-name}
                   {:model "Field" :id field-name}]))
-
