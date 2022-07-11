@@ -50,6 +50,10 @@ describe("scenarios > dashboard > parameters in text cards", () => {
       cy.button("Update filter").click();
     });
     cy.findByText("Variable: 1 and 2").should("exist");
+
+    editDashboard();
+    cy.findByText("Equal to").click();
+    cy.findByText("foo").should("exist");
   });
 
   it("should translate parameter values into the instance language", () => {
