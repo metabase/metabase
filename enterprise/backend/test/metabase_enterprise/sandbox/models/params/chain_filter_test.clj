@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.models.params.chain-filter-test
   (:require [clojure.test :refer :all]
             [metabase.models :refer [FieldValues]]
+            [metabase.models.field-values :as field-values]
             [metabase.models.params.chain-filter :as chain-filter]
             [metabase.test :as mt]
             [toucan.db :as db]))
