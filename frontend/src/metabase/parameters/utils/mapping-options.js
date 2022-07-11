@@ -10,7 +10,7 @@ import {
 
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 
-import { tag_names } from "cljs/metabase.shared.util.parameters";
+import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 
 function buildStructuredQuerySectionOptions(section) {
   return section.items.map(({ dimension }) => ({

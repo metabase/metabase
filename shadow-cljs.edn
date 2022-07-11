@@ -26,7 +26,7 @@
    :entries    [metabase.mbql.js
                 metabase.types
                 metabase.shared.util.currency
-                metabase.shared.util.parameters]}
+                metabase.shared.parameters.parameters]}
 
   :test
   {:target    :node-test

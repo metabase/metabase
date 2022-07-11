@@ -1,4 +1,4 @@
-(ns metabase.shared.util.parameters
+(ns metabase.shared.parameters.parameters
   "Util functions for dealing with parameters"
   #?@
       (:clj

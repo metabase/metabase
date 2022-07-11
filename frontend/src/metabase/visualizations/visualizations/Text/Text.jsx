@@ -10,7 +10,7 @@ import { t } from "ttag";
 
 import { withInstanceLocalization } from "metabase/lib/i18n";
 
-import { substitute_tags } from "cljs/metabase.shared.util.parameters";
+import { substitute_tags } from "cljs/metabase.shared.parameters.parameters";
 
 const getSettingsStyle = settings => ({
   "align-center": settings["text.align_horizontal"] === "center",

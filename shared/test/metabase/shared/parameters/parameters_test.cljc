@@ -1,6 +1,6 @@
-(ns metabase.shared.util.parameters-test
+(ns metabase.shared.parameters.parameters-test
   (:require [clojure.test :as t]
-            [metabase.shared.util.parameters :as params]))
+            [metabase.shared.parameters.parameters :as params]))
 
 (defn- tag-names
   [text]
