@@ -52,7 +52,13 @@
                          :dashboard  [[100 {:refs {:collection_id   (random-key "coll" 100)
                                                    :creator_id      (random-key "u" 10)}}]]
                          :dashboard-card [[300 {:refs {:card_id      (random-key "c" 100)
-                                                       :dashboard_id (random-key "d" 100)}}]]})
+                                                       :dashboard_id (random-key "d" 100)}}]]
+                         :dimension  [;; 20 with both IDs set
+                                      [20 {:refs {:field_id                (random-key "field" 1000)
+                                                  :human_readable_field_id (random-key "field" 1000)}}]
+                                      ;; 20 with just :field_id
+                                      [20 {:refs {:field_id                (random-key "field" 1000)
+                                                  :human_readable_field_id ::rs/omit}}]]})
       (let [extraction (into [] (extract/extract-metabase {}))
             entities   (reduce (fn [m entity]
                                  (update m (-> entity :serdes/meta last :model)
@@ -146,6 +152,16 @@
                          (update :created_at u.date/format)
                          (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Dashboard" dashboard_id "DashboardCard" filename))))))
+
+          (testing "for dimensions"
+            (is (= 40 (count (dir->file-set (io/file dump-dir "Dimension")))))
+            (doseq [{:keys [entity_id] :as dim} (get entities "Dimension")
+                    :let [filename (str entity_id ".yaml")]]
+              (is (= (-> dim
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Dimension" filename))))))
 
           (testing "for settings"
             (is (= (into {} (for [{:keys [key value]} (get entities "Setting")]

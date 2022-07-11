@@ -42,7 +42,8 @@
       (update :human_readable_field_id #(some-> % serdes.util/import-field-fk))))
 
 (defmethod serdes.base/serdes-dependencies "Dimension"
-  [{:keys [collection_id field_id]}]
+  [{:keys [field_id human_readable_field_id]}]
   ;; The Field depends on the Table, and Table on the Database.
-  [(serdes.util/field->path field_id)
-   [{:model "Collection" :id collection_id}]])
+  (->> [field_id human_readable_field_id]
+       (filter some?)
+       (mapv serdes.util/field->path)))
