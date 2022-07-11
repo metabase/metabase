@@ -19,14 +19,14 @@ export const AppBarHeader = styled.div<AppBarHeaderProps>`
 `;
 
 interface AppBarSubheaderProps {
-  isNavBarVisible: boolean;
+  isNavBarOpen?: boolean;
 }
 
 export const AppBarSubheader = styled.div<AppBarSubheaderProps>`
   padding: 1rem 1rem 1rem 1.25rem;
   transition: border-bottom-color 200ms ease;
   border-bottom: 1px solid
-    ${props => (props.isNavBarVisible ? color("border") : "transparent")};
+    ${props => (props.isNavBarOpen ? color("border") : "transparent")};
 `;
 
 export const AppBarMainContainer = styled.div`
