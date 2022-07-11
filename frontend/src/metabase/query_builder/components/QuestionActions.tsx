@@ -4,7 +4,6 @@ import { connect } from "react-redux";
 
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
-import EntityMenu from "metabase/components/EntityMenu";
 
 import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 
@@ -23,10 +22,11 @@ import {
 import Question from "metabase-lib/lib/Question";
 
 import {
-  QuestionActionsContainer,
+  QuestionActionsDivider,
   BookmarkButton,
   AnimationStates,
   StrengthIndicator,
+  QuestionEntityMenu,
 } from "./QuestionActions.styled";
 
 const HEADER_ICON_SIZE = 16;
@@ -200,7 +200,8 @@ const QuestionActions = ({
   }
 
   return (
-    <QuestionActionsContainer data-testid="question-action-buttons-container">
+    <>
+      <QuestionActionsDivider />
       <Tooltip tooltip={bookmarkTooltip}>
         <BookmarkButton
           animation={animation}
@@ -221,12 +222,12 @@ const QuestionActions = ({
           color={infoButtonColor}
         />
       </Tooltip>
-      <EntityMenu
+      <QuestionEntityMenu
         items={extraButtons}
         triggerIcon="ellipsis"
         tooltip={t`Move, archive, and more...`}
       />
-    </QuestionActionsContainer>
+    </>
   );
 };
 

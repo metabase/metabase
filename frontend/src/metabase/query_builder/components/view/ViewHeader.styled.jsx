@@ -13,6 +13,12 @@ export const ViewHeaderContainer = styled(ViewSection)`
   border-bottom: 1px solid ${color("border")};
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
+
+  ${breakpointMaxSmall} {
+    flex-direction: column;
+    align-items: start;
+    padding: ${space(1)} 0;
+  }
 `;
 
 export const ViewHeaderMainLeftContentContainer = styled.div`
@@ -25,6 +31,11 @@ export const ViewHeaderLeftSubHeading = styled(ViewSubHeading)`
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+
+  ${breakpointMaxSmall} {
+    flex-direction: column;
+    align-items: start;
+  }
 `;
 
 export const AdHocViewHeading = styled(ViewHeading)`
@@ -126,7 +137,7 @@ export const SavedQuestionLeftSideRoot = styled.div`
   ${SavedQuestionHeaderButtonContainer} {
     transition: all 400ms ease;
     position: relative;
-    top: ${props => (props.showSubHeader ? "0" : "10px")};
+    top: ${props => (props.showSubHeader ? "0" : "0.5rem")};
   }
 
   ${ViewHeaderLeftSubHeading} {
@@ -144,6 +155,18 @@ export const SavedQuestionLeftSideRoot = styled.div`
       opacity: 1;
     }
   }
+
+  ${breakpointMaxSmall} {
+    padding: 0 1.25rem;
+
+    ${SavedQuestionHeaderButtonContainer} {
+      top: 0px;
+    }
+
+    ${ViewHeaderLeftSubHeading} {
+      opacity: 1;
+    }
+  }
 `;
 
 export const HeaderDivider = styled.span`
@@ -153,4 +176,23 @@ export const HeaderDivider = styled.span`
   color: ${color("text-medium")};
   padding-left: 0.5rem;
   padding-right: 0.25rem;
+`;
+
+export const ViewHeaderActionPanel = styled.div`
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+
+  ${breakpointMaxSmall} {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+    border-top: 1px solid ${color("border")};
+    margin-top: 1rem;
+    padding: 0.5rem 2.5rem 0 2rem;
+  }
+
+  ${Button.Root} {
+    margin-left: 0.5rem;
+  }
 `;
