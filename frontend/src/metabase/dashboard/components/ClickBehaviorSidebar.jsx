@@ -617,10 +617,15 @@ function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
               ))}
               {selectedAction && (
                 <ClickMappings
-                  object={selectedAction.card}
+                  object={
+                    selectedAction.type === "query"
+                      ? selectedAction.card
+                      : selectedAction.template
+                  }
                   dashcard={dashcard}
                   clickBehavior={clickBehavior}
                   updateSettings={updateSettings}
+                  isHTTPAction={selectedAction.type === "http"}
                 />
               )}
             </>

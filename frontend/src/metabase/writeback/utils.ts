@@ -7,7 +7,7 @@ import { Database as IDatabase } from "metabase-types/types/Database";
 import { DashCard } from "metabase-types/types/Dashboard";
 import { ParameterId, ParameterTarget } from "metabase-types/types/Parameter";
 
-import { WritebackAction } from "./types";
+import { WritebackAction, HttpAction, RowAction } from "./types";
 
 const DB_WRITEBACK_FEATURE = "actions";
 const DB_WRITEBACK_SETTING = "database-enable-actions";
@@ -35,6 +35,18 @@ export const isEditableField = (field: Field) => {
   return true;
 };
 
+export const isQueryAction = (
+  action: WritebackAction,
+): action is WritebackAction & RowAction => {
+  return action.type === "query";
+};
+
+export const isHttpAction = (
+  action: WritebackAction,
+): action is WritebackAction & HttpAction => {
+  return action.type === "http";
+};
+
 export const isActionButtonDashCard = (dashCard: DashCard) =>
   dashCard.visualization_settings?.virtual_card?.display === "action-button";
 
@@ -44,11 +56,12 @@ export const getActionButtonEmitterId = (dashCard: DashCard) =>
 export const getActionButtonActionId = (dashCard: DashCard) =>
   dashCard.visualization_settings?.click_behavior?.action;
 
-export const getActionEmitterParameterMappings = (action: WritebackAction) => {
+const getQueryActionParameterMappings = (
+  action: WritebackAction & RowAction,
+) => {
   const templateTags = Object.values(
     action.card.dataset_query.native["template-tags"],
   );
-
   const parameterMappings: Record<ParameterId, ParameterTarget> = {};
 
   templateTags.forEach(tag => {
@@ -56,4 +69,26 @@ export const getActionEmitterParameterMappings = (action: WritebackAction) => {
   });
 
   return parameterMappings;
+};
+
+const getHttpActionParameterMappings = (
+  action: WritebackAction & HttpAction,
+) => {
+  const parameters = Object.values(action.template.parameters);
+  const parameterMappings: Record<ParameterId, ParameterTarget> = {};
+
+  parameters.forEach(parameter => {
+    parameterMappings[parameter.id] = [
+      "variable",
+      ["template-tag", parameter.name],
+    ];
+  });
+
+  return parameterMappings;
+};
+
+export const getActionEmitterParameterMappings = (action: WritebackAction) => {
+  return isQueryAction(action)
+    ? getQueryActionParameterMappings(action)
+    : getHttpActionParameterMappings(action);
 };
