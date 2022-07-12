@@ -33,7 +33,3 @@ export const FilterDivider = styled.div`
     display: none;
   }
 `;
-
-export const EmptyStateText = styled.span`
-  font-weight: bold;
-`;

@@ -16,6 +16,7 @@ import Icon from "metabase/components/Icon";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { BulkFilterItem } from "../BulkFilterItem";
 import { SegmentFilterSelect } from "../BulkFilterSelect";
+import { InlineOperatorSelector } from "../InlineOperatorSelector";
 import {
   ListRoot,
   ListRow,
@@ -80,6 +81,7 @@ const BulkFilterList = ({
         <SegmentListItem
           query={query}
           segments={segments}
+          isSearch={isSearch}
           onAddFilter={onAddFilter}
           onRemoveFilter={onRemoveFilter}
           onClearSegments={onClearSegments}
@@ -153,6 +155,7 @@ const BulkFilterListItem = ({
 interface SegmentListItemProps {
   query: StructuredQuery;
   segments: SegmentOption[];
+  isSearch?: boolean;
   onAddFilter: (filter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
   onClearSegments: () => void;
@@ -161,13 +164,17 @@ interface SegmentListItemProps {
 const SegmentListItem = ({
   query,
   segments,
+  isSearch,
   onAddFilter,
   onRemoveFilter,
   onClearSegments,
 }: SegmentListItemProps): JSX.Element => (
   <>
-    <ListRow data-testid="filter-field-Segments">
-      <ListRowLabel>{t`Segments`}</ListRowLabel>
+    <ListRow data-testid="filter-field-segments">
+      <InlineOperatorSelector
+        fieldName={t`Segments`}
+        tableName={isSearch ? query.table().displayName() : undefined}
+      />
       <SegmentFilterSelect
         query={query}
         segments={segments}
