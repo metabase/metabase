@@ -44,7 +44,7 @@
   "The maximum character length for a stored FieldValues entry."
   (int 100))
 
-(def ^Integer total-max-length
+(def ^Integer ^:dynamic total-max-length
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
   (int (* auto-list-cardinality-threshold entry-max-length)))
 
