@@ -107,19 +107,18 @@ export function onRenderValueLabels(
       .flatten(1)
       .value();
 
-    data = data
-      .map(([x, y, step], i) => {
-        const isLocalMin =
-          // first point or prior is greater than y
-          (i < step || data[i - step][1] > y) &&
-          // last point point or next is greater than y
-          (i >= data.length - step || data[i + step][1] > y);
-        const showLabelBelow = isLocalMin && display === "line";
-        const rotated = barCount > 1 && isBarLike(display) && barWidth < 40;
-        const hidden =
-          !showAll && barCount > 1 && isBarLike(display) && barWidth < 20;
-        return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
-      });
+    data = data.map(([x, y, step], i) => {
+      const isLocalMin =
+        // first point or prior is greater than y
+        (i < step || data[i - step][1] > y) &&
+        // last point point or next is greater than y
+        (i >= data.length - step || data[i + step][1] > y);
+      const showLabelBelow = isLocalMin && display === "line";
+      const rotated = barCount > 1 && isBarLike(display) && barWidth < 40;
+      const hidden =
+        !showAll && barCount > 1 && isBarLike(display) && barWidth < 20;
+      return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
+    });
 
     if (display === "waterfall" && data.length > 0) {
       let total = 0;
