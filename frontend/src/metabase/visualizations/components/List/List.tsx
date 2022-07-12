@@ -37,6 +37,7 @@ import {
   ListRow,
   RowActionButton,
 } from "./List.styled";
+import { CellRoot } from "./ListCell.styled";
 
 function getBoundingClientRectSafe(ref: React.RefObject<HTMLBaseElement>) {
   return ref.current?.getBoundingClientRect?.() ?? ({} as DOMRect);
@@ -78,8 +79,10 @@ function List({
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(1);
 
-  const { modalContent: confirmationModalContent, show: requestConfirmation } =
-    useConfirmation();
+  const {
+    modalContent: confirmationModalContent,
+    show: requestConfirmation,
+  } = useConfirmation();
 
   const headerRef = useRef(null);
   const footerRef = useRef(null);
@@ -99,7 +102,7 @@ function List({
   }, [height, pageSize]);
 
   const checkIsVisualizationClickable = useCallback(
-    (clickedItem) => visualizationIsClickable?.(clickedItem),
+    clickedItem => visualizationIsClickable?.(clickedItem),
     [visualizationIsClickable],
   );
 
@@ -116,7 +119,7 @@ function List({
   }, [card, metadata]);
 
   const connectedDashCard = useMemo(() => {
-    return dashboard?.ordered_cards.find((dc) => dc.card_id === card.id);
+    return dashboard?.ordered_cards.find(dc => dc.card_id === card.id);
   }, [dashboard, card]);
 
   const handleDelete = useCallback(
@@ -124,7 +127,7 @@ function List({
       if (!table || !connectedDashCard) {
         return;
       }
-      const pkColumnIndex = table.fields.findIndex((field) => field.isPK());
+      const pkColumnIndex = table.fields.findIndex(field => field.isPK());
       const pkValue = row[pkColumnIndex];
 
       if (typeof pkValue !== "string" && typeof pkValue !== "number") {
@@ -152,19 +155,20 @@ function List({
   const end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
 
   const handlePreviousPage = useCallback(() => {
-    setPage((p) => p - 1);
+    setPage(p => p - 1);
   }, []);
 
   const handleNextPage = useCallback(() => {
-    setPage((p) => p + 1);
+    setPage(p => p + 1);
   }, []);
 
   const rowIndexes = useMemo(() => _.range(0, rows.length), [rows]);
 
-  const paginatedRowIndexes = useMemo(
-    () => rowIndexes.slice(start, end + 1),
-    [rowIndexes, start, end],
-  );
+  const paginatedRowIndexes = useMemo(() => rowIndexes.slice(start, end + 1), [
+    rowIndexes,
+    start,
+    end,
+  ]);
 
   const renderColumnHeader = useCallback(
     (col, colIndex) => (
@@ -178,18 +182,20 @@ function List({
   const listColumnIndexes = useMemo(() => {
     const left = settings["list.columns"].left.map((idOrFieldRef: any) =>
       cols.findIndex(
-        (col) =>
+        col =>
           col.id === idOrFieldRef || _.isEqual(col.field_ref, idOrFieldRef),
       ),
     );
     const right = settings["list.columns"].right.map((idOrFieldRef: any) =>
       cols.findIndex(
-        (col) =>
+        col =>
           col.id === idOrFieldRef || _.isEqual(col.field_ref, idOrFieldRef),
       ),
     );
     return [...left, ...right];
   }, [cols, settings]);
+
+  const hasDeleteButton = settings["buttons.edit"];
 
   const renderRow = useCallback(
     (rowIndex, index) => {
@@ -218,19 +224,14 @@ function List({
               onVisualizationClick={onVisualizationClick}
             />
           ))}
-          {settings["buttons.edit"] && (
-            <td>
-              <RowActionButton disabled={!isDataApp}>{t`Edit`}</RowActionButton>
-            </td>
-          )}
-          {settings["buttons.delete"] && (
-            <td>
+          {hasDeleteButton && (
+            <CellRoot type="action">
               <RowActionButton
                 disabled={!isDataApp}
                 onClick={onDeleteClick}
                 danger
               >{t`Delete`}</RowActionButton>
-            </td>
+            </CellRoot>
           )}
         </ListRow>
       );
@@ -241,6 +242,7 @@ function List({
       series,
       settings,
       isDataApp,
+      hasDeleteButton,
       checkIsVisualizationClickable,
       getExtraDataForClick,
       onVisualizationClick,
@@ -255,7 +257,10 @@ function List({
           <TableContainer className="scroll-show scroll-show--hover">
             <Table className="fullscreen-normal-text fullscreen-night-text">
               <thead ref={headerRef} className="hide">
-                <tr>{cols.map(renderColumnHeader)}</tr>
+                <tr>
+                  {cols.map(renderColumnHeader)}
+                  {hasDeleteButton && <th data-testid="column-header" />}
+                </tr>
               </thead>
               <tbody>{paginatedRowIndexes.map(renderRow)}</tbody>
             </Table>
