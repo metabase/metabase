@@ -12,7 +12,12 @@ import { ModalDivider } from "../BulkFilterModal/BulkFilterModal.styled";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { BulkFilterItem } from "../BulkFilterItem";
 import { SegmentFilterSelect } from "../BulkFilterSelect";
-import { ListRoot, ListRow, ListRowLabel } from "./BulkFilterList.styled";
+import {
+  ListRoot,
+  ListRow,
+  ListRowLabel,
+  FilterDivider,
+} from "./BulkFilterList.styled";
 import { sortDimensions } from "./utils";
 
 export interface BulkFilterListProps {
@@ -95,20 +100,20 @@ const BulkFilterListItem = ({
   }, [filters, dimension]);
 
   return (
-    <ListRow>
-      <ListRowLabel data-testid="dimension-filter-label">
-        {dimension.displayName()}
-      </ListRowLabel>
+    <ListRow data-testid={`filter-field-${dimension.displayName()}`}>
       {options.map((filter, index) => (
-        <BulkFilterItem
-          key={index}
-          query={query}
-          filter={filter}
-          dimension={dimension}
-          onAddFilter={onAddFilter}
-          onChangeFilter={onChangeFilter}
-          onRemoveFilter={onRemoveFilter}
-        />
+        <>
+          <BulkFilterItem
+            key={index}
+            query={query}
+            filter={filter}
+            dimension={dimension}
+            onAddFilter={onAddFilter}
+            onChangeFilter={onChangeFilter}
+            onRemoveFilter={onRemoveFilter}
+          />
+          <FilterDivider />
+        </>
       ))}
     </ListRow>
   );
@@ -130,19 +135,16 @@ const SegmentListItem = ({
   onClearSegments,
 }: SegmentListItemProps): JSX.Element => (
   <>
-    <ListRow>
+    <ListRow data-testid="filter-field-Segments">
       <ListRowLabel>{t`Segments`}</ListRowLabel>
-      <>
-        <SegmentFilterSelect
-          query={query}
-          segments={segments}
-          onAddFilter={onAddFilter}
-          onRemoveFilter={onRemoveFilter}
-          onClearSegments={onClearSegments}
-        />
-      </>
+      <SegmentFilterSelect
+        query={query}
+        segments={segments}
+        onAddFilter={onAddFilter}
+        onRemoveFilter={onRemoveFilter}
+        onClearSegments={onClearSegments}
+      />
     </ListRow>
-    <ModalDivider marginY="0.5rem" />
   </>
 );
 
