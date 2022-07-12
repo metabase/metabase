@@ -36,6 +36,4 @@ export const getHideMetabot = createSelector(
 );
 
 export const getLoadingMessage = state =>
-  LOADING_MESSAGE_BY_SETTING[
-    state.settings.values["loading-message"] ?? "doing-science"
-  ];
+  LOADING_MESSAGE_BY_SETTING[state.settings.values["loading-message"]];

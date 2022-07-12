@@ -286,7 +286,8 @@
   (deferred-tru "Message to show while a query is running.")
   :visibility :public
   :enabled?   premium-features/enable-whitelabeling?
-  :type       :keyword)
+  :type       :keyword
+  :default    :doing-science)
 
 (defsetting show-metabot
   (deferred-tru "Enables Metabot character on the home page")
