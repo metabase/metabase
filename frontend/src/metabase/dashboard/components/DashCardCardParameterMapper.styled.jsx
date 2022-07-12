@@ -13,6 +13,15 @@ export const Container = styled.div`
   align-items: center;
 `;
 
+export const TextCardDefault = styled.div`
+  color: ${color("text-medium")};
+  margin: ${space(1)} 0;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  line-height: 1.5rem;
+`;
+
 export const CardLabel = styled.div`
   font-size: 0.83em;
   margin-bottom: ${space(1)};

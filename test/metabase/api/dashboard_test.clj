@@ -732,7 +732,7 @@
                 :col                    4
                 :row                    4
                 :series                 []
-                :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+                :parameter_mappings     [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
                 :visualization_settings {}
                 :created_at             true
                 :updated_at             true}
@@ -740,7 +740,10 @@
                                          {:cardId                 card-id
                                           :row                    4
                                           :col                    4
-                                          :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+                                          :parameter_mappings     [{:parameter_id "abc"
+                                                                    :card_id 123
+                                                                    :hash "abc"
+                                                                    :target "foo"}]
                                           :visualization_settings {}})
                    (dissoc :id :dashboard_id :card_id :entity_id)
                    (update :created_at boolean)
@@ -749,7 +752,7 @@
                  :sizeY                  2
                  :col                    4
                  :row                    4
-                 :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+                 :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
                  :visualization_settings {}}]
                (map (partial into {})
                     (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings :visualization_settings]
