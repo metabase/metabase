@@ -57,3 +57,8 @@ const getSortValue = (dimensionOption: DimensionOption): number => {
 
 export const sortDimensions = (a: DimensionOption, b: DimensionOption) =>
   getSortValue(a) - getSortValue(b);
+
+export const isDimensionValid = (dimensionOption: DimensionOption) =>
+  dimensionOption.dimension.field().base_type === "type/Structured"
+    ? false
+    : true;

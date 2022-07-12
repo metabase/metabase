@@ -1,5 +1,9 @@
 import { t } from "ttag";
 import Dimension from "metabase-lib/lib/Dimension";
+import _ from "underscore";
+import { TYPE, isa } from "metabase/lib/types";
+
+const INVALID_TYPES = [TYPE.Structured];
 
 export default ({ question, clicked }) => {
   const query = question.query();
@@ -11,6 +15,7 @@ export default ({ question, clicked }) => {
     !clicked ||
     !clicked.column ||
     clicked.value !== undefined ||
+    _.any(INVALID_TYPES, type => isa(clicked.column.base_type, type)) ||
     !clicked.column.source
   ) {
     return [];
