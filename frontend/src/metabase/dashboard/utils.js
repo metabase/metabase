@@ -51,16 +51,6 @@ export function isVirtualDashCard(dashcard) {
   return _.isObject(dashcard.visualization_settings.virtual_card);
 }
 
-// For a virtual (text) dashcard, returns a boolean indicating whether to display the "Text card" header, as well as the
-// text above the dropdown for selecting parameter mappings when in parameter mapping mode.
-export function showVirtualDashCardEditingHeaders(dashcard, isMobile) {
-  if (isVirtualDashCard(dashcard)) {
-    return isMobile || dashcard.sizeY !== 1;
-  } else {
-    return true;
-  }
-}
-
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
 // info text about parameter mapping in the card itself or as a tooltip.
 export function showVirtualDashCardInfoText(dashcard, isMobile) {

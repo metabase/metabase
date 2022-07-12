@@ -13,7 +13,6 @@ import { isDateParameter } from "metabase/parameters/utils/parameter-type";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   isVirtualDashCard,
-  showVirtualDashCardEditingHeaders,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
 import Question from "metabase-lib/lib/Question";
@@ -154,7 +153,7 @@ function DashCardCardParameterMapper({
   const headerContent = useMemo(() => {
     if (!isVirtual) {
       return t`Column to filter on`;
-    } else if (showVirtualDashCardEditingHeaders(dashcard, isMobile)) {
+    } else if (dashcard.sizeY !== 1 || isMobile) {
       return t`Variable to map to`;
     } else {
       return null;
