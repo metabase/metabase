@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { closeNavbar } from "metabase/redux/app";
 import NewItemMenu from "metabase/components/NewItemMenu";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   getHasDataAccess,
   getHasDatabaseWithJsonEngine,
@@ -19,6 +20,7 @@ interface MenuOwnProps {
 }
 
 interface MenuStateProps {
+  isAdmin: boolean;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
@@ -30,6 +32,7 @@ interface MenuDispatchProps {
 }
 
 const mapStateToProps = (state: State): MenuStateProps => ({
+  isAdmin: getUserIsAdmin(state),
   hasDataAccess: getHasDataAccess(state),
   hasNativeWrite: getHasNativeWrite(state),
   hasDatabaseWithJsonEngine: getHasDatabaseWithJsonEngine(state),

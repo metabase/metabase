@@ -1,6 +1,10 @@
 import Field from "metabase-lib/lib/metadata/Field";
 import { SavedCard, NativeDatasetQuery } from "metabase-types/types/Card";
-import { ParameterId, ParameterTarget } from "metabase-types/types/Parameter";
+import {
+  Parameter,
+  ParameterId,
+  ParameterTarget,
+} from "metabase-types/types/Parameter";
 
 export interface CategoryWidgetProps {
   field: {
@@ -16,14 +20,40 @@ export type WritebackActionCard = SavedCard<NativeDatasetQuery> & {
   is_write: true;
 };
 
-export interface WritebackAction {
+export interface WritebackActionBase {
   id: number;
-  type: "row";
-  card: WritebackActionCard;
-  card_id: number;
   "updated-at": string;
   "created-at": string;
 }
+
+export interface RowAction {
+  type: "query";
+  card: WritebackActionCard;
+  card_id: number;
+}
+
+export interface HttpAction {
+  type: "http";
+  name: string;
+  description: string;
+  template: HttpActionTemplate;
+  parameters: Record<ParameterId, Parameter>;
+  parameter_mappings: Record<ParameterId, ParameterTarget>;
+}
+
+export type HttpActionResponseHandle = any;
+export type HttpActionErrorHandle = any;
+
+export interface HttpActionTemplate {
+  method: string;
+  url: string;
+  body: string;
+  headers: string;
+  parameters: Record<ParameterId, Parameter>;
+  parameter_mappings: Record<ParameterId, ParameterTarget>;
+}
+
+export type WritebackAction = WritebackActionBase & (RowAction | HttpAction);
 
 export interface WritebackActionEmitter {
   id: number;
@@ -35,3 +65,5 @@ export interface WritebackActionEmitter {
   updated_at: string;
   created_at: string;
 }
+
+export type ActionType = "http" | "query";

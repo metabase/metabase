@@ -45,13 +45,13 @@ export default ({ question, clicked }) => {
   }
 
   if (type === "action") {
-    const parameters = getParametersForNativeAction(parameterMapping, {
+    const parameters = getActionParameters(parameterMapping, {
       data,
       extraData,
       clickBehavior,
     });
     const action = extraData.actions[clickBehavior.action];
-    const missingParameters = getNotProvidedParametersForNativeAction(
+    const missingParameters = getNotProvidedActionParameters(
       action,
       parameters,
     );
@@ -66,7 +66,7 @@ export default ({ question, clicked }) => {
               onSubmit: filledMissingParameters =>
                 executeRowAction({
                   dashboard: extraData.dashboard,
-                  emitterId: clickBehavior.emitter_id,
+                  emitterId: clickBehavior.emitter_id || clickBehavior.id,
                   parameters: {
                     ...parameters,
                     ...filledMissingParameters,
@@ -80,7 +80,7 @@ export default ({ question, clicked }) => {
         action: () =>
           executeRowAction({
             dashboard: extraData.dashboard,
-            emitterId: clickBehavior.emitter_id,
+            emitterId: clickBehavior.emitter_id || clickBehavior.id,
             parameters,
           }),
       };
@@ -181,14 +181,17 @@ export default ({ question, clicked }) => {
   ];
 };
 
-function getParametersForNativeAction(
+function getActionParameters(
   parameterMapping = {},
   { data, extraData, clickBehavior },
 ) {
   const action = extraData.actions[clickBehavior.action];
-  const templateTags = Object.values(
-    action.card.dataset_query.native["template-tags"],
-  );
+
+  const isQueryAction = action.type === "query";
+  const tagsMap = isQueryAction
+    ? action.card.dataset_query.native["template-tags"]
+    : action.template.parameters;
+  const templateTags = Object.values(tagsMap);
 
   const parameters = {};
 
@@ -205,14 +208,16 @@ function getParametersForNativeAction(
 
     parameters[id] = {
       value,
-      type: getTemplateTagType(targetTemplateTag),
+      type: isQueryAction
+        ? getTemplateTagType(targetTemplateTag)
+        : targetTemplateTag.type,
     };
   });
 
   return parameters;
 }
 
-function getNotProvidedParametersForNativeAction(action, parameters) {
+function getNotProvidedActionParameters(action, parameters) {
   const mappedParameterIDs = Object.keys(parameters);
 
   const emptyParameterIDs = [];
@@ -223,9 +228,12 @@ function getNotProvidedParametersForNativeAction(action, parameters) {
     }
   });
 
-  const templateTags = Object.values(
-    action.card.dataset_query.native["template-tags"],
-  );
+  const tagsMap =
+    action.type === "query"
+      ? action.card.dataset_query.native["template-tags"]
+      : action.template.parameters;
+  const templateTags = Object.values(tagsMap);
+
   return templateTags.filter(tag => {
     if (!tag.required) {
       return false;

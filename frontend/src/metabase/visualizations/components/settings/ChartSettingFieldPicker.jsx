@@ -57,7 +57,7 @@ const ChartSettingFieldPicker = ({
         data-testid={`remove-${value}`}
         name="close"
         className={cx("ml1 text-medium text-brand-hover cursor-pointer", {
-          "disabled hidden": !onRemove,
+          "disabled invisible": !onRemove,
         })}
         onClick={onRemove}
       />
