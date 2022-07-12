@@ -6,6 +6,7 @@ import FormMessage from "metabase/components/form/FormMessage";
 import { FormLegacyContext, LegacyContextTypes } from "./types";
 
 export interface CustomFormMessageProps {
+  autoWidth?: boolean;
   className?: string;
   noPadding?: boolean;
 }

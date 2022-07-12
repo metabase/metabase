@@ -24,15 +24,17 @@ function CustomFormFooter({
   isModal,
   isContextModal,
 }: CustomFormFooterProps & { isContextModal?: boolean }) {
+  const shouldReverse = isModal || isContextModal;
+
   return (
-    <CustomFormFooterStyled shouldReverse={isModal || isContextModal}>
+    <CustomFormFooterStyled shouldReverse={shouldReverse}>
       <CustomFormSubmit fullWidth={fullWidth}>{submitTitle}</CustomFormSubmit>
       {onCancel && (
         <Button className="mx1" type="button" onClick={onCancel}>
           {cancelTitle}
         </Button>
       )}
-      <CustomFormMessage className="mt1 flex-full" />
+      <CustomFormMessage className="mt1 flex-full" autoWidth={shouldReverse} />
       {footerExtraButtons}
     </CustomFormFooterStyled>
   );

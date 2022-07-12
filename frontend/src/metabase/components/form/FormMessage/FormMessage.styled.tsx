@@ -5,6 +5,7 @@ import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
 export const FormMessageStyled = styled.span<{
+  autoWidth?: boolean;
   visible?: boolean;
   hasSucceeded?: boolean;
   noPadding?: boolean;
@@ -22,5 +23,12 @@ export const FormMessageStyled = styled.span<{
     css`
       opacity: 1;
       transition: opacity 500ms linear;
+    `}
+
+  ${({ autoWidth }) =>
+    autoWidth &&
+    css`
+      width: auto;
+      max-width: 100%;
     `}
 `;

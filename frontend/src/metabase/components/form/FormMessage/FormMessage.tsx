@@ -11,6 +11,7 @@ type Response = {
 };
 
 interface FormMessageProps {
+  autoWidth?: boolean;
   className?: string;
   message?: string;
   noPadding?: boolean;
@@ -49,6 +50,7 @@ export const getSuccessMessage = (formSuccess?: Response) => {
 };
 
 function FormMessage({
+  autoWidth,
   className,
   message,
   formSuccess,
@@ -58,6 +60,7 @@ function FormMessage({
   const treatedMessage = getMessage({ message, formSuccess, formError });
   return (
     <FormMessageStyled
+      autoWidth={autoWidth}
       className={className}
       visible={!!message}
       noPadding={noPadding}
