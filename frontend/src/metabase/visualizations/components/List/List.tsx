@@ -11,12 +11,16 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
+import Modal from "metabase/components/Modal";
 
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 
+import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm";
 import {
   DeleteRowFromDataAppPayload,
+  UpdateRowFromDataAppPayload,
   deleteRowFromDataApp,
+  updateRowFromDataApp,
 } from "metabase/dashboard/writeback-actions";
 
 import Question from "metabase-lib/lib/Question";
@@ -44,6 +48,7 @@ function getBoundingClientRectSafe(ref: React.RefObject<HTMLBaseElement>) {
 }
 
 interface ListVizDispatchProps {
+  updateRow: (payload: UpdateRowFromDataAppPayload) => void;
   deleteRow: (payload: DeleteRowFromDataAppPayload) => void;
 }
 
@@ -58,6 +63,7 @@ export type ListVizProps = ListVizOwnProps & ListVizDispatchProps;
 
 const mapDispatchToProps = {
   deleteRow: deleteRowFromDataApp,
+  updateRow: updateRowFromDataApp,
 };
 
 function List({
@@ -74,11 +80,13 @@ function List({
   onVisualizationClick,
   visualizationIsClickable,
   getExtraDataForClick,
+  updateRow,
   deleteRow,
 }: ListVizProps) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(1);
 
+  const [focusedRow, setFocusedRow] = useState<unknown[] | null>(null);
   const {
     modalContent: confirmationModalContent,
     show: requestConfirmation,
@@ -101,6 +109,10 @@ function List({
     }
   }, [height, pageSize]);
 
+  const resetFocusedRow = useCallback(() => {
+    setFocusedRow(null);
+  }, []);
+
   const checkIsVisualizationClickable = useCallback(
     clickedItem => visualizationIsClickable?.(clickedItem),
     [visualizationIsClickable],
@@ -121,6 +133,25 @@ function List({
   const connectedDashCard = useMemo(() => {
     return dashboard?.ordered_cards.find(dc => dc.card_id === card.id);
   }, [dashboard, card]);
+
+  const handleUpdate = useCallback(
+    (values: Record<string, unknown>) => {
+      if (!table || !focusedRow || !connectedDashCard) {
+        return;
+      }
+      const pkColumnIndex = table.fields.findIndex(field => field.isPK());
+      const pkValue = focusedRow[pkColumnIndex];
+      if (typeof pkValue === "string" || typeof pkValue === "number") {
+        return updateRow({
+          id: pkValue,
+          table,
+          values,
+          dashCard: connectedDashCard,
+        });
+      }
+    },
+    [table, connectedDashCard, focusedRow, updateRow],
+  );
 
   const handleDelete = useCallback(
     (row: unknown[]) => {
@@ -195,12 +226,18 @@ function List({
     return [...left, ...right];
   }, [cols, settings]);
 
+  const hasEditButton = settings["buttons.edit"];
   const hasDeleteButton = settings["buttons.edit"];
 
   const renderRow = useCallback(
     (rowIndex, index) => {
       const ref = index === 0 ? firstRowRef : null;
       const row = data.rows[rowIndex];
+
+      const onEditClick = (event: React.SyntheticEvent) => {
+        setFocusedRow(row);
+        event.stopPropagation();
+      };
 
       const onDeleteClick = (event: React.SyntheticEvent) => {
         handleDelete(row);
@@ -224,6 +261,14 @@ function List({
               onVisualizationClick={onVisualizationClick}
             />
           ))}
+          {hasEditButton && (
+            <CellRoot type="action">
+              <RowActionButton
+                disabled={!isDataApp}
+                onClick={onEditClick}
+              >{t`Edit`}</RowActionButton>
+            </CellRoot>
+          )}
           {hasDeleteButton && (
             <CellRoot type="action">
               <RowActionButton
@@ -242,6 +287,7 @@ function List({
       series,
       settings,
       isDataApp,
+      hasEditButton,
       hasDeleteButton,
       checkIsVisualizationClickable,
       getExtraDataForClick,
@@ -259,6 +305,7 @@ function List({
               <thead ref={headerRef} className="hide">
                 <tr>
                   {cols.map(renderColumnHeader)}
+                  {hasEditButton && <th data-testid="column-header" />}
                   {hasDeleteButton && <th data-testid="column-header" />}
                 </tr>
               </thead>
@@ -278,6 +325,16 @@ function List({
           />
         )}
       </Root>
+      {isDataApp && table && Array.isArray(focusedRow) && (
+        <Modal onClose={resetFocusedRow}>
+          <WritebackModalForm
+            table={table}
+            row={focusedRow}
+            onSubmit={handleUpdate}
+            onClose={resetFocusedRow}
+          />
+        </Modal>
+      )}
       {isDataApp && confirmationModalContent}
     </>
   );
