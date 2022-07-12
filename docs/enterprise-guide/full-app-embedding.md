@@ -31,7 +31,7 @@ Once you do, you'll see a set of options:
 
 ### Note on incognito mode
 
-Some browsers, like Chrome, disable `localStorage` in Incognito mode, so you won't be able to login via FullApp embedded iframe unless you explicitly allow cookies from Metabase. In Chrome go to chrome://settings/cookies and add the Metabase Site URL under "Sites that can always use cookies".
+Some browsers, like Chrome, disable `localStorage` in Incognito mode, so people won't be able to login via FullApp embedded iframe unless they explicitly allow cookies from Metabase. You may want to remind Chrome users to go to chrome://settings/cookies and add the Metabase Site URL under "Sites that can always use cookies".
 
 ## Setting things up in your web app
 
