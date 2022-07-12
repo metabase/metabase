@@ -61,6 +61,7 @@ export const iconPropTypes = {
   tooltip: PropTypes.string,
   className: PropTypes.string,
   onClick: PropTypes.func,
+  style: PropTypes.object,
 };
 
 export type IconProps = PropTypes.InferProps<typeof iconPropTypes> & {

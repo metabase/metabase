@@ -80,6 +80,7 @@ export const HeaderContainer = styled.header`
 export const ParametersAndCardsContainer = styled.div`
   flex: auto;
   overflow-x: hidden;
+  padding-bottom: 40px;
 `;
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)`

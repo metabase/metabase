@@ -27,9 +27,10 @@ export const QuestionInfoSidebar = ({
   const description = question.description();
   const isDataset = question.isDataset();
   const isPersisted = isDataset && question.isPersisted();
-
-  const showCaching =
-    PLUGIN_CACHING.isEnabled() && MetabaseSettings.get("enable-query-caching");
+  const isCachingAvailable =
+    !isDataset &&
+    PLUGIN_CACHING.isEnabled() &&
+    MetabaseSettings.get("enable-query-caching");
 
   const handleSave = (description: string | null) => {
     if (question.description() !== description) {
@@ -63,7 +64,7 @@ export const QuestionInfoSidebar = ({
         </ContentSection>
       )}
 
-      {showCaching && (
+      {isCachingAvailable && (
         <ContentSection extraPadding>
           <PLUGIN_CACHING.QuestionCacheSection
             question={question}

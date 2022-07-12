@@ -21,6 +21,7 @@ import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
   ContentSection,
+  DescriptionHeader,
 } from "./DashboardInfoSidebar.styled";
 
 interface DashboardInfoSidebarProps {
@@ -70,6 +71,7 @@ const DashboardInfoSidebar = ({
   return (
     <DashboardInfoSidebarRoot>
       <ContentSection>
+        <DescriptionHeader>{t`About`}</DescriptionHeader>
         <EditableText
           initialValue={dashboard.description}
           isDisabled={!dashboard.can_write}
