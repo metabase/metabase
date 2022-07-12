@@ -14,7 +14,7 @@ type Props = {
   setHeaders: (contentType: Headers) => void;
 };
 
-const HttpHeaderTab: React.FC<Props> = ({ headers, setHeaders }) => {
+const HttpHeaderTab: React.FC<Props> = ({ headers, setHeaders }: Props) => {
   const add = () => {
     setHeaders([...headers, { key: "", value: "" }]);
   };
@@ -81,7 +81,7 @@ const Input: React.FC<InputProps> = ({
   value,
   setValue,
   placeholder,
-}) => {
+}: InputProps) => {
   return (
     <input
       className={cx(

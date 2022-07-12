@@ -12,11 +12,12 @@ type Props = {
   setCurrentTab: (tab: string) => void;
 };
 
-const Tabs: React.FC<Props> = ({ tabs, currentTab, setCurrentTab }) => {
+const Tabs: React.FC<Props> = ({ tabs, currentTab, setCurrentTab }: Props) => {
   return (
     <div className="flex space-x-2 prose">
       {tabs.map(({ name, label }) => (
         <button
+          key={name}
           className={cx(
             currentTab === name
               ? "text-accent0"

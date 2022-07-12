@@ -8,7 +8,12 @@ type Props = {
   setUrl: (url: string) => void;
 };
 
-const UrlInput: React.FC<Props> = ({ protocol, setProtocol, url, setUrl }) => {
+const UrlInput: React.FC<Props> = ({
+  protocol,
+  setProtocol,
+  url,
+  setUrl,
+}: Props) => {
   return (
     <div>
       <label htmlFor="url" className="block sr-only">
@@ -26,7 +31,7 @@ const UrlInput: React.FC<Props> = ({ protocol, setProtocol, url, setUrl }) => {
             value={url}
             onChange={event => setUrl(event.target.value)}
             onKeyDown={event => {
-              if (event.keyCode == 13 || event.key === "Enter") {
+              if (event.keyCode === 13 || event.key === "Enter") {
                 // prevent default behavior
                 event.preventDefault();
               }

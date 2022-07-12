@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { find } from "lodash";
 import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import React from "react";
@@ -14,7 +13,12 @@ type Props = {
   }[];
 };
 
-const Selector: React.FC<Props> = ({ value, setValue, options, className }) => {
+const Selector: React.FC<Props> = ({
+  value,
+  setValue,
+  options,
+  className,
+}: Props) => {
   const [visible, setVisible] = React.useState(false);
   const label = React.useMemo(
     () => options.find(opt => opt.value === value)?.label || options[0].label,
@@ -42,7 +46,7 @@ const Selector: React.FC<Props> = ({ value, setValue, options, className }) => {
   );
 };
 
-const Contents: React.FC<Props> = ({ value, setValue, options }) => (
+const Contents: React.FC<Props> = ({ value, setValue, options }: Props) => (
   <div className="px-0 py-0 bg-white border rounded-md shadow-md border-border">
     <div className="flex flex-column" aria-label="Tabs">
       {options.map(({ value: optionValue, label }) => (

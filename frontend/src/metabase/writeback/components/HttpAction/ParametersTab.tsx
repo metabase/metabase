@@ -18,7 +18,7 @@ const ParametersTab: React.FC<Props> = ({
   templateTags,
   databases,
   onTemplateTagsChange,
-}) => {
+}: Props) => {
   const tags = React.useMemo(() => Object.values(templateTags || {}), [
     templateTags,
   ]);
@@ -38,6 +38,7 @@ const ParametersTab: React.FC<Props> = ({
         <div key={tag.name}>
           <TagEditorParam
             // For some reason typescript doesn't think the `tag` prop exists on TagEditorParam
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
             tag={tag}
             parameter={null}

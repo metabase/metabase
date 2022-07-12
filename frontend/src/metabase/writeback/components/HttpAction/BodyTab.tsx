@@ -1,5 +1,6 @@
 import React from "react";
-import cx from "classnames";
+import _ from "underscore";
+
 import JsonEditor from "./JsonEditor/JsonEditor";
 
 type Props = {
@@ -10,7 +11,7 @@ type Props = {
   setBody: (contentType: string) => void;
 };
 
-const BodyTab: React.FC<Props> = props => {
+const BodyTab: React.FC<Props> = (props: Props) => {
   if (props.contentType === "application/json") {
     return <Json {...props} />;
   }
@@ -18,7 +19,7 @@ const BodyTab: React.FC<Props> = props => {
   return null;
 };
 
-const Json: React.FC<Props> = ({ body, setBody }) => {
+const Json: React.FC<Props> = ({ body, setBody }: Props) => {
   const content = React.useMemo(() => {
     try {
       const json = JSON.parse(body);
@@ -32,7 +33,7 @@ const Json: React.FC<Props> = ({ body, setBody }) => {
     <JsonEditor
       navigationBar={false}
       mode="tree"
-      onChangeMode={() => {}}
+      onChangeMode={_.noop}
       content={content}
       onChange={content => {
         if ("json" in content) {

@@ -8,7 +8,7 @@ type Props = {
   setValue: (value: string) => void;
 };
 
-const MethodSelector: React.FC<Props> = ({ value, setValue }) => {
+const MethodSelector: React.FC<Props> = ({ value, setValue }: Props) => {
   return (
     <div>
       <div className="sm:hidden">

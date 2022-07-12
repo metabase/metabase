@@ -17,7 +17,7 @@ type Props = {
   ) => void;
 };
 
-const EditActionPage: React.FC<Props> = ({ action, updateAction }) => {
+const EditActionPage: React.FC<Props> = ({ action, updateAction }: Props) => {
   const {
     type,
     name,
