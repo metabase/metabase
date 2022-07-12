@@ -8,10 +8,10 @@ import {
 } from "metabase/styled-components/theme";
 
 export interface LayoutProps {
-  showScene?: boolean;
+  showIllustration?: boolean;
 }
 
-const sceneStyles = css`
+const illustrationStyles = css`
   background-color: ${color("bg-light")};
   background-image: url("app/img/bridge.svg");
   background-size: max(min(1728px, 260vh), 100%) auto;
@@ -23,7 +23,7 @@ export const LayoutRoot = styled.div<LayoutProps>`
   min-height: 100%;
   padding: 1rem;
   background-color: ${color("bg-light")};
-  ${props => props.showScene && sceneStyles};
+  ${props => props.showIllustration && illustrationStyles};
 
   ${breakpointMinMedium} {
     padding: 3rem 4rem;

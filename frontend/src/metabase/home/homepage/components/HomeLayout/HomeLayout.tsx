@@ -3,13 +3,16 @@ import GreetingSection from "../../containers/HomeGreeting";
 import { LayoutBody, LayoutRoot } from "./HomeLayout.styled";
 
 export interface HomeLayoutProps {
-  showScene?: boolean;
+  showIllustration?: boolean;
   children?: ReactNode;
 }
 
-const HomeLayout = ({ showScene, children }: HomeLayoutProps): JSX.Element => {
+const HomeLayout = ({
+  showIllustration,
+  children,
+}: HomeLayoutProps): JSX.Element => {
   return (
-    <LayoutRoot showScene={showScene}>
+    <LayoutRoot showIllustration={showIllustration}>
       <GreetingSection />
       <LayoutBody>{children}</LayoutBody>
     </LayoutRoot>

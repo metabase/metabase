@@ -429,6 +429,13 @@
   :default    true
   :visibility :authenticated)
 
+(defsetting show-homepage-illustration
+  (deferred-tru "Display the lighthouse illustration on the homepage.")
+  :visibility :public
+  :type       :boolean
+  :enabled?   premium-features/enable-whitelabeling?
+  :default    true)
+
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
   :default "X-Forwarded-For"

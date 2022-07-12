@@ -89,6 +89,11 @@ if (hasPremiumFeature("whitelabel")) {
           defaultValue: true,
           getHidden: settings => hasCustomBranding(settings),
         },
+        {
+          key: "show-homepage-illustration",
+          display_name: t`Homepage illustration`,
+          type: "boolean",
+        },
       ],
     },
     ...sections,

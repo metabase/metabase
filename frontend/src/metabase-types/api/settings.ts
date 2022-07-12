@@ -41,6 +41,7 @@ export interface Settings {
   "show-homepage-data": boolean;
   "show-homepage-xrays": boolean;
   "show-homepage-pin-message": boolean;
+  "show-homepage-illustration": boolean;
   "slack-token": string | undefined;
   "slack-token-valid?": boolean;
   "slack-app-token": string | undefined;
