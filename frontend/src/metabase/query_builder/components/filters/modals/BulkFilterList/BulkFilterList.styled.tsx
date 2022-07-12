@@ -14,7 +14,7 @@ export const ListRow = styled.div`
   gap: ${space(2)};
   padding: 1.5rem 2rem;
   border-bottom: 1px solid ${color("border")};
-  &:last-child {
+  &:last-of-type {
     border-bottom: none;
   }
 `;

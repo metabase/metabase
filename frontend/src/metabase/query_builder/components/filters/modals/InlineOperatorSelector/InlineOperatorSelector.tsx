@@ -45,15 +45,15 @@ export function InlineOperatorSelector({
           )}
           popoverContent={({ closePopover }) => (
             <OptionContainer data-testid="operator-options">
-              {operators.map(o => (
+              {operators.map(option => (
                 <Option
-                  key={o.name}
+                  key={option.name}
                   onClick={() => {
-                    onChange(o.name);
+                    onChange(option.name);
                     closePopover();
                   }}
                 >
-                  {o.verboseName}
+                  {option.verboseName}
                 </Option>
               ))}
             </OptionContainer>

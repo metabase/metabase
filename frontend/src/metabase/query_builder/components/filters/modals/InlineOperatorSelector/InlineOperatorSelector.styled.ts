@@ -14,7 +14,8 @@ export const FieldTitle = styled.span`
 export const OperatorDisplay = styled.button`
   font-weight: bold;
   color: ${props => (props.onClick ? color("brand") : color("text-light"))};
-  ${props => (props.onClick ? "cursor: pointer;" : "")} :hover {
+
+  ${props => (props.onClick ? "cursor: pointer;" : "")} &:hover {
     color: ${props =>
       props.onClick ? lighten("brand", 0.1) : color("text-light")};
   }
@@ -29,6 +30,7 @@ export const Option = styled.div`
   cursor: pointer;
   border-radius: ${space(1)};
   padding: 0.25rem 0.5rem;
+
   &:hover {
     background-color: ${color("brand")};
     color: ${color("white")};

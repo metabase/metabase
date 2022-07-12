@@ -32,7 +32,7 @@ export function filterFieldPopover(fieldName, { value, placeholder } = {}) {
 }
 
 function getFilterField(fieldName) {
-  return cy.findByLabelText(`filter-field-${fieldName}`);
+  return cy.findByTestId(`filter-field-${fieldName}`);
 }
 
 function changeOperator(subject, operator) {

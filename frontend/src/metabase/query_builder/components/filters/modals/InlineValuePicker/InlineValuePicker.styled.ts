@@ -12,6 +12,7 @@ export const OperatorSelector = styled(OperatorSelectorComponent)`
 
 export const ArgumentSelector = styled(FieldValuesWidget)`
   margin-bottom: ${space(1)};
+  min-height: 55px;
 `;
 
 export const ValuesPickerContainer = styled.div`

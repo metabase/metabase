@@ -80,15 +80,15 @@ describe("scenarios > filters > bulk filtering", () => {
     filter();
 
     modal().within(() => {
-      cy.findAllByTestId("dimension-filter-row")
+      cy.findAllByTestId(/filter-field-/)
         .eq(0)
         .should("include.text", "Created At");
 
-      cy.findAllByTestId("dimension-filter-row")
+      cy.findAllByTestId(/filter-field-/)
         .eq(1)
         .should("include.text", "Discount");
 
-      cy.findAllByTestId("dimension-filter-row")
+      cy.findAllByTestId(/filter-field-/)
         .last()
         .should("include.text", "ID");
     });
