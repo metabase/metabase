@@ -19,8 +19,7 @@ export const TextCardDefault = styled.div`
   display: flex;
   flex-direction: row;
   align-items: baseline;
-  font-size: 14px;
-  line-height: 24px;
+  line-height: 1.5rem;
 `;
 
 export const CardLabel = styled.div`
