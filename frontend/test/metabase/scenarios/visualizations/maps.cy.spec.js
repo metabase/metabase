@@ -76,9 +76,6 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByTestId("sidebar-left").as("vizSidebar");
 
     cy.get("@vizSidebar").within(() => {
-      // There should be a unique class for "selected" viz type
-      cy.icon("pinmap").parent().should("have.class", "text-white");
-
       cy.findByText("Map").parent().should("have.css", "opacity", "1");
     });
   });

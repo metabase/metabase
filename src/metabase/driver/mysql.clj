@@ -4,6 +4,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
@@ -27,7 +28,8 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [deferred-tru trs]])
   (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
-           [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]))
+           [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]
+           metabase.util.honeysql_extensions.Identifier))
 (comment
   ddl.mysql/keep-me)
 
@@ -38,7 +40,8 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ _] true)
+(defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
+  (or (get-in database [:details :json-unfolding]) true))
 
 (defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
 
@@ -110,6 +113,7 @@
     default-ssl-cert-details
     driver.common/ssh-tunnel-preferences
     driver.common/advanced-options-start
+    driver.common/json-unfolding
     (assoc driver.common/additional-options
            :placeholder  "tinyInt1isBit=false")
     driver.common/default-advanced-options]
@@ -233,10 +237,9 @@
   (hsql/call :char_length (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/json-query :mysql
-  [_ identifier stored-field]
+  [_ unwrapped-identifier stored-field]
   (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
     (let [nfc-path             (:nfc_path stored-field)
-          unwrapped-identifier (:form identifier)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
           jsonpath-query       (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))]
       (reify
@@ -254,7 +257,10 @@
     (if (field/json-field? stored-field)
       (if (::sql.qp/forced-alias opts)
         (keyword (::add/source-alias opts))
-        (sql.qp/json-query :mysql identifier stored-field))
+        (walk/postwalk #(if (instance? Identifier %)
+                          (sql.qp/json-query :mysql % stored-field)
+                          %)
+                       identifier))
       identifier)))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting

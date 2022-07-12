@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color, lighten } from "metabase/lib/colors";
+import { color, lighten, tint, isDark } from "metabase/lib/colors";
 import { RadioColorScheme, RadioVariant } from "./types";
 
 export interface RadioGroupProps {
@@ -66,7 +66,7 @@ export const RadioContainer = styled.div<RadioContainerProps>`
   &:hover {
     color: ${props =>
       !props.checked && !props.showButtons
-        ? getSchemeColor(props.colorScheme)
+        ? getContrastSchemeColor(props.colorScheme)
         : ""};
   }
 
@@ -96,7 +96,7 @@ export const RadioContainerBubble = styled(RadioContainer)`
   border-radius: 10rem;
   font-weight: bold;
   color: ${props =>
-    props.checked ? color("white") : getSchemeColor(props.colorScheme)};
+    props.checked ? color("white") : getContrastSchemeColor(props.colorScheme)};
   background-color: ${props =>
     props.checked
       ? getSchemeColor(props.colorScheme)
@@ -140,4 +140,9 @@ const getSchemeColor = (colorScheme: RadioColorScheme): string => {
     case "accent7":
       return color("accent7");
   }
+};
+
+const getContrastSchemeColor = (colorScheme: RadioColorScheme) => {
+  const schemeColor = getSchemeColor(colorScheme);
+  return isDark(schemeColor) ? tint(schemeColor, 0.5) : schemeColor;
 };
