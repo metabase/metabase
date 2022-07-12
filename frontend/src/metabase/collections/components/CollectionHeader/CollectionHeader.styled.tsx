@@ -25,8 +25,7 @@ export const HeaderActions = styled.div`
 
 export const CollectionHeaderButton = styled(Button)`
   padding: 0.5rem 0.75rem;
-  box-sizing: content-box;
-  height: 1.5rem;
+  height: 2.5rem;
 
   &:hover {
     color: ${color("brand")};

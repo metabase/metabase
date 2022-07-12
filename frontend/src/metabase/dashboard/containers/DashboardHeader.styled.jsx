@@ -13,8 +13,7 @@ export const DashboardHeaderActionDivider = styled.div`
 
 export const DashboardHeaderButton = styled(Button)`
   padding: 0.5rem 0.75rem;
-  box-sizing: content-box;
-  height: 1.5rem;
+  height: 2.5rem;
   color: ${props => (props.isActive ? color("brand") : color("text-dark"))};
 
   &:hover {

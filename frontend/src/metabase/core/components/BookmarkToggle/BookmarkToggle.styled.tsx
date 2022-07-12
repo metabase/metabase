@@ -37,8 +37,7 @@ interface BookmarkButtonProps {
 
 export const BookmarkButton = styled(Button)<BookmarkButtonProps>`
   padding: 0.5rem 0.75rem;
-  box-sizing: content-box;
-  height: 1.5rem;
+  height: 2.5rem;
 
   &:hover {
     color: ${({ hoverColor }) => hoverColor};

@@ -91,7 +91,7 @@ export const getDashboardActions = (
                   "text-brand-hover": canShareDashboard,
                   "text-light": !canShareDashboard,
                 })}
-              ></DashboardHeaderButton>
+              />
             </Tooltip>
           }
         />,
