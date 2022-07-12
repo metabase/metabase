@@ -105,7 +105,11 @@ export function getTemplateTagsForParameters(card: Card, snippets = null) {
 
   const snippetTags = snippets ? getSnippetsTemplateTags(card, snippets) : [];
 
-  return filteredTags.concat(snippetTags);
+  return filteredTags.concat(
+    snippetTags.filter(snippetTag => {
+      return !filteredTags.find(tag => tag.name === snippetTag.name);
+    }),
+  );
 }
 
 export function getParametersFromCard(
