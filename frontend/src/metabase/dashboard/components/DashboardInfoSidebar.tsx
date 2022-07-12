@@ -69,7 +69,7 @@ const DashboardInfoSidebar = ({
   );
 
   return (
-    <DashboardInfoSidebarRoot>
+    <DashboardInfoSidebarRoot data-testid="sidebar-right">
       <ContentSection>
         <DescriptionHeader>{t`About`}</DescriptionHeader>
         <EditableText

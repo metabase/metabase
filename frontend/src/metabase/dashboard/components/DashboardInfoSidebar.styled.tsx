@@ -1,5 +1,7 @@
 import styled from "@emotion/styled";
 
+import { breakpointMaxSmall } from "metabase/styled-components/theme";
+
 import { color } from "metabase/lib/colors";
 import EditableText from "metabase/core/components/EditableText";
 
@@ -10,6 +12,15 @@ export const DashboardInfoSidebarRoot = styled.div`
   border-left: 1px solid ${color("border")};
   height: 100%;
   overflow-y: auto;
+
+  ${breakpointMaxSmall} {
+    position: absolute;
+    width: 90%;
+    right: 0px;
+    z-index: 2;
+    height: auto;
+    border-bottom: 1px solid ${color("border")};
+  }
 `;
 
 export const HistoryHeader = styled.h3`
