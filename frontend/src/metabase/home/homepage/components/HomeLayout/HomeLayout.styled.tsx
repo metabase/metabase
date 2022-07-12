@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color, hueRotate } from "metabase/lib/colors";
 import {
   breakpointMinExtraLarge,
   breakpointMinLarge,
@@ -38,12 +38,13 @@ export const LayoutBody = styled.div`
   }
 `;
 
-export const LayoutIllustration = styled.div`
+export const LighthouseIllustration = styled.div`
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
+  filter: hue-rotate(${hueRotate("brand")}deg);
   background-image: url("app/img/bridge.svg");
   background-size: max(min(1728px, 260vh), 100%) auto;
   background-repeat: no-repeat;
