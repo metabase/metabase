@@ -336,6 +336,7 @@
       (when (seq card-ids)
         (let [card-id->query        (db/select-id->field :dataset_query Card :id [:in card-ids])
               field-ids             (set (for [{:keys [target card-id]} parameter-mappings
+                                               :when                    card-id
                                                :let                     [query    (or (card-id->query card-id)
                                                                                       (throw (ex-info (tru "Card {0} does not exist or does not have a valid query."
                                                                                                            card-id)
@@ -407,14 +408,8 @@
                                          (db/select-id->field :card_id DashboardCard
                                            :dashboard_id dashboard-id
                                            :id           [:in (set (map :dashcard-id new-mappings))]))
-        new-mappings                   (reduce (fn [new-mappings {:keys [dashcard-id] :as mapping}]
-                                                 ;; nil card-id means the DashboardCard is a text card, so we don't
-                                                 ;; need to check permissions
-                                                 (if-let [card-id (get dashcard-id->card-id dashcard-id)]
-                                                   (conj new-mappings (assoc mapping :card-id card-id))
-                                                   new-mappings))
-                                               []
-                                               new-mappings)]
+        new-mappings                   (for [{:keys [dashcard-id], :as mapping} new-mappings]
+                                         (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
     (check-parameter-mapping-permissions new-mappings)))
 
 (def ^:private UpdatedDashboardCard
