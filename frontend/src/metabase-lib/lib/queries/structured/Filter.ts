@@ -27,6 +27,7 @@ import { isExpression } from "metabase/lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
+import { segment } from "cljs/metabase.mbql.schema";
 
 export interface FilterDisplayNameOpts {
   includeDimension?: boolean;
@@ -73,7 +74,10 @@ export default class Filter extends MBQLClause {
         dimension && includeDimension && dimension.displayName();
       const operatorName =
         operator && !isStartingFrom(this) && operator.moreVerboseName;
-      const argumentNames = this.formattedArguments().join(" ");
+      const argumentNames = this.formattedArguments().join(" ");      
+      
+      if (argumentNames === null || argumentNames.length === 0) return t`${dimensionName} is empty`;        
+
       return `${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
     } else if (this.isCustom()) {
       return this._query.formatExpression(this);
