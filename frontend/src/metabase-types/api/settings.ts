@@ -48,6 +48,7 @@ export interface Settings {
   "show-homepage-xrays": boolean;
   "show-homepage-pin-message": boolean;
   "show-lighthouse-illustration": boolean;
+  "show-metabot": boolean;
   "slack-token": string | undefined;
   "slack-token-valid?": boolean;
   "slack-app-token": string | undefined;
