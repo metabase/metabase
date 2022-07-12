@@ -18,6 +18,7 @@ export interface BulkFilterItemProps {
   query: StructuredQuery;
   filter?: Filter;
   dimension: Dimension;
+  isSearch?: boolean;
   onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
@@ -27,6 +28,7 @@ export const BulkFilterItem = ({
   query,
   filter,
   dimension,
+  isSearch,
   onAddFilter,
   onChangeFilter,
   onRemoveFilter,
@@ -59,12 +61,21 @@ export const BulkFilterItem = ({
   }, [filter, onRemoveFilter]);
 
   const currentOperator = (filter ?? newFilter).operatorName();
+  const tableName = useMemo(
+    () =>
+      (isSearch ? dimension.field()?.table?.displayName() : undefined) ??
+      undefined,
+    [dimension, isSearch],
+  );
 
   switch (fieldPickerType) {
     case "boolean":
       return (
         <>
-          <InlineOperatorSelector fieldName={dimension.displayName()} />
+          <InlineOperatorSelector
+            fieldName={dimension.displayName()}
+            tableName={tableName}
+          />
           <BooleanPickerCheckbox
             filter={filter ?? newFilter}
             onFilterChange={handleChange}
@@ -74,7 +85,10 @@ export const BulkFilterItem = ({
     case "category":
       return (
         <>
-          <InlineOperatorSelector fieldName={dimension.displayName()} />
+          <InlineOperatorSelector
+            fieldName={dimension.displayName()}
+            tableName={tableName}
+          />
           <InlineCategoryPicker
             query={query}
             filter={filter}
@@ -90,6 +104,7 @@ export const BulkFilterItem = ({
         <>
           <InlineOperatorSelector
             fieldName={dimension.displayName()}
+            tableName={tableName}
             value={currentOperator}
             operators={dimension.filterOperators(currentOperator)}
             onChange={changeOperator}
@@ -104,7 +119,10 @@ export const BulkFilterItem = ({
     case "date":
       return (
         <>
-          <InlineOperatorSelector fieldName={dimension.displayName()} />
+          <InlineOperatorSelector
+            fieldName={dimension.displayName()}
+            tableName={tableName}
+          />
           <InlineDatePicker
             query={query}
             filter={filter}
@@ -118,7 +136,10 @@ export const BulkFilterItem = ({
     default:
       return (
         <>
-          <InlineOperatorSelector fieldName={dimension.displayName()} />
+          <InlineOperatorSelector
+            fieldName={dimension.displayName()}
+            tableName={tableName}
+          />
           <BulkFilterSelect
             query={query}
             filter={filter}

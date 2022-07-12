@@ -213,9 +213,7 @@ describe("scenarios > filters > bulk filtering", () => {
       filter();
 
       modal().within(() => {
-        cy.findByText("Segments")
-          .parent()
-          .within(() => cy.get("button").click());
+        filterField("segments").within(() => cy.get("button").click());
       });
 
       popover().within(() => {
@@ -231,9 +229,7 @@ describe("scenarios > filters > bulk filtering", () => {
       filter();
 
       modal().within(() => {
-        cy.findByText("Segments")
-          .parent()
-          .within(() => cy.get("button").click());
+        filterField("segments").within(() => cy.get("button").click());
       });
 
       popover().within(() => {
@@ -262,12 +258,10 @@ describe("scenarios > filters > bulk filtering", () => {
       filter();
 
       modal().within(() => {
-        cy.findByText("Segments")
-          .parent()
-          .within(() => {
-            cy.findByText(SEGMENT_1_NAME);
-            cy.findByText(SEGMENT_2_NAME).should("not.exist");
-          });
+        filterField("segments").within(() => {
+          cy.findByText(SEGMENT_1_NAME);
+          cy.findByText(SEGMENT_2_NAME).should("not.exist");
+        });
       });
     });
   });
@@ -542,6 +536,51 @@ describe("scenarios > filters > bulk filtering", () => {
 
       cy.findByText("Price is less than or equal to 50").should("be.visible");
       cy.findByText("Showing 94 rows").should("be.visible");
+    });
+  });
+
+  describe("column search", () => {
+    beforeEach(() => {
+      visitQuestionAdhoc(productsQuestion);
+      filter();
+    });
+
+    it("can search for a column", () => {
+      modal().within(() => {
+        cy.findByText("In").should("not.exist");
+        cy.findByText("Category").should("be.visible");
+
+        cy.findByPlaceholderText("Search for a column...").clear().type("vend");
+
+        cy.findByText("Category").should("not.exist");
+
+        filterField("Vendor")
+          .findByText("In") // "In Products"
+          .should("be.visible");
+
+        filterField("Vendor").findByText("Vendor").should("be.visible");
+      });
+    });
+
+    it("can apply a filter from a searched column", () => {
+      modal().within(() => {
+        cy.findByPlaceholderText("Search for a column...")
+          .clear()
+          .type("price");
+
+        // need to block until filter is applied
+        cy.findByText("Category").should("not.exist");
+      });
+
+      filterField("Price", {
+        operator: "greater than",
+        value: "90",
+      });
+
+      applyFilters();
+
+      cy.findByText("Price is greater than 90").should("be.visible");
+      cy.findByText("Showing 10 rows").should("be.visible");
     });
   });
 });
