@@ -46,9 +46,8 @@
   (let [api-perm-check-fn (if (Boolean/parseBoolean include_editable_data_model)
                             api/write-check
                             api/read-check)]
-    (u/prog1 (-> (api-perm-check-fn Table id)
-                 (hydrate :db :pk_field))
-             (events/publish-event! :table-read (assoc <> :actor_id api/*current-user-id*)))))
+    (-> (api-perm-check-fn Table id)
+        (hydrate :db :pk_field))))
 
 (defn- update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
