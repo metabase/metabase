@@ -20,7 +20,6 @@
             [metabase.models.interface :as mi]
             [metabase.models.params :as params]
             [metabase.models.params.chain-filter :as chain-filter]
-            [metabase.models.params.field-values :as params.field-values]
             [metabase.models.query :as query :refer [Query]]
             [metabase.models.query.permissions :as query-perms]
             [metabase.models.revision :as revision]
@@ -595,7 +594,6 @@
                         :status-code     400})))
      (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
            field-ids   (param-key->field-ids dashboard param-key)]
-      (api/check-403 (params.field-values/current-user-can-fetch-field-values-for-field-ids? field-ids))
       (when (empty? field-ids)
         (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
                         {:param       (get (:resolved-params dashboard) param-key)

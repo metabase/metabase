@@ -2,7 +2,6 @@
   "Code related to fetching FieldValues for Fields to populate parameter widgets. Always used by the field
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
   (:require [metabase.api.common :as api]
-            [metabase.models :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
             [metabase.plugins.classloader :as classloader]
@@ -26,14 +25,6 @@
   [field]
   ;; read permissions for a Field = partial permissions for its parent Table (including EE segmented permissions)
   (mi/can-read? field))
-
-(defn current-user-can-fetch-field-values-for-field-ids?
-  "Check if current user has permissions to fetch FieldValues for all `field` in `field-ids`."
-  [field-ids]
-  (->> field-ids
-       (map Field)
-       (map current-user-can-fetch-field-values?)
-       (every? true?)))
 
 (defn- format-field-values
   "Format a FieldValues to use by params functions.
