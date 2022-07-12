@@ -1,6 +1,10 @@
 import React, { ReactNode } from "react";
 import GreetingSection from "../../containers/HomeGreeting";
-import { LayoutBody, LayoutRoot } from "./HomeLayout.styled";
+import {
+  LayoutBody,
+  LayoutIllustration,
+  LayoutRoot,
+} from "./HomeLayout.styled";
 
 export interface HomeLayoutProps {
   showIllustration?: boolean;
@@ -12,7 +16,8 @@ const HomeLayout = ({
   children,
 }: HomeLayoutProps): JSX.Element => {
   return (
-    <LayoutRoot showIllustration={showIllustration}>
+    <LayoutRoot>
+      {showIllustration && <LayoutIllustration />}
       <GreetingSection />
       <LayoutBody>{children}</LayoutBody>
     </LayoutRoot>
