@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { assoc, assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
+import querystring from "querystring";
 
 import { t } from "ttag";
 
@@ -27,6 +28,7 @@ import { applyParameters } from "metabase/meta/Card";
 import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
+  getValuePopulatedParameters,
 } from "metabase/parameters/utils/parameter-values";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
@@ -966,9 +968,61 @@ export const setParameterIndex = createThunkAction(
   },
 );
 
+const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
+
+function buildSearchString(object) {
+  const currentSearchParams = querystring.parse(
+    window.location.search.replace("?", ""),
+  );
+  const filteredSearchParams = Object.fromEntries(
+    Object.entries(currentSearchParams).filter(entry =>
+      QUERY_PARAMS_ALLOW_LIST.includes(entry[0]),
+    ),
+  );
+
+  const search = querystring.stringify({
+    ...filteredSearchParams,
+    ...object,
+  });
+  return search ? `?${search}` : "";
+}
+
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => (dispatch, getState) => {
+    const state = getState();
+    const dashboardId = state.dashboard.dashboardId;
+    const dashboard = state.dashboard.dashboards[dashboardId];
+    const parameters = dashboard.parameters;
+    const parameterValues = state.dashboard.parameterValues;
+    parameterValues[parameterId] = value;
+    const parametersWithValues = getValuePopulatedParameters(
+      parameters,
+      parameterValues,
+    );
+
+    const object = getParameterValuesBySlug(parametersWithValues, undefined, {
+      preserveDefaultedParameters: true,
+    });
+
+    const searchString = buildSearchString(object);
+
+    if (searchString !== window.location.search) {
+      console.log("history.replaceState");
+      console.log(
+        searchString,
+        ";",
+        window.location.search,
+        ";",
+        window.location.hash,
+      );
+      history.replaceState(
+        null,
+        document.title,
+        window.location.pathname + searchString + window.location.hash,
+      );
+    }
+
     return { id: parameterId, value };
   },
 );

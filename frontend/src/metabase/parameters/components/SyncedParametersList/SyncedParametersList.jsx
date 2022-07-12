@@ -2,8 +2,8 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import ParametersList from "metabase/parameters/components/ParametersList";
-import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
-import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
+// import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
+// import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
 
 const propTypes = {
   parameters: PropTypes.array.isRequired,
@@ -40,16 +40,16 @@ export function SyncedParametersList({
   setParameterIndex,
   setEditingParameter,
 }) {
-  useSyncedQueryString(
-    () =>
-      getParameterValuesBySlug(
-        parameters,
-        undefined,
-        dashboard && { preserveDefaultedParameters: true },
-      ),
-    [parameters, dashboard],
-  );
-
+  // TODO: this is uncommented to work for dashboards, it still needs to be there for other components
+  // useSyncedQueryString(
+  //   () =>
+  //     getParameterValuesBySlug(
+  //       parameters,
+  //       undefined,
+  //       dashboard && { preserveDefaultedParameters: true },
+  //     ),
+  //   [parameters, dashboard],
+  // );
   return (
     <ParametersList
       className={className}
