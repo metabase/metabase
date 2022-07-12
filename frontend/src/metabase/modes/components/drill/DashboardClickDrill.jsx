@@ -77,11 +77,12 @@ export default ({ question, clicked }) => {
       };
     } else {
       behavior = {
-        action: () => executeRowAction({
-          dashboard: extraData.dashboard,
-          emitterId: clickBehavior.emitter_id || clickBehavior.id,
-          parameters,
-        }),
+        action: () =>
+          executeRowAction({
+            dashboard: extraData.dashboard,
+            emitterId: clickBehavior.emitter_id || clickBehavior.id,
+            parameters,
+          }),
       };
     }
   } else if (type === "crossfilter") {
