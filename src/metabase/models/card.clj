@@ -209,7 +209,9 @@
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
                                  (describe-database query-db-id)))
-                          {:status-code 400})))))))
+                          {:status-code           400
+                           :query-database        query-db-id
+                           :field-filter-database field-db-id})))))))
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
