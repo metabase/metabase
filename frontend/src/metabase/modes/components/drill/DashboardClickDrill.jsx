@@ -66,7 +66,7 @@ export default ({ question, clicked }) => {
               onSubmit: filledMissingParameters =>
                 executeRowAction({
                   dashboard: extraData.dashboard,
-                  emitterId: clickBehavior.emitter_id,
+                  emitterId: clickBehavior.emitter_id || clickBehavior.id,
                   parameters: {
                     ...parameters,
                     ...filledMissingParameters,
@@ -77,12 +77,11 @@ export default ({ question, clicked }) => {
       };
     } else {
       behavior = {
-        action: () =>
-          executeRowAction({
-            dashboard: extraData.dashboard,
-            emitterId: clickBehavior.emitter_id,
-            parameters,
-          }),
+        action: () => executeRowAction({
+          dashboard: extraData.dashboard,
+          emitterId: clickBehavior.emitter_id || clickBehavior.id,
+          parameters,
+        }),
       };
     }
   } else if (type === "crossfilter") {

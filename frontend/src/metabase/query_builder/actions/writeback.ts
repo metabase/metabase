@@ -147,5 +147,18 @@ export const createHttpAction = (payload: CreateHttpActionPayload) => async (
   };
   const response = await dispatch(Actions.actions.create(newAction));
   const action = Actions.HACK_getObjectFromAction(response);
-  dispatch(push(`/action/${action.id}`));
+  if (action.id) {
+    dispatch(
+      addUndo({
+        message: t`Action saved!`,
+      }),
+    );
+    dispatch(push(`/action/${action.id}`));
+  } else {
+    dispatch(
+      addUndo({
+        message: t`Could not save action`,
+      }),
+    );
+  }
 };
