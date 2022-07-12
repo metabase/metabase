@@ -6,7 +6,6 @@
             [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
