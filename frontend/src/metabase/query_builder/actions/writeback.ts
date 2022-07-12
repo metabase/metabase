@@ -131,7 +131,7 @@ export const createHttpAction = (payload: CreateHttpActionPayload) => async (
     method: template.method || "GET",
     url: template.url,
     body: template.body || {},
-    headers: template.headers || {},
+    headers: JSON.stringify(template.headers || {}),
     parameters: template.parameters || {},
     parameter_mappings: template.parameter_mappings || {},
   };
