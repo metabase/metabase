@@ -27,7 +27,7 @@ In addition to that, we need to ensure that underlying Cypress tests are valid, 
 
 We use Cypress to write Percy tests so we can fully use all existing helpers and custom commands.
 
-Visual regression tests live inside the `frontend/test/metabase-visual` directory. Writing a Percy test consists of creating a desired page state and executing `cy.percySnapshot()` command.
+Visual regression tests live inside the `frontend/test/metabase-visual` directory. Writing a Percy test consists of creating a desired page state and executing `cy.createPercySnapshot()` command.
 
 ### Goal
 
