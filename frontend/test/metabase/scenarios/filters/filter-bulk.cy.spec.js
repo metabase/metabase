@@ -213,9 +213,7 @@ describe("scenarios > filters > bulk filtering", () => {
       filter();
 
       modal().within(() => {
-        cy.findByText("Segments")
-          .parent()
-          .within(() => cy.get("button").click());
+        filterField("segments").within(() => cy.get("button").click());
       });
 
       popover().within(() => {
@@ -231,9 +229,7 @@ describe("scenarios > filters > bulk filtering", () => {
       filter();
 
       modal().within(() => {
-        cy.findByText("Segments")
-          .parent()
-          .within(() => cy.get("button").click());
+        filterField("segments").within(() => cy.get("button").click());
       });
 
       popover().within(() => {
@@ -262,12 +258,10 @@ describe("scenarios > filters > bulk filtering", () => {
       filter();
 
       modal().within(() => {
-        cy.findByText("Segments")
-          .parent()
-          .within(() => {
-            cy.findByText(SEGMENT_1_NAME);
-            cy.findByText(SEGMENT_2_NAME).should("not.exist");
-          });
+        filterField("segments").within(() => {
+          cy.findByText(SEGMENT_1_NAME);
+          cy.findByText(SEGMENT_2_NAME).should("not.exist");
+        });
       });
     });
   });
