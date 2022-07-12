@@ -20,7 +20,7 @@
   "i18n a string with the site's locale, when called from Clojure. Format string will be translated to the site's
   locale when the form is eval'ed. Placeholders should use `gettext` format e.g. `{0}`, `{1}`, and so forth.
 
-    (tru \"Number of cans: {0}\" 2)
+    (trs \"Number of cans: {0}\" 2)
 
   NOTE: When called from ClojureScript, this function behaves identically to `tru`. The originating JS callsite must
   temporarily override the locale used by ttag using the `withInstanceLocalization` wrapper function."
