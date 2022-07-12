@@ -11,6 +11,14 @@ export const FieldTitle = styled.span`
   color: ${color("text-dark")};
 `;
 
+export const TableTitle = styled.div`
+  color: ${color("text-dark")};
+  margin-bottom: ${space(2)};
+  span.light {
+    color: ${color("text-light")};
+  }
+`;
+
 export const OperatorDisplay = styled.button`
   font-weight: bold;
   color: ${props => (props.onClick ? color("brand") : color("text-light"))};

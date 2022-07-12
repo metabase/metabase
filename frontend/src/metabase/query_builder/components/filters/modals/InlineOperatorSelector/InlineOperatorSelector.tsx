@@ -5,6 +5,7 @@ import Icon from "metabase/components/Icon";
 import {
   InlineOperatorContainer,
   FieldTitle,
+  TableTitle,
   OperatorDisplay,
   OptionContainer,
   Option,
@@ -13,6 +14,7 @@ import { FilterOperatorName } from "metabase-types/types/Metadata";
 
 interface InlineOperatorSelectorProps {
   fieldName: string;
+  tableName?: string;
   value?: FilterOperatorName;
   operators?: any[];
   onChange?: (operatorName: string) => void;
@@ -20,6 +22,7 @@ interface InlineOperatorSelectorProps {
 
 export function InlineOperatorSelector({
   fieldName,
+  tableName,
   value,
   operators,
   onChange,
@@ -31,6 +34,13 @@ export function InlineOperatorSelector({
 
   return (
     <InlineOperatorContainer>
+      {!!tableName && (
+        <TableTitle>
+          <span className="light">In</span>
+          {` ${tableName}`}
+        </TableTitle>
+      )}
+
       <FieldTitle>{fieldName} </FieldTitle>
       {!canChangeOperator && !!operatorDisplayName && (
         <OperatorDisplay>{operatorDisplayName}</OperatorDisplay>
