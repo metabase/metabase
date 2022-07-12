@@ -100,21 +100,21 @@
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
 
 (defmethod serdes.base/serdes-generate-path "Metric"
-  [{:keys [name] :as metric}]
+  [_ metric]
   (let [base (serdes.base/infer-self-path "Metric" metric)]
-    [(assoc base :label name)]))
+    [(assoc base :label (:name metric))]))
 
 (defmethod serdes.base/extract-one "Metric"
   [_ _ metric]
   (-> (serdes.base/extract-one-basics "Metric" metric)
       (update :table_id   serdes.util/export-table-fk)
-      (update :creator_id serdes.util/export-fk-field 'User :email)))
+      (update :creator_id serdes.util/export-fk-keyed 'User :email)))
 
 (defmethod serdes.base/load-xform "Metric" [metric]
   (-> metric
       serdes.base/load-xform-basics
       (update :table_id   serdes.util/import-table-fk)
-      (update :creator_id serdes.util/import-fk-field 'User :email)))
+      (update :creator_id serdes.util/import-fk-keyed 'User :email)))
 
 (defmethod serdes.base/serdes-dependencies "Metric" [{:keys [table_id]}]
   [(serdes.util/table->path table_id)])
