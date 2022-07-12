@@ -4,8 +4,7 @@ export const viewsAndAvgExecutionTimeByDay = () => ({
     display: "line",
     dataset_query: {
       type: "internal",
-      fn:
-        "metabase-enterprise.audit-app.pages.queries/views-and-avg-execution-time-by-day",
+      fn: "metabase-enterprise.audit-app.pages.queries/views-and-avg-execution-time-by-day",
       args: [],
     },
     visualization_settings: {

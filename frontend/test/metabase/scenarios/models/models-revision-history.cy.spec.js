@@ -12,7 +12,6 @@ import {
   assertIsModel,
   assertQuestionIsBasedOnModel,
   selectFromDropdown,
-  selectDimensionOptionFromSidebar,
   saveQuestionBasedOnModel,
   assertIsQuestion,
 } from "./helpers/e2e-models-helpers";
@@ -49,10 +48,10 @@ describe("scenarios > models > revision history", () => {
     cy.get(".LineAreaBarChart");
 
     filter();
-    selectDimensionOptionFromSidebar("Discount");
-    cy.findByText("Equal to").click();
+    cy.findByLabelText("Discount").findByText("Between").click();
     selectFromDropdown("Not empty");
-    cy.button("Add filter").click();
+
+    cy.button("Apply").click();
 
     cy.findByText("Save").click();
     modal().within(() => {
@@ -86,11 +85,9 @@ describe("scenarios > models > revision history", () => {
     cy.get(".LineAreaBarChart").should("not.exist");
 
     filter();
-    selectDimensionOptionFromSidebar("Count");
-    cy.findByText("Equal to").click();
-    selectFromDropdown("Greater than");
-    cy.findByPlaceholderText("Enter a number").type("2000");
-    cy.button("Add filter").click();
+    cy.findByLabelText("Count").click();
+    cy.findByPlaceholderText("min").type("2000");
+    cy.button("Apply").click();
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",

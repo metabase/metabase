@@ -3,6 +3,8 @@ import {
   visitQuestion,
   saveDashboard,
   popover,
+  openNavigationSidebar,
+  navigationSidebar,
   openQuestionActions,
   questionInfoButton,
 } from "__support__/e2e/helpers";
@@ -35,7 +37,6 @@ describe("managing question from the question's details sidebar", () => {
             });
 
             it("should be able to edit question details (metabase#11719-1)", () => {
-              // cy.skipOn(user === "nodata");
               cy.findByTestId("saved-question-header-title")
                 .click()
                 .type("1")
@@ -45,8 +46,6 @@ describe("managing question from the question's details sidebar", () => {
             });
 
             it("should be able to edit a question's description", () => {
-              // cy.skipOn(user === "nodata");
-
               questionInfoButton().click();
 
               cy.findByPlaceholderText("Add description")
@@ -58,17 +57,82 @@ describe("managing question from the question's details sidebar", () => {
               cy.findByText("foo");
             });
 
-            it("should be able to move the question (metabase#11719-2)", () => {
-              // cy.skipOn(user === "nodata");
-              openQuestionActions();
-              cy.findByTestId("move-button").click();
-              cy.findByText("My personal collection").click();
-              clickButton("Move");
-              assertOnRequest("updateQuestion");
-              cy.contains("37.65");
+            describe("move", () => {
+              it("should be able to move the question (metabase#11719-2)", () => {
+                openNavigationSidebar();
+                navigationSidebar().within(() => {
+                  // Highlight "Our analytics"
+                  cy.findByText("Our analytics")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "true");
+                  cy.findByText("Your personal collection")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "false");
+                });
+
+                openQuestionActions();
+                cy.findByTestId("move-button").click();
+                cy.findByText("My personal collection").click();
+                clickButton("Move");
+                assertOnRequest("updateQuestion");
+                cy.contains("37.65");
+
+                cy.contains(
+                  `Question moved to ${getPersonalCollectionName(USERS[user])}`,
+                );
+
+                navigationSidebar().within(() => {
+                  // Highlight "Your personal collection" after move
+                  cy.findByText("Our analytics")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "false");
+                  cy.findByText("Your personal collection")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "true");
+                });
+              });
+
+              it("should be able to move models", () => {
+                // TODO: Currently nodata users can't turn a question into a model
+                cy.skipOn(user === "nodata");
+
+                turnIntoModel();
+
+                openNavigationSidebar();
+                navigationSidebar().within(() => {
+                  // Highlight "Our analytics"
+                  cy.findByText("Our analytics")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "true");
+                  cy.findByText("Your personal collection")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "false");
+                });
+
+                openQuestionActions();
+                cy.findByTestId("move-button").click();
+                cy.findByText("My personal collection").click();
+                clickButton("Move");
+                assertOnRequest("updateQuestion");
+                cy.contains("37.65");
+
+                cy.contains(
+                  `Model moved to ${getPersonalCollectionName(USERS[user])}`,
+                );
+
+                navigationSidebar().within(() => {
+                  // Highlight "Your personal collection" after move
+                  cy.findByText("Our analytics")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "false");
+                  cy.findByText("Your personal collection")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "true");
+                });
+              });
             });
 
-            it("should be able to archive the question (metabase#11719-3, metabase#16512)", () => {
+            it("should be able to archive the question (metabase#11719-3, metabase#16512, metabase#20133)", () => {
               cy.intercept("GET", "/api/collection/root/items**").as(
                 "getItems",
               );
@@ -80,6 +144,14 @@ describe("managing question from the question's details sidebar", () => {
               cy.wait("@getItems"); // unpinned items
               cy.location("pathname").should("eq", "/collection/root");
               cy.findByText("Orders").should("not.exist");
+
+              cy.findByPlaceholderText("Search…").click();
+              cy.findByText("Recently viewed");
+              cy.findByText("Nothing here");
+
+              // Check page for archived questions
+              cy.visit("/question/1");
+              cy.findByText("This question has been archived");
             });
 
             it("should be able to add question to dashboard", () => {
@@ -113,9 +185,10 @@ describe("managing question from the question's details sidebar", () => {
               cy.get(".Modal").within(() => {
                 cy.findByText("Orders in a dashboard").should("not.exist");
                 cy.icon("search").click();
-                cy.findByPlaceholderText(
-                  "Search",
-                ).type("Orders in a dashboard{Enter}", { delay: 0 });
+                cy.findByPlaceholderText("Search").type(
+                  "Orders in a dashboard{Enter}",
+                  { delay: 0 },
+                );
                 cy.findByText("Orders in a dashboard").should("not.exist");
               });
             });
@@ -161,9 +234,7 @@ describe("managing question from the question's details sidebar", () => {
 });
 
 function clickButton(name) {
-  cy.button(name)
-    .should("not.be.disabled")
-    .click();
+  cy.button(name).should("not.be.disabled").click();
 }
 
 function assertOnRequest(xhr_alias) {
@@ -174,4 +245,16 @@ function assertOnRequest(xhr_alias) {
   cy.findByText("Sorry, you don’t have permission to see that.").should(
     "not.exist",
   );
+}
+
+function getPersonalCollectionName(user) {
+  const name = [user.first_name, user.last_name].join(" ");
+
+  return `${name}'s Personal Collection`;
+}
+
+function turnIntoModel() {
+  openQuestionActions();
+  cy.findByText("Turn into a model").click();
+  cy.findByText("Turn this into a model").click();
 }

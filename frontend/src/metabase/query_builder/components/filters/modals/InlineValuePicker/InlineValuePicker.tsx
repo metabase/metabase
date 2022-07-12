@@ -32,7 +32,9 @@ export function InlineValuePicker({
 
   const changeArguments = useCallback(
     (newArguments: (string | number)[]) => {
-      handleChange(filter.setArguments(newArguments));
+      handleChange(
+        filter.setArguments(newArguments).setOptions(filter.options()),
+      );
     },
     [filter, handleChange],
   );
@@ -100,14 +102,14 @@ function ValuesInput({
       <NumberInput
         placeholder={t`min`}
         value={filterArguments[0] ?? ""}
-        onChange={e => onChange([e.target.value, filterArguments[1]])}
+        onChange={val => onChange([val, filterArguments[1]])}
         fullWidth
       />
       <NumberSeparator>{t`and`}</NumberSeparator>
       <NumberInput
         placeholder={t`max`}
         value={filterArguments[1] ?? ""}
-        onChange={e => onChange([filterArguments[0], e.target.value])}
+        onChange={val => onChange([filterArguments[0], val])}
         fullWidth
       />
     </BetweenContainer>

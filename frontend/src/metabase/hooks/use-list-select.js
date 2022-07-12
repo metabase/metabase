@@ -24,10 +24,10 @@ export const useListSelect = (keyFn = item => item) => {
 
   const toggleItem = useCallback(item => toggleAll([item]), [toggleAll]);
 
-  const getIsSelected = useCallback(item => selectedKeys.has(keyFn(item)), [
-    keyFn,
-    selectedKeys,
-  ]);
+  const getIsSelected = useCallback(
+    item => selectedKeys.has(keyFn(item)),
+    [keyFn, selectedKeys],
+  );
 
   const clear = useCallback(() => {
     setSelectedKeys(new Set());

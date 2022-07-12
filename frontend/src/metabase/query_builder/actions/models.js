@@ -58,35 +58,34 @@ export const setResultsMetadata = createAction(SET_RESULTS_METADATA);
 export const SET_METADATA_DIFF = "metabase/qb/SET_METADATA_DIFF";
 export const setMetadataDiff = createAction(SET_METADATA_DIFF);
 
-export const setFieldMetadata = ({ field_ref, changes }) => (
-  dispatch,
-  getState,
-) => {
-  const question = getQuestion(getState());
-  const resultsMetadata = getResultsMetadata(getState());
+export const setFieldMetadata =
+  ({ field_ref, changes }) =>
+  (dispatch, getState) => {
+    const question = getQuestion(getState());
+    const resultsMetadata = getResultsMetadata(getState());
 
-  const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
-    const compareExact =
-      !isLocalField(field_ref) || !isLocalField(fieldMetadata.field_ref);
-    const isTargetField = isSameField(
-      field_ref,
-      fieldMetadata.field_ref,
-      compareExact,
-    );
-    return isTargetField ? merge(fieldMetadata, changes) : fieldMetadata;
-  });
+    const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
+      const compareExact =
+        !isLocalField(field_ref) || !isLocalField(fieldMetadata.field_ref);
+      const isTargetField = isSameField(
+        field_ref,
+        fieldMetadata.field_ref,
+        compareExact,
+      );
+      return isTargetField ? merge(fieldMetadata, changes) : fieldMetadata;
+    });
 
-  const nextResultsMetadata = {
-    ...resultsMetadata,
-    columns: nextColumnMetadata,
+    const nextResultsMetadata = {
+      ...resultsMetadata,
+      columns: nextColumnMetadata,
+    };
+
+    const nextQuestion = question.setResultsMetadata(nextResultsMetadata);
+
+    dispatch(updateQuestion(nextQuestion));
+    dispatch(setMetadataDiff({ field_ref, changes }));
+    dispatch(setResultsMetadata(nextResultsMetadata));
   };
-
-  const nextQuestion = question.setResultsMetadata(nextResultsMetadata);
-
-  dispatch(updateQuestion(nextQuestion));
-  dispatch(setMetadataDiff({ field_ref, changes }));
-  dispatch(setResultsMetadata(nextResultsMetadata));
-};
 
 export const onModelPersistenceChange = isEnabled => (dispatch, getState) => {
   const question = getQuestion(getState());

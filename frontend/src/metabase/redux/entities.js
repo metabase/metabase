@@ -4,9 +4,8 @@ import * as entitiesMap from "metabase/entities";
 
 const entitiesArray = Object.values(entitiesMap);
 
-export const { entities, reducer, requestsReducer } = combineEntities(
-  entitiesArray,
-);
+export const { entities, reducer, requestsReducer } =
+  combineEntities(entitiesArray);
 export default reducer;
 
 export const enhanceRequestsReducer = originalRequestsReducer => {

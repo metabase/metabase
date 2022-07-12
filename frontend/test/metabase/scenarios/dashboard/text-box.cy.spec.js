@@ -40,9 +40,7 @@ describe("scenarios > dashboard > text-box", () => {
       showDashboardCardActions(1);
 
       // edit mode
-      cy.icon("palette")
-        .eq(1)
-        .click();
+      cy.icon("palette").eq(1).click();
 
       cy.findByText("Vertical Alignment");
       cy.findByText("Horizontal Alignment");
@@ -134,10 +132,7 @@ describe("scenarios > dashboard > text-box", () => {
     cy.icon("pencil").click();
     // add text box with text
     cy.icon("string").click();
-    cy.get(".DashCard")
-      .last()
-      .find("textarea")
-      .type("text text text");
+    cy.get(".DashCard").last().find("textarea").type("text text text");
     cy.icon("filter").click();
     popover().within(() => {
       cy.findByText("Text or Category").click();
@@ -147,6 +142,6 @@ describe("scenarios > dashboard > text-box", () => {
 
     // confirm text box and filter are still there
     cy.findByText("text text text");
-    cy.findByPlaceholderText("Text");
+    cy.findByText("Text");
   });
 });

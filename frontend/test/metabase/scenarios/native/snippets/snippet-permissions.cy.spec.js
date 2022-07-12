@@ -38,9 +38,7 @@ describeEE("scenarios > question > snippets", () => {
       cy.wait("@snippetCreated");
       cy.findByText("{{snippet: one}}");
 
-      cy.icon("play")
-        .first()
-        .click();
+      cy.icon("play").first().click();
       cy.get(".ScalarValue").contains(1);
     });
   });
@@ -58,10 +56,7 @@ describeEE("scenarios > question > snippets", () => {
 
     // create folder
     cy.icon("snippet").click();
-    cy.findByTestId("sidebar-right")
-      .as("sidebar")
-      .find(".Icon-add")
-      .click();
+    cy.findByTestId("sidebar-right").as("sidebar").find(".Icon-add").click();
     popover().within(() => cy.findByText("New folder").click());
     modal().within(() => {
       cy.findByText("Create your new folder");
@@ -139,19 +134,13 @@ describeEE("scenarios > question > snippets", () => {
           .click();
       });
 
-      popover()
-        .contains("View")
-        .click();
+      popover().contains("View").click();
       cy.button("Save").click();
 
       cy.wait("@updatePermissions");
 
       // Now let's do the sanity check for the top level (root) snippet permissions and make sure nothing changed there
-      cy.findByText("Snippets")
-        .parent()
-        .next()
-        .find(".Icon-ellipsis")
-        .click();
+      cy.findByText("Snippets").parent().next().find(".Icon-ellipsis").click();
       cy.findByText("Change permissions").click();
 
       // UI check

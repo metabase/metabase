@@ -68,12 +68,8 @@ class AutomaticDashboardAppInner extends React.Component {
   }
 
   save = async () => {
-    const {
-      dashboard,
-      triggerToast,
-      saveDashboard,
-      invalidateCollections,
-    } = this.props;
+    const { dashboard, triggerToast, saveDashboard, invalidateCollections } =
+      this.props;
     // remove the transient id before trying to save
     const { payload: newDashboard } = await saveDashboard(
       dissoc(dashboard, "id"),

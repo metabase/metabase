@@ -82,10 +82,16 @@ const DisplayOptionsPane = ({
           <DisplayOptionSection title={t`Font`}>
             <Select
               value={displayOptions.font}
-              options={MetabaseSettings.get("available-fonts").map(font => ({
-                name: font,
-                value: font,
-              }))}
+              options={[
+                {
+                  name: t`Use instance font`,
+                  value: null,
+                },
+                ...MetabaseSettings.get("available-fonts").map(font => ({
+                  name: font,
+                  value: font,
+                })),
+              ]}
               onChange={e => {
                 onChangeDisplayOptions({
                   ...displayOptions,

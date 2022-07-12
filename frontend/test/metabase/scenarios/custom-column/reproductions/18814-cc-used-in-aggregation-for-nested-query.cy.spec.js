@@ -34,9 +34,7 @@ describe("issue 18814", () => {
     cy.findByText("Count of rows").click();
 
     cy.findByText("Pick a column to group by").click();
-    popover()
-      .contains(ccName)
-      .click();
+    popover().contains(ccName).click();
 
     visualize();
 

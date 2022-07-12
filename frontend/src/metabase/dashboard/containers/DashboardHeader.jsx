@@ -19,15 +19,20 @@ import Bookmark from "metabase/entities/bookmarks";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import {
   DashboardHeaderButton,
-  DashboardHeaderActionContainer,
+  DashboardHeaderActionDivider,
+  DashboardHeaderInfoButton,
 } from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { getIsBookmarked } from "metabase/dashboard/selectors";
+import {
+  getIsBookmarked,
+  getIsShowDashboardInfoSidebar,
+} from "metabase/dashboard/selectors";
 
 import Header from "../components/DashboardHeader";
+import { SIDEBAR_NAME } from "../constants";
 
 import cx from "classnames";
 
@@ -35,6 +40,7 @@ const mapStateToProps = (state, props) => {
   return {
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
+    isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
   };
 };
 
@@ -85,6 +91,9 @@ class DashboardHeader extends Component {
     onSharingClick: PropTypes.func.isRequired,
 
     onChangeLocation: PropTypes.func.isRequired,
+
+    setSidebar: PropTypes.func.isRequired,
+    closeSidebar: PropTypes.func.isRequired,
   };
 
   handleEdit(dashboard) {
@@ -178,7 +187,11 @@ class DashboardHeader extends Component {
       onFullscreenChange,
       createBookmark,
       deleteBookmark,
+      setSidebar,
+      isShowingDashboardInfoSidebar,
+      closeSidebar,
     } = this.props;
+
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
     const buttons = [];
@@ -287,27 +300,11 @@ class DashboardHeader extends Component {
     }
 
     if (!isFullscreen && !isEditing) {
-      if (canEdit) {
-        extraButtons.push({
-          title: t`Edit dashboard details`,
-          icon: "pencil",
-          link: `${location.pathname}/details`,
-          event: "Dashboard;EditDetails",
-        });
-      }
-
       extraButtons.push({
         title: t`Enter fullscreen`,
         icon: "expand",
         action: e => onFullscreenChange(!isFullscreen, !e.altKey),
         event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
-      });
-
-      extraButtons.push({
-        title: t`Revision history`,
-        icon: "history",
-        link: `${location.pathname}/history`,
-        event: "Dashboard;EditDetails",
       });
 
       extraButtons.push({
@@ -338,15 +335,35 @@ class DashboardHeader extends Component {
 
     if (extraButtons.length > 0 && !isEditing) {
       buttons.push(
-        <DashboardHeaderActionContainer>
+        ...[
+          <DashboardHeaderActionDivider key="dashboard-button-divider" />,
           <DashboardBookmark
+            key="dashboard-bookmark-button"
             dashboard={dashboard}
             onCreateBookmark={createBookmark}
             onDeleteBookmark={deleteBookmark}
             isBookmarked={isBookmarked}
-          />
-          <EntityMenu items={extraButtons} triggerIcon="ellipsis" />
-        </DashboardHeaderActionContainer>,
+          />,
+          <DashboardHeaderInfoButton
+            key="dashboard-info-button"
+            icon="info"
+            iconSize={18}
+            onlyIcon
+            borderless
+            isShowingDashboardInfoSidebar={isShowingDashboardInfoSidebar}
+            onClick={() =>
+              isShowingDashboardInfoSidebar
+                ? closeSidebar()
+                : setSidebar({ name: SIDEBAR_NAME.info })
+            }
+          />,
+          <EntityMenu
+            key="dashboard-action-menu-button"
+            items={extraButtons}
+            triggerIcon="ellipsis"
+            tooltip={t`Move, archive, and more...`}
+          />,
+        ],
       );
     }
 
@@ -356,12 +373,11 @@ class DashboardHeader extends Component {
   render() {
     const {
       dashboard,
-      location,
       isEditing,
       isFullscreen,
       isAdditionalInfoVisible,
-      onChangeLocation,
       setDashboardAttribute,
+      setSidebar,
     } = this.props;
 
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
@@ -382,9 +398,7 @@ class DashboardHeader extends Component {
         editingTitle={t`You're editing this dashboard.`}
         editingButtons={this.getEditingButtons()}
         setDashboardAttribute={setDashboardAttribute}
-        onLastEditInfoClick={() =>
-          onChangeLocation(`${location.pathname}/history`)
-        }
+        onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
         onSave={() => this.onSave()}
       />
     );

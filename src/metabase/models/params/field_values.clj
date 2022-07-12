@@ -12,7 +12,7 @@
   "OSS implementation; used as a fallback for the EE implementation if the field isn't sandboxed."
   [field]
   (when (field-values/field-should-have-field-values? field)
-    (field-values/get-or-create-field-values! field)))
+    (field-values/get-or-create-full-field-values! field)))
 
 (defenterprise get-or-create-field-values-for-current-user!*
   "Fetch cached FieldValues for a `field`, creating them if needed if the Field should have FieldValues."
@@ -26,7 +26,8 @@
   (when (seq field-ids)
     (not-empty
      (let [field-values       (db/select [FieldValues :values :human_readable_values :field_id]
-                                :field_id [:in (set field-ids)])
+                                :field_id [:in (set field-ids)]
+                                :type :full)
            readable-fields    (when (seq field-values)
                                 (field/readable-fields-only (db/select [Field :id :table_id]
                                                               :id [:in (set (map :field_id field-values))])))
@@ -35,16 +36,6 @@
             (filter #(contains? readable-field-ids (:field_id %)))
             (u/key-by :field_id))))))
 
-(defenterprise field-id->field-values-for-current-user*
-  "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
-
-    {field-id FieldValues-instance}
-
-  Returns `nil` if `field-ids` is empty of no matching FieldValues exist."
-  metabase-enterprise.sandbox.models.params.field-values
-  [field-ids]
-  (default-field-id->field-values-for-current-user field-ids))
-
 (defn current-user-can-fetch-field-values?
   "Whether the current User has permissions to fetch FieldValues for a `field`."
   [field]
@@ -52,7 +43,7 @@
   (mi/can-read? field))
 
 (defn get-or-create-field-values-for-current-user!
-  "Fetch cached FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These are
+  "Fetch FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These are
   filtered as appropriate for the current User, depending on MB version (e.g. EE sandboxing will filter these values).
   If the Field has a human-readable values remapping (see documentation at the top of
   `metabase.models.params.chain-filter` for an explanation of what this means), values are returned in the format
@@ -70,15 +61,5 @@
   (if-let [field-values (get-or-create-field-values-for-current-user!* field)]
     (-> field-values
         (assoc :values (field-values/field-values->pairs field-values))
-        (dissoc :human_readable_values :created_at :updated_at :id))
+        (select-keys [:values :field_id :has_more_values]))
     {:values [], :field_id (u/the-id field), :has_more_values false}))
-
-(defn field-id->field-values-for-current-user
-  "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
-
-    {field-id FieldValues-instance}
-
-  Returns `nil` if `field-ids` is empty of no matching FieldValues exist."
-  [field-ids]
-  (when (seq field-ids)
-    (not-empty (field-id->field-values-for-current-user* (set field-ids)))))

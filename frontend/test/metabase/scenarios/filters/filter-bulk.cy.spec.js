@@ -2,7 +2,6 @@ import {
   popover,
   restore,
   visitQuestionAdhoc,
-  filter,
   setupBooleanQuery,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -105,7 +104,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     popover().within(() => {
-      cy.findByPlaceholderText("Search the list").type("21");
+      cy.findByPlaceholderText("Search the list").type("20");
       cy.findByText("20").click();
       cy.button("Add filter").click();
     });
@@ -125,28 +124,14 @@ describe("scenarios > filters > bulk filtering", () => {
 
     modal().within(() => {
       cy.findByText("Summaries").click();
-      cy.findByLabelText("Count").click();
-    });
 
-    popover().within(() => {
-      cy.findByText("Equal to").click();
-    });
+      cy.findByPlaceholderText("min").type("500");
 
-    popover()
-      .eq(1)
-      .within(() => cy.findByText("Greater than").click());
-
-    popover().within(() => {
-      cy.findByPlaceholderText("Enter a number").type("500");
-      cy.button("Add filter").click();
-    });
-
-    modal().within(() => {
       cy.button("Apply").click();
       cy.wait("@dataset");
     });
 
-    cy.findByText("Count is greater than 500").should("be.visible");
+    cy.findByText("Count is greater than or equal to 500").should("be.visible");
     cy.findByText("Showing 21 rows").should("be.visible");
   });
 
@@ -174,11 +159,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     popover().within(() => {
-      cy.findByRole("textbox")
-        .click()
-        .type("30")
-        .clear()
-        .type("25");
+      cy.findByRole("textbox").click().type("30").clear().type("25");
 
       cy.button("Update filter").click();
     });
@@ -284,12 +265,18 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("should load already applied segments", () => {
-      visitQuestionAdhoc(rawQuestionDetails);
-      filter();
-      cy.findByText(SEGMENT_1_NAME).click();
+      const segmentFilterQuestion = {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["segment", 1],
+          },
+        },
+      };
 
-      cy.findByTestId("qb-filters-panel").findByText(SEGMENT_1_NAME);
-
+      visitQuestionAdhoc(segmentFilterQuestion);
       openFilterModal();
 
       modal().within(() => {
@@ -311,7 +298,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("should apply a boolean filter", () => {
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -321,7 +308,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("should change a boolean filter", () => {
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -331,7 +318,7 @@ describe("scenarios > filters > bulk filtering", () => {
       openFilterModal();
 
       modal().within(() => {
-        cy.findByText("false").click();
+        cy.findByText("False").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -341,7 +328,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("should remove a boolean filter", () => {
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -351,7 +338,7 @@ describe("scenarios > filters > bulk filtering", () => {
       openFilterModal();
 
       modal().within(() => {
-        cy.findByText("true").click();
+        cy.findByText("True").click();
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -397,7 +384,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     // if this gets flaky, disable, it's an issue with internal state in the datepicker component
-    it("can add a date range filter", () => {
+    it.skip("can add a date range filter", () => {
       modal().within(() => {
         cy.findByLabelText("Created At").within(() => {
           cy.findByLabelText("more options").click();
@@ -407,10 +394,7 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Before").click();
 
       popover().within(() => {
-        cy.get("input")
-          .eq(0)
-          .clear()
-          .type("01/01/2017", { delay: 0 });
+        cy.get("input").eq(0).clear().type("01/01/2017", { delay: 0 });
 
         cy.findByText("Add filter").click();
       });
@@ -514,23 +498,23 @@ describe("scenarios > filters > bulk filtering", () => {
 
   describe("text filters", () => {
     beforeEach(() => {
-      visitQuestionAdhoc(productsQuestion);
+      visitQuestionAdhoc(peopleQuestion);
       openFilterModal();
     });
 
     it("adds a contains text filter", () => {
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
-          cy.findByPlaceholderText("Search by Title").type("Marble");
+        cy.findByLabelText("City").within(() => {
+          cy.findByPlaceholderText("Search by City").type("Indian");
         });
         cy.button("Apply").click();
       });
-      cy.findByText("Showing 17 rows").should("be.visible");
+      cy.findByText("Showing 5 rows").should("be.visible");
     });
 
     it("adds an ends with text filter", () => {
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
+        cy.findByLabelText("City").within(() => {
           cy.findByText("Contains").click();
         });
       });
@@ -540,17 +524,17 @@ describe("scenarios > filters > bulk filtering", () => {
       });
 
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
-          cy.findByPlaceholderText("Search by Title").type("Hat");
+        cy.findByLabelText("City").within(() => {
+          cy.findByPlaceholderText("Search by City").type("Valley");
         });
         cy.button("Apply").click();
       });
-      cy.findByText("Showing 12 rows").should("be.visible");
+      cy.findByText("Showing 8 rows").should("be.visible");
     });
 
     it("adds multiple is text filters", () => {
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
+        cy.findByLabelText("City").within(() => {
           cy.findByText("Contains").click();
         });
       });
@@ -560,15 +544,67 @@ describe("scenarios > filters > bulk filtering", () => {
       });
 
       modal().within(() => {
-        cy.findByLabelText("Title").within(() => {
-          cy.findByPlaceholderText("Search by Title").type(
-            "Small Marble Shoes,Rustic Paper Wallet",
+        cy.findByLabelText("City").within(() => {
+          cy.findByPlaceholderText("Search by City").type(
+            "Indianeown, Indian Valley",
           );
         });
         cy.button("Apply").click();
       });
-      cy.findByText("Title is 2 selections").should("be.visible");
-      cy.findByText("Showing 2 rows").should("be.visible");
+      cy.findByText("City is 2 selections").should("be.visible");
+      cy.findByText("Showing 1 row").should("be.visible");
+    });
+  });
+
+  describe("number filters", () => {
+    beforeEach(() => {
+      visitQuestionAdhoc(productsQuestion);
+      openFilterModal();
+    });
+
+    it("applies a between filter", () => {
+      modal().within(() => {
+        cy.findByLabelText("Price").within(() => {
+          cy.findByPlaceholderText("min").type("50");
+          cy.findByPlaceholderText("max").type("80");
+        });
+        cy.button("Apply").click();
+      });
+      cy.findByText("Price between 50 80").should("be.visible");
+      cy.findByText("Showing 72 rows").should("be.visible");
+    });
+
+    it("applies a greater than filter", () => {
+      modal().within(() => {
+        cy.findByLabelText("Price").within(() => {
+          cy.findByTestId("select-button").click();
+        });
+      });
+
+      popover().within(() => {
+        cy.findByText("Greater than").click();
+      });
+
+      modal().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("50");
+        cy.button("Apply").click();
+      });
+
+      cy.findByText("Price is greater than 50").should("be.visible");
+      cy.findByText("Showing 106 rows").should("be.visible");
+    });
+
+    it("infers a <= filter from an invalid between filter", () => {
+      modal().within(() => {
+        cy.findByLabelText("Price").within(() => {
+          cy.findByPlaceholderText("max").type("50");
+        });
+
+        cy.button("Apply").click();
+      });
+
+      cy.findByText("Price is less than or equal to 50").should("be.visible");
+      cy.findByText("Showing 94 rows").should("be.visible");
     });
   });
 });

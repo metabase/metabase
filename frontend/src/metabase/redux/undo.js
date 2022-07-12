@@ -38,7 +38,7 @@ export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
   };
 });
 
-export default function(state = [], { type, payload, error }) {
+export default function (state = [], { type, payload, error }) {
   if (type === ADD_UNDO) {
     if (error) {
       console.warn("ADD_UNDO", payload);

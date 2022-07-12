@@ -10,6 +10,7 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
   color: ${color("text-dark")};
   padding: 0.25rem;
   border: 1px solid transparent;
+  border-radius: 4px;
 
   &:hover,
   &:focus-within {

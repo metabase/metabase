@@ -1,10 +1,11 @@
 import React from "react";
 import { t } from "ttag";
-import { NewButton, NewButtonText, NewMenu } from "./NewItemButton.styled";
+import NewItemMenu from "metabase/containers/NewItemMenu";
+import { NewButton, NewButtonText } from "./NewItemButton.styled";
 
 const NewItemButton = () => {
   return (
-    <NewMenu
+    <NewItemMenu
       trigger={
         <NewButton
           primary

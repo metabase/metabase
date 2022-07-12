@@ -46,10 +46,11 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     filter();
-    selectDimensionOptionFromSidebar("Discount");
-    cy.findByText("Equal to").click();
+    cy.findByLabelText("Discount").findByText("Between").click();
     selectFromDropdown("Not empty");
-    cy.button("Add filter").click();
+
+    cy.button("Apply").click();
+    cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",
@@ -66,10 +67,7 @@ describe("scenarios > models", () => {
       table: "Orders",
     });
 
-    cy.findByTestId("qb-header")
-      .findAllByText("Our analytics")
-      .first()
-      .click();
+    cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
     getCollectionItemRow("Orders Model").within(() => {
       cy.icon("model");
     });
@@ -96,10 +94,11 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     filter();
-    selectDimensionOptionFromSidebar("DISCOUNT");
-    cy.findByText("Equal to").click();
+    cy.findByLabelText("DISCOUNT").findByText("Between").click();
     selectFromDropdown("Not empty");
-    cy.button("Add filter").click();
+
+    cy.button("Apply").click();
+    cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",
@@ -116,10 +115,7 @@ describe("scenarios > models", () => {
       table: "Orders",
     });
 
-    cy.findByTestId("qb-header")
-      .findAllByText("Our analytics")
-      .first()
-      .click();
+    cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
     getCollectionItemRow("Orders Model").within(() => {
       cy.icon("model");
     });
@@ -127,7 +123,7 @@ describe("scenarios > models", () => {
       cy.icon("table");
     });
 
-    cy.url().should("not.include", "/question/1");
+    cy.location("pathname").should("eq", "/collection/root");
   });
 
   it("changes model's display to table", () => {
@@ -307,10 +303,10 @@ describe("scenarios > models", () => {
       cy.wait("@dataset");
 
       filter();
-      selectDimensionOptionFromSidebar("Discount");
-      cy.findByText("Equal to").click();
+      cy.findByLabelText("Discount").findByText("Between").click();
       selectFromDropdown("Not empty");
-      cy.button("Add filter").click();
+      cy.button("Apply").click();
+      cy.wait("@dataset");
 
       assertQuestionIsBasedOnModel({
         model: "Orders Model",
@@ -321,6 +317,7 @@ describe("scenarios > models", () => {
       summarize();
 
       selectDimensionOptionFromSidebar("Created At");
+      cy.wait("@dataset");
       cy.button("Done").click();
 
       assertQuestionIsBasedOnModel({
@@ -373,17 +370,12 @@ describe("scenarios > models", () => {
       cy.visit("/model/1");
       cy.wait("@dataset");
 
-      cy.findByTestId("saved-question-header-title")
-        .clear()
-        .type("M1")
-        .blur();
+      cy.findByTestId("saved-question-header-title").clear().type("M1").blur();
       cy.wait("@updateCard");
 
       questionInfoButton().click();
 
-      cy.findByPlaceholderText("Add description")
-        .type("foo")
-        .blur();
+      cy.findByPlaceholderText("Add description").type("foo").blur();
       cy.wait("@updateCard");
 
       cy.findByDisplayValue("M1");
@@ -434,9 +426,7 @@ describe("scenarios > models", () => {
     });
     selectFromDropdown("Orders");
     cy.findByText("Save").click();
-    modal()
-      .findByText("Save")
-      .click();
+    modal().findByText("Save").click();
 
     turnIntoModel();
     openQuestionActions();
@@ -491,9 +481,7 @@ describe("scenarios > models", () => {
         visitDashboard(dashboardId);
         cy.icon("pencil").click();
         cy.get(".QueryBuilder-section .Icon-add").click();
-        sidebar()
-          .findByText("Orders Model")
-          .click();
+        sidebar().findByText("Orders Model").click();
         cy.button("Save").click();
         // The first fetch happened when visiting dashboard, and the second one upon saving it.
         // We need to wait for both.
@@ -507,9 +495,7 @@ describe("scenarios > models", () => {
       openNativeEditor().type("select * from {{#}}", {
         parseSpecialCharSequences: false,
       });
-      sidebar()
-        .contains("Pick a question or a model")
-        .click();
+      sidebar().contains("Pick a question or a model").click();
       selectFromDropdown("Orders Model");
       cy.get("@editor").contains("select * from {{#1}}");
       cy.get(".NativeQueryEditor .Icon-play").click();

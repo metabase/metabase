@@ -13,7 +13,7 @@ import { Card } from "metabase-types/types/Card";
 import EditableText from "metabase/core/components/EditableText";
 
 import ModelCacheManagementSection from "./ModelCacheManagementSection";
-import { Root, ContentSection } from "./QuestionInfoSidebar.styled";
+import { Root, ContentSection, Header } from "./QuestionInfoSidebar.styled";
 
 interface QuestionInfoSidebarProps {
   question: Question;
@@ -27,9 +27,10 @@ export const QuestionInfoSidebar = ({
   const description = question.description();
   const isDataset = question.isDataset();
   const isPersisted = isDataset && question.isPersisted();
-
-  const showCaching =
-    PLUGIN_CACHING.isEnabled() && MetabaseSettings.get("enable-query-caching");
+  const isCachingAvailable =
+    !isDataset &&
+    PLUGIN_CACHING.isEnabled() &&
+    MetabaseSettings.get("enable-query-caching");
 
   const handleSave = (description: string | null) => {
     if (question.description() !== description) {
@@ -46,6 +47,7 @@ export const QuestionInfoSidebar = ({
   return (
     <Root>
       <ContentSection>
+        <Header>{t`About`}</Header>
         <EditableText
           initialValue={description}
           placeholder={t`Add description`}
@@ -62,7 +64,7 @@ export const QuestionInfoSidebar = ({
         </ContentSection>
       )}
 
-      {showCaching && (
+      {isCachingAvailable && (
         <ContentSection extraPadding>
           <PLUGIN_CACHING.QuestionCacheSection
             question={question}

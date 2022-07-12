@@ -25,15 +25,13 @@ describe("scenarios > question > relative-datetime", () => {
     cy.signInAsNormalUser();
   });
 
-  describe("sidebar", () => {
+  describe.skip("sidebar", () => {
     it("should go to field selection with one click", () => {
       openOrdersTable();
 
       cy.findByTextEnsureVisible("Filter").click();
       sidebar().within(() => {
-        cy.contains("Created At")
-          .first()
-          .click();
+        cy.contains("Created At").first().click();
         cy.contains("Specific dates...").should("exist");
         cy.icon("chevronleft").click();
         cy.contains("Created At").should("exist");
@@ -137,9 +135,7 @@ describe("scenarios > question > relative-datetime", () => {
       popover().within(() => {
         cy.findByText("Filter by this column").click();
         cy.findByText("Specific dates...").click();
-        cy.icon("chevronleft")
-          .first()
-          .click();
+        cy.icon("chevronleft").first().click();
         cy.findByText("Specific dates...").should("exist");
         cy.findByText("Between").should("not.exist");
       });
@@ -199,9 +195,7 @@ describe("scenarios > question > relative-datetime", () => {
       setRelativeDatetimeValue(1);
       setStartingFromValue(6);
       popover().within(() => {
-        const start = moment()
-          .startOf("quarter")
-          .add(-7, "quarter");
+        const start = moment().startOf("quarter").add(-7, "quarter");
         const end = start.clone().endOf("quarter");
         cy.findByText(
           `${start.format("MMM D, YYYY")} - ${end.format("MMM D, YYYY")}`,
@@ -312,11 +306,7 @@ const setRelativeDatetimeUnit = unit => {
 };
 
 const setRelativeDatetimeValue = value => {
-  cy.findByTestId("relative-datetime-value")
-    .click()
-    .clear()
-    .type(value)
-    .blur();
+  cy.findByTestId("relative-datetime-value").click().clear().type(value).blur();
 };
 
 const setStartingFromUnit = unit => {
@@ -327,11 +317,7 @@ const setStartingFromUnit = unit => {
 };
 
 const setStartingFromValue = value => {
-  cy.findByTestId("starting-from-value")
-    .click()
-    .clear()
-    .type(value)
-    .blur();
+  cy.findByTestId("starting-from-value").click().clear().type(value).blur();
 };
 
 const withStartingFrom = (dir, [num, unit], [startNum, startUnit]) => {

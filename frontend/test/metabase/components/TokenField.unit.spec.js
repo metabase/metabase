@@ -65,7 +65,7 @@ describe("TokenField", () => {
   beforeAll(() => {
     // temporarily until JSDOM updates
     if (!global.Element.prototype.closest) {
-      global.Element.prototype.closest = function(selector) {
+      global.Element.prototype.closest = function (selector) {
         let element = this;
         while (element) {
           if (element.matches(selector)) {

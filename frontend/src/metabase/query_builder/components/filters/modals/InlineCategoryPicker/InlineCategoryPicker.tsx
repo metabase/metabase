@@ -17,10 +17,16 @@ import {
   PickerGrid,
   Loading,
 } from "./InlineCategoryPicker.styled";
+
 import { BulkFilterSelect } from "../BulkFilterSelect";
 
 const mapStateToProps = (state: any, props: any) => {
   const fieldId = props.dimension?.field?.()?.id;
+
+  if (props.dimension?.field?.()?.values?.length) {
+    return { fieldValues: props.dimension?.field?.()?.values };
+  }
+
   const fieldValues =
     fieldId != null
       ? Fields.selectors.getFieldValues(state, {
@@ -75,6 +81,11 @@ export function InlineCategoryPickerComponent({
       });
   }, [dimension, safeFetchFieldValues, shouldFetchFieldValues]);
 
+  const showInlinePicker =
+    fieldValues.length > 0 &&
+    fieldValues.length <= MAX_INLINE_CATEGORIES &&
+    (!filter || filter?.operatorName() === "=");
+
   if (hasError) {
     return (
       <Warnings
@@ -89,12 +100,12 @@ export function InlineCategoryPickerComponent({
     return <Loading size={20} />;
   }
 
-  if (fieldValues.length <= MAX_INLINE_CATEGORIES) {
+  if (showInlinePicker) {
     return (
       <SimpleCategoryFilterPicker
         filter={filter ?? newFilter}
         onChange={onChange}
-        options={fieldValues.flat()}
+        options={fieldValues.flat().filter(isValidOption)}
       />
     );
   }
@@ -121,7 +132,7 @@ export function SimpleCategoryFilterPicker({
   options,
   onChange,
 }: SimpleCategoryFilterPickerProps) {
-  const filterValues = filter.arguments().filter(Boolean);
+  const filterValues = filter.arguments().filter(isValidOption);
 
   const handleChange = (option: string | number, checked: boolean) => {
     const newArgs = checked
@@ -146,6 +157,8 @@ export function SimpleCategoryFilterPicker({
     </PickerContainer>
   );
 }
+
+const isValidOption = (option: any) => option !== undefined && option !== null;
 
 export const InlineCategoryPicker = connect(
   mapStateToProps,

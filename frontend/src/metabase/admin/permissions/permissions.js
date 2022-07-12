@@ -132,10 +132,8 @@ export const saveDataPermissions = createThunkAction(
   SAVE_DATA_PERMISSIONS,
   () => async (_dispatch, getState) => {
     MetabaseAnalytics.trackStructEvent("Permissions", "save");
-    const {
-      dataPermissions,
-      dataPermissionsRevision,
-    } = getState().admin.permissions;
+    const { dataPermissions, dataPermissionsRevision } =
+      getState().admin.permissions;
     const result = await PermissionsApi.updateGraph({
       groups: dataPermissions,
       revision: dataPermissionsRevision,
@@ -157,10 +155,8 @@ export const saveCollectionPermissions = createThunkAction(
   SAVE_COLLECTION_PERMISSIONS,
   namespace => async (_dispatch, getState) => {
     MetabaseAnalytics.trackStructEvent("Permissions", "save");
-    const {
-      collectionPermissions,
-      collectionPermissionsRevision,
-    } = getState().admin.permissions;
+    const { collectionPermissions, collectionPermissionsRevision } =
+      getState().admin.permissions;
     const result = await CollectionsApi.updateGraph({
       namespace,
       revision: collectionPermissionsRevision,

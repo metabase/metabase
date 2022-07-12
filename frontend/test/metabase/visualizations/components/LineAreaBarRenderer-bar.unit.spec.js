@@ -89,11 +89,11 @@ describe("LineAreaBarRenderer-bar", () => {
   let element;
   const qsa = selector => [...element.querySelectorAll(selector)];
 
-  beforeEach(function() {
+  beforeEach(function () {
     element = createFixture();
   });
 
-  afterEach(function() {
+  afterEach(function () {
     cleanupFixture(element);
   });
 

@@ -108,44 +108,47 @@ const Fields = createEntity({
     // `category`/`city`/`state`/`country` or whose base type is `type/Boolean`."
     updateFieldValues: createThunkAction(
       UPDATE_FIELD_VALUES,
-      ({ id }, fieldValuePairs) => (dispatch, getState) =>
-        updateData({
-          dispatch,
-          getState,
-          requestStatePath: ["entities", "fields", id, "dimension"],
-          existingStatePath: ["entities", "fields", id],
-          putData: () =>
-            MetabaseApi.field_values_update({
-              fieldId: id,
-              values: fieldValuePairs,
-            }),
-        }),
+      ({ id }, fieldValuePairs) =>
+        (dispatch, getState) =>
+          updateData({
+            dispatch,
+            getState,
+            requestStatePath: ["entities", "fields", id, "dimension"],
+            existingStatePath: ["entities", "fields", id],
+            putData: () =>
+              MetabaseApi.field_values_update({
+                fieldId: id,
+                values: fieldValuePairs,
+              }),
+          }),
     ),
     updateFieldDimension: createThunkAction(
       UPDATE_FIELD_DIMENSION,
-      ({ id }, dimension) => (dispatch, getState) =>
-        updateData({
-          dispatch,
-          getState,
-          requestStatePath: ["entities", "fields", id, "dimension"],
-          existingStatePath: ["entities", "fields", id],
-          putData: () =>
-            MetabaseApi.field_dimension_update({
-              fieldId: id,
-              ...dimension,
-            }),
-        }),
+      ({ id }, dimension) =>
+        (dispatch, getState) =>
+          updateData({
+            dispatch,
+            getState,
+            requestStatePath: ["entities", "fields", id, "dimension"],
+            existingStatePath: ["entities", "fields", id],
+            putData: () =>
+              MetabaseApi.field_dimension_update({
+                fieldId: id,
+                ...dimension,
+              }),
+          }),
     ),
     deleteFieldDimension: createThunkAction(
       DELETE_FIELD_DIMENSION,
-      ({ id }) => (dispatch, getState) =>
-        updateData({
-          dispatch,
-          getState,
-          requestStatePath: ["entities", "fields", id, "dimension"],
-          existingStatePath: ["entities", "fields", id],
-          putData: () => MetabaseApi.field_dimension_delete({ fieldId: id }),
-        }),
+      ({ id }) =>
+        (dispatch, getState) =>
+          updateData({
+            dispatch,
+            getState,
+            requestStatePath: ["entities", "fields", id, "dimension"],
+            existingStatePath: ["entities", "fields", id],
+            putData: () => MetabaseApi.field_dimension_delete({ fieldId: id }),
+          }),
     ),
 
     addRemappings: createAction(ADD_REMAPPINGS, ({ id }, remappings) => ({

@@ -105,9 +105,9 @@ export function getCardUiParameters(
   const question = new Question(card, metadata);
 
   return valuePopulatedParameters.map(parameter => {
-    const target:
-      | ParameterTarget
-      | undefined = (parameter as ParameterWithTarget).target;
+    const target: ParameterTarget | undefined = (
+      parameter as ParameterWithTarget
+    ).target;
     const field = getParameterTargetField(target, metadata, question);
     if (field) {
       return {

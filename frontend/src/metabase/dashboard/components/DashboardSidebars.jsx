@@ -5,6 +5,7 @@ import _ from "underscore";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
+import DashboardInfoSidebar from "./DashboardInfoSidebar";
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
@@ -40,6 +41,8 @@ DashboardSidebars.propTypes = {
     props: PropTypes.object,
   }).isRequired,
   closeSidebar: PropTypes.func.isRequired,
+  setDashboardAttribute: PropTypes.func,
+  saveDashboardAndCards: PropTypes.func,
 };
 
 export function DashboardSidebars({
@@ -68,6 +71,8 @@ export function DashboardSidebars({
   params,
   sidebar,
   closeSidebar,
+  setDashboardAttribute,
+  saveDashboardAndCards,
 }) {
   const handleAddCard = useCallback(
     cardId => {
@@ -143,6 +148,16 @@ export function DashboardSidebars({
           params={params}
           onCancel={onCancel}
         />
+      );
+    case SIDEBAR_NAME.info:
+      return (
+        <aside data-testid="sidebar-right">
+          <DashboardInfoSidebar
+            dashboard={dashboard}
+            saveDashboardAndCards={saveDashboardAndCards}
+            setDashboardAttribute={setDashboardAttribute}
+          />
+        </aside>
       );
     default:
       return null;

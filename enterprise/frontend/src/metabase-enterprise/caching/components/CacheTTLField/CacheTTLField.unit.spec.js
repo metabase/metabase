@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CacheTTLField } from "./CacheTTLField";
+import CacheTTLField from "./CacheTTLField";
 
 function setup({ name = "cache_ttl", message, value }) {
   const onChange = jest.fn();

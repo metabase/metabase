@@ -5,12 +5,8 @@ import { ProgressBarData } from "./types";
 
 export const createPalette = (color: string) => ({
   unachieved: color,
-  achieved: Color(color)
-    .darken(0.25)
-    .hex(),
-  exceeded: Color(color)
-    .darken(0.5)
-    .hex(),
+  achieved: Color(color).darken(0.25).hex(),
+  exceeded: Color(color).darken(0.5).hex(),
 });
 
 export const getColors = (

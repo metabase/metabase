@@ -10,7 +10,7 @@ export const getScrollY = () =>
 
 // denotes whether the current page is loaded in an iframe or not
 // Cypress renders the whole app within an iframe, but we want to exlude it from this check to avoid certain components (like Nav bar) not rendering
-export const IFRAMED = (function() {
+export const IFRAMED = (function () {
   try {
     return !isCypressActive && window.self !== window.top;
   } catch (e) {
@@ -23,7 +23,7 @@ window.METABASE = true;
 
 // check that we're both iframed, and the parent is a Metabase instance
 // used for detecting if we're previewing an embed
-export const IFRAMED_IN_SELF = (function() {
+export const IFRAMED_IN_SELF = (function () {
   try {
     return window.self !== window.top && window.top.METABASE;
   } catch (e) {
@@ -52,7 +52,7 @@ export const getScrollBarSize = _.memoize(() => {
 
 // check if we have access to localStorage to avoid handling "access denied"
 // exceptions
-export const HAS_LOCAL_STORAGE = (function() {
+export const HAS_LOCAL_STORAGE = (function () {
   try {
     window.localStorage; // This will trigger an exception if access is denied.
     return true;
@@ -194,7 +194,7 @@ function getTextNodeAtPosition(root, index) {
 }
 
 // https://davidwalsh.name/add-rules-stylesheets
-const STYLE_SHEET = (function() {
+const STYLE_SHEET = (function () {
   // Create the <style> tag
   const style = document.createElement("style");
 

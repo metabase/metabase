@@ -3,7 +3,7 @@ import React, { useMemo, useCallback } from "react";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { isBoolean, isString } from "metabase/lib/schema_metadata";
+import { isBoolean, isString, isNumber } from "metabase/lib/schema_metadata";
 
 import { BooleanPickerCheckbox } from "metabase/query_builder/components/filters/pickers/BooleanPicker";
 import { BulkFilterSelect } from "../BulkFilterSelect";
@@ -11,7 +11,7 @@ import { InlineCategoryPicker } from "../InlineCategoryPicker";
 import { InlineValuePicker } from "../InlineValuePicker";
 import { InlineDatePicker } from "../InlineDatePicker";
 
-import { FIELD_PRIORITY } from "./constants";
+import { getFieldPickerType } from "./utils";
 
 export interface BulkFilterItemProps {
   query: StructuredQuery;
@@ -30,24 +30,15 @@ export const BulkFilterItem = ({
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterItemProps): JSX.Element => {
-  const fieldType = useMemo(() => {
-    const field = dimension.field();
+  const fieldPickerType = useMemo(
+    () => getFieldPickerType(dimension.field()),
+    [dimension],
+  );
 
-    const relevantFieldType = FIELD_PRIORITY.find(fieldProperty =>
-      [field.semantic_type, field.base_type, field.has_field_values].includes(
-        fieldProperty,
-      ),
-    );
-
-    if (relevantFieldType) {
-      return relevantFieldType;
-    }
-  }, [dimension]);
-
-  const newFilter = useMemo(() => getNewFilter(query, dimension), [
-    query,
-    dimension,
-  ]);
+  const newFilter = useMemo(
+    () => getNewFilter(query, dimension),
+    [query, dimension],
+  );
 
   const handleChange = useCallback(
     (newFilter: Filter) => {
@@ -62,16 +53,15 @@ export const BulkFilterItem = ({
     }
   }, [filter, onRemoveFilter]);
 
-  switch (fieldType) {
-    case "type/Boolean":
+  switch (fieldPickerType) {
+    case "boolean":
       return (
         <BooleanPickerCheckbox
           filter={filter ?? newFilter}
           onFilterChange={handleChange}
         />
       );
-    case "type/Category":
-    case "list":
+    case "category":
       return (
         <InlineCategoryPicker
           query={query}
@@ -82,9 +72,7 @@ export const BulkFilterItem = ({
           onClear={handleClear}
         />
       );
-    case "type/PK":
-    case "type/FK":
-    case "type/Text":
+    case "value":
       return (
         <InlineValuePicker
           filter={filter ?? newFilter}
@@ -92,11 +80,7 @@ export const BulkFilterItem = ({
           handleChange={handleChange}
         />
       );
-    case "type/DateTime":
-    case "type/DateTimeWithTZ":
-    case "type/DateTimeWithLocalTZ":
-    case "type/DateTimeWithZoneOffset":
-    case "type/DateTimeWithZoneID":
+    case "date":
       return (
         <InlineDatePicker
           query={query}
@@ -128,6 +112,11 @@ const getNewFilter = (query: StructuredQuery, dimension: Dimension): Filter => {
   filter = filter.setDimension(dimension.mbql(), {
     useDefaultOperator: !isBooleanField,
   });
+
+  const isNumericField = isNumber(field);
+  if (isNumericField) {
+    filter = filter.setOperator("between");
+  }
 
   const isTextField = isString(field) && field.has_field_values !== "list";
   if (isTextField) {

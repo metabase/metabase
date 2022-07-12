@@ -112,9 +112,7 @@ class DatabaseInner extends Base {
 
   // QUESTIONS
   newQuestion() {
-    return this.question()
-      .setDefaultQuery()
-      .setDefaultDisplay();
+    return this.question().setDefaultQuery().setDefaultDisplay();
   }
 
   question(

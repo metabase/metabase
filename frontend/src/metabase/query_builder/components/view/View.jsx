@@ -165,6 +165,8 @@ class View extends React.Component {
       onSave,
     } = this.props;
 
+    const isSaved = question.isSaved();
+
     if (isShowingSummarySidebar) {
       return (
         <SummarizeSidebar
@@ -198,7 +200,7 @@ class View extends React.Component {
       );
     }
 
-    if (isShowingQuestionInfoSidebar) {
+    if (isSaved && isShowingQuestionInfoSidebar) {
       return <QuestionInfoSidebar question={question} onSave={onSave} />;
     }
 

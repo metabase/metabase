@@ -1,4 +1,5 @@
 export interface EmbedOptions {
+  font?: string;
   top_nav?: boolean;
   search?: boolean;
   new_button?: boolean;

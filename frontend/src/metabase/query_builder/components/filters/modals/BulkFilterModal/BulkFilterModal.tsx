@@ -22,6 +22,8 @@ import {
   ModalTitle,
 } from "./BulkFilterModal.styled";
 
+import { fixBetweens } from "./utils";
+
 export interface BulkFilterModalProps {
   question: Question;
   onClose?: () => void;
@@ -66,7 +68,8 @@ const BulkFilterModal = ({
   }, [query]);
 
   const handleApplyQuery = useCallback(() => {
-    query.clean().update(undefined, { run: true });
+    const preCleanedQuery = fixBetweens(query);
+    preCleanedQuery.clean().update(undefined, { run: true });
     onClose?.();
   }, [query, onClose]);
 
@@ -171,7 +174,7 @@ const BulkFilterModalSectionList = ({
     <TabContent value={tab} onChange={setTab}>
       <ModalTabList>
         {sections.map((section, index) => (
-          <Tab key={index} value={index} icon={section.icon}>
+          <Tab key={index} value={index}>
             {section.name}
           </Tab>
         ))}

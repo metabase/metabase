@@ -443,7 +443,7 @@
                    {:name "big_json"}))))))))
 
 (deftest json-query-test
-  (let [boop-identifier (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {})]
+  (let [boop-identifier (:form (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {}))]
     (testing "Transforming MBQL query with JSON in it to mysql query works"
       (let [boop-field {:nfc_path [:bleh :meh] :database_type "integer"}]
         (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"meh\""]
@@ -476,6 +476,25 @@
                           "ORDER BY JSON_EXTRACT(`json`.`json_bit`, ?) ASC")
                      (:query compile-res)))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
+
+(deftest complicated-json-identifier-test
+  (mt/test-driver :mysql
+    (when (not (is-mariadb? (u/id (mt/db))))
+      (testing "Deal with complicated identifier (#22967, but for mysql)"
+        (mt/dataset json
+          (let [database (mt/db)
+                table    (db/select-one Table :db_id (u/id database) :name "json")]
+            (sync/sync-table! table)
+            (let [field    (db/select-one Field :table_id (u/id table) :name "json_bit → 1234")]
+              (mt/with-everything-store
+                (let [field-clause [:field (u/the-id field) {:binning
+                                                             {:strategy :num-bins,
+                                                              :num-bins 100,
+                                                              :min-value 0.75,
+                                                              :max-value 54.0,
+                                                              :bin-width 0.75}}]]
+                  (is (= ["((floor(((JSON_EXTRACT(json.json_bit, ?) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
+                         (hsql/format (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
 (deftest ddl.execute-with-timeout-test
   (mt/test-driver :mysql

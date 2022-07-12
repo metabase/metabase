@@ -61,10 +61,7 @@ export function onRenderValueLabels(
   const barCount = displays.filter(isBarLike).length;
   if (barCount > 0) {
     barWidth = parseFloat(
-      chart
-        .svg()
-        .select("rect.bar")[0][0]
-        .getAttribute("width"),
+      chart.svg().select("rect.bar")[0][0].getAttribute("width"),
     );
   }
 
@@ -376,10 +373,5 @@ export function onRenderValueLabels(
     ),
   );
 
-  moveToFront(
-    chart
-      .svg()
-      .select(".value-labels")
-      .node().parentNode,
-  );
+  moveToFront(chart.svg().select(".value-labels").node().parentNode);
 }
