@@ -36,7 +36,7 @@
     (when result?
       ;; Can't use a prepared parameter with these statements
       (ddl.sql/execute! conn [(str "kill " pid)])
-      (throw (Exception. (trs "Killed mysql process id {0} due to timeout." pid))))))
+      (throw (Exception. (trs "Killed MySQL process id {0} due to timeout." pid))))))
 
 (defn- execute-with-timeout!
   "Spins up another channel to execute the statement.

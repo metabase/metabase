@@ -47,7 +47,7 @@ const EmbeddingLegalese = ({ setting, onChange }: EmbeddingLegaleseProps) => (
         logo and the "Powered by Metabase" visible on those embeds.`}
       </Paragraph>
       <Paragraph>
-        {t`Your should, however, read the license text linked above as that is the
+        {t`You should, however, read the license text linked above as that is the
         actual license that you will be agreeing to by enabling this feature.`}
       </Paragraph>
     </StyledCollapseSection>
