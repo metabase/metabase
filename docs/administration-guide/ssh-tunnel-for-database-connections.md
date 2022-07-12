@@ -2,7 +2,7 @@
 title: SSH tunneling in Metabase
 ---
 
-## SSH tunneling in Metabase
+# SSH tunneling in Metabase
 
 Metabase can connect to some databases by first establishing a connection to a server in between Metabase and a data warehouse, then connecting to the data warehouse using that connection as a bridge. This makes connecting to some data warehouses possible in situations that would otherwise prevent the use of Metabase.
 
@@ -11,16 +11,16 @@ Metabase can connect to some databases by first establishing a connection to a s
 - [Disadvantages of indirect connections](#disadvantages-of-indirect-connections)
 - [Running SSH directly](#running-ssh-directly)
 
-### When to use SSH tunneling
+## When to use SSH tunneling
 
-In general, prefer a Virtual Private Network (VPN) to SSH tunneling, but there are two basic use cases for an SSH tunnel:
+In general, there are two basic use cases for an SSH tunnel:
 
 - When a direct connection is impossible.
 - When a direct connection is forbidden due to a security policy.
 
-Sometimes when a data warehouse is inside an enterprise environment, direct connections are blocked by security devices such as firewalls and intrusion prevention systems. To grant access to this environment, many enterprises offer a VPN, a bastion host, or both. VPNs are the more convenient and reliable option, though bastion hosts are used frequently, especially with cloud providers such as Amazon Web Services where VPC (Virtual Private Clouds) prohibit direct connections. Bastion hosts offer the option to first connect to a computer on the edge of the protected network, then from that bastion host computer establish a second connection to the data warehouse on the internal network, essentially patching these two connections together. Using the SSH tunneling feature, Metabase can automate this process. 
+Sometimes when a data warehouse is inside an enterprise environment, direct connections are blocked by security devices such as firewalls and intrusion prevention systems. Bastion hosts offer the option to first connect to a computer on the edge of the protected network, then, from that bastion host computer, establish a second connection to the data warehouse within the internal network, essentially patching these two connections together. Using the SSH tunneling feature, Metabase can automate this process.
 
-### How to use SSH tunneling
+## How to use SSH tunneling
 
 When connecting though a bastion host:
 
@@ -48,7 +48,7 @@ Another common case where direct connections are impossible is when connecting t
 
 If you have problems connecting, verify the SSH host port and password by connecting manually using ssh or PuTTY on older windows systems.
 
-### Disadvantages of indirect connections
+## Disadvantages of indirect connections
 
 While using an SSH tunnel makes it possible to use a data warehouse that is otherwise inaccessible, it's almost always preferable to use a direct connection when possible.
 
@@ -61,7 +61,7 @@ There are several inherent limitations to connecting through a tunnel:
 - The number of connections through a bastion host is often limited by organizational policy.
 - Some organizations have IT security policies forbidding using SSH tunnels to bypass security perimeters.
 
-### Running SSH directly 
+## Running SSH directly
 
 The SSH tunneling feature in Metabase exists as a convenient wrapper around SSH, and automates the common cases of connecting through a tunnel. It also makes connections possible with systems that don't give shell access. Metabase uses a built-in SSH client that doesn't depend on the installed system's SSH client. This allows connections from systems where you can't run SSH manually. It also means that Metabase can't take advantage of authentication services provided by the system, such as Windows Domain Authentication or Kerberos Authentication.
 
@@ -73,6 +73,6 @@ ssh -Nf -L input-port:internal-server-name:port-on-server username@bastion-host.
 
 This allows you to use the full array of features included in SSH. If you find yourself doing this often, please let us know so we can see about making your process more convenient through Metabase.
 
-### Further reading
+## Further reading
 
-For more on connecting a database to Metabase, see [Adding and managing databases](01-managing-databases.md).
+- [Adding and managing databases](01-managing-databases.md).
