@@ -35,7 +35,7 @@ export type CreateActionHook = {
 const getName = (action: Partial<WritebackAction>): string => {
   if (action.type === "http") {
     return action.name || t`New Action`;
-  } else if (action.type === "row") {
+  } else if (action.type === "query") {
     return action.card?.name || t`New Action`;
   } else {
     throw new Error("Action type is not supported");
@@ -45,7 +45,7 @@ const getName = (action: Partial<WritebackAction>): string => {
 const getDescription = (action: Partial<WritebackAction>): string => {
   if (action.type === "http") {
     return action?.description || "";
-  } else if (action.type === "row") {
+  } else if (action.type === "query") {
     return action.card?.description || "";
   } else {
     throw new Error("Action type is not supported");
@@ -56,7 +56,7 @@ const getData = (action: Partial<WritebackAction>): unknown => {
   if (action.type === "http") {
     const { name, description, ...rest } = action;
     return rest || {};
-  } else if (action.type === "row") {
+  } else if (action.type === "query") {
     return action.card || {};
   } else {
     throw new Error("Action type is not supported");

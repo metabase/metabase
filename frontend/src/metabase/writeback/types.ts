@@ -27,7 +27,7 @@ export interface WritebackActionBase {
 }
 
 export interface RowAction {
-  type: "row";
+  type: "query";
   card: WritebackActionCard;
   card_id: number;
 }
@@ -66,4 +66,4 @@ export interface WritebackActionEmitter {
   created_at: string;
 }
 
-export type ActionType = "http" | "row";
+export type ActionType = "http" | "query";
