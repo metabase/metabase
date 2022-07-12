@@ -16,11 +16,11 @@ const CollectionTimeline = ({
   const url = Urls.timelinesInCollection(collection);
 
   return (
-    <Tooltip tooltip={t`Events`}>
-      <Link to={url}>
+    <Link to={url} tabIndex={-1}>
+      <Tooltip tooltip={t`Events`}>
         <CollectionHeaderButton icon="calendar" iconSize={20} onlyIcon />
-      </Link>
-    </Tooltip>
+      </Tooltip>
+    </Link>
   );
 };
 

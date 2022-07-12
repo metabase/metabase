@@ -19,6 +19,7 @@ const Link = ({
   children,
   disabled,
   tooltip,
+  tabIndex,
   ...props
 }: LinkProps): JSX.Element => {
   const link = (
@@ -26,7 +27,7 @@ const Link = ({
       {...props}
       to={to}
       disabled={disabled}
-      tabIndex={disabled ? -1 : undefined}
+      tabIndex={tabIndex ?? disabled ? -1 : undefined}
       aria-disabled={disabled}
     >
       {children}
