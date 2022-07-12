@@ -467,7 +467,6 @@ class Visualization extends React.PureComponent {
               settings={settings}
               icon={headerIcon}
               actionButtons={extra}
-              isVirtual={isVirtual}
               onChangeCardAndRun={
                 this.props.onChangeCardAndRun && !replacementContent
                   ? this.handleOnChangeCardAndRun

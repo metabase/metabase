@@ -2,14 +2,12 @@ import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { iconPropTypes } from "metabase/components/Icon";
 import { ChartCaptionRoot } from "./ChartCaption.styled";
-import { t } from "ttag";
 
 const propTypes = {
   series: PropTypes.array.isRequired,
   settings: PropTypes.object.isRequired,
   icon: PropTypes.shape(iconPropTypes),
   actionButtons: PropTypes.node,
-  isVirtual: PropTypes.bool,
   onChangeCardAndRun: PropTypes.func,
 };
 
@@ -18,12 +16,9 @@ const ChartCaption = ({
   settings,
   icon,
   actionButtons,
-  isVirtual,
   onChangeCardAndRun,
 }) => {
-  const title = isVirtual
-    ? t`Text card`
-    : settings["card.title"] ?? series[0].card.name;
+  const title = settings["card.title"] ?? series[0].card.name;
   const description = settings["card.description"];
   const data = series._raw || series;
   const card = data[0].card;

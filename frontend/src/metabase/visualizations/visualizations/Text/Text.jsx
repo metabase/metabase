@@ -49,6 +49,7 @@ export default class Text extends Component {
   static settings = {
     "card.title": {
       dashboard: false,
+      default: t`Text card`,
     },
     "card.description": {
       dashboard: false,
