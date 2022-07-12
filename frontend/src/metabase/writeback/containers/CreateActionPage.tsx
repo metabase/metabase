@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
 
@@ -5,7 +6,6 @@ import Header from "metabase/writeback/components/HttpAction/Header";
 import HttpAction from "metabase/writeback/components/HttpAction/HttpAction";
 import { ActionType } from "metabase/writeback/types";
 import { useWritebackAction } from "../hooks";
-import Actions from "metabase/entities/actions";
 import {
   createHttpAction,
   CreateHttpActionPayload,
@@ -31,8 +31,6 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
     setTemplateTags,
   } = useWritebackAction({ type });
 
-  console.log(Actions);
-
   const onCommit = React.useCallback(() => {
     if (type === "http") {
       const tags = Object.values(templateTags);
@@ -43,14 +41,17 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
       const entity = {
         name,
         description,
-        parameters: Object.fromEntries(parameters),
         ...data,
+        template: {
+          ...data.template,
+          parameters: Object.fromEntries(parameters),
+        },
       };
       createHttpAction(entity);
     } else {
       throw new Error("Action type is not supported");
     }
-  }, [type, name, description, data]);
+  }, [type, name, description, data, templateTags, createHttpAction]);
 
   let content = null;
   if (type === "http") {
