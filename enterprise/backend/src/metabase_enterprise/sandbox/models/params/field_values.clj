@@ -34,7 +34,7 @@
                 (hash @api/*current-user-permissions-set*)
                 field-id
                 constraints]))
-    (field-values/hash-key-for-linked-filters field-id constraints)))
+    (field-values/default-hash-key-for-linked-filters field-id constraints)))
 
 (defenterprise hash-key-for-sandbox
   "Returns a hash-key for linked-filter FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."

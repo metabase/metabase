@@ -254,12 +254,17 @@
   [field-id user-id user-permissions-set]
   nil)
 
+(defn default-hash-key-for-linked-filters
+  "OSS impl of [[hash-key-for-linked-filters]]."
+  [field-id constraints]
+  (str (hash [field-id
+              constraints])))
+
 (defenterprise hash-key-for-linked-filters
   "Return a hash-key that will be used for linked-filters fieldvalues."
   metabase-enterprise.sandbox.models.params.field-values
   [field-id constraints]
-  (str (hash [field-id
-              constraints])))
+  default-hash-key-for-linked-filters)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    CRUD fns                                                    |
