@@ -44,9 +44,9 @@ export const LayoutIllustration = styled.div`
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: ${color("bg-light")};
-  background-image: url("app/img/bridge.svg");
-  background-size: max(min(1728px, 260vh), 100%) auto;
-  background-repeat: no-repeat;
-  background-position: bottom;
+  mask-image: url("app/img/bridge.svg");
+  mask-size: max(min(1728px, 260vh), 100%) auto;
+  mask-position: bottom center;
+  mask-repeat: no-repeat;
+  background-color: ${color("brand")};
 `;
