@@ -35,5 +35,5 @@ export const CollectionHeaderButton = styled(Button)`
 
 CollectionHeaderButton.defaultProps = {
   onlyIcon: true,
-  iconSize: 18,
+  iconSize: 20,
 };

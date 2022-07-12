@@ -4,28 +4,24 @@ import { color } from "metabase/lib/colors";
 import Button from "metabase/core/components/Button";
 
 interface EntityMenuIconButtonProps {
-  isInvertedColor?: boolean;
+  color?: string;
+  hover?: {
+    color: string;
+    backgroundColor: string;
+  };
 }
 
 export const EntityMenuIconButton = styled(Button)<EntityMenuIconButtonProps>`
   width: 40px;
   height: 40px;
 
+  ${({ color }) => (color ? `color: ${color}` : null)};
+
   &:hover {
-    background-color: ${color("bg-medium")};
+    ${({ hover }) => (hover?.color ? `color: ${hover.color}` : null)};
+    background-color: ${({ hover }) =>
+      hover?.backgroundColor ? hover.backgroundColor : color("bg-medium")};
   }
-
-  ${({ isInvertedColor }) => {
-    return (
-      isInvertedColor &&
-      `color: ${color("text-light")};
-
-      &:hover {
-        color: ${color("text-white")};
-        background-color: ${color("brand")};
-      }`
-    );
-  }}
 `;
 
 EntityMenuIconButton.defaultProps = {

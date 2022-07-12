@@ -18,7 +18,7 @@ const CollectionTimeline = ({
   return (
     <Link to={url} tabIndex={-1}>
       <Tooltip tooltip={t`Events`}>
-        <CollectionHeaderButton icon="calendar" iconSize={20} onlyIcon />
+        <CollectionHeaderButton icon="calendar" />
       </Tooltip>
     </Link>
   );

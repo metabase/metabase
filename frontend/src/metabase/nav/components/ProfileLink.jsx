@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 
 import { capitalize } from "metabase/lib/formatting";
+import { color } from "metabase/lib/colors";
 import { UtilApi } from "metabase/services";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -105,7 +106,11 @@ function ProfileLink({ user, adminItems, onLogout }) {
         items={generateOptionsForUser()}
         triggerIcon="gear"
         triggerProps={{
-          isInvertedColor: true,
+          color: color("text-medium"),
+          hover: {
+            backgroundColor: color("brand"),
+            color: color("text-white"),
+          },
         }}
       />
       {modalOpen === "about" ? (
