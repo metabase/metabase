@@ -59,8 +59,9 @@
     :linked-filter
     (do
       (classloader/require 'metabase.models.params.chain-filter)
-      {:values          ((resolve 'metabase.models.params.chain-filter/unremapped-chain-filter)
-                         (:id field) constraints {})
+      {:values          (->> ((resolve 'metabase.models.params.chain-filter/unremapped-chain-filter)
+                              (:id field) constraints {})
+                             (field-values/take-by-length field-values/total-max-length))
        ;; TODO: refactor [unremapped-chain-filter] to returns has_more_values
        ;; currently default to `true` to makes sure chain-filter-search do a MBQL search
        :has_more_values true})
