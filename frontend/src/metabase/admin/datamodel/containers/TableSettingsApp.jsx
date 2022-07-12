@@ -82,7 +82,6 @@ const Nav = _.compose(
     id: (state, { tableId }) => tableId,
     query: {
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-      ignore_view: true,
     },
     selectorName: "getObjectUnfiltered",
   }),

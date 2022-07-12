@@ -67,5 +67,4 @@ class RevisionHistory extends Component {
 
 export default Tables.load({
   id: (state, { object: { table_id } }) => table_id,
-  query: { ignore_view: true },
 })(RevisionHistory);

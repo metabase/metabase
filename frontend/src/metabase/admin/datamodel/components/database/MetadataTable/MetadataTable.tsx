@@ -171,7 +171,6 @@ export default _.compose(
     id: (_state: State, { tableId }: { tableId: number }) => tableId,
     query: {
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-      ignore_view: true,
     },
     wrapped: true,
     selectorName: "getObjectUnfiltered",

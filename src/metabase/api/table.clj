@@ -42,14 +42,13 @@
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
-  [id include_editable_data_model ignore_view]
+  [id include_editable_data_model]
   (let [api-perm-check-fn (if (Boolean/parseBoolean include_editable_data_model)
                             api/write-check
                             api/read-check)]
     (u/prog1 (-> (api-perm-check-fn Table id)
                  (hydrate :db :pk_field))
-             (when-not (Boolean/parseBoolean ignore_view)
-               (events/publish-event! :table-read (assoc <> :actor_id api/*current-user-id*))))))
+             (events/publish-event! :table-read (assoc <> :actor_id api/*current-user-id*)))))
 
 (defn- update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`

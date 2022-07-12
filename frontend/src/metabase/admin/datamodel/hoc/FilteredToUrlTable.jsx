@@ -88,6 +88,5 @@ class TableSelectorInner extends React.Component {
 
 const TableSelector = Tables.load({
   id: (state, props) => props.tableId,
-  query: { ignore_view: true },
   loadingAndErrorWrapper: false,
 })(TableSelectorInner);

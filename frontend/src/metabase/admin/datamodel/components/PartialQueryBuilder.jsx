@@ -133,7 +133,6 @@ class PartialQueryBuilder extends Component {
 export default _.compose(
   Tables.load({
     id: (state, props) => props.value && props.value["source-table"],
-    query: { ignore_view: true },
     wrapped: true,
   }),
   withTableMetadataLoaded,
