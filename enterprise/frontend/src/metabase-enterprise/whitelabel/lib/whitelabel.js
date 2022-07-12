@@ -1,13 +1,8 @@
-import MetabaseSettings from "metabase/lib/settings";
-
 import Color from "color";
-
-import { colors, originalColors, lighten } from "metabase/lib/colors/palette";
-import { addCSSRule } from "metabase/lib/dom";
-
 import _ from "underscore";
+import MetabaseSettings from "metabase/lib/settings";
+import { colors, originalColors, lighten } from "metabase/lib/colors/palette";
 
-const BRAND_NORMAL_COLOR = Color(colors.brand).hsl();
 const COLOR_REGEX =
   /(?:#[a-fA-F0-9]{3}(?:[a-fA-F0-9]{3})?\b|(?:rgb|hsl)a?\(\s*\d+\s*(?:,\s*\d+(?:\.\d+)?%?\s*){2,3}\))/;
 
@@ -98,11 +93,6 @@ function initColorCSS(colorName) {
   }
   CSS_COLOR_UPDATORS_BY_COLOR_NAME[colorName] = [];
 
-  // special updator for brand
-  if (colorName === "brand") {
-    initCSSBrandHueUpdator();
-  }
-
   const colorMappings = getCSSColorMapping(colorName);
   // look for CSS rules which have colors matching the brand colors or very light or desaturated
   for (const {
@@ -122,16 +112,6 @@ function initColorCSS(colorName) {
       }
     }
   }
-}
-
-function initCSSBrandHueUpdator() {
-  // initialize the ".brand-hue" CSS rule, which is used to change the hue of images which should
-  // only contain the brand color or completely desaturated colors
-  const rotateHueRule = addCSSRule(".brand-hue", "filter: hue-rotate(0);");
-  CSS_COLOR_UPDATORS_BY_COLOR_NAME["brand"].push(themeColor => {
-    const degrees = Color(themeColor).hsl().hue() - BRAND_NORMAL_COLOR.hue();
-    rotateHueRule.style["filter"] = `hue-rotate(${degrees}deg)`;
-  });
 }
 
 function initColorJS(colorName) {
