@@ -1,7 +1,8 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import cx from "classnames";
+import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
 import EditableText from "metabase/core/components/EditableText";
 import { ActionType } from "metabase/writeback/types";
 import Selector from "./Selector";
@@ -25,6 +26,12 @@ const Header: React.FC<Props> = ({
   canSave,
   onCommit,
 }) => {
+  const OPTS = [
+    { value: "http", label: "HTTP" },
+    // Not supported yet
+    // { value: "query", label: t`Query` },
+  ];
+
   return (
     <div className="flex align-center justify-between w-full py-3 pl-8 pr-4 bg-white">
       <div className="flex align-center space-x-4">
@@ -54,15 +61,10 @@ const Header: React.FC<Props> = ({
         disabled={!canSave}
         onClick={canSave ? onCommit : undefined}
       >
-        Save
+        {t`Save`}
       </button>
     </div>
   );
 };
-
-const OPTS = [
-  { value: "http", label: "HTTP" },
-  { value: "question", label: "Question" },
-];
 
 export default Header;
