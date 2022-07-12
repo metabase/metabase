@@ -10,7 +10,6 @@ import { t } from "ttag";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
-  getHasCustomBranding,
   getHasCustomColors,
   getHideMetabot,
   hasCustomBranding,
@@ -112,6 +111,5 @@ if (hasPremiumFeature("whitelabel")) {
 
 // these selectors control whitelabeling UI
 PLUGIN_SELECTORS.getHasCustomColors = getHasCustomColors;
-PLUGIN_SELECTORS.getHasCustomBranding = getHasCustomBranding;
 PLUGIN_SELECTORS.getHideMetabot = getHideMetabot;
 PLUGIN_SELECTORS.getLoadingMessage = getLoadingMessage;
