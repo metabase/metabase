@@ -36,7 +36,7 @@ const MethodSelector: React.FC<Props> = ({ value, setValue }) => {
               key={method}
               className={cx(
                 value === method ? "bg-accent0-light" : "",
-                "px-2 py-1 font-bold text-brand text-sm rounded-md bg-opacity-25 hover:bg-accent0-light hover:bg-opacity-25",
+                "px1 py-1 font-bold text-brand text-sm rounded-md bg-opacity-25 hover:bg-accent0-light hover:bg-opacity-25",
               )}
               aria-current={method === value ? "page" : undefined}
               onClick={() => setValue(method)}

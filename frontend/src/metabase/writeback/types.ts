@@ -37,6 +37,8 @@ export interface HttpAction {
   name: string;
   description: string;
   template: HttpActionTemplate;
+  parameters: Record<ParameterId, Parameter>;
+  parameter_mappings: Record<ParameterId, ParameterTarget>;
 }
 
 export type HttpActionResponseHandle = any;

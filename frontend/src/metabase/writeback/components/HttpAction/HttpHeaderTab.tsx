@@ -21,11 +21,11 @@ const HttpHeaderTab: React.FC<Props> = ({ headers, setHeaders }) => {
   return (
     <div className="grid grid-cols-2">
       <div className="py-2 pl-6 text-sm font-semibold">{t`Name`}</div>
-      <div className="flex items-center justify-between h-full text-sm font-semibold">
+      <div className="flex align-center justify-between h-full text-sm font-semibold">
         <div>{t`Value`}</div>
 
         <button
-          className="h-full px-2 bg-content hover:bg-brand hover:bg-opacity-25 hover:text-brand"
+          className="h-full px1 bg-content hover:bg-brand hover:bg-opacity-25 hover:text-brand"
           onClick={add}
         >
           <Icon name="add" />
@@ -47,7 +47,7 @@ const HttpHeaderTab: React.FC<Props> = ({ headers, setHeaders }) => {
               value={key}
               setValue={setKey}
             />
-            <div className="flex items-center justify-between">
+            <div className="flex align-center justify-between">
               <Input
                 className="pl-0 pr-6"
                 key={`${index}-value`}
@@ -56,7 +56,7 @@ const HttpHeaderTab: React.FC<Props> = ({ headers, setHeaders }) => {
                 setValue={setValue}
               />
               <button
-                className="h-full px-2 bg-content hover:bg-brand hover:bg-opacity-25 hover:text-brand"
+                className="h-full px1 bg-content hover:bg-brand hover:bg-opacity-25 hover:text-brand"
                 onClick={remove}
               >
                 <Icon name="trash" />
@@ -85,7 +85,7 @@ const Input: React.FC<InputProps> = ({
   return (
     <input
       className={cx(
-        "w-full px-2 py-1  text-gray-500 bg-opacity-25 border-transparent placeholder-text-light bg-border focus:ring-transparent focus:border-transparent sm:text-sm",
+        "w-full px1 py-1  text-gray-500 bg-opacity-25 border-transparent placeholder-text-light bg-border focus:ring-transparent focus:border-transparent sm:text-sm",
         className,
       )}
       placeholder={placeholder}

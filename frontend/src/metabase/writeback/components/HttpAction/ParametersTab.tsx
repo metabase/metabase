@@ -1,47 +1,60 @@
 import React from "react";
-import cx from "classnames";
-import { t } from "ttag";
-import { assoc, dissoc } from "icepick";
-import Icon from "metabase/components/Icon";
-import { recognizeTemplateTags } from "metabase-lib/lib/queries/NativeQuery";
-import { Parameter } from "metabase-types/types/Parameter";
+
+import { TemplateTags } from "metabase-types/types/Query";
+import TagEditorParam from "metabase/query_builder/components/template_tags/TagEditorParam";
+import { getDatabasesList } from "metabase/query_builder/selectors";
+import { connect } from "react-redux";
+import { State } from "metabase-types/store";
+import { Database } from "metabase-types/types/Database";
 
 type Props = {
-  body: string;
-  headers: string;
+  templateTags: TemplateTags;
+  databases: Database[];
 
-  parameters: any;
-  setParameters: (parameters: any) => void;
+  onTemplateTagsChange: (templateTags: TemplateTags) => void;
 };
 
 const ParametersTab: React.FC<Props> = ({
-  body,
-  headers,
-  parameters,
-  setParameters,
+  templateTags,
+  databases,
+  onTemplateTagsChange,
 }) => {
-  const params: Parameter[] = React.useMemo(() => {
-    const allParams = new Set([
-      ...recognizeTemplateTags(body),
-      ...recognizeTemplateTags(headers),
-    ]);
-    const params = Object.entries(parameters || {}).map(
-      ([key, value]) => value,
-    ) as Parameter[];
-    allParams.forEach(param => {
-      if (!(param in params)) {
-        // params.push({ name: param, value: "" });
-      }
-    });
-    return params;
-  }, [body, headers, parameters]);
+  const tags = React.useMemo(() => Object.values(templateTags || {}), [
+    templateTags,
+  ]);
+  const onChange = (templateTag: any) => {
+    const { name } = templateTag;
+    const newTag =
+      templateTags[name] && templateTags[name].type !== templateTag.type
+        ? // when we switch type, null out any default
+          { ...templateTag, default: null }
+        : templateTag;
+    const newTags = { ...templateTags, [name]: newTag };
+    onTemplateTagsChange(newTags);
+  };
   return (
-    <div className="grid grid-cols-2">
-      {params.map(({}, index) => {
-        return <></>;
-      })}
+    <div>
+      {tags.map(tag => (
+        <div key={tag.name}>
+          <TagEditorParam
+            // For some reason typescript doesn't think the `tag` prop exists on TagEditorParam
+            // @ts-ignore
+            tag={tag}
+            parameter={null}
+            databaseFields={[]}
+            database={null}
+            databases={databases}
+            setTemplateTag={onChange}
+            setParameterValue={onChange}
+          />
+        </div>
+      ))}
     </div>
   );
 };
 
-export default ParametersTab;
+const mapStateToProps = (state: State) => ({
+  databases: getDatabasesList(state),
+});
+
+export default connect(mapStateToProps)(ParametersTab);

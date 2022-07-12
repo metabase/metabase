@@ -1,5 +1,5 @@
 import React from "react";
-import { connect, Dispatch } from "react-redux";
+import { connect } from "react-redux";
 
 import Header from "metabase/writeback/components/HttpAction/Header";
 import HttpAction from "metabase/writeback/components/HttpAction/HttpAction";
@@ -10,6 +10,7 @@ import {
   createHttpAction,
   CreateHttpActionPayload,
 } from "metabase/query_builder/actions";
+import { getTemplateTagParameters } from "metabase/parameters/utils/cards";
 
 type Props = {
   createHttpAction: (payload: CreateHttpActionPayload) => void;
@@ -26,21 +27,50 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
     onDataChange,
     isDirty,
     isValid,
+    templateTags,
+    setTemplateTags,
   } = useWritebackAction({ type });
 
   console.log(Actions);
 
   const onCommit = React.useCallback(() => {
     if (type === "http") {
-      const entity = { name, description, ...data };
+      const tags = Object.values(templateTags);
+      const parameters = getTemplateTagParameters(tags).map(param => [
+        param.name,
+        param,
+      ]);
+      const entity = {
+        name,
+        description,
+        parameters: Object.fromEntries(parameters),
+        ...data,
+      };
       createHttpAction(entity);
     } else {
       throw new Error("Action type is not supported");
     }
   }, [type, name, description, data]);
 
+  let content = null;
+  if (type === "http") {
+    const { template = {} } = data;
+    content = (
+      <HttpAction
+        data={template}
+        onDataChange={newData =>
+          onDataChange({ ...data, template: { ...template, ...newData } })
+        }
+        templateTags={templateTags}
+        onTemplateTagsChange={setTemplateTags}
+        description={description}
+        onDescriptionChange={onDescriptionChange}
+      />
+    );
+  }
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-column h-full">
       <Header
         name={name}
         onNameChange={onNameChange}
@@ -49,50 +79,9 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
         canSave={isDirty && isValid}
         onCommit={onCommit}
       />
-      <div className="flex-grow bg-white">
-        <CreateAction
-          type={type}
-          description={description}
-          onDescriptionChange={onDescriptionChange}
-          data={data}
-          onDataChange={onDataChange}
-        />
-      </div>
+      <div className="flex-grow bg-white">{content}</div>
     </div>
   );
-};
-
-type InnerProps = {
-  type: ActionType;
-  description: string;
-  onDescriptionChange: (description: string) => void;
-
-  data: any;
-  onDataChange: any;
-};
-
-const CreateAction: React.FC<InnerProps> = ({
-  type,
-  description,
-  onDescriptionChange,
-  data,
-  onDataChange,
-}) => {
-  if (type === "http") {
-    const { template = {} } = data;
-    return (
-      <HttpAction
-        data={template}
-        onDataChange={newData =>
-          onDataChange({ ...data, template: { ...template, ...newData } })
-        }
-        description={description}
-        onDescriptionChange={onDescriptionChange}
-      />
-    );
-  }
-
-  return null;
 };
 
 const mapDispatchToProps = (dispatch: any) => ({

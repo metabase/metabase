@@ -28,6 +28,8 @@ const EditActionPage: React.FC<Props> = ({ action, updateAction }) => {
     onDataChange,
     isDirty,
     isValid,
+    templateTags,
+    setTemplateTags,
   } = useWritebackAction(action);
 
   console.log({ action });
@@ -38,8 +40,25 @@ const EditActionPage: React.FC<Props> = ({ action, updateAction }) => {
     updateAction(action, { name, description, ...data });
   };
 
+  let content = null;
+  if (type === "http") {
+    const { template = {} } = data;
+    content = (
+      <HttpAction
+        data={template}
+        onDataChange={newData =>
+          onDataChange({ ...data, template: { ...template, ...newData } })
+        }
+        templateTags={templateTags}
+        onTemplateTagsChange={setTemplateTags}
+        description={description}
+        onDescriptionChange={onDescriptionChange}
+      />
+    );
+  }
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-column h-full">
       <Header
         name={name}
         onNameChange={onNameChange}
@@ -47,50 +66,9 @@ const EditActionPage: React.FC<Props> = ({ action, updateAction }) => {
         canSave={isDirty && isValid}
         onCommit={onCommit}
       />
-      <div className="flex-grow bg-white">
-        <EditAction
-          type={type}
-          description={description}
-          onDescriptionChange={onDescriptionChange}
-          data={data}
-          onDataChange={onDataChange}
-        />
-      </div>
+      <div className="flex-grow bg-white">{content}</div>
     </div>
   );
-};
-
-type InnerProps = {
-  type: ActionType;
-  description: string;
-  onDescriptionChange: (description: string) => void;
-
-  data: any;
-  onDataChange: any;
-};
-
-const EditAction: React.FC<InnerProps> = ({
-  type,
-  description,
-  onDescriptionChange,
-  data,
-  onDataChange,
-}) => {
-  if (type === "http") {
-    const { template = {} } = data;
-    return (
-      <HttpAction
-        data={template}
-        onDataChange={newData =>
-          onDataChange({ ...data, template: { ...template, ...newData } })
-        }
-        description={description}
-        onDescriptionChange={onDescriptionChange}
-      />
-    );
-  }
-
-  return null;
 };
 
 const mapDispatchToProps = (dispatch: any) => ({

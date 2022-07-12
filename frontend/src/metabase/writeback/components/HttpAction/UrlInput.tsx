@@ -21,7 +21,7 @@ const UrlInput: React.FC<Props> = ({ protocol, setProtocol, url, setUrl }) => {
             id="url"
             rows={2}
             wrap="soft"
-            className="w-full min-h-0 py-0 pr-12 bg-transparent border-transparent resize-none focus:ring-transparent placeholder-text-light text-text-medium focus:text-text-dark focus:border-transparent pl-7 sm:text-sm"
+            className="w-full min-h-0 py-0 pr-12 bg-transparent border-transparent resize-none focus:ring-transparent placeholder-text-light text-medium focus:text-dark focus:border-transparent pl-7 sm:text-sm"
             placeholder="example.com/api/v1/prices"
             value={url}
             onChange={event => setUrl(event.target.value)}

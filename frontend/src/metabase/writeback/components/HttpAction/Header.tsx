@@ -26,8 +26,8 @@ const Header: React.FC<Props> = ({
   onCommit,
 }) => {
   return (
-    <div className="flex items-center justify-between w-full py-3 pl-8 pr-4 bg-white">
-      <div className="flex items-center space-x-4">
+    <div className="flex align-center justify-between w-full py-3 pl-8 pr-4 bg-white">
+      <div className="flex align-center space-x-4">
         <EditableText
           className="text-sm font-bold"
           initialValue={name}
@@ -35,7 +35,7 @@ const Header: React.FC<Props> = ({
         />
         {setType ? (
           <Selector
-            className="text-text-light"
+            className="text-light"
             options={OPTS}
             value={type}
             setValue={value => setType(value as ActionType)}
@@ -49,7 +49,7 @@ const Header: React.FC<Props> = ({
       <button
         className={cx(
           "font-semibold",
-          canSave ? "text-brand hover:text-opacity-50" : "text-text-medium",
+          canSave ? "text-brand hover:text-opacity-50" : "text-medium",
         )}
         disabled={!canSave}
         onClick={canSave ? onCommit : undefined}

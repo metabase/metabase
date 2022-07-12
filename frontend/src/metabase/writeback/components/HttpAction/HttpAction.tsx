@@ -10,7 +10,7 @@ import UrlInput from "./UrlInput";
 import Selector from "./Selector";
 import EditableText from "metabase/core/components/EditableText";
 import ParametersTab from "./ParametersTab";
-import Actions from "metabase/entities/actions";
+import { TemplateTags } from "metabase-types/types/Query";
 
 type Props = {
   description: string;
@@ -18,13 +18,18 @@ type Props = {
 
   data: any;
   onDataChange: (data: any) => void;
+
+  templateTags: TemplateTags;
+  onTemplateTagsChange: (templateTags: TemplateTags) => void;
 };
 
 const HttpAction: React.FC<Props> = ({
   onDataChange,
   data,
+  templateTags,
   description,
   onDescriptionChange,
+  onTemplateTagsChange,
 }) => {
   const { protocol, url, method, initialHeaders, body } = React.useMemo(() => {
     const [protocol, url] = (data.url || "https://").split("://", 2);
@@ -45,6 +50,8 @@ const HttpAction: React.FC<Props> = ({
     <HttpActionInner
       description={description}
       onDescriptionChange={onDescriptionChange}
+      templateTags={templateTags}
+      onTemplateTagsChange={onTemplateTagsChange}
       method={method}
       setMethod={value => {
         onDataChange({ method: value });
@@ -92,6 +99,9 @@ type InnerProps = {
 
   description: string;
   onDescriptionChange: (description: string) => void;
+
+  templateTags: TemplateTags;
+  onTemplateTagsChange: (templateTags: TemplateTags) => void;
 };
 
 const HttpActionInner: React.FC<InnerProps> = ({
@@ -105,8 +115,10 @@ const HttpActionInner: React.FC<InnerProps> = ({
   setBody,
   headers,
   setHeaders,
+  templateTags,
   description,
   onDescriptionChange,
+  onTemplateTagsChange,
 }) => {
   const [currentParamTab, setCurrentParamTab] = React.useState(
     PARAM_TABS[0].name,
@@ -115,10 +127,9 @@ const HttpActionInner: React.FC<InnerProps> = ({
     CONFIG_TABS[0].name,
   );
   const [contentType, setContentType] = React.useState("application/json");
-  console.log(Actions);
   return (
     <div className="grid w-full h-full grid-cols-2 md:flex-row">
-      <div className="flex flex-col border-t border-r border-border bg-content">
+      <div className="flex flex-column border-t border-r border-border bg-content">
         <div className="px-6 py-2 border-b border-b-border">
           <MethodSelector value={method} setValue={setMethod} />
         </div>
@@ -130,7 +141,7 @@ const HttpActionInner: React.FC<InnerProps> = ({
             setProtocol={setProtocol}
           />
         </div>
-        <div className="flex flex-col flex-grow bg-white border-b border-border">
+        <div className="flex flex-column flex-grow bg-white border-b border-border">
           <div className="pl-4 pr-4 border-b border-border">
             <Tabs
               tabs={PARAM_TABS}
@@ -138,21 +149,24 @@ const HttpActionInner: React.FC<InnerProps> = ({
               setCurrentTab={setCurrentParamTab}
             />
           </div>
-          <div className="flex-grow py-4 pl-6 pr-4">
-            <ParametersTab body={body} headers={headers} />
+          <div className="flex-grow">
+            <ParametersTab
+              templateTags={templateTags}
+              onTemplateTagsChange={onTemplateTagsChange}
+            />
           </div>
         </div>
         <div className="py-4 pl-6 pr-4 bg-white">
           <EditableText
-            className="text-sm text-text-light"
+            className="text-sm text-light"
             placeholder={t`Enter an action description...`}
             initialValue={description}
             onChange={onDescriptionChange}
           />
         </div>
       </div>
-      <div className="flex flex-col border-t border-border">
-        <div className="flex items-center justify-between py-1 pl-2 pr-4 border-b border-b-border">
+      <div className="flex flex-column border-t border-border">
+        <div className="flex align-center justify-between py-1 pl-2 pr-4 border-b border-b-border">
           <div>
             <Tabs
               tabs={CONFIG_TABS}

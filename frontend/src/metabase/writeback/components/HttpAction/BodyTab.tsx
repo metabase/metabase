@@ -18,7 +18,7 @@ const BodyTab: React.FC<Props> = props => {
   return null;
 };
 
-const Json: React.FC<Props> = ({ body }) => {
+const Json: React.FC<Props> = ({ body, setBody }) => {
   const content = React.useMemo(() => {
     try {
       const json = JSON.parse(body);
@@ -34,6 +34,13 @@ const Json: React.FC<Props> = ({ body }) => {
       mode="tree"
       onChangeMode={() => {}}
       content={content}
+      onChange={content => {
+        if ("json" in content) {
+          setBody(JSON.stringify(content.json));
+        } else if ("text" in content) {
+          setBody(content.text || "");
+        }
+      }}
     />
   );
 };

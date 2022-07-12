@@ -44,13 +44,13 @@ const Selector: React.FC<Props> = ({ value, setValue, options, className }) => {
 
 const Contents: React.FC<Props> = ({ value, setValue, options }) => (
   <div className="px-0 py-0 bg-white border rounded-md shadow-md border-border">
-    <div className="flex flex-col" aria-label="Tabs">
+    <div className="flex flex-column" aria-label="Tabs">
       {options.map(({ value: optionValue, label }) => (
         <button
           key={optionValue}
           className={cx(
             value === optionValue ? "text-brand" : "",
-            "px-4 py-2 font-bold text-left text-text-medium text-sm bg-opacity-25 hover:bg-accent0-light hover:bg-opacity-25",
+            "px-4 py-2 font-bold text-left text-medium text-sm bg-opacity-25 hover:bg-accent0-light hover:bg-opacity-25",
           )}
           aria-current={optionValue === value ? "page" : undefined}
           onClick={() => setValue(optionValue)}

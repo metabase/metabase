@@ -26,6 +26,11 @@ import {
   HttpActionResponseHandle,
   HttpActionTemplate,
 } from "metabase/writeback/types";
+import {
+  Parameter,
+  ParameterId,
+  ParameterTarget,
+} from "metabase-types/types/Parameter";
 
 export const INSERT_ROW_FROM_TABLE_VIEW =
   "metabase/qb/INSERT_ROW_FROM_TABLE_VIEW";
@@ -105,6 +110,8 @@ export type CreateHttpActionPayload = {
   template: HttpActionTemplate;
   response_handle: HttpActionResponseHandle;
   error_handle: HttpActionErrorHandle;
+  parameters: Record<ParameterId, Parameter>;
+  parameter_mappings: Record<ParameterId, ParameterTarget>;
 };
 
 export const createHttpAction = (payload: CreateHttpActionPayload) => async (
@@ -117,14 +124,16 @@ export const createHttpAction = (payload: CreateHttpActionPayload) => async (
     template,
     error_handle = null,
     response_handle = null,
+    parameters,
+    parameter_mappings,
   } = payload;
   const data = {
     method: template.method || "GET",
     url: template.url,
     body: template.body || {},
     headers: template.headers || {},
-    parameters: {},
-    parameter_mappings: {},
+    parameters: template.parameters || {},
+    parameter_mappings: template.parameter_mappings || {},
   };
   const newAction = {
     name,
@@ -133,6 +142,8 @@ export const createHttpAction = (payload: CreateHttpActionPayload) => async (
     template: data,
     error_handle,
     response_handle,
+    parameters,
+    parameter_mappings,
   };
   const response = await dispatch(Actions.actions.create(newAction));
   const action = Actions.HACK_getObjectFromAction(response);
