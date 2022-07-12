@@ -10,7 +10,12 @@ import {
   createHttpAction,
   CreateHttpActionPayload,
 } from "metabase/query_builder/actions";
-import { getTemplateTagParameters } from "metabase/parameters/utils/cards";
+import {
+  getTemplateTagParameterTarget,
+  getTemplateTagType,
+} from "metabase/parameters/utils/cards";
+import { TemplateTag } from "metabase-types/types/Query";
+import { ParameterWithTarget } from "metabase/parameters/types";
 
 type Props = {
   createHttpAction: (payload: CreateHttpActionPayload) => void;
@@ -34,10 +39,10 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
   const onCommit = React.useCallback(() => {
     if (type === "http") {
       const tags = Object.values(templateTags);
-      const parameters = getTemplateTagParameters(tags).map(param => [
-        param.name,
-        param,
-      ]);
+      const parameters = tags
+        .filter(tag => tag.type != null)
+        .map(getTemplateTagParameter)
+        .map(param => [param.name, param]);
       const entity = {
         name,
         description,
@@ -71,7 +76,7 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
   }
 
   return (
-    <div className="flex flex-column h-full">
+    <div className="flex h-full flex-column">
       <Header
         name={name}
         onNameChange={onNameChange}
@@ -91,3 +96,14 @@ const mapDispatchToProps = (dispatch: any) => ({
 });
 
 export default connect(null, mapDispatchToProps)(CreateActionPage);
+
+function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
+  return {
+    id: tag.id,
+    type: tag["widget-type"] || getTemplateTagType(tag),
+    target: getTemplateTagParameterTarget(tag),
+    name: tag.name,
+    slug: tag.name,
+    default: tag.default,
+  };
+}
