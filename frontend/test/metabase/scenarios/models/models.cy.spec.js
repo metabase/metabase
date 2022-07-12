@@ -8,6 +8,7 @@ import {
   sidebar,
   summarize,
   filter,
+  filterField,
   visitQuestion,
   visitDashboard,
   startNewQuestion,
@@ -46,8 +47,9 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     filter();
-    cy.findByLabelText("Discount").findByText("Between").click();
-    selectFromDropdown("Not empty");
+    filterField("Discount", {
+      operator: "Not empty",
+    });
 
     cy.button("Apply").click();
     cy.wait("@dataset");
@@ -94,8 +96,9 @@ describe("scenarios > models", () => {
     assertIsModel();
 
     filter();
-    cy.findByLabelText("DISCOUNT").findByText("Between").click();
-    selectFromDropdown("Not empty");
+    filterField("DISCOUNT", {
+      operator: "Not empty",
+    });
 
     cy.button("Apply").click();
     cy.wait("@dataset");
@@ -303,8 +306,9 @@ describe("scenarios > models", () => {
       cy.wait("@dataset");
 
       filter();
-      cy.findByLabelText("Discount").findByText("Between").click();
-      selectFromDropdown("Not empty");
+      filterField("Discount", {
+        operator: "Not empty",
+      });
       cy.button("Apply").click();
       cy.wait("@dataset");
 
