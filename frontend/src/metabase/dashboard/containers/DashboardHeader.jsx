@@ -339,16 +339,17 @@ class DashboardHeader extends Component {
             onDeleteBookmark={deleteBookmark}
             isBookmarked={isBookmarked}
           />,
-          <DashboardHeaderButton
-            key="dashboard-info-button"
-            icon="info"
-            isActive={isShowingDashboardInfoSidebar}
-            onClick={() =>
-              isShowingDashboardInfoSidebar
-                ? closeSidebar()
-                : setSidebar({ name: SIDEBAR_NAME.info })
-            }
-          />,
+          <Tooltip key="dashboard-info-button" tooltip={t`More info`}>
+            <DashboardHeaderButton
+              icon="info"
+              isActive={isShowingDashboardInfoSidebar}
+              onClick={() =>
+                isShowingDashboardInfoSidebar
+                  ? closeSidebar()
+                  : setSidebar({ name: SIDEBAR_NAME.info })
+              }
+            />
+          </Tooltip>,
           <EntityMenu
             key="dashboard-action-menu-button"
             items={extraButtons}
