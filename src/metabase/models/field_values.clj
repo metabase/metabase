@@ -44,7 +44,7 @@
   "The maximum character length for a stored FieldValues entry."
   (int 100))
 
-(def ^:dynamic total-max-length
+(def ^:dynamic *total-max-length*
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
   (int (* auto-list-cardinality-threshold entry-max-length)))
 
@@ -271,8 +271,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn distinct-values
-  "Fetch a sequence of distinct values for `field` that are below the [[total-max-length]] threshold. If the values are
-  past the threshold, this returns a subset of possible values values where the total length of all items is less than [[total-max-length]].
+  "Fetch a sequence of distinct values for `field` that are below the [[*total-max-length*]] threshold. If the values are
+  past the threshold, this returns a subset of possible values values where the total length of all items is less than [[*total-max-length*]].
   It also returns a `has_more_values` flag, `has_more_values` = `true` when the returned values list is a subset of all possible values.
 
   ;; (distinct-values (Field 1))
@@ -286,12 +286,12 @@
   (classloader/require 'metabase.db.metadata-queries)
   (try
     (let [distinct-values         ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)
-          limited-distinct-values (take-by-length total-max-length distinct-values)]
+          limited-distinct-values (take-by-length *total-max-length* distinct-values)]
       {:values          limited-distinct-values
        ;; has_more_values=true means the list of values we return is a subset of all possible values.
        :has_more_values (or
                           ;; If the `distinct-values` has more elements than `limited-distinct-values`
-                          ;; it means the the `distinct-values` has exceeded our [[total-max-length]] limits.
+                          ;; it means the the `distinct-values` has exceeded our [[*total-max-length*]] limits.
                           (> (count distinct-values)
                              (count limited-distinct-values))
                           ;; [[metabase.db.metadata-queries/field-distinct-values]] runs a query
@@ -316,7 +316,7 @@
         field-name                       (or (:name field) (:id field))]
     (cond
       ;; If this Field is marked `auto-list`, and the number of values in now over the [[auto-list-cardinality-threshold]] or
-      ;; the accumulated length of all values exceeded the [[total-max-length]] threshold
+      ;; the accumulated length of all values exceeded the [[*total-max-length*]] threshold
       ;; we need to unmark it as `auto-list`. Switch it to `has_field_values` = `nil` and delete the FieldValues;
       ;; this will result in it getting a Search Widget in the UI when `has_field_values` is automatically inferred
       ;; by the [[metabase.models.field/infer-has-field-values]] hydration function (see that namespace for more detailed

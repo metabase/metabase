@@ -32,11 +32,11 @@
               (db/select-one Field :id (mt/id :categories :id)))
             (is (= 1 (db/count FieldValues :field_id categories-id :type fv-type)))))))
 
-    (testing "make sure the Fieldvalues respect [field-values/total-max-length]"
+    (testing "make sure the Fieldvalues respect [field-values/*total-max-length*]"
       (mt/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:and
                                                                                       [:> $id 3]
                                                                                       [:< $id 6]]})}}}
-        (binding [field-values/total-max-length 5]
+        (binding [field-values/*total-max-length* 5]
           (is (= ["Asian"]
                  (:values (params.field-values/get-or-create-advanced-field-values!
                             fv-type
