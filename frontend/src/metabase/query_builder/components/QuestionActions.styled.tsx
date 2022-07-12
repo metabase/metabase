@@ -22,10 +22,6 @@ export const StrengthIndicator = styled(DatasetMetadataStrengthIndicator)`
   margin-left: 3.5rem;
 `;
 
-export const QuestionEntityMenu = styled(EntityMenu)`
-  margin-left: 0.5rem;
-`;
-
 export type AnimationStates = "expand" | "shrink" | null;
 
 interface BookmarkButtonProps {
