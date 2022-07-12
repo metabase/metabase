@@ -27,7 +27,6 @@ import { isExpression } from "metabase/lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
-import { segment } from "cljs/metabase.mbql.schema";
 
 export interface FilterDisplayNameOpts {
   includeDimension?: boolean;
