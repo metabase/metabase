@@ -2,12 +2,10 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import Color from "color";
 
-import { colors, lighten } from "metabase/lib/colors/palette";
+import { colors, originalColors, lighten } from "metabase/lib/colors/palette";
 import { addCSSRule } from "metabase/lib/dom";
 
 import _ from "underscore";
-
-export const originalColors = { ...colors };
 
 const BRAND_NORMAL_COLOR = Color(colors.brand).hsl();
 const COLOR_REGEX =

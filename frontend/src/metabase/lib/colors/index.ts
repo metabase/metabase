@@ -5,6 +5,7 @@ export {
   darken,
   tint,
   shade,
+  hueRotate,
   isLight,
   isDark,
 } from "./palette";
