@@ -346,18 +346,18 @@
   ;; :collection_id is extracted as its entity_id or identity-hash.
   ;; :creator_id as the user's email.
   (-> (serdes.base/extract-one-basics "Card" card)
-      (update :database_id   serdes.util/export-fk-field 'Database :name)
+      (update :database_id   serdes.util/export-fk-keyed 'Database :name)
       (update :table_id      serdes.util/export-table-fk)
       (update :collection_id serdes.util/export-fk 'Collection)
-      (update :creator_id    serdes.util/export-fk-field 'User :email)))
+      (update :creator_id    serdes.util/export-fk-keyed 'User :email)))
 
 (defmethod serdes.base/load-xform "Card"
   [card]
   (-> card
       serdes.base/load-xform-basics
-      (update :database_id   serdes.util/import-fk-field 'Database :name)
+      (update :database_id   serdes.util/import-fk-keyed 'Database :name)
       (update :table_id      serdes.util/import-table-fk)
-      (update :creator_id    serdes.util/import-fk-field 'User :email)
+      (update :creator_id    serdes.util/import-fk-keyed 'User :email)
       (update :collection_id serdes.util/import-fk 'Collection)))
 
 (defmethod serdes.base/serdes-dependencies "Card"

@@ -44,6 +44,7 @@
 (defmethod serdes.base/serdes-dependencies "Dimension"
   [{:keys [field_id human_readable_field_id]}]
   ;; The Field depends on the Table, and Table on the Database.
-  (->> [field_id human_readable_field_id]
-       (filter some?)
-       (mapv serdes.util/field->path)))
+  (let [base  (serdes.util/field->path field_id)]
+    (if-let [human (some-> human_readable_field_id serdes.util/field->path)]
+      [base human]
+      [base])))

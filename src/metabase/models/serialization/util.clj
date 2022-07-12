@@ -34,22 +34,22 @@
       (throw (ex-info "Could not find foreign key target - bad serdes-dependencies or other serialization error"
                       {:entity_id eid :model (name model)})))))
 
-(defn export-fk-field
+(defn export-fk-keyed
   "Given a numeric ID, look up a different identifying field for that entity, and return it as a portable ID.
   Eg. `User.email`, `Database.name`.
-  [[import-fk-field]] is the inverse.
-  Unusual parameter order lets this be called as, for example, `(update x :creator_id export-fk-field 'User :email).
+  [[import-fk-keyed]] is the inverse.
+  Unusual parameter order lets this be called as, for example, `(update x :creator_id export-fk-keyed 'User :email).
 
   Note: This assumes the primary key is called `:id`."
   [id model field]
   (db/select-one-field field model :id id))
 
-(defn import-fk-field
+(defn import-fk-keyed
   "Given a single, portable, identifying field and the model it refers to, this resolves the entity and returns its
   numeric `:id`.
   Eg. `User.email` or `Database.name`.
 
-  Unusual parameter order lets this be called as, for example, `(update x :creator_id import-fk-field 'User :email)`."
+  Unusual parameter order lets this be called as, for example, `(update x :creator_id import-fk-keyed 'User :email)`."
   [portable model field]
   (db/select-one-id model field portable))
 
