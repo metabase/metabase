@@ -264,7 +264,7 @@
   "Return a hash-key that will be used for linked-filters fieldvalues."
   metabase-enterprise.sandbox.models.params.field-values
   [field-id constraints]
-  default-hash-key-for-linked-filters)
+  (default-hash-key-for-linked-filters field-id constraints))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    CRUD fns                                                    |
