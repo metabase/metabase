@@ -429,8 +429,8 @@
   :default    true
   :visibility :authenticated)
 
-(defsetting show-homepage-illustration
-  (deferred-tru "Display the lighthouse illustration on the homepage.")
+(defsetting show-lighthouse-illustration
+  (deferred-tru "Display the lighthouse illustration on the home and login pages.")
   :visibility :public
   :type       :boolean
   :enabled?   premium-features/enable-whitelabeling?

@@ -90,8 +90,8 @@ if (hasPremiumFeature("whitelabel")) {
           getHidden: settings => hasCustomBranding(settings),
         },
         {
-          key: "show-homepage-illustration",
-          display_name: t`Homepage illustration`,
+          key: "show-lighthouse-illustration",
+          display_name: t`Lighthouse illustration`,
           type: "boolean",
         },
       ],

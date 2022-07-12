@@ -38,7 +38,7 @@ export const LayoutBody = styled.div`
   }
 `;
 
-export const LighthouseIllustration = styled.div`
+export const LayoutIllustration = styled.div`
   position: absolute;
   top: 0;
   left: 0;
