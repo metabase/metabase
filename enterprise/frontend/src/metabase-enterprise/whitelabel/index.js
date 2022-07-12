@@ -90,6 +90,11 @@ if (hasPremiumFeature("whitelabel")) {
           display_name: t`Lighthouse illustration`,
           type: "boolean",
         },
+        {
+          key: "show-lighthouse-illustration",
+          display_name: t`Lighthouse illustration`,
+          type: "boolean",
+        },
       ],
     },
     ...sections,
