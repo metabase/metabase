@@ -603,8 +603,8 @@ function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
               {actions.map(action => (
                 <ActionOption
                   key={action.id}
-                  name={action.card.name}
-                  description={action.card.description}
+                  name={action.card?.name || action.name}
+                  description={action.card?.description || action.description}
                   isSelected={clickBehavior.action === action.id}
                   onClick={() =>
                     updateSettings({
