@@ -110,3 +110,11 @@ export const shade = (c: string, f: number = 0.125) => {
   const value = Color(color(c));
   return value.lightness(value.lightness() - f * 100).hex();
 };
+
+export const isLight = (c: string) => {
+  return Color(color(c)).isLight();
+};
+
+export const isDark = (c: string) => {
+  return Color(color(c)).isDark();
+};
