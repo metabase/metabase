@@ -1000,22 +1000,12 @@ export const setParameterValue = createThunkAction(
       parameters,
       parameterValues,
     );
-
     const object = getParameterValuesBySlug(parametersWithValues, undefined, {
       preserveDefaultedParameters: true,
     });
-
     const searchString = buildSearchString(object);
 
     if (searchString !== window.location.search) {
-      console.log("history.replaceState");
-      console.log(
-        searchString,
-        ";",
-        window.location.search,
-        ";",
-        window.location.hash,
-      );
       history.replaceState(
         null,
         document.title,

@@ -40,7 +40,7 @@ export function SyncedParametersList({
   setParameterIndex,
   setEditingParameter,
 }) {
-  // TODO: this is uncommented to work for dashboards, it still needs to be there for other components
+  // TODO: this is commented to work for dashboards, it still needs to be there for other components
   // useSyncedQueryString(
   //   () =>
   //     getParameterValuesBySlug(
