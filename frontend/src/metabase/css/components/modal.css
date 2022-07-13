@@ -6,7 +6,7 @@
 }
 
 .ModalContainer {
-  z-index: 4;
+  z-index: 5;
 }
 
 .Modal {
@@ -46,7 +46,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 3;
+  z-index: 4;
 }
 
 .Modal-backdrop {
