@@ -289,13 +289,6 @@
   :type       :keyword
   :default    :doing-science)
 
-(defsetting show-metabot
-  (deferred-tru "Enables Metabot character on the home page")
-  :visibility :public
-  :type       :boolean
-  :enabled?   premium-features/enable-whitelabeling?
-  :default    true)
-
 (defsetting application-colors-migrated
   "Stores whether the `application-colors` setting has been migrated to 0.44 expectations"
   :visibility :internal
@@ -366,6 +359,36 @@
   :enabled?   premium-features/enable-whitelabeling?
   :default    "app/assets/img/favicon.ico")
 
+(defn has-custom-branding?
+  "Whether this instance has custom colors or logo set."
+  []
+  (or (not-empty (application-colors))
+      (not= (application-logo-url) "app/assets/img/logo.svg")))
+
+(defsetting show-metabot
+  (deferred-tru "Enables Metabot character on the home page")
+  :visibility :public
+  :type       :boolean
+  :enabled?   premium-features/enable-whitelabeling?
+  :getter     (fn []
+                (if-some [value (setting/get-value-of-type :boolean :show-metabot)]
+                  value
+                  (let [new-value (not (has-custom-branding?))]
+                    (setting/set-value-of-type! :boolean :show-metabot new-value)
+                    new-value))))
+
+(defsetting show-lighthouse-illustration
+  (deferred-tru "Display the lighthouse illustration on the home and login pages.")
+  :visibility :public
+  :type       :boolean
+  :enabled?   premium-features/enable-whitelabeling?
+  :getter     (fn []
+                (if-some [value (setting/get-value-of-type :boolean :show-lighthouse-illustration)]
+                  value
+                  (let [new-value (not (has-custom-branding?))]
+                    (setting/set-value-of-type! :boolean :show-lighthouse-illustration new-value)
+                    new-value))))
+
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
   :visibility :public
@@ -429,13 +452,6 @@
   :type       :boolean
   :default    true
   :visibility :authenticated)
-
-(defsetting show-lighthouse-illustration
-  (deferred-tru "Display the lighthouse illustration on the home and login pages.")
-  :visibility :public
-  :type       :boolean
-  :enabled?   premium-features/enable-whitelabeling?
-  :default    true)
 
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
