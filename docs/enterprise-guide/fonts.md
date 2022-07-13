@@ -100,7 +100,7 @@ And paste those URLS in the relevant input fields in **Admin settings** > **Sett
 
 ## Hosting fonts on GitHub
 
-If you host a font on GitHub, the font should be in a public repository, and you'll need to link to the raw font file (the URL should end with `?raw=true`, like in this fake link:
+If you host a font on GitHub, the font should be in a public repository, and you'll need to link to the raw font file. The URL should end with `?raw=true`, like in this fake link:
 
 ```
 https://github.com/username/repo/blob/main/fontfile.woff2?raw=true
