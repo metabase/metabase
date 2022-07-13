@@ -145,4 +145,4 @@
   [& body]
   `(with-actions-test-data
      (with-actions-enabled
-       (fn [] ~@body))))
+       ~@body)))

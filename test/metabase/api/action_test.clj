@@ -73,9 +73,6 @@
                          :update_row {:name "new-category-name"})
     :expected     {:rows-updated [1]}}])
 
-(defn- row-action? [action]
-  (str/starts-with? action "action/row"))
-
 (deftest happy-path-test
   (testing "Make sure it's possible to use known actions end-to-end if preconditions are satisfied"
     (actions.test-util/with-actions-test-data-and-actions-enabled
@@ -158,6 +155,9 @@
                                             {:database db-id
                                              :table-id table-id
                                              :values   {:name "Toucannery"}})))))))
+
+(defn- row-action? [action]
+  (str/starts-with? action "action/row"))
 
 (deftest validation-test
   (actions.test-util/with-actions-enabled
