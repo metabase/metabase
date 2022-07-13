@@ -114,7 +114,7 @@
         spec    (action-arg-map-spec action)
         arg-map (normalize-action-arg-map action arg-map)]
     (when (s/invalid? (s/conform spec arg-map))
-      (throw (ex-info (format "Invalid Action arg map: %s" (s/explain-str spec arg-map))
+      (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
     ;; Check that Actions are enabled globally.
     (when-not (experimental-enable-actions)
@@ -122,7 +122,7 @@
                       {:status-code 400})))
     ;; Check that Actions are enabled for this specific Database.
     (let [{database-id :database}                         arg-map
-          {db-settings :settings, driver :engine, :as db} (Database database-id)]
+          {db-settings :settings, driver :engine, :as db} (api/check-404 (Database database-id))]
       ;; make sure the Driver supports Actions.
       (when-not (driver/database-supports? driver :actions db)
         (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
@@ -145,25 +145,35 @@
 
 ;;;; Action definitions.
 
-;;; Common base spec for all Actions. All Actions at least require
+;;; Common base spec for *all* Actions. All Actions at least require
 ;;;
-;;;    {:database <id>, :query {:source-table <id>}}
+;;;    {:database <id>}
+;;;
+;;; Anything else required depends on the action type.
 
 (s/def :actions.args/id
   (s/and integer? pos?))
 
-(s/def :actions.args.crud.common/database
+(s/def :actions.args.common/database
   :actions.args/id)
 
-(s/def :actions.args.crud.common.query/source-table
+(s/def :actions.args/common
+  (s/keys :req-un [:actions.args.common/database]))
+
+;;; Common base spec for all CRUD row Actions. All CRUD row Actions at least require
+;;;
+;;;    {:database <id>, :query {:source-table <id>}}
+
+(s/def :actions.args.crud.row.common.query/source-table
   :actions.args/id)
 
-(s/def :actions.args.crud.common/query
-  (s/keys :req-un [:actions.args.crud.common.query/source-table]))
+(s/def :actions.args.crud.row.common/query
+  (s/keys :req-un [:actions.args.crud.row.common.query/source-table]))
 
-(s/def :actions.args.crud/common
-  (s/keys :req-un [:actions.args.crud.common/database
-                   :actions.args.crud.common/query]))
+(s/def :actions.args.crud.row/common
+  (s/merge
+   :actions.args/common
+   (s/keys :req-un [:actions.args.crud.row.common/query])))
 
 ;;; the various `:row/*` Actions all treat their args map as an MBQL query.
 
@@ -196,7 +206,7 @@
 
 (s/def :actions.args.crud/row.create
   (s/merge
-   :actions.args.crud/common
+   :actions.args.crud.row/common
    (s/keys :req-un [:actions.args.crud.row.create/create-row])))
 
 (defmethod action-arg-map-spec :row/create
@@ -220,7 +230,7 @@
 
 (s/def :actions.args.crud.row.update/query
   (s/merge
-   :actions.args.crud.common/query
+   :actions.args.crud.row.common/query
    (s/keys :req-un [:actions.args.crud.row.update.query/filter])))
 
 (s/def :actions.args.crud.row.update/update-row
@@ -228,7 +238,7 @@
 
 (s/def :actions.args.crud/row.update
   (s/merge
-   :actions.args.crud/common
+   :actions.args.crud.row/common
    (s/keys :req-un [:actions.args.crud.row.update/update-row
                     :actions.args.crud.row.update/query])))
 
@@ -252,12 +262,12 @@
 
 (s/def :actions.args.crud.row.delete/query
   (s/merge
-   :actions.args.crud.common/query
+   :actions.args.crud.row.common/query
    (s/keys :req-un [:actions.args.crud.row.delete.query/filter])))
 
 (s/def :actions.args.crud/row.delete
   (s/merge
-   :actions.args.crud/common
+   :actions.args.crud.row/common
    (s/keys :req-un [:actions.args.crud.row.delete/query])))
 
 (defmethod action-arg-map-spec :row/delete
@@ -271,15 +281,15 @@
 ;;; For `bulk/create` the request body is to `POST /api/action/:action-namespace/:action-name/:table-id` is just a
 ;;; vector of rows but the API endpoint itself calls [[perform-action!]] with
 ;;;
-;;;    {:table-id <table-id>, :arg <request-body>}
+;;;    {:database <database-id>, :table-id <table-id>, :arg <request-body>}
 ;;;
 ;;; and we transform this to
 ;;;
-;;;     {:table-id <table-id>, :rows <request-body>}
+;;;     {:database <database-id>, :table-id <table-id>, :rows <request-body>}
 
 (defmethod normalize-action-arg-map :bulk/create
-  [{:keys [table-id], rows :arg, :as _arg-map}]
-  {:table-id table-id, :rows rows})
+  [_action {:keys [database table-id], rows :arg, :as _arg-map}]
+  {:database database, :table-id table-id, :rows rows})
 
 (s/def :actions.args.crud.bulk.create/table-id
   :actions.args/id)
@@ -289,7 +299,7 @@
 
 (s/def :actions.args.crud.bulk/create
   (s/merge
-   :actions.args.crud/common
+   :actions.args/common
    (s/keys :req-un [:actions.args.crud.bulk.create/table-id
                     :actions.args.crud.bulk.create/rows])))
 
