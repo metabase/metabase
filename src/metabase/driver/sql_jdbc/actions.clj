@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.actions
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql.format :as hformat]
             [medley.core :as m]
             [metabase.actions :as actions]
@@ -233,3 +234,28 @@
                                   :driver     driver
                                   :raw-hsql   raw-hsql
                                   :create-sql create-hsql}))))}))
+
+(defmethod actions/perform-action!* [:sql-jdbc :bulk/create]
+  [driver _action {database-id :id, :as database} {:keys [table-id rows]}]
+  (log/tracef "Inserting %d rows" (count rows))
+  ;; TODO -- do inside transaction.
+  ;;
+  ;; TODO -- better error handling.
+  (transduce
+   identity
+   (fn
+     ([] [])
+     ([results]
+      {:created-rows results})
+     ([results row]
+      (log/tracef "INSERTING ROW => %s" (pr-str row))
+      (let [result (actions/perform-action!*
+                    driver
+                    :row/create
+                    database
+                    {:database   database-id
+                     :type       :query
+                     :query      {:source-table table-id}
+                     :create-row row})]
+        (conj results (:created-row result)))))
+   rows))

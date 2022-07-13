@@ -205,3 +205,20 @@
           (is (= "Failed to fetch Table 2,147,483,647: Table does not exist, or belongs to a different Database."
                  (:message (mt/user-http-request :crowberto :post 404 action
                                                  (assoc-in request-body [:query :source-table] Integer/MAX_VALUE))))))))))
+
+(deftest bulk-insert-test
+  (actions.test-util/with-actions-test-data-and-actions-enabled
+    (is (= [75]
+           (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]]}))))
+    (is (= {:created-rows [{:id 76, :name "NEW_A"}
+                           {:id 77, :name "NEW_B"}]}
+           (mt/user-http-request :crowberto :post 200
+                                 (format "action/bulk/create/%d" (mt/id :categories))
+                                 [{:name "NEW_A"}
+                                  {:name "NEW_B"}])))
+    (is (= [[76 "NEW_A"]
+            [77 "NEW_B"]]
+           (mt/rows (mt/run-mbql-query categories {:filter   [:starts-with $name "NEW"]
+                                                   :order-by [[:asc $id]]}))))
+    (is (= [77]
+           (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]]}))))))

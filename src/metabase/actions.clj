@@ -263,3 +263,36 @@
 (defmethod action-arg-map-spec :row/delete
   [_action]
   :actions.args.crud/row.delete)
+
+;;;; Bulk actions
+
+;;;; `:bulk/create`
+
+;;; For `bulk/create` the request body is to `POST /api/action/:action-namespace/:action-name/:table-id` is just a
+;;; vector of rows but the API endpoint itself calls [[perform-action!]] with
+;;;
+;;;    {:table-id <table-id>, :arg <request-body>}
+;;;
+;;; and we transform this to
+;;;
+;;;     {:table-id <table-id>, :rows <request-body>}
+
+(defmethod normalize-action-arg-map :bulk/create
+  [{:keys [table-id], rows :arg, :as _arg-map}]
+  {:table-id table-id, :rows rows})
+
+(s/def :actions.args.crud.bulk.create/table-id
+  :actions.args/id)
+
+(s/def :actions.args.crud.bulk.create/rows
+  (s/cat :rows (s/+ (s/map-of keyword? any?))))
+
+(s/def :actions.args.crud.bulk/create
+  (s/merge
+   :actions.args.crud/common
+   (s/keys :req-un [:actions.args.crud.bulk.create/table-id
+                    :actions.args.crud.bulk.create/rows])))
+
+(defmethod action-arg-map-spec :bulk/create
+  [_action]
+  :actions.args.crud.bulk/create)
