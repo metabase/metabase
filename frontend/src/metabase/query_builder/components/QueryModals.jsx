@@ -36,7 +36,8 @@ import QuestionMoveToast from "./QuestionMoveToast";
 import { createRowFromTableView } from "metabase/query_builder/actions/writeback";
 
 const mapDispatchToProps = dispatch => ({
-  setQuestionCollection: Questions.actions.setCollection,
+  setQuestionCollection: (...args) =>
+    dispatch(Questions.actions.setCollection(...args)),
   createRowFromTableView: payload => dispatch(createRowFromTableView(payload)),
 });
 

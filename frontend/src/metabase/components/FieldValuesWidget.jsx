@@ -321,45 +321,44 @@ class FieldValuesWidgetInner extends Component {
               }
             />
           ))}
-        {!usesListField ||
-          (forceTokenField && (
-            <TokenField
-              prefix={prefix}
-              value={value.filter(v => v != null)}
-              onChange={onChange}
-              placeholder={tokenFieldPlaceholder}
-              updateOnInputChange
-              // forwarded props
-              multi={multi}
-              autoFocus={autoFocus}
-              color={color}
-              style={{ ...style, minWidth: "inherit" }}
-              className={className}
-              optionsStyle={
-                !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
-              }
-              // end forwarded props
-              options={options}
-              valueKey="0"
-              valueRenderer={valueRenderer}
-              optionRenderer={optionRenderer}
-              layoutRenderer={layoutRenderer}
-              filterOption={(option, filterString) => {
-                const lowerCaseFilterString = filterString.toLowerCase();
-                return option.some(
-                  value =>
-                    value != null &&
-                    String(value).toLowerCase().includes(lowerCaseFilterString),
-                );
-              }}
-              onInputChange={this.onInputChange}
-              parseFreeformValue={value => {
-                return fields[0].isNumeric()
-                  ? parseNumberValue(value)
-                  : parseStringValue(value);
-              }}
-            />
-          ))}
+        {(!usesListField || forceTokenField) && (
+          <TokenField
+            prefix={prefix}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            placeholder={tokenFieldPlaceholder}
+            updateOnInputChange
+            // forwarded props
+            multi={multi}
+            autoFocus={autoFocus}
+            color={color}
+            style={{ ...style, minWidth: "inherit" }}
+            className={className}
+            optionsStyle={
+              !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
+            }
+            // end forwarded props
+            options={options}
+            valueKey="0"
+            valueRenderer={valueRenderer}
+            optionRenderer={optionRenderer}
+            layoutRenderer={layoutRenderer}
+            filterOption={(option, filterString) => {
+              const lowerCaseFilterString = filterString.toLowerCase();
+              return option.some(
+                value =>
+                  value != null &&
+                  String(value).toLowerCase().includes(lowerCaseFilterString),
+              );
+            }}
+            onInputChange={this.onInputChange}
+            parseFreeformValue={value => {
+              return fields[0].isNumeric()
+                ? parseNumberValue(value)
+                : parseStringValue(value);
+            }}
+          />
+        )}
       </div>
     );
   }
