@@ -61,23 +61,11 @@ Table "SOMEWHERE" not found
 
 If you see this message, use another application (e.g., `psql` for PostreSQL) to send the same query to the database. If it also produces a "table not found" message, check the database schema and the spelling of the table name.
 
-Be sure to log in using the same credentials that Metabase uses. A common source of problems is that the Metabase "user" lacks the same privileges as a member of IT staff or a developer, so tables that are visible to the latter using external applications are invisible to Metabase.
-
-## Can the Metabase account access the table?
-
-**Root cause:** The login ID that Metabase uses to query the database lacks privileges to view the table.
-
-**Steps to take:** Use the SQL Editor to write and run a simple query like the one shown immediately above:
-
-```
-select * from SOMEWHERE
-```
-
-where `SOMEWHERE` is the table you think you should be able to see. If Metabase produces an error message saying the table can't be found, run the same query using another application. Again, make sure to log in using the same credentails that Metabase uses, not your regular account.
+Be sure to log in using the same credentials that Metabase uses. A common source of problems is that the Metabase "user" lacks the same privileges as a member of IT staff or a developer, so tables that are visible to the latter using external applications are invisible to Metabase. For more information, see [Troubleshooting database permissions][troubleshooting-database-permissions].
 
 ## Does the person who cannot see the table have permission to view it?
 
-**Root cause:** Metabase uses a group-based permission model: people belong to groups, and administrators can set permissions so that some groups cannot see all of the tables. (It also allows administrators to control which rows or columns specific people can see---issues with that are covered in the troubleshooting guide for [sandboxing][sandboxing].)
+**Root cause:** Metabase uses a group-based permission model: people belong to groups, and administrators can set permissions so that some groups cannot see all of the tables.
 
 **Steps to take:**
 
@@ -85,10 +73,7 @@ where `SOMEWHERE` is the table you think you should be able to see. If Metabase 
 2. Confirm that the tables are not visible.
 3. Log out, then log in using the administrator's credentials.
 
-If the administrator's account can see the tables but an individual person cannot:
-
-1. Go to Admin > Permissions and see if any groups have been denied access to the table.
-2. If any groups have been denied access, go to Admin > People and look at the "Groups" column for the person who can't see the expected tables. If they're in a group that lacks access to the table, you may need to move them to another group or change table permissions.
+If the administrator's account can see the tables but an individual person cannot, see [Troubleshooting permissions][troubleshooting-permissions].
 
 ## Is Metabase's metadata out of sync with the state of the database?
 
@@ -109,3 +94,5 @@ If the administrator's account can see the tables but an individual person canno
 [data-browser]: /learn/getting-started/data-browser.html
 [data-model]: ../administration-guide/03-metadata-editing.html
 [sandboxing]: ./sandboxing.html
+[troubleshooting-permissions]: ./permissions.html
+[troubleshooting-database-permissions]: (./data-permissions.html#troubleshooting-database-permissions)
