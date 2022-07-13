@@ -112,7 +112,7 @@
   ;; Validate the arg map.
   (let [action  (keyword action)
         spec    (action-arg-map-spec action)
-        arg-map (normalize-action-arg-map arg-map)]
+        arg-map (normalize-action-arg-map action arg-map)]
     (when (s/invalid? (s/conform spec arg-map))
       (throw (ex-info (format "Invalid Action arg map: %s" (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
