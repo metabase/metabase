@@ -88,7 +88,7 @@
         (keys (methods perform-action!*))))
 
 (defmethod perform-action!* :default
-  [driver action _arg-map]
+  [driver action _database _arg-map]
   (let [action        (keyword action)
         known-actions (known-actions)]
     ;; return 404 if the action doesn't exist.
@@ -188,7 +188,7 @@
 ;;;     :create-row <map>}
 
 (defmethod normalize-action-arg-map :row/create
-  [query]
+  [_action query]
   (normalize-as-mbql-query query))
 
 (s/def :actions.args.crud.row.create/create-row
@@ -212,7 +212,7 @@
 ;;;     :update-row <map>}
 
 (defmethod normalize-action-arg-map :row/update
-  [query]
+  [_action query]
   (normalize-as-mbql-query query))
 
 (s/def :actions.args.crud.row.update.query/filter
@@ -244,7 +244,7 @@
 ;;;     :query    {:source-table <id>, :filter <mbql-filter-clause>}}
 
 (defmethod normalize-action-arg-map :row/delete
-  [query]
+  [_action query]
   (normalize-as-mbql-query query))
 
 (s/def :actions.args.crud.row.delete.query/filter

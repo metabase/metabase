@@ -161,12 +161,11 @@
 
 (deftest validation-test
   (actions.test-util/with-actions-enabled
-    (doseq [{:keys [action request-body]} (mock-requests)
-            k [:query :type]]
-      (testing (str action " without " k)
+    (doseq [{:keys [action request-body]} (mock-requests)]
+      (testing (str action " without :query")
         (when (row-action? action)
           (is (re= #"Value does not match schema:.*"
-                   (:message (mt/user-http-request :crowberto :post 400 action (dissoc request-body k))))))))))
+                   (:message (mt/user-http-request :crowberto :post 400 action (dissoc request-body :query))))))))))
 
 (deftest row-update-action-gives-400-when-matching-more-than-one
   (actions.test-util/with-actions-enabled
@@ -195,8 +194,8 @@
 (deftest unknown-row-action-gives-404
   (actions.test-util/with-actions-enabled
     (testing "404 for unknown Row action"
-      (is (= "Unknown row action \"fake\"."
-             (:message (mt/user-http-request :crowberto :post 404 "action/row/fake" (mt/mbql-query categories {:filter [:= $id 1]}))))))))
+      (is (re= #"^Unknown Action :row/fake. Valid Actions are: .+"
+               (mt/user-http-request :crowberto :post 404 "action/row/fake" (mt/mbql-query categories {:filter [:= $id 1]})))))))
 
 (deftest four-oh-four-test
   (actions.test-util/with-actions-enabled
