@@ -184,7 +184,7 @@
           (testing "for native query snippets"
             (is (= 10 (count (dir->file-set (io/file dump-dir "NativeQuerySnippet")))))
             (doseq [{:keys [entity_id name] :as snippet} (get entities "NativeQuerySnippet")
-                    :let [filename (str entity_id "+" name ".yaml")]]
+                    :let [filename (str entity_id "+" (#'u.yaml/truncate-label name) ".yaml")]]
               (is (= (-> snippet
                          (dissoc :serdes/meta)
                          (update :created_at u.date/format)
@@ -209,5 +209,8 @@
 
             (testing "each entity matches its in-memory original"
               (doseq [entity extraction]
-                (is (= (update entity :serdes/meta strip-labels)
-                       (ingest/ingest-one ingestable (serdes.base/serdes-path entity))))))))))))
+                (let [ingested (ingest/ingest-one ingestable (serdes.base/serdes-path entity))]
+                  (when (-> entity :serdes/meta first :model (= "NativeQuerySnippet"))
+                    (prn (type (:created_at ingested)) (type (:created_at entity))))
+                  (is (= (update entity :serdes/meta strip-labels)
+                         ingested)))))))))))
