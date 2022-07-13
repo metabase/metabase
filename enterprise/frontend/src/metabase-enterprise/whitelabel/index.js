@@ -89,6 +89,7 @@ if (hasPremiumFeature("whitelabel")) {
           key: "show-lighthouse-illustration",
           display_name: t`Lighthouse illustration`,
           type: "boolean",
+          defaultValue: true,
         },
       ],
     },
