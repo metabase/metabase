@@ -1,56 +1,52 @@
 ---
-title: Fixing permissions issues
+title: Troubleshooting permissions
 ---
 
-# Fixing permissions issues
+# Troubleshooting permissions
 
-This troubleshooting guide has you covered if you've [connected your database][connecting-database] to Metabase, set up [groups][groups] for new people, and granted [data permissions][data-permissions] and [collection permissions][setting-collection-permissions] to those groups, but:
+If someone has the wrong level of access to a dashboard or a question, the problem may be coming from group settings, collection permissions, or data permissions.
 
-- [A person in multiple groups can access a table that you want to restrict](#a-person-in-multiple-groups-can-access-a-table-that-you-want-to-restrict)
-- [A person who needs to access the SQL editor can't](#a-person-who-needs-to-access-the-sql-editor-cant)
-- [A person can view collections that reference data you want to restrict](#a-person-can-view-collections-that-reference-data-you-want-to-restrict)
+1. Go to **Admin** > **People** and check if the person is in [more than one group with conflicting permissions][group-permissions].
+2. If a person can't view or edit questions or dashboards, see [Troubleshooting collection permissions](#troubleshooting-collection-permissions).
+3. If a person can't access schemas, tables, rows, or columns, see [Troubleshooting data permissions](#troubleshooting-data-permissions).
 
-## A person in multiple groups can access a table that you want to restrict
+## [Troubleshooting collection permissions][troubleshooting-collection-permissions]
 
-**Root cause:** This person is a member of multiple [groups][groups], in which case Metabase grants the _most permissive_ level of access across all the groups in which they're a member.
+- [People can't access a dashboard in a collection that they have permissions for](./collection-permissions#people-cant-access-a-dashboard-from-a-collection-that-they-have-permissions-for).
+- [People have collection permissions that override their data permissions](./data-permissions#people-have-collection-permissions-that-override-their-data-permissions).
 
-If they're a member of two groups — one which grants [Unrestricted][unrestricted] access to a database or table and another that grants [No self-service][no-self-service] access — that person will have full unrestricted access.
+## [Troubleshooting data permissions][troubleshooting-data-permissions]
 
-**Steps to take:**
+### Row and column permissions
 
-1. In the **People tab** of the **Admin Panel**, take a look at which groups the person is in.
-2. Either remove the person from the group with wider permissions, or adjust that group's data permissions to grant them no-self service access to the table you want restricted.
+- [Troubleshooting data sandboxing][troubleshooting-data-sandboxing].
 
-Remember that everyone is a member of the **All Users** group. We recommend you revoke permissions from the **All users** group, and create new groups to selectively apply permissions to your data sources.
+### Native query (SQL) permissions
 
-## A person who needs to access the SQL editor can't
+- [People can't access the SQL editor](#people-cant-access-the-sql-editor).
+- [People with SQL permissions can see data that should be restricted by a data sandbox](./sandboxing.html#is-the-question-written-in-sql).
+- [People can't _view_ native SQL questions when a block permission is applied to "All Users"](https://github.com/metabase/metabase/issues/21695).
 
-**Root cause:** The person currently has either **No self-service** or [Granular][granular] access to a database. To give someone access to the [native SQL editor][native-query-editing], you must grant **Unrestricted** access to the database as a whole.
+### Table or schema permissions
 
-**Steps to take**:
-
-1. In the **Admin Panel**'s **Permissions tab**, change the group's permissions to **Unrestricted** at the database level.
-
-## A person can view collections that reference data you want to restrict
-
-{% include plans-blockquote.html %}
-
-**Root cause:** Since Metabase operates with two types of permissions — data permissions and collection permissions — even if you've granted a user group no self-service access to a database or table, they can still view saved questions and dashboards that draw on that database, as long as those questions and dashboards live in a collection they have access to. Unless a user group's access to a given database is set to “block," they’ll be able to view any saved question based on that data if they have access to the collection it’s saved in.
-
-**Steps to take:**
-
-1. If you're running a [paid version of Metabase](https://www.metabase.com/pricing), you can block group access to an entire database. This means that if you've blocked a group's access to a database, members of that group will not ever seen any data from this database, regardless of their permissions at the Collection level.
-2. In the **Admin Panel**'s **Permissions tab**, change data permissions for your user group to **Block** and save your changes.
-3. Using an incognito window, log in as the person in question to confirm that they can no longer view saved questions or dashboards that include information from the blocked database.
-
-Keep in mind that if a person belongs to another group that does have data access, that setting will take precedence, and their access will not be blocked.
+- [People have the wrong access to a table or schema](./data-permissions#people-have-the-wrong-access-to-a-table-or-schema).
+- [People have collection permissions that override their data permissions](./data-permissions#people-have-collection-permissions-that-override-their-data-permissions).
+- [Permission denied to a table or schema](./data-permissions#permission-denied-to-table-or-schema)
+- [Checking someone's access to a table or schema](./data-permissions#checking-someones-access-to-a-table-or-schema).
 
 ## Further reading
 
-- [Setting permissions in Metabase][admin-permissions].
+- [Permissions overview][admin-permissions].
 - [Collection permissions][collection-permissions].
-- [Permissions track][learn-permissions] in Learn Metabase.
-- [Troubleshooting data sandboxing][sandboxing].
+- [Data permissions][data-permissions].
+- [Permissions tutorials][learn-permissions] in Learn Metabase.
+
+## Are you still stuck?
+
+If you can’t solve your problem using the troubleshooting guides:
+
+- Search or ask the [Metabase community][discourse].
+- Search for [known bugs or limitations][known-issues].
 
 [admin-permissions]: ../administration-guide/05-setting-permissions.html
 [collection-permissions]: ../administration-guide/06-collections.html
@@ -58,11 +54,12 @@ Keep in mind that if a person belongs to another group that does have data acces
 [data-browser]: /learn/getting-started/data-browser.html
 [data-model]: ../administration-guide/03-metadata-editing.html
 [data-permissions]: ../administration-guide/data-permissions.html
+[discourse]: https://discourse.metabase.com/
 [granular]: ../administration-guide/data-permissions.html#granular-access
-[groups]: ../administration-guide/04-managing-users.html#groups
+[known-issues]: ./known-issues.html
 [learn-permissions]: /learn/permissions/index.html
-[native-query-editing]: ../administration-guide/data-permissions.html#native-querying
-[no-self-service]: ../administration-guide/data-permissions.html#no-self-service-access
 [sandboxing]: ./sandboxing.html
 [setting-collection-permissions]: ../administration-guide/06-collections.html#setting-permissions-for-collections
-[unrestricted]: ../administration-guide/data-permissions.html#unrestricted-access
+[troubleshooting-collection-permissions]: ./collection-permissions.html
+[troubleshooting-data-permissions]: ./data-permissions.html
+[troubleshooting-data-sandboxing]: ./sandboxing.html
