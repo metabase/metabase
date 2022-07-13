@@ -45,6 +45,7 @@ export const DashboardStyled = styled.div`
 `;
 
 export const DashboardBody = styled.div`
+  position: relative;
   display: flex;
   flex: 1 0 auto;
   min-width: 0;

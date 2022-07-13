@@ -19,7 +19,8 @@
   #{:snippets})
 
 (defn- pre-insert [snippet]
-  (u/prog1 snippet
+  (u/prog1 (merge {:template_tags {}}
+                  snippet)
     (collection/check-collection-namespace NativeQuerySnippet (:collection_id snippet))))
 
 (defn- pre-update [{:keys [creator_id id], :as updates}]
@@ -36,6 +37,7 @@
    models/IModelDefaults
    {:properties (constantly {:timestamped? true
                              :entity_id    true})
+    :types      (constantly {:template_tags :template-tags})
     :pre-insert pre-insert
     :pre-update pre-update})
 

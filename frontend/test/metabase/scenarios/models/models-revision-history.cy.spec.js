@@ -2,6 +2,7 @@ import {
   restore,
   modal,
   filter,
+  filterField,
   visitQuestion,
   openQuestionActions,
   closeQuestionActions,
@@ -11,7 +12,6 @@ import {
 import {
   assertIsModel,
   assertQuestionIsBasedOnModel,
-  selectFromDropdown,
   saveQuestionBasedOnModel,
   assertIsQuestion,
 } from "./helpers/e2e-models-helpers";
@@ -48,8 +48,9 @@ describe("scenarios > models > revision history", () => {
     cy.get(".LineAreaBarChart");
 
     filter();
-    cy.findByLabelText("Discount").findByText("Between").click();
-    selectFromDropdown("Not empty");
+    filterField("Discount", {
+      operator: "Not empty",
+    });
 
     cy.button("Apply").click();
 
@@ -85,8 +86,10 @@ describe("scenarios > models > revision history", () => {
     cy.get(".LineAreaBarChart").should("not.exist");
 
     filter();
-    cy.findByLabelText("Count").click();
-    cy.findByPlaceholderText("min").type("2000");
+    filterField("Count", {
+      placeholder: "min",
+      value: "2000",
+    });
     cy.button("Apply").click();
 
     assertQuestionIsBasedOnModel({

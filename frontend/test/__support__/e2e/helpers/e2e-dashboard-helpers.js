@@ -47,3 +47,11 @@ export function setFilter(type, subType) {
     }
   });
 }
+
+export function addTextBox(string, options = {}) {
+  cy.icon("pencil").click();
+  cy.icon("string").click();
+  cy.findByPlaceholderText(
+    "You can use Markdown here, and include variables {{like_this}}",
+  ).type(string, options);
+}

@@ -45,6 +45,7 @@ import {
   StyledLastEditInfoLabel,
   StyledQuestionDataSource,
   SavedQuestionLeftSideRoot,
+  AdHocLeftSideRoot,
   HeaderDivider,
   ViewHeaderActionPanel,
 } from "./ViewHeader.styled";
@@ -267,7 +268,7 @@ function AhHocQuestionLeftSide(props) {
 
   const handleTitleClick = () => onOpenModal(MODAL_TYPES.SAVE);
   return (
-    <div>
+    <AdHocLeftSideRoot>
       <ViewHeaderMainLeftContentContainer>
         <AdHocViewHeading color="medium">
           {isNative ? (
@@ -293,7 +294,7 @@ function AhHocQuestionLeftSide(props) {
           />
         )}
       </ViewHeaderLeftSubHeading>
-    </div>
+    </AdHocLeftSideRoot>
   );
 }
 

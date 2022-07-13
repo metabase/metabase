@@ -133,6 +133,12 @@ export const StyledQuestionDataSource = styled(QuestionDataSource)`
   }
 `;
 
+export const AdHocLeftSideRoot = styled.div`
+  ${breakpointMaxSmall} {
+    padding: 0 1.25rem;
+  }
+`;
+
 export const SavedQuestionLeftSideRoot = styled.div`
   ${SavedQuestionHeaderButtonContainer} {
     transition: all 400ms ease;

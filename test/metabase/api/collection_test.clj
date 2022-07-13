@@ -1430,26 +1430,6 @@
                (-> (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id collection))
                                          {:name "foo"})
                    :authority_level)))))
-    (testing "Admins can mark a tree as official"
-      (mt/with-temp* [Collection [collection]
-                      Collection [sub-collection]
-                      Collection [sub-sub-collection]]
-        (collection/move-collection! sub-collection (collection/children-location collection))
-        (collection/move-collection! sub-sub-collection
-                                     ;; needs updated path so reload
-                                     (collection/children-location (Collection (:id sub-collection))))
-        (is (= "official"
-               (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                         {:authority_level "official" :update_collection_tree_authority_level true})
-                   :authority_level)))
-        ;; descended and marked sub collections
-        (is (= :official (db/select-one-field :authority_level Collection :id (:id sub-collection))))
-        (is (= :official (db/select-one-field :authority_level Collection :id (:id sub-sub-collection))))
-        (testing "Non-admins cannot apply types to the whole tree"
-          (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
-                                {:name "new name" :update_collection_tree_authority_level true})
-          (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
-                                {:name "new name" :authority_level nil :update_collection_tree_authority_level true}))))
     (testing "check that users without write perms aren't allowed to update a Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]

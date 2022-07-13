@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [clojure.walk :as walk]
             [medley.core :as m]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -351,6 +352,27 @@
                            (s/optional-key :card_id) IntGreaterThanZero
                            s/Keyword                 s/Any}
     (deferred-tru "parameter_mapping must be a map with :parameter_id and :target keys")))
+
+(def ^:private TemplateTagSchema
+  ;; For the full schema that we use in MBQL, check [[metabase.mbql.schema/TemplateTagMap]]
+  {(s/either NonBlankString s/Keyword) {:id                            NonBlankString
+                                        :name                          NonBlankString
+                                        :type                          (apply s/enum (map name mbql.s/template-tag-types))
+                                        (s/optional-key :display-name) s/Str
+                                        (s/optional-key :default)      s/Any
+                                        s/Keyword                      s/Any}})
+
+(def TemplateTags
+  "Schema for a valid Template tags."
+  (with-api-error-message
+    (s/constrained
+      TemplateTagSchema
+      (fn [m]
+        (every? (fn [[tag-name tag-definition]]
+                  (= (name tag-name) (:name tag-definition)))
+                m))
+      "keys in template tag map must match the :name of their values")
+   (deferred-tru "template tags must be a map with key of name->TemplateTag.")))
 
 (def EmbeddingParams
   "Schema for a valid map of embedding params."

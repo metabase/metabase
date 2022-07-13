@@ -1,6 +1,6 @@
 import React, { forwardRef, Ref } from "react";
-import cx from "classnames";
 import { t } from "ttag";
+import { LogoRoot } from "./MetabotLogo.styled";
 
 export interface MetabotLogoProps {
   className?: string;
@@ -11,8 +11,8 @@ const MetabotLogo = forwardRef(function MetabotLogo(
   ref: Ref<HTMLImageElement>,
 ) {
   return (
-    <img
-      className={cx("brand-hue", props.className)}
+    <LogoRoot
+      {...props}
       ref={ref}
       alt={t`Metabot`}
       src="app/assets/img/metabot.svg"
