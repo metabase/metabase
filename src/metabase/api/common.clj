@@ -235,7 +235,7 @@
    :route       (some-fn string? sequential?)
    :docstr      (s/? string?)
    :args        vector?
-   :arg->schema (s/? (every-pred map? #(every? symbol? (keys %))))
+   :arg->schema (s/? (s/map-of symbol? any?))
    :body        (s/* any?)))
 
 (defn- parse-defendpoint-args [args]
@@ -243,12 +243,12 @@
     (when (= parsed ::s/invalid)
       (throw (ex-info (str "Invalid defendpoint args: " (s/explain-str ::defendpoint-args args))
                       (s/explain-data ::defendpoint-args args))))
-    (let [{:keys [method route docstr arg->schema body]} parsed
-          fn-name                                        (route-fn-name method route)
-          route                                          (add-route-param-regexes route)
+    (let [{:keys [method route docstr args arg->schema body]} parsed
+          fn-name                                             (route-fn-name method route)
+          route                                               (add-route-param-regexes route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
-          docstr                                         (route-dox method route docstr args (m/map-vals eval arg->schema) body)]
+          docstr                                              (route-dox method route docstr args (m/map-vals eval arg->schema) body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
