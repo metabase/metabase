@@ -48,7 +48,7 @@ function getFieldTypeProps(field: Field) {
   if (field.semantic_type === TYPE.Title) {
     return { type: "input" };
   }
-  if (field.isCategory()) {
+  if (field.isCategory() && field.semantic_type !== TYPE.Name) {
     return {
       fieldInstance: field,
       widget: CategoryFieldPicker,
