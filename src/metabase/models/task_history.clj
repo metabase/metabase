@@ -50,13 +50,9 @@
            :task_details (json/generate-string task-details)
            :started_at   (str (:started_at task))
            :ended_at     (str (:ended_at task))}
-          (when-let [db-id (or (:db_id task-details)
-                               (:db-id task-details))]
+          (when-let [db-id (:db_id task)]
             {:db_id     db-id
-             :db_engine (or
-                          (:db_engine task-details)
-                          (:db-engine task-details)
-                          (db/select-one-field :engine Database :id db-id))}))))
+             :db_engine (db/select-one-field :engine Database :id db-id)}))))
 
 (defn- post-insert
   [task]
