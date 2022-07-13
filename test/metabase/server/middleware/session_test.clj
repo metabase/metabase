@@ -9,6 +9,7 @@
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models :refer [PermissionsGroupMembership Session User]]
+            [metabase.public-settings :as public-settings]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.server.middleware.session :as mw.session]
@@ -414,17 +415,6 @@
              (mw.session/session-timeout->seconds {:amount 0
                                                    :unit   "minutes"}))))
 
-    (testing "We don't update cookie expires attributes if `session-timeout-seconds` is nil.
-              Note if an admin changes the session-timeout from a non-nil to nil value, then all users sessions will eventually expire.
-              This is a correctness bug, but we can leave it for now as it is unlikely to have much impact on UX.
-              The alternative is to try to remove the session-timeout-cookie on every request if `session-timeout-seconds` is nil, or
-              to set it without an expires attribute."
-      (mt/with-temporary-setting-values [session-timeout nil]
-        (let [request {:cookies {session-cookie         {:value "session-id"}
-                                 session-timeout-cookie {:value "alive"}}}]
-          (is (= response
-                 (mw.session/reset-session-timeout-on-response request response request-time))))))
-
     (testing "non-nil `session-timeout-seconds` should set the expiry relative to the request time"
       (mt/with-temporary-setting-values [session-timeout {:amount 60
                                                           :unit   "minutes"}]
@@ -461,25 +451,54 @@
                                                        :expires   "Sat, 1 Jan 2022 01:00:00 GMT"}}}
                    (mw.session/reset-session-timeout-on-response request response request-time)))))))
 
-
-    (testing "If the request does not have a `metabase.TIMEOUT` cookie (because it has expired), it should not be reset."
+    (testing "If the request does not have session cookies (because they have expired), they should not be reset."
       (mt/with-temporary-setting-values [session-timeout {:amount 60
                                                           :unit   "minutes"}]
         (let [request {:cookies {}}]
           (is (= response
                  (mw.session/reset-session-timeout-on-response request response request-time))))))
 
-    (testing "If [[public-settings/session-cookies]] is true, then the session and timeout cookies shouldn't have a max age or expires attribute."
-      (mt/with-temporary-setting-values [session-timeout nil
-                                         public-settings/session-cookies true]
-        (let [request {:cookies {}}
-              session {:id session-id, :type :normal}]
-          (is (= {:body    "some body"
-                  :cookies {"metabase.TIMEOUT" {:value     "alive"
-                                                :same-site :lax
-                                                :path      "/"},
-                            "metabase.SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a"
-                                                :same-site :lax
-                                                :path      "/"
-                                                :http-only true}}}
-                 (mw.session/set-session-cookies request response session request-time))))))))
+    (testing "If [[public-settings/session-cookies]] is true, then the session and timeout cookies
+              shouldn't have a max age or expires attribute."
+      (with-redefs [env/env (assoc env/env :max-session-age "1")]
+        (mt/with-temporary-setting-values [session-timeout nil
+                                           public-settings/session-cookies true]
+          (let [request {:metabase-session-id             session-id
+                         :metabase-session-type           :normal
+                         :cookies {session-cookie         {:value "session-id"}
+                                   session-timeout-cookie {:value "alive"}}}
+                session {:id session-id, :type :normal}]
+            (is (= {:body    "some body"
+                    :cookies {"metabase.TIMEOUT" {:value     "alive"
+                                                  :same-site :lax
+                                                  :path      "/"},
+                              "metabase.SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a"
+                                                  :same-site :lax
+                                                  :path      "/"
+                                                  :http-only true}}}
+                   (mw.session/set-session-cookies request response session request-time)))))))
+
+    (testing "If [[public-settings/session-cookies]] is false, the user has checked 'Remember me'
+              on login, and there is session-timeout is nil, the session and timeout cookies should
+              have a max-age."
+      (with-redefs [env/env (assoc env/env :max-session-age "1")]
+        (mt/with-temporary-setting-values [session-timeout nil
+                                           public-settings/session-cookies false]
+          (let [request {:body                  {:remember true}
+                         :metabase-session-id   session-id
+                         :metabase-session-type :normal
+                         :cookies               {session-cookie         {:value "session-id"}
+                                                 session-timeout-cookie {:value "alive"}}}
+                session {:id   session-id
+                         :type :normal}]
+            (is (= {:body    "some body",
+                    :cookies {"metabase.TIMEOUT" {:value     "alive"
+                                                  :same-site :lax
+                                                  :path      "/"
+                                                  :max-age   60},
+                              "metabase.SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
+                                                  :same-site :lax,
+                                                  :path      "/",
+                                                  :max-age   60,
+                                                  :http-only true}}}
+                   (mw.session/set-session-cookies request response session request-time)))))))))

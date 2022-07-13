@@ -361,10 +361,8 @@
   (if (and
        ;; Only reset the timeout if the request includes a session cookie.
        (:metabase-session-type request)
-       ;; Do not reset the timeout if it is being updated in the response (such as being deleted)
-       (not (contains? (:cookies response) metabase-session-timeout-cookie))
-       ;; Only reset the timeout if the setting-timeout setting is non-nil.
-       (session-timeout-seconds))
+       ;; Do not reset the timeout if it is being updated in the response, e.g. if it is being deleted
+       (not (contains? (:cookies response) metabase-session-timeout-cookie)))
     (set-session-cookies request response {:id   (:metabase-session-id request)
                                            :type (:metabase-session-type request)} request-time)
     response))
