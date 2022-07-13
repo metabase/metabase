@@ -18,6 +18,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontWidget from "./components/FontWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
+import LighthouseToggleWidget from "./components/LighthouseToggleWidget";
 import MetabotToggleWidget from "./components/MetabotToggleWidget";
 import LogoUpload from "./components/LogoUpload";
 import LogoIcon from "./components/LogoIcon";
@@ -88,7 +89,9 @@ if (hasPremiumFeature("whitelabel")) {
         {
           key: "show-lighthouse-illustration",
           display_name: t`Lighthouse illustration`,
+          description: null,
           type: "boolean",
+          widget: LighthouseToggleWidget,
           defaultValue: true,
         },
       ],

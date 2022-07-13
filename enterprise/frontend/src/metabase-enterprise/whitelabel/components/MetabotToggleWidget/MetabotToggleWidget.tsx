@@ -24,8 +24,7 @@ const MetabotToggleWidget = ({
     >
       <MetabotImage
         src={`app/assets/img/${metabotImage}.gif`}
-        width={94}
-        alt="Metabot"
+        alt={t`Metabot`}
       />
     </ImageToggle>
   );

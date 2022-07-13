@@ -3,8 +3,8 @@ import { color } from "metabase/lib/colors";
 
 export const ToggleRoot = styled.div`
   display: flex;
-  align-items: stretch;
-  max-width: 33.125rem;
+  flex: 1 1 auto;
+  max-width: 33rem;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
 `;
@@ -16,7 +16,9 @@ export const ImageContainer = styled.div`
 
 export const ToggleContainer = styled.div`
   display: flex;
+  justify-content: space-between;
   align-items: center;
+  flex: 1 1 auto;
   padding: 2rem 1.5rem;
 `;
 
