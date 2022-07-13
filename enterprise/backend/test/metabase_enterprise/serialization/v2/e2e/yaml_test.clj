@@ -58,7 +58,9 @@
                                                       :human_readable_field_id (random-key "field" 1000)}}]
                                           ;; 20 with just :field_id
                                           [20 {:refs {:field_id                (random-key "field" 1000)
-                                                      :human_readable_field_id ::rs/omit}}]]})
+                                                      :human_readable_field_id ::rs/omit}}]]
+                         :metric         [[30 {:refs {:table_id   (random-key "t" 100)
+                                                      :creator_id (random-key "u" 10)}}]]})
       (let [extraction (into [] (extract/extract-metabase {}))
             entities   (reduce (fn [m entity]
                                  (update m (-> entity :serdes/meta last :model)
@@ -162,6 +164,16 @@
                          (update :created_at u.date/format)
                          (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Dimension" filename))))))
+
+          (testing "for metrics"
+            (is (= 30 (count (dir->file-set (io/file dump-dir "Metric")))))
+            (doseq [{:keys [entity_id name] :as metric} (get entities "Metric")
+                    :let [filename (str entity_id "+" name ".yaml")]]
+              (is (= (-> metric
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Metric" filename))))))
 
           (testing "for settings"
             (is (= (into {} (for [{:keys [key value]} (get entities "Setting")]

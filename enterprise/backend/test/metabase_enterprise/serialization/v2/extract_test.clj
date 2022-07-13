@@ -2,7 +2,8 @@
   (:require [clojure.test :refer :all]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field Table User]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field Metric Table
+                                     User]]
             [metabase.models.serialization.base :as serdes.base]))
 
 (defn- select-one [model-name where]
@@ -240,4 +241,28 @@
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Foreign Table"}
                       {:model "Field"      :id "real_field"}]}
+                   (set (serdes.base/serdes-dependencies ser))))))))))
+
+(deftest metrics-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User       [{ann-id       :id}        {:first_name "Ann"
+                                                              :last_name  "Wilson"
+                                                              :email      "ann@heart.band"}]
+                       Database   [{db-id        :id}        {:name "My Database"}]
+                       Table      [{no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}]
+                       Metric     [{m1-id        :id
+                                    m1-eid       :entity_id} {:name       "My Metric"
+                                                              :creator_id ann-id
+                                                              :table_id   no-schema-id}]]
+      (testing "metrics"
+        (let [ser (serdes.base/extract-one "Metric" {} (select-one "Metric" [:= :id m1-id]))]
+          (is (= {:serdes/meta             [{:model "Metric" :id m1-eid :label "My Metric"}]
+                  :table_id                ["My Database" nil "Schemaless Table"]
+                  :creator_id              "ann@heart.band"}
+                 (select-keys ser [:serdes/meta :table_id :creator_id])))
+          (is (not (contains? ser :id)))
+
+          (testing "depend on the Table"
+            (is (= #{[{:model "Database"   :id "My Database"}
+                      {:model "Table"      :id "Schemaless Table"}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))

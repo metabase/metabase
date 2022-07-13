@@ -9,5 +9,6 @@
    "Database"
    "Dimension"
    "Field"
+   "Metric"
    "Setting"
    "Table"])
