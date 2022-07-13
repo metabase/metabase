@@ -1,13 +1,13 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import Form from "metabase/containers/Form";
-
 import validate from "metabase/lib/validate";
 import { TYPE } from "metabase/lib/types";
 
 import Field from "metabase-lib/lib/metadata/Field";
 import Table from "metabase-lib/lib/metadata/Table";
+
+import { StyledForm } from "../components/WritebackForm.styled";
 
 import { isEditableField } from "../utils";
 import CategoryFieldPicker from "./CategoryFieldPicker";
@@ -123,7 +123,7 @@ function WritebackForm({ table, row, onSubmit, ...props }: WritebackFormProps) {
   const submitTitle = row ? t`Update` : t`Create`;
 
   return (
-    <Form
+    <StyledForm
       {...props}
       form={form}
       onSubmit={handleSubmit}
