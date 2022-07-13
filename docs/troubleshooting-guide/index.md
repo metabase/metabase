@@ -24,8 +24,8 @@ Problems, their causes, how to detect them, and how to fix them.
 
 ### Permissions
 
-- [Fixing permissions issues][permissions].
-- [Managing data sandboxing][sandbox].
+- [My permissions aren't working][permissions].
+- [My data sandboxes aren't working][sandbox].
 
 ### Databases
 

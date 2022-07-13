@@ -13,7 +13,7 @@ If someone has the wrong level of access to a dashboard or a question, the probl
 ## [Troubleshooting collection permissions][troubleshooting-collection-permissions]
 
 - [People can't access a dashboard in a collection that they have permissions for](./collection-permissions#people-cant-access-a-dashboard-from-a-collection-that-they-have-permissions-for).
-- [People have collection permissions that override their data permissions](./data-permissions#people-have-collection-permissions-that-override-their-data-permissions).
+- [People can view collections that contain restricted data](./data-permissions#people-can-view-collections-that-contain-restricted-data).
 
 ## [Troubleshooting data permissions][troubleshooting-data-permissions]
 
@@ -23,15 +23,14 @@ If someone has the wrong level of access to a dashboard or a question, the probl
 
 ### Native query (SQL) permissions
 
-- [People can't access the SQL editor](#people-cant-access-the-sql-editor).
-- [People with SQL permissions can see data that should be restricted by a data sandbox](./sandboxing.html#is-the-question-written-in-sql).
+- [People can't access the SQL editor](./data-permissions#people-cant-access-the-sql-editor).
+- [People with SQL permissions aren't being restricted by their data sandbox](./sandboxing.html#is-the-question-written-in-sql).
 - [People can't _view_ native SQL questions when a block permission is applied to "All Users"](https://github.com/metabase/metabase/issues/21695).
 
 ### Table or schema permissions
 
 - [People have the wrong access to a table or schema](./data-permissions#people-have-the-wrong-access-to-a-table-or-schema).
-- [People have collection permissions that override their data permissions](./data-permissions#people-have-collection-permissions-that-override-their-data-permissions).
-- [Permission denied to a table or schema](./data-permissions#permission-denied-to-table-or-schema)
+- [Getting a "permission denied" error message](#getting-a-"permission-denied"-error-message).
 - [Checking someone's access to a table or schema](./data-permissions#checking-someones-access-to-a-table-or-schema).
 
 ## Further reading
@@ -56,6 +55,7 @@ If you can’t solve your problem using the troubleshooting guides:
 [data-permissions]: ../administration-guide/data-permissions.html
 [discourse]: https://discourse.metabase.com/
 [granular]: ../administration-guide/data-permissions.html#granular-access
+[group-permissions]: ../administration-guide/05-setting-permissions.html#key-points-regarding-permissions
 [known-issues]: ./known-issues.html
 [learn-permissions]: /learn/permissions/index.html
 [sandboxing]: ./sandboxing.html

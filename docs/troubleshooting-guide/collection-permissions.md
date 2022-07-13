@@ -4,14 +4,16 @@ title: Troubleshooting collection permissions
 
 # Troubleshooting collection permissions
 
-This guide deals with access to view or edit questions and dashboards. If someone has the wrong access to data such as the tables, rows, or columns that are displayed in a question or dashboard, see [Troubleshooting data permissions](#troubleshooting-data-permissions).
+Use this guide if you're having trouble with permissions to _view or edit_ questions or dashboards.
+
+If someone has the wrong level of access to the tables, rows, or columns that are displayed in a question or dashboard, see [Troubleshooting data permissions][troubleshooting-data-permissions].
 
 ## People can't access a dashboard from a collection that they have permissions for
 
-1. Go to the save location (the collection) for each _question_ on the dashboard.
-2. If the saved questions are in a collection that people don't have access to, you can either:
-    - Grant people permission to the collection with the saved questions.
-    - Move the saved questions for the dashboard to a collection with permissions.
+1. Check where each _question_ on the dashboard is saved (i.e., which collection).
+2. If the saved question is in a collection that people don't have access to, you can either:
+    - Grant people permission to the collection.
+    - Move the saved question to a collection with broader permissions.
 
 **Explanation**
 
@@ -37,4 +39,4 @@ If you can’t solve your problem using the troubleshooting guides:
 [discourse]: https://discourse.metabase.com/
 [known-issues]: ./known-issues.html
 [learn-permissions]: /learn/permissions/index.html
-[troubleshooting-permissions]: ./permissions.html
+[troubleshooting-data-permissions]: ./data-permissions.html
