@@ -74,37 +74,13 @@ function notRelativeDateOrRange({ type }) {
 
 export function getTargetsWithSourceFilters({
   isDash,
-  isHTTPAction,
   dashcard,
   object,
   metadata,
 }) {
-  if (isHTTPAction) {
-    return getTargetsForHTTPAction(object);
-  }
   return isDash
     ? getTargetsForDashboard(object, dashcard)
     : getTargetsForQuestion(object, metadata);
-}
-
-function getTargetsForHTTPAction(template) {
-  const parameters = Object.values(template.parameters);
-  return parameters.map(parameter => {
-    const { id, name } = parameter;
-    return {
-      id,
-      name,
-      target: { type: "parameter", id },
-
-      // We probably don't want to allow everything
-      // and will need to add some filters eventually
-      sourceFilters: {
-        column: () => true,
-        parameter: () => true,
-        userAttribute: () => true,
-      },
-    };
-  });
 }
 
 function getTargetsForQuestion(question, metadata) {

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { connect } from "react-redux";
 
 import Modal from "metabase/components/Modal";
@@ -56,8 +56,7 @@ function ActionParametersInputModal({
     return null;
   }
 
-  const action = emitter.action;
-  const title = action.type === "query" ? action.card.name : action.name;
+  const title = emitter.action.card.name;
 
   return (
     <Modal onClose={closeActionParametersModal}>

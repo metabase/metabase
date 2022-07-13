@@ -16,7 +16,6 @@ export interface NewItemMenuProps {
   triggerIcon?: string;
   triggerTooltip?: string;
   analyticsContext?: string;
-  isAdmin: boolean;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
@@ -31,7 +30,6 @@ const NewItemMenu = ({
   triggerIcon,
   triggerTooltip,
   analyticsContext,
-  isAdmin,
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
@@ -98,18 +96,9 @@ const NewItemMenu = ({
       },
     );
 
-    if (isAdmin) {
-      items.push({
-        title: t`HTTP Action`,
-        icon: "cloud",
-        link: "/action/create",
-      });
-    }
-
     return items;
   }, [
     collectionId,
-    isAdmin,
     hasDataAccess,
     hasNativeWrite,
     hasDatabaseWithJsonEngine,
