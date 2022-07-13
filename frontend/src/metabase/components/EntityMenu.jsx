@@ -67,6 +67,7 @@ class EntityMenu extends Component {
           hasBackground={false}
           horizontalAttachments={["left", "right"]}
           targetOffsetY={targetOffsetY || 0}
+          ignoreTrigger
         >
           {/* Note: @kdoh 10/12/17
            * React Motion has a flow type problem with children see
@@ -109,7 +110,7 @@ class EntityMenu extends Component {
                             return null;
                           } else if (item.content) {
                             return (
-                              <li key={item.title}>
+                              <li key={item.title} data-testid={item.testId}>
                                 <EntityMenuItem
                                   icon={item.icon}
                                   title={item.title}
@@ -126,7 +127,7 @@ class EntityMenu extends Component {
                             );
                           } else {
                             return (
-                              <li key={item.title}>
+                              <li key={item.title} data-testid={item.testId}>
                                 <EntityMenuItem
                                   icon={item.icon}
                                   title={item.title}

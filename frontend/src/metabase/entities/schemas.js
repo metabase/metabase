@@ -76,11 +76,12 @@ export default createEntity({
       const schemaId = getCollectionVirtualSchemaId(question.collection);
 
       const virtualQuestionId = getQuestionVirtualTableId(question);
-      const previousSchemaContainingTheQuestion = getPreviousSchemaContainingTheQuestion(
-        state,
-        schemaId,
-        virtualQuestionId,
-      );
+      const previousSchemaContainingTheQuestion =
+        getPreviousSchemaContainingTheQuestion(
+          state,
+          schemaId,
+          virtualQuestionId,
+        );
 
       if (previousSchemaContainingTheQuestion) {
         state = removeVirtualQuestionFromSchema(

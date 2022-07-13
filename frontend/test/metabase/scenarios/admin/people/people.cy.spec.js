@@ -170,10 +170,7 @@ describe("scenarios > admin > people", () => {
       cy.visit("/admin/people");
       showUserOptions(FULL_NAME);
       cy.findByText("Edit user").click();
-      cy.findByDisplayValue(first_name)
-        .click()
-        .clear()
-        .type(NEW_NAME);
+      cy.findByDisplayValue(first_name).click().clear().type(NEW_NAME);
 
       clickButton("Update");
       cy.findByText(NEW_FULL_NAME);
@@ -439,9 +436,7 @@ function showUserOptions(full_name) {
 }
 
 function clickButton(button_name) {
-  cy.button(button_name)
-    .should("not.be.disabled")
-    .click();
+  cy.button(button_name).should("not.be.disabled").click();
 }
 
 function assertTableRowsCount(length) {

@@ -15,6 +15,7 @@ import {
 import { AdminPathKey, State } from "metabase-types/store";
 import { User } from "metabase-types/types/User";
 import { PluginGroupManagersType } from "./types";
+import Question from "metabase-lib/lib/Question";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 const object = () => ({});
@@ -76,9 +77,7 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   getHasCustomColors: (state: State) => false,
-  getHasCustomBranding: (state: State) => false,
   canWhitelabel: (state: State) => false,
-  getHideMetabot: (state: State) => false,
   getLoadingMessage: (state: State) => t`Doing science...`,
 };
 
@@ -119,13 +118,18 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 
 export const PLUGIN_MODERATION = {
   isEnabled: () => false,
+  QuestionModerationIcon: PluginPlaceholder,
   QuestionModerationSection: PluginPlaceholder,
   QuestionModerationButton: PluginPlaceholder,
   ModerationReviewBanner: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
-  getStatusIconForQuestion: object,
   getStatusIcon: object,
   getModerationTimelineEvents: array,
+  getMenuItems: (
+    question?: Question,
+    isModerator?: boolean,
+    reload?: () => void,
+  ) => ({}),
 };
 
 export const PLUGIN_CACHING = {
@@ -193,4 +197,5 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
 export const PLUGIN_MODEL_PERSISTENCE = {
   isModelLevelPersistenceEnabled: () => false,
   ModelCacheControl: PluginPlaceholder as any,
+  getMenuItems: (question?: any, onChange?: any) => ({}),
 };

@@ -6,9 +6,7 @@ import { popover } from "__support__/e2e/helpers";
  */
 export function openNewCollectionItemFlowFor(type) {
   cy.findByText("New").click();
-  popover()
-    .findByText(new RegExp(type, "i"))
-    .click();
+  popover().findByText(new RegExp(type, "i")).click();
 }
 
 export function getCollectionActions() {

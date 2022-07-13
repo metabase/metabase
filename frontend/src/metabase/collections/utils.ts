@@ -92,6 +92,12 @@ export function isFullyParametrized(item: Item) {
   return item.fully_parametrized ?? true;
 }
 
+export function coerceCollectionId(
+  collectionId: number | null | undefined,
+): string | number {
+  return collectionId == null ? "root" : collectionId;
+}
+
 // API requires items in "root" collection be persisted with a "null" collection ID
 // Also ensure it's parsed as a number
 export function canonicalCollectionId(

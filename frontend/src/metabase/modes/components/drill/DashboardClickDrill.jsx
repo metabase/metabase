@@ -17,7 +17,7 @@ import {
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 import * as Urls from "metabase/lib/urls";
-import { getTemplateTagType } from "metabase/parameters/utils/cards";
+import { getActionTemplateTagType } from "metabase/writeback/utils";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
@@ -209,7 +209,7 @@ function getActionParameters(
     parameters[id] = {
       value,
       type: isQueryAction
-        ? getTemplateTagType(targetTemplateTag)
+        ? getActionTemplateTagType(targetTemplateTag)
         : targetTemplateTag.type,
     };
   });

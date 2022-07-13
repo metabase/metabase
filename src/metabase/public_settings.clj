@@ -175,7 +175,7 @@
   :visibility :public)
 
 (defsetting landing-page
-  (deferred-tru "Default page to show the user")
+  (deferred-tru "Default page to show people when they log in.")
   :visibility :public
   :type       :string
   :default    "")
@@ -213,16 +213,10 @@
   :default    false
   :visibility :authenticated)
 
-(defsetting persisted-model-refresh-interval-hours
-  (deferred-tru "Hour interval to refresh persisted models.")
-  :type       :integer
-  :default    6
-  :visibility :admin)
-
-(defsetting persisted-model-refresh-anchor-time
-  (deferred-tru "Anchor time to begin refreshing persisted models.")
+(defsetting persisted-model-refresh-cron-schedule
+  (deferred-tru "cron syntax string to schedule refreshing persisted models.")
   :type       :string
-  :default    "00:00"
+  :default    "0 0 0/6 * * ? *"
   :visibility :admin)
 
 (def ^:private ^:const global-max-caching-kb
@@ -292,14 +286,8 @@
   (deferred-tru "Message to show while a query is running.")
   :visibility :public
   :enabled?   premium-features/enable-whitelabeling?
-  :type       :keyword)
-
-(defsetting show-metabot
-  (deferred-tru "Enables Metabot character on the home page")
-  :visibility :public
-  :type       :boolean
-  :enabled?   premium-features/enable-whitelabeling?
-  :default    true)
+  :type       :keyword
+  :default    :doing-science)
 
 (defsetting application-colors-migrated
   "Stores whether the `application-colors` setting has been migrated to 0.44 expectations"
@@ -342,7 +330,7 @@
               (setting/set-value-of-type! :string :application-font new-value)))
 
 (defsetting application-font-files
-  (deferred-tru "Tell us where to find the font file for each required style.")
+  (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
   :visibility :public
   :type       :json
   :enabled?   premium-features/enable-whitelabeling?)
@@ -370,6 +358,36 @@
   :type       :string
   :enabled?   premium-features/enable-whitelabeling?
   :default    "app/assets/img/favicon.ico")
+
+(defn has-custom-branding?
+  "Whether this instance has custom colors or logo set."
+  []
+  (or (not-empty (application-colors))
+      (not= (application-logo-url) "app/assets/img/logo.svg")))
+
+(defsetting show-metabot
+  (deferred-tru "Enables Metabot character on the home page")
+  :visibility :public
+  :type       :boolean
+  :enabled?   premium-features/enable-whitelabeling?
+  :getter     (fn []
+                (if-some [value (setting/get-value-of-type :boolean :show-metabot)]
+                  value
+                  (let [new-value (not (has-custom-branding?))]
+                    (setting/set-value-of-type! :boolean :show-metabot new-value)
+                    new-value))))
+
+(defsetting show-lighthouse-illustration
+  (deferred-tru "Display the lighthouse illustration on the home and login pages.")
+  :visibility :public
+  :type       :boolean
+  :enabled?   premium-features/enable-whitelabeling?
+  :getter     (fn []
+                (if-some [value (setting/get-value-of-type :boolean :show-lighthouse-illustration)]
+                  value
+                  (let [new-value (not (has-custom-branding?))]
+                    (setting/set-value-of-type! :boolean :show-lighthouse-illustration new-value)
+                    new-value))))
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")

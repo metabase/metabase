@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useRef } from "react";
 import _ from "underscore";
-import { originalColors } from "../../lib/whitelabel";
+import { originalColors } from "metabase/lib/colors/palette";
 import ColorSettings from "../ColorSettings";
 import { ColorSetting } from "./types";
 
@@ -24,7 +24,7 @@ const ColorSettingsWidget = ({
   );
 };
 
-const useDebounce = function<T>(func: (value: T) => void, wait: number) {
+const useDebounce = function <T>(func: (value: T) => void, wait: number) {
   const ref = useRef(func);
   ref.current = func;
 

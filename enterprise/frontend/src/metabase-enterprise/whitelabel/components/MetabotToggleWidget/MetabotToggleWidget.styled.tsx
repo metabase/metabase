@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color, hueRotate } from "metabase/lib/colors";
 
 export const MetabotSettingWidgetRoot = styled.div`
   max-width: 530px;
@@ -12,6 +12,10 @@ export const MetabotSettingWidgetRoot = styled.div`
 export const MetabotContainer = styled.div`
   padding: 0.5rem 1rem 0.75rem 1.25rem;
   border-right: 1px solid ${color("border")};
+`;
+
+export const MetabotImage = styled.img`
+  filter: hue-rotate(${() => hueRotate("brand")}deg);
 `;
 
 export const ToggleContainer = styled.div`

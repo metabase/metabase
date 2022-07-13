@@ -4,6 +4,7 @@ import Database from "metabase-lib/lib/metadata/Database";
 import Field from "metabase-lib/lib/metadata/Field";
 
 import { Database as IDatabase } from "metabase-types/types/Database";
+import { TemplateTag } from "metabase-types/types/Query";
 import { DashCard } from "metabase-types/types/Dashboard";
 import { ParameterId, ParameterTarget } from "metabase-types/types/Parameter";
 
@@ -55,6 +56,19 @@ export const getActionButtonEmitterId = (dashCard: DashCard) =>
 
 export const getActionButtonActionId = (dashCard: DashCard) =>
   dashCard.visualization_settings?.click_behavior?.action;
+
+export function getActionTemplateTagType(tag: TemplateTag) {
+  const { type } = tag;
+  if (type === "date") {
+    return "date/single";
+  } else if (type === "text") {
+    return "string/=";
+  } else if (type === "number") {
+    return "number/=";
+  } else {
+    return "category";
+  }
+}
 
 const getQueryActionParameterMappings = (
   action: WritebackAction & RowAction,

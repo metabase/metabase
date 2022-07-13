@@ -33,10 +33,8 @@ export function computeFontSizeAdjustment({
   }
 
   const { height: gridUnitRows, width: gridUnitCols } = cardGridUnitDimensions;
-  const {
-    height: minGridUnitRows,
-    width: minGridUnitCols,
-  } = minCardGridUnitDimensions;
+  const { height: minGridUnitRows, width: minGridUnitCols } =
+    minCardGridUnitDimensions;
   if (!gridUnitRows || !gridUnitCols || !minGridUnitRows || !minGridUnitCols) {
     return 0;
   }

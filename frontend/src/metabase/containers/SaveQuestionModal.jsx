@@ -107,12 +107,8 @@ class SaveQuestionModal extends Component {
   };
 
   render() {
-    const {
-      card,
-      originalCard,
-      initialCollectionId,
-      tableMetadata,
-    } = this.props;
+    const { card, originalCard, initialCollectionId, tableMetadata } =
+      this.props;
 
     const isStructured = Q_DEPRECATED.isStructured(card.dataset_query);
     const hasIsWriteField = this.hasIsWriteField();
@@ -128,6 +124,9 @@ class SaveQuestionModal extends Component {
       hasIsWriteField && { name: "is_write" },
     ].filter(Boolean);
 
+    const canUpdateExistingCard =
+      originalCard && !originalCard.dataset && originalCard.can_write;
+
     const initialValues = {
       name:
         card.name || isStructured
@@ -138,14 +137,15 @@ class SaveQuestionModal extends Component {
         card.collection_id === undefined
           ? initialCollectionId
           : card.collection_id,
-      saveType:
-        originalCard && !originalCard.dataset && originalCard.can_write
-          ? "overwrite"
-          : "create",
+      saveType: canUpdateExistingCard ? "overwrite" : "create",
     };
 
     if (hasIsWriteField) {
-      initialValues.is_write = false;
+      if (canUpdateExistingCard) {
+        initialValues.is_write = originalCard.is_write || false;
+      } else {
+        initialValues.is_write = false;
+      }
     }
 
     const title = this.props.multiStep
@@ -229,8 +229,9 @@ const SaveTypeInput = ({ field, originalCard }) => (
     {...field}
     options={[
       {
-        name: t`Replace original question, "${originalCard &&
-          originalCard.name}"`,
+        name: t`Replace original question, "${
+          originalCard && originalCard.name
+        }"`,
         value: "overwrite",
       },
       { name: t`Save as new question`, value: "create" },

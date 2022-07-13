@@ -1,6 +1,10 @@
 import { SAMPLE_DATABASE, ORDERS } from "__support__/sample_database_fixture";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import StructuredQuery, {
+  isDimensionOption,
+  DimensionOption,
+  SegmentOption,
+} from "metabase-lib/lib/queries/StructuredQuery";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 import {
@@ -8,6 +12,7 @@ import {
   hasBackwardsArguments,
   swapFilterArguments,
   handleEmptyBetween,
+  getSearchHits,
 } from "./utils";
 
 const makeQuery = (query = {}): StructuredQuery => {
@@ -167,6 +172,42 @@ describe("BulkFilterModal utils", () => {
 
       expect(newFilter3.arguments()).toEqual([8, 9, 7]);
       expect(newFilter3.operatorName()).toEqual("=");
+    });
+  });
+
+  describe("getSearchHits", () => {
+    const query = makeQuery();
+    const sections = query.topLevelFilterFieldOptionSections();
+
+    const getHitFieldNames = (
+      hits: (DimensionOption | SegmentOption)[] | null,
+    ) => hits?.map(i => isDimensionOption(i) && i?.dimension?.displayName());
+
+    it("hits on a field name", () => {
+      const hits = getSearchHits("product", sections);
+      const hitFieldNames = getHitFieldNames(hits);
+
+      expect(hitFieldNames).toEqual(["Product ID"]);
+    });
+
+    it("hits on field names regardless of case", () => {
+      const hits = getSearchHits("toTA", sections);
+      const hitFieldNames = getHitFieldNames(hits);
+
+      expect(hitFieldNames).toEqual(["Subtotal", "Total"]);
+    });
+
+    it("hits on field names from multiple tables", () => {
+      const hits = getSearchHits("ID", sections);
+      const hitFieldNames = getHitFieldNames(hits);
+
+      expect(hitFieldNames).toEqual([
+        "ID",
+        "Product ID",
+        "User ID",
+        "ID",
+        "ID",
+      ]);
     });
   });
 });

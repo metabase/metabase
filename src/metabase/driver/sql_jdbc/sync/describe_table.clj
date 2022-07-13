@@ -308,14 +308,17 @@
    ;; JSON itself has the single number type, but Java serde of JSON is stricter
    java.lang.Long                  :type/Integer
    clojure.lang.BigInt             :type/BigInteger
+   java.math.BigInteger            :type/BigInteger
    java.lang.Integer               :type/Integer
    java.lang.Double                :type/Float
+   java.lang.Float                 :type/Float
    java.math.BigDecimal            :type/Decimal
    java.lang.Number                :type/Number
    java.lang.Boolean               :type/Boolean
    java.time.LocalDateTime         :type/DateTime
    clojure.lang.PersistentVector   :type/Array
-   clojure.lang.PersistentArrayMap :type/Structured})
+   clojure.lang.PersistentArrayMap :type/Structured
+   clojure.lang.PersistentHashMap  :type/Structured})
 
 (def db-type-map
   "Map from MBQL types to database types.
@@ -324,7 +327,15 @@
   although as of writing this is just geared towards Postgres types"
   {:type/Text       "text"
    :type/Integer    "integer"
-   :type/BigInteger "bigint"
+   ;; You might think that the ordinary 'bigint' type in Postgres and MySQL should be this.
+   ;; However, Bigint in those DB's maxes out at 2 ^ 64.
+   ;; JSON, like Javascript itself, will happily represent 1.8 * (10^308),
+   ;; Losing digits merrily along the way.
+   ;; We can't really trust anyone to use MAX_SAFE_INTEGER, in JSON-land..
+   ;; So really without forcing arbitrary precision ('decimal' type),
+   ;; we have too many numerical regimes to test.
+   ;; (#22732) was basically the consequence of missing one.
+   :type/BigInteger "decimal"
    :type/Float      "double precision"
    :type/Number     "double precision"
    :type/Decimal    "decimal"

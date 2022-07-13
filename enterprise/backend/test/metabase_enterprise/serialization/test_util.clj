@@ -117,11 +117,11 @@
   [& body]
   `(~'&do-with-dest-db (fn [] ~@body)))
 
-(defn random-dump-dir []
-  (str (System/getProperty "java.io.tmpdir") "/" (mt/random-name)))
+(defn random-dump-dir [prefix]
+  (str (System/getProperty "java.io.tmpdir") "/" prefix (mt/random-name)))
 
-(defn do-with-random-dump-dir [f]
-  (let [dump-dir (random-dump-dir)]
+(defn do-with-random-dump-dir [prefix f]
+  (let [dump-dir (random-dump-dir (or prefix ""))]
     (testing (format "\nDump dir = %s" (pr-str dump-dir))
       (try
         (f dump-dir)
@@ -129,8 +129,8 @@
           (when (.exists (io/file dump-dir))
             (.delete (io/file dump-dir))))))))
 
-(defmacro with-random-dump-dir {:style/indent 1} [[dump-dir-binding] & body]
-  `(do-with-random-dump-dir (fn [~dump-dir-binding] ~@body)))
+(defmacro with-random-dump-dir {:style/indent 2} [[dump-dir-binding prefix] & body]
+  `(do-with-random-dump-dir ~prefix (fn [~dump-dir-binding] ~@body)))
 
 (defmacro with-world
   "Run test in the context of a minimal Metabase instance connected to our test database."

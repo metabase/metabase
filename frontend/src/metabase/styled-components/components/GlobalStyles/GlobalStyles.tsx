@@ -15,14 +15,14 @@ const GlobalStyles = ({ font, fontFiles }: GlobalStylesProps): JSX.Element => {
 
     ${fontFiles?.map(
       file => css`
-      @font-face {
-        font-family: "${font}";
-        src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
-        font-weight: ${file.fontWeight};
-        font-style: normal;
-        font-display: swap;
-      }
-    `,
+        @font-face {
+          font-family: "${font}";
+          src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
+          font-weight: ${file.fontWeight};
+          font-style: normal;
+          font-display: swap;
+        }
+      `,
     )}
   `;
 

@@ -29,11 +29,8 @@ const QUERY = Question.create({
     "asdf",
   ]);
 
-const [
-  RELATIVE_DAY_FILTER,
-  NUMERIC_FILTER,
-  STRING_CONTAINS_FILTER,
-] = QUERY.filters();
+const [RELATIVE_DAY_FILTER, NUMERIC_FILTER, STRING_CONTAINS_FILTER] =
+  QUERY.filters();
 
 describe("FilterPopover", () => {
   describe("existing filter", () => {

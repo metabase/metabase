@@ -9,7 +9,9 @@
             [metabase.models.humanization :as humanization]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
@@ -378,3 +380,49 @@
   {:arglists '([field])}
   [{:keys [table_id]}]
   (db/select-one 'Table, :id table_id))
+
+;;; ------------------------------------------------- Serialization -------------------------------------------------
+
+;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
+;; a trio of strings with schema maybe nil.
+(defmethod serdes.base/serdes-generate-path "Field" [_ {table_id :table_id field :name}]
+  (let [table (when (number? table_id)
+                   (db/select-one 'Table :id table_id))
+        db    (when table
+                (db/select-one-field :name 'Database :id (:db_id table)))
+        [db schema table] (if (number? table_id)
+                            [db (:schema table) (:name table)]
+                            ;; If table_id is not a number, it's already been exported as a [db schema table] triple.
+                            table_id)]
+    (filterv some? [{:model "Database" :id db}
+                    (when schema {:model "Schema" :id schema})
+                    {:model "Table"    :id table}
+                    {:model "Field"    :id field}])))
+
+(defmethod serdes.base/serdes-entity-id "Field" [_ {:keys [name]}]
+  name)
+
+(defmethod serdes.base/serdes-dependencies "Field" [field]
+  ;; Take the path, but drop the Field section to get the parent Table's path instead.
+  [(pop (serdes.base/serdes-path field))])
+
+(defmethod serdes.base/extract-one "Field"
+  [_ _ field]
+  (-> (serdes.base/extract-one-basics "Field" field)
+      (update :table_id serdes.util/export-table-fk)))
+
+(defmethod serdes.base/load-xform "Field"
+  [field]
+  (-> (serdes.base/load-xform-basics field)
+      (update :table_id serdes.util/import-table-fk)))
+
+(defmethod serdes.base/load-find-local "Field"
+  [path]
+  (let [db-name            (-> path first :id)
+        schema-name        (when (= 3 (count path))
+                             (-> path second :id))
+        [{table-name :id}
+         {field-name :id}] (take-last 2 path)
+        db-id              (db/select-one-field :id 'Database :name db-name)
+        table-id           (db/select-one-field :id 'Table :name table-name :db_id db-id :schema schema-name)]
+    (db/select-one-field :id Field :name field-name :table_id table-id)))

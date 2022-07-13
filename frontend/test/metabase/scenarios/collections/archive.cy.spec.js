@@ -15,7 +15,7 @@ describe("scenarios > collections > archive", () => {
     cy.signInAsAdmin();
   });
 
-  it("shows correct page when visiting page of question that was in archived collection", () => {
+  it("shows correct page when visiting page of question that was in archived collection (metabase##23501)", () => {
     getCollectionIdFromSlug("first_collection", collectionId => {
       const questionDetails = getQuestionDetails(collectionId);
 

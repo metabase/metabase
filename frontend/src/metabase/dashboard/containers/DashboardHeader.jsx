@@ -19,7 +19,7 @@ import Bookmark from "metabase/entities/bookmarks";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import {
   DashboardHeaderButton,
-  DashboardHeaderActionContainer,
+  DashboardHeaderActionDivider,
   DashboardHeaderInfoButton,
 } from "./DashboardHeader.styled";
 
@@ -379,14 +379,17 @@ class DashboardHeader extends Component {
 
     if (extraButtons.length > 0 && !isEditing) {
       buttons.push(
-        <DashboardHeaderActionContainer>
+        ...[
+          <DashboardHeaderActionDivider key="dashboard-button-divider" />,
           <DashboardBookmark
+            key="dashboard-bookmark-button"
             dashboard={dashboard}
             onCreateBookmark={createBookmark}
             onDeleteBookmark={deleteBookmark}
             isBookmarked={isBookmarked}
-          />
+          />,
           <DashboardHeaderInfoButton
+            key="dashboard-info-button"
             icon="info"
             iconSize={18}
             onlyIcon
@@ -397,9 +400,14 @@ class DashboardHeader extends Component {
                 ? closeSidebar()
                 : setSidebar({ name: SIDEBAR_NAME.info })
             }
-          />
-          <EntityMenu items={extraButtons} triggerIcon="ellipsis" />
-        </DashboardHeaderActionContainer>,
+          />,
+          <EntityMenu
+            key="dashboard-action-menu-button"
+            items={extraButtons}
+            triggerIcon="ellipsis"
+            tooltip={t`Move, archive, and more...`}
+          />,
+        ],
       );
     }
 

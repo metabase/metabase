@@ -40,8 +40,6 @@ describe("issue 17212", () => {
     cy.findByText("No valid fields").should("not.exist");
 
     cy.findByText("Select…").click();
-    popover()
-      .contains("ID")
-      .click();
+    popover().contains("ID").click();
   });
 });

@@ -135,11 +135,10 @@ function TableSimple({
     return indexes;
   }, [cols, rows, sortColumn, sortDirection]);
 
-  const paginatedRowIndexes = useMemo(() => rowIndexes.slice(start, end + 1), [
-    rowIndexes,
-    start,
-    end,
-  ]);
+  const paginatedRowIndexes = useMemo(
+    () => rowIndexes.slice(start, end + 1),
+    [rowIndexes, start, end],
+  );
 
   const renderColumnHeader = useCallback(
     (col, colIndex) => {

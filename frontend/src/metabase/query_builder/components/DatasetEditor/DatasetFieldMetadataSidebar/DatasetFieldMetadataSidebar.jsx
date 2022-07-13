@@ -140,9 +140,8 @@ function DatasetFieldMetadataSidebar({
   onFieldMetadataChange,
 }) {
   const displayNameInputRef = useRef();
-  const [shouldAnimateFieldChange, setShouldAnimateFieldChange] = useState(
-    false,
-  );
+  const [shouldAnimateFieldChange, setShouldAnimateFieldChange] =
+    useState(false);
   const previousField = usePrevious(field);
 
   useEffect(() => {

@@ -17,7 +17,9 @@
             [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
             [metabase.models.revision :as revision]
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.moderation :as moderation]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.async :as qp.async]
@@ -414,3 +416,34 @@
                                {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
     (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
                [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               SERIALIZATION                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+(defmethod serdes.base/extract-query "Dashboard" [_ {:keys [user]}]
+  ;; TODO This join over the subset of collections this user can see is shared by a few things - factor it out?
+  (serdes.base/raw-reducible-query
+    "Dashboard"
+    {:select     [:dash.*]
+     :from       [[:report_dashboard :dash]]
+     :left-join  [[:collection :coll] [:= :coll.id :dash.collection_id]]
+     :where      (if user
+                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
+                   [:is :coll.personal_owner_id nil])}))
+
+;; TODO Maybe nest collections -> dashboards -> dashcards?
+(defmethod serdes.base/extract-one "Dashboard"
+  [_ _ dash]
+  (-> (serdes.base/extract-one-basics "Dashboard" dash)
+      (update :collection_id serdes.util/export-fk 'Collection)
+      (update :creator_id    serdes.util/export-fk-keyed 'User :email)))
+
+(defmethod serdes.base/load-xform "Dashboard"
+  [dash]
+  (-> dash
+      (update :collection_id serdes.util/import-fk 'Collection)
+      (update :creator_id    serdes.util/import-fk-keyed 'User :email)))
+
+(defmethod serdes.base/serdes-dependencies "Dashboard"
+  [{:keys [collection_id]}]
+  [[{:model "Collection" :id collection_id}]])

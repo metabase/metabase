@@ -367,7 +367,7 @@ describe("ViewHeader", () => {
         it("shows bookmark and action buttons", () => {
           setup({ question });
           expect(
-            screen.queryByTestId("question-action-buttons-container"),
+            screen.queryByTestId("qb-header-info-button"),
           ).toBeInTheDocument();
         });
       });
@@ -388,7 +388,7 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
   it("does not render bookmark and action buttons", () => {
     setupAdHoc();
     expect(
-      screen.queryByTestId("question-action-buttons-container"),
+      screen.queryByTestId("qb-header-info-button"),
     ).not.toBeInTheDocument();
   });
 

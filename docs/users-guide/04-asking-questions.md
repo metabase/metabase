@@ -169,9 +169,11 @@ To see more info about a given record (a user, order, venue, etc.), click on a r
 
 ## Custom expressions
 
+Custom expressions allow you to use spreadsheet-like functions and simple arithmetic within or between aggregation functions.
+
 ![Custom expression](./images/expressions/aggregation-expression.png)
 
-Custom expressions allow you to use spreadsheet-like functions and simple arithmetic within or between aggregation functions. For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md).
+ For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md).
 
 ### Creating custom columns
 

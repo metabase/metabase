@@ -154,9 +154,7 @@ function testOfficialBadgePresence(expectBadge = true) {
   assertHasCollectionBadgeInNavbar(expectBadge);
 
   // Question Page
-  cy.get("header")
-    .findByText(COLLECTION_NAME)
-    .click();
+  cy.get("header").findByText(COLLECTION_NAME).click();
   cy.findByText("Official Question").click();
   assertHasCollectionBadgeInNavbar(expectBadge);
 
@@ -179,10 +177,7 @@ function testOfficialBadgeInSearch({
   question,
   expectBadge,
 }) {
-  appBar()
-    .findByPlaceholderText("Search…")
-    .as("searchBar")
-    .type(searchQuery);
+  appBar().findByPlaceholderText("Search…").as("searchBar").type(searchQuery);
 
   cy.findByTestId("search-results-list").within(() => {
     assertSearchResultBadge(collection, {
@@ -219,9 +214,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
 }
 
 function openCollection(collectionName) {
-  navigationSidebar()
-    .findByText(collectionName)
-    .click();
+  navigationSidebar().findByText(collectionName).click();
 }
 
 function createAndOpenOfficialCollection({ name }) {

@@ -93,9 +93,7 @@ describe("scenarios > dashboard > chained filter", () => {
         cy.findByText("Anchorage");
         cy.findByText("Anacoco").should("not.exist");
 
-        cy.get("input")
-          .first()
-          .clear();
+        cy.get("input").first().clear();
       });
 
       cy.findByText("AK").click();
@@ -109,9 +107,7 @@ describe("scenarios > dashboard > chained filter", () => {
       // do it again to make sure it isn't cached incorrectly
       cy.findByText("Location 1").click();
       popover().within(() => {
-        cy.get("input")
-          .first()
-          .type("An");
+        cy.get("input").first().type("An");
         cy.findByText("Canton");
         cy.findByText("Anchorage").should("not.exist");
       });
@@ -125,9 +121,7 @@ describe("scenarios > dashboard > chained filter", () => {
       // do it again without a state filter to make sure it isn't cached incorrectly
       cy.findByText("Location 1").click();
       popover().within(() => {
-        cy.get("input")
-          .first()
-          .type("An");
+        cy.get("input").first().type("An");
         cy.findByText("Adrian");
         cy.findByText("Anchorage");
         cy.findByText("Canton");
@@ -194,10 +188,7 @@ describe("scenarios > dashboard > chained filter", () => {
         cy.icon("click").click();
         cy.findByText(/Ean/i).click();
         cy.findByText("Update a dashboard filter").click();
-        cy.findByText("Available filters")
-          .parent()
-          .findByText(/ID/i)
-          .click();
+        cy.findByText("Available filters").parent().findByText(/ID/i).click();
         popover().within(() => {
           cy.findByText(/Ean/i);
         });

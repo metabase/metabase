@@ -29,3 +29,9 @@ export const FeatureDescriptionText = styled.p`
   color: ${color("text-medium")};
   font-weight: 400;
 `;
+
+export const ErrorMessage = styled.p`
+  width: 80%;
+  color: ${color("error")};
+  line-height: 1.5rem;
+`;

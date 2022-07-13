@@ -21,8 +21,7 @@ import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import { PremiumEmbeddingLinkWidget } from "./components/widgets/PremiumEmbeddingLinkWidget";
-import PersistedModelAnchorTimeWidget from "./components/widgets/PersistedModelAnchorTimeWidget";
-import PersistedModelRefreshIntervalWidget from "./components/widgets/PersistedModelRefreshIntervalWidget";
+import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
@@ -58,8 +57,6 @@ function updateSectionsWithPlugins(sections) {
     return sections;
   }
 }
-
-const CACHING_MIN_REFRESH_HOURS_FOR_ANCHOR_TIME_SETTING = 6;
 
 const SECTIONS = updateSectionsWithPlugins({
   setup: {
@@ -306,13 +303,14 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-  public_sharing: {
+  "public-sharing": {
     name: t`Public Sharing`,
     order: 9,
     settings: [
       {
         key: "enable-public-sharing",
         display_name: t`Enable Public Sharing`,
+        description: t`Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards.`,
         type: "boolean",
       },
       {
@@ -329,7 +327,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-  embedding_in_other_applications: {
+  "embedding-in-other-applications": {
     name: t`Embedding`,
     order: 10,
     settings: [
@@ -358,6 +356,14 @@ const SECTIONS = updateSectionsWithPlugins({
       {
         key: "enable-embedding",
         display_name: t`Embedding`,
+        description: jt`Allow questions, dashboards, and more to be embedded. ${(
+          <ExternalLink
+            key="learn-embedding-link"
+            href="https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards.html"
+          >
+            {t`Learn more.`}
+          </ExternalLink>
+        )}`,
         type: "boolean",
         showActualValue: true,
         getProps: setting => {
@@ -387,7 +393,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-  "embedding_in_other_applications/standalone": {
+  "embedding-in-other-applications/standalone": {
     settings: [
       {
         widget: () => {
@@ -397,7 +403,7 @@ const SECTIONS = updateSectionsWithPlugins({
               crumbs={[
                 [
                   t`Embedding`,
-                  "/admin/settings/embedding_in_other_applications",
+                  "/admin/settings/embedding-in-other-applications",
                 ],
                 [t`Standalone embeds`],
               ]}
@@ -432,13 +438,13 @@ const SECTIONS = updateSectionsWithPlugins({
       },
       {
         widget: () => (
-          <RedirectWidget to="/admin/settings/embedding_in_other_applications" />
+          <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
         getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
       },
     ],
   },
-  "embedding_in_other_applications/full-app": {
+  "embedding-in-other-applications/full-app": {
     settings: [
       {
         widget: () => {
@@ -448,7 +454,7 @@ const SECTIONS = updateSectionsWithPlugins({
               crumbs={[
                 [
                   t`Embedding`,
-                  "/admin/settings/embedding_in_other_applications",
+                  "/admin/settings/embedding-in-other-applications",
                 ],
                 [t`Full-app embedding`],
               ]}
@@ -464,7 +470,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
       {
         widget: () => (
-          <RedirectWidget to="/admin/settings/embedding_in_other_applications" />
+          <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
         getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
       },
@@ -529,43 +535,44 @@ const SECTIONS = updateSectionsWithPlugins({
         },
       },
       {
-        key: "persisted-model-refresh-interval-hours",
-        description: "",
-        display_name: t`Refresh every`,
-        type: "radio",
-        options: {
-          1: t`Hour`,
-          2: t`2 hours`,
-          3: t`3 hours`,
-          6: t`6 hours`,
-          12: t`12 hours`,
-          24: t`24 hours`,
-        },
+        key: "persisted-model-refresh-cron-schedule",
+        noHeader: true,
+        type: "select",
+        options: [
+          {
+            value: "0 0 0/1 * * ? *",
+            name: t`Hour`,
+          },
+          {
+            value: "0 0 0/2 * * ? *",
+            name: t`2 hours`,
+          },
+          {
+            value: "0 0 0/3 * * ? *",
+            name: t`3 hours`,
+          },
+          {
+            value: "0 0 0/6 * * ? *",
+            name: t`6 hours`,
+          },
+          {
+            value: "0 0 0/12 * * ? *",
+            name: t`12 hours`,
+          },
+          {
+            value: "0 0 0 ? * * *",
+            name: t`24 hours`,
+          },
+          {
+            value: "custom",
+            name: t`Custom…`,
+          },
+        ],
+        widget: ModelCachingScheduleWidget,
         disableDefaultUpdate: true,
-        widget: PersistedModelRefreshIntervalWidget,
         getHidden: settings => !settings["persisted-models-enabled"],
-        onChanged: (oldHours, hours) =>
-          PersistedModelsApi.setRefreshInterval({ hours }),
-      },
-      {
-        key: "persisted-model-refresh-anchor-time",
-        display_name: t`Anchoring time`,
-        disableDefaultUpdate: true,
-        widget: PersistedModelAnchorTimeWidget,
-        getHidden: settings => {
-          if (!settings["persisted-models-enabled"]) {
-            return true;
-          }
-          const DEFAULT_REFRESH_INTERVAL = 6;
-          const refreshInterval =
-            settings["persisted-model-refresh-interval-hours"] ||
-            DEFAULT_REFRESH_INTERVAL;
-          return (
-            refreshInterval < CACHING_MIN_REFRESH_HOURS_FOR_ANCHOR_TIME_SETTING
-          );
-        },
-        onChanged: (oldAnchor, anchor) =>
-          PersistedModelsApi.setRefreshInterval({ anchor }),
+        onChanged: (previousValue, value) =>
+          PersistedModelsApi.setRefreshSchedule({ cron: value }),
       },
     ],
   },
@@ -615,7 +622,7 @@ export const getSections = createSelector(
         continue;
       }
 
-      const settings = section.settings.map(function(setting) {
+      const settings = section.settings.map(function (setting) {
         const apiSetting =
           settingsByKey[setting.key] && settingsByKey[setting.key][0];
 

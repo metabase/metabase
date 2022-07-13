@@ -172,12 +172,8 @@
      :visible-if   {"ssl-use-client-auth" true}}
     driver.common/ssh-tunnel-preferences
     driver.common/advanced-options-start
-    {:name         "json-unfolding"
-     :display-name (trs "Unfold JSON Columns")
-     :type         :boolean
-     :visible-if   {"advanced-options" true}
-     :description  (trs "We unfold JSON columns into component fields. This is on by default but you can turn it off if performance is slow.")
-     :default      true}
+    driver.common/json-unfolding
+
     (assoc driver.common/additional-options
            :placeholder "prepareThreshold=0")
     driver.common/default-advanced-options]
