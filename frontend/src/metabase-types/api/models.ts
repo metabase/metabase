@@ -21,6 +21,8 @@ export interface ModelCacheRefreshStatus {
   error: string | null;
   active: boolean;
 
+  card_archived?: boolean;
+  card_dataset?: boolean;
   card_id: CardId;
   card_name: string;
 
