@@ -96,6 +96,10 @@
   :in  (comp json-in normalize-parameters-list)
   :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization))
 
+(models/add-type! :template-tags
+  :in  (comp json-in mbql.normalize/normalize-template-tags)
+  :out (comp (catch-normalization-exceptions mbql.normalize/normalize-template-tags) json-out-with-keywordization))
+
 (def ^:private MetricSegmentDefinition
   {(s/optional-key :filter)      (s/maybe mbql.s/Filter)
    (s/optional-key :aggregation) (s/maybe [mbql.s/Aggregation])
