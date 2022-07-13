@@ -281,7 +281,7 @@
                              {:status-code 400})))
            (when-let [database-id (:database (some :dataset_query [card-updates card-before-update]))]
              ;; make sure Actions are allowed for the Card's query's Database
-             (api.action/do-check-actions-enabled database-id nil))
+             (api.action/check-actions-enabled database-id))
            (catch Throwable e
              (let [message (tru "Cannot mark Saved Question as ''is_write'': {0}" (ex-message e))]
                (throw (ex-info message

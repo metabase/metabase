@@ -133,8 +133,8 @@
                                               :status-code 400})))))))
                    column->value)))
 
-(defmethod actions/row-action! [:delete :sql-jdbc]
-  [_action driver {database-id :database :as query}]
+(defmethod actions/perform-action!* [:sql-jdbc :row/delete]
+  [driver _action _database {database-id :database, :as query}]
   (let [conn         (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql     (qp.store/with-store
                        (try
@@ -164,8 +164,8 @@
                 (ex-info (or (ex-message e) "Delete action error.")
                          (assoc e-data :status-code 400)))))))))
 
-(defmethod actions/row-action! [:update :sql-jdbc]
-  [_action driver {database-id :database :keys [update-row] :as query}]
+(defmethod actions/perform-action!* [:sql-jdbc :row/update]
+  [driver _action _database {database-id :database :keys [update-row] :as query}]
   (let [conn         (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql     (qp.store/with-store
                    (try
@@ -198,8 +198,8 @@
            (ex-info (or (ex-message e) "Update action error.")
                     (assoc e-data :status-code 400))))))))
 
-(defmethod actions/row-action! [:create :sql-jdbc]
-  [_action driver {database-id :database :keys [create-row] :as query}]
+(defmethod actions/perform-action!* [:sql-jdbc :row/create]
+  [driver _action _database {database-id :database :keys [create-row] :as query}]
   (let [conn        (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql    (qp.store/with-store
                       (try
