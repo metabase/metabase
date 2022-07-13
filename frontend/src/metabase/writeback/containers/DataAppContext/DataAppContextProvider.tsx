@@ -106,7 +106,7 @@ function DataAppContextProvider({
         "(can be used for parameterized text cards and data app title)",
         "Syntax: {{ data.camelCaseCardName.columnName }}, follow the object structure below",
       ].join("\n"),
-      context,
+      value,
     );
 
     return value;
