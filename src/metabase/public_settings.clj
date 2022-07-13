@@ -363,7 +363,7 @@
   "Whether this instance has custom colors or logo set."
   []
   (or (not-empty (application-colors))
-      (not= (application-favicon-url) "app/assets/img/favicon.ico")))
+      (not= (application-logo-url) "app/assets/img/logo.svg")))
 
 (defsetting show-metabot
   (deferred-tru "Enables Metabot character on the home page")
