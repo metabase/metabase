@@ -28,50 +28,56 @@
 (defn- strip-labels [path]
   (mapv #(dissoc % :label) path))
 
-(defn- random-key [prefix n]
-  (keyword (str prefix (rand-int n))))
+(defn- random-key
+  ([prefix n] (random-key prefix n 0))
+  ([prefix n floor] (keyword (str prefix (+ floor (rand-int n))))))
 
 (deftest e2e-storage-ingestion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (ts/with-empty-h2-app-db
       ;; TODO Generating some nested collections would make these tests more robust.
-      (test-gen/insert! {:collection     [[100 {:refs {:personal_owner_id ::rs/omit}}]]
-                         :database       [[10]]
-                         :table          (into [] (for [db [:db0 :db1 :db2 :db3 :db4 :db5 :db6 :db7 :db8 :db9]]
-                                                    [10 {:refs {:db_id db}}]))
-                         :field          (into [] (for [n     (range 100)
-                                                        :let [table (keyword (str "t" n))]]
-                                                    [10 {:refs {:table_id table}}]))
-                         :core-user      [[10]]
-                         :card           [[100 {:refs (let [db (rand-int 10)
-                                                            t  (rand-int 10)]
-                                                        {:database_id   (keyword (str "db" db))
-                                                         :table_id      (keyword (str "t" (+ t (* 10 db))))
-                                                         :collection_id (random-key "coll" 100)
-                                                         :creator_id    (random-key "u" 10)})}]]
-                         :dashboard      [[100 {:refs {:collection_id   (random-key "coll" 100)
-                                                       :creator_id      (random-key "u" 10)}}]]
-                         :dashboard-card [[300 {:refs {:card_id      (random-key "c" 100)
-                                                       :dashboard_id (random-key "d" 100)}}]]
-                         :dimension      [;; 20 with both IDs set
-                                          [20 {:refs {:field_id                (random-key "field" 1000)
-                                                      :human_readable_field_id (random-key "field" 1000)}}]
-                                          ;; 20 with just :field_id
-                                          [20 {:refs {:field_id                (random-key "field" 1000)
-                                                      :human_readable_field_id ::rs/omit}}]]
-                         :metric         [[30 {:refs {:table_id   (random-key "t" 100)
-                                                      :creator_id (random-key "u" 10)}}]]})
+      (test-gen/insert!
+        {:collection             [[100 {:refs {:personal_owner_id ::rs/omit}}]
+                                  [10  {:refs {:personal_owner_id ::rs/omit}
+                                        :namespace :snippets}]]
+         :database               [[10]]
+         :table                  (into [] (for [db [:db0 :db1 :db2 :db3 :db4 :db5 :db6 :db7 :db8 :db9]]
+                                            [10 {:refs {:db_id db}}]))
+         :field                  (into [] (for [n     (range 100)
+                                                :let [table (keyword (str "t" n))]]
+                                            [10 {:refs {:table_id table}}]))
+         :core-user              [[10]]
+         :card                   [[100 {:refs (let [db (rand-int 10)
+                                                    t  (rand-int 10)]
+                                                {:database_id   (keyword (str "db" db))
+                                                 :table_id      (keyword (str "t" (+ t (* 10 db))))
+                                                 :collection_id (random-key "coll" 100)
+                                                 :creator_id    (random-key "u" 10)})}]]
+         :dashboard              [[100 {:refs {:collection_id   (random-key "coll" 100)
+                                               :creator_id      (random-key "u" 10)}}]]
+         :dashboard-card         [[300 {:refs {:card_id      (random-key "c" 100)
+                                               :dashboard_id (random-key "d" 100)}}]]
+         :dimension              [;; 20 with both IDs set
+                                  [20 {:refs {:field_id                (random-key "field" 1000)
+                                              :human_readable_field_id (random-key "field" 1000)}}]
+                                  ;; 20 with just :field_id
+                                  [20 {:refs {:field_id                (random-key "field" 1000)
+                                              :human_readable_field_id ::rs/omit}}]]
+         :metric                 [[30 {:refs {:table_id   (random-key "t" 100)
+                                              :creator_id (random-key "u" 10)}}]]
+         :native-query-snippet   [[10 {:refs {:creator_id    (random-key "u" 10)
+                                              :collection_id (random-key "coll" 10 100)}}]]})
       (let [extraction (into [] (extract/extract-metabase {}))
             entities   (reduce (fn [m entity]
                                  (update m (-> entity :serdes/meta last :model)
                                          (fnil conj []) entity))
                                {} extraction)]
-        (is (= 100 (-> entities (get "Collection") count)))
+        (is (= 110 (-> entities (get "Collection") count)))
 
         (testing "storage"
           (storage.yaml/store! (seq extraction) dump-dir)
           (testing "for Collections"
-            (is (= 100 (count (dir->file-set (io/file dump-dir "Collection")))))
+            (is (= 110 (count (dir->file-set (io/file dump-dir "Collection")))))
             (doseq [{:keys [entity_id slug] :as coll} (get entities "Collection")
                     :let [filename (str entity_id "+" (#'u.yaml/truncate-label slug) ".yaml")]]
               (is (= (dissoc coll :serdes/meta)
@@ -174,6 +180,16 @@
                          (update :created_at u.date/format)
                          (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Metric" filename))))))
+
+          (testing "for native query snippets"
+            (is (= 10 (count (dir->file-set (io/file dump-dir "NativeQuerySnippet")))))
+            (doseq [{:keys [entity_id name] :as snippet} (get entities "NativeQuerySnippet")
+                    :let [filename (str entity_id "+" name ".yaml")]]
+              (is (= (-> snippet
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "NativeQuerySnippet" filename))))))
 
           (testing "for settings"
             (is (= (into {} (for [{:keys [key value]} (get entities "Setting")]
