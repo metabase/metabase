@@ -210,7 +210,9 @@
                                   :insert! {:model DashboardCardSeries}}
    :dimension                    {:prefix  :dim
                                   :spec    ::dimension
-                                  :insert! {:model Dimension}}
+                                  :insert! {:model Dimension}
+                                  :relations {:field_id                [:field :id]
+                                              :human_readable_field_id [:field :id]}}
    :field                        {:prefix      :field
                                   :spec        ::field
                                   :insert!     {:model Field}

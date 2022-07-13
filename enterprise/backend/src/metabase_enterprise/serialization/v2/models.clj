@@ -7,6 +7,7 @@
    "Dashboard"
    "DashboardCard"
    "Database"
+   "Dimension"
    "Field"
    "Setting"
    "Table"])
