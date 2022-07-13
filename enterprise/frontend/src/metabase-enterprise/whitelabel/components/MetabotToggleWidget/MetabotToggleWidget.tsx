@@ -1,15 +1,8 @@
 import React from "react";
 import { t } from "ttag";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-import Toggle from "metabase/core/components/Toggle";
 import { MetabotSetting } from "./types";
-import {
-  MetabotSettingWidgetRoot,
-  MetabotContainer,
-  ToggleContainer,
-  ToggleLabel,
-  MetabotImage,
-} from "./MetabotToggleWidget.styled";
+import ImageToggle from "../ImageToggle";
+import { MetabotImage } from "./MetabotToggleWidget.styled";
 
 interface MetabotToggleWidgetProps {
   setting: MetabotSetting;
@@ -23,29 +16,18 @@ const MetabotToggleWidget = ({
   const isEnabled = setting.value ?? setting.default;
   const metabotImage = isEnabled ? "metabot-happy" : "metabot-sad";
 
-  const toggleId = useUniqueId("show-metabot-switch");
   return (
-    <MetabotSettingWidgetRoot>
-      <MetabotContainer>
-        <MetabotImage
-          src={`app/assets/img/${metabotImage}.gif`}
-          width="94px"
-          alt="Metabot"
-        />
-      </MetabotContainer>
-      <ToggleContainer>
-        <ToggleLabel
-          htmlFor={toggleId}
-        >{t`Display our little friend on the homepage`}</ToggleLabel>
-        <Toggle
-          id={toggleId}
-          aria-checked={isEnabled}
-          role="switch"
-          value={isEnabled}
-          onChange={onChange}
-        />
-      </ToggleContainer>
-    </MetabotSettingWidgetRoot>
+    <ImageToggle
+      label={t`Display our little friend on the homepage`}
+      value={isEnabled}
+      onChange={onChange}
+    >
+      <MetabotImage
+        src={`app/assets/img/${metabotImage}.gif`}
+        width={94}
+        alt="Metabot"
+      />
+    </ImageToggle>
   );
 };
 
