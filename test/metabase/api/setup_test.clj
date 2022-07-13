@@ -1,7 +1,7 @@
 (ns metabase.api.setup-test
   "Tests for /api/setup endpoints."
   (:require [clojure.core.async :as a]
-            [clojure.spec.alpha :as spec]
+            [clojure.spec.alpha :as s]
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.analytics.snowplow-test :as snowplow-test]
@@ -19,7 +19,7 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [schema.core :as s]
+            [schema.core :as schema]
             [toucan.db :as db]))
 
 ;; make sure the default test users are created before running these tests, otherwise we're going to run into issues
@@ -66,7 +66,7 @@
      (fn []
        (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
          (testing "API response should return a Session UUID"
-           (is (schema= {:id (s/pred mt/is-uuid-string? "UUID string")}
+           (is (schema= {:id (schema/pred mt/is-uuid-string? "UUID string")}
                         (client/client :post 200 "setup" request-body))))
          ;; reset our setup token
          (setup/create-token!)
@@ -88,11 +88,11 @@
 
           (testing "Should record :user-joined Activity (#12933)"
             (let [user-id (u/the-id (db/select-one-id User :email email))]
-              (is (schema= {:topic    (s/eq :user-joined)
-                            :model_id (s/eq user-id)
-                            :user_id  (s/eq user-id)
-                            :model    (s/eq "user")
-                            s/Keyword s/Any}
+              (is (schema= {:topic         (schema/eq :user-joined)
+                            :model_id      (schema/eq user-id)
+                            :user_id       (schema/eq user-id)
+                            :model         (schema/eq "user")
+                            schema/Keyword schema/Any}
                            (wait-for-result #(db/select-one Activity :topic "user-joined", :user_id user-id)))))))))))
 
 (deftest invite-user-test
@@ -188,10 +188,10 @@
                                   :name    db-name
                                   :details (:details (mt/db))}}
             (testing ":database-create events should have been fired"
-              (is (schema= {:topic (s/eq :database-create)
-                            :item  {:id       su/IntGreaterThanZero
-                                    :name     (s/eq db-name)
-                                    s/Keyword s/Any}}
+              (is (schema= {:topic (schema/eq :database-create)
+                            :item  {:id            su/IntGreaterThanZero
+                                    :name          (schema/eq db-name)
+                                    schema/Keyword schema/Any}}
                            (mt/wait-for-result chan 100))))
 
             (testing "Database should be synced"
@@ -212,18 +212,18 @@
                                                                     :name    (mt/random-name)
                                                                     :details {}})))))))))
 
-(spec/def ::setup!-args
-  (spec/cat :expected-status (spec/? integer?)
+(s/def ::setup!-args
+  (s/cat :expected-status (s/? integer?)
             :f               any?
-            :args            (spec/* any?)))
+            :args            (s/* any?)))
 
 (defn- setup!
   {:arglists '([expected-status? f & args])}
   [& args]
-  (let [parsed (spec/conform ::setup!-args args)]
-    (when (= parsed :clojure.spec.alpha/invalid)
-      (throw (ex-info (str "Invalid setup! args: " (spec/explain-str ::setup!-args args))
-                      (spec/explain-data ::setup!-args args))))
+  (let [parsed (s/conform ::setup!-args args)]
+    (when (= parsed ::s/invalid)
+      (throw (ex-info (str "Invalid setup! args: " (s/explain-str ::setup!-args args))
+                      (s/explain-data ::setup!-args args))))
     (let [{:keys [expected-status f args]} parsed
           body                             {:token (setup/create-token!)
                                             :prefs {:site_name "Metabase Test"}
@@ -351,7 +351,7 @@
                                                          (fn [& args]
                                                            (apply orig args)
                                                            (throw (ex-info "Oops!" {}))))]
-             (is (schema= {:message (s/eq "Oops!"), s/Keyword s/Any}
+             (is (schema= {:message (schema/eq "Oops!"), schema/Keyword schema/Any}
                           (client/client :post 500 "setup" body))))
            (testing "New user shouldn't exist"
              (is (= false

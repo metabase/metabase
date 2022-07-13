@@ -1,6 +1,6 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
-  (:require [clojure.spec.alpha :as spec]
+  (:require [clojure.spec.alpha :as s]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :as compojure]
@@ -13,7 +13,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
+            [schema.core :as schema]
             [toucan.db :as db]))
 
 (declare check-403 check-404)
@@ -229,20 +229,20 @@
 
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
-(spec/def ::defendpoint-args
-  (spec/cat
+(s/def ::defendpoint-args
+  (s/cat
    :method      symbol?
    :route       (some-fn string? sequential?)
-   :docstr      (spec/? string?)
+   :docstr      (s/? string?)
    :args        vector?
-   :arg->schema (spec/? (every-pred map? #(every? symbol? (keys %))))
-   :body        (spec/* any?)))
+   :arg->schema (s/? (every-pred map? #(every? symbol? (keys %))))
+   :body        (s/* any?)))
 
 (defn- parse-defendpoint-args [args]
-  (let [parsed (spec/conform ::defendpoint-args args)]
-    (when (= parsed :clojure.spec.alpha/invalid)
-      (throw (ex-info (str "Invalid defendpoint args: " (spec/explain-str ::defendpoint-args args))
-                      (spec/explain-data ::defendpoint-args args))))
+  (let [parsed (s/conform ::defendpoint-args args)]
+    (when (= parsed ::s/invalid)
+      (throw (ex-info (str "Invalid defendpoint args: " (s/explain-str ::defendpoint-args args))
+                      (s/explain-data ::defendpoint-args args))))
     (let [{:keys [method route docstr arg->schema body]} parsed
           fn-name                                        (route-fn-name method route)
           route                                          (add-route-param-regexes route)
@@ -426,7 +426,7 @@
   (check (not (and limit (not offset))) [400 (tru "When including a limit, an offset must also be included.")])
   (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")]))
 
-(s/defn column-will-change? :- s/Bool
+(schema/defn column-will-change? :- schema/Bool
   "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the
   endpoint) is applied.
 
@@ -436,7 +436,7 @@
     (api/column-will-change? :archived (Collection 10) {:archived false}) ; -> false, because value did not change
 
     (api/column-will-change? :archived (Collection 10) {}) ; -> false; value not specified in updates (request body)"
-  [k :- s/Keyword, object-before-updates :- su/Map, object-updates :- su/Map]
+  [k :- schema/Keyword, object-before-updates :- su/Map, object-updates :- su/Map]
   (boolean
    (and (contains? object-updates k)
         (not= (get object-before-updates k)
@@ -444,12 +444,12 @@
 
 ;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------
 
-(s/defn reconcile-position-for-collection!
+(schema/defn reconcile-position-for-collection!
   "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
   for fixing card/dashboard/pulse changes that impact other instances in the collection"
-  [collection-id :- (s/maybe su/IntGreaterThanZero)
-   old-position :- (s/maybe su/IntGreaterThanZero)
-   new-position :- (s/maybe su/IntGreaterThanZero)]
+  [collection-id :- (schema/maybe su/IntGreaterThanZero)
+   old-position  :- (schema/maybe su/IntGreaterThanZero)
+   new-position  :- (schema/maybe su/IntGreaterThanZero)]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
                      (doseq [model '[Card Dashboard Pulse]]
                        (db/update-where! model {:collection_id       collection-id
@@ -472,25 +472,25 @@
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
-  {:collection_id       (s/maybe su/IntGreaterThanZero)
-   :collection_position (s/maybe su/IntGreaterThanZero)
-   s/Any                s/Any})
+  {:collection_id       (schema/maybe su/IntGreaterThanZero)
+   :collection_position (schema/maybe su/IntGreaterThanZero)
+   schema/Any           schema/Any})
 
 (def ^:private ModelWithOptionalPosition
   "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
   present, they didn't change. If they are present, they might have changed and we need to compare."
-  {(s/optional-key :collection_id)       (s/maybe su/IntGreaterThanZero)
-   (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZero)
-   s/Any                                 s/Any})
+  {(schema/optional-key :collection_id)       (schema/maybe su/IntGreaterThanZero)
+   (schema/optional-key :collection_position) (schema/maybe su/IntGreaterThanZero)
+   schema/Any                                 schema/Any})
 
-(s/defn maybe-reconcile-collection-position!
+(schema/defn maybe-reconcile-collection-position!
   "Generic function for working on cards/dashboards/pulses. Checks the before and after changes to see if there is any
   impact to the collection position of that model instance. If so, executes updates to fix the collection position
   that goes with the change. The 2-arg version of this function is used for a new card/dashboard/pulse (i.e. not
   updating an existing instance, but creating a new one)."
   ([new-model-data :- ModelWithPosition]
    (maybe-reconcile-collection-position! nil new-model-data))
-  ([{old-collection-id :collection_id, old-position :collection_position, :as _before-update} :- (s/maybe ModelWithPosition)
+  ([{old-collection-id :collection_id, old-position :collection_position, :as _before-update} :- (schema/maybe ModelWithPosition)
     {new-collection-id :collection_id, new-position :collection_position, :as model-updates} :- ModelWithOptionalPosition]
    (let [updated-collection? (and (contains? model-updates :collection_id)
                                   (not= old-collection-id new-collection-id))
