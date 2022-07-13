@@ -4,9 +4,13 @@ import React, {
   forwardRef,
   HTMLAttributes,
   Ref,
+  useLayoutEffect,
   useCallback,
   useState,
 } from "react";
+
+import { usePrevious } from "metabase/hooks/use-previous";
+
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 
 export type EditableTextAttributes = Omit<
@@ -21,6 +25,8 @@ export interface EditableTextProps extends EditableTextAttributes {
   isMultiline?: boolean;
   isDisabled?: boolean;
   onChange?: (value: string) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
   "data-testid"?: string;
 }
 
@@ -32,6 +38,8 @@ const EditableText = forwardRef(function EditableText(
     isMultiline = false,
     isDisabled = false,
     onChange,
+    onFocus,
+    onBlur,
     "data-testid": dataTestId,
     ...props
   }: EditableTextProps,
@@ -40,6 +48,13 @@ const EditableText = forwardRef(function EditableText(
   const [inputValue, setInputValue] = useState(initialValue ?? "");
   const [submitValue, setSubmitValue] = useState(initialValue ?? "");
   const displayValue = inputValue ? inputValue : placeholder;
+  const previousInitialValue = usePrevious(initialValue);
+
+  useLayoutEffect(() => {
+    if (previousInitialValue !== initialValue) {
+      setInputValue(initialValue ?? "");
+    }
+  }, [previousInitialValue, initialValue]);
 
   const handleBlur = useCallback(() => {
     if (!isOptional && !inputValue) {
@@ -48,7 +63,8 @@ const EditableText = forwardRef(function EditableText(
       setSubmitValue(inputValue);
       onChange?.(inputValue);
     }
-  }, [inputValue, submitValue, isOptional, onChange]);
+    onBlur?.();
+  }, [inputValue, submitValue, isOptional, onChange, onBlur]);
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -81,6 +97,7 @@ const EditableText = forwardRef(function EditableText(
         placeholder={placeholder}
         disabled={isDisabled}
         data-testid={dataTestId}
+        onFocus={onFocus}
         onBlur={handleBlur}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
