@@ -29,7 +29,7 @@ import { ContentViewportContext } from "metabase/core/context/ContentViewportCon
 
 import { AppErrorDescriptor, State } from "metabase-types/store";
 
-import { AppContent, AppContentContainer } from "./App.styled";
+import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
@@ -100,7 +100,7 @@ function App({
   return (
     <ErrorBoundary onError={setErrorInfo}>
       <ScrollToTop>
-        <div className="spread">
+        <AppContainer className="spread">
           {isAppBarVisible && <AppBar isNavBarVisible={isNavBarVisible} />}
           <AppContentContainer
             isAdminApp={isAdminApp}
@@ -116,7 +116,7 @@ function App({
             <StatusListing />
           </AppContentContainer>
           <AppErrorCard errorInfo={errorInfo} />
-        </div>
+        </AppContainer>
       </ScrollToTop>
     </ErrorBoundary>
   );
