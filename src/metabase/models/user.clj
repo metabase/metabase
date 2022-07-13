@@ -116,7 +116,7 @@
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
-  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
+  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :is_animation_enabled])
 
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user

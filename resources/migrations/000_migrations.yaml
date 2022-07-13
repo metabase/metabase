@@ -11931,6 +11931,21 @@ databaseChangeLog:
                   defaultValueBoolean: true
                   constraints:
                     nullable: false
+  - changeSet:
+      id: v44.00-039
+      author: rubensrafael
+      comment: Added 0.44.0 - Add setting to enable/disable css animations on browser
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: is_animation_enabled
+                  type: boolean
+                  remarks: The field is useful to save this setting between any devices
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v44.00-039

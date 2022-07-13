@@ -52,6 +52,7 @@ interface AppStateProps {
   isAdminApp: boolean;
   isAppBarVisible: boolean;
   isNavBarVisible: boolean;
+  isAnimationEnabled: boolean | undefined;
 }
 
 interface AppRouterOwnProps {
@@ -69,6 +70,7 @@ const mapStateToProps = (
   isAdminApp: getIsAdminApp(state, props),
   isAppBarVisible: getIsAppBarVisible(state, props),
   isNavBarVisible: getIsNavBarVisible(state, props),
+  isAnimationEnabled: state?.currentUser?.is_animation_enabled,
 });
 
 class ErrorBoundary extends React.Component<{
@@ -88,6 +90,7 @@ function App({
   isAdminApp,
   isAppBarVisible,
   isNavBarVisible,
+  isAnimationEnabled,
   children,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
@@ -105,6 +108,7 @@ function App({
           <AppContentContainer
             isAdminApp={isAdminApp}
             isAppBarVisible={isAppBarVisible}
+            isAnimationEnabled={isAnimationEnabled}
           >
             {isNavBarVisible && <Navbar />}
             <AppContent ref={setViewportElement}>

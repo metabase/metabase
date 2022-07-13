@@ -280,7 +280,7 @@
   Self or superusers can update user info and groups.
   Group Managers can only add/remove users from groups they are manager of."
   [id :as {{:keys [email first_name last_name user_group_memberships
-                   is_superuser is_group_manager login_attributes locale] :as body} :body}]
+                   is_superuser is_group_manager login_attributes locale is_animation_enabled] :as body} :body}]
   {email                  (s/maybe su/Email)
    first_name             (s/maybe su/NonBlankString)
    last_name              (s/maybe su/NonBlankString)
@@ -288,7 +288,8 @@
    is_superuser           (s/maybe s/Bool)
    is_group_manager       (s/maybe s/Bool)
    login_attributes       (s/maybe user/LoginAttributes)
-   locale                 (s/maybe su/ValidLocale)}
+   locale                 (s/maybe su/ValidLocale)
+   is_animation_enabled   (s/maybe s/Bool)}
   (try
    (check-self-or-superuser id)
    (catch clojure.lang.ExceptionInfo _e
@@ -308,7 +309,7 @@
                api/*is-superuser?*)
        (api/check-500
         (db/update! User id (u/select-keys-when body
-                              :present (cond-> #{:first_name :last_name :locale}
+                              :present (cond-> #{:first_name :last_name :locale :is_animation_enabled}
                                          api/*is-superuser?* (conj :login_attributes))
                               :non-nil (cond-> #{:email}
                                          api/*is-superuser?* (conj :is_superuser)))))

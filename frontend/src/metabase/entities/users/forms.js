@@ -9,6 +9,7 @@ import {
 } from "metabase/plugins";
 import validate from "metabase/lib/validate";
 import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
+import FormBooleanWidget from "metabase/components/form/widgets/FormBooleanWidget";
 
 const getNameFields = () => [
   {
@@ -46,6 +47,12 @@ const getLocaleField = () => ({
       ([code, name]) => name,
     ),
   ].map(([code, name]) => ({ name, value: code })),
+});
+
+const getIsAnimationEnabledField = () => ({
+  name: "is_animation_enabled",
+  title: t`Interface animations`,
+  type: FormBooleanWidget,
 });
 
 const getPasswordFields = () => [
@@ -95,7 +102,12 @@ export default {
       }
 
       // password user
-      return [...getNameFields(), getEmailField(), getLocaleField()];
+      return [
+        ...getNameFields(),
+        getEmailField(),
+        getLocaleField(),
+        getIsAnimationEnabledField(),
+      ];
     },
     disablePristineSubmit: true,
   },

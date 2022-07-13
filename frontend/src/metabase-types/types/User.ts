@@ -10,4 +10,5 @@ export type User = {
   is_superuser: boolean;
   date_joined: string;
   last_login: string;
+  is_animation_enabled: boolean;
 };

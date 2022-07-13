@@ -102,3 +102,7 @@
   border-color: var(--color-brand);
   transition: border 300ms ease-in-out;
 }
+
+span#is_animation_enabled-label {
+  color: var(--color-text-dark);
+}

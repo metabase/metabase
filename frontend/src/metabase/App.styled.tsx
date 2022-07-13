@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
@@ -6,6 +7,7 @@ import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 export const AppContentContainer = styled.div<{
   isAdminApp: boolean;
   isAppBarVisible: boolean;
+  isAnimationEnabled: boolean | undefined;
 }>`
   display: flex;
   flex-direction: ${props => (props.isAdminApp ? "column" : "row")};
@@ -20,6 +22,14 @@ export const AppContentContainer = styled.div<{
     height: 100%;
     overflow: visible !important;
   }
+
+  ${props =>
+    !props.isAnimationEnabled &&
+    css`
+      * {
+        transition: none !important;
+      }
+    `}
 `;
 
 export const AppContent = styled.main`
