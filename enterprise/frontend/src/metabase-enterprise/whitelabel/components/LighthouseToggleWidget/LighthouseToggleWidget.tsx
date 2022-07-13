@@ -21,10 +21,7 @@ const LighthouseToggleWidget = ({
       value={isEnabled}
       onChange={onChange}
     >
-      <LighthouseImage
-        src="app/img/bridge.svg"
-        alt={t`Lighthouse illustration`}
-      />
+      <LighthouseImage />
     </ImageToggle>
   );
 };
