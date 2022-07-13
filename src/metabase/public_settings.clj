@@ -371,9 +371,11 @@
   :type       :boolean
   :enabled?   premium-features/enable-whitelabeling?
   :getter     (fn []
-                (if-some [v (setting/get-value-of-type :boolean :show-metabot)]
-                  v
-                  (not (has-custom-branding?)))))
+                (if-some [value (setting/get-value-of-type :boolean :show-metabot)]
+                  value
+                  (let [new-value (not (has-custom-branding?))]
+                    (setting/set-value-of-type! :boolean :show-metabot new-value)
+                    new-value))))
 
 (defsetting show-lighthouse-illustration
   (deferred-tru "Display the lighthouse illustration on the home and login pages.")
@@ -381,9 +383,11 @@
   :type       :boolean
   :enabled?   premium-features/enable-whitelabeling?
   :getter     (fn []
-                (if-some [v (setting/get-value-of-type :boolean :show-lighthouse-illustration)]
-                  v
-                  (not (has-custom-branding?)))))
+                (if-some [value (setting/get-value-of-type :boolean :show-lighthouse-illustration)]
+                  value
+                  (let [new-value (not (has-custom-branding?))]
+                    (setting/set-value-of-type! :boolean :show-lighthouse-illustration new-value)
+                    new-value))))
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
