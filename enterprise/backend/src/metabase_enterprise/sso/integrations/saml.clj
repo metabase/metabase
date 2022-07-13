@@ -165,7 +165,7 @@
                       {:status-code 401})))
     attrs))
 
-(defn- base64-decode [s]
+(defn- base64-decode [^String s]
   (when (u/base64-string? s)
     (codecs/bytes->str
       (.decode (Base64/getMimeDecoder) s))))
