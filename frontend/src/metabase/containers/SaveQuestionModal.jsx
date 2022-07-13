@@ -128,6 +128,9 @@ class SaveQuestionModal extends Component {
       hasIsWriteField && { name: "is_write" },
     ].filter(Boolean);
 
+    const canUpdateExistingCard =
+      originalCard && !originalCard.dataset && originalCard.can_write;
+
     const initialValues = {
       name:
         card.name || isStructured
@@ -138,14 +141,15 @@ class SaveQuestionModal extends Component {
         card.collection_id === undefined
           ? initialCollectionId
           : card.collection_id,
-      saveType:
-        originalCard && !originalCard.dataset && originalCard.can_write
-          ? "overwrite"
-          : "create",
+      saveType: canUpdateExistingCard ? "overwrite" : "create",
     };
 
     if (hasIsWriteField) {
-      initialValues.is_write = false;
+      if (canUpdateExistingCard) {
+        initialValues.is_write = originalCard.is_write || false;
+      } else {
+        initialValues.is_write = false;
+      }
     }
 
     const title = this.props.multiStep

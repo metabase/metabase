@@ -185,7 +185,7 @@ function baseTypeFilterForParameterType(parameterType) {
   const [typePrefix] = parameterType.split("/");
   const allowedTypes = {
     date: [TYPE.Temporal],
-    id: [TYPE.Integer],
+    id: [TYPE.Integer, TYPE.UUID],
     category: [TYPE.Text, TYPE.Integer],
     location: [TYPE.Text],
   }[typePrefix];

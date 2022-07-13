@@ -5,15 +5,13 @@ import { connect } from "react-redux";
 import Header from "metabase/writeback/components/HttpAction/Header";
 import HttpAction from "metabase/writeback/components/HttpAction/HttpAction";
 import { ActionType } from "metabase/writeback/types";
+import { getActionTemplateTagType } from "metabase/writeback/utils";
 import { useWritebackAction } from "../hooks";
 import {
   createHttpAction,
   CreateHttpActionPayload,
 } from "metabase/query_builder/actions";
-import {
-  getTemplateTagParameterTarget,
-  getTemplateTagType,
-} from "metabase/parameters/utils/cards";
+import { getTemplateTagParameterTarget } from "metabase/parameters/utils/cards";
 import { TemplateTag } from "metabase-types/types/Query";
 import { ParameterWithTarget } from "metabase/parameters/types";
 
@@ -100,7 +98,7 @@ export default connect(null, mapDispatchToProps)(CreateActionPage);
 function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
   return {
     id: tag.id,
-    type: tag["widget-type"] || getTemplateTagType(tag),
+    type: tag["widget-type"] || getActionTemplateTagType(tag),
     target: getTemplateTagParameterTarget(tag),
     name: tag.name,
     slug: tag.name,
