@@ -180,6 +180,15 @@ export function formatNumber(number, options = {}) {
         formatted = replaceNumberSeparators(formatted, separators);
       }
 
+      // fixes issue where certain symbols, such as
+      // czech Kč, and Bitcoin ₿, are not displayed
+      if (options["currency_style"] === "symbol") {
+        formatted = formatted.replace(
+          options["currency"],
+          getCurrencySymbol(options["currency"]),
+        );
+      }
+
       return formatted;
     } catch (e) {
       console.warn("Error formatting number", e);
