@@ -1,6 +1,7 @@
 (ns metabase.api.setup-test
   "Tests for /api/setup endpoints."
   (:require [clojure.core.async :as a]
+            [clojure.spec.alpha :as spec]
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.analytics.snowplow-test :as snowplow-test]
@@ -210,19 +211,28 @@
                                                          :database {:engine  "my-fake-driver"
                                                                     :name    (mt/random-name)
                                                                     :details {}})))))))))
+
+(spec/def ::setup!-args
+  (spec/cat :expected-status (spec/? integer?)
+            :f               any?
+            :args            (spec/* any?)))
+
 (defn- setup!
   {:arglists '([expected-status? f & args])}
   [& args]
-  (let [[expected-status args] (u/optional integer? args)
-        [f & args]             args
-        body                   {:token (setup/create-token!)
-                                :prefs {:site_name "Metabase Test"}
-                                :user  {:first_name (mt/random-name)
-                                        :last_name  (mt/random-name)
-                                        :email      (mt/random-email)
-                                        :password   "anythingUP12!!"}}
-        body                   (apply f body args)]
-    (do-with-setup* body #(client/client :post (or expected-status 400) "setup" body))))
+  (let [parsed (spec/conform ::setup!-args args)]
+    (when (= parsed :clojure.spec.alpha/invalid)
+      (throw (ex-info (str "Invalid setup! args: " (spec/explain-str ::setup!-args args))
+                      (spec/explain-data ::setup!-args args))))
+    (let [{:keys [expected-status f args]} parsed
+          body                             {:token (setup/create-token!)
+                                            :prefs {:site_name "Metabase Test"}
+                                            :user  {:first_name (mt/random-name)
+                                                    :last_name  (mt/random-name)
+                                                    :email      (mt/random-email)
+                                                    :password   "anythingUP12!!"}}
+          body                             (apply f body args)]
+      (do-with-setup* body #(client/client :post (or expected-status 400) "setup" body)))))
 
 (deftest setup-validation-test
   (testing "POST /api/setup validation"

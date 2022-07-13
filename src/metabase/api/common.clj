@@ -1,6 +1,7 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
-  (:require [clojure.string :as str]
+  (:require [clojure.spec.alpha :as spec]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :as compojure]
             [honeysql.types :as htypes]
@@ -228,27 +229,34 @@
 
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
-(defn- parse-defendpoint-args [[method route & more]]
-  (let [fn-name                (route-fn-name method route)
-        route                  (add-route-param-regexes route)
-        [docstr [args & more]] (u/optional string? more)
-        [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)]
-    (when-not docstr
+(spec/def ::defendpoint-args
+  (spec/cat
+   :method      symbol?
+   :route       (some-fn string? sequential?)
+   :docstr      (spec/? string?)
+   :args        vector?
+   :arg->schema (spec/? (every-pred map? #(every? symbol? (keys %))))
+   :body        (spec/* any?)))
+
+(defn- parse-defendpoint-args [args]
+  (let [parsed (spec/conform ::defendpoint-args args)]
+    (when (= parsed :clojure.spec.alpha/invalid)
+      (throw (ex-info (str "Invalid defendpoint args: " (spec/explain-str ::defendpoint-args args))
+                      (spec/explain-data ::defendpoint-args args))))
+    (let [{:keys [method route docstr arg->schema body]} parsed
+          fn-name                                        (route-fn-name method route)
+          route                                          (add-route-param-regexes route)
+          ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
+          ;; their API error messages
+          docstr                                         (route-dox method route docstr args (m/map-vals eval arg->schema) body)]
       ;; Don't i18n this, it's dev-facing only
-      (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
-                  (ns-name *ns*) fn-name)))
-    {:method      method
-     :route       route
-     :fn-name     fn-name
-     ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
-     ;; their API error messages
-     :docstr      (route-dox method route docstr args (m/map-vals eval arg->schema) body)
-     :args        args
-     :arg->schema arg->schema
-     :body        body}))
+      (when-not docstr
+        (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
+                                  (ns-name *ns*) fn-name)))
+      (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
 
 (defmacro defendpoint*
-  "Impl macro for `defendpoint`; don't use this directly."
+  "Impl macro for [[defendpoint]]; don't use this directly."
   [{:keys [method route fn-name docstr args body]}]
   {:pre [(or (string? route) (vector? route))]}
   `(def ~(vary-meta fn-name

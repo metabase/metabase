@@ -3,6 +3,7 @@
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.edn :as edn]
+            [clojure.spec.alpha :as spec]
             [clojure.string :as str]
             [clojure.test :as t]
             [clojure.tools.logging :as log]
@@ -177,7 +178,11 @@
    :method                            (apply s/enum (keys method->request-fn))
    (s/optional-key :expected-status)  (s/maybe su/IntGreaterThanZero)
    :url                               su/NonBlankString
-   (s/optional-key :http-body)        (s/maybe su/Map)
+   ;; body can be either a map or a vector -- we encode it as JSON. Of course, other things are valid JSON as well, but
+   ;; currently none of our endpoints accept them -- add them if needed.
+   (s/optional-key :http-body)        (s/cond-pre
+                                       (s/maybe su/Map)
+                                       (s/maybe clojure.lang.IPersistentVector))
    (s/optional-key :query-parameters) (s/maybe su/Map)
    (s/optional-key :request-options)  (s/maybe su/Map)})
 
@@ -214,20 +219,28 @@
     (check-status-code method-name url body expected-status status)
     (update response :body parse-response)))
 
+(spec/def ::http-client-args
+  (spec/cat
+   :credentials      (spec/? (some-fn map? string?))
+   :method           #{:get :put :post :delete}
+   :expected-status  (spec/? integer?)
+   :url              string?
+   :request-options  (spec/? (every-pred map? :request-options))
+   :http-body        (spec/? (some-fn map? sequential?))
+   :query-parameters (spec/* (spec/cat :k keyword? :v any?))))
+
 (defn- parse-http-client-args
   "Parse the list of required and optional `args` into the various separated params that `-client` requires"
   [args]
-  (let [[credentials [method & args]]     (u/optional #(or (map? %) (string? %)) args)
-        [expected-status [url & args]]    (u/optional integer? args)
-        [{:keys [request-options]} args]  (u/optional (every-pred map? :request-options) args {:request-options {}})
-        [body [& {:as query-parameters}]] (u/optional map? args)]
-    {:credentials      credentials
-     :method           method
-     :expected-status  expected-status
-     :url              url
-     :http-body        body
-     :query-parameters query-parameters
-     :request-options  request-options}))
+  (let [parsed (spec/conform ::http-client-args args)]
+    (when (= parsed :clojure.spec.alpha/invalid)
+      (throw (ex-info (str "Invalid http-client args: " (spec/explain-str ::http-client-args args))
+                      (spec/explain-data ::http-client-args args))))
+    (cond-> parsed
+      ;; un-nest {:request-options {:request-options <my-options>}} => {:request-options <my-options>}
+      (:request-options parsed) (update :request-options :request-options)
+      ;; convert query parameters into a flat map [{:k :a, :v 1} {:k :b, :v 2}] => {:a 1, :b 2}
+      (:query-parameters parsed) (update :query-parameters (partial into {} (map (juxt :k :v)))))))
 
 (def ^:private response-timeout-ms (u/seconds->ms 45))
 
