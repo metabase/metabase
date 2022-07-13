@@ -41,7 +41,7 @@
      {:status 200
       :body   @api/*current-user*})))
 
-(deftest check-404-test
+(deftest ^:parallel check-404-test
   (testing "check that `check-404` doesn't throw an exception if `test` is true"
     (is (= {:status  200
             :body    "Cam Saul"
@@ -73,7 +73,7 @@
             identity
             (fn [e] (throw e)))))))
 
-(deftest parse-defendpoint-args-test
+(deftest ^:parallel parse-defendpoint-args-test
   (is (= {:method      'POST
           :route       ["/:id/dimension" :id "[0-9]+"]
           :docstr      String
@@ -91,7 +91,7 @@
              ;; compare easily.
              (update-in [:route 2] str)))))
 
-(deftest defendpoint-test
+(deftest ^:parallel defendpoint-test
   ;; replace regex `#"[0-9]+"` with str `"#[0-9]+" so expectations doesn't barf
   (binding [api.internal/*auto-parse-types* (update-in api.internal/*auto-parse-types* [:int :route-param-regex] (partial str "#"))]
     (is (= '(def GET_:id
