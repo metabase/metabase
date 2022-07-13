@@ -77,7 +77,6 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   getHasCustomColors: (state: State) => false,
-  getHasCustomBranding: (state: State) => false,
   canWhitelabel: (state: State) => false,
   getHideMetabot: (state: State) => false,
   getLoadingMessage: (state: State) => t`Doing science...`,
