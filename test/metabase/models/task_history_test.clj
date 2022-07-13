@@ -1,6 +1,8 @@
 (ns metabase.models.task-history-test
   (:require [clojure.test :refer :all]
             [java-time :as t]
+            [metabase.analytics.snowplow-test :as snowplow-test]
+            [metabase.api.common :refer [*current-user-id*]]
             [metabase.models.task-history :as task-history :refer [TaskHistory]]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -67,3 +69,33 @@
         (task-history/cleanup-task-history! 100)
         (is (= #{task-1 task-2}
                (set (map :task (TaskHistory)))))))))
+
+
+(defn- insert-then-pop!
+  [task]
+  (db/insert! TaskHistory task)
+  (snowplow-test/pop-event-data-and-user-id!))
+
+(deftest snowplow-tracking-test
+  (snowplow-test/with-fake-snowplow-collector
+    (let [t1 (t/zoned-date-time)]
+      (testing "insert a task history should track a snowplow event"
+        (insert-then-pop! (assoc (make-10-millis-task t1)
+                                 :task         "a fake task"
+                                 :task_details {:apple  40
+                                                :orange 2})))
+
+      (testing "should have user id if *current-user-id* is binded"
+        (binding [*current-user-id* 1]
+          (insert-then-pop! (assoc (make-10-millis-task t1)
+                                   :task         "a fake task"
+                                   :task_details {:apple  40
+                                                  :orange 2}))))
+
+      (testing "infer db-engine if db-id exists"
+        (insert-then-pop! (assoc (make-10-millis-task t1)
+                                 :task         "a fake task"
+                                 :task_details {:apple  40
+                                                :orange 2
+                                                :db_id 1}))))))
+
