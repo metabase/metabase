@@ -19,6 +19,7 @@
   (:require [buddy.core.codecs :as codecs]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [medley.core :as m]
             [metabase-enterprise.sso.api.interface :as sso.i]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
@@ -195,4 +196,4 @@
                            :user-attributes attrs
                            :device-info     (request.u/device-info request)})
           response      (response/redirect (or continue-url (public-settings/site-url)))]
-      (mw.session/set-session-cookie request response session))))
+      (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))

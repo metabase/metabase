@@ -18,6 +18,8 @@ export default class InputBlurChange extends Component {
   static propTypes = {
     type: PropTypes.string,
     value: PropTypes.string,
+    defaultValue: PropTypes.string,
+    className: PropTypes.string,
     name: PropTypes.string,
     placeholder: PropTypes.string,
     onChange: PropTypes.func,
