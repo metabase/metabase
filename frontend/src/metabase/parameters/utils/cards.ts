@@ -21,7 +21,7 @@ export function getTemplateTagType(tag: TemplateTag) {
   if (type === "date") {
     return "date/single";
     // @ts-expect-error -- preserving preexisting incorrect types (for now)
-  } else if (type === "string") {
+  } else if (type === "string" || type === "text") {
     return "string/=";
   } else if (type === "number") {
     return "number/=";
