@@ -11,8 +11,6 @@ import { t } from "ttag";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
   getHasCustomColors,
-  getHideMetabot,
-  hasCustomBranding,
   getLoadingMessage,
 } from "metabase-enterprise/settings/selectors";
 import MetabaseSettings from "metabase/lib/settings";
@@ -86,7 +84,6 @@ if (hasPremiumFeature("whitelabel")) {
           type: "boolean",
           widget: MetabotToggleWidget,
           defaultValue: true,
-          getHidden: settings => hasCustomBranding(settings),
         },
         {
           key: "show-lighthouse-illustration",
@@ -111,5 +108,4 @@ if (hasPremiumFeature("whitelabel")) {
 
 // these selectors control whitelabeling UI
 PLUGIN_SELECTORS.getHasCustomColors = getHasCustomColors;
-PLUGIN_SELECTORS.getHideMetabot = getHideMetabot;
 PLUGIN_SELECTORS.getLoadingMessage = getLoadingMessage;
