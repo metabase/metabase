@@ -100,6 +100,15 @@ function DataAppContextProvider({
 
     value.format = (text: string) => formatDataAppString(text, value);
 
+    console.log(
+      [
+        "Data app context",
+        "(can be used for parameterized text cards and data app title)",
+        "Syntax: {{ data.camelCaseCardName.columnName }}, follow the object structure below",
+      ].join("\n"),
+      context,
+    );
+
     return value;
   }, [dataContext, isLoaded]);
 
