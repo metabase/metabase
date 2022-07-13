@@ -218,7 +218,7 @@ function SavedQuestionLeftSide(props) {
                 : []),
 
               <SavedQuestionHeaderButton
-                key="question-title"
+                key={question.displayName()}
                 question={question}
                 onSave={onHeaderChange}
               />,
