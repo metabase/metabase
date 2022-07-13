@@ -1,6 +1,7 @@
 ---
 title: "Setup"
-summary: "API endpoints for Setup."
+summary: |
+  API endpoints for Setup.
 ---
 
 # Setup
@@ -28,7 +29,7 @@ Returns object containing default user details for initial setup, if configured,
 ## `POST /api/setup/`
 
 Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
-  returns a session ID. This endpoint also can also be used to add a database, create and invite a second admin, and/or
+  returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or
   set specific settings from the setup flow.
 
 ### PARAMS:
@@ -45,7 +46,7 @@ Special endpoint for creating the first user during setup. This endpoint both cr
 
 *  **`email`** value must be a valid email address.
 
-*  **`first_name`** value must be a non-blank string.
+*  **`first_name`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`request`** 
 
@@ -67,7 +68,7 @@ Special endpoint for creating the first user during setup. This endpoint both cr
 
 *  **`database`** 
 
-*  **`last_name`** value must be a non-blank string.
+*  **`last_name`** value may be nil, or if non-nil, value must be a non-blank string.
 
 ## `POST /api/setup/validate`
 

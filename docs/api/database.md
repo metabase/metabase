@@ -1,6 +1,7 @@
 ---
 title: "Database"
-summary: "/api/database endpoints."
+summary: |
+  /api/database endpoints.
 ---
 
 # Database
@@ -25,6 +26,7 @@ summary: "/api/database endpoints."
   - [GET /api/database/db-ids-with-deprecated-drivers](#get-apidatabasedb-ids-with-deprecated-drivers)
   - [POST /api/database/](#post-apidatabase)
   - [POST /api/database/:id/discard_values](#post-apidatabaseiddiscard_values)
+  - [POST /api/database/:id/dismiss_spinner](#post-apidatabaseiddismiss_spinner)
   - [POST /api/database/:id/persist](#post-apidatabaseidpersist)
   - [POST /api/database/:id/rescan_values](#post-apidatabaseidrescan_values)
   - [POST /api/database/:id/sync](#post-apidatabaseidsync)
@@ -243,6 +245,15 @@ You must be a superuser to do this.
 ## `POST /api/database/:id/discard_values`
 
 Discards all saved field values for this `Database`.
+
+### PARAMS:
+
+*  **`id`**
+
+## `POST /api/database/:id/dismiss_spinner`
+
+Manually set the initial sync status of the `Database` and corresponding
+  tables to be `complete` (see #20863).
 
 ### PARAMS:
 

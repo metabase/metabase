@@ -1,6 +1,7 @@
 ---
 title: "Activity"
-summary: "API endpoints for Activity."
+summary: |
+  API endpoints for Activity.
 ---
 
 # Activity

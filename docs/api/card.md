@@ -1,6 +1,7 @@
 ---
 title: "Card"
-summary: "/api/card endpoints."
+summary: |
+  /api/card endpoints.
 ---
 
 # Card
@@ -62,7 +63,9 @@ Get `Card` with ID.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** 
+
+*  **`ignore_view`**
 
 ## `GET /api/card/:id/related`
 
@@ -103,7 +106,7 @@ Create a new `Card`.
 
 *  **`visualization_settings`** value must be a map.
 
-*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with String :id key
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys
 
 *  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -119,7 +122,7 @@ Create a new `Card`.
 
 *  **`dataset_query`** 
 
-*  **`parameter_mappings`** value may be nil, or if non-nil, value must be an array. Each parameter mapping must be a String :parameter_id key
+*  **`parameter_mappings`** value may be nil, or if non-nil, value must be an array. Each parameter_mapping must be a map with :parameter_id and :target keys
 
 *  **`display`** value must be a non-blank string.
 
@@ -235,9 +238,11 @@ Update a `Card`.
 
 ### PARAMS:
 
+*  **`collection_preview`** value may be nil, or if non-nil, value must be a boolean.
+
 *  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
 
-*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with String :id key
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys
 
 *  **`dataset`** value may be nil, or if non-nil, value must be a boolean.
 

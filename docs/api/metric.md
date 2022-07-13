@@ -1,6 +1,7 @@
 ---
 title: "Metric"
-summary: "/api/metric endpoints."
+summary: |
+  /api/metric endpoints.
 ---
 
 # Metric
