@@ -98,6 +98,14 @@ For latin text, we'd copy the relevant src URLs for each style, in this case:
 
 And paste those URLS in the relevant input fields in **Admin settings** > **Settings** > **Appearance** > **Font** section where it says "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do."
 
+## Hosting fonts on GitHub
+
+If you host a font on GitHub, the font should be in a public repository, and you'll need to link to the raw font file (the URL should end with `?raw=true`, like in this fake link:
+
+```
+https://github.com/username/repo/blob/main/fontfile.woff2?raw=true
+```
+
 ## Supporting multiple languages
 
 To support multiple character sets, for example both Latin and Cyrillic, you'll need to merge font files.
