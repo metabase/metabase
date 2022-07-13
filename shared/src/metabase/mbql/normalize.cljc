@@ -244,7 +244,7 @@
            (not (:widget-type tag-def)))
       (assoc :widget-type :category))))
 
-(defn- normalize-template-tags
+(defn normalize-template-tags
   "Normalize native-query template tags. Like `expressions` we want to preserve the original name rather than normalize
   it."
   [template-tags]

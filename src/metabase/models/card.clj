@@ -13,6 +13,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.query :as query]
             [metabase.models.revision :as revision]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.moderation :as moderation]
             [metabase.plugins.classloader :as classloader]
@@ -325,3 +326,57 @@
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+(defmethod serdes.base/extract-query "Card" [_ {:keys [user]}]
+  (serdes.base/raw-reducible-query
+    "Card"
+    {:select     [:card.*]
+     :from       [[:report_card :card]]
+     :left-join  [[:collection :coll] [:= :coll.id :card.collection_id]]
+     :where      (if user
+                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
+                   [:is :coll.personal_owner_id nil])}))
+
+(defmethod serdes.base/extract-one "Card"
+  [_ _ {:keys [table_id database_id collection_id creator_id] :as card}]
+  ;; Cards have :table_id, :database_id, :collection_id, :creator_id that need conversion.
+  ;; :table_id and :database_id are extracted as just :table [database_name schema table_name].
+  ;; :collection_id is extracted as its entity_id or identity-hash.
+  ;; :creator_id as the user's email
+  (let [db-name (db/select-one-field :name 'Database :id database_id)
+        {:keys [schema name]} (db/select-one 'Table :id table_id)
+        coll                  (db/select-one 'Collection :id collection_id)
+        {collection-eid :id}  (serdes.base/infer-self-path "Collection" coll)
+        email                 (db/select-one-field :email 'User :id creator_id)]
+    (-> (serdes.base/extract-one-basics "Card" card)
+        (dissoc :table_id :database_id)
+        (assoc :table         [db-name schema name]
+               :collection_id collection-eid
+               :creator_id    email))))
+
+(defmethod serdes.base/load-xform "Card"
+  [{[db-name schema table-name] :table
+    email                       :creator_id
+    collection-eid              :collection_id
+    :as card}]
+  (let [db-id    (db/select-one-id 'Database :name db-name)
+        table-id (db/select-one-id 'Table :database_id db-id :schema schema :name table-name)
+        coll-id  (serdes.base/lookup-by-id 'Collection collection-eid)
+        user-id  (db/select-one-id 'User :email email)]
+    (-> card
+        serdes.base/load-xform-basics
+        (dissoc :table)
+        (assoc :database_id   db-id
+               :table_id      table-id
+               :collection_id coll-id
+               :creator_id    user-id))))
+
+(defmethod serdes.base/serdes-dependencies "Card"
+  [{[db-name schema table-name] :table
+    :keys [collection_id]}]
+  ;; The Table implicitly depends on the Database.
+  [(filterv some? [{:model "Database" :id db-name}
+                   (when schema {:model "Schema" :id schema})
+                   {:model "Table" :id table-name}])
+   [{:model "Collection" :id collection_id}]])

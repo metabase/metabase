@@ -26,10 +26,12 @@ export const DashboardHeaderButton = styled.button`
   }
 `;
 
-export const DashboardHeaderActionContainer = styled.div`
-  display: flex;
-  padding-left: 0.5rem;
-  border-left: 1px solid ${color("border")};
+export const DashboardHeaderActionDivider = styled.div`
+  height: 1.25rem;
+  padding-left: 0.75rem;
+  margin-left: 0.75rem;
+  width: 0px;
+  border-left: 1px solid ${color("border-dark")};
 `;
 
 export const DashboardHeaderInfoButton = styled(Button)`

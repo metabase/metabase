@@ -34,7 +34,7 @@ describe("scenarios > question > bookmarks", () => {
 });
 
 function toggleBookmark() {
-  cy.findByTestId("question-action-buttons-container").within(() => {
+  cy.findByTestId("qb-header-action-panel").within(() => {
     cy.icon("bookmark").click();
   });
   cy.wait("@toggleBookmark");

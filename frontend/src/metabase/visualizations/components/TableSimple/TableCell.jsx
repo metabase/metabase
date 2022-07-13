@@ -143,6 +143,7 @@ function TableCell({
       isRightAligned={isColumnRightAligned(column)}
     >
       <CellContent
+        className="cellData"
         isClickable={isClickable}
         onClick={isClickable ? onClick : undefined}
         data-testid="cell-data"

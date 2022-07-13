@@ -175,7 +175,7 @@
   :visibility :public)
 
 (defsetting landing-page
-  (deferred-tru "Default page to show the user")
+  (deferred-tru "Default page to show people when they log in.")
   :visibility :public
   :type       :string
   :default    "")
@@ -213,16 +213,10 @@
   :default    false
   :visibility :authenticated)
 
-(defsetting persisted-model-refresh-interval-hours
-  (deferred-tru "Hour interval to refresh persisted models.")
-  :type       :integer
-  :default    6
-  :visibility :admin)
-
-(defsetting persisted-model-refresh-anchor-time
-  (deferred-tru "Anchor time to begin refreshing persisted models.")
+(defsetting persisted-model-refresh-cron-schedule
+  (deferred-tru "cron syntax string to schedule refreshing persisted models.")
   :type       :string
-  :default    "00:00"
+  :default    "0 0 0/6 * * ? *"
   :visibility :admin)
 
 (def ^:private ^:const global-max-caching-kb
@@ -342,7 +336,7 @@
               (setting/set-value-of-type! :string :application-font new-value)))
 
 (defsetting application-font-files
-  (deferred-tru "Tell us where to find the font file for each required style.")
+  (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
   :visibility :public
   :type       :json
   :enabled?   premium-features/enable-whitelabeling?)
@@ -434,6 +428,13 @@
   :type       :boolean
   :default    true
   :visibility :authenticated)
+
+(defsetting show-lighthouse-illustration
+  (deferred-tru "Display the lighthouse illustration on the home and login pages.")
+  :visibility :public
+  :type       :boolean
+  :enabled?   premium-features/enable-whitelabeling?
+  :default    true)
 
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")

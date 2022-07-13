@@ -45,6 +45,7 @@ export const DashboardStyled = styled.div`
 `;
 
 export const DashboardBody = styled.div`
+  position: relative;
   display: flex;
   flex: 1 0 auto;
   min-width: 0;
@@ -80,6 +81,7 @@ export const HeaderContainer = styled.header`
 export const ParametersAndCardsContainer = styled.div`
   flex: auto;
   overflow-x: hidden;
+  padding-bottom: 40px;
 `;
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)`

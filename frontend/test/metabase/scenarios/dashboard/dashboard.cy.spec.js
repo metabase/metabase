@@ -89,6 +89,40 @@ describe("scenarios > dashboard", () => {
     cy.findByDisplayValue("How many orders were placed in each year?");
   });
 
+  it("should not take you out of edit mode when updating title", () => {
+    cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
+
+    visitDashboard(1);
+
+    cy.icon("pencil").click();
+    cy.findByText("You're editing this dashboard.");
+
+    cy.findByTestId("dashboard-name-heading")
+      .click()
+      .type("{selectall}Orders per year")
+      .blur();
+
+    saveDashboard();
+    cy.wait("@updateDashboard");
+  });
+
+  it("should revert the title if editing is cancelled", () => {
+    visitDashboard(1);
+
+    cy.icon("pencil").click();
+    cy.findByText("You're editing this dashboard.");
+
+    cy.findByTestId("dashboard-name-heading")
+      .click()
+      .type("{selectall}Orders per year")
+      .blur();
+
+    cy.findByText("You're editing this dashboard.");
+
+    cy.findByText("Cancel").click();
+    cy.findByDisplayValue("Orders in a dashboard");
+  });
+
   it("should allow empty card title (metabase#12013)", () => {
     visitDashboard(1);
 

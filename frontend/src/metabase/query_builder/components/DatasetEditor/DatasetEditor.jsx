@@ -261,7 +261,7 @@ function DatasetEditor(props) {
 
   const focusFirstField = useCallback(() => {
     const [firstField] = fields;
-    setFocusedFieldRef(firstField.field_ref);
+    setFocusedFieldRef(firstField?.field_ref);
   }, [fields, setFocusedFieldRef]);
 
   useEffect(() => {

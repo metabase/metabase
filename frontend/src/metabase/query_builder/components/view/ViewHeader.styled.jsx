@@ -8,12 +8,17 @@ import { color, alpha } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
 import QuestionDataSource from "./QuestionDataSource";
-import SavedQuestionHeaderButton from "../SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 
 export const ViewHeaderContainer = styled(ViewSection)`
   border-bottom: 1px solid ${color("border")};
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
+
+  ${breakpointMaxSmall} {
+    flex-direction: column;
+    align-items: start;
+    padding: ${space(1)} 0;
+  }
 `;
 
 export const ViewHeaderMainLeftContentContainer = styled.div`
@@ -26,6 +31,11 @@ export const ViewHeaderLeftSubHeading = styled(ViewSubHeading)`
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+
+  ${breakpointMaxSmall} {
+    flex-direction: column;
+    align-items: start;
+  }
 `;
 
 export const AdHocViewHeading = styled(ViewHeading)`
@@ -47,8 +57,7 @@ export const SaveButton = styled(Link)`
 `;
 
 export const SavedQuestionHeaderButtonContainer = styled.div`
-  position: relative;
-  right: 0.38rem;
+  right: ${props => (props.isDataset ? "0px" : "0.38rem")};
 `;
 
 export const HeaderButton = styled(Button)`
@@ -96,7 +105,8 @@ export const FilterHeaderButton = styled(Button)`
 const getDefaultColor = () => color("brand");
 
 export const FilterHeaderContainer = styled.div`
-  padding: ${space(2)} ${space(3)} ${space(1)} ${space(3)};
+  padding: ${space(1)} ${space(3)} 0 ${space(3)};
+  border-bottom: 1px solid ${color("border")};
 `;
 
 export const ViewSubHeaderRoot = styled(ViewSection)`
@@ -105,7 +115,7 @@ export const ViewSubHeaderRoot = styled(ViewSection)`
 
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
   color: ${color("text-light")};
-  margin-left: 4px;
+  //margin-left: 4px;
 
   ${breakpointMaxSmall} {
     margin-left: 0;
@@ -123,11 +133,17 @@ export const StyledQuestionDataSource = styled(QuestionDataSource)`
   }
 `;
 
+export const AdHocLeftSideRoot = styled.div`
+  ${breakpointMaxSmall} {
+    padding: 0 1.25rem;
+  }
+`;
+
 export const SavedQuestionLeftSideRoot = styled.div`
-  ${SavedQuestionHeaderButton.Root} {
+  ${SavedQuestionHeaderButtonContainer} {
     transition: all 400ms ease;
     position: relative;
-    top: ${props => (props.showSubHeader ? "0" : "10px")};
+    top: ${props => (props.showSubHeader ? "0" : "0.5rem")};
   }
 
   ${ViewHeaderLeftSubHeading} {
@@ -137,12 +153,52 @@ export const SavedQuestionLeftSideRoot = styled.div`
 
   &:hover,
   &:focus-within {
-    ${SavedQuestionHeaderButton.Root} {
+    ${SavedQuestionHeaderButtonContainer} {
       top: 0px;
     }
 
     ${ViewHeaderLeftSubHeading} {
       opacity: 1;
     }
+  }
+
+  ${breakpointMaxSmall} {
+    padding: 0 1.25rem;
+
+    ${SavedQuestionHeaderButtonContainer} {
+      top: 0px;
+    }
+
+    ${ViewHeaderLeftSubHeading} {
+      opacity: 1;
+    }
+  }
+`;
+
+export const HeaderDivider = styled.span`
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-weight: 700;
+  color: ${color("text-medium")};
+  padding-left: 0.5rem;
+  padding-right: 0.25rem;
+`;
+
+export const ViewHeaderActionPanel = styled.div`
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+
+  ${breakpointMaxSmall} {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+    border-top: 1px solid ${color("border")};
+    margin-top: 1rem;
+    padding: 0.5rem 2.5rem 0 2rem;
+  }
+
+  ${Button.Root} {
+    margin-left: 0.5rem;
   }
 `;

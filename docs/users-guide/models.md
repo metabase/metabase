@@ -30,8 +30,9 @@ First, search for models that already exist. If you can't find one that meets yo
 
 1. [Ask a question][question] using either the query builder or the SQL editor.
 2. Save the question.
-3. Click on the down arrow next the question title to open the question details sidebar.
-4. Click on the model icon to turn the question into a model.
+3. Click on the **...** > **Turn this into a model**.
+
+![Turn a saved question into a model](./images/models/turn-into-a-model.png)
 
 ## Add metadata to columns in a model
 

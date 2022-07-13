@@ -422,7 +422,8 @@ export const saveDashboardAndCards = createThunkAction(
                     id: mapping.parameter_id,
                   }) &&
                   // filter out mappings for deleted series
-                  (card_id === mapping.card_id ||
+                  (!card_id ||
+                    card_id === mapping.card_id ||
                     _.findWhere(series, { id: mapping.card_id })),
               ),
           }),
@@ -827,12 +828,20 @@ export const onReplaceAllDashCardVisualizationSettings = createAction(
 export const setParameterMapping = createThunkAction(
   SET_PARAMETER_MAPPING,
   (parameter_id, dashcard_id, card_id, target) => (dispatch, getState) => {
-    let parameter_mappings =
-      getState().dashboard.dashcards[dashcard_id].parameter_mappings || [];
+    const dashcard = getState().dashboard.dashcards[dashcard_id];
+    const isVirtual = isVirtualDashCard(dashcard);
+    let parameter_mappings = dashcard.parameter_mappings || [];
     parameter_mappings = parameter_mappings.filter(
       m => m.card_id !== card_id || m.parameter_id !== parameter_id,
     );
     if (target) {
+      if (isVirtual) {
+        // If this is a virtual (text) card, remove any existing mappings for the target, since text card variables
+        // can only be mapped to a single parameter.
+        parameter_mappings = parameter_mappings.filter(
+          m => !_.isEqual(m.target, target),
+        );
+      }
       parameter_mappings = parameter_mappings.concat({
         parameter_id,
         card_id,

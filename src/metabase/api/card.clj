@@ -153,7 +153,7 @@
 
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
-  [id]
+  [id ignore_view]
   (let [card (-> (Card id)
                  (hydrate :creator
                           :bookmarked
@@ -165,7 +165,8 @@
                  api/read-check
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 (cond-> card (:dataset card) (hydrate :persisted))
-      (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*)))))
+      (when-not (Boolean/parseBoolean ignore_view)
+        (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))))
 
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."

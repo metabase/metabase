@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon";
 
 import { color, alpha } from "metabase/lib/colors";
 import { getUser } from "metabase/selectors/user";
-import { getRelativeTimeAbbreviated } from "metabase/lib/time";
+import { getRelativeTime } from "metabase/lib/time";
 import {
   getTextForReviewBanner,
   getIconForReview,
@@ -54,9 +54,7 @@ export function ModerationReviewBanner({
     moderator,
     currentUser,
   );
-  const relativeCreationTime = getRelativeTimeAbbreviated(
-    moderationReview.created_at,
-  );
+  const relativeCreationTime = getRelativeTime(moderationReview.created_at);
   const { name: iconName, color: iconColor } =
     getIconForReview(moderationReview);
 

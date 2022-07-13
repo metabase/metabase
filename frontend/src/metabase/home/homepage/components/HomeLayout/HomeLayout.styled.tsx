@@ -1,29 +1,16 @@
 import styled from "@emotion/styled";
-import { css } from "@emotion/react";
-import { alpha, color } from "metabase/lib/colors";
+import { color, hueRotate } from "metabase/lib/colors";
 import {
   breakpointMinExtraLarge,
   breakpointMinLarge,
   breakpointMinMedium,
 } from "metabase/styled-components/theme";
 
-export interface LayoutProps {
-  showScene?: boolean;
-}
-
-const sceneStyles = css`
-  background-color: ${color("bg-light")};
-  background-image: url("app/img/bridge.svg");
-  background-size: max(min(1728px, 260vh), 100%) auto;
-  background-repeat: no-repeat;
-  background-position: bottom;
-`;
-
-export const LayoutRoot = styled.div<LayoutProps>`
+export const LayoutRoot = styled.div`
+  position: relative;
   min-height: 100%;
   padding: 1rem;
   background-color: ${color("bg-light")};
-  ${props => props.showScene && sceneStyles};
 
   ${breakpointMinMedium} {
     padding: 3rem 4rem;
@@ -39,6 +26,7 @@ export const LayoutRoot = styled.div<LayoutProps>`
 `;
 
 export const LayoutBody = styled.div`
+  position: relative;
   margin-top: 2.5rem;
 
   ${breakpointMinMedium} {
@@ -48,4 +36,17 @@ export const LayoutBody = styled.div`
   ${breakpointMinLarge} {
     margin-top: 6rem;
   }
+`;
+
+export const LayoutIllustration = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  filter: hue-rotate(${hueRotate("brand")}deg);
+  background-image: url("app/img/bridge.svg");
+  background-size: max(min(1728px, 260vh), 100%) auto;
+  background-repeat: no-repeat;
+  background-position: bottom;
 `;
