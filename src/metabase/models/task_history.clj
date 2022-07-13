@@ -10,6 +10,7 @@
             [metabase.models.permissions :as perms]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -48,8 +49,8 @@
            :task_name    (:task task)
            :duration     (:duration task)
            :task_details (json/generate-string task-details)
-           :started_at   (str (:started_at task))
-           :ended_at     (str (:ended_at task))}
+           :started_at   (u.date/format (:started_at task))
+           :ended_at     (u.date/format (:ended_at task))}
           (when-let [db-id (:db_id task)]
             {:db_id     db-id
              :db_engine (db/select-one-field :engine Database :id db-id)}))))

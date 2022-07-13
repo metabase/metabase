@@ -22,7 +22,10 @@
     },
     "db_id": {
       "description": "Database that the task was executed against",
-      "type": ["integer", "null"],
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 0,
       "maximum": 2147483647
     },
@@ -55,19 +58,22 @@
     "duration": {
       "description": "The duration of the task in milliseconds",
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 2147483647
     },
     "task-details": {
       "description": "the JSON-encoded details of the task",
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 2048
     }
   },
   "required": [
     "task_id",
-    "task_name"
+    "task_name",
+    "duration"
   ],
   "additionalProperties": true
 }
