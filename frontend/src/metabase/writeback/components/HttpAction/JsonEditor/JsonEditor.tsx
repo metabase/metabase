@@ -42,7 +42,7 @@ const JsonEditor: React.FC<Props> = (props: Props) => {
 
   return (
     <Container
-      className="h-full svelte-jsoneditor-react"
+      className="full-height svelte-jsoneditor-react"
       ref={refContainer}
     ></Container>
   );

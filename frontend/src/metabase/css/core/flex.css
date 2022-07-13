@@ -263,3 +263,7 @@
 :local(.row-gap-1) {
   row-gap: var(--gap-1);
 }
+
+.flex-grow {
+  flex-grow: 1;
+}

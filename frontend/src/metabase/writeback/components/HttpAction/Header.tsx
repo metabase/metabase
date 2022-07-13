@@ -36,7 +36,7 @@ const Header: React.FC<Props> = ({
     <div className="flex align-center justify-between w-full py-3 pl-8 pr-4 bg-white">
       <div className="flex align-center space-x-4">
         <EditableText
-          className="text-sm font-bold"
+          className="text-small font-bold"
           initialValue={name}
           onChange={onNameChange}
         />

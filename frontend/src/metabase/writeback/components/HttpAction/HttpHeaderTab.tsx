@@ -20,12 +20,12 @@ const HttpHeaderTab: React.FC<Props> = ({ headers, setHeaders }: Props) => {
   };
   return (
     <div className="grid grid-cols-2">
-      <div className="py-2 pl-6 text-sm font-semibold">{t`Name`}</div>
-      <div className="flex align-center justify-between h-full text-sm font-semibold">
+      <div className="py-2 pl-6 text-small font-semibold">{t`Name`}</div>
+      <div className="flex align-center justify-between full-height text-small font-semibold">
         <div>{t`Value`}</div>
 
         <button
-          className="h-full px1 bg-content hover:bg-brand hover:bg-opacity-25 hover:text-brand"
+          className="full-height px1 bg-content hover:bg-brand hover:bg-opacity-25 hover:text-brand"
           onClick={add}
         >
           <Icon name="add" />
@@ -56,7 +56,7 @@ const HttpHeaderTab: React.FC<Props> = ({ headers, setHeaders }: Props) => {
                 setValue={setValue}
               />
               <button
-                className="h-full px1 bg-content hover:bg-brand hover:bg-opacity-25 hover:text-brand"
+                className="full-height px1 bg-content hover:bg-brand hover:bg-opacity-25 hover:text-brand"
                 onClick={remove}
               >
                 <Icon name="trash" />
@@ -85,7 +85,7 @@ const Input: React.FC<InputProps> = ({
   return (
     <input
       className={cx(
-        "w-full px1 py-1  text-gray-500 bg-opacity-25 border-transparent placeholder-text-light bg-border focus:ring-transparent focus:border-transparent sm:text-sm",
+        "w-full px1 py-1  text-gray-500 bg-opacity-25 border-transparent placeholder-text-light bg-border focus:ring-transparent focus:border-transparent sm:text-small",
         className,
       )}
       placeholder={placeholder}

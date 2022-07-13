@@ -54,7 +54,7 @@ const Contents: React.FC<Props> = ({ value, setValue, options }: Props) => (
           key={optionValue}
           className={cx(
             value === optionValue ? "text-brand" : "",
-            "px-4 py-2 font-bold text-left text-medium text-sm bg-opacity-25 hover:bg-accent0-light hover:bg-opacity-25",
+            "px-4 py-2 font-bold text-left text-medium text-small bg-opacity-25 hover:bg-accent0-light hover:bg-opacity-25",
           )}
           aria-current={optionValue === value ? "page" : undefined}
           onClick={() => setValue(optionValue)}

@@ -12,6 +12,7 @@ import Selector from "./Selector";
 import EditableText from "metabase/core/components/EditableText";
 import ParametersTab from "./ParametersTab";
 import { TemplateTags } from "metabase-types/types/Query";
+import { Container } from "./HttpAction.styled";
 
 type Props = {
   description: string;
@@ -48,37 +49,39 @@ const HttpAction: React.FC<Props> = ({
   const [headers, setHeaders] = React.useState<Headers>(initialHeaders);
 
   return (
-    <HttpActionInner
-      description={description}
-      onDescriptionChange={onDescriptionChange}
-      templateTags={templateTags}
-      onTemplateTagsChange={onTemplateTagsChange}
-      method={method}
-      setMethod={value => {
-        onDataChange({ method: value });
-      }}
-      url={url}
-      setUrl={value => {
-        onDataChange({ url: `${protocol}://${value}` });
-      }}
-      protocol={protocol}
-      setProtocol={value => {
-        onDataChange({ url: `${value}://${url}` });
-      }}
-      body={body}
-      setBody={value => {
-        onDataChange({ body: value });
-      }}
-      headers={headers}
-      setHeaders={value => {
-        setHeaders(value);
-        onDataChange({
-          headers: Object.fromEntries(
-            value.map(({ key, value }) => [key, value]),
-          ),
-        });
-      }}
-    />
+    <Container>
+      <HttpActionInner
+        description={description}
+        onDescriptionChange={onDescriptionChange}
+        templateTags={templateTags}
+        onTemplateTagsChange={onTemplateTagsChange}
+        method={method}
+        setMethod={value => {
+          onDataChange({ method: value });
+        }}
+        url={url}
+        setUrl={value => {
+          onDataChange({ url: `${protocol}://${value}` });
+        }}
+        protocol={protocol}
+        setProtocol={value => {
+          onDataChange({ url: `${value}://${url}` });
+        }}
+        body={body}
+        setBody={value => {
+          onDataChange({ body: value });
+        }}
+        headers={headers}
+        setHeaders={value => {
+          setHeaders(value);
+          onDataChange({
+            headers: Object.fromEntries(
+              value.map(({ key, value }) => [key, value]),
+            ),
+          });
+        }}
+      />
+    </Container>
   );
 };
 
@@ -129,12 +132,12 @@ const HttpActionInner: React.FC<InnerProps> = ({
   );
   const [contentType, setContentType] = React.useState("application/json");
   return (
-    <div className="grid w-full h-full grid-cols-2 md:flex-row">
-      <div className="flex flex-column border-t border-r border-border bg-content">
-        <div className="px-6 py-2 border-b border-b-border">
+    <div className="grid w-full full-height grid-cols-2 md:flex-row">
+      <div className="flex border-t border-r flex-column border-border bg-content">
+        <div className="px-6 py-2 border-bottom border-bottom-border">
           <MethodSelector value={method} setValue={setMethod} />
         </div>
-        <div className="py-4 border-b border-border">
+        <div className="py-4 border-bottom border-border">
           <UrlInput
             url={url}
             setUrl={setUrl}
@@ -142,8 +145,8 @@ const HttpActionInner: React.FC<InnerProps> = ({
             setProtocol={setProtocol}
           />
         </div>
-        <div className="flex flex-column flex-grow bg-white border-b border-border">
-          <div className="pl-4 pr-4 border-b border-border">
+        <div className="flex flex-grow bg-white border-bottom flex-column border-border">
+          <div className="pl-4 pr-4 border-bottom border-border">
             <Tabs
               tabs={PARAM_TABS}
               currentTab={currentParamTab}
@@ -159,15 +162,15 @@ const HttpActionInner: React.FC<InnerProps> = ({
         </div>
         <div className="py-4 pl-6 pr-4 bg-white">
           <EditableText
-            className="text-sm text-light"
+            className="text-small text-light"
             placeholder={t`Enter an action description...`}
             initialValue={description}
             onChange={onDescriptionChange}
           />
         </div>
       </div>
-      <div className="flex flex-column border-t border-border">
-        <div className="flex align-center justify-between py-1 pl-2 pr-4 border-b border-b-border">
+      <div className="flex border-t flex-column border-border">
+        <div className="flex justify-between py-1 pl-2 pr-4 border-bottom align-center border-bottom-border">
           <div>
             <Tabs
               tabs={CONFIG_TABS}

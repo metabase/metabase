@@ -58,7 +58,7 @@ const EditActionPage: React.FC<Props> = ({ action, updateAction }: Props) => {
   }
 
   return (
-    <div className="flex flex-column h-full">
+    <div className="flex flex-column full-height">
       <Header
         name={name}
         onNameChange={onNameChange}

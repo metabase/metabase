@@ -76,7 +76,7 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
   }
 
   return (
-    <div className="flex h-full flex-column">
+    <div className="flex full-height flex-column">
       <Header
         name={name}
         onNameChange={onNameChange}
