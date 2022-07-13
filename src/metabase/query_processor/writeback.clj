@@ -97,8 +97,8 @@
     (log/tracef "Mapping parameters\n\n%s\nwith mappings\n\n%s"
                 (u/pprint-to-str parameters)
                 (u/pprint-to-str (:parameter_mappings emitter)))
-    (let [parameters                         (map-parameters parameters (:parameter_mappings emitter))
-          {database-id :database, :as query} (assoc (:dataset_query card) :parameters parameters)]
+    (let [parameters (map-parameters parameters (:parameter_mappings emitter))
+          query      (assoc (:dataset_query card) :parameters parameters)]
       (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
       (execute-write-query! query))
     (catch Throwable e
