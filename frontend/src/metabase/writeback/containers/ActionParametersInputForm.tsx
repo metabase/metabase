@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { getTemplateTagType } from "metabase/parameters/utils/cards";
+import { getActionTemplateTagType } from "metabase/writeback/utils";
 
 import Form from "metabase/containers/Form";
 import { TemplateTag } from "metabase-types/types/Query";
@@ -52,7 +52,7 @@ function ActionParametersInputForm({
         if (tag) {
           formattedParams[paramId] = {
             value: params[paramId],
-            type: getTemplateTagType(tag),
+            type: getActionTemplateTagType(tag),
           };
         }
       });
