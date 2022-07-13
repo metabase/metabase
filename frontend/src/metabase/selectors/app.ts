@@ -29,6 +29,7 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
   /\/model\//,
   /\/dashboard\//,
 ];
+const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
 
 export const getRouterPath = (state: State, props: RouterProps) => {
   return props.location.pathname;
@@ -111,6 +112,11 @@ export const getIsNewButtonVisible = createSelector(
   },
 );
 
+export const getIsProfileLinkVisible = createSelector(
+  [getIsEmbedded],
+  isEmbedded => !isEmbedded,
+);
+
 export const getErrorPage = (state: State) => {
   return state.app.errorPage;
 };
@@ -129,15 +135,16 @@ export const getCollectionId = createSelector(
 export const getIsCollectionPathVisible = createSelector(
   [getQuestion, getDashboard, getRouterPath],
   (question, dashboard, path) =>
-    (question != null || dashboard != null) &&
+    ((question != null && question.isSaved()) || dashboard != null) &&
     PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
 );
 
 export const getIsQuestionLineageVisible = createSelector(
-  [getQuestion, getOriginalQuestion],
-  (question, originalQuestion) =>
+  [getQuestion, getOriginalQuestion, getRouterPath],
+  (question, originalQuestion, path) =>
     question != null &&
     !question.isSaved() &&
     originalQuestion != null &&
-    !originalQuestion.isDataset(),
+    !originalQuestion.isDataset() &&
+    PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path)),
 );

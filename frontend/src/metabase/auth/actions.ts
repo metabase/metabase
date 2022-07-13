@@ -42,25 +42,27 @@ export const refreshSession = createThunkAction(
 export const LOGIN = "metabase/auth/LOGIN";
 export const login = createThunkAction(
   LOGIN,
-  (data: LoginData, redirectUrl = "/") => async (dispatch: any) => {
-    await SessionApi.create(data);
-    await dispatch(refreshSession());
-    trackLogin();
+  (data: LoginData, redirectUrl = "/") =>
+    async (dispatch: any) => {
+      await SessionApi.create(data);
+      await dispatch(refreshSession());
+      trackLogin();
 
-    dispatch(push(redirectUrl));
-  },
+      dispatch(push(redirectUrl));
+    },
 );
 
 export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
 export const loginGoogle = createThunkAction(
   LOGIN_GOOGLE,
-  (token: string, redirectUrl = "/") => async (dispatch: any) => {
-    await SessionApi.createWithGoogleAuth({ token });
-    await dispatch(refreshSession());
-    trackLoginGoogle();
+  (token: string, redirectUrl = "/") =>
+    async (dispatch: any) => {
+      await SessionApi.createWithGoogleAuth({ token });
+      await dispatch(refreshSession());
+      trackLoginGoogle();
 
-    dispatch(push(redirectUrl));
-  },
+      dispatch(push(redirectUrl));
+    },
 );
 
 export const LOGOUT = "metabase/auth/LOGOUT";

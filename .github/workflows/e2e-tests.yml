@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 35
     needs: build
-    name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
+    name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
@@ -81,6 +81,7 @@ jobs:
           - "visualizations"
         include:
           - edition: oss
+            context: grep
             java-version: 11
     services:
       maildev:
@@ -146,15 +147,22 @@ jobs:
 
     - name: Run EE Cypress tests on ${{ matrix.folder }}
       if: matrix.edition == 'ee'
-      run: yarn run test-cypress-run --folder ${{ matrix.folder }}
+      run: |
+        yarn run test-cypress-run \
+        --env grepTags="-@quarantine" \
+        --folder ${{ matrix.folder }}
       env:
         TERM: xterm
 
-    - name: Upload Cypress recording upon failure
+    - name: Generate Mochawesome Reports
+      if: failure()
+      run: yarn generate-cypress-html-report
+
+    - name: Upload Cypress Artifacts upon failure
       uses: actions/upload-artifact@v2
       if: failure()
       with:
-        name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
+        name: cypress-recording-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
         path: |
           ./cypress
           ./logs/test.log

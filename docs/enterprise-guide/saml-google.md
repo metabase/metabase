@@ -6,11 +6,10 @@ title: Setting up SAML with Google
 
 {% include plans-blockquote.html feature="Google SAML authentication" %}
 
-1. Set up a [custom SAML application](https://support.google.com/a/answer/6087519?hl=en) with Google (the identity provider).
-2. [Configure SAML in Metabase](../enterprise-guide/authenticating-with-saml.html) (the service provider).
-3. Once you've configured SAML in both the Google developer console and your Metabase Admin settings, you can [check if your SSO setup is working correctly](../administration-guide/10-single-sign-on.html#checking-if-sso-is-working-correctly).
+1. Set up a [custom SAML application](https://support.google.com/a/answer/6087519) with Google (the identity provider).
+2. [Configure SAML in Metabase](../enterprise-guide/authenticating-with-saml.html#enabling-saml-authentication-in-metabase) (the service provider).
 
-For more information, check out our guide for [authenticating with SAML](authenticating-with-saml.html).
+For more information, check out our guide for [authenticating with SAML](../enterprise-guide/authenticating-with-saml.html).
 
 ## How to fill out SAML settings in Google and Metabase
 
@@ -24,3 +23,7 @@ For more information, check out our guide for [authenticating with SAML](authent
 | SAML Identity Provider Certificate  | Google Admin console > Google Identity Provider details > Download certificate                                                                                |
 | SAML Application Name               | Google Admin console > Google Identity Provider details > Copy the **Entity ID**                                                                              |
 | SAML Identity Provider Issuer       | Google Admin console > Google Identity Provider details > Download metadata                                                                                   |
+
+## Troubleshooting SAML issues
+
+For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/saml.html).

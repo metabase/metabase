@@ -40,9 +40,8 @@ describe("ErrorActionButton", () => {
   });
 
   describe("when using an error with an associated action", () => {
-    const [buttonLabel] = BUTTON_ACTIONS[
-      VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION
-    ];
+    const [buttonLabel] =
+      BUTTON_ACTIONS[VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION];
 
     beforeEach(() => {
       render(<ErrorActionButton {...props} />);
@@ -62,9 +61,8 @@ describe("ErrorActionButton", () => {
       "oof",
       VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION,
     );
-    const [buttonLabel] = BUTTON_ACTIONS[
-      VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION
-    ];
+    const [buttonLabel] =
+      BUTTON_ACTIONS[VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION];
 
     describe("when `isShowingTemplateTagsEditor` is falsy", () => {
       beforeEach(() => {

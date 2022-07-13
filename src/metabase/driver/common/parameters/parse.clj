@@ -82,40 +82,38 @@
   (params/->Optional parsed))
 
 (s/defn ^:private parse-tokens* :- [(s/one [ParsedToken] "parsed tokens") (s/one [StringOrToken] "remaining tokens")]
-  [tokens :- [StringOrToken], level :- s/Int]
+  [tokens :- [StringOrToken], optional-level :- s/Int, param-level :- s/Int]
   (loop [acc [], [token & more] tokens]
     (condp = token
       nil
-      (if (pos? level)
+      (if (or (pos? optional-level) (pos? param-level))
         (throw (ex-info (tru "Invalid query: found '[[' or '{{' with no matching ']]' or '}}'")
-                 {:type qp.error-type/invalid-query}))
+                        {:type qp.error-type/invalid-query}))
         [acc nil])
 
       :optional-begin
-      (let [[parsed more] (parse-tokens* more (inc level))]
+      (let [[parsed more] (parse-tokens* more (inc optional-level) param-level)]
         (recur (conj acc (apply optional parsed)) more))
 
       :param-begin
-      (let [[parsed more] (parse-tokens* more (inc level))]
+      (let [[parsed more] (parse-tokens* more optional-level (inc param-level))]
         (recur (conj acc (apply param parsed)) more))
 
       :optional-end
-      (if (pos? level)
+      (if (pos? optional-level)
         [acc more]
-        [(conj acc "]]" more)])
+        (recur (conj acc "]]") more))
 
       :param-end
-      (if (pos? level)
+      (if (pos? param-level)
         [acc more]
-        [(conj acc "}}") more])
+        (recur (conj acc "}}") more))
 
       (recur (conj acc token) more))))
 
 (s/defn ^:private parse-tokens :- [ParsedToken]
   [tokens :- [StringOrToken]]
-  (let [[parsed remaining] (parse-tokens* tokens 0)
-        parsed             (concat parsed (when (seq remaining)
-                                            (parse-tokens remaining)))]
+  (let [parsed (first (parse-tokens* tokens 0 0))]
     ;; now loop over everything in `parsed`, and if we see 2 strings next to each other put them back together
     ;; e.g. [:token "x" "}}"] -> [:token "x}}"]
     (loop [acc [], last (first parsed), [x & more] (rest parsed)]

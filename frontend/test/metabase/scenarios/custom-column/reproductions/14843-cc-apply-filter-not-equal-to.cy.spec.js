@@ -30,9 +30,7 @@ describe("issue 14843", () => {
 
     filter({ mode: "notebook" });
 
-    popover()
-      .findByText(CC_NAME)
-      .click();
+    popover().findByText(CC_NAME).click();
 
     cy.findByText("Equal to").click();
     cy.findByText("Not equal to").click();

@@ -11,10 +11,8 @@ const ICON_SIZE = 16;
 
 class CollectionRow extends React.Component {
   render() {
-    const {
-      snippetCollection: collection,
-      setSnippetCollectionId,
-    } = this.props;
+    const { snippetCollection: collection, setSnippetCollectionId } =
+      this.props;
     const onSelectCollection = () => setSnippetCollectionId(collection.id);
 
     return (

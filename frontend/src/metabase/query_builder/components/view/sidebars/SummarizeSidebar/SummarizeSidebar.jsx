@@ -38,9 +38,8 @@ const SummarizeSidebar = ({
   onClose,
   className,
 }) => {
-  const [isDefaultAggregationRemoved, setDefaultAggregationRemoved] = useState(
-    false,
-  );
+  const [isDefaultAggregationRemoved, setDefaultAggregationRemoved] =
+    useState(false);
 
   const [query, setQuery] = useState(
     getQuery(question, isDefaultAggregationRemoved),

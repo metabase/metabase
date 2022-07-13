@@ -22,9 +22,7 @@ describe("issue 16886", () => {
 
     cy.get(".NativeQueryEditor .Icon-play").click();
 
-    cy.get(".ScalarValue")
-      .invoke("text")
-      .should("eq", "1");
+    cy.get(".ScalarValue").invoke("text").should("eq", "1");
 
     cy.get("@editor").contains(ORIGINAL_QUERY);
   });

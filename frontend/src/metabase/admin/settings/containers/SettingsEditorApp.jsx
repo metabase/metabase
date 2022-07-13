@@ -136,12 +136,8 @@ class SettingsEditorApp extends Component {
   };
 
   renderSettingsPane() {
-    const {
-      activeSection,
-      settings,
-      settingValues,
-      derivedSettingValues,
-    } = this.props;
+    const { activeSection, settings, settingValues, derivedSettingValues } =
+      this.props;
     const isLoading = settings.length === 0;
 
     if (isLoading) {
@@ -193,8 +189,9 @@ class SettingsEditorApp extends Component {
         // HACK - This is used to hide specific items in the sidebar and is currently
         // only used as a way to fake the multi page auth settings pages without
         // requiring a larger refactor.
-        if (section.sidebar === false) {
-          return false;
+        const isNestedSettingPage = Boolean(slug.split("/")[1]);
+        if (isNestedSettingPage) {
+          return null;
         }
 
         // The nested authentication routes should be matched just on the prefix:

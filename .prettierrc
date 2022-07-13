@@ -1,3 +1,4 @@
 {
-  "trailingComma": "all"
+  "trailingComma": "all",
+  "arrowParens": "avoid"
 }

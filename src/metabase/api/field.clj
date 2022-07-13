@@ -258,6 +258,7 @@
   [field-or-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
     (db/insert! FieldValues
+      :type :full
       :field_id (u/the-id field-or-id)
       :values (map first value-pairs)
       :human_readable_values (when human-readable-values?
@@ -272,7 +273,7 @@
     (api/check (field-values/field-should-have-field-values? field)
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                 "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
-    (if-let [field-value-id (db/select-one-id FieldValues, :field_id id)]
+    (if-let [field-value-id (db/select-one-id FieldValues, :field_id id :type :full)]
       (update-field-values! field-value-id value-pairs)
       (create-field-values! field value-pairs)))
   {:status :success})
@@ -286,16 +287,15 @@
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (field-values/create-or-update-field-values! field)))
+      (field-values/create-or-update-full-field-values! field)))
   {:status :success})
 
 (api/defendpoint POST "/:id/discard_values"
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
-  (field-values/clear-field-values! (api/write-check (Field id)))
+  (field-values/clear-field-values-for-field! (api/write-check (Field id)))
   {:status :success})
-
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 

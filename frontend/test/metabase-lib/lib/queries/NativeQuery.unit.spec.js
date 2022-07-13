@@ -113,9 +113,8 @@ describe("NativeQuery", () => {
     describe("setCollectionName(newCollection) selects or updates a target table for you mongo native query", () => {
       it("allows you to update mongo collections", () => {
         const fakeCollectionID = 9999;
-        const fakeMongoQuery = makeMongoQuery("").setCollectionName(
-          fakeCollectionID,
-        );
+        const fakeMongoQuery =
+          makeMongoQuery("").setCollectionName(fakeCollectionID);
         expect(fakeMongoQuery.collection()).toBe(fakeCollectionID);
       });
     });

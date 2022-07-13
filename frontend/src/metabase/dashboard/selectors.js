@@ -54,6 +54,11 @@ export const getShowAddQuestionSidebar = createSelector(
   sidebar => sidebar.name === SIDEBAR_NAME.addQuestion,
 );
 
+export const getIsShowDashboardInfoSidebar = createSelector(
+  [getSidebar],
+  sidebar => sidebar.name === SIDEBAR_NAME.info,
+);
+
 export const getDashboard = createSelector(
   [getDashboardId, getDashboards],
   (dashboardId, dashboards) => dashboards[dashboardId],
@@ -127,8 +132,8 @@ export const getParameterTarget = createSelector(
       return null;
     }
     const mapping = _.findWhere(dashcard.parameter_mappings, {
-      card_id: card.id,
       parameter_id: parameter.id,
+      ...(card & card.id && { card_id: card.id }),
     });
     return mapping && mapping.target;
   },
@@ -146,9 +151,9 @@ export const getParameters = createSelector(
 
 export const makeGetParameterMappingOptions = () => {
   const getParameterMappingOptions = createSelector(
-    [getMetadata, getEditingParameter, getCard],
-    (metadata, parameter, card) => {
-      return _getParameterMappingOptions(metadata, parameter, card);
+    [getMetadata, getEditingParameter, getCard, getDashCard],
+    (metadata, parameter, card, dashcard) => {
+      return _getParameterMappingOptions(metadata, parameter, card, dashcard);
     },
   );
   return getParameterMappingOptions;

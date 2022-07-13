@@ -29,7 +29,7 @@ const booleanField = new Field({
 
 const intField = new Field({
   database_type: "test",
-  semantic_type: "",
+  semantic_type: "type/Integer",
   table_id: 8,
   name: "int_num",
   has_field_values: "none",
@@ -43,7 +43,7 @@ const intField = new Field({
 
 const floatField = new Field({
   database_type: "test",
-  semantic_type: "",
+  semantic_type: "type/Integer",
   table_id: 8,
   name: "float_num",
   has_field_values: "none",
@@ -61,12 +61,12 @@ const categoryField = new Field({
   table_id: 8,
   name: "category_string",
   has_field_values: "list",
-  values: ["Michaelangelo", "Donatello", "Raphael", "Leonardo"],
+  values: [["Michaelangelo"], ["Donatello"], ["Raphael"], ["Leonardo"]],
   dimensions: {},
   dimension_options: [],
-  effective_type: "type/Float",
+  effective_type: "type/Text",
   id: 137,
-  base_type: "type/Float",
+  base_type: "type/Text",
   metadata,
 });
 
@@ -145,6 +145,8 @@ const pkDimension = pkField.dimension();
 const fkDimension = fkField.dimension();
 const textDimension = textField.dimension();
 
+const store = getStore();
+
 describe("BulkFilterItem", () => {
   it("renders a boolean picker for a boolean filter", () => {
     const testFilter = new Filter(
@@ -165,11 +167,11 @@ describe("BulkFilterItem", () => {
       />,
     );
 
-    expect(screen.getByLabelText("true")).toBeChecked();
-    expect(screen.getByLabelText("false")).not.toBeChecked();
+    expect(screen.getByLabelText("True")).toBeChecked();
+    expect(screen.getByLabelText("False")).not.toBeChecked();
   });
 
-  it("renders a bulk filter select for integer field type", () => {
+  it("renders a value picker integer field type", () => {
     const testFilter = new Filter(
       ["=", ["field", intField.id, null], 99],
       null,
@@ -178,24 +180,22 @@ describe("BulkFilterItem", () => {
     const changeSpy = jest.fn();
 
     render(
-      <BulkFilterItem
-        query={query}
-        filter={testFilter}
-        dimension={intDimension}
-        onAddFilter={changeSpy}
-        onChangeFilter={changeSpy}
-        onRemoveFilter={changeSpy}
-      />,
+      <Provider store={store}>
+        <BulkFilterItem
+          query={query}
+          filter={testFilter}
+          dimension={intDimension}
+          onAddFilter={changeSpy}
+          onChangeFilter={changeSpy}
+          onRemoveFilter={changeSpy}
+        />
+      </Provider>,
     );
 
-    expect(screen.queryByText("true")).toBeNull();
-    expect(screen.getByTestId("select-button")).toHaveAttribute(
-      "aria-label",
-      "int_num",
-    );
+    screen.getByTestId("value-picker");
   });
 
-  it("renders a bulk filter select for float field type", () => {
+  it("renders a value picker for float field type", () => {
     const testFilter = new Filter(
       ["=", ["field", floatField.id, null], 99],
       null,
@@ -204,20 +204,39 @@ describe("BulkFilterItem", () => {
     const changeSpy = jest.fn();
 
     render(
-      <BulkFilterItem
-        query={query}
-        filter={testFilter}
-        dimension={floatDimension}
-        onAddFilter={changeSpy}
-        onChangeFilter={changeSpy}
-        onRemoveFilter={changeSpy}
-      />,
+      <Provider store={store}>
+        <BulkFilterItem
+          query={query}
+          filter={testFilter}
+          dimension={floatDimension}
+          onAddFilter={changeSpy}
+          onChangeFilter={changeSpy}
+          onRemoveFilter={changeSpy}
+        />
+      </Provider>,
     );
-    expect(screen.queryByText("true")).toBeNull();
-    expect(screen.getByTestId("select-button")).toHaveAttribute(
-      "aria-label",
-      "float_num",
+    screen.getByTestId("value-picker");
+  });
+
+  it("defaults to a between picker for float field type", () => {
+    const changeSpy = jest.fn();
+
+    render(
+      <Provider store={store}>
+        <BulkFilterItem
+          query={query}
+          filter={undefined}
+          dimension={floatDimension}
+          onAddFilter={changeSpy}
+          onChangeFilter={changeSpy}
+          onRemoveFilter={changeSpy}
+        />
+      </Provider>,
     );
+    screen.getByTestId("value-picker");
+    screen.getByText("Between");
+    screen.getByPlaceholderText("min");
+    screen.getByPlaceholderText("max");
   });
 
   it("renders a category picker for category type", () => {
@@ -227,7 +246,6 @@ describe("BulkFilterItem", () => {
       query,
     );
     const changeSpy = jest.fn();
-    const store = getStore();
 
     render(
       <Provider store={store}>
@@ -251,7 +269,6 @@ describe("BulkFilterItem", () => {
       query,
     );
     const changeSpy = jest.fn();
-    const store = getStore();
 
     render(
       <Provider store={store}>
@@ -266,7 +283,6 @@ describe("BulkFilterItem", () => {
       </Provider>,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(pkField.name);
   });
 
   it("renders a value picker for a foreign key", () => {
@@ -276,7 +292,6 @@ describe("BulkFilterItem", () => {
       query,
     );
     const changeSpy = jest.fn();
-    const store = getStore();
 
     render(
       <Provider store={store}>
@@ -291,7 +306,6 @@ describe("BulkFilterItem", () => {
       </Provider>,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(fkField.name);
   });
 
   it("renders a value picker for a text field", () => {
@@ -301,7 +315,6 @@ describe("BulkFilterItem", () => {
       query,
     );
     const changeSpy = jest.fn();
-    const store = getStore();
 
     render(
       <Provider store={store}>
@@ -316,13 +329,11 @@ describe("BulkFilterItem", () => {
       </Provider>,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(textField.name);
     screen.getByText("foo");
   });
 
   it("defaults key filters to 'is' operator", () => {
     const changeSpy = jest.fn();
-    const store = getStore();
 
     render(
       <Provider store={store}>
@@ -341,7 +352,6 @@ describe("BulkFilterItem", () => {
 
   it("defaults text filters to 'contains' operator", () => {
     const changeSpy = jest.fn();
-    const store = getStore();
 
     render(
       <Provider store={store}>

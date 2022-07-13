@@ -1,15 +1,21 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
+
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery, {
   FilterSection,
+  DimensionOption,
+  SegmentOption,
 } from "metabase-lib/lib/queries/StructuredQuery";
+
 import Question from "metabase-lib/lib/Question";
 import Button from "metabase/core/components/Button";
 import Tab from "metabase/core/components/Tab";
 import TabContent from "metabase/core/components/TabContent";
 import Icon from "metabase/components/Icon";
 import BulkFilterList from "../BulkFilterList";
+import TextInput from "metabase/components/TextInput";
 import {
   ModalBody,
   ModalCloseButton,
@@ -20,7 +26,11 @@ import {
   ModalTabList,
   ModalTabPanel,
   ModalTitle,
+  SearchContainer,
 } from "./BulkFilterModal.styled";
+
+import { fixBetweens, getSearchHits } from "./utils";
+import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
 
 export interface BulkFilterModalProps {
   question: Question;
@@ -34,6 +44,8 @@ const BulkFilterModal = ({
   const [query, setQuery] = useState(getQuery(question));
   const [isChanged, setIsChanged] = useState(false);
 
+  const [searchQuery, setSearchQuery] = useState("");
+
   const filters = useMemo(() => {
     return query.topLevelFilters();
   }, [query]);
@@ -41,6 +53,12 @@ const BulkFilterModal = ({
   const sections = useMemo(() => {
     return query.topLevelFilterFieldOptionSections(null, 2, true);
   }, [query]);
+
+  const searchItems = useDebouncedEffect(
+    () => getSearchHits(searchQuery, sections),
+    200,
+    [searchQuery, sections],
+  );
 
   const handleAddFilter = useCallback((filter: Filter) => {
     setQuery(filter.add());
@@ -66,7 +84,8 @@ const BulkFilterModal = ({
   }, [query]);
 
   const handleApplyQuery = useCallback(() => {
-    query.clean().update(undefined, { run: true });
+    const preCleanedQuery = fixBetweens(query);
+    preCleanedQuery.clean().update(undefined, { run: true });
     onClose?.();
   }, [query, onClose]);
 
@@ -74,15 +93,14 @@ const BulkFilterModal = ({
     <ModalRoot>
       <ModalHeader>
         <ModalTitle>{getTitle(question, query)}</ModalTitle>
-        <ModalCloseButton onClick={onClose}>
-          <Icon name="close" />
-        </ModalCloseButton>
+        <FieldSearch value={searchQuery} onChange={setSearchQuery} />
       </ModalHeader>
-      {sections.length === 1 ? (
+      {sections.length === 1 || searchItems ? (
         <BulkFilterModalSection
           query={query}
           filters={filters}
-          section={sections[0]}
+          items={searchItems ?? sections[0].items}
+          isSearch={!!searchItems}
           onAddFilter={handleAddFilter}
           onChangeFilter={handleChangeFilter}
           onRemoveFilter={handleRemoveFilter}
@@ -115,7 +133,8 @@ const BulkFilterModal = ({
 interface BulkFilterModalSectionProps {
   query: StructuredQuery;
   filters: Filter[];
-  section: FilterSection;
+  items: (DimensionOption | SegmentOption)[];
+  isSearch?: boolean;
   onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
@@ -125,7 +144,8 @@ interface BulkFilterModalSectionProps {
 const BulkFilterModalSection = ({
   query,
   filters,
-  section,
+  items,
+  isSearch,
   onAddFilter,
   onChangeFilter,
   onRemoveFilter,
@@ -136,7 +156,8 @@ const BulkFilterModalSection = ({
       <BulkFilterList
         query={query}
         filters={filters}
-        options={section.items}
+        options={items}
+        isSearch={isSearch}
         onAddFilter={onAddFilter}
         onChangeFilter={onChangeFilter}
         onRemoveFilter={onRemoveFilter}
@@ -171,7 +192,7 @@ const BulkFilterModalSectionList = ({
     <TabContent value={tab} onChange={setTab}>
       <ModalTabList>
         {sections.map((section, index) => (
-          <Tab key={index} value={index} icon={section.icon}>
+          <Tab key={index} value={index}>
             {section.name}
           </Tab>
         ))}
@@ -214,6 +235,28 @@ const getTitle = (question: Question, query: StructuredQuery) => {
   } else {
     return t`Filter`;
   }
+};
+
+const FieldSearch = ({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}): JSX.Element => {
+  return (
+    <SearchContainer>
+      <TextInput
+        hasClearButton
+        placeholder={t`Search for a column...`}
+        value={value}
+        onChange={onChange}
+        padding="sm"
+        borderRadius="md"
+        icon={<Icon name="search" size={13} style={{ marginTop: 2 }} />}
+      />
+    </SearchContainer>
+  );
 };
 
 export default BulkFilterModal;

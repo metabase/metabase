@@ -14,6 +14,8 @@
             [metabase.api.common :as api]
             [metabase.api.timeline :as api.timeline]
             [metabase.db :as mdb]
+            [metabase.driver.common.parameters :as params]
+            [metabase.driver.common.parameters.parse :as params.parse]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.collection.graph :as graph]
@@ -296,16 +298,38 @@
     (not (zero? v))
     v))
 
-(defn- has-required-parameters? [row]
-  (if-let [template-tags (-> row :dataset_query (json/parse-string keyword) :native :template-tags)]
-    (every? #(or (not (:required %)) (:default %)) (vals template-tags))
-    true))
+(defn- fully-parametrized?
+  "Decide if the query in the card represented by the result row `row` is fully parametrized.
+
+  The rules to consider a query fully parametrized is as follows:
+
+  1. All parameters not in an optional block are field-filters or have a default value.
+  2. All required parameters have a default value.
+
+  The first rule is absolutely necessary, as queries violating it cannot be executed without
+  externally supplied parameter values. The second rule is more controversial, as field-filters
+  outside of optional blocks ([[ ... ]]) don't prevent the query from being executed without
+  external parameter values (neither do parameters in optional blocks). The rule has been added
+  nonetheless, because marking a parameter as required is something the user does intentionally
+  and queries that are technically executable without parameters can be unacceptably slow
+  without the necessary constraints. (Marking parameters in optional blocks as required doesn't
+  seem to be useful any way, but if the user said it is required, we honor this flag.)"
+  [row]
+  (let [native-query (-> row :dataset_query (json/parse-string keyword) :native)]
+    (if-let [template-tags (:template-tags native-query)]
+      (let [obligatory-params (into #{}
+                                    (comp (filter params/Param?)
+                                          (map (comp keyword :k)))
+                                    (-> native-query :query params.parse/parse))]
+        (and (every? #(or (:default %) (= (:type %) "dimension")) (map template-tags obligatory-params))
+             (every? #(or (:default %) (not (:required %))) (vals template-tags))))
+      true)))
 
 (defn- post-process-card-row [row]
   (-> row
       (dissoc :authority_level :icon :personal_owner_id :dataset_query)
       (update :collection_preview bit->boolean)
-      (assoc :has_required_parameters (has-required-parameters? row))))
+      (assoc :fully_parametrized (fully-parametrized? row))))
 
 (defmethod post-process-collection-children :card
   [_ rows]
@@ -757,21 +781,19 @@
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [id, :as {{:keys [name color description archived parent_id authority_level update_collection_tree_authority_level], :as collection-updates} :body}]
+  [id, :as {{:keys [name color description archived parent_id authority_level], :as collection-updates} :body}]
   {name                                   (s/maybe su/NonBlankString)
    color                                  (s/maybe collection/hex-color-regex)
    description                            (s/maybe su/NonBlankString)
    archived                               (s/maybe s/Bool)
    parent_id                              (s/maybe su/IntGreaterThanZero)
-   authority_level                        collection/AuthorityLevel
-   update_collection_tree_authority_level (s/maybe s/Bool)}
+   authority_level                        collection/AuthorityLevel}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
     ;; if we're trying to *archive* the Collection, make sure we're allowed to do that
     (check-allowed-to-archive-or-unarchive collection-before-update collection-updates)
-    (when (or (and (contains? collection-updates :authority_level)
-                   (not= authority_level (:authority_level collection-before-update)))
-              update_collection_tree_authority_level)
+    (when (and (contains? collection-updates :authority_level)
+                    (not= authority_level (:authority_level collection-before-update)))
       (api/check-403 (and api/*is-superuser?*
                           ;; pre-update of model checks if the collection is a personal collection and rejects changes
                           ;; to authority_level, but it doesn't check if it is a sub-collection of a personal one so we add that
@@ -784,19 +806,11 @@
         (db/update! Collection id updates)))
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
     (move-collection-if-needed! collection-before-update collection-updates)
-    ;; mark the tree after moving so the new tree is what is marked as official
-    (when update_collection_tree_authority_level
-      (db/execute! {:update Collection
-                    :set    {:authority_level authority_level}
-                    :where  [:or
-                             [:= :id id]
-                             [:like :location (hx/literal (format "%%/%d/%%" id))]]}))
     ;; if we *did* end up archiving this Collection, we most post a few notifications
     (maybe-send-archived-notificaitons! collection-before-update collection-updates))
   ;; finally, return the updated object
   (-> (Collection id)
       (hydrate :parent_id)))
-
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 

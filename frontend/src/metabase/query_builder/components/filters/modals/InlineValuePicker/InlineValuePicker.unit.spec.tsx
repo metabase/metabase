@@ -80,7 +80,7 @@ const query = question.query();
 const store = getStore();
 
 describe("InlineValuePicker", () => {
-  it("renders an inline value picker with operator and values fields", () => {
+  it("renders an inline value picker with values fields", () => {
     const testFilter = new Filter(
       ["=", ["field", pkField.id, null], undefined],
       null,
@@ -99,7 +99,6 @@ describe("InlineValuePicker", () => {
     );
 
     screen.getByTestId("value-picker");
-    screen.getByTestId("select-button");
     screen.getByPlaceholderText("Enter an ID");
   });
 
@@ -120,7 +119,6 @@ describe("InlineValuePicker", () => {
         />
       </Provider>,
     );
-    screen.getByText("Is");
     screen.getByText("777");
     screen.getByText("888");
   });
@@ -142,33 +140,9 @@ describe("InlineValuePicker", () => {
         />
       </Provider>,
     );
-    screen.getByText("Is not");
+
     screen.getByText("fooBarBaz");
     screen.getByText("BazBarFoo");
-  });
-
-  it("changes the filter operator", () => {
-    const testFilter = new Filter(
-      ["=", ["field", pkField.id, null], undefined],
-      null,
-      query,
-    );
-    const changeSpy = jest.fn();
-
-    render(
-      <Provider store={store}>
-        <InlineValuePicker
-          filter={testFilter}
-          field={pkField}
-          handleChange={changeSpy}
-        />
-      </Provider>,
-    );
-
-    screen.getByTestId("select-button").click();
-    screen.getByText("Is not").click();
-    expect(changeSpy).toHaveBeenCalled();
-    expect(changeSpy.mock.calls[0][0].operatorName()).toEqual("!=");
   });
 
   it("adds additional filter values", () => {
@@ -294,7 +268,6 @@ describe("InlineValuePicker", () => {
       </Provider>,
     );
 
-    screen.getByText("Between");
     screen.getByPlaceholderText("min");
     screen.getByPlaceholderText("max");
   });

@@ -2,8 +2,10 @@ import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import { getRelativeTime } from "metabase/lib/time";
+import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
+import Tooltip from "metabase/components/Tooltip";
 
 import {
   TimelineContainer,
@@ -87,13 +89,15 @@ function Timeline({
               <ItemHeader>
                 {title}
                 {isRevertable && revertFn && (
-                  <Button
-                    icon="revert"
-                    onlyIcon
-                    borderless
-                    onClick={() => revertFn(revision)}
-                    data-testid="question-revert-button"
-                  />
+                  <Tooltip tooltip={t`Revert to this version`}>
+                    <Button
+                      icon="revert"
+                      onlyIcon
+                      borderless
+                      onClick={() => revertFn(revision)}
+                      data-testid="question-revert-button"
+                    />
+                  </Tooltip>
                 )}
               </ItemHeader>
               <Timestamp datetime={timestamp}>{formattedTimestamp}</Timestamp>

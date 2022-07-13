@@ -11791,10 +11791,12 @@ databaseChangeLog:
                   nullable: true
                   unique: true
             tableName: report_dashboardcard
+
   - changeSet:
       id: v44.00-023
       author: qnkhuat
       comment: Added 0.44.0 - Add parameters to report_card
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: report_card
@@ -11805,23 +11807,11 @@ databaseChangeLog:
                   remarks: List of parameter associated to a card
                   constraints:
                     nullable: true
-                    deferrable: false
-                    initiallyDeferred: false
-  - changeSet:
-      id: v44.00-024
-      author: qnkhuat
-      comment: Added 0.44.0 - Add parameters to report_card
-      changes:
-        - addNotNullConstraint:
-            columnDataType: ${text.type}
-            columnName: parameters
-            defaultNullValue: '[]'
-            tableName: report_card
-
   - changeSet:
       id: v44.00-025
       author: qnkhuat
       comment: Added 0.44.0 - Add parameter_mappings to report_card
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: report_card
@@ -11832,18 +11822,6 @@ databaseChangeLog:
                   remarks: List of parameter associated to a card
                   constraints:
                     nullable: true
-                    deferrable: false
-                    initiallyDeferred: false
-  - changeSet:
-      id: v44.00-026
-      author: qnkhuat
-      comment: Added 0.44.0 - Add parameter_mappings to report_card
-      changes:
-        - addNotNullConstraint:
-            columnDataType: ${text.type}
-            columnName: parameter_mappings
-            defaultNullValue: '[]'
-            tableName: report_card
 
   - changeSet:
       id: v44.00-027
@@ -11908,6 +11886,37 @@ databaseChangeLog:
               WHERE p.object IS NULL;
 
   - changeSet:
+      id: v44.00-035
+      author: qnkhuat
+      comment: Added 0.44.0. Add type to fieldvalues
+      validCheckSum: ANY
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: type
+                  type: varchar(32)
+                  defaultValue: 'full'
+                  remarks: Type of FieldValues
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v44.00-037
+      author: qnkhuat
+      comment: Added 0.44.0. Add type to fieldvalues
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: hash_key
+                  type: ${text.type}
+                  remarks: Hash key for a cached fieldvalues
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v44.00-038
       author: metamben
       comment: Added 0.44.0 - Add collection_preview to report_card
@@ -11922,6 +11931,21 @@ databaseChangeLog:
                   defaultValueBoolean: true
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v44.00-039
+      author: qnkhuat
+      comment: Added 0.44.0 - Add template_tags to native_query_snippet
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: template_tags
+                  type: ${text.type}
+                  remarks: Template tags for a snippet
+                  constraints:
+                    nullable: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

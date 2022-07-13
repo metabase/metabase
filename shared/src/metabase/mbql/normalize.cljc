@@ -149,9 +149,15 @@
   [[_ amount unit]]
   [:interval amount (maybe-normalize-token unit)])
 
+(defmethod normalize-mbql-clause-tokens :value
+  ;; The args of a `value` clause shouldn't be normalized.
+  ;; See https://github.com/metabase/metabase/issues/23354 for details
+  [[_ value info]]
+  [:value value info])
+
 (defmethod normalize-mbql-clause-tokens :default
-  ;; MBQL clauses by default get just the clause name normalized (e.g. `[\"COUNT\" ...]` becomes `[:count ...]`) and the
-  ;; args are left as-is.
+  ;; MBQL clauses by default are recursively normalized.
+  ;; This includes the clause name (e.g. `[\"COUNT\" ...]` becomes `[:count ...]`) and args.
   [[clause-name & args]]
   (into [(maybe-normalize-token clause-name)] (map #(normalize-tokens % :ignore-path)) args))
 
@@ -238,7 +244,7 @@
            (not (:widget-type tag-def)))
       (assoc :widget-type :category))))
 
-(defn- normalize-template-tags
+(defn normalize-template-tags
   "Normalize native-query template tags. Like `expressions` we want to preserve the original name rather than normalize
   it."
   [template-tags]

@@ -441,9 +441,7 @@ class QuestionInner {
   }
 
   setDefaultQuery() {
-    return this.query()
-      .setDefaultQuery()
-      .question();
+    return this.query().setDefaultQuery().question();
   }
 
   settings(): VisualizationSettings {
@@ -879,6 +877,10 @@ class QuestionInner {
 
   lastEditInfo() {
     return this._card && this._card["last-edit-info"];
+  }
+
+  lastQueryStart() {
+    return this._card?.last_query_start;
   }
 
   isSaved(): boolean {

@@ -28,9 +28,7 @@ interface ExporePaidPlansContainerProps {
   justifyContent?: string;
 }
 
-export const ExporePaidPlansContainer = styled.div<
-  ExporePaidPlansContainerProps
->`
+export const ExporePaidPlansContainer = styled.div<ExporePaidPlansContainerProps>`
   margin: 16px 0;
   display: flex;
   align-items: flex-start;

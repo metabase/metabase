@@ -13,6 +13,7 @@ export default class OnClickOutsideWrapper extends Component {
     children: PropTypes.node,
     backdropElement: PropTypes.object,
     handleDismissal: PropTypes.func.isRequired,
+    ignoreElement: PropTypes.object,
   };
 
   componentDidMount() {
@@ -24,6 +25,7 @@ export default class OnClickOutsideWrapper extends Component {
         contentEl,
         backdropEl: this.props.backdropElement,
         close: () => this.props.handleDismissal(),
+        ignoreEl: this.props.ignoreElement,
       };
 
       RENDERED_POPOVERS.push(this.popoverData);

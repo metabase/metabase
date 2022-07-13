@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import Ellipsified from "../Ellipsified";
 
 export interface TabProps {
   isSelected?: boolean;
@@ -35,8 +36,8 @@ export const TabIcon = styled(Icon)`
   margin-right: 0.25rem;
 `;
 
-export const TabLabel = styled.span`
+export const TabLabel = styled(Ellipsified)`
   font-size: 1rem;
-  line-height: 1rem;
   font-weight: bold;
+  max-width: 16rem;
 `;

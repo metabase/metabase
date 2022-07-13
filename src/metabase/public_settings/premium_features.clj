@@ -142,16 +142,22 @@
                                          {:message (.getMessage e), :status-code 400}
                                          (ex-data e)))))))) ; merge in error-details if present
 
-(schema/defn ^:private token-features :- #{su/NonBlankString}
-  "Get the features associated with the system's premium features token."
-  []
-  (try
-    (or (some-> (premium-embedding-token) valid-token->features)
-        #{})
-    (catch Throwable e
-      (log/error (trs "Error validating token") ":" (ex-message e))
-      (log/debug e (trs "Error validating token"))
-      #{})))
+(let [cached-logger (memoize/ttl
+                     ^{::memoize/args-fn (fn [[token _e]] [token])}
+                     (fn [_token e]
+                       (log/error (trs "Error validating token") ":" (ex-message e))
+                       (log/debug e (trs "Error validating token")))
+                     ;; log every five minutes
+                     :ttl/threshold (* 1000 60 5))]
+  (schema/defn ^:private token-features :- #{su/NonBlankString}
+    "Get the features associated with the system's premium features token."
+    []
+    (try
+      (or (some-> (premium-embedding-token) valid-token->features)
+          #{})
+      (catch Throwable e
+        (cached-logger (premium-embedding-token) e)
+        #{}))))
 
 (defn- has-any-features?
   "True if we have a valid premium features token with ANY features."

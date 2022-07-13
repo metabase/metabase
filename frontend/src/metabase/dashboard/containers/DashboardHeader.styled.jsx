@@ -1,6 +1,8 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
+import Button from "metabase/core/components/Button";
+
 export const DashboardHeaderButton = styled.button`
   display: flex;
   align-items: center;
@@ -24,8 +26,15 @@ export const DashboardHeaderButton = styled.button`
   }
 `;
 
-export const DashboardHeaderActionContainer = styled.div`
-  display: flex;
-  padding-left: 0.5rem;
-  border-left: 1px solid ${color("border")};
+export const DashboardHeaderActionDivider = styled.div`
+  height: 1.25rem;
+  padding-left: 0.75rem;
+  margin-left: 0.75rem;
+  width: 0px;
+  border-left: 1px solid ${color("border-dark")};
+`;
+
+export const DashboardHeaderInfoButton = styled(Button)`
+  color: ${props =>
+    props.isShowingDashboardInfoSidebar ? color("brand") : color("text-dark")};
 `;

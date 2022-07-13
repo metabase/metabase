@@ -6,10 +6,12 @@
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clojurewerkz.quartzite.triggers :as triggers]
             [java-time :as t]
+            [medley.core :as m]
             [metabase.db :as mdb]
             [metabase.driver :as driver]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.email.messages :as messages]
             [metabase.models.card :refer [Card]]
             [metabase.models.database :refer [Database]]
             [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
@@ -20,7 +22,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [potemkin.types :as p]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]])
   (:import java.util.TimeZone
            [org.quartz ObjectAlreadyExistsException Trigger]))
 
@@ -95,6 +98,16 @@
   (let [start-time   (t/zoned-date-time)
         task-details (f)
         end-time     (t/zoned-date-time)]
+    (when (= task-type "persist-refresh")
+      (when-let [error-details (seq (:error-details task-details))]
+        (let [error-details-by-id (m/index-by :persisted-info-id error-details)
+              persisted-infos (->> (hydrate (db/select PersistedInfo :id [:in (keys error-details-by-id)])
+                                            [:card :collection] :database)
+                                   (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
+          (messages/send-persistent-model-error-email!
+            db-id
+            persisted-infos
+            (:trigger task-details)))))
     (db/insert! TaskHistory {:task         task-type
                              :db_id        db-id
                              :started_at   start-time
@@ -240,16 +253,23 @@
 
 (defn- cron-schedule
   "Return a cron schedule that fires every `hours` hours."
-  [hours anchor-time]
-  (let [[start-hour start-minute] (map parse-long (str/split anchor-time #":"))]
-    (cron/schedule
-      (cron/cron-schedule (if (= 24 hours)
+  [cron-spec]
+  (cron/schedule
+    (cron/cron-schedule cron-spec)
+    (cron/in-time-zone (TimeZone/getTimeZone (or (driver/report-timezone)
+                                                 (qp.timezone/system-timezone-id)
+                                                 "UTC")))
+    (cron/with-misfire-handling-instruction-do-nothing)))
+
+(comment
+  (let [[start-hour start-minute] (map parse-long (str/split "00:00" #":"))
+        hours 1]
+
+     (if (= 24 hours)
                             (format "0 %d %d * * ? *" start-minute start-hour)
                             (format "0 %d %d/%d * * ? *" start-minute start-hour hours)))
-      (cron/in-time-zone (TimeZone/getTimeZone (or (driver/report-timezone)
-                                                   (qp.timezone/system-timezone-id)
-                                                   "UTC")))
-      (cron/with-misfire-handling-instruction-do-nothing))))
+
+  )
 
 (def ^:private prune-scheduled-trigger
   (triggers/build
@@ -258,7 +278,7 @@
     (triggers/for-job (jobs/key prune-job-key))
     (triggers/start-now)
     (triggers/with-schedule
-      (cron-schedule 1 "00:00"))))
+      (cron-schedule "0 0 0/1 * * ? *"))))
 
 (def ^:private prune-once-trigger
   (triggers/build
@@ -267,7 +287,7 @@
     (triggers/for-job (jobs/key prune-job-key))
     (triggers/start-now)))
 
-(defn- database-trigger [database interval-hours anchor-time]
+(defn- database-trigger [database cron-spec]
   (triggers/build
    (triggers/with-description (format "Refresh models for database %d" (u/the-id database)))
    (triggers/with-identity (database-trigger-key database))
@@ -276,7 +296,7 @@
    (triggers/for-job (jobs/key refresh-job-key))
    (triggers/start-now)
    (triggers/with-schedule
-     (cron-schedule interval-hours anchor-time))))
+     (cron-schedule cron-spec))))
 
 (defn- individual-trigger [persisted-info]
   (triggers/build
@@ -291,8 +311,8 @@
 
 (defn schedule-persistence-for-database!
   "Schedule a database for persistence refreshing."
-  [database interval-hours anchor-time]
-  (let [tggr (database-trigger database interval-hours anchor-time)]
+  [database cron-spec]
+  (let [tggr (database-trigger database cron-spec)]
     (log/info
      (u/format-color 'green
                      "Scheduling persistence refreshes for database %d: trigger: %s"
@@ -347,14 +367,13 @@
 
 (defn reschedule-refresh!
   "Reschedule refresh for all enabled databases. Removes all existing triggers, and schedules refresh for databases with
-  `:persist-models-enabled` in the options at interval [[public-settings/persisted-model-refresh-interval-hours]]."
+  `:persist-models-enabled` in the options at interval [[public-settings/persisted-model-refresh-cron-schedule]]."
   []
   (let [dbs-with-persistence (filter (comp :persist-models-enabled :options) (Database))
-        interval-hours       (public-settings/persisted-model-refresh-interval-hours)
-        anchor-time          (public-settings/persisted-model-refresh-anchor-time)]
+        cron-schedule        (public-settings/persisted-model-refresh-cron-schedule)]
     (unschedule-all-refresh-triggers! refresh-job-key)
     (doseq [db dbs-with-persistence]
-      (schedule-persistence-for-database! db interval-hours anchor-time))))
+      (schedule-persistence-for-database! db cron-schedule))))
 
 (defn enable-persisting!
   "Enable persisting

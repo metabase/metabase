@@ -26,8 +26,8 @@ export const DashboardLoadingAndErrorWrapper = styled(
     );
   },
 )`
-  flex: 1 0 auto;
-
+  min-height: 100%;
+  height: 1px;
   // prevents header from scrolling so we can have a fixed sidebar
   ${({ isFullHeight }) =>
     isFullHeight &&
@@ -39,12 +39,13 @@ export const DashboardLoadingAndErrorWrapper = styled(
 export const DashboardStyled = styled.div`
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 100%;
   overflow-x: hidden;
   width: 100%;
 `;
 
 export const DashboardBody = styled.div`
+  position: relative;
   display: flex;
   flex: 1 0 auto;
   min-width: 0;
@@ -80,6 +81,7 @@ export const HeaderContainer = styled.header`
 export const ParametersAndCardsContainer = styled.div`
   flex: auto;
   overflow-x: hidden;
+  padding-bottom: 40px;
 `;
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)`
@@ -103,7 +105,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
     css`
       border-bottom: 1px solid ${color("border")};
       position: fixed;
-      top: 0;
+      top: ${APP_BAR_HEIGHT};
       left: 0;
     `}
 
@@ -113,7 +115,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
     !IFRAMED &&
     css`
       width: calc(100% - ${NAV_SIDEBAR_WIDTH});
-      left: ${NAV_SIDEBAR_WIDTH};
+      left: ${parseInt(NAV_SIDEBAR_WIDTH) + 1 + "px"};
       top: ${APP_BAR_HEIGHT};
     `}
 `;
