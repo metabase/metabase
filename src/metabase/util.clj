@@ -89,25 +89,6 @@
   [& body]
   `(try ~@body (catch Throwable ~'_)))
 
-(defn optional
-  "Helper function for defining functions that accept optional arguments. If `pred?` is true of the first item in `args`,
-  a pair like `[first-arg other-args]` is returned; otherwise, a pair like `[default other-args]` is returned.
-
-  If `default` is not specified, `nil` will be returned when `pred?` is false.
-
-    (defn
-      ^{:arglists ([key? numbers])}
-      wrap-nums [& args]
-      (let [[k nums] (optional keyword? args :nums)]
-        {k nums}))
-    (wrap-nums 1 2 3)          -> {:nums [1 2 3]}
-    (wrap-nums :numbers 1 2 3) -> {:numbers [1 2 3]}"
-  {:arglists '([pred? args]
-               [pred? args default])}
-  [pred? args & [default]]
-  (if (pred? (first args)) [(first args) (next args)]
-      [default args]))
-
 (defmacro varargs
   "Make a properly-tagged Java interop varargs argument. This is basically the same as `into-array` but properly tags
   the result.

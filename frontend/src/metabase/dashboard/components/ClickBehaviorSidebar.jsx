@@ -596,32 +596,29 @@ function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
           );
           return (
             <>
-              {actions.map(action => (
-                <ActionOption
-                  key={action.id}
-                  name={action.card?.name || action.name}
-                  description={action.card?.description || action.description}
-                  isSelected={clickBehavior.action === action.id}
-                  onClick={() =>
-                    updateSettings({
-                      type: clickBehavior.type,
-                      action: action.id,
-                      emitter_id: clickBehavior.emitter_id,
-                    })
-                  }
-                />
-              ))}
+              {actions
+                .filter(action => action.type === "query")
+                .map(action => (
+                  <ActionOption
+                    key={action.id}
+                    name={action.card.name}
+                    description={action.card.description}
+                    isSelected={clickBehavior.action === action.id}
+                    onClick={() =>
+                      updateSettings({
+                        type: clickBehavior.type,
+                        action: action.id,
+                        emitter_id: clickBehavior.emitter_id,
+                      })
+                    }
+                  />
+                ))}
               {selectedAction && (
                 <ClickMappings
-                  object={
-                    selectedAction.type === "query"
-                      ? selectedAction.card
-                      : selectedAction.template
-                  }
+                  object={selectedAction.card}
                   dashcard={dashcard}
                   clickBehavior={clickBehavior}
                   updateSettings={updateSettings}
-                  isHTTPAction={selectedAction.type === "http"}
                 />
               )}
             </>

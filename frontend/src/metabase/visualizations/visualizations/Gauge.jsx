@@ -434,9 +434,9 @@ class HideIfOverlowingSVG extends React.Component {
         elementRect.top >= svgRect.top &&
         elementRect.bottom <= svgRect.bottom
       ) {
-        element.classList.remove("invisible");
+        element.classList.remove("hidden");
       } else {
-        element.classList.add("invisible");
+        element.classList.add("hidden");
       }
     }
   }
