@@ -5,6 +5,9 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Questions from "metabase/entities/questions";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 import Modal from "metabase/components/Modal";
@@ -28,8 +31,14 @@ import BulkFilterModal from "metabase/query_builder/components/filters/modals/Bu
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
+import QuestionMoveToast from "./QuestionMoveToast";
 
 import { createRowFromTableView } from "metabase/query_builder/actions/writeback";
+
+const mapDispatchToProps = dispatch => ({
+  setQuestionCollection: Questions.actions.setCollection,
+  createRowFromTableView: payload => dispatch(createRowFromTableView(payload)),
+});
 
 class QueryModals extends React.Component {
   showAlertsAfterQuestionSaved = () => {
@@ -166,7 +175,7 @@ class QueryModals extends React.Component {
         />
       </Modal>
     ) : modal === MODAL_TYPES.FILTERS ? (
-      <Modal onClose={onCloseModal}>
+      <Modal medium onClose={onCloseModal}>
         <BulkFilterModal question={question} onClose={onCloseModal} />
       </Modal>
     ) : modal === MODAL_TYPES.HISTORY ? (
@@ -187,11 +196,21 @@ class QueryModals extends React.Component {
           initialCollectionId={question.collectionId()}
           onClose={onCloseModal}
           onMove={collection => {
-            const card = question
-              .setCollectionId(collection && collection.id)
-              .card();
-
-            this.props.onSave(card);
+            this.props.setQuestionCollection(
+              { id: question.id() },
+              collection,
+              {
+                notify: {
+                  message: (
+                    <QuestionMoveToast
+                      isModel={question.isDataset()}
+                      collectionId={collection.id || ROOT_COLLECTION.id}
+                    />
+                  ),
+                  undo: false,
+                },
+              },
+            );
             onCloseModal();
           }}
         />
@@ -262,8 +281,4 @@ class QueryModals extends React.Component {
   }
 }
 
-const mapDispatchToProps = dispatch => ({
-  createRowFromTableView: payload => dispatch(createRowFromTableView(payload)),
-});
-
-export default connect(() => {}, mapDispatchToProps)(QueryModals);
+export default connect(null, mapDispatchToProps)(QueryModals);

@@ -76,10 +76,16 @@ async function searchFieldValues(
 class FieldValuesWidgetInner extends Component {
   constructor(props) {
     super(props);
+    const { fields, disableSearch, disablePKRemappingForSearch } = props;
     this.state = {
       options: [],
       loadingState: "INIT",
       lastValue: "",
+      valuesMode: getValuesMode(
+        fields,
+        disableSearch,
+        disablePKRemappingForSearch,
+      ),
     };
   }
 
@@ -107,17 +113,26 @@ class FieldValuesWidgetInner extends Component {
     });
 
     let options = [];
+    let valuesMode = this.state.valuesMode;
     try {
       if (usesChainFilterEndpoints(this.props.dashboard)) {
         options = await this.fetchDashboardParamValues(query);
       } else {
         options = await this.fetchFieldValues(query);
+        const { fields, disableSearch, disablePKRemappingForSearch } =
+          this.props;
+        valuesMode = getValuesMode(
+          fields,
+          disableSearch,
+          disablePKRemappingForSearch,
+        );
       }
     } finally {
       this.updateRemappings(options);
       this.setState({
         loadingState: "LOADED",
         options,
+        valuesMode,
       });
     }
   }
@@ -182,12 +197,21 @@ class FieldValuesWidgetInner extends Component {
   }
 
   onInputChange = value => {
-    const { fields, disableSearch, disablePKRemappingForSearch } = this.props;
+    const { maxResults } = this.props;
+    const { lastValue, options } = this.state;
+    let { valuesMode } = this.state;
 
-    if (
-      value &&
-      isSearchable(fields, disableSearch, disablePKRemappingForSearch)
-    ) {
+    // override "search" mode when searching is unnecessary
+    valuesMode = isExtensionOfPreviousSearch(
+      value,
+      lastValue,
+      options,
+      maxResults,
+    )
+      ? "list"
+      : valuesMode;
+
+    if (valuesMode === "search") {
       this._search(value);
     }
 
@@ -207,19 +231,6 @@ class FieldValuesWidgetInner extends Component {
   }, 500);
 
   _search = value => {
-    const { lastValue, options } = this.state;
-
-    // if this search is just an extension of the previous search, and the previous search
-    // wasn't truncated, then we don't need to do another search because TypeaheadListing
-    // will filter the previous result client-side
-    if (
-      lastValue &&
-      value.slice(0, lastValue.length) === lastValue &&
-      options.length < this.props.maxResults
-    ) {
-      return;
-    }
-
     if (this._cancel) {
       this._cancel();
     }
@@ -278,9 +289,7 @@ class FieldValuesWidgetInner extends Component {
     });
 
     const isLoading = loadingState === "LOADING";
-    const isFetchingList =
-      shouldList(this.props.fields, this.props.disableSearch) && isLoading;
-    const hasListData = hasList({
+    const usesListField = hasList({
       fields,
       disableSearch,
       options,
@@ -294,61 +303,63 @@ class FieldValuesWidgetInner extends Component {
           maxWidth: this.props.maxWidth,
         }}
       >
-        {isFetchingList && <LoadingState />}
-        {hasListData && !forceTokenField && (
-          <ListField
-            isDashboardFilter={parameter}
-            placeholder={tokenFieldPlaceholder}
-            value={value.filter(v => v != null)}
-            onChange={onChange}
-            options={options}
-            optionRenderer={option =>
-              renderValue(fields, formatOptions, option[0], {
-                autoLoad: false,
-              })
-            }
-          />
-        )}
-        {(!hasListData || forceTokenField) && !isFetchingList && (
-          <TokenField
-            prefix={prefix}
-            value={value.filter(v => v != null)}
-            onChange={onChange}
-            placeholder={tokenFieldPlaceholder}
-            updateOnInputChange
-            // forwarded props
-            multi={multi}
-            autoFocus={autoFocus}
-            color={color}
-            style={{ ...style, minWidth: "inherit" }}
-            className={className}
-            optionsStyle={
-              !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
-            }
-            // end forwarded props
-            options={options}
-            valueKey="0"
-            valueRenderer={valueRenderer}
-            optionRenderer={optionRenderer}
-            layoutRenderer={layoutRenderer}
-            filterOption={(option, filterString) => {
-              const lowerCaseFilterString = filterString.toLowerCase();
-              return option.some(
-                value =>
-                  value != null &&
-                  String(value)
-                    .toLowerCase()
-                    .includes(lowerCaseFilterString),
-              );
-            }}
-            onInputChange={this.onInputChange}
-            parseFreeformValue={value => {
-              return fields[0].isNumeric()
-                ? parseNumberValue(value)
-                : parseStringValue(value);
-            }}
-          />
-        )}
+        {usesListField &&
+          !forceTokenField &&
+          (isLoading ? (
+            <LoadingState />
+          ) : (
+            <ListField
+              isDashboardFilter={parameter}
+              placeholder={tokenFieldPlaceholder}
+              value={value.filter(v => v != null)}
+              onChange={onChange}
+              options={options}
+              optionRenderer={option =>
+                renderValue(fields, formatOptions, option[0], {
+                  autoLoad: false,
+                })
+              }
+            />
+          ))}
+        {!usesListField ||
+          (forceTokenField && (
+            <TokenField
+              prefix={prefix}
+              value={value.filter(v => v != null)}
+              onChange={onChange}
+              placeholder={tokenFieldPlaceholder}
+              updateOnInputChange
+              // forwarded props
+              multi={multi}
+              autoFocus={autoFocus}
+              color={color}
+              style={{ ...style, minWidth: "inherit" }}
+              className={className}
+              optionsStyle={
+                !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
+              }
+              // end forwarded props
+              options={options}
+              valueKey="0"
+              valueRenderer={valueRenderer}
+              optionRenderer={optionRenderer}
+              layoutRenderer={layoutRenderer}
+              filterOption={(option, filterString) => {
+                const lowerCaseFilterString = filterString.toLowerCase();
+                return option.some(
+                  value =>
+                    value != null &&
+                    String(value).toLowerCase().includes(lowerCaseFilterString),
+                );
+              }}
+              onInputChange={this.onInputChange}
+              parseFreeformValue={value => {
+                return fields[0].isNumeric()
+                  ? parseNumberValue(value)
+                  : parseStringValue(value);
+              }}
+            />
+          ))}
       </div>
     );
   }
@@ -478,14 +489,29 @@ function hasList({ fields, disableSearch, options }) {
   return shouldList(fields, disableSearch) && !_.isEmpty(options);
 }
 
+// if this search is just an extension of the previous search, and the previous search
+// wasn't truncated, then we don't need to do another search because TypeaheadListing
+// will filter the previous result client-side
+function isExtensionOfPreviousSearch(value, lastValue, options, maxResults) {
+  return (
+    lastValue &&
+    value.slice(0, lastValue.length) === lastValue &&
+    options.length < maxResults
+  );
+}
+
 function isSearchable(fields, disableSearch, disablePKRemappingForSearch) {
   return (
     !disableSearch &&
     // search is available if:
     // all fields have a valid search field
     fields.every(field => searchField(field, disablePKRemappingForSearch)) &&
-    // at least one field is set to display as "search"
-    fields.some(f => f.has_field_values === "search") &&
+    // at least one field is set to display as "search" or is a list field that has an incomplete value set
+    fields.some(
+      f =>
+        f.has_field_values === "search" ||
+        (f.has_field_values === "list" && f.has_more_values === true),
+    ) &&
     // and all fields are either "search" or "list"
     fields.every(
       f => f.has_field_values === "search" || f.has_field_values === "list",
@@ -581,4 +607,20 @@ function renderValue(fields, formatOptions, value, options) {
       {...options}
     />
   );
+}
+
+function getValuesMode(fields, disableSearch, disablePKRemappingForSearch) {
+  if (fields.length === 0) {
+    return "none";
+  }
+
+  if (isSearchable(fields, disableSearch, disablePKRemappingForSearch)) {
+    return "search";
+  }
+
+  if (shouldList(fields, disableSearch)) {
+    return "list";
+  }
+
+  return "none";
 }

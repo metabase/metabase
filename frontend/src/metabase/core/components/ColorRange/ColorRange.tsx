@@ -6,7 +6,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { range } from "lodash";
+import _ from "underscore";
 import { getColorScale } from "metabase/lib/colors/scales";
 import { ColorRangeItem, ColorRangeRoot } from "./ColorRange.styled";
 
@@ -47,7 +47,7 @@ const ColorRange = forwardRef(function ColorRange(
 
   return (
     <ColorRangeRoot {...props} ref={ref} onClick={handleClick}>
-      {range(0, sections).map(section => (
+      {_.range(0, sections).map(section => (
         <ColorRangeItem
           key={section}
           style={{ backgroundColor: scale(section) }}

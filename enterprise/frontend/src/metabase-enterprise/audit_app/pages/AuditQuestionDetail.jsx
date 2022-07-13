@@ -22,7 +22,11 @@ const pagePropTypes = {
 function AuditQuestionDetail({ params, ...props }) {
   const questionId = parseInt(params.questionId);
   return (
-    <Question.Loader id={questionId} wrapped>
+    <Question.Loader
+      id={questionId}
+      entityQuery={{ ignore_view: true }}
+      wrapped
+    >
       {({ question }) => (
         <AuditContent
           {...props}

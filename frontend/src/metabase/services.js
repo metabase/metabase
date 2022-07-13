@@ -433,7 +433,7 @@ export const PersistedModelsApi = {
   getForModel: GET("/api/persist/card/:id"),
   enablePersistence: POST("/api/persist/enable"),
   disablePersistence: POST("/api/persist/disable"),
-  setRefreshInterval: POST("/api/persist/set-interval"),
+  setRefreshSchedule: POST("/api/persist/set-refresh-schedule"),
 };
 
 export const SetupApi = {

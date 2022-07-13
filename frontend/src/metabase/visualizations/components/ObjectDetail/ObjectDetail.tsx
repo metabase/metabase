@@ -6,8 +6,8 @@ import Question from "metabase-lib/lib/Question";
 import { isPK } from "metabase/lib/schema_metadata";
 import Table from "metabase-lib/lib/metadata/Table";
 
-import { ForeignKey } from "metabase-types/api/foreignKey";
 import { State } from "metabase-types/store";
+import { ForeignKey } from "metabase-types/api";
 import { DatasetData } from "metabase-types/types/Dataset";
 import { ObjectId, OnVisualizationClickType } from "./types";
 

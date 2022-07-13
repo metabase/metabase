@@ -1,1 +1,1 @@
-export { default } from "./ModelCacheControl";
+export { default, toggleModelPersistence } from "./ModelCacheControl";

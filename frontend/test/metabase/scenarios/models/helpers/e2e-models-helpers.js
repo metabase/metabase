@@ -40,28 +40,22 @@ export function saveQuestionBasedOnModel({ modelId, name }) {
   modal().within(() => {
     cy.findByText(/Replace original question/i).should("not.exist");
     if (name) {
-      cy.findByLabelText("Name")
-        .clear()
-        .type(name);
+      cy.findByLabelText("Name").clear().type(name);
     }
     cy.findByText("Save").click();
   });
 
   assertCreatedNestedQuery(modelId);
 
-  modal()
-    .findByText("Not now")
-    .click();
+  modal().findByText("Not now").click();
 }
 
 export function selectDimensionOptionFromSidebar(name) {
-  cy.get("[data-testid=dimension-list-item]")
-    .contains(name)
-    .click();
+  cy.get("[data-testid=dimension-list-item]").contains(name).click();
 }
 
 export function openDetailsSidebar() {
-  cy.findByTestId("saved-question-header-button").click();
+  cy.findByTestId("saved-question-header-title").click();
 }
 
 export function getDetailsSidebarActions() {
@@ -106,17 +100,12 @@ export function turnIntoModel() {
 }
 
 export function selectFromDropdown(option, clickOpts) {
-  popover()
-    .last()
-    .findByText(option)
-    .click(clickOpts);
+  popover().last().findByText(option).click(clickOpts);
 }
 
 export function startQuestionFromModel(modelName) {
   cy.findByText("New").click();
-  cy.findByText("Question")
-    .should("be.visible")
-    .click();
+  cy.findByText("Question").should("be.visible").click();
   cy.findByText("Models").click();
   cy.findByText(modelName).click();
 }

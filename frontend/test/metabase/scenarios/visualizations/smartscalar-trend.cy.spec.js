@@ -44,9 +44,7 @@ describe("scenarios > visualizations > scalar", () => {
 
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
 
-    cy.get(".ScalarValue")
-      .invoke("text")
-      .should("eq", "1");
+    cy.get(".ScalarValue").invoke("text").should("eq", "1");
 
     cy.icon("arrow_down");
 

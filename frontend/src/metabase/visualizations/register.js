@@ -26,7 +26,7 @@ import ObjectDetail from "./components/ObjectDetail";
 import PivotTable from "./visualizations/PivotTable";
 import ListViz from "./visualizations/List";
 
-export default function() {
+export default function () {
   registerVisualization(Scalar);
   registerVisualization(SmartScalar);
   registerVisualization(Progress);

@@ -13,6 +13,7 @@ import {
   appbar,
   getCollectionIdFromSlug,
   filter,
+  filterField,
 } from "__support__/e2e/helpers";
 
 describe("scenarios > question > saved", () => {
@@ -27,9 +28,7 @@ describe("scenarios > question > saved", () => {
     summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    popover()
-      .findByText("Total")
-      .click();
+    popover().findByText("Total").click();
     // Save the question
     cy.findByText("Save").click();
     modal().within(() => {
@@ -155,16 +154,14 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Saved Questions").click();
     cy.findByText("15808").click();
     visualize();
-    filter();
-    cy.findByLabelText("RATING")
-      .findByText("Between")
-      .click();
-    cy.findByText("Equal to").click();
-    cy.findByLabelText("RATING")
-      .findByPlaceholderText("Enter a number")
-      .type("4");
 
+    filter();
+    filterField("RATING", {
+      operator: "Equal to",
+      value: "4",
+    });
     cy.button("Apply").click();
+
     cy.findByText("Synergistic Granite Chair");
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });

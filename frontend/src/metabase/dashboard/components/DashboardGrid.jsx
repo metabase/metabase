@@ -20,6 +20,7 @@ import {
   DEFAULT_CARD_SIZE,
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
+import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -31,6 +32,8 @@ import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
 import DashCard from "./DashCard";
 
 class DashboardGrid extends Component {
+  static contextType = ContentViewportContext;
+
   constructor(props, context) {
     super(props, context);
 
@@ -172,7 +175,11 @@ class DashboardGrid extends Component {
   getRowHeight() {
     const { width } = this.props;
 
-    const hasScroll = window.innerWidth > document.documentElement.offsetWidth;
+    const contentViewportElement = this.context;
+    const hasScroll =
+      contentViewportElement?.clientHeight <
+      contentViewportElement?.scrollHeight;
+
     const aspectHeight = width / GRID_WIDTH / GRID_ASPECT_RATIO;
     const actualHeight = Math.max(aspectHeight, MIN_ROW_HEIGHT);
 
@@ -305,11 +312,8 @@ class DashboardGrid extends Component {
   }
 
   get isEditingLayout() {
-    const {
-      isEditing,
-      isEditingParameter,
-      clickBehaviorSidebarDashcard,
-    } = this.props;
+    const { isEditing, isEditingParameter, clickBehaviorSidebarDashcard } =
+      this.props;
     return (
       isEditing && !isEditingParameter && clickBehaviorSidebarDashcard == null
     );

@@ -27,6 +27,7 @@
 
 .Theme--night.EmbedFrame svg text {
   fill: color-mod(var(--color-text-white) alpha(-14%)) !important;
+  stroke: none !important;
 }
 
 .Theme--night.EmbedFrame .DashCard .Card {

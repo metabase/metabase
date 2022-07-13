@@ -42,9 +42,8 @@ const checkIfDeviceShouldDisplayStickyFilters = dashboard =>
   );
 
 const checkIfParametersWidgetShouldBeSticky = dashboard => {
-  const deviceShouldDisplayStickyFilters = checkIfDeviceShouldDisplayStickyFilters(
-    dashboard,
-  );
+  const deviceShouldDisplayStickyFilters =
+    checkIfDeviceShouldDisplayStickyFilters(dashboard);
 
   if (!deviceShouldDisplayStickyFilters) {
     return false;

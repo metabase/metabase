@@ -111,9 +111,11 @@ const DashboardHeader = ({
   const handleUpdateCaption = useCallback(
     async (name: string) => {
       await setDashboardAttribute("name", name);
-      await onSave();
+      if (!isEditing) {
+        await onSave();
+      }
     },
-    [setDashboardAttribute, onSave],
+    [setDashboardAttribute, onSave, isEditing],
   );
 
   useOnMount(() => {
@@ -148,7 +150,7 @@ const DashboardHeader = ({
         <HeaderContent showSubHeader={showSubHeader}>
           <HeaderCaptionContainer>
             <HeaderCaption
-              key={dashboard.id}
+              key={dashboard.name}
               initialValue={
                 isEditingTitle
                   ? dashboard.name

@@ -126,15 +126,11 @@ describe("visual tests > notebook", () => {
 });
 
 function selectFromDropdown(itemName) {
-  return popover()
-    .last()
-    .findByText(itemName);
+  return popover().last().findByText(itemName);
 }
 
 function addJoin({ rightTable }) {
-  cy.icon("join_left_outer")
-    .last()
-    .click();
+  cy.icon("join_left_outer").last().click();
 
   selectFromDropdown(rightTable).click();
 }

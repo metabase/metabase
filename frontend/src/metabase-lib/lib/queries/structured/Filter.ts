@@ -20,6 +20,8 @@ import {
   isCustom,
   isFieldFilter,
   hasFilterOptions,
+  getFilterOptions,
+  setFilterOptions,
 } from "metabase/lib/query/filter";
 import { isExpression } from "metabase/lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
@@ -301,6 +303,14 @@ export default class Filter extends MBQLClause {
 
   arguments() {
     return hasFilterOptions(this) ? this.slice(2, -1) : this.slice(2);
+  }
+
+  options() {
+    return getFilterOptions(this);
+  }
+
+  setOptions(options: any) {
+    return this.set(setFilterOptions(this, options));
   }
 
   formattedArguments(maxDisplayValues?: number = 1) {

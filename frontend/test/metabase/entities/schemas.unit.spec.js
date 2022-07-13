@@ -34,8 +34,8 @@ describe("schema entity", () => {
       },
     });
     expect(tables).toEqual({
-      "123": { id: 123, name: "foo" },
-      "234": { id: 234, name: "bar" },
+      123: { id: 123, name: "foo" },
+      234: { id: 234, name: "bar" },
     });
   });
 
@@ -79,8 +79,8 @@ describe("schema entity", () => {
       },
     });
     expect(tables).toEqual({
-      "123": { id: 123, name: "foo" },
-      "234": { id: 234, name: "bar" },
+      123: { id: 123, name: "foo" },
+      234: { id: 234, name: "bar" },
     });
   });
 

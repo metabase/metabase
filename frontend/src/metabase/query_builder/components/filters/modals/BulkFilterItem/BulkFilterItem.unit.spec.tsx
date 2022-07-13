@@ -61,12 +61,12 @@ const categoryField = new Field({
   table_id: 8,
   name: "category_string",
   has_field_values: "list",
-  values: ["Michaelangelo", "Donatello", "Raphael", "Leonardo"],
+  values: [["Michaelangelo"], ["Donatello"], ["Raphael"], ["Leonardo"]],
   dimensions: {},
   dimension_options: [],
-  effective_type: "type/Float",
+  effective_type: "type/Text",
   id: 137,
-  base_type: "type/Float",
+  base_type: "type/Text",
   metadata,
 });
 
@@ -193,7 +193,6 @@ describe("BulkFilterItem", () => {
     );
 
     screen.getByTestId("value-picker");
-    screen.getByLabelText(intField.name);
   });
 
   it("renders a value picker for float field type", () => {
@@ -217,7 +216,6 @@ describe("BulkFilterItem", () => {
       </Provider>,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(floatField.name);
   });
 
   it("defaults to a between picker for float field type", () => {
@@ -236,8 +234,9 @@ describe("BulkFilterItem", () => {
       </Provider>,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(floatField.name);
     screen.getByText("Between");
+    screen.getByPlaceholderText("min");
+    screen.getByPlaceholderText("max");
   });
 
   it("renders a category picker for category type", () => {
@@ -284,7 +283,6 @@ describe("BulkFilterItem", () => {
       </Provider>,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(pkField.name);
   });
 
   it("renders a value picker for a foreign key", () => {
@@ -308,7 +306,6 @@ describe("BulkFilterItem", () => {
       </Provider>,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(fkField.name);
   });
 
   it("renders a value picker for a text field", () => {
@@ -332,7 +329,6 @@ describe("BulkFilterItem", () => {
       </Provider>,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(textField.name);
     screen.getByText("foo");
   });
 

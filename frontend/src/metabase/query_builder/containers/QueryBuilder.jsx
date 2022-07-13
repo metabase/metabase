@@ -241,9 +241,10 @@ function QueryBuilder(props) {
   } = props;
 
   const forceUpdate = useForceUpdate();
-  const forceUpdateDebounced = useMemo(() => _.debounce(forceUpdate, 400), [
-    forceUpdate,
-  ]);
+  const forceUpdateDebounced = useMemo(
+    () => _.debounce(forceUpdate, 400),
+    [forceUpdate],
+  );
   const timeout = useRef(null);
 
   const previousUIControls = usePrevious(uiControls);

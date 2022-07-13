@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [clojure.tools.macro :as tools.macro]
+            [clojurewerkz.quartzite.scheduler :as qs]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
             [medley.core :as m]
@@ -19,6 +20,7 @@
                                      Dashboard
                                      Database
                                      ModerationReview
+                                     PersistedInfo
                                      Pulse
                                      PulseCard
                                      PulseChannel
@@ -29,7 +31,6 @@
                                      TimelineEvent
                                      ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
-            [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision :refer [Revision]]
@@ -39,6 +40,9 @@
             [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.server.middleware.util :as mw.util]
+            [metabase.task :as task]
+            [metabase.task.persist-refresh :as task.persist-refresh]
+            [metabase.task.sync-databases :as task.sync-databases]
             [metabase.test :as mt]
             [metabase.test.data.users :as test.users]
             [metabase.util :as u]
@@ -47,7 +51,8 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]])
   (:import java.io.ByteArrayInputStream
-           java.util.UUID))
+           java.util.UUID
+           org.quartz.impl.StdSchedulerFactory))
 
 (comment api.card/keep-me)
 
@@ -1896,167 +1901,6 @@
                                                                :model "card" :archived "false"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           PARAMETER VALUES ENDPOINTS                                           |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- do-with-param-values-fixtures
-  [query-type card-values f]
-  {:pre [(#{:native :query} query-type)]}
-  (mt/with-temp* [Card [card]]
-    (let [card-defaults
-          (if (= query-type :query)
-            ;; notebook query with parameters are fields
-            {:database_id   (mt/id)
-             :table_id      (mt/id :venues)
-             :dataset_query (mt/mbql-query venues)
-             :parameters [{:name "Category Name"
-                           :slug "category_name"
-                           :id   "_CATEGORY_NAME_"
-                           :type "category"}
-                          {:name "Category ID"
-                           :slug "category_id"
-                           :id   "_CATEGORY_ID_"
-                           :type "category"}]
-             :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                   :card_id      (:id card)
-                                   :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
-                                  {:parameter_id "_CATEGORY_ID_"
-                                   :card_id      (:id card)
-                                   :target       [:dimension (mt/$ids venues $category_id)]}]}
-            ;; native query with parameters are template tags
-            {:database_id (mt/id)
-             :query_type :native
-             :dataset_query {:database (mt/id)
-                             :type     :native
-                             :native
-                             {:query         (str "SELECT * FROM VENUES WHERE {{category}} and {{category_id}};")
-                              :template-tags {"category"      {:id           "c7fcf1fa"
-                                                               :name         "category"
-                                                               :display-name "Category"
-                                                               :type         :dimension
-                                                               :dimension    [:field (mt/$ids venues $category_id->categories.name) nil]
-                                                               :widget-type  :string/=}
-                                              "category_id"   {:id           "a3cd3f3b"
-                                                               :name         "category_id"
-                                                               :display-name "Category"
-                                                               :type         :dimension
-                                                               :dimension    [:field (mt/$ids venues $category_id) nil]
-                                                               :widget-type  :number/=}}}}
-
-             :parameters [{:name "Category_name"
-                           :slug "category_name"
-                           :id   "_CATEGORY_NAME_"
-                           :type "category"}
-                          {:name "Category ID"
-                           :slug "category_id"
-                           :id   "_CATEGORY_ID_"
-                           :type "category"}]
-             :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                   :card_id      (:id card)
-                                   :target       [:template-tag {:id "c7fcf1fa"}]}
-                                  {:parameter_id "_CATEGORY_ID_"
-                                   :card_id      (:id card)
-                                   :target       [:template-tag {:id "a3cd3f3b"}]}]})]
-      (db/update! Card (:id card)
-                  (merge card-defaults card-values)))
-    (f {:card       card
-        :param-ids {:category-name "_CATEGORY_NAME_"
-                    :category-id   "_CATEGORY_ID_"}})))
-
-(defmacro ^:private with-param-values-fixtures
-  "Create a query and its parameters."
-  {:style/indent 2}
-  [query-type [binding card-values] & body]
-  `(do-with-param-values-fixtures ~query-type ~card-values (fn [~binding] ~@body)))
-
-(defn- param-values-values-url [card-or-id param-id]
-  (format "card/%d/params/%s/values" (u/the-id card-or-id) (name param-id)))
-
-(defn- param-values-search-url [card-or-id param-id query]
-  (str (format "card/%d/params/%s/search/" (u/the-id card-or-id) (name param-id))
-       query))
-
-(deftest param-values-test
-  (testing "GET /api/card/:id/params/:param-id/values"
-    (doseq [query-type [:query :native]]
-      (testing (format "With %s question" (name query-type))
-        (with-param-values-fixtures query-type [{:keys [card param-ids]}]
-          (testing "Show me names of categories"
-            (is (= ["African" "American" "Artisan"]
-                   (take 3 (mt/user-http-request :rasta :get 200 (param-values-values-url
-                                                                   card
-                                                                   (:category-name param-ids))))))))
-
-        (testing "Should require perms for the Card"
-          (mt/with-non-admin-groups-no-root-collection-perms
-            (mt/with-temp Collection [collection]
-              (with-param-values-fixtures query-type [{:keys [card param-ids]} {:collection_id (:id collection)}]
-                (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :get 403 (param-values-values-url
-                                                               card
-                                                               (:category-name param-ids)))))))))
-
-        (testing "should check perms for the Fields in question"
-          (mt/with-temp-copy-of-db
-            (with-param-values-fixtures query-type [{:keys [card param-ids]}]
-              (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :get 403 (param-values-values-url
-                                                             card
-                                                             (:category-name param-ids))))))))))))
-
-(deftest param-values-search-test
-  (testing "GET /api/card/:id/params/:param-id/search/:query"
-    (doseq [query-type [:native :query]]
-      (testing (format "With %s question" (name query-type))
-        (with-param-values-fixtures :query [{:keys [card param-ids]}]
-          (let [url (param-values-search-url card (:category-name param-ids) "bar")]
-            (testing (str "\n" url)
-              (testing "\nShow me names of categories that include 'bar' (case-insensitive)"
-                (is (= ["Bar" "Gay Bar" "Juice Bar"]
-                       (take 3 (mt/user-http-request :rasta :get 200 url)))))))
-
-          (let [url (param-values-search-url card (:category-name param-ids) "house")]
-            (testing "\nShow me names of categories that include 'house' that have expensive venues (price = 4)"
-              (is (= ["Steakhouse"]
-                     (take 3 (mt/user-http-request :rasta :get 200 url))))))
-
-          (testing "Should require a non-empty query"
-            (doseq [query [nil
-                           ""
-                           "   "
-                           "\n"]]
-              (let [url (param-values-search-url card (:category-name param-ids) query)]
-                (is (= "API endpoint does not exist."
-                       (mt/user-http-request :rasta :get 404 url)))))))
-
-        (testing "Should require perms for the card"
-          (mt/with-non-admin-groups-no-root-collection-perms
-            (mt/with-temp Collection [collection]
-              (with-param-values-fixtures :query [{:keys [card param-ids]} {:collection_id (:id collection)}]
-                (let [url (param-values-search-url card (:category-name param-ids) "s")]
-                  (testing (str "\n url")
-                    (is (= "You don't have permissions to do that."
-                           (mt/user-http-request :rasta :get 403 url)))))))))))))
-
-(deftest param-values-human-readable-values-remapping-test
-  (testing "Get param values for Fields that have Human-Readable values\n"
-    (doseq [query-type [:native :query]]
-      (testing (format "With %s question" (name query-type))
-        (chain-filter-test/with-human-readable-values-remapping
-          (with-param-values-fixtures query-type [{:keys [card param-ids]}]
-            (testing "GET /api/card/:id/params/:param-id/values"
-              (let [url (param-values-values-url card (:category-id param-ids))]
-                (is (= [[2 "American"]
-                        [3 "Artisan"]]
-                       (take 2 (mt/user-http-request :rasta :get 200 url))))))
-
-            (testing "GET /api/card/:id/params/:param-id/search/:query"
-              (let [url (param-values-search-url card (:category-id param-ids) "house")]
-                (is (= [[67 "Steakhouse"]]
-                       (take 1 (mt/user-http-request :rasta :get 200 url))))))))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -2466,3 +2310,55 @@
       (f {:status-code 202
           :result-fn            (fn [result]
                                   (is (map? result)))}))))
+(defn- do-with-persistence-setup [f]
+  ;; mt/with-temp-scheduler actually just reuses the current scheduler. The scheduler factory caches by name set in
+  ;; the resources/quartz.properties file and we reuse that scheduler
+  (let [sched (.getScheduler
+               (StdSchedulerFactory. (doto (java.util.Properties.)
+                                       (.setProperty "org.quartz.scheduler.instanceName" (str (gensym "card-api-test")))
+                                       (.setProperty "org.quartz.scheduler.instanceID" "AUTO")
+                                       (.setProperty "org.quartz.properties" "non-existant")
+                                       (.setProperty "org.quartz.threadPool.threadCount" "6")
+                                       (.setProperty "org.quartz.threadPool.class" "org.quartz.simpl.SimpleThreadPool"))))]
+    ;; a binding won't work since we need to cross thread boundaries
+    (with-redefs [task/scheduler (constantly sched)]
+      (try
+        (qs/standby sched)
+        (#'task.persist-refresh/job-init!)
+        (#'task.sync-databases/job-init)
+        (mt/with-temporary-setting-values [:persisted-models-enabled true]
+          (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]]
+            (f db)))
+        (finally
+          (qs/shutdown sched))))))
+
+(defmacro ^:private with-persistence-setup
+  "Sets up a temp scheduler, a temp database and enabled persistence. Scheduler will be in standby mode so that jobs
+  won't run. Just check for trigger presence."
+  [db-binding & body]
+  `(do-with-persistence-setup (fn [~db-binding] ~@body)))
+
+(deftest refresh-persistence
+  (testing "Can schedule refreshes for models"
+    (with-persistence-setup db
+      (mt/with-temp* [Card          [unmodeled {:dataset false :database_id (u/the-id db)}]
+                      Card          [archived {:dataset true :archived true :database_id (u/the-id db)}]
+                      Card          [model {:dataset true :database_id (u/the-id db)}]
+                      PersistedInfo [pmodel  {:card_id (u/the-id model) :database_id (u/the-id db)}]
+                      PersistedInfo [punmodeled  {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}]
+                      PersistedInfo [parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}]]
+        (testing "Can refresh models"
+          (mt/user-http-request :crowberto :post 204 (format "card/%d/refresh" (u/the-id model)))
+          (is (contains? (task.persist-refresh/job-info-for-individual-refresh)
+                         (u/the-id pmodel))
+              "Missing refresh of model"))
+        (testing "Won't refresh archived models"
+          (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id archived)))
+          (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
+                              (u/the-id punmodeled)))
+              "Scheduled refresh of archived model"))
+        (testing "Won't refresh cards no longer models"
+          (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id unmodeled)))
+          (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
+                              (u/the-id parchived)))
+              "Scheduled refresh of archived model"))))))

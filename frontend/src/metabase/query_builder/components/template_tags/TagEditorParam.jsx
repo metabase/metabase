@@ -273,6 +273,7 @@ class TagEditorParam extends Component {
                     }
                   : {
                       fields: [],
+                      hasVariableTemplateTagTarget: true,
                       type:
                         tag["widget-type"] ||
                         (tag.type === "date" ? "date/single" : null),
