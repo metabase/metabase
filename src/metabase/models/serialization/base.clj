@@ -221,6 +221,7 @@
   - Convert to a vanilla Clojure map.
   - Add `:serdes/meta` by calling [[serdes-generate-path]].
   - Drop the primary key.
+  - Drop :created_at and :updated_at.
 
   Returns the Clojure map."
   [model-name entity]
@@ -228,7 +229,7 @@
         pk    (models/primary-key model)]
     (-> entity
         (assoc :serdes/meta (serdes-generate-path model-name entity))
-        (dissoc pk))))
+        (dissoc pk :created_at :updated_at))))
 
 (defmethod extract-one :default [model-name _opts entity]
   (extract-one-basics model-name entity))
