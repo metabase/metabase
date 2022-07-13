@@ -52,7 +52,7 @@ function ActionParametersInputModal({
     emitter => emitter.id === focusedEmitterId,
   );
 
-  if (!emitter) {
+  if (!emitter || emitter.action.type !== "query") {
     return null;
   }
 

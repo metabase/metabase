@@ -18,7 +18,7 @@ export type WritebackActionCard = SavedCard<NativeDatasetQuery> & {
 
 export interface WritebackAction {
   id: number;
-  type: "row";
+  type: "query" | "http";
   card: WritebackActionCard;
   card_id: number;
   "updated-at": string;

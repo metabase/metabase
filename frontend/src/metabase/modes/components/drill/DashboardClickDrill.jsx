@@ -45,12 +45,16 @@ export default ({ question, clicked }) => {
   }
 
   if (type === "action") {
+    const action = extraData.actions[clickBehavior.action];
+    if (action.type === "http") {
+      return;
+    }
+
     const parameters = getParametersForNativeAction(parameterMapping, {
       data,
       extraData,
       clickBehavior,
     });
-    const action = extraData.actions[clickBehavior.action];
     const missingParameters = getNotProvidedParametersForNativeAction(
       action,
       parameters,

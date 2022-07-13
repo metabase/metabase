@@ -59,6 +59,10 @@ export function getActionTemplateTagType(tag: TemplateTag) {
 }
 
 export const getActionEmitterParameterMappings = (action: WritebackAction) => {
+  if (action.type === "http") {
+    return {};
+  }
+
   const templateTags = Object.values(
     action.card.dataset_query.native["template-tags"],
   );
