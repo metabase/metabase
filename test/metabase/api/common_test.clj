@@ -97,10 +97,14 @@
   ;; replace regex `#"[0-9]+"` with str `"#[0-9]+" so expectations doesn't barf
   (binding [api.internal/*auto-parse-types* (update-in api.internal/*auto-parse-types* [:int :route-param-regex] (partial str "#"))]
     (is (= '(def GET_:id
-              (compojure.core/GET ["/:id" :id "#[0-9]+"] [id]
-                                  (metabase.api.common.internal/auto-parse [id]
-                                    (metabase.api.common.internal/validate-param 'id id metabase.util.schema/IntGreaterThanZero)
-                                    (metabase.api.common.internal/wrap-response-if-needed (do (select-one Card :id id))))))
-           (macroexpand `(defendpoint GET "/:id" [~'id]
-                           {~'id su/IntGreaterThanZero}
-                           (~'select-one ~'Card :id ~'id)))))))
+              (compojure.core/GET
+               ["/:id" :id "#[0-9]+"]
+               [id]
+               (metabase.api.common.internal/auto-parse [id]
+                 (metabase.api.common.internal/validate-param 'id id metabase.util.schema/IntGreaterThanZero)
+                 (metabase.api.common.internal/wrap-response-if-needed
+                  (do
+                    (select-one Card :id id))))))
+           (macroexpand '(metabase.api.common/defendpoint compojure.core/GET "/:id" [id]
+                           {id metabase.util.schema/IntGreaterThanZero}
+                           (select-one Card :id id)))))))
