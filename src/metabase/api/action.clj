@@ -66,10 +66,10 @@
 
 (api/defendpoint POST "/"
   "Create a new HTTP action."
-  [:as {action :body} database]
+  [action database]
   (when database
     (check-actions-enabled database))
-  (when (not= (:type action) "http")
+  (when (not= (keyword (:type action)) :http)
     (throw (ex-info (trs "Action type is not supported") action)))
   (let [http-action (db/insert! HTTPAction action)]
     (if-let [action-id  (:action_id http-action)]
