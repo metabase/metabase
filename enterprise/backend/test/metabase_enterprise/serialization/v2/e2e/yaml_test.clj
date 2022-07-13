@@ -38,8 +38,8 @@
       ;; TODO Generating some nested collections would make these tests more robust.
       (test-gen/insert!
         {:collection             [[100 {:refs {:personal_owner_id ::rs/omit}}]
-                                  [10  {:refs {:personal_owner_id ::rs/omit}
-                                        :namespace :snippets}]]
+                                  [10  {:refs     {:personal_owner_id ::rs/omit}
+                                        :spec-gen {:namespace :snippets}}]]
          :database               [[10]]
          :table                  (into [] (for [db [:db0 :db1 :db2 :db3 :db4 :db5 :db6 :db7 :db8 :db9]]
                                             [10 {:refs {:db_id db}}]))
