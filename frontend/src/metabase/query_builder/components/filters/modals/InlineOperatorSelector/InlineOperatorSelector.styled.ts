@@ -4,24 +4,31 @@ import { color, alpha, darken, lighten } from "metabase/lib/colors";
 
 export const InlineOperatorContainer = styled.div`
   font-weight: bold;
-  margin: ${space(1)} 0;
+  font-size: 1rem;
+  margin-bottom: 0.875rem;
+  display: inline-flex;
+  align-items: flex-start;
 `;
 
 export const FieldTitle = styled.span`
   color: ${color("text-dark")};
+  margin-right: ${space(1)};
 `;
 
-export const TableTitle = styled.div`
+export const TableTitle = styled.span`
   color: ${color("text-dark")};
-  margin-bottom: ${space(2)};
   span.light {
     color: ${color("text-light")};
   }
+  margin-right: ${space(1)};
 `;
 
 export const OperatorDisplay = styled.button`
   font-weight: bold;
-  color: ${props => (props.onClick ? color("brand") : color("text-light"))};
+  text-decoration: ${props => (props.onClick ? "underline" : "none")};
+  text-underline-offset: 2px;
+  color: ${color("text-light")};
+  text-transform: lowercase;
 
   ${props => (props.onClick ? "cursor: pointer;" : "")} &:hover {
     color: ${props =>

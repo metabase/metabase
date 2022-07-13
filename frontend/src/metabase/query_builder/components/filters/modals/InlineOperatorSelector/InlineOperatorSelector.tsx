@@ -14,6 +14,7 @@ import { FilterOperatorName } from "metabase-types/types/Metadata";
 
 interface InlineOperatorSelectorProps {
   fieldName: string;
+  iconName?: string;
   tableName?: string;
   value?: FilterOperatorName;
   operators?: any[];
@@ -22,6 +23,7 @@ interface InlineOperatorSelectorProps {
 
 export function InlineOperatorSelector({
   fieldName,
+  iconName,
   tableName,
   value,
   operators,
@@ -34,42 +36,46 @@ export function InlineOperatorSelector({
 
   return (
     <InlineOperatorContainer>
-      {!!tableName && (
-        <TableTitle>
-          <span className="light">In</span>
-          {` ${tableName}`}
-        </TableTitle>
+      {!!iconName && (
+        <Icon name={iconName} size={20} style={{ marginRight: 8 }} />
       )}
-
-      <FieldTitle>{fieldName} </FieldTitle>
-      {!canChangeOperator && !!operatorDisplayName && (
-        <OperatorDisplay>{operatorDisplayName}</OperatorDisplay>
-      )}
-      {canChangeOperator && (
-        <TippyPopoverWithTrigger
-          sizeToFit
-          renderTrigger={({ onClick }) => (
-            <OperatorDisplay onClick={onClick} data-testid="operator-select">
-              {operatorDisplayName} <Icon name="chevrondown" size={8} />
-            </OperatorDisplay>
-          )}
-          popoverContent={({ closePopover }) => (
-            <OptionContainer data-testid="operator-options">
-              {operators.map(option => (
-                <Option
-                  key={option.name}
-                  onClick={() => {
-                    onChange(option.name);
-                    closePopover();
-                  }}
-                >
-                  {option.verboseName}
-                </Option>
-              ))}
-            </OptionContainer>
-          )}
-        />
-      )}
+      <div>
+        <FieldTitle>{fieldName}</FieldTitle>
+        {!!tableName && (
+          <TableTitle>
+            <span className="light">in</span>
+            {` ${tableName}`}
+          </TableTitle>
+        )}
+        {!canChangeOperator && !!operatorDisplayName && (
+          <OperatorDisplay>{operatorDisplayName}</OperatorDisplay>
+        )}
+        {canChangeOperator && (
+          <TippyPopoverWithTrigger
+            sizeToFit
+            renderTrigger={({ onClick }) => (
+              <OperatorDisplay onClick={onClick} data-testid="operator-select">
+                {operatorDisplayName} <Icon name="chevrondown" size={8} />
+              </OperatorDisplay>
+            )}
+            popoverContent={({ closePopover }) => (
+              <OptionContainer data-testid="operator-options">
+                {operators.map(option => (
+                  <Option
+                    key={option.name}
+                    onClick={() => {
+                      onChange(option.name);
+                      closePopover();
+                    }}
+                  >
+                    {option.verboseName}
+                  </Option>
+                ))}
+              </OptionContainer>
+            )}
+          />
+        )}
+      </div>
     </InlineOperatorContainer>
   );
 }

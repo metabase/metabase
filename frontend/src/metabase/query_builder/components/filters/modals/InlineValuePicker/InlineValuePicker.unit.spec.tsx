@@ -268,8 +268,8 @@ describe("InlineValuePicker", () => {
       </Provider>,
     );
 
-    screen.getByPlaceholderText("min");
-    screen.getByPlaceholderText("max");
+    screen.getByPlaceholderText("Min");
+    screen.getByPlaceholderText("Max");
   });
 
   const noValueOperators = ["is-null", "not-null", "is-empty", "not-empty"];

@@ -258,6 +258,7 @@ class FieldValuesWidgetInner extends Component {
       formatOptions,
       placeholder,
       showOptionsInPopover,
+      checkedColor,
     } = this.props;
     const { loadingState, options = [] } = this.state;
 
@@ -300,6 +301,7 @@ class FieldValuesWidgetInner extends Component {
                   autoLoad: false,
                 })
               }
+              checkedColor={checkedColor}
             />
           ))}
         {!usesListField && (

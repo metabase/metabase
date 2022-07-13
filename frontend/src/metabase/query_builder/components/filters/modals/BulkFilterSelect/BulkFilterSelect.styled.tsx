@@ -1,12 +1,20 @@
 import styled from "@emotion/styled";
+import { color } from "metabase/lib/colors";
+
 import SelectButton from "metabase/core/components/SelectButton";
 import FilterPopover from "../../FilterPopover";
 import Select from "metabase/core/components/Select";
 
-export const SelectFilterButton = styled(SelectButton)`
+type SelectFilterButtonProps = {
+  isActive?: boolean;
+};
+
+export const SelectFilterButton = styled(SelectButton)<SelectFilterButtonProps>`
   grid-column: 2;
   height: 2.25rem;
   max-width: 500px; // to match inputs
+
+  ${({ isActive }) => (isActive ? `border-color: ${color("brand")};` : "")}
 
   &:not(:first-of-type) {
     margin-top: 0.75rem;

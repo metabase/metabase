@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import StructuredQuery, {
   SegmentOption,
@@ -36,8 +37,13 @@ export const BulkFilterSelect = ({
   handleChange,
   handleClear,
 }: BulkFilterSelectProps): JSX.Element => {
+  const [isSelecting, setIsSelecting] = useState(false);
+
   const name = useMemo(() => {
-    return filter?.displayName({ includeDimension: false });
+    return filter?.displayName({
+      includeDimension: false,
+      includeOperator: false,
+    });
   }, [filter]);
 
   const newFilter = useMemo(() => {
@@ -47,6 +53,8 @@ export const BulkFilterSelect = ({
   return (
     <TippyPopoverWithTrigger
       sizeToFit
+      afterOpen={() => setIsSelecting(true)}
+      afterClose={() => setIsSelecting(false)}
       renderTrigger={
         customTrigger
           ? customTrigger
@@ -57,8 +65,9 @@ export const BulkFilterSelect = ({
                 aria-label={dimension.displayName()}
                 onClick={onClick}
                 onClear={handleClear}
+                isActive={isSelecting}
               >
-                {name}
+                {name || t`Filter by ${dimension.displayName()}`}
               </SelectFilterButton>
             )
       }
@@ -72,6 +81,7 @@ export const BulkFilterSelect = ({
           dateShortcutOptions={dateShortcutOptions}
           onChangeFilter={handleChange}
           onClose={closePopover}
+          checkedColor="brand"
           commitOnBlur
         />
       )}
@@ -145,6 +155,7 @@ export const SegmentFilterSelect = ({
         highlighted: true,
         onClear: onClearSegments,
       }}
+      placeholder={t`Filter segments`}
       buttonText={
         activeSegmentOptions.length > 1
           ? `${activeSegmentOptions.length} segments`
