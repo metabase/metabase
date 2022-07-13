@@ -4,9 +4,7 @@
             [metabase.api.common.internal :as api.internal]
             [metabase.server.middleware.exceptions :as mw.exceptions]
             [metabase.server.middleware.misc :as mw.misc]
-            [metabase.server.middleware.security :as mw.security]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [metabase.server.middleware.security :as mw.security]))
 
 ;;; TESTS FOR CHECK (ETC)
 
