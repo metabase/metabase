@@ -301,6 +301,7 @@ export default class NativeQuery extends AtomicQuery {
 
   validateTemplateTags() {
     return this.templateTags()
+      .filter(tag => tag.type !== "card")
       .map(tag => {
         const dimension = new TemplateTagDimension(
           tag.name,
@@ -532,4 +533,13 @@ export function recognizeTemplateTags(queryText: string): string[] {
 
   // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
   return _.uniq(tagNames);
+}
+
+export function parseTemplateTags(queryText: string): TemplateTags {
+  const tags = recognizeTemplateTags(queryText);
+  const templateTags = tags.reduce((map, tagName) => {
+    map[tagName] = createTemplateTag(tagName);
+    return map;
+  }, {});
+  return templateTags;
 }

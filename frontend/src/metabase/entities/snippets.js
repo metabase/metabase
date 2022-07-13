@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { createEntity } from "metabase/lib/entities";
 import validate from "metabase/lib/validate";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import { parseTemplateTags } from "metabase-lib/lib/queries/NativeQuery";
 
 const formFields = [
   {
@@ -47,6 +48,7 @@ const Snippets = createEntity({
           hidden: true,
         },
       ],
+      normalize: normalizeForm,
     },
     withVisibleCollectionPicker: {
       fields: [
@@ -58,8 +60,16 @@ const Snippets = createEntity({
           normalize: canonicalCollectionId,
         },
       ],
+      normalize: normalizeForm,
     },
   },
 });
+
+function normalizeForm(snippet) {
+  return {
+    ...snippet,
+    template_tags: parseTemplateTags(snippet.content),
+  };
+}
 
 export default Snippets;
