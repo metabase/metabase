@@ -8,6 +8,7 @@ import {
   MetabotContainer,
   ToggleContainer,
   ToggleLabel,
+  MetabotImage,
 } from "./MetabotToggleWidget.styled";
 
 interface MetabotToggleWidgetProps {
@@ -26,7 +27,7 @@ const MetabotToggleWidget = ({
   return (
     <MetabotSettingWidgetRoot>
       <MetabotContainer>
-        <img
+        <MetabotImage
           src={`app/assets/img/${metabotImage}.gif`}
           width="94px"
           alt="Metabot"
