@@ -25,6 +25,7 @@ export const QuestionInfoSidebar = ({
   onSave,
 }: QuestionInfoSidebarProps) => {
   const description = question.description();
+  const canWrite = question.canWrite();
   const isDataset = question.isDataset();
   const isPersisted = isDataset && question.isPersisted();
   const isCachingAvailable =
@@ -53,6 +54,7 @@ export const QuestionInfoSidebar = ({
           placeholder={t`Add description`}
           isOptional
           isMultiline
+          isDisabled={!canWrite}
           onChange={handleSave}
         />
         <PLUGIN_MODERATION.QuestionModerationSection question={question} />
