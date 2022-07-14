@@ -67,6 +67,8 @@
   (db/delete! HTTPAction :action_id action-id)
   api/generic-204-no-content)
 
+;; TODO -- 99% sure these are busted. See https://github.com/metabase/metabase/issues/23935
+
 (api/defendpoint POST "/"
   "Create a new HTTP action."
   [action database]

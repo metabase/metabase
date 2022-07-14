@@ -53,57 +53,75 @@
               (is (schema= ExpectedGetCardActionAPIResponse
                            action)))))))))
 
-(defn- mock-requests []
-  [{:action       "action/row/create"
-    :request-body (assoc (mt/mbql-query categories) :create-row {:name "created_row"})
-    :expect-fn    (fn [result]
-                    ;; check that we return the entire row:
-                    (is (= "created_row" (get-in result [:created-row :name])))
-                    (is (= (set [:name :id])
-                           (set (keys (:created-row result))))))}
-   {:action       "action/row/update"
-    :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
-                         :update_row {:name "updated_row"})
-    :expected     {:rows-updated [1]}}
-   {:action       "action/row/delete"
-    :request-body (mt/mbql-query categories {:filter [:= $id 1]})
-    :expected     {:rows-deleted [1]}}
-   {:action       "action/row/update"
-    :request-body (assoc (mt/mbql-query categories {:filter [:= $id 10]})
-                         :update_row {:name "new-category-name"})
-    :expected     {:rows-updated [1]}}])
+(defn- format-field-name
+  "Format `field-name` appropriately for the current driver (e.g. uppercase it if we're testing against H2)."
+  [field-name]
+  (keyword (mt/format-name (name field-name))))
 
-(deftest happy-path-test
-  (testing "Make sure it's possible to use known actions end-to-end if preconditions are satisfied"
-    (actions.test-util/with-actions-test-data-and-actions-enabled
-      (doseq [{:keys [action request-body expected expect-fn]} (mock-requests)]
-        (testing action
-          (let [result (mt/user-http-request :crowberto :post 200 action request-body)]
-            (when expected (is (= expected result)))
-            (when expect-fn (expect-fn result))))))))
+(defn- categories-row-count []
+  (first (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]]}))))
 
-(deftest create-update-delete-test
-  (testing "Make sure actions are acting on rows."
-    (actions.test-util/with-actions-test-data-and-actions-enabled
-      (let [[create update delete] (mock-requests)
-            {created-id :id :as created-row}
-            (:created-row (mt/user-http-request :crowberto :post 200 (:action create) (:request-body create)))]
-        (is (= [:id :name] (keys created-row))
-            "Create should return the entire row")
-        (is (= "created_row" (:name created-row))
-            "Create should return the correct value for name")
-        (is (= "created_row" (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})) last last))
-            "The record at created-id should now have its name set to \"created_row\"")
-        (is (= (:expected update) (mt/user-http-request :crowberto :post 200 (:action update)
-                                                        (assoc (mt/mbql-query categories {:filter [:= $id created-id]})
-                                                               :update_row {:name "updated_row"})))
+(deftest create-test
+  (testing "POST /api/action/row/create"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.test-util/with-actions-test-data-and-actions-enabled
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             "action/row/create"
+                                             (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"}))]
+          (is (schema= {:created-row {(format-field-name :id)   (s/eq 76)
+                                      (format-field-name :name) (s/eq "created_row")}}
+                       response)
+              "Create should return the entire row")
+          (let [created-id (get-in response [:created-row (format-field-name :id)])]
+            (is (= "created_row" (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})) last last))
+                "The record at created-id should now have its name set to \"created_row\"")))))))
+
+(deftest create-invalid-data-test
+  (testing "POST /api/action/row/create -- invalid data"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.test-util/with-actions-test-data-and-actions-enabled
+        (is (= 75
+               (categories-row-count)))
+        (is (schema= {:message  (s/constrained
+                                 s/Str
+                                 (case driver/*driver*
+                                   :h2       #(str/starts-with? % "Data conversion error converting \"created_row\"")
+                                   :postgres #(str/starts-with? % "ERROR: invalid input syntax for type integer: \"created_row\"")))
+                      s/Keyword s/Any}
+                     ;; bad data -- ID is a string instead of an Integer.
+                     (mt/user-http-request :crowberto :post 400
+                                           "action/row/create"
+                                           (assoc (mt/mbql-query categories) :create-row {(format-field-name :id) "created_row"}))))
+        (testing "no row should have been inserted"
+          (is (= 75
+                 (categories-row-count))))))))
+
+(deftest update-test
+  (testing "POST /api/action/row/update"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.test-util/with-actions-test-data-and-actions-enabled
+        (is (= {:rows-updated [1]}
+               (mt/user-http-request :crowberto :post 200
+                                     "action/row/update"
+                                     (assoc (mt/mbql-query categories {:filter [:= $id 50]})
+                                            :update_row {(format-field-name :name) "updated_row"})))
             "Update should return the right shape")
-        (is (= "updated_row" (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})) last last))
-            "The row should actually be updated")
-        (is (= (:expected delete)
-               (mt/user-http-request :crowberto :post 200 (:action delete) (mt/mbql-query categories {:filter [:= $id created-id]})))
+        (is (= "updated_row"
+               (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id 50]})) last last))
+            "The row should actually be updated")))))
+
+(deftest delete-test
+  (testing "POST /api/action/row/delete"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.test-util/with-actions-test-data-and-actions-enabled
+        (is (= {:rows-deleted [1]}
+               (mt/user-http-request :crowberto :post 200
+                                     "action/row/delete"
+                                     (mt/mbql-query categories {:filter [:= $id 50]})))
             "Delete should return the right shape")
-        (is (= [] (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})))
+        (is (= 74
+               (categories-row-count)))
+        (is (= [] (mt/rows (mt/run-mbql-query categories {:filter [:= $id 50]})))
             "Selecting for deleted rows should return an empty result")))))
 
 ;; TODO: update test for this when we get something other than categories
@@ -113,6 +131,29 @@
         (testing "Should return a 400 when deleting the row violates a foreign key constraint"
           (let [request-body (mt/mbql-query categories {:filter [:= $id 22]})]
             (mt/user-http-request :crowberto :post 400 "action/row/delete" request-body))))))
+
+(defn- mock-requests
+  "Mock requests for testing validation for various actions. Don't use these for happy path tests! It's way too hard to
+  wrap your head around them. Use them for validating preconditions and stuff like that."
+  []
+  [{:action       "action/row/create"
+    :request-body (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"})
+    :expect-fn    (fn [result]
+                    ;; check that we return the entire row
+                    (is (schema= {:created-row {(format-field-name :id)   su/IntGreaterThanZero
+                                                (format-field-name :name) su/NonBlankString}}
+                                 result)))}
+   {:action       "action/row/update"
+    :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
+                         :update_row {(format-field-name :name) "updated_row"})
+    :expected     {:rows-updated [1]}}
+   {:action       "action/row/delete"
+    :request-body (mt/mbql-query categories {:filter [:= $id 1]})
+    :expected     {:rows-deleted [1]}}
+   {:action       "action/row/update"
+    :request-body (assoc (mt/mbql-query categories {:filter [:= $id 10]})
+                         :update_row {(format-field-name :name) "new-category-name"})
+    :expected     {:rows-updated [1]}}])
 
 (deftest feature-flags-test
   (testing "Disable endpoints unless both global and Database feature flags are enabled"
@@ -168,28 +209,34 @@
                    (:message (mt/user-http-request :crowberto :post 400 action (dissoc request-body :query))))))))))
 
 (deftest row-update-action-gives-400-when-matching-more-than-one
-  (actions.test-util/with-actions-enabled
-    (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]}) :update_row {:name "new-name"})
-          result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
-      (is (< 1 result-count))
-      (doseq [{:keys [action]} (filter #(= "action/row/update" (:action %)) (mock-requests))
-              :when (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
-        (is (re= #"Sorry, this would update [\d|,]+ rows, but you can only act on 1"
-                 (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one))))
-        (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
-            "The result-count after a rollback must remain the same!")))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (actions.test-util/with-actions-enabled
+      (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]})
+                                                    :update_row {(format-field-name :name) "new-name"})
+            result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
+        (is (< 1 result-count))
+        (doseq [{:keys [action]} (filter #(= "action/row/update" (:action %)) (mock-requests))
+                :when            (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
+          (is (schema= {:message #"Sorry, this would update [\d|,]+ rows, but you can only act on 1"
+                        s/Keyword s/Any}
+                       (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one)))
+          (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
+              "The result-count after a rollback must remain the same!"))))))
 
 (deftest row-delete-action-gives-400-when-matching-more-than-one
-  (actions.test-util/with-actions-enabled
-    (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]}) :update_row {:name "new-name"})
-          result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
-      (is (< 1 result-count))
-      (doseq [{:keys [action]} (filter #(= "action/row/delete" (:action %)) (mock-requests))
-              :when (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
-        (is (re= #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"
-                 (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one))))
-        (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
-            "The result-count after a rollback must remain the same!")))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (actions.test-util/with-actions-enabled
+      (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]})
+                                                    :update_row {(format-field-name :name) "new-name"})
+            result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
+        (is (< 1 result-count))
+        (doseq [{:keys [action]} (filter #(= "action/row/delete" (:action %)) (mock-requests))
+                :when            (not= action "action/row/create")] ;; the query in create is not used to select values to act upopn.
+          (is (schema= {:message  #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"
+                        s/Keyword s/Any}
+                       (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one)))
+          (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
+              "The result-count after a rollback must remain the same!"))))))
 
 (deftest unknown-row-action-gives-404
   (actions.test-util/with-actions-enabled
@@ -208,24 +255,53 @@
 
 (deftest bulk-create-happy-path-test
   (testing "POST /api/action/bulk/create/:table-id"
-    (actions.test-util/with-actions-test-data-and-actions-enabled
-      (is (= [75]
-             (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]]}))))
-      (is (= {:created-rows [{:id 76, :name "NEW_A"}
-                             {:id 77, :name "NEW_B"}]}
-             (mt/user-http-request :crowberto :post 200
-                                   (format "action/bulk/create/%d" (mt/id :categories))
-                                   [{:name "NEW_A"}
-                                    {:name "NEW_B"}])))
-      (is (= [[76 "NEW_A"]
-              [77 "NEW_B"]]
-             (mt/rows (mt/run-mbql-query categories {:filter   [:starts-with $name "NEW"]
-                                                     :order-by [[:asc $id]]}))))
-      (is (= [77]
-             (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]]})))))))
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.test-util/with-actions-test-data-and-actions-enabled
+        (is (= 75
+               (categories-row-count)))
+        (is (= {:created-rows [{(format-field-name :id) 76, (format-field-name :name) "NEW_A"}
+                               {(format-field-name :id) 77, (format-field-name :name) "NEW_B"}]}
+               (mt/user-http-request :crowberto :post 200
+                                     (format "action/bulk/create/%d" (mt/id :categories))
+                                     [{(format-field-name :name) "NEW_A"}
+                                      {(format-field-name :name) "NEW_B"}])))
+        (is (= [[76 "NEW_A"]
+                [77 "NEW_B"]]
+               (mt/rows (mt/run-mbql-query categories {:filter   [:starts-with $name "NEW"]
+                                                       :order-by [[:asc $id]]}))))
+        (is (= 77
+               (categories-row-count)))))))
 
-(deftest bulk-insert-failure-test
+(deftest bulk-create-failure-test
   (testing "POST /api/action/bulk/create/:table-id"
-    (testing "error in some of the rows in request body"
-      (testing "Should report indices of bad rows")
-      (testing "Should not have committed any of the valid rows"))))
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.test-util/with-actions-test-data-and-actions-enabled
+        (testing "error in some of the rows in request body"
+          (is (= 75
+                 (categories-row-count)))
+          (testing "Should report indices of bad rows"
+            (is (schema= {:errors [(s/one {:index (s/eq 1)
+                                           :error (s/constrained
+                                                   s/Str
+                                                   (case driver/*driver*
+                                                     :h2       #(str/starts-with? % "NULL not allowed for column \"NAME\"")
+                                                     :postgres #(str/starts-with? % "ERROR: null value in column \"name\"")))}
+                                          "first error")
+                                   (s/one {:index (s/eq 3)
+                                           :error (s/constrained
+                                                   s/Str
+                                                   (case driver/*driver*
+                                                     :h2       #(str/starts-with? % "Data conversion error converting \"STRING\"")
+                                                     :postgres #(str/starts-with? % "ERROR: invalid input syntax for type integer: \"STRING\"")))}
+                                          "second error")]}
+                         (mt/user-http-request :crowberto :post 400
+                                               (format "action/bulk/create/%d" (mt/id :categories))
+                                               [{(format-field-name :name) "NEW_A"}
+                                                ;; invalid because name has to be non-nil
+                                                {(format-field-name :name) nil}
+                                                {(format-field-name :name) "NEW_B"}
+                                                ;; invalid because ID is supposed to be an integer
+                                                {(format-field-name :id) "STRING"}]))))
+          (testing "Should not have committed any of the valid rows"
+            (is (= 75
+                   (categories-row-count)))))))))

@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
    [metabase.models.database :refer [Database]]
    [metabase.models.setting :as setting]
    [metabase.util :as u]
@@ -37,7 +38,7 @@
 
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
-  {:arglists '([action arg-map])}
+  {:arglists '([action arg-map]), :added "0.44.0"}
   (fn [action _arg-map]
     (keyword action)))
 
@@ -49,7 +50,7 @@
   "Return the appropriate spec to use to validate the arg map passed to [[perform-action!*]].
 
     (action-arg-map-spec :row/create) => :actions.args.crud/row.create"
-  {:arglists '([action])}
+  {:arglists '([action]), :added "0.44.0"}
   keyword)
 
 (defmethod action-arg-map-spec :default
@@ -73,7 +74,7 @@
 
   DON'T CALL THIS METHOD DIRECTLY TO PERFORM ACTIONS -- use [[perform-action!]] instead which does normalization,
   validation, and binds Database-local values."
-  {:arglists '([driver action database arg-map])}
+  {:arglists '([driver action database arg-map]), :added "0.44.0"}
   (fn [driver action _database _arg-map]
     [(driver/dispatch-on-initialized-driver driver)
      (keyword action)])
@@ -177,17 +178,25 @@
 
 ;;; the various `:row/*` Actions all treat their args map as an MBQL query.
 
-(defn- normalize-as-mbql-query [query]
-  (let [query (assoc (mbql.normalize/normalize query)
-                     :type :query)]
-    (try
-      (schema/validate mbql.s/Query query)
-      (catch Exception e
-        (throw (ex-info
-                (ex-message e)
-                {:exception-data (ex-data e)
-                 :status-code    400}))))
-    query))
+(defn- normalize-as-mbql-query
+  "Normalize `query` as an MBQL query. Optional arg `:exclude` is a set of *normalized* keys to exclude from recursive
+  normalization, e.g. `:create-row` for the `:row/create` Action (we don't want to normalize the row input since
+  preserving case and `snake_keys` in the request body is important)."
+  ([query]
+   (let [query (mbql.normalize/normalize (assoc query :type :query))]
+     (try
+       (schema/validate mbql.s/Query query)
+       (catch Exception e
+         (throw (ex-info
+                 (ex-message e)
+                 {:exception-data (ex-data e)
+                  :status-code    400}))))
+     query))
+
+  ([query & {:keys [exclude]}]
+   (let [query (update-keys query mbql.u/normalize-token)]
+     (merge (select-keys query exclude)
+            (normalize-as-mbql-query (apply dissoc query exclude))))))
 
 ;;;; `:row/create`
 
@@ -199,7 +208,7 @@
 
 (defmethod normalize-action-arg-map :row/create
   [_action query]
-  (normalize-as-mbql-query query))
+  (normalize-as-mbql-query query :exclude #{:create-row}))
 
 (s/def :actions.args.crud.row.create/create-row
   (s/map-of keyword? any?))
@@ -223,7 +232,7 @@
 
 (defmethod normalize-action-arg-map :row/update
   [_action query]
-  (normalize-as-mbql-query query))
+  (normalize-as-mbql-query query :exclude #{:update-row}))
 
 (s/def :actions.args.crud.row.update.query/filter
   vector?) ; MBQL filter clause
