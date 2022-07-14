@@ -50,7 +50,7 @@
          violates-unique-constraint
          update-or-delete-with-fk-constraint]))
 
-(defmethod sql-jdbc.actions/base-type->sql-type :postgres
+(defmethod sql-jdbc.actions/base-type->sql-type-map :postgres
   [_driver]
   {:type/BigInteger          "BIGINT"
    :type/Boolean             "BOOL"

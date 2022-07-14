@@ -2,7 +2,7 @@
   "Method impls for [[metabase.driver.sql-jdbc.actions]] for `:h2`."
   (:require [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]))
 
-(defmethod sql-jdbc.actions/base-type->sql-type :h2
+(defmethod sql-jdbc.actions/base-type->sql-type-map :h2
   [_driver]
   {:type/BigInteger     "BIGINT"
    :type/Boolean        "BOOL"

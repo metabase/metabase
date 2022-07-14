@@ -49,11 +49,11 @@
                    more-info)
             e)))
 
-(defmulti base-type->sql-type
+(defmulti base-type->sql-type-map
   "Return a map of [[metabase.types]] type to SQL string type name. Used for casting. Looks like we're just copypasting
   this from implementations of [[metabase.test.data.sql/field-base-type->sql-type]] so go find that stuff if you need
   to write more implementations for this."
-  {:arglists '([driver column->value table-id]), :added "0.44.0"}
+  {:arglists '([driver]), :added "0.44.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -62,7 +62,7 @@
   uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
   types that do not need casting like integer or string."
   [driver column->value table-id]
-  (let [type->sql-type (base-type->sql-type driver)
+  (let [type->sql-type (base-type->sql-type-map driver)
         column->field  (m/index-by (comp keyword #(str/replace % "_" "-") :name)
                                    (:fields (first (table/with-fields (db/select Table :id table-id)))))]
     (m/map-kv-vals (fn [col value]
