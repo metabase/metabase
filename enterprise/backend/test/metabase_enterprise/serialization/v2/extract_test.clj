@@ -2,9 +2,10 @@
   (:require [clojure.test :refer :all]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field Metric Table
-                                     User]]
-            [metabase.models.serialization.base :as serdes.base]))
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field Metric
+                                     NativeQuerySnippet Table User]]
+            [metabase.models.serialization.base :as serdes.base])
+  (:import java.time.ZonedDateTime))
 
 (defn- select-one [model-name where]
   (first (into [] (serdes.base/raw-reducible-query model-name {:where where}))))
@@ -130,6 +131,9 @@
                   :dataset_query "{\"json\": \"string values\"}"} ; Undecoded, still a string.
                  (select-keys ser [:serdes/meta :table_id :creator_id :collection_id :dataset_query])))
           (is (not (contains? ser :id)))
+          (is (instance? ZonedDateTime (:created_at ser)))
+          (is (or (nil? (:updated_at ser))
+                  (instance? ZonedDateTime (:updated_at ser))))
 
           (testing "cards depend on their Table and Collection"
             (is (= #{[{:model "Database"   :id "My Database"}
@@ -266,3 +270,50 @@
             (is (= #{[{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))
+
+(deftest native-query-snippets-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User               [{ann-id       :id}        {:first_name "Ann"
+                                                                      :last_name  "Wilson"
+                                                                      :email      "ann@heart.band"}]
+                       Collection         [{coll-id     :id
+                                            coll-eid    :entity_id}  {:name              "Shared Collection"
+                                                                      :personal_owner_id nil
+                                                                      :namespace         :snippets}]
+                       NativeQuerySnippet [{s1-id       :id
+                                            s1-eid      :entity_id}  {:name          "Snippet 1"
+                                                                      :collection_id coll-id
+                                                                      :creator_id    ann-id}]
+                       NativeQuerySnippet [{s2-id       :id
+                                            s2-eid      :entity_id}  {:name          "Snippet 2"
+                                                                      :collection_id nil
+                                                                      :creator_id    ann-id}]]
+      (testing "native query snippets"
+        (testing "can belong to :snippets collections"
+          (let [ser (serdes.base/extract-one "NativeQuerySnippet" {} (select-one "NativeQuerySnippet" [:= :id s1-id]))]
+            (is (= {:serdes/meta             [{:model "NativeQuerySnippet" :id s1-eid :label "Snippet 1"}]
+                    :collection_id           coll-eid
+                    :creator_id              "ann@heart.band"}
+                   (select-keys ser [:serdes/meta :collection_id :creator_id])))
+            (is (not (contains? ser :id)))
+            (is (instance? ZonedDateTime (:created_at ser)))
+            (is (or (nil? (:updated_at ser))
+                    (instance? ZonedDateTime (:updated_at ser))))
+
+            (testing "and depend on the Collection"
+              (is (= #{[{:model "Collection" :id coll-eid}]}
+                     (set (serdes.base/serdes-dependencies ser)))))))
+
+        (testing "or can be outside collections"
+          (let [ser (serdes.base/extract-one "NativeQuerySnippet" {} (select-one "NativeQuerySnippet" [:= :id s2-id]))]
+            (is (= {:serdes/meta             [{:model "NativeQuerySnippet" :id s2-eid :label "Snippet 2"}]
+                    :collection_id           nil
+                    :creator_id              "ann@heart.band"}
+                   (select-keys ser [:serdes/meta :collection_id :creator_id])))
+            (is (not (contains? ser :id)))
+            (is (instance? ZonedDateTime (:created_at ser)))
+            (is (or (nil? (:updated_at ser))
+                    (instance? ZonedDateTime (:updated_at ser))))
+
+            (testing "and has no deps"
+              (is (empty? (serdes.base/serdes-dependencies ser))))))))))
