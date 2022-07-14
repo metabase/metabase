@@ -6,7 +6,7 @@ export interface ModalBodyProps {
 }
 
 const ModalBody = ({ children }: ModalBodyProps): JSX.Element => {
-  return <BodyRoot className="ModalContent">{children}</BodyRoot>;
+  return <BodyRoot>{children}</BodyRoot>;
 };
 
 export default ModalBody;

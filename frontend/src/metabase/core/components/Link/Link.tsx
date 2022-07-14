@@ -1,9 +1,4 @@
-import React, {
-  CSSProperties,
-  HTMLAttributes,
-  ReactNode,
-  useMemo,
-} from "react";
+import React, { CSSProperties, HTMLAttributes, ReactNode } from "react";
 import Tooltip from "metabase/components/Tooltip";
 import { LinkRoot } from "./Link.styled";
 import { TooltipProps } from "metabase/components/Tooltip/Tooltip";
@@ -24,23 +19,14 @@ const Link = ({
   children,
   disabled,
   tooltip,
-  tabIndex,
   ...props
 }: LinkProps): JSX.Element => {
-  const computedTabIndex = useMemo(() => {
-    if (tabIndex) {
-      return tabIndex;
-    }
-
-    return disabled ? -1 : undefined;
-  }, [disabled, tabIndex]);
-
   const link = (
     <LinkRoot
       {...props}
       to={to}
       disabled={disabled}
-      tabIndex={computedTabIndex}
+      tabIndex={disabled ? -1 : undefined}
       aria-disabled={disabled}
     >
       {children}

@@ -23,7 +23,13 @@ export const HeaderActions = styled.div`
   align-self: start;
 `;
 
-export const CollectionHeaderButton = styled(Button)`
+interface CollectionHeaderButtonProps {
+  to: string;
+}
+
+export const CollectionHeaderButton = styled(
+  Button,
+)<CollectionHeaderButtonProps>`
   padding: 0.5rem 0.75rem;
   height: 2.5rem;
 
@@ -35,5 +41,5 @@ export const CollectionHeaderButton = styled(Button)`
 
 CollectionHeaderButton.defaultProps = {
   onlyIcon: true,
-  iconSize: 20,
+  iconSize: 16,
 };

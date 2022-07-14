@@ -32,7 +32,7 @@ export const BookmarkIcon = styled(Icon)<BookmarkIconProps>`
 `;
 
 interface BookmarkButtonProps {
-  hoverColor: string;
+  isBookmarked: boolean;
 }
 
 export const BookmarkButton = styled(Button)<BookmarkButtonProps>`
@@ -40,7 +40,8 @@ export const BookmarkButton = styled(Button)<BookmarkButtonProps>`
   height: 2.5rem;
 
   &:hover {
-    color: ${({ hoverColor }) => hoverColor};
+    color: ${({ isBookmarked }) =>
+      isBookmarked ? color("brand") : color("text-dark")};
     background-color: ${color("bg-medium")};
   }
 

@@ -3,7 +3,6 @@ import {
   enableTracking,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
-  modal,
   resetSnowplow,
   restore,
 } from "__support__/e2e/helpers";
@@ -94,7 +93,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByLabelText("Event name").type("RC1");
 
       // New event modal
-      modal().within(() => {
+      cy.get(".Modal").within(() => {
         cy.findByRole("button", { name: "calendar icon" }).click();
       });
       cy.findByText("15").click();
@@ -134,7 +133,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByLabelText("Event name").type("RC1");
 
       // New event modal
-      modal().within(() => {
+      cy.get(".Modal").within(() => {
         cy.findByRole("button", { name: "calendar icon" }).click();
       });
       cy.findByText("15").click();
@@ -159,7 +158,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByLabelText("Event name").type("RC1");
 
       // New event modal
-      modal().within(() => {
+      cy.get(".Modal").within(() => {
         cy.findByRole("button", { name: "calendar icon" }).click();
       });
       cy.findByText("15").click();
