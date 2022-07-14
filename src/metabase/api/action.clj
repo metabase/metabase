@@ -10,7 +10,6 @@
             [metabase.models.setting :as setting]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [trs]]
-            [schema.core :as s]
             [toucan.db :as db]))
 
 (api/defendpoint POST "/:action-namespace/:action-name"
