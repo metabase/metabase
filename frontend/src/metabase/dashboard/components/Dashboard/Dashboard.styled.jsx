@@ -92,7 +92,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   flex-direction: column;
   padding-top: ${space(2)};
   padding-bottom: ${space(1)};
-  z-index: 4;
+  z-index: 3;
 
   ${({ isEditing }) =>
     isEditing &&
