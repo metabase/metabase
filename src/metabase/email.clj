@@ -29,7 +29,7 @@
   (s/validator ReplyToAddresses))
 
 (defsetting email-reply-to
-  (deferred-tru "The email address you want the replies to go to, if different from the from address. You can have multiple reply-to email addresses, just separate them with a comma.")
+  (deferred-tru "The email address you want the replies to go to, if different from the from address.")
   :type :json
   :setter (fn [new-value]
             (->> new-value
