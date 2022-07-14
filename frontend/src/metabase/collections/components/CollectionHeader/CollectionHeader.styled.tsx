@@ -37,6 +37,10 @@ export const CollectionHeaderButton = styled(
     color: ${color("brand")};
     background-color: ${color("bg-medium")};
   }
+
+  ${Button.Content} {
+    height: 100%;
+  }
 `;
 
 CollectionHeaderButton.defaultProps = {
