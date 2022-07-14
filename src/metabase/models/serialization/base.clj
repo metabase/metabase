@@ -222,9 +222,9 @@
   LocalDateTime is treated as already being in UTC."
   [t]
   (cond
-    (instance? LocalDateTime  t) (.atZone            t (ZoneId/of "UTC"))
-    (instance? OffsetDateTime t) (.atZoneSameInstant t (ZoneId/of "UTC"))
-    (instance? Instant        t) (.atZone            t (ZoneId/of "UTC"))
+    (instance? LocalDateTime  t) (.atZone            ^LocalDateTime  t (ZoneId/of "UTC"))
+    (instance? OffsetDateTime t) (.atZoneSameInstant ^OffsetDateTime t (ZoneId/of "UTC"))
+    (instance? Instant        t) (.atZone            ^Instant        t (ZoneId/of "UTC"))
     :else                        t))
 
 (defn extract-one-basics
