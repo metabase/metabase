@@ -11,7 +11,7 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
   APP_BAR_HEIGHT,
-  APP_MOBILE_BAR_HEIGHT,
+  APP_BAR_EXTENDED_HEIGHT,
   NAV_SIDEBAR_WIDTH,
 } from "metabase/nav/constants";
 
@@ -118,7 +118,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
     !isNavbarOpen &&
     css`
       ${breakpointMaxSmall} {
-        top: ${APP_MOBILE_BAR_HEIGHT};
+        top: ${APP_BAR_EXTENDED_HEIGHT};
       }
     `}
 
