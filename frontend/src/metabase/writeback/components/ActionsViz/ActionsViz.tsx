@@ -151,13 +151,10 @@ function ActionsViz({
   insertRow,
   updateRow,
 }: ActionsVizProps) {
-  const [isModalOpen, { turnOn: showModal, turnOff: hideModal }] = useToggle(
-    false,
-  );
-  const {
-    modalContent: confirmationModalContent,
-    show: requestConfirmation,
-  } = useConfirmation();
+  const [isModalOpen, { turnOn: showModal, turnOff: hideModal }] =
+    useToggle(false);
+  const { modalContent: confirmationModalContent, show: requestConfirmation } =
+    useConfirmation();
 
   const connectedDashCardId = settings["actions.linked_card"];
   const connectedDashCard = dashboard.ordered_cards.find(

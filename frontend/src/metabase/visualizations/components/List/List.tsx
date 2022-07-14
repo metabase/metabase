@@ -83,11 +83,10 @@ function List({
 
   const rowIndexes = useMemo(() => _.range(0, rows.length), [rows]);
 
-  const paginatedRowIndexes = useMemo(() => rowIndexes.slice(start, end + 1), [
-    rowIndexes,
-    start,
-    end,
-  ]);
+  const paginatedRowIndexes = useMemo(
+    () => rowIndexes.slice(start, end + 1),
+    [rowIndexes, start, end],
+  );
 
   const renderColumnHeader = useCallback(
     (col, colIndex) => (

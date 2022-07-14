@@ -121,6 +121,7 @@
     "@percy/cli": "^1.3.0",
     "@percy/cypress": "^3.1.1",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.5",
+    "@sinonjs/fake-timers": "^9.1.2",
     "@storybook/addon-actions": "^6.4.22",
     "@storybook/addon-essentials": "^6.4.22",
     "@storybook/addon-links": "^6.4.22",

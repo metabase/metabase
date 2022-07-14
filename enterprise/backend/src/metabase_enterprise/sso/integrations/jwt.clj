@@ -2,6 +2,7 @@
   "Implementation of the JWT backend for sso"
   (:require [buddy.sign.jwt :as jwt]
             [clojure.string :as str]
+            [java-time :as t]
             [metabase-enterprise.sso.api.interface :as sso.i]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
@@ -86,7 +87,7 @@
           user         (fetch-or-create-user! first-name last-name email login-attrs)
           session      (api.session/create-session! :sso user (request.u/device-info request))]
       (sync-groups! user jwt-data)
-      (mw.session/set-session-cookie request (response/redirect redirect-url) session))))
+      (mw.session/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT"))))))
 
 (defn- check-jwt-enabled []
   (api/check (sso-settings/jwt-configured?)

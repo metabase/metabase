@@ -96,13 +96,8 @@ export default class Text extends Component {
   preventDragging = e => e.stopPropagation();
 
   render() {
-    const {
-      className,
-      gridSize,
-      settings,
-      isEditing,
-      isPreviewing,
-    } = this.props;
+    const { className, gridSize, settings, isEditing, isPreviewing } =
+      this.props;
     const isSingleRow = gridSize && gridSize.height === 1;
 
     if (isEditing) {

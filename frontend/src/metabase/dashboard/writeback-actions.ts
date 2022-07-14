@@ -103,7 +103,7 @@ export const executeRowAction = ({
   emitterId,
   parameters,
 }: ExecuteRowActionPayload) => {
-  return async function(dispatch: any) {
+  return async function (dispatch: any) {
     try {
       const result = await EmittersApi.execute({
         id: emitterId,

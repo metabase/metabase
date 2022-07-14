@@ -70,9 +70,10 @@ function getFieldValidationProp(field: Field) {
 }
 
 function WritebackForm({ table, row, onSubmit, ...props }: WritebackFormProps) {
-  const editableFields = useMemo(() => table.fields.filter(isEditableField), [
-    table,
-  ]);
+  const editableFields = useMemo(
+    () => table.fields.filter(isEditableField),
+    [table],
+  );
 
   const form = useMemo(() => {
     return {
