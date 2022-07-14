@@ -217,16 +217,6 @@
 (defmethod extract-query :default [model-name _]
   (raw-reducible-query model-name))
 
-(defn- ->zoned-date-time
-  "Given an Instant, LocalDateTime, or ZonedDateTime, convert it to a ZonedDateTime at UTC.
-  LocalDateTime is treated as already being in UTC."
-  [t]
-  (cond
-    (instance? LocalDateTime  t) (.atZone            ^LocalDateTime  t (ZoneId/of "UTC"))
-    (instance? OffsetDateTime t) (.atZoneSameInstant ^OffsetDateTime t (ZoneId/of "UTC"))
-    (instance? Instant        t) (.atZone            ^Instant        t (ZoneId/of "UTC"))
-    :else                        t))
-
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:
   - Convert to a vanilla Clojure map.
@@ -238,12 +228,9 @@
   [model-name entity]
   (let [model (db/resolve-model (symbol model-name))
         pk    (models/primary-key model)]
-    (cond-> entity
-      true (assoc :serdes/meta (serdes-generate-path model-name entity))
-      true (dissoc pk)
-      ;(:created_at entity) (update :created_at ->zoned-date-time)
-      ;(:updated_at entity) (update :updated_at ->zoned-date-time)
-      )))
+    (-> entity
+      (assoc :serdes/meta (serdes-generate-path model-name entity))
+      (dissoc pk))))
 
 (defmethod extract-one :default [model-name _opts entity]
   (extract-one-basics model-name entity))
