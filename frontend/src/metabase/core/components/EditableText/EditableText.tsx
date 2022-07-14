@@ -58,8 +58,9 @@ const EditableText = forwardRef(function EditableText(
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
       setInputValue(event.currentTarget.value);
+      submitOnBlur.current = true;
     },
-    [],
+    [submitOnBlur],
   );
 
   const handleKeyDown = useCallback(
