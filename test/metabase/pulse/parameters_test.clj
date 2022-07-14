@@ -1,7 +1,7 @@
 (ns metabase.pulse.parameters-test
   (:require [clojure.test :refer :all]
             [metabase.pulse.parameters :as params]
-            [metabase.pulse.test-util :refer :all]
+            [metabase.pulse.test-util :refer [test-dashboard]]
             [metabase.test :as mt]))
 
 (deftest value-string-test

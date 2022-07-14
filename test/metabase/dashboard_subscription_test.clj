@@ -424,3 +424,18 @@
               (is (= [[1  "Rustic Paper Wallet"   "Gizmo"]
                       [10 "Mediocre Wooden Table" "Gizmo"]]
                      (mt/rows results))))))))))
+
+(deftest substitute-parameters-in-virtual-cards
+  (testing "Parameters in virtual (text) cards should have parameter values substituted appropriately"
+    (mt/with-temp* [Dashboard [{dashboard-id :id :as dashboard} {:name "Params in Text Card Test"
+                                                                 :parameters [{:name    "Category"
+                                                                               :slug    "category"
+                                                                               :id      "TEST_ID"
+                                                                               :type    "category"
+                                                                               :default ["Doohickey" "Gizmo"]}]}]
+                    DashboardCard [_ {:parameter_mappings [{:parameter_id "TEST_ID"
+                                                            :target       [:text-tag "foo"]}]
+                                      :dashboard_id       dashboard-id
+                                      :visualization_settings {:text "{{foo}}"}}]]
+      (is (= [{:text "Doohickey and Gizmo"}]
+             (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
