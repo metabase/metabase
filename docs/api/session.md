@@ -1,6 +1,7 @@
 ---
 title: "Session"
-summary: "/api/session endpoints."
+summary: |
+  /api/session endpoints.
 ---
 
 # Session

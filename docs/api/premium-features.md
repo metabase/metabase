@@ -1,6 +1,7 @@
 ---
 title: "Premium features"
-summary: "API endpoints for Premium features."
+summary: |
+  API endpoints for Premium features.
 ---
 
 # Premium features
