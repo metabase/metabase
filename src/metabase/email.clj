@@ -22,9 +22,19 @@
 (defsetting email-from-name
   (deferred-tru "The name you want to use for the sender of emails."))
 
+(def ^:private ReplyToAddresses
+  (s/maybe [su/Email]))
+
+(def ^:private ^{:arglists '([reply-to-addresses])} validate-reply-to-addresses
+  (s/validator ReplyToAddresses))
+
 (defsetting email-reply-to
   (deferred-tru "The email address you want the replies to go to, if different from the from address. You can have multiple reply-to email addresses, just separate them with a comma.")
-  :type :json)
+  :type :json
+  :setter (fn [new-value]
+            (->> new-value
+                 (validate-reply-to-addresses)
+                 (setting/set-value-of-type! :json :email-reply-to))))
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails."))
