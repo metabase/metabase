@@ -1,17 +1,18 @@
 (ns metabase.api.action-test
-  (:require
-   [clojure.string :as str]
-   [clojure.test :refer :all]
-   [metabase.actions.test-util :as actions.test-util]
-   [metabase.api.action :as api.action]
-   [metabase.driver :as driver]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.table :refer [Table]]
-   [metabase.query-processor :as qp]
-   [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.actions.test-util :as actions.test-util]
+            [metabase.api.action :as api.action]
+            [metabase.driver :as driver]
+            [metabase.models.action :refer [Action]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
+            [metabase.util :as u]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (comment api.action/keep-me)
 
@@ -205,3 +206,36 @@
           (is (= "Failed to fetch Table 2,147,483,647: Table does not exist, or belongs to a different Database."
                  (:message (mt/user-http-request :crowberto :post 404 action
                                                  (assoc-in request-body [:query :source-table] Integer/MAX_VALUE))))))))))
+
+(deftest action-crud
+  (testing "Happy Path"
+    (actions.test-util/with-actions-enabled
+      (let [initial-action {:name "Get example"
+                            :type "http"
+                            :template {:method "GET"
+                                       :url "https://example.com"}
+                            :response_handle ".body"
+                            :error_handle ".status >= 400"}
+            created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
+            updated-action (merge initial-action {:name "New name"})
+            action-path (str "action/" (:id created-action))]
+        (try
+          (testing "Create"
+            (is (partial= initial-action created-action)))
+          (testing "Update"
+            (is (partial= updated-action
+                          (mt/user-http-request :crowberto :put 200 action-path
+                                                {:name "New name" :type "http"}))))
+          (testing "Get"
+            (is (partial= updated-action
+                          (mt/user-http-request :crowberto :get 200 action-path)))
+            (is (partial= [updated-action]
+                          (mt/user-http-request :crowberto :get 200 "action"))))
+          (testing "Can't create or change http type"
+            (is (partial= {:type "query"} (:action (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :type "query")))))
+            (is (partial= {:type "query"} (:action (mt/user-http-request :crowberto :put 400 action-path {:type "query"})))))
+          (testing "Delete"
+            (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
+            (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))
+          (finally
+            (db/delete! Action :id (:id created-action))))))))
