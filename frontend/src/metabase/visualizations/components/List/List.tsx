@@ -87,10 +87,8 @@ function List({
   const [pageSize, setPageSize] = useState(1);
 
   const [focusedRow, setFocusedRow] = useState<unknown[] | null>(null);
-  const {
-    modalContent: confirmationModalContent,
-    show: requestConfirmation,
-  } = useConfirmation();
+  const { modalContent: confirmationModalContent, show: requestConfirmation } =
+    useConfirmation();
 
   const headerRef = useRef(null);
   const footerRef = useRef(null);
@@ -195,11 +193,10 @@ function List({
 
   const rowIndexes = useMemo(() => _.range(0, rows.length), [rows]);
 
-  const paginatedRowIndexes = useMemo(() => rowIndexes.slice(start, end + 1), [
-    rowIndexes,
-    start,
-    end,
-  ]);
+  const paginatedRowIndexes = useMemo(
+    () => rowIndexes.slice(start, end + 1),
+    [rowIndexes, start, end],
+  );
 
   const renderColumnHeader = useCallback(
     (col, colIndex) => (
