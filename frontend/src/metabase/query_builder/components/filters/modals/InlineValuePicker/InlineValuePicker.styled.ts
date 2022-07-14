@@ -47,4 +47,7 @@ export const NumberSeparator = styled.span`
 
 export const NumberInput = styled(NumericInput)`
   width: 10rem;
+  input {
+    height: 55px;
+  }
 `;

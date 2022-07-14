@@ -12,11 +12,11 @@ export const ModalRoot = styled.div`
   flex-direction: column;
   height: 90vh;
   width: 65vw;
+  max-width: 60rem;
   ${breakpointMaxSmall} {
     width: 98vw;
     height: 98vh;
   }
-  max-width: 60rem;
 `;
 
 export const ModalHeader = styled.div`

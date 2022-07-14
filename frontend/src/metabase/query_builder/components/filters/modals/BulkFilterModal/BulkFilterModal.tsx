@@ -50,7 +50,7 @@ const BulkFilterModal = ({
 
   useOnMount(() => {
     const searchToggleListener = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === "k") {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         setSearchQuery("");
         setShowSearch(showSearch => !showSearch);
       }
@@ -284,6 +284,7 @@ const FieldSearch = ({
         onChange={onChange}
         padding="sm"
         borderRadius="md"
+        autoFocus
         icon={<Icon name="search" size={13} style={{ marginTop: 2 }} />}
       />
     </SearchContainer>

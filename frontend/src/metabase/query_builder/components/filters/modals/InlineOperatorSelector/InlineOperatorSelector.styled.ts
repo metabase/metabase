@@ -17,10 +17,11 @@ export const FieldTitle = styled.span`
 
 export const TableTitle = styled.span`
   color: ${color("text-dark")};
-  span.light {
-    color: ${color("text-light")};
-  }
   margin-right: ${space(1)};
+`;
+
+export const LightText = styled.span`
+  color: ${color("text-light")};
 `;
 
 export const OperatorDisplay = styled.button`

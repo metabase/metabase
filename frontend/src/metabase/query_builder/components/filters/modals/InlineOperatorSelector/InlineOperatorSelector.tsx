@@ -6,6 +6,7 @@ import {
   InlineOperatorContainer,
   FieldTitle,
   TableTitle,
+  LightText,
   OperatorDisplay,
   OptionContainer,
   Option,
@@ -43,7 +44,7 @@ export function InlineOperatorSelector({
         <FieldTitle>{fieldName}</FieldTitle>
         {!!tableName && (
           <TableTitle>
-            <span className="light">in</span>
+            <LightText>in</LightText>
             {` ${tableName}`}
           </TableTitle>
         )}

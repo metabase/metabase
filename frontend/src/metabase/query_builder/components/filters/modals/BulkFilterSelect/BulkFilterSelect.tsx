@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import StructuredQuery, {
@@ -37,8 +37,6 @@ export const BulkFilterSelect = ({
   handleChange,
   handleClear,
 }: BulkFilterSelectProps): JSX.Element => {
-  const [isSelecting, setIsSelecting] = useState(false);
-
   const name = useMemo(() => {
     return filter?.displayName({
       includeDimension: false,
@@ -53,19 +51,17 @@ export const BulkFilterSelect = ({
   return (
     <TippyPopoverWithTrigger
       sizeToFit
-      afterOpen={() => setIsSelecting(true)}
-      afterClose={() => setIsSelecting(false)}
       renderTrigger={
         customTrigger
           ? customTrigger
-          : ({ onClick }) => (
+          : ({ onClick, visible }) => (
               <SelectFilterButton
                 hasValue={filter != null}
                 highlighted
                 aria-label={dimension.displayName()}
                 onClick={onClick}
                 onClear={handleClear}
-                isActive={isSelecting}
+                isActive={visible}
               >
                 {name || t`Filter by ${dimension.displayName()}`}
               </SelectFilterButton>

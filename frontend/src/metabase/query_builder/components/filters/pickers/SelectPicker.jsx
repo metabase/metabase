@@ -26,7 +26,6 @@ export default class SelectPicker extends Component {
     onValuesChange: PropTypes.func.isRequired,
     placeholder: PropTypes.string,
     multi: PropTypes.bool,
-    checkedColor: PropTypes.string,
   };
 
   updateSearchText = value => {
@@ -71,7 +70,7 @@ export default class SelectPicker extends Component {
   }
 
   render() {
-    const { values, options, placeholder, multi, checkedColor } = this.props;
+    const { values, options, placeholder, multi } = this.props;
 
     const checked = new Set(values);
 
@@ -118,7 +117,7 @@ export default class SelectPicker extends Component {
                   >
                     <CheckBox
                       checked={checked.has(option.key)}
-                      checkedColor={checkedColor ?? "filter"}
+                      checkedColor="accent2"
                     />
                     <h4 className="ml1">{this.nameForOption(option)}</h4>
                   </label>
