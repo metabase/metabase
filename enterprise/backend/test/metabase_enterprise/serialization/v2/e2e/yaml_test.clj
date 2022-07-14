@@ -85,9 +85,12 @@
 
           (testing "for Databases"
             (is (= 10 (count (dir->file-set (io/file dump-dir "Database")))))
-            (doseq [{:keys [name] :as db} (get entities "Database")
+            (doseq [{:keys [name] :as coll} (get entities "Database")
                     :let [filename (str name ".yaml")]]
-              (is (= (dissoc db :serdes/meta)
+              (is (= (-> coll
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Database" filename))))))
 
           (testing "for Tables"
@@ -97,8 +100,11 @@
                                (count tables))))
                 "Tables are scattered, so the directories are harder to count")
 
-            (doseq [{:keys [db_id name] :as table} (get entities "Table")]
-              (is (= (dissoc table :serdes/meta)
+            (doseq [{:keys [db_id name] :as coll} (get entities "Table")]
+              (is (= (-> coll
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Database" db_id "Table" (str name ".yaml")))))))
 
           (testing "for Fields"
@@ -110,23 +116,32 @@
                                     count))))
                 "Fields are scattered, so the directories are harder to count")
 
-            (doseq [{[db schema table] :table_id name :name :as field} (get entities "Field")]
+            (doseq [{[db schema table] :table_id name :name :as coll} (get entities "Field")]
               (is (nil? schema))
-              (is (= (dissoc field :serdes/meta)
+              (is (= (-> coll
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Database" db "Table" table "Field" (str name ".yaml")))))))
 
           (testing "for cards"
             (is (= 100 (count (dir->file-set (io/file dump-dir "Card")))))
             (doseq [{:keys [entity_id] :as card} (get entities "Card")
                     :let [filename (str entity_id ".yaml")]]
-              (is (= (dissoc card :serdes/meta)
+              (is (= (-> card
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Card" filename))))))
 
           (testing "for dashboards"
             (is (= 100 (count (dir->file-set (io/file dump-dir "Dashboard")))))
             (doseq [{:keys [entity_id] :as dash} (get entities "Dashboard")
                     :let [filename (str entity_id ".yaml")]]
-              (is (= (dissoc dash :serdes/meta)
+              (is (= (-> dash
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Dashboard" filename))))))
 
           (testing "for dashboard cards"
@@ -140,28 +155,40 @@
             (doseq [{:keys [dashboard_id entity_id]
                      :as   dashcard}                (get entities "DashboardCard")
                     :let [filename (str entity_id ".yaml")]]
-              (is (= (dissoc dashcard :serdes/meta)
+              (is (= (-> dashcard
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Dashboard" dashboard_id "DashboardCard" filename))))))
 
           (testing "for dimensions"
             (is (= 40 (count (dir->file-set (io/file dump-dir "Dimension")))))
             (doseq [{:keys [entity_id] :as dim} (get entities "Dimension")
                     :let [filename (str entity_id ".yaml")]]
-              (is (= (dissoc dim :serdes/meta)
+              (is (= (-> dim
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Dimension" filename))))))
 
           (testing "for metrics"
             (is (= 30 (count (dir->file-set (io/file dump-dir "Metric")))))
             (doseq [{:keys [entity_id name] :as metric} (get entities "Metric")
                     :let [filename (str entity_id "+" (#'u.yaml/truncate-label name) ".yaml")]]
-              (is (= (dissoc metric :serdes/meta)
+              (is (= (-> metric
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Metric" filename))))))
 
           (testing "for native query snippets"
             (is (= 10 (count (dir->file-set (io/file dump-dir "NativeQuerySnippet")))))
             (doseq [{:keys [entity_id name] :as snippet} (get entities "NativeQuerySnippet")
                     :let [filename (str entity_id "+" (#'u.yaml/truncate-label name) ".yaml")]]
-              (is (= (dissoc snippet :serdes/meta)
+              (is (= (-> snippet
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "NativeQuerySnippet" filename))))))
 
           (testing "for settings"
