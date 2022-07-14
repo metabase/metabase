@@ -189,7 +189,7 @@
   When overriding this, [[extract-one-basics]] is probably a useful starting point.
 
   Keyed by the model name of the entity, the first argument."
-  (fn [model _ _] model))
+  (fn [model _opts _entity] model))
 
 (defmethod extract-all :default [model opts]
   (eduction (map (partial extract-one model opts))
@@ -241,8 +241,9 @@
     (cond-> entity
       true (assoc :serdes/meta (serdes-generate-path model-name entity))
       true (dissoc pk)
-      (:created_at entity) (update :created_at ->zoned-date-time)
-      (:updated_at entity) (update :updated_at ->zoned-date-time))))
+      ;(:created_at entity) (update :created_at ->zoned-date-time)
+      ;(:updated_at entity) (update :updated_at ->zoned-date-time)
+      )))
 
 (defmethod extract-one :default [model-name _opts entity]
   (extract-one-basics model-name entity))

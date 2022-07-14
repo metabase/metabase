@@ -4,7 +4,8 @@
             [metabase-enterprise.serialization.v2.extract :as extract]
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field Metric
                                      NativeQuerySnippet Table User]]
-            [metabase.models.serialization.base :as serdes.base])
+            [metabase.models.serialization.base :as serdes.base]
+            [schema.core :as s])
   (:import java.time.ZonedDateTime))
 
 (defn- select-one [model-name where]
@@ -38,28 +39,33 @@
 
       (testing "a top-level collection is extracted correctly"
         (let [ser (serdes.base/extract-one "Collection" {} (select-one "Collection" [:= :id coll-id]))]
-          (is (= [{:model "Collection" :id coll-eid :label coll-slug}] (:serdes/meta ser)))
+          (is (schema= {:serdes/meta       (s/eq [{:model "Collection" :id coll-eid :label coll-slug}])
+                        :personal_owner_id (s/eq nil)
+                        :parent_id         (s/eq nil)
+                        s/Keyword          s/Any}
+                       ser))
           (is (not (contains? ser :location)))
-          (is (not (contains? ser :id)))
-          (is (nil? (:personal_owner_id ser)))
-          (is (contains? ser :parent_id))
-          (is (nil? (:parent_id ser)))))
+          (is (not (contains? ser :id)))))
 
       (testing "a nested collection is extracted with the right parent_id"
         (let [ser (serdes.base/extract-one "Collection" {} (select-one "Collection" [:= :id child-id]))]
-          (is (= [{:model "Collection" :id child-eid :label child-slug}] (:serdes/meta ser)))
+          (is (schema= {:serdes/meta       (s/eq [{:model "Collection" :id child-eid :label child-slug}])
+                        :personal_owner_id (s/eq nil)
+                        :parent_id         (s/eq coll-eid)
+                        s/Keyword          s/Any}
+                       ser))
           (is (not (contains? ser :location)))
-          (is (not (contains? ser :id)))
-          (is (= coll-eid (:parent_id ser)))
-          (is (nil? (:personal_owner_id ser)))))
+          (is (not (contains? ser :id)))))
 
       (testing "personal collections are extracted with email as key"
         (let [ser (serdes.base/extract-one "Collection" {} (select-one "Collection" [:= :id pc-id]))]
-          (is (= [{:model "Collection" :id pc-eid :label pc-slug}] (:serdes/meta ser)))
+          (is (schema= {:serdes/meta       (s/eq [{:model "Collection" :id pc-eid :label pc-slug}])
+                        :parent_id         (s/eq nil)
+                        :personal_owner_id (s/eq "mark@direstrai.ts")
+                        s/Keyword          s/Any}
+                       ser))
           (is (not (contains? ser :location)))
-          (is (not (contains? ser :id)))
-          (is (nil? (:parent_id ser)))
-          (is (= "mark@direstrai.ts" (:personal_owner_id ser)))))
+          (is (not (contains? ser :id)))))
 
       (testing "overall extraction returns the expected set"
         (testing "no user specified"
@@ -124,16 +130,16 @@
                                                                :dashboard_id other-dash-id}]]
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c1-id]))]
-          (is (= {:serdes/meta   [{:model "Card" :id c1-eid}]
-                  :table_id      ["My Database" nil "Schemaless Table"]
-                  :creator_id    "mark@direstrai.ts"
-                  :collection_id coll-eid
-                  :dataset_query "{\"json\": \"string values\"}"} ; Undecoded, still a string.
-                 (select-keys ser [:serdes/meta :table_id :creator_id :collection_id :dataset_query])))
+          (is (schema= {:serdes/meta                 (s/eq [{:model "Card" :id c1-eid}])
+                        :table_id                    (s/eq ["My Database" nil "Schemaless Table"])
+                        :creator_id                  (s/eq "mark@direstrai.ts")
+                        :collection_id               (s/eq coll-eid)
+                        :dataset_query               (s/eq "{\"json\": \"string values\"}")
+                        :created_at                  ZonedDateTime
+                        (s/optional-key :updated_at) ZonedDateTime
+                        s/Keyword                    s/Any}
+                       ser))
           (is (not (contains? ser :id)))
-          (is (instance? ZonedDateTime (:created_at ser)))
-          (is (or (nil? (:updated_at ser))
-                  (instance? ZonedDateTime (:updated_at ser))))
 
           (testing "cards depend on their Table and Collection"
             (is (= #{[{:model "Database"   :id "My Database"}
@@ -142,12 +148,15 @@
                    (set (serdes.base/serdes-dependencies ser))))))
 
         (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c2-id]))]
-          (is (= {:serdes/meta   [{:model "Card" :id c2-eid}]
-                  :table_id      ["My Database" "PUBLIC" "Schema'd Table"]
-                  :creator_id    "mark@direstrai.ts"
-                  :collection_id coll-eid
-                  :dataset_query "{}"} ; Undecoded, still a string.
-                 (select-keys ser [:serdes/meta :table_id :creator_id :collection_id :dataset_query])))
+          (is (schema= {:serdes/meta                 (s/eq [{:model "Card" :id c2-eid}])
+                        :table_id                    (s/eq ["My Database" "PUBLIC" "Schema'd Table"])
+                        :creator_id                  (s/eq "mark@direstrai.ts")
+                        :collection_id               (s/eq coll-eid)
+                        :dataset_query               (s/eq "{}") ; Undecoded, still a string.
+                        :created_at                  ZonedDateTime
+                        (s/optional-key :updated_at) ZonedDateTime
+                        s/Keyword      s/Any}
+                       ser))
           (is (not (contains? ser :id)))
 
           (testing "cards depend on their Table and Collection"
@@ -216,10 +225,11 @@
                                                               :human_readable_field_id target-id}]]
       (testing "vanilla user-created dimensions"
         (let [ser (serdes.base/extract-one "Dimension" {} (select-one "Dimension" [:= :id dim1-id]))]
-          (is (= {:serdes/meta             [{:model "Dimension" :id dim1-eid}]
-                  :field_id                ["My Database" nil "Schemaless Table" "email"]
-                  :human_readable_field_id nil}
-                 (select-keys ser [:serdes/meta :field_id :human_readable_field_id])))
+          (is (schema= {:serdes/meta             (s/eq [{:model "Dimension" :id dim1-eid}])
+                        :field_id                (s/eq ["My Database" nil "Schemaless Table" "email"])
+                        :human_readable_field_id (s/eq nil)
+                        s/Keyword                s/Any}
+                       ser))
           (is (not (contains? ser :id)))
 
           (testing "depend on the one Field"
@@ -230,10 +240,11 @@
 
       (testing "foreign key dimensions"
         (let [ser (serdes.base/extract-one "Dimension" {} (select-one "Dimension" [:= :id dim2-id]))]
-          (is (= {:serdes/meta             [{:model "Dimension" :id dim2-eid}]
-                  :field_id                ["My Database" "PUBLIC" "Schema'd Table" "foreign_id"]
-                  :human_readable_field_id ["My Database" "PUBLIC" "Foreign Table"  "real_field"]}
-                 (select-keys ser [:serdes/meta :field_id :human_readable_field_id])))
+          (is (schema= {:serdes/meta             (s/eq [{:model "Dimension" :id dim2-eid}])
+                        :field_id                (s/eq ["My Database" "PUBLIC" "Schema'd Table" "foreign_id"])
+                        :human_readable_field_id (s/eq ["My Database" "PUBLIC" "Foreign Table"  "real_field"])
+                        s/Keyword                s/Any}
+                       ser))
           (is (not (contains? ser :id)))
 
           (testing "depend on both Fields"
@@ -260,10 +271,13 @@
                                                               :table_id   no-schema-id}]]
       (testing "metrics"
         (let [ser (serdes.base/extract-one "Metric" {} (select-one "Metric" [:= :id m1-id]))]
-          (is (= {:serdes/meta             [{:model "Metric" :id m1-eid :label "My Metric"}]
-                  :table_id                ["My Database" nil "Schemaless Table"]
-                  :creator_id              "ann@heart.band"}
-                 (select-keys ser [:serdes/meta :table_id :creator_id])))
+          (is (schema= {:serdes/meta                 (s/eq [{:model "Metric" :id m1-eid :label "My Metric"}])
+                        :table_id                    (s/eq ["My Database" nil "Schemaless Table"])
+                        :creator_id                  (s/eq "ann@heart.band")
+                        :created_at                  ZonedDateTime
+                        (s/optional-key :updated_at) ZonedDateTime
+                        s/Keyword                    s/Any}
+                       ser))
           (is (not (contains? ser :id)))
 
           (testing "depend on the Table"
@@ -291,14 +305,16 @@
       (testing "native query snippets"
         (testing "can belong to :snippets collections"
           (let [ser (serdes.base/extract-one "NativeQuerySnippet" {} (select-one "NativeQuerySnippet" [:= :id s1-id]))]
-            (is (= {:serdes/meta             [{:model "NativeQuerySnippet" :id s1-eid :label "Snippet 1"}]
-                    :collection_id           coll-eid
-                    :creator_id              "ann@heart.band"}
-                   (select-keys ser [:serdes/meta :collection_id :creator_id])))
+            (is (schema= {:serdes/meta                 (s/eq [{:model "NativeQuerySnippet"
+                                                               :id s1-eid
+                                                               :label "Snippet 1"}])
+                          :collection_id               (s/eq coll-eid)
+                          :creator_id                  (s/eq "ann@heart.band")
+                          :created_at                  ZonedDateTime
+                          (s/optional-key :updated_at) ZonedDateTime
+                          s/Keyword                    s/Any}
+                         ser))
             (is (not (contains? ser :id)))
-            (is (instance? ZonedDateTime (:created_at ser)))
-            (is (or (nil? (:updated_at ser))
-                    (instance? ZonedDateTime (:updated_at ser))))
 
             (testing "and depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
@@ -306,14 +322,16 @@
 
         (testing "or can be outside collections"
           (let [ser (serdes.base/extract-one "NativeQuerySnippet" {} (select-one "NativeQuerySnippet" [:= :id s2-id]))]
-            (is (= {:serdes/meta             [{:model "NativeQuerySnippet" :id s2-eid :label "Snippet 2"}]
-                    :collection_id           nil
-                    :creator_id              "ann@heart.band"}
-                   (select-keys ser [:serdes/meta :collection_id :creator_id])))
+            (is (schema= {:serdes/meta                    (s/eq [{:model "NativeQuerySnippet"
+                                                                  :id s2-eid
+                                                                  :label "Snippet 2"}])
+                          (s/optional-key :collection_id) (s/eq nil)
+                          :creator_id                     (s/eq "ann@heart.band")
+                          :created_at                     ZonedDateTime
+                          (s/optional-key :updated_at)    ZonedDateTime
+                          s/Keyword                       s/Any}
+                         ser))
             (is (not (contains? ser :id)))
-            (is (instance? ZonedDateTime (:created_at ser)))
-            (is (or (nil? (:updated_at ser))
-                    (instance? ZonedDateTime (:updated_at ser))))
 
             (testing "and has no deps"
               (is (empty? (serdes.base/serdes-dependencies ser))))))))))
