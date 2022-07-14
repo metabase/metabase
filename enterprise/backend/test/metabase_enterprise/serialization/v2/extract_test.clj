@@ -5,7 +5,7 @@
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field Metric
                                      NativeQuerySnippet Table User]]
             [metabase.models.serialization.base :as serdes.base])
-  (:import java.time.Instant))
+  (:import java.time.ZonedDateTime))
 
 (defn- select-one [model-name where]
   (first (into [] (serdes.base/raw-reducible-query model-name {:where where}))))
@@ -131,9 +131,9 @@
                   :dataset_query "{\"json\": \"string values\"}"} ; Undecoded, still a string.
                  (select-keys ser [:serdes/meta :table_id :creator_id :collection_id :dataset_query])))
           (is (not (contains? ser :id)))
-          (is (instance? Instant (:created_at ser)))
+          (is (instance? ZonedDateTime (:created_at ser)))
           (is (or (nil? (:updated_at ser))
-                  (instance? Instant (:updated_at ser))))
+                  (instance? ZonedDateTime (:updated_at ser))))
 
           (testing "cards depend on their Table and Collection"
             (is (= #{[{:model "Database"   :id "My Database"}
@@ -296,9 +296,9 @@
                     :creator_id              "ann@heart.band"}
                    (select-keys ser [:serdes/meta :collection_id :creator_id])))
             (is (not (contains? ser :id)))
-            (is (instance? Instant (:created_at ser)))
+            (is (instance? ZonedDateTime (:created_at ser)))
             (is (or (nil? (:updated_at ser))
-                    (instance? Instant (:updated_at ser))))
+                    (instance? ZonedDateTime (:updated_at ser))))
 
             (testing "and depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
@@ -311,9 +311,9 @@
                     :creator_id              "ann@heart.band"}
                    (select-keys ser [:serdes/meta :collection_id :creator_id])))
             (is (not (contains? ser :id)))
-            (is (instance? Instant (:created_at ser)))
+            (is (instance? ZonedDateTime (:created_at ser)))
             (is (or (nil? (:updated_at ser))
-                    (instance? Instant (:updated_at ser))))
+                    (instance? ZonedDateTime (:updated_at ser))))
 
             (testing "and has no deps"
               (is (empty? (serdes.base/serdes-dependencies ser))))))))))
