@@ -189,7 +189,7 @@ export default class DashCard extends Component {
     return (
       <DashCardRoot
         className={cx(
-          "Card bordered rounded flex flex-column hover-parent hover--visibility",
+          "Card rounded flex flex-column hover-parent hover--visibility",
           {
             "Card--slow": isSlow === "usually-slow",
           },

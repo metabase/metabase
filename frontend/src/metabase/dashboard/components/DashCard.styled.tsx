@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 
 export interface DashCardRootProps {
@@ -6,6 +7,12 @@ export interface DashCardRootProps {
 }
 
 export const DashCardRoot = styled.div<DashCardRootProps>`
-  border-color: ${props => props.isNightMode && color("bg-night")};
-  background-color: ${props => props.isNightMode && color("bg-night")};
+  background-color: ${color("white")};
+
+  ${({ isNightMode }) =>
+    isNightMode &&
+    css`
+      border-color: ${color("bg-night")};
+      background-color: ${color("bg-night")};
+    `}
 `;
