@@ -10,6 +10,7 @@ import { BulkFilterSelect } from "../BulkFilterSelect";
 import { InlineCategoryPicker } from "../InlineCategoryPicker";
 import { InlineValuePicker } from "../InlineValuePicker";
 import { InlineDatePicker } from "../InlineDatePicker";
+import { InlineOperatorSelector } from "../InlineOperatorSelector";
 
 import { getFieldPickerType } from "./utils";
 
@@ -17,6 +18,7 @@ export interface BulkFilterItemProps {
   query: StructuredQuery;
   filter?: Filter;
   dimension: Dimension;
+  isSearch?: boolean;
   onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
@@ -26,6 +28,7 @@ export const BulkFilterItem = ({
   query,
   filter,
   dimension,
+  isSearch,
   onAddFilter,
   onChangeFilter,
   onRemoveFilter,
@@ -47,59 +50,115 @@ export const BulkFilterItem = ({
     [filter, onAddFilter, onChangeFilter],
   );
 
+  const changeOperator = (newOperator: any) => {
+    handleChange((filter ?? newFilter).setOperator(newOperator));
+  };
+
   const handleClear = useCallback(() => {
     if (filter) {
       onRemoveFilter(filter);
     }
   }, [filter, onRemoveFilter]);
 
+  const currentOperator = (filter ?? newFilter).operatorName();
+  const tableName = useMemo(
+    () =>
+      (isSearch ? dimension.field()?.table?.displayName() : undefined) ??
+      undefined,
+    [dimension, isSearch],
+  );
+
   switch (fieldPickerType) {
     case "boolean":
       return (
-        <BooleanPickerCheckbox
-          filter={filter ?? newFilter}
-          onFilterChange={handleChange}
-        />
+        <>
+          <InlineOperatorSelector
+            fieldName={dimension.displayName()}
+            iconName="io"
+            tableName={tableName}
+            value={currentOperator}
+            operators={dimension.filterOperators(currentOperator)}
+          />
+          <BooleanPickerCheckbox
+            filter={filter ?? newFilter}
+            onFilterChange={handleChange}
+          />
+        </>
       );
     case "category":
       return (
-        <InlineCategoryPicker
-          query={query}
-          filter={filter}
-          newFilter={newFilter}
-          dimension={dimension}
-          onChange={handleChange}
-          onClear={handleClear}
-        />
+        <>
+          <InlineOperatorSelector
+            fieldName={dimension.displayName()}
+            value={currentOperator}
+            operators={dimension.filterOperators(currentOperator)}
+            iconName="list"
+            tableName={tableName}
+          />
+          <InlineCategoryPicker
+            query={query}
+            filter={filter}
+            newFilter={newFilter}
+            dimension={dimension}
+            onChange={handleChange}
+            onClear={handleClear}
+          />
+        </>
       );
     case "value":
       return (
-        <InlineValuePicker
-          filter={filter ?? newFilter}
-          field={dimension.field()}
-          handleChange={handleChange}
-        />
+        <>
+          <InlineOperatorSelector
+            fieldName={dimension.displayName()}
+            iconName={dimension.icon() ?? undefined}
+            tableName={tableName}
+            value={currentOperator}
+            operators={dimension.filterOperators(currentOperator)}
+            onChange={changeOperator}
+          />
+          <InlineValuePicker
+            filter={filter ?? newFilter}
+            field={dimension.field()}
+            handleChange={handleChange}
+          />
+        </>
       );
     case "date":
       return (
-        <InlineDatePicker
-          query={query}
-          filter={filter}
-          newFilter={newFilter}
-          dimension={dimension}
-          onChange={handleChange}
-          onClear={handleClear}
-        />
+        <>
+          <InlineOperatorSelector
+            fieldName={dimension.displayName()}
+            iconName={dimension.icon() ?? undefined}
+            tableName={tableName}
+          />
+          <InlineDatePicker
+            query={query}
+            filter={filter}
+            newFilter={newFilter}
+            dimension={dimension}
+            onChange={handleChange}
+            onClear={handleClear}
+          />
+        </>
       );
     default:
       return (
-        <BulkFilterSelect
-          query={query}
-          filter={filter}
-          dimension={dimension}
-          handleChange={handleChange}
-          handleClear={handleClear}
-        />
+        <>
+          <InlineOperatorSelector
+            fieldName={dimension.displayName()}
+            value={currentOperator}
+            operators={dimension.filterOperators(currentOperator)}
+            iconName={dimension.icon() ?? undefined}
+            tableName={tableName}
+          />
+          <BulkFilterSelect
+            query={query}
+            filter={filter}
+            dimension={dimension}
+            handleChange={handleChange}
+            handleClear={handleClear}
+          />
+        </>
       );
   }
 };

@@ -8,16 +8,27 @@ import StructuredQuery, {
   isSegmentOption,
 } from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
-import { ModalDivider } from "../BulkFilterModal/BulkFilterModal.styled";
+import EmptyState from "metabase/components/EmptyState";
+
+import { color } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
+
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { BulkFilterItem } from "../BulkFilterItem";
 import { SegmentFilterSelect } from "../BulkFilterSelect";
-import { ListRoot, ListRow, ListRowLabel } from "./BulkFilterList.styled";
+import { InlineOperatorSelector } from "../InlineOperatorSelector";
+import {
+  ListRoot,
+  ListRow,
+  ListRowLabel,
+  FilterDivider,
+} from "./BulkFilterList.styled";
 import { sortDimensions } from "./utils";
 
 export interface BulkFilterListProps {
   query: StructuredQuery;
   filters: Filter[];
+  isSearch?: boolean;
   options: (DimensionOption | SegmentOption)[];
   onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
@@ -29,6 +40,7 @@ const BulkFilterList = ({
   query,
   filters,
   options,
+  isSearch,
   onAddFilter,
   onChangeFilter,
   onRemoveFilter,
@@ -42,12 +54,34 @@ const BulkFilterList = ({
     [options],
   );
 
+  if (!dimensions.length && !segments.length) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          width: "100%",
+        }}
+      >
+        <EmptyState
+          message={<strong>{t`Didn't find anything`}</strong>}
+          illustrationElement={
+            <Icon name="search" size={40} color={color("text-light")} />
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <ListRoot>
       {!!segments.length && (
         <SegmentListItem
           query={query}
           segments={segments}
+          isSearch={isSearch}
           onAddFilter={onAddFilter}
           onRemoveFilter={onRemoveFilter}
           onClearSegments={onClearSegments}
@@ -57,6 +91,7 @@ const BulkFilterList = ({
         <BulkFilterListItem
           key={index}
           query={query}
+          isSearch={isSearch}
           filters={filters}
           dimension={dimension}
           onAddFilter={onAddFilter}
@@ -71,6 +106,7 @@ const BulkFilterList = ({
 interface BulkFilterListItemProps {
   query: StructuredQuery;
   filters: Filter[];
+  isSearch?: boolean;
   dimension: Dimension;
   onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
@@ -80,6 +116,7 @@ interface BulkFilterListItemProps {
 const BulkFilterListItem = ({
   query,
   filters,
+  isSearch,
   dimension,
   onAddFilter,
   onChangeFilter,
@@ -95,20 +132,21 @@ const BulkFilterListItem = ({
   }, [filters, dimension]);
 
   return (
-    <ListRow>
-      <ListRowLabel data-testid="dimension-filter-label">
-        {dimension.displayName()}
-      </ListRowLabel>
+    <ListRow data-testid={`filter-field-${dimension.displayName()}`}>
       {options.map((filter, index) => (
-        <BulkFilterItem
-          key={index}
-          query={query}
-          filter={filter}
-          dimension={dimension}
-          onAddFilter={onAddFilter}
-          onChangeFilter={onChangeFilter}
-          onRemoveFilter={onRemoveFilter}
-        />
+        <>
+          <BulkFilterItem
+            key={index}
+            query={query}
+            isSearch={isSearch}
+            filter={filter}
+            dimension={dimension}
+            onAddFilter={onAddFilter}
+            onChangeFilter={onChangeFilter}
+            onRemoveFilter={onRemoveFilter}
+          />
+          <FilterDivider />
+        </>
       ))}
     </ListRow>
   );
@@ -117,6 +155,7 @@ const BulkFilterListItem = ({
 interface SegmentListItemProps {
   query: StructuredQuery;
   segments: SegmentOption[];
+  isSearch?: boolean;
   onAddFilter: (filter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
   onClearSegments: () => void;
@@ -125,24 +164,27 @@ interface SegmentListItemProps {
 const SegmentListItem = ({
   query,
   segments,
+  isSearch,
   onAddFilter,
   onRemoveFilter,
   onClearSegments,
 }: SegmentListItemProps): JSX.Element => (
   <>
-    <ListRow>
-      <ListRowLabel>{t`Segments`}</ListRowLabel>
-      <>
-        <SegmentFilterSelect
-          query={query}
-          segments={segments}
-          onAddFilter={onAddFilter}
-          onRemoveFilter={onRemoveFilter}
-          onClearSegments={onClearSegments}
-        />
-      </>
+    <ListRow data-testid="filter-field-segments">
+      <InlineOperatorSelector
+        fieldName={t`Segments`}
+        iconName="filter"
+        tableName={isSearch ? query.table().displayName() : undefined}
+        value="is"
+      />
+      <SegmentFilterSelect
+        query={query}
+        segments={segments}
+        onAddFilter={onAddFilter}
+        onRemoveFilter={onRemoveFilter}
+        onClearSegments={onClearSegments}
+      />
     </ListRow>
-    <ModalDivider marginY="0.5rem" />
   </>
 );
 

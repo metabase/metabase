@@ -20,6 +20,8 @@ export const OptionButton = styled(Button)<OptionButtonProps>`
   padding: 13px ${space(2)};
   margin-right: ${space(1)};
   margin-bottom: ${space(1)};
+  border: 1px solid
+    ${({ active }) => (active ? "transparent" : color("border"))};
 
   background-color: ${({ active }) =>
     active ? alpha("brand", 0.2) : "transparent"};
