@@ -275,6 +275,10 @@
     (= :field ent-type)
     (update :name unique-name)
 
+    ;; [Field ID, Dimension name] pairs need to be unique. This enforces it, and appends junk to names if needed.
+    (= :dimension ent-type)
+    (update :name unique-name)
+
     (and (:description visit-val) (coin-toss 0.2))
     (dissoc :description)))
 
