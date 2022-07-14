@@ -20,6 +20,7 @@ import { getDashboardActions } from "metabase/dashboard/components/DashboardActi
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
+  DashboardHeaderButtonContainer,
 } from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
@@ -32,8 +33,6 @@ import {
 
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
-
-import cx from "classnames";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -255,17 +254,12 @@ class DashboardHeader extends Component {
           >
             <div>
               <Tooltip tooltip={t`Add a filter`}>
-                <a
+                <DashboardHeaderButton
                   key="parameters"
-                  className={cx("text-brand-hover", {
-                    "text-brand": isAddParameterPopoverOpen,
-                  })}
                   onClick={showAddParameterPopover}
                 >
-                  <DashboardHeaderButton>
-                    <Icon name="filter" />
-                  </DashboardHeaderButton>
-                </a>
+                  <Icon name="filter" />
+                </DashboardHeaderButton>
               </Tooltip>
             </div>
           </TippyPopover>
@@ -350,12 +344,13 @@ class DashboardHeader extends Component {
               }
             />
           </Tooltip>,
-          <EntityMenu
-            key="dashboard-action-menu-button"
-            items={extraButtons}
-            triggerIcon="ellipsis"
-            tooltip={t`Move, archive, and more...`}
-          />,
+          <DashboardHeaderButtonContainer key="dashboard-action-menu-button">
+            <EntityMenu
+              items={extraButtons}
+              triggerIcon="ellipsis"
+              tooltip={t`Move, archive, and more...`}
+            />
+          </DashboardHeaderButtonContainer>,
         ],
       );
     }

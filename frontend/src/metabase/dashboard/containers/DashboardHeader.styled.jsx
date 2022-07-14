@@ -12,6 +12,7 @@ export const DashboardHeaderActionDivider = styled.div`
 `;
 
 export const DashboardHeaderButton = styled(Button)`
+  margin-left: 0.5rem;
   padding: 0.25rem 0.5rem;
   height: 2rem;
   width: 2rem;
@@ -31,3 +32,9 @@ DashboardHeaderButton.defaultProps = {
   onlyIcon: true,
   iconSize: 16,
 };
+
+export const DashboardHeaderButtonContainer = styled.div`
+  ${Button.Root} {
+    margin-left: 0.5rem;
+  }
+`;
