@@ -83,6 +83,21 @@
   throughout a single bulk Action."
   nil)
 
+;;; Why not just use [[jdbc/with-db-transaction]] to do this stuff? Why reinvent the wheel?
+;;;
+;;; There are a few reasons:
+;;;
+;;; 1. [[jdbc/with-db-transaction]] "absorbs" nested transactions, but this only works if you take the transaction
+;;;    connection spec bound there and pass it around explicitly to subsequent calls to [[jdbc/with-db-transaction]].
+;;;    This makes it hard to write bulk Actions as loops with repeated calls to single-row Actions. Of course, we could
+;;;    just tweak the Actions so there was some way you could pass in an existing Connection or Connection spec for it
+;;;    to use. But that would be a little more ugly and complicated than having a dynamic var. So we'd likely end up
+;;;    with some sort of dynamic var and `with-` macro anyway to avoid repeated boilerplate. And it would likely make
+;;;    [[do-nested-transaction]] harder to use or implement.
+;;;
+;;; 2. [[jdbc/with-db-transaction]] does a lot of magic that we don't necessarily want. Writing raw JDBC code is barely
+;;;    any more cde and lets us have complete control over what happens and lets us see at a glance exactly what's
+;;;    happening without having to keep [[clojure.java.jdbc]] magic in mind or work around it.
 (defn- do-with-jdbc-transaction [database-id f]
   (if *connection*
     (f *connection*)
@@ -234,7 +249,20 @@
 (defmulti do-nested-transaction
   "Execute `thunk` inside a nested transaction inside `connection`, which is currently in a transaction. If `thunk`
   throws an Exception, the nested transaction should be rolled back, but the parent transaction should be able to
-  proceed."
+  proceed.
+
+  Why do we need this?
+
+  With things like bulk insert, we want to collect all the errors for all the rows in one go. Say you have 4 rows, 1 2
+  3 and 4. If 1 errors then depending on the DBMS, the transaction enters an error state that disallows doing anything
+  else. 2, 3, and 4 will error with a \"transaction has been aborted\" error that you can't clear (AFAIK). This
+  affects Postgres but not H2. Not sure about other DBs yet.
+
+  Without using nested transactions, if you have errors in rows 2 and 4 you'd only see the error in row 2 since 3 and
+  4 would fail with \"transaction has been aborted\" or whatever.
+
+  So the point of using nested transactions is that if 2 is done inside a nested transaction we can rollback the
+  nested transaction which allows the top-level transaction to proceed even tho part of it errored."
   {:arglists '([driver ^java.sql.Connection connection thunk]), :added "0.44.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
