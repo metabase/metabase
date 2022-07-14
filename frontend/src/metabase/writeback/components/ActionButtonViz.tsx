@@ -78,10 +78,10 @@ function ActionButtonViz({
     [settings],
   );
 
-  const extraData = useMemo(() => getExtraDataForClick?.(clicked), [
-    clicked,
-    getExtraDataForClick,
-  ]);
+  const extraData = useMemo(
+    () => getExtraDataForClick?.(clicked),
+    [clicked, getExtraDataForClick],
+  );
 
   const onClick = useCallback(
     (e: React.MouseEvent) => {
