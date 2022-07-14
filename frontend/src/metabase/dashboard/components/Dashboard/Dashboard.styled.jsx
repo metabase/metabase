@@ -4,12 +4,16 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { IFRAMED } from "metabase/lib/dom";
 import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { APP_BAR_HEIGHT, NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
+import {
+  APP_BAR_HEIGHT,
+  APP_MOBILE_BAR_HEIGHT,
+  NAV_SIDEBAR_WIDTH,
+} from "metabase/nav/constants";
 
 // Class names are added here because we still use traditional css,
 // see dashboard.css
@@ -92,7 +96,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   flex-direction: column;
   padding-top: ${space(2)};
   padding-bottom: ${space(1)};
-  z-index: 4;
+  z-index: 3;
 
   ${({ isEditing }) =>
     isEditing &&
@@ -103,10 +107,19 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   ${({ isSticky }) =>
     isSticky &&
     css`
-      border-bottom: 1px solid ${color("border")};
       position: fixed;
       top: ${APP_BAR_HEIGHT};
       left: 0;
+      border-bottom: 1px solid ${color("border")};
+    `}
+
+  ${({ isSticky, isNavbarOpen }) =>
+    isSticky &&
+    !isNavbarOpen &&
+    css`
+      ${breakpointMaxSmall} {
+        top: ${APP_MOBILE_BAR_HEIGHT};
+      }
     `}
 
   ${({ isSticky, isNavbarOpen }) =>
@@ -114,9 +127,8 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
     isNavbarOpen &&
     !IFRAMED &&
     css`
-      width: calc(100% - ${NAV_SIDEBAR_WIDTH});
       left: ${parseInt(NAV_SIDEBAR_WIDTH) + 1 + "px"};
-      top: ${APP_BAR_HEIGHT};
+      width: calc(100% - ${NAV_SIDEBAR_WIDTH});
     `}
 `;
 
