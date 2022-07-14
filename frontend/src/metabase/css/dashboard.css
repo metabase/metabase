@@ -62,11 +62,6 @@
   stroke: none !important;
 }
 
-.Dashboard.Dashboard--night .DashCard .Card {
-  background-color: var(--night-mode-card);
-  border-color: var(--night-mode-card);
-}
-
 .Dashboard.Dashboard--night .enable-dots-onhover .dc-tooltip circle.dot:hover,
 .Dashboard.Dashboard--night .enable-dots .dc-tooltip circle.dot {
   fill: currentColor;
