@@ -21,7 +21,7 @@ const VALIDATIONS = {
   },
   email_list: {
     validate: value => value.every(MetabaseUtils.isEmail),
-    message: t`That's not a valid list of email addresses`,
+    message: t`That's not a valid email address`,
   },
   integer: {
     validate: value => !isNaN(parseInt(value)),
