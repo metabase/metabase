@@ -1,6 +1,7 @@
 import { combineReducers, applyMiddleware, createStore, compose } from "redux";
 import { reducer as form } from "redux-form";
 import { routerReducer as routing, routerMiddleware } from "react-router-redux";
+import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 
 import promise from "redux-promise";
 import logger from "redux-logger";
@@ -41,6 +42,7 @@ export function getStore(reducers, history, intialState, enhancer = a => a) {
     promise,
     ...(DEBUG ? [logger] : []),
     ...(history ? [routerMiddleware(history)] : []),
+    ...PLUGIN_REDUX_MIDDLEWARES,
   ];
 
   return createStore(
