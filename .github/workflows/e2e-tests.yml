@@ -62,23 +62,23 @@ jobs:
         folder:
           - "admin"
           - "binning"
-          - "collections"
-          - "custom-column"
-          - "dashboard"
-          - "dashboard-filters"
-          - "downloads"
-          - "embedding"
-          - "filters"
-          - "joins"
-          - "models"
-          - "native"
-          - "native-filters"
-          - "onboarding"
-          - "organization"
-          - "permissions"
-          - "question"
-          - "sharing"
-          - "visualizations"
+          # - "collections"
+          # - "custom-column"
+          # - "dashboard"
+          # - "dashboard-filters"
+          # - "downloads"
+          # - "embedding"
+          # - "filters"
+          # - "joins"
+          # - "models"
+          # - "native"
+          # - "native-filters"
+          # - "onboarding"
+          # - "organization"
+          # - "permissions"
+          # - "question"
+          # - "sharing"
+          # - "visualizations"
         include:
           - edition: oss
             context: grep
@@ -141,7 +141,9 @@ jobs:
       run: |
         yarn run test-cypress-run \
         --env grepTags=@OSS,grepFilterSpecs=true \
-        --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
+        --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js' \
+        --reporter junit \
+        --reporter-options "mochaFile=results/test-output-[hash].xml"
       env:
         TERM: xterm
 
@@ -150,7 +152,9 @@ jobs:
       run: |
         yarn run test-cypress-run \
         --env grepTags="-@quarantine" \
-        --folder ${{ matrix.folder }}
+        --folder ${{ matrix.folder }}  \
+        --reporter junit \
+        --reporter-options "mochaFile=cypress/test-output-[hash].xml"
       env:
         TERM: xterm
 
@@ -166,6 +170,7 @@ jobs:
         path: |
           ./cypress
           ./logs/test.log
+          ./logs/*.xml
         if-no-files-found: ignore
 
   visual-regression-tests:
@@ -211,3 +216,22 @@ jobs:
         mv version.properties resources/
     - name: Percy Test
       run: yarn run test-visual-run
+
+  publish-test-results:
+    name: "Publish Tests Results"
+    needs: e2e-tests
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      pull-requests: write
+    if: always()
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v2
+        with:
+          path: artifacts
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: "artifacts/**/*.xml"

@@ -43,6 +43,7 @@ describe("scenarios > admin > databases > add", () => {
     cy.log(
       "**Repro for [metabase#14334](https://github.com/metabase/metabase/issues/14334)**",
     );
+    cy.findByText("intentionally broken test FIXME").click();
     cy.findByText("Show advanced options").click();
     cy.findByLabelText("Rerun queries for simple explorations").should(
       "have.attr",
