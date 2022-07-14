@@ -16,8 +16,7 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [tru]]
             [toucan.db :as db])
-  (:import
-   (java.sql Connection)))
+  (:import java.sql.Connection))
 
 (defmulti parse-sql-error
   "Parses the raw error message returned after an error in the driver database occurs, and converts it into a sequence
@@ -58,7 +57,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defn cast-values
+(defn- cast-values
   "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
   uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
   types that do not need casting like integer or string."
@@ -91,24 +90,21 @@
       (with-open [conn (jdbc/get-connection jdbc-spec)]
         ;; execute inside of a transaction.
         (.setAutoCommit conn false)
-        (let [savepoint nil #_(.setSavepoint conn)]
-          (log/tracef "BEGIN transaction on conn 0x%s, Savepoint %s" (System/identityHashCode conn) nil #_(.getSavepointId savepoint))
-          ;; use the strictest transaction isolation level possible to avoid dirty, non-repeatable, and phantom reads
-          (sql-jdbc.execute/set-best-transaction-level! (driver.u/database->driver database-id) conn)
-          (try
-            (let [result (binding [*connection* conn]
-                           (f conn))]
-              (log/debug "f completed successfully; committing transaction.")
-              (log/tracef "COMMIT transaction on conn 0x%s, Savepoint %s" (System/identityHashCode conn) nil #_(.getSavepointId savepoint))
-              (.commit conn)
-              result)
-            (catch Throwable e
-              (log/debugf "f threw Exception; rolling back transaction. Error: %s" (ex-message e))
-              (log/tracef "ROLLBACK transaction on conn 0x%s, Savepoint %s" (System/identityHashCode conn) nil #_(.getSavepointId savepoint))
-              (.rollback conn #_savepoint)
-              (throw e))
-            #_(finally
-              (.releaseSavepoint conn savepoint))))))))
+        (log/tracef "BEGIN transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
+        ;; use the strictest transaction isolation level possible to avoid dirty, non-repeatable, and phantom reads
+        (sql-jdbc.execute/set-best-transaction-level! (driver.u/database->driver database-id) conn)
+        (try
+          (let [result (binding [*connection* conn]
+                         (f conn))]
+            (log/debug "f completed successfully; committing transaction.")
+            (log/tracef "COMMIT transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
+            (.commit conn)
+            result)
+          (catch Throwable e
+            (log/debugf "f threw Exception; rolling back transaction. Error: %s" (ex-message e))
+            (log/tracef "ROLLBACK transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
+            (.rollback conn)
+            (throw e)))))))
 
 (defmacro ^:private with-jdbc-transaction
   "Execute `f` with a JDBC Connection for the Database with `database-id`. Uses [[*connection*]] if already bound,

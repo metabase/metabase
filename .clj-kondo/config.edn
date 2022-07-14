@@ -353,7 +353,7 @@
   metabase.db.liquibase/with-liquibase                                  clojure.core/let
   metabase.driver.mongo.query-processor/mongo-let                       clojure.core/let
   metabase.driver.mongo.util/with-mongo-connection                      clojure.core/let
-  metabase.driver.sql-jdbc.actions/with-jdbc-connection                 clojure.core/let
+  metabase.driver.sql-jdbc.actions/with-jdbc-transaction                clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info clojure.core/fn
   metabase.integrations.ldap/with-ldap-connection                       clojure.core/fn
   metabase.mbql.schema.macros/defclause                                 clj-kondo.lint-as/def-catch-all
