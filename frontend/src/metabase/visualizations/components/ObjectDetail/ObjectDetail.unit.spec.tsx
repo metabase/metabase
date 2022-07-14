@@ -108,14 +108,11 @@ describe("Object Detail", () => {
         canZoom={true}
         canZoomPreviousRow={false}
         canZoomNextRow={false}
-        isWritebackEnabled={false}
         followForeignKey={() => null}
         onVisualizationClick={() => null}
         visualizationIsClickable={() => false}
         fetchTableFks={() => null}
-        updateRowFromObjectDetail={() => null}
         loadObjectDetailFKReferences={() => null}
-        deleteRowFromObjectDetail={() => null}
         viewPreviousObjectDetail={() => null}
         viewNextObjectDetail={() => null}
         closeObjectDetail={() => null}
