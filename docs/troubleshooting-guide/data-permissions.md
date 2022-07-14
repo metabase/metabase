@@ -20,7 +20,7 @@ If a person has the wrong level of access to the data that's returned by a quest
 
 - [People have the wrong access to a table or schema](#cant-restrict-access-to-a-table-or-schema).
 - [People can view collections that contain restricted data](#people-can-view-collections-that-contain-restricted-data).
-- [Getting a "permission denied" error message](#getting-a-"permission-denied"-error-message).
+- [Getting a "permission denied" error message](#getting-a-permission-denied-error-message).
 - [Checking someone's access to a table or schema](#checking-someones-access-to-a-table-or-schema).
 
 ## People can't access the SQL editor
@@ -68,14 +68,14 @@ The [**Block** data permission][block-data-permission] is available on [paid ver
 
 ## Getting a "permission denied" error message
 
-If you get an error message that says something like "permission denied to /<your table/>", you'll need to check if the Metabase application has the correct permissions to query your database.
+If you get an error message that says something like "permission denied to \<your table\>", you'll need to check if the Metabase application has the correct permissions to query your database.
 
 1. Go to the SQL editor and run a basic query against the table or schema in question:
     ```
     SELECT 1
     FROM <your table>;
     ```
-2. Get your Metabase's database credentials. You can find the information from **Admin** > **Databases** > **/<your database/>** > **Connection string**.
+2. Get the credentials that Metabase uses to connect to your database. Ask your database admin if you're not sure.
 3. Run the query from step 1 using a different application (such as your CLI or database IDE) and your Metabase's database credentials.
 4. If you cannot access the table or schema in both step 1 and 3, ask your database admin to:
     - Grant permissions to the role that Metabase is using to connect, or
@@ -83,7 +83,7 @@ If you get an error message that says something like "permission denied to /<you
 
 **Explanation** 
 
-Your database has its own set of permissions that are configured for each person (or application) that logs in. The database permissions can block Metabase from connecting to certain schemas or tables, regardless of the permissions you've set up on the Metabase side. Check with your database admin if you're not sure.
+Your database has its own set of permissions that are configured for each person (or application) that logs in. The database permissions can block Metabase from connecting to certain schemas or tables, regardless of the permissions you've set up on the Metabase side.
 
 ## Checking someone's access to a table or schema
 

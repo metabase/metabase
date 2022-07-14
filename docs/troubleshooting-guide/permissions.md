@@ -6,7 +6,7 @@ title: Troubleshooting permissions
 
 If someone has the wrong level of access to a dashboard or a question, the problem may be coming from group settings, collection permissions, or data permissions.
 
-1. Go to **Admin** > **People** and check if the person is in [more than one group with conflicting permissions][group-permissions].
+1. Go to **Admin** > **People** and check if the person is in [more than one group with different permissions][group-permissions].
 2. If a person can't view or edit questions or dashboards, see [Troubleshooting collection permissions](#troubleshooting-collection-permissions).
 3. If a person can't access schemas, tables, rows, or columns, see [Troubleshooting data permissions](#troubleshooting-data-permissions).
 
@@ -25,12 +25,12 @@ If someone has the wrong level of access to a dashboard or a question, the probl
 
 - [People can't access the SQL editor](./data-permissions#people-cant-access-the-sql-editor).
 - [People with SQL permissions aren't being restricted by their data sandbox](./sandboxing.html#is-the-question-written-in-sql).
-- [People can't _view_ native SQL questions when a block permission is applied to "All Users"](https://github.com/metabase/metabase/issues/21695).
+- [People can't _view_ native SQL questions when a "Block" permission is applied to "All Users"](https://github.com/metabase/metabase/issues/21695).
 
 ### Table or schema permissions
 
 - [People have the wrong access to a table or schema](./data-permissions#people-have-the-wrong-access-to-a-table-or-schema).
-- [Getting a "permission denied" error message](#getting-a-"permission-denied"-error-message).
+- [Getting a "permission denied" error message](./data-permissions#getting-a-permission-denied-error-message).
 - [Checking someone's access to a table or schema](./data-permissions#checking-someones-access-to-a-table-or-schema).
 
 ## Further reading
