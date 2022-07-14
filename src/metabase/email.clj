@@ -33,7 +33,7 @@
   :type :json
   :setter (fn [new-value]
             (->> new-value
-                 (validate-reply-to-addresses)
+                 validate-reply-to-addresses
                  (setting/set-value-of-type! :json :email-reply-to))))
 
 (defsetting email-smtp-host
