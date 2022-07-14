@@ -10,7 +10,6 @@ export const ToggleRoot = styled.div`
 `;
 
 export const ImageContainer = styled.div`
-  padding: 0.5rem 1rem 0.75rem 1.25rem;
   border-right: 1px solid ${color("border")};
 `;
 
