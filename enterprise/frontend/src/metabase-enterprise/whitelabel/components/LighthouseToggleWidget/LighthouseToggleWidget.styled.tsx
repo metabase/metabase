@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { hueRotate } from "metabase/lib/colors";
 
 export const LighthouseImage = styled.div`
-  width: 99.5px;
+  width: 100px;
   height: 90px;
   margin: 0.5rem 1rem;
   filter: hue-rotate(${() => hueRotate("brand")}deg);
