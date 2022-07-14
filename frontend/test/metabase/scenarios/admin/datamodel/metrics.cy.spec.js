@@ -157,7 +157,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
         value: "50",
       });
 
-      cy.button("Apply").click();
+      cy.findByTestId("apply-filters").click();
       cy.findByText("Save").click();
       cy.findAllByText("Save").last().click();
       cy.findByText("Not now").click();

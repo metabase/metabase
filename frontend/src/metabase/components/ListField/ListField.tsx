@@ -31,6 +31,7 @@ const ListField = ({
   optionRenderer,
   placeholder,
   isDashboardFilter,
+  checkedColor,
 }: ListFieldProps) => {
   const [selectedValues, setSelectedValues] = useState(new Set(value));
   const [addedOptions, setAddedOptions] = useState<Option>(() =>
@@ -129,7 +130,9 @@ const ListField = ({
           <OptionContainer key={option[0]}>
             <Checkbox
               data-testid={`${option[0]}-filter-value`}
-              checkedColor={isDashboardFilter ? "brand" : "accent7"}
+              checkedColor={
+                checkedColor ?? isDashboardFilter ? "brand" : "filter"
+              }
               checked={selectedValues.has(option[0])}
               label={<LabelWrapper>{optionRenderer(option)}</LabelWrapper>}
               onChange={() => handleToggleOption(option[0])}

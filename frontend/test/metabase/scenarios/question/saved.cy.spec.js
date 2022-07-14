@@ -168,7 +168,7 @@ describe("scenarios > question > saved", () => {
       operator: "Equal to",
       value: "4",
     });
-    cy.button("Apply").click();
+    cy.findByTestId("apply-filters").click();
 
     cy.findByText("Synergistic Granite Chair");
     cy.findByText("Rustic Paper Wallet").should("not.exist");
