@@ -48,6 +48,7 @@ import {
   AdHocLeftSideRoot,
   HeaderDivider,
   ViewHeaderActionPanel,
+  ViewHeaderIconButtonContainer,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -460,43 +461,51 @@ function ViewTitleHeaderRightSide(props) {
         />
       )}
       {QuestionNotebookButton.shouldRender(props) && (
-        <QuestionNotebookButton
-          ml={2}
-          question={question}
-          isShowingNotebook={isShowingNotebook}
-          setQueryBuilderMode={setQueryBuilderMode}
-          data-metabase-event={
-            isShowingNotebook
-              ? `Notebook Mode;Go to View Mode`
-              : `View Mode; Go to Notebook Mode`
-          }
-        />
+        <ViewHeaderIconButtonContainer>
+          <QuestionNotebookButton
+            iconSize={16}
+            ml={2}
+            question={question}
+            isShowingNotebook={isShowingNotebook}
+            setQueryBuilderMode={setQueryBuilderMode}
+            data-metabase-event={
+              isShowingNotebook
+                ? `Notebook Mode;Go to View Mode`
+                : `View Mode; Go to Notebook Mode`
+            }
+          />
+        </ViewHeaderIconButtonContainer>
       )}
       {NativeQueryButton.shouldRender(props) && (
-        <NativeQueryButton
-          size={16}
-          question={question}
-          data-metabase-event="Notebook Mode; Convert to SQL Click"
-        />
+        <ViewHeaderIconButtonContainer>
+          <NativeQueryButton
+            size={16}
+            question={question}
+            data-metabase-event="Notebook Mode; Convert to SQL Click"
+          />
+        </ViewHeaderIconButtonContainer>
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && (
-        <RunButtonWithTooltip
-          className={cx("text-brand-hover text-dark", {
-            hide: isShowingNotebook,
-            "text-white-hover": isResultDirty,
-          })}
-          medium
-          borderless
-          ml={1}
-          compact
-          result={result}
-          isRunning={isRunning}
-          isDirty={isResultDirty}
-          isPreviewing={isPreviewing}
-          onRun={() => runQuestionQuery({ ignoreCache: true })}
-          onCancel={cancelQuery}
-        />
+        <ViewHeaderIconButtonContainer>
+          <RunButtonWithTooltip
+            className={cx("text-brand-hover text-dark", {
+              hide: isShowingNotebook,
+              "text-white-hover": isResultDirty,
+            })}
+            iconSize={16}
+            onlyIcon
+            medium
+            ml={1}
+            compact
+            result={result}
+            isRunning={isRunning}
+            isDirty={isResultDirty}
+            isPreviewing={isPreviewing}
+            onRun={() => runQuestionQuery({ ignoreCache: true })}
+            onCancel={cancelQuery}
+          />
+        </ViewHeaderIconButtonContainer>
       )}
       {isSaved && (
         <QuestionActions

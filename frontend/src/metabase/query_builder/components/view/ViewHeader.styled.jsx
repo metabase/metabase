@@ -202,3 +202,15 @@ export const ViewHeaderActionPanel = styled.div`
     margin-left: 0.5rem;
   }
 `;
+
+export const ViewHeaderIconButtonContainer = styled.div`
+  ${Button.Root} {
+    padding: 0.5rem 0.75rem;
+    height: 2.5rem;
+
+    &:hover {
+      color: ${color("brand")};
+      background-color: ${color("bg-medium")};
+    }
+  }
+`;
