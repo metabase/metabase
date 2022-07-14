@@ -27,6 +27,7 @@ import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 
+import { SavedCard } from "metabase-types/types/Card";
 import { DashboardWithCards } from "metabase-types/types/Dashboard";
 import { VisualizationProps } from "metabase-types/types/Visualization";
 import { State } from "metabase-types/store";
@@ -129,7 +130,10 @@ function List({
   }, [card, metadata]);
 
   const connectedDashCard = useMemo(() => {
-    return dashboard?.ordered_cards.find(dc => dc.card_id === card.id);
+    const maybeSavedCard = card as SavedCard;
+    return dashboard?.ordered_cards.find(
+      dc => dc.card_id === maybeSavedCard.id,
+    );
   }, [dashboard, card]);
 
   const handleUpdate = useCallback(
