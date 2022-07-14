@@ -173,7 +173,9 @@ const SegmentListItem = ({
     <ListRow data-testid="filter-field-segments">
       <InlineOperatorSelector
         fieldName={t`Segments`}
+        iconName="filter"
         tableName={isSearch ? query.table().displayName() : undefined}
+        value="is"
       />
       <SegmentFilterSelect
         query={query}

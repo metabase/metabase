@@ -51,7 +51,7 @@ describe("scenarios > models", () => {
       operator: "Not empty",
     });
 
-    cy.button("Apply").click();
+    cy.findByTestId("apply-filters").click();
     cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
@@ -100,7 +100,7 @@ describe("scenarios > models", () => {
       operator: "Not empty",
     });
 
-    cy.button("Apply").click();
+    cy.findByTestId("apply-filters").click();
     cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
@@ -309,7 +309,7 @@ describe("scenarios > models", () => {
       filterField("Discount", {
         operator: "Not empty",
       });
-      cy.button("Apply").click();
+      cy.findByTestId("apply-filters").click();
       cy.wait("@dataset");
 
       assertQuestionIsBasedOnModel({

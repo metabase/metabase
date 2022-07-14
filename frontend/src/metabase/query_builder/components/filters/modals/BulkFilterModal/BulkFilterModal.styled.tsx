@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import { space, breakpointMaxSmall } from "metabase/styled-components/theme";
 
 import TabList from "metabase/core/components/TabList";
 import TabPanel from "metabase/core/components/TabPanel";
@@ -11,6 +11,12 @@ export const ModalRoot = styled.div`
   display: flex;
   flex-direction: column;
   height: 90vh;
+  width: 65vw;
+  max-width: 60rem;
+  ${breakpointMaxSmall} {
+    width: 98vw;
+    height: 98vh;
+  }
 `;
 
 export const ModalHeader = styled.div`
@@ -26,7 +32,7 @@ export const ModalBody = styled.div`
 
 export const ModalFooter = styled.div`
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 1rem;
   padding: 1.5rem 2rem;
 `;

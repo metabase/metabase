@@ -77,6 +77,7 @@ function ValuesInput({
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore: this component doesn't have types or propTypes
         value={filterArguments}
+        color="brand"
         onChange={onChange}
         className="input"
         fields={[field]}
@@ -89,14 +90,14 @@ function ValuesInput({
   return (
     <BetweenContainer>
       <NumberInput
-        placeholder={t`min`}
+        placeholder={t`Min`}
         value={filterArguments[0] ?? ""}
         onChange={val => onChange([val, filterArguments[1]])}
         fullWidth
       />
       <NumberSeparator>{t`and`}</NumberSeparator>
       <NumberInput
-        placeholder={t`max`}
+        placeholder={t`Max`}
         value={filterArguments[1] ?? ""}
         onChange={val => onChange([filterArguments[0], val])}
         fullWidth

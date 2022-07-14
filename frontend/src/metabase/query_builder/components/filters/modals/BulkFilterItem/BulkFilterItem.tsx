@@ -74,7 +74,10 @@ export const BulkFilterItem = ({
         <>
           <InlineOperatorSelector
             fieldName={dimension.displayName()}
+            iconName="io"
             tableName={tableName}
+            value={currentOperator}
+            operators={dimension.filterOperators(currentOperator)}
           />
           <BooleanPickerCheckbox
             filter={filter ?? newFilter}
@@ -87,6 +90,9 @@ export const BulkFilterItem = ({
         <>
           <InlineOperatorSelector
             fieldName={dimension.displayName()}
+            value={currentOperator}
+            operators={dimension.filterOperators(currentOperator)}
+            iconName="list"
             tableName={tableName}
           />
           <InlineCategoryPicker
@@ -104,6 +110,7 @@ export const BulkFilterItem = ({
         <>
           <InlineOperatorSelector
             fieldName={dimension.displayName()}
+            iconName={dimension.icon() ?? undefined}
             tableName={tableName}
             value={currentOperator}
             operators={dimension.filterOperators(currentOperator)}
@@ -121,6 +128,7 @@ export const BulkFilterItem = ({
         <>
           <InlineOperatorSelector
             fieldName={dimension.displayName()}
+            iconName={dimension.icon() ?? undefined}
             tableName={tableName}
           />
           <InlineDatePicker
@@ -138,6 +146,9 @@ export const BulkFilterItem = ({
         <>
           <InlineOperatorSelector
             fieldName={dimension.displayName()}
+            value={currentOperator}
+            operators={dimension.filterOperators(currentOperator)}
+            iconName={dimension.icon() ?? undefined}
             tableName={tableName}
           />
           <BulkFilterSelect

@@ -41,7 +41,7 @@ export default class DimensionOptions {
     const tableName = table ? table.objectName() : null;
     const mainSection: DimensionOptionsSection = {
       name: this.name || tableName,
-      icon: this.icon || "table2",
+      icon: this.icon || "table",
       items: [
         ...extraItems,
         ...this.dimensions.map(dimension => ({
