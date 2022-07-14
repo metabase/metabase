@@ -9,6 +9,16 @@ export const GroupName = styled.p`
   color: ${color("text-medium")};
 `;
 
-export const StyledSelect = styled(Select)`
+export const StyledSelect = styled(Select)``;
+
+export const ColumnItemContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
   margin-top: 1rem;
+
+  ${StyledSelect} {
+    width: 100%;
+  }
 `;
