@@ -72,7 +72,7 @@ const runCypress = async (baseUrl, exitFunction) => {
       ? await cypress.open(finalConfig)
       : await cypress.run(finalConfig);
 
-    // At least one test failed, so let's generate a HTML report to helps us find what went wrong
+    // At least one test failed, so let's generate HTML report that helps us determine what went wrong
     if (totalFailed > 0) {
       await executeYarnCommand({
         command: "yarn run generate-cypress-html-report",
