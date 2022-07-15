@@ -6,9 +6,7 @@ import cx from "classnames";
 import * as Urls from "metabase/lib/urls";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
-import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
 
-import Button from "metabase/core/components/Button";
 import ButtonBar from "metabase/components/ButtonBar";
 import Link from "metabase/core/components/Link";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
@@ -70,7 +68,6 @@ const viewTitleHeaderPropTypes = {
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
   isAdditionalInfoVisible: PropTypes.bool,
-  isWritebackEnabled: PropTypes.bool,
 
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
@@ -325,7 +322,6 @@ ViewTitleHeaderRightSide.propTypes = {
   isNativeEditorOpen: PropTypes.bool,
   isShowingFilterSidebar: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
-  isWritebackEnabled: PropTypes.bool,
   isDirty: PropTypes.bool,
   isResultDirty: PropTypes.bool,
   isActionListVisible: PropTypes.bool,
@@ -367,7 +363,6 @@ function ViewTitleHeaderRightSide(props) {
     isNativeEditorOpen,
     isShowingFilterSidebar,
     isShowingSummarySidebar,
-    isWritebackEnabled,
     isDirty,
     isResultDirty,
     isActionListVisible,
@@ -414,13 +409,6 @@ function ViewTitleHeaderRightSide(props) {
   const hasRunButton =
     isRunnable && !isNativeEditorOpen && !isMissingPermissions;
 
-  const database = question.database()?.getPlainObject?.();
-  const hasNewRowButton =
-    isWritebackEnabled &&
-    isDatabaseWritebackEnabled(database) &&
-    !isNative &&
-    query.isRaw();
-
   const handleInfoClick = useCallback(() => {
     if (isShowingQuestionInfoSidebar) {
       onCloseQuestionInfo();
@@ -439,16 +427,6 @@ function ViewTitleHeaderRightSide(props) {
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
         />
-      )}
-      {hasNewRowButton && (
-        <Button
-          primary
-          icon="add"
-          onClick={() => onOpenModal(MODAL_TYPES.INSERT_ROW)}
-          ml={1}
-        >
-          {t`New row`}
-        </Button>
       )}
       {QuestionFilterWidget.shouldRender(props) && (
         <QuestionFilterWidget

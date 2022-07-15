@@ -11,11 +11,13 @@ interface WritebackModalFormProps extends WritebackFormProps {
 
 function WritebackModalForm({
   table,
+  row,
   onClose,
   onSubmit,
   ...props
 }: WritebackModalFormProps) {
-  const title = t`New ${table.objectName()}`;
+  const objectName = table.objectName();
+  const title = row ? t`Edit ${objectName}` : t`New ${objectName}`;
 
   const handleSubmit = useCallback(
     async (values: Record<string, unknown>) => {
@@ -27,7 +29,12 @@ function WritebackModalForm({
 
   return (
     <ModalContent title={title} onClose={onClose}>
-      <WritebackForm table={table} onSubmit={handleSubmit} {...props} />
+      <WritebackForm
+        table={table}
+        row={row}
+        onSubmit={handleSubmit}
+        {...props}
+      />
     </ModalContent>
   );
 }

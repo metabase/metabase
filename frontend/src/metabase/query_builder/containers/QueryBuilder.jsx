@@ -11,8 +11,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getWritebackEnabled } from "metabase/writeback/selectors";
-
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
@@ -172,8 +170,6 @@ const mapStateToProps = (state, props) => {
     isHeaderVisible: getIsHeaderVisible(state),
     isActionListVisible: getIsActionListVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
-
-    isWritebackEnabled: getWritebackEnabled(state),
 
     parameters: getParameters(state),
     databaseFields: getDatabaseFields(state),

@@ -26,20 +26,15 @@ import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm";
 import BulkFilterModal from "metabase/query_builder/components/filters/modals/BulkFilterModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import QuestionMoveToast from "./QuestionMoveToast";
 
-import { createRowFromTableView } from "metabase/query_builder/actions/writeback";
-
-const mapDispatchToProps = dispatch => ({
-  setQuestionCollection: (...args) =>
-    dispatch(Questions.actions.setCollection(...args)),
-  createRowFromTableView: payload => dispatch(createRowFromTableView(payload)),
-});
+const mapDispatchToProps = {
+  setQuestionCollection: Questions.actions.setCollection,
+};
 
 class QueryModals extends React.Component {
   showAlertsAfterQuestionSaved = () => {
@@ -61,19 +56,8 @@ class QueryModals extends React.Component {
   };
 
   render() {
-    const {
-      modal,
-      modalContext,
-      question,
-      onCloseModal,
-      onOpenModal,
-      createRowFromTableView,
-    } = this.props;
-
-    const onInsert = values => {
-      const table = question.table();
-      createRowFromTableView({ table, values });
-    };
+    const { modal, modalContext, question, onCloseModal, onOpenModal } =
+      this.props;
 
     return modal === MODAL_TYPES.SAVE ? (
       <Modal form onClose={onCloseModal}>
@@ -267,14 +251,6 @@ class QueryModals extends React.Component {
         <MoveEventModal
           eventId={modalContext}
           collectionId={question.collectionId()}
-          onClose={onCloseModal}
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.INSERT_ROW ? (
-      <Modal onClose={onCloseModal}>
-        <WritebackModalForm
-          table={question.table()}
-          onSubmit={onInsert}
           onClose={onCloseModal}
         />
       </Modal>

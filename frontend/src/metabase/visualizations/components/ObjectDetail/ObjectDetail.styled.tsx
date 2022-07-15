@@ -71,12 +71,6 @@ export const GridCell = styled.div<GridItemProps>`
     ${props => props.colSpan || 1};
 `;
 
-export const EditingFormContainer = styled.div`
-  overflow-y: auto;
-  flex: 1;
-  padding: 2rem;
-`;
-
 export const RootModal = styled(Modal)`
   ${ObjectDetailModal} {
     overflow: hidden;
@@ -108,12 +102,6 @@ export const RootModal = styled(Modal)`
   ${ObjectRelationships} {
     ${breakpointMinMedium} {
       flex: 0 0 33.3333%;
-      max-height: calc(80vh - 4rem);
-    }
-  }
-
-  ${EditingFormContainer} {
-    ${breakpointMinMedium} {
       max-height: calc(80vh - 4rem);
     }
   }
