@@ -285,6 +285,22 @@
 
 ;;;; Bulk actions
 
+;;; All bulk Actions require at least
+;;;
+;;;    {:database <id>, :table-id <id>
+
+(s/def :actions.args.crud.bulk.common/table-id
+  :actions.args/id)
+
+(s/def :actions.args.crud.bulk/common
+  (s/merge
+   :actions.args/common
+   (s/keys :req-un [:actions.args.crud.bulk.common/table-id])))
+
+;;; this is used by several of the bulk actions but not necessarily required.
+(s/def :actions.args.crud.bulk/rows
+  (s/cat :rows (s/+ (s/map-of keyword? any?))))
+
 ;;;; `:bulk/create`
 
 ;;; For `bulk/create` the request body is to `POST /api/action/:action-namespace/:action-name/:table-id` is just a
@@ -300,18 +316,29 @@
   [_action {:keys [database table-id], rows :arg, :as _arg-map}]
   {:database database, :table-id table-id, :rows rows})
 
-(s/def :actions.args.crud.bulk.create/table-id
-  :actions.args/id)
-
-(s/def :actions.args.crud.bulk.create/rows
-  (s/cat :rows (s/+ (s/map-of keyword? any?))))
-
 (s/def :actions.args.crud.bulk/create
   (s/merge
-   :actions.args/common
-   (s/keys :req-un [:actions.args.crud.bulk.create/table-id
-                    :actions.args.crud.bulk.create/rows])))
+   :actions.args.crud.bulk/common
+   (s/keys :req-un [:actions.args.crud.bulk/rows])))
 
 (defmethod action-arg-map-spec :bulk/create
   [_action]
   :actions.args.crud.bulk/create)
+
+;;;; `:bulk/update`
+
+;; `:bulk/update` has the exact same request shape and transform behavior as `:bulk/create` so go read that if you're
+;; wondering how it's supposed to look.
+
+(defmethod normalize-action-arg-map :bulk/update
+  [_action {:keys [database table-id], rows :arg}]
+  {:database database, :table-id table-id, :rows rows})
+
+(s/def :actions.args.crud.bulk/update
+  (s/merge
+   :actions.args.crud.bulk/common
+   (s/keys :req-un [:actions.args.crud.bulk/rows])))
+
+(defmethod action-arg-map-spec :bulk/update
+  [_action]
+  :actions.args.crud.bulk/update)

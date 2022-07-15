@@ -1,14 +1,17 @@
 (ns metabase.driver.sql-jdbc.actions
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.actions :as actions]
+            [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.util :as driver.u]
+            [metabase.models.field :refer [Field]]
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.store :as qp.store]
@@ -270,39 +273,103 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod actions/perform-action!* [:sql-jdbc :bulk/create]
-  [driver _action {database-id :id, :as database} {:keys [table-id rows]}]
-  (log/tracef "Inserting %d rows" (count rows))
-  (with-jdbc-transaction [conn database-id]
+(defn- perform-bulk-action-with-repeated-single-row-actions!
+  [{:keys [driver database action rows xform]
+    :or   {xform identity}}]
+  (assert (seq rows))
+  (with-jdbc-transaction [conn (u/the-id database)]
     (transduce
-     (map-indexed (fn [i row] [i row]))
+     (comp xform (m/indexed))
      (fn
        ([]
         [[] []])
-       ([[errors created-rows]]
-        ;; if there were any errors throw an Exception with all the error messages.
+
+       ([[errors successes]]
         (when (seq errors)
-          (.rollback conn)
-          (throw (ex-info (tru "Error(s) inserting rows.")
-                          {:status-code 400, :errors errors})))
-        ;; if there we no errors then return the created rows.
-        {:created-rows created-rows})
-       ([[errors created-rows] [row-index row]]
+          (.rollback conn))
+        [errors successes])
+
+       ([[errors successes] [row-index arg-map]]
         (try
           (let [result (do-nested-transaction
                         driver
                         conn
                         (fn []
-                          (actions/perform-action!*
-                           driver
-                           :row/create
-                           database
-                           {:database   database-id
-                            :type       :query
-                            :query      {:source-table table-id}
-                            :create-row row})))]
-            [errors (conj created-rows (:created-row result))])
+                          (actions/perform-action!* driver action database arg-map)))]
+            [errors
+             (conj successes result)])
           (catch Throwable e
             [(conj errors {:index row-index, :error (ex-message e)})
-             created-rows]))))
+             successes]))))
      rows)))
+
+(defmethod actions/perform-action!* [:sql-jdbc :bulk/create]
+  [driver _action database {:keys [table-id rows]}]
+  (log/tracef "Inserting %d rows" (count rows))
+  (perform-bulk-action-with-repeated-single-row-actions!
+   {:driver   driver
+    :database database
+    :action   :row/create
+    :rows     rows
+    :xform    (comp (map (fn [row]
+                           {:database   (u/the-id database)
+                            :type       :query
+                            :query      {:source-table table-id}
+                            :create-row row}))
+                    #(completing % (fn [[errors successes]]
+                                     (when (seq errors)
+                                       (throw (ex-info (tru "Error(s) inserting rows.")
+                                                       {:status-code 400, :errors errors})))
+                                     {:created-rows (map :created-row successes)})))}))
+
+(defn- table-id->pk-field-name->id [table-id]
+  (db/select-field->id :name Field
+    {:where [:and
+             [:= :table_id table-id]
+             (mdb.u/isa :semantic_type :type/PK)]}))
+
+(defn- pk-value-map->honeysql-filter-clause [pk-name->id pk-value-map]
+  (into [:and] (for [[pk-name value] pk-value-map]
+                 [:=
+                  [:field (get pk-name->id (u/qualified-name pk-name)) nil]
+                  value])))
+
+(defn- bulk-update-row-xform [database table-id]
+  ;; TODO -- make sure all rows specify the PK columns
+  (let [pk-name->id (table-id->pk-field-name->id table-id)
+        pk-keys     (set (map keyword (keys pk-name->id)))]
+    (fn [row]
+      (let [pk-column->value (select-keys row pk-keys)
+            non-pk-keys      (set/difference (set (keys row)) pk-keys)]
+        (when (empty? non-pk-keys)
+          (throw (ex-info (tru "Invalid update row map: no non-PK column. Got {0}, all of which are PKs."
+                               (pr-str non-pk-keys))
+                          {:status-code 400
+                           :all-keys    (set (keys row))
+                           :pk-keys     pk-keys})))
+        {:database   (u/the-id database)
+         :type       :query
+         :query      {:source-table table-id
+                      :filter       (pk-value-map->honeysql-filter-clause pk-name->id pk-column->value)}
+         :update-row (select-keys row non-pk-keys)}))))
+
+(defmethod actions/perform-action!* [:sql-jdbc :bulk/update]
+  [driver _action database {:keys [table-id rows]}]
+  (log/tracef "Updating %d rows" (count rows))
+  (perform-bulk-action-with-repeated-single-row-actions!
+   {:driver   driver
+    :database database
+    :action   :row/update
+    :rows     rows
+    :xform    (comp (map (bulk-update-row-xform database table-id))
+                    #(completing % (fn [[errors successes]]
+                                     (when (seq errors)
+                                       (throw (ex-info (tru "Error(s) updating rows.")
+                                                       {:status-code 400, :errors errors})))
+                                     (transduce
+                                      (map (comp first :rows-updated))
+                                      (completing +
+                                                  (fn [num-rows-updated]
+                                                    {:rows-updated num-rows-updated}))
+                                      0
+                                      successes))))}))

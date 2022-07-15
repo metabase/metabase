@@ -370,3 +370,26 @@
           (testing "Should not have committed any of the valid rows"
             (is (= 75
                    (categories-row-count)))))))))
+
+(deftest bulk-update-happy-path-test
+  (testing "POST /api/action/bulk/update/:table-id"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.test-util/with-actions-test-data-and-actions-enabled
+        (letfn [(first-three-categories []
+                  (mt/rows (mt/run-mbql-query categories {:filter [:< $id 4], :order-by [[:asc $id]]})))]
+          (is (= [[1 "African"]
+                  [2 "American"]
+                  [3 "Artisan"]]
+                 (first-three-categories)))
+          (is (= {:rows-updated 2}
+                 (mt/user-http-request :crowberto :post 200
+                                       (format "action/bulk/update/%d" (mt/id :categories))
+                                       (let [id   (format-field-name :id)
+                                             name (format-field-name :name)]
+                                         [{id 1, name "Seed Bowl"}
+                                          {id 2, name "Millet Treat"}]))))
+          (testing "rows should be updated in the DB"
+            (is (= [[1 "Seed Bowl"]
+                    [2 "Millet Treat"]
+                    [3 "Artisan"]]
+                   (first-three-categories)))))))))
