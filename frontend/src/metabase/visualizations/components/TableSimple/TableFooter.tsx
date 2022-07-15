@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import _ from "underscore";
 import { t } from "ttag";
+import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 
@@ -13,6 +14,7 @@ import {
 } from "./TableSimple.styled";
 
 interface Props {
+  className?: string;
   start: number;
   end: number;
   total: number;
@@ -23,7 +25,15 @@ interface Props {
 
 const TableFooter = React.forwardRef<HTMLDivElement, Props>(
   function TableFooter(
-    { start, end, limit, total, handlePreviousPage, handleNextPage }: Props,
+    {
+      className,
+      start,
+      end,
+      limit,
+      total,
+      handlePreviousPage,
+      handleNextPage,
+    }: Props,
     ref,
   ) {
     const paginateMessage = useMemo(() => {
@@ -35,7 +45,10 @@ const TableFooter = React.forwardRef<HTMLDivElement, Props>(
 
     return (
       <TableFooterRoot
-        className="fullscreen-normal-text fullscreen-night-text"
+        className={cx(
+          className,
+          "fullscreen-normal-text fullscreen-night-text",
+        )}
         ref={ref}
       >
         <PaginationMessage>{paginateMessage}</PaginationMessage>

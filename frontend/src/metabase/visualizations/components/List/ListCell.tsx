@@ -19,7 +19,6 @@ import {
 } from "metabase-types/types/Visualization";
 
 import MiniBar from "../MiniBar";
-import { CellType } from "./types";
 import { CellRoot, CellContent } from "./ListCell.styled";
 
 export interface ListCellProps
@@ -147,21 +146,12 @@ function ListCell({
     };
   }, [clicked, extraData, onVisualizationClick]);
 
-  const type: CellType = useMemo(() => {
-    const isPrimarySlot = slot === "left";
-    const isListItemImage = isPrimarySlot && columnSettings.view_as === "image";
-    if (isListItemImage) {
-      return "image";
-    }
-    return isPrimarySlot ? "primary" : "secondary";
-  }, [slot, columnSettings]);
-
   const classNames = cx("fullscreen-normal-text fullscreen-night-text", {
     link: isClickable,
   });
 
   return (
-    <CellRoot className={classNames} type={type}>
+    <CellRoot className={classNames} slot={slot}>
       <CellContent
         isClickable={isClickable}
         onClick={isClickable ? onClick : undefined}

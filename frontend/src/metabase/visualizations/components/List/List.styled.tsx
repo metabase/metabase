@@ -1,9 +1,11 @@
 import styled from "@emotion/styled";
-import { css } from "@emotion/react";
-
-import Button from "metabase/core/components/Button";
 
 import { color } from "metabase/lib/colors";
+
+import TableFooter from "../TableSimple/TableFooter";
+import { CellRoot } from "./ListCell.styled";
+
+export const LIST_ITEM_VERTICAL_GAP = "16px";
 
 export const Root = styled.div`
   display: flex;
@@ -11,82 +13,48 @@ export const Root = styled.div`
   position: relative;
 `;
 
-export const ContentContainer = styled.div`
-  position: relative;
-  flex: 1 0 auto;
-`;
-
-export const TableContainer = styled.div`
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 0;
-  left: 0;
-
-  overflow-x: auto;
-  overflow-y: hidden;
-
-  padding-left: 1rem;
-  padding-right: 1rem;
-`;
-
-const standardTableStyleReset = css`
-  border-collapse: collapse;
-  border-spacing: 0;
-
-  width: 100%;
-
-  font-size: 12px;
-  line-height: 12px;
-  text-align: left;
-`;
-
-export const Table = styled.table`
-  ${standardTableStyleReset}
-
-  border-collapse: separate;
-  border-spacing: 0rem 1rem;
-`;
-
-const LIST_ROW_BORDER_RADIUS = "8px";
-
-export const ListRow = styled.tr`
-  position: relative;
+export const ListItemContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   height: 4rem;
+  border-radius: 8px;
+  box-shadow: 4px 5px 10px 3px ${color("shadow")};
+
+  padding: 0 0.5rem;
+
   background-color: ${color("bg-white")};
-  border: 1px solid ${color("border")};
 
-  td:first-of-type {
-    border-top-left-radius: ${LIST_ROW_BORDER_RADIUS};
-    border-bottom-left-radius: ${LIST_ROW_BORDER_RADIUS};
+  transition: all 0.1s ease-in-out;
 
-    padding-left: 1rem;
-  }
-
-  td:last-of-type {
-    border-top-right-radius: ${LIST_ROW_BORDER_RADIUS};
-    border-bottom-right-radius: ${LIST_ROW_BORDER_RADIUS};
-
-    padding-right: 1rem;
-  }
-
-  &:before {
-    content: "";
-
-    position: absolute;
-    left: 0;
-    right: 0;
-
-    display: block;
-    height: 4rem;
-    border-radius: ${LIST_ROW_BORDER_RADIUS};
-
-    box-shadow: 4px 5px 10px 3px ${color("shadow")};
-
-    pointer-events: none;
+  &:hover {
+    cursor: pointer;
+    transform: scale(0.97);
   }
 `;
 
-export const RowActionButton = styled(Button)`
-  margin-left: 0.5rem;
+export const ListItemContent = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+// Adding horizontal margin so list item shadows don't get cut in dashboard cards
+// Because of overflow: hidden style. We need overflow-y: hidden to limit the number of visible rows
+// And it's impossible to combine overflow-x: visible with overflow-y: hidden
+// https://stackoverflow.com/questions/6421966/css-overflow-x-visible-and-overflow-y-hidden-causing-scrollbar-issue
+export const ContentContainer = styled.div`
+  margin: 0 1rem;
+
+  ${ListItemContainer}:not(:first-of-type) {
+    margin-top: ${LIST_ITEM_VERTICAL_GAP};
+  }
+`;
+
+export const Footer = styled(TableFooter)`
+  margin-top: 0.5rem;
+`;
+
+export const RowActionButtonContainer = styled(CellRoot)`
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
 `;

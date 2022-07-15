@@ -10,6 +10,7 @@ import _ from "lodash";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
+import Button from "metabase/core/components/Button";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 
@@ -28,21 +29,21 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 import { SavedCard } from "metabase-types/types/Card";
+import { Row } from "metabase-types/types/Dataset";
 import { DashboardWithCards } from "metabase-types/types/Dashboard";
 import { VisualizationProps } from "metabase-types/types/Visualization";
 import { State } from "metabase-types/store";
 
 import ListCell from "./ListCell";
-import TableFooter from "../TableSimple/TableFooter";
 import {
   Root,
   ContentContainer,
-  Table,
-  TableContainer,
-  ListRow,
-  RowActionButton,
+  Footer,
+  ListItemContainer,
+  ListItemContent,
+  RowActionButtonContainer,
+  LIST_ITEM_VERTICAL_GAP,
 } from "./List.styled";
-import { CellRoot } from "./ListCell.styled";
 
 function getBoundingClientRectSafe(ref: React.RefObject<HTMLBaseElement>) {
   return ref.current?.getBoundingClientRect?.() ?? ({} as DOMRect);
@@ -77,7 +78,6 @@ function List({
   height,
   className,
   isDataApp,
-  getColumnTitle,
   onVisualizationClick,
   visualizationIsClickable,
   getExtraDataForClick,
@@ -91,16 +91,16 @@ function List({
   const { modalContent: confirmationModalContent, show: requestConfirmation } =
     useConfirmation();
 
-  const headerRef = useRef(null);
   const footerRef = useRef(null);
   const firstRowRef = useRef(null);
 
   useLayoutEffect(() => {
-    const { height: headerHeight } = getBoundingClientRectSafe(headerRef);
     const { height: footerHeight = 0 } = getBoundingClientRectSafe(footerRef);
     const { height: rowHeight = 0 } = getBoundingClientRectSafe(firstRowRef);
+    const rowHeightWithMargin =
+      rowHeight + parseInt(LIST_ITEM_VERTICAL_GAP, 10);
     const currentPageSize = Math.floor(
-      (height - headerHeight - footerHeight) / (rowHeight + 1),
+      (height - footerHeight) / rowHeightWithMargin,
     );
     const normalizedPageSize = Math.max(1, currentPageSize);
     if (pageSize !== normalizedPageSize) {
@@ -156,7 +156,7 @@ function List({
   );
 
   const handleDelete = useCallback(
-    (row: unknown[]) => {
+    (row: Row) => {
       if (!table || !connectedDashCard) {
         return;
       }
@@ -202,16 +202,7 @@ function List({
     [rowIndexes, start, end],
   );
 
-  const renderColumnHeader = useCallback(
-    (col, colIndex) => (
-      <th key={colIndex} data-testid="column-header">
-        {getColumnTitle(colIndex)}
-      </th>
-    ),
-    [getColumnTitle],
-  );
-
-  const listColumnIndexes = useMemo(() => {
+  const listColumnIndexes = useMemo<{ left: number[]; right: number[] }>(() => {
     const left = settings["list.columns"].left.map((idOrFieldRef: any) =>
       cols.findIndex(
         col =>
@@ -224,16 +215,43 @@ function List({
           col.id === idOrFieldRef || _.isEqual(col.field_ref, idOrFieldRef),
       ),
     );
-    return [...left, ...right];
+    return { left, right };
   }, [cols, settings]);
 
   const hasEditButton = settings["buttons.edit"];
-  const hasDeleteButton = settings["buttons.edit"];
+  const hasDeleteButton = settings["buttons.delete"];
 
-  const renderRow = useCallback(
+  const renderListItemCell = useCallback(
+    (rowIndex: number, columnIndex: number, slot: "left" | "right") => (
+      <ListCell
+        value={data.rows[rowIndex][columnIndex]}
+        slot={slot}
+        data={data}
+        series={series}
+        settings={settings}
+        rowIndex={rowIndex}
+        columnIndex={columnIndex}
+        getExtraDataForClick={getExtraDataForClick}
+        checkIsVisualizationClickable={checkIsVisualizationClickable}
+        onVisualizationClick={onVisualizationClick}
+      />
+    ),
+    [
+      series,
+      settings,
+      data,
+      checkIsVisualizationClickable,
+      getExtraDataForClick,
+      onVisualizationClick,
+    ],
+  );
+
+  const renderListItem = useCallback(
     (rowIndex, index) => {
       const ref = index === 0 ? firstRowRef : null;
       const row = data.rows[rowIndex];
+
+      const { left, right } = listColumnIndexes;
 
       const onEditClick = (event: React.SyntheticEvent) => {
         setFocusedRow(row);
@@ -246,53 +264,46 @@ function List({
       };
 
       return (
-        <ListRow key={rowIndex} ref={ref} data-testid="table-row">
-          {listColumnIndexes.map((columnIndex, slotIndex) => (
-            <ListCell
-              key={`${rowIndex}-${columnIndex}`}
-              value={row[columnIndex]}
-              slot={slotIndex <= 2 ? "left" : "right"}
-              data={data}
-              series={series}
-              settings={settings}
-              rowIndex={rowIndex}
-              columnIndex={columnIndex}
-              getExtraDataForClick={getExtraDataForClick}
-              checkIsVisualizationClickable={checkIsVisualizationClickable}
-              onVisualizationClick={onVisualizationClick}
-            />
-          ))}
-          {hasEditButton && (
-            <CellRoot type="action">
-              <RowActionButton
-                disabled={!isDataApp}
-                onClick={onEditClick}
-              >{t`Edit`}</RowActionButton>
-            </CellRoot>
-          )}
-          {hasDeleteButton && (
-            <CellRoot type="action">
-              <RowActionButton
-                disabled={!isDataApp}
-                onClick={onDeleteClick}
-                danger
-              >{t`Delete`}</RowActionButton>
-            </CellRoot>
-          )}
-        </ListRow>
+        <ListItemContainer key={rowIndex} ref={ref} data-testid="table-row">
+          <ListItemContent>
+            {left.map(columnIndex =>
+              renderListItemCell(rowIndex, columnIndex, "left"),
+            )}
+          </ListItemContent>
+          <ListItemContent>
+            {right.map(columnIndex =>
+              renderListItemCell(rowIndex, columnIndex, "right"),
+            )}
+            {hasEditButton && (
+              <RowActionButtonContainer type="action">
+                <Button
+                  disabled={!isDataApp}
+                  onClick={onEditClick}
+                  small
+                >{t`Edit`}</Button>
+              </RowActionButtonContainer>
+            )}
+            {hasDeleteButton && (
+              <RowActionButtonContainer type="action">
+                <Button
+                  disabled={!isDataApp}
+                  onClick={onDeleteClick}
+                  small
+                  danger
+                >{t`Delete`}</Button>
+              </RowActionButtonContainer>
+            )}
+          </ListItemContent>
+        </ListItemContainer>
       );
     },
     [
-      listColumnIndexes,
       data,
-      series,
-      settings,
-      isDataApp,
+      listColumnIndexes,
       hasEditButton,
       hasDeleteButton,
-      checkIsVisualizationClickable,
-      getExtraDataForClick,
-      onVisualizationClick,
+      isDataApp,
+      renderListItemCell,
       handleDelete,
     ],
   );
@@ -301,21 +312,10 @@ function List({
     <>
       <Root className={className}>
         <ContentContainer>
-          <TableContainer className="scroll-show scroll-show--hover">
-            <Table className="fullscreen-normal-text fullscreen-night-text">
-              <thead ref={headerRef} className="hide">
-                <tr>
-                  {cols.map(renderColumnHeader)}
-                  {hasEditButton && <th data-testid="column-header" />}
-                  {hasDeleteButton && <th data-testid="column-header" />}
-                </tr>
-              </thead>
-              <tbody>{paginatedRowIndexes.map(renderRow)}</tbody>
-            </Table>
-          </TableContainer>
+          {paginatedRowIndexes.map(renderListItem)}
         </ContentContainer>
         {pageSize < rows.length && (
-          <TableFooter
+          <Footer
             start={start}
             end={end}
             limit={limit}
