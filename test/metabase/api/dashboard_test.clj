@@ -1364,10 +1364,6 @@
                       :price         "_PRICE_"
                       :id            "_ID_"}}))))
 
-(defn ^:private take-n-values
-  [n result]
-  (update result :values #(take n %)))
-
 (defmacro with-chain-filter-fixtures [[binding dashboard-values] & body]
   `(do-with-chain-filter-fixtures ~dashboard-values (fn [~binding] ~@body)))
 
@@ -1402,15 +1398,15 @@
       (testing "Show me names of categories"
         (is (= {:values          ["African" "American" "Artisan"]
                 :has_more_values false}
-               (take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
-                                                                       (:id dashboard)
-                                                                       (:category-name param-keys)))))))
+               (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
+                                                                                         (:id dashboard)
+                                                                                         (:category-name param-keys)))))))
       (let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
                                              (:price param-keys) 4)]
         (testing "\nShow me names of categories that have expensive venues (price = 4)"
           (is (= {:values          ["Japanese" "Steakhouse"]
                   :has_more_values false}
-                 (take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
       ;; this is the format the frontend passes multiple values in (pass the parameter multiple times), and our
       ;; middleware does the right thing and converts the values to a vector
       (let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
@@ -1420,7 +1416,7 @@
           (testing "Show me names of categories that have (somewhat) expensive venues (price = 3 *or* 4)"
             (is (= {:values          ["American" "Asian" "BBQ"]
                     :has_more_values false}
-                   (take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))
+                   (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))
     (testing "Should require perms for the Dashboard"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
@@ -1438,9 +1434,9 @@
                                                       (assoc  :card_id (:id card-2)))]]
           (is (= {:values          ["African" "American" "Artisan"]
                   :has_more_values false}
-                 (take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
-                                                                            (:id dashboard)
-                                                                            (:category-name param-keys)))))))))
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
+                                                                                              (:id dashboard)
+                                                                                              (:category-name param-keys)))))))))
     (testing "should check perms for the Fields in question"
       (mt/with-temp-copy-of-db
         (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
@@ -1460,13 +1456,13 @@
           (testing "\nShow me names of categories that include 'bar' (case-insensitive)"
             (is (= {:values          ["Bar" "Gay Bar" "Juice Bar"]
                     :has_more_values false}
-                   (take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))
+                   (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))
 
       (let-url [url (chain-filter-search-url dashboard (:category-name param-keys) "house" (:price param-keys) 4)]
         (testing "\nShow me names of categories that include 'house' that have expensive venues (price = 4)"
           (is (= {:values          ["Steakhouse"]
                   :has_more_values false}
-                 (take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
 
       (testing "Should require a non-empty query"
         (doseq [query [nil
@@ -1508,7 +1504,7 @@
           (let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
             (is (= {:values          ["African" "American" "Artisan"]
                     :has_more_values false}
-                   (take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))))
+                   (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))))
 
 (deftest chain-filter-human-readable-values-remapping-test
   (testing "Chain filtering for Fields that have Human-Readable values\n"
@@ -1535,25 +1531,25 @@
                                     [ 8 "25°"]
                                     [93 "33 Taps"]]
                   :has_more_values false}
-                 (take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
         (let-url [url (chain-filter-values-url dashboard "_ID_" "_PRICE_" 4)]
           (is (= {:values          [[55 "Dal Rae Restaurant"]
                                     [61 "Lawry's The Prime Rib"]
                                     [16 "Pacific Dining Car - Santa Monica"]]
                   :has_more_values false}
-                 (take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
 
       (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
         (let-url [url (chain-filter-search-url dashboard "_ID_" "fish")]
           (is (= {:values          [[90 "Señor Fish"]]
                   :has_more_values false}
-                 (take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
         (let-url [url (chain-filter-search-url dashboard "_ID_" "sushi" "_PRICE_" 4)]
           (is (= {:values          [[77 "Sushi Nakazawa"]
                                     [79 "Sushi Yasuda"]
                                     [81 "Tanoshi Sushi & Sake Bar"]]
                   :has_more_values false}
-                 (take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))
 
 (deftest chain-filter-fk-field-to-field-remapping-test
   (testing "Chain filtering for Fields that have a FK Field -> Field remapping\n"

@@ -3,6 +3,7 @@
   (:require [clojure.test :refer :all]
             [metabase.api.dashboard-test :as api.dashboard-test]
             [metabase.models :refer [DashboardCard FieldValues]]
+            [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.test :as mt]
@@ -17,11 +18,13 @@
         (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
           (testing "GET /api/dashboard/:id/params/:param-key/values"
             (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-values-url dashboard "_CATEGORY_NAME_")]
-              (is (= ["African" "American"]
-                     (take 2 (mt/user-http-request :rasta :get 200 url))))))
+              (is (= {:values          ["African" "American"]
+                      :has_more_values false}
+                     (chain-filter-test/take-n-values 2 (mt/user-http-request :rasta :get 200 url))))))
           (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
             (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-search-url dashboard "_CATEGORY_NAME_" "a")]
-              (is (= ["African" "American"]
+              (is (= {:values          ["African" "American"]
+                      :has_more_values false}
                      (mt/user-http-request :rasta :get 200 url))))))))))
 
 (deftest add-card-parameter-mapping-permissions-test

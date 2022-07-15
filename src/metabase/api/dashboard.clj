@@ -619,15 +619,6 @@
             (api/throw-403 e)
             (throw e))))))))
 
-(some true? [false false false])
-
-
-(apply or [false false true])
-
-(or false false true)
-
-(some true? [false false true])
-
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
   parameters like `other-parameter=value` e.g.
