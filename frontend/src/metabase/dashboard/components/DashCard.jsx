@@ -32,6 +32,7 @@ import _ from "underscore";
 import { getIn } from "icepick";
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 import Utils from "metabase/lib/utils";
+import { DashCardRoot } from "./DashCard.styled";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
@@ -59,6 +60,7 @@ export default class DashCard extends Component {
     fetchCardData: PropTypes.func.isRequired,
     navigateToNewCardFromDashboard: PropTypes.func.isRequired,
     headerIcon: PropTypes.shape(iconPropTypes),
+    isNightMode: PropTypes.bool,
   };
 
   constructor(props) {
@@ -114,6 +116,7 @@ export default class DashCard extends Component {
       parameterValues,
       mode,
       headerIcon,
+      isNightMode,
     } = this.props;
 
     const mainCard = {
@@ -184,9 +187,9 @@ export default class DashCard extends Component {
     const gridSize = { width: dashcard.sizeX, height: dashcard.sizeY };
 
     return (
-      <div
+      <DashCardRoot
         className={cx(
-          "Card bordered rounded flex flex-column hover-parent hover--visibility",
+          "Card rounded flex flex-column hover-parent hover--visibility",
           {
             "Card--slow": isSlow === "usually-slow",
           },
@@ -196,6 +199,7 @@ export default class DashCard extends Component {
             ? { border: 0, background: "transparent", boxShadow: "none" }
             : null
         }
+        isNightMode={isNightMode}
       >
         {isEditingDashboardLayout ? (
           <DashboardCardActionsPanel onMouseDown={this.preventDragging}>
@@ -299,7 +303,7 @@ export default class DashCard extends Component {
           }
           onChangeLocation={this.props.onChangeLocation}
         />
-      </div>
+      </DashCardRoot>
     );
   }
 }
