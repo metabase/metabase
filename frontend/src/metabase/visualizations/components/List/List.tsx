@@ -225,6 +225,7 @@ function List({
   const renderListItemCell = useCallback(
     (rowIndex: number, columnIndex: number, slot: CellSlot) => (
       <ListCell
+        key={`${rowIndex}-${columnIndex}`}
         value={data.rows[rowIndex][columnIndex]}
         slot={slot}
         data={data}
@@ -247,12 +248,41 @@ function List({
     ],
   );
 
+  const renderListItemLeftPart = useCallback(
+    (rowIndex: number) => {
+      const listVariant = settings["list.variant"];
+      const { left } = listColumnIndexes;
+
+      if (listVariant === "info") {
+        const [firstColumnIndex, secondColumnIndex, thirdColumnIndex] = left;
+        return (
+          <ListItemContent>
+            {renderListItemCell(rowIndex, firstColumnIndex, "left")}
+            <div>
+              {renderListItemCell(rowIndex, secondColumnIndex, "left")}
+              {renderListItemCell(rowIndex, thirdColumnIndex, "left")}
+            </div>
+          </ListItemContent>
+        );
+      }
+
+      return (
+        <ListItemContent>
+          {left.map(columnIndex =>
+            renderListItemCell(rowIndex, columnIndex, "left"),
+          )}
+        </ListItemContent>
+      );
+    },
+    [settings, listColumnIndexes, renderListItemCell],
+  );
+
   const renderListItem = useCallback(
     (rowIndex, index) => {
       const ref = index === 0 ? firstRowRef : null;
       const row = data.rows[rowIndex];
 
-      const { left, right } = listColumnIndexes;
+      const { right } = listColumnIndexes;
 
       const onEditClick = (event: React.SyntheticEvent) => {
         setFocusedRow(row);
@@ -266,11 +296,7 @@ function List({
 
       return (
         <ListItemContainer key={rowIndex} ref={ref} data-testid="table-row">
-          <ListItemContent>
-            {left.map(columnIndex =>
-              renderListItemCell(rowIndex, columnIndex, "left"),
-            )}
-          </ListItemContent>
+          {renderListItemLeftPart(rowIndex)}
           <ListItemContent>
             {right.map(columnIndex =>
               renderListItemCell(rowIndex, columnIndex, "right"),
@@ -304,6 +330,7 @@ function List({
       hasEditButton,
       hasDeleteButton,
       isDataApp,
+      renderListItemLeftPart,
       renderListItemCell,
       handleDelete,
     ],
