@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
+import EntityMenu from "metabase/components/EntityMenu";
 
 import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 
@@ -26,7 +27,6 @@ import {
   BookmarkButton,
   AnimationStates,
   StrengthIndicator,
-  QuestionEntityMenu,
 } from "./QuestionActions.styled";
 
 const HEADER_ICON_SIZE = 16;
@@ -223,7 +223,7 @@ const QuestionActions = ({
           data-testId="qb-header-info-button"
         />
       </Tooltip>
-      <QuestionEntityMenu
+      <EntityMenu
         items={extraButtons}
         triggerIcon="ellipsis"
         tooltip={t`Move, archive, and more...`}
