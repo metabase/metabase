@@ -12,31 +12,30 @@ If a person has the wrong level of access to the data that's returned by a quest
 
 ### Native query (SQL) permissions
 
-- [People can't access the SQL editor](#people-cant-access-the-sql-editor).
-- [People with SQL permissions can see data that should be restricted by a data sandbox](./sandboxing.html#is-the-question-written-in-sql).
-- [People can't _view_ native SQL questions if a "Block" permission is applied to "All Users"](https://github.com/metabase/metabase/issues/21695).
+- [A user group can't access the SQL editor](#a-user-group-cant-access-the-sql-editor).
+- [A user group with SQL permissions aren't being restricted by their data sandbox][sql-sandboxing].
 
 ### Table or schema permissions
 
-- [People have the wrong access to a table or schema](#cant-restrict-access-to-a-table-or-schema).
-- [People can view collections that contain restricted data](#people-can-view-collections-that-contain-restricted-data).
+- [A user group has the wrong access to a table or schema](#a-user-group-have-the-wrong-access-to-a-table-or-schema).
+- [A user group can view collections that contain restricted data][collections-restricted-data].
 - [Getting a "permission denied" error message](#getting-a-permission-denied-error-message).
 - [Checking someone's access to a table or schema](#checking-someones-access-to-a-table-or-schema).
 
-## People can't access the SQL editor
+## A user group can't access the SQL editor
 
-1. Disable browser extensions and refresh the browser to check if a script is being blocked.
-2. Go to **Admin** > **Permissions** and select the user group.
+1. Ensure scripts are loading by disabling browser extensions and refreshing the browser.
+2. Go to **Admin** > **Permissions** and select the relevant group.
 3. Find the database that you want to grant SQL access to.
 4. Select **Unrestricted** from the **Data access** dropdown.
 
 **Explanation** 
 
-To give people access to the [native SQL editor][native-query-editing], you must grant **Unrestricted** access to the database.
+To give a group access to the [native SQL editor][native-query-editing], you must grant that group **Unrestricted** access to the database.
 
 For more information about the different types of database permissions, check out the [section on data access][data-access] in our permissions documentation.
 
-## People have the wrong access to a table or schema 
+## A user group have the wrong access to a table or schema 
 
 1. Go to **Admin** > **People** and check if the person is in [more than one group with conflicting permissions][group-permissions].
 2. If the person is in multiple groups:
@@ -51,7 +50,7 @@ For example, if a person is a member of two groups — one which grants [Unrestr
 
 Remember that everyone is a member of the **All Users** group. We recommend you revoke permissions from the **All users** group, and create new groups to selectively apply permissions to your data sources.
 
-## People can view collections that contain restricted data
+## A user group can view collections that contain restricted data
 
 {% include plans-blockquote.html %}
 
@@ -62,9 +61,9 @@ Remember that everyone is a member of the **All Users** group. We recommend you 
 
 **Explanation**
 
-If you've granted a user group **No self-service** access to a database or table, people can still view saved questions and dashboards that draw on that database, as long as those questions and dashboards are stored in a collection that they have access to.
+If you've granted a group **No self-service** access to a database or table, people can still view saved questions and dashboards that draw on that database, as long as those questions and dashboards are stored in a collection that they have access to.
 
-The [**Block** data permission][block-data-permission] is available on [paid versions of Metabase](https://www.metabase.com/pricing). If you block a group's access to a database, members of that group will not be able to see any data from this database, regardless of their collection permissions.
+The [**Block** data permission][block-data-permission] is available on [paid versions of Metabase][pricing]. If you block a group's access to a database, members of that group will not be able to see any data from this database, regardless of their collection permissions.
 
 ## Getting a "permission denied" error message
 
@@ -75,15 +74,15 @@ If you get an error message that says something like "permission denied to \<you
     SELECT 1
     FROM <your table>;
     ```
-2. Get the credentials that Metabase uses to connect to your database. Ask your database admin if you're not sure.
-3. Run the query from step 1 using a different application (such as your CLI or database IDE) and your Metabase's database credentials.
+2. Get the credentials that Metabase uses to connect to your database. If you're not sure what those credentials are, ask your database admin.
+3. Using a different application (like your CLI or database IDE), connect to your database using the same credentials your Metabase uses to connect to that database, and run the query from step 1.
 4. If you cannot access the table or schema in both step 1 and 3, ask your database admin to:
     - Grant permissions to the role that Metabase is using to connect, or
     - Provide a set of database credentials with the correct permissions.
 
 **Explanation** 
 
-Your database has its own set of permissions that are configured for each person (or application) that logs in. The database permissions can block Metabase from connecting to certain schemas or tables, regardless of the permissions you've set up on the Metabase side.
+Your database has its own set of permissions that are configured for each person (or application) that logs in. Database permissions apply at the level of your database connection, _before_ your data and collection permissions are applied in Metabase. This means that settings configured on the database side can prevent Metabase from connecting to certain schemas or tables, regardless of what you've set up on the Metabase side.
 
 ## Checking someone's access to a table or schema
 
@@ -91,12 +90,11 @@ Your database has its own set of permissions that are configured for each person
 2. Log in to Metabase as the person in question.
 3. Run a question, dashboard, or native query to confirm that the person can see the data they're supposed to.
 
-## Further reading
+## Do you have a different problem?
 
-- [Permissions overview][admin-permissions].
-- [Collection permissions][collection-permissions].
-- [Data permissions][data-permissions].
-- [Permissions tutorials][learn-permissions] in Learn Metabase.
+- [I can't view or edit my question or dashboard][view-edit].
+- [I can't save my question or dashboard][proxies].
+- [I can't see my tables][cant-see-tables].
 
 ## Are you still stuck?
 
@@ -108,6 +106,7 @@ If you can’t solve your problem using the troubleshooting guides:
 [admin-permissions]: ../administration-guide/05-setting-permissions.html
 [block-data-permission]: ../administration-guide/data-permissions.html#block-access
 [collection-permissions]: ../administration-guide/06-collections.html
+[collections-restricted-data]: ./data-permissions#people-can-view-collections-that-contain-restricted-data
 [data-access]: /administration-guide/data-permissions.html#data-access
 [data-permissions]: ../administration-guide/data-permissions.html
 [discourse]: https://discourse.metabase.com/
@@ -117,6 +116,10 @@ If you can’t solve your problem using the troubleshooting guides:
 [learn-permissions]: /learn/permissions/index.html
 [native-query-editing]: ../administration-guide/data-permissions.html#native-querying
 [no-self-service]: ../administration-guide/data-permissions.html#no-self-service-access
+[pricing]: https://www.metabase.com/pricing
+[sql-sandboxing]: ./sandboxing.html#is-the-question-written-in-sql
+[table-schema-access]: ./data-permissions#people-have-the-wrong-access-to-a-table-or-schema
 [troubleshooting-data-sandboxing]: ./sandboxing.html
 [troubleshooting-permissions]: ./permissions.html
 [unrestricted]: ../administration-guide/data-permissions.html#unrestricted-access
+[view-edit]: ./cant-view-or-edit.html

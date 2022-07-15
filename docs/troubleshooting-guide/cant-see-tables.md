@@ -61,7 +61,7 @@ Table "SOMEWHERE" not found
 
 If you see this message, use another application (e.g., `psql` for PostreSQL) to send the same query to the database. If it also produces a "table not found" message, check the database schema and the spelling of the table name.
 
-Be sure to log in using the same credentials that Metabase uses. A common source of problems is that the Metabase "user" lacks the same privileges as a member of IT staff or a developer, so tables that are visible to the latter using external applications are invisible to Metabase. For more information, see [Troubleshooting database permissions][troubleshooting-database-permissions].
+Be sure to log in to the database using the same credentials that Metabase uses. A common problem is that the account Metabase uses to connect to the database lacks the same privileges as a member of IT staff or a developer, so tables that are visible to the latter when they use external applications are invisible to Metabase. For more information, see [Troubleshooting database permissions][troubleshooting-database-permissions].
 
 ## Does the person who cannot see the table have permission to view it?
 
@@ -91,8 +91,17 @@ If the administrator's account can see the tables but an individual person canno
 2. Go to Admin > Troubleshooting > Logs and see if there are any error messages saying that the "sync" operation could not run (e.g., because the network or the database itself was temporarily down).
 3. If there are no suspicious error messages, log out of Metabase, close the browser tab, log back into Metabase in a new browser tab, and try to access your table again.
 
+## Are you still stuck?
+
+If you can’t solve your problem using the troubleshooting guides:
+
+- Search or ask the [Metabase community][discourse].
+- Search for [known bugs or limitations][known-issues].
+
 [data-browser]: /learn/getting-started/data-browser.html
 [data-model]: ../administration-guide/03-metadata-editing.html
+[discourse]: https://discourse.metabase.com/
+[known-issues]: ./known-issues.html
 [sandboxing]: ./sandboxing.html
 [troubleshooting-permissions]: ./permissions.html
 [troubleshooting-database-permissions]: (./data-permissions.html#troubleshooting-database-permissions)

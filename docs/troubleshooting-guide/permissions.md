@@ -12,8 +12,8 @@ If someone has the wrong level of access to a dashboard or a question, the probl
 
 ## [Troubleshooting collection permissions][troubleshooting-collection-permissions]
 
-- [People can't access a dashboard in a collection that they have permissions for](./collection-permissions#people-cant-access-a-dashboard-from-a-collection-that-they-have-permissions-for).
-- [People can view collections that contain restricted data](./data-permissions#people-can-view-collections-that-contain-restricted-data).
+- [A user group can't access a dashboard in a collection that they have permissions for][troubleshooting-viewing-editing].
+- [A user group can view collections that contain restricted data][collections-restricted-data].
 
 ## [Troubleshooting data permissions][troubleshooting-data-permissions]
 
@@ -23,15 +23,14 @@ If someone has the wrong level of access to a dashboard or a question, the probl
 
 ### Native query (SQL) permissions
 
-- [People can't access the SQL editor](./data-permissions#people-cant-access-the-sql-editor).
-- [People with SQL permissions aren't being restricted by their data sandbox](./sandboxing.html#is-the-question-written-in-sql).
-- [People can't _view_ native SQL questions when a "Block" permission is applied to "All Users"](https://github.com/metabase/metabase/issues/21695).
+- [A user group can't access the SQL editor][sql-access].
+- [A user group with SQL permissions aren't being restricted by their data sandbox][sql-sandboxing].
 
 ### Table or schema permissions
 
-- [People have the wrong access to a table or schema](./data-permissions#people-have-the-wrong-access-to-a-table-or-schema).
-- [Getting a "permission denied" error message](./data-permissions#getting-a-permission-denied-error-message).
-- [Checking someone's access to a table or schema](./data-permissions#checking-someones-access-to-a-table-or-schema).
+- [A user group has the wrong access to a table or schema][table-schema-access].
+- [Getting a "permission denied" error message][permission-denied].
+- [Checking someone's access to a table or schema][check-permissions].
 
 ## Further reading
 
@@ -47,8 +46,11 @@ If you can’t solve your problem using the troubleshooting guides:
 - Search or ask the [Metabase community][discourse].
 - Search for [known bugs or limitations][known-issues].
 
+
 [admin-permissions]: ../administration-guide/05-setting-permissions.html
+[check-permissions]: ./data-permissions#checking-someones-access-to-a-table-or-schema
 [collection-permissions]: ../administration-guide/06-collections.html
+[collections-restricted-data]: ./data-permissions#people-can-view-collections-that-contain-restricted-data
 [connecting-database]: ../administration-guide/01-managing-databases.html
 [data-browser]: /learn/getting-started/data-browser.html
 [data-model]: ../administration-guide/03-metadata-editing.html
@@ -58,8 +60,12 @@ If you can’t solve your problem using the troubleshooting guides:
 [group-permissions]: ../administration-guide/05-setting-permissions.html#key-points-regarding-permissions
 [known-issues]: ./known-issues.html
 [learn-permissions]: /learn/permissions/index.html
+[permission-denied]: ./data-permissions#getting-a-permission-denied-error-message
 [sandboxing]: ./sandboxing.html
 [setting-collection-permissions]: ../administration-guide/06-collections.html#setting-permissions-for-collections
-[troubleshooting-collection-permissions]: ./collection-permissions.html
+[sql-access]: ./data-permissions#people-cant-access-the-sql-editor
+[sql-sandboxing]: ./sandboxing.html#is-the-question-written-in-sql
+[table-schema-access]: ./data-permissions#people-have-the-wrong-access-to-a-table-or-schema
 [troubleshooting-data-permissions]: ./data-permissions.html
 [troubleshooting-data-sandboxing]: ./sandboxing.html
+[troubleshooting-viewing-editing]: ./cant-view-or-edit.html
