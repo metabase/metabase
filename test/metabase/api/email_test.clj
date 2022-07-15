@@ -14,7 +14,16 @@
           {::email/error (Exception. "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar")})))
   (is (= {:message "Sorry, something went wrong. Please try again. Error: Some unexpected message"}
          (#'api.email/humanize-error-messages
-          {::email/error (Exception. "Some unexpected message")}))))
+          {::email/error (Exception. "Some unexpected message")})))
+  (testing "Checks error classes for auth errors (#23918)"
+    (let [exception (javax.mail.AuthenticationFailedException.
+                     "" ;; Office365 returns auth exception with no message so we only saw "Read timed out" prior
+                     (javax.mail.MessagingException.
+                      "Exception reading response"
+                      (java.net.SocketTimeoutException. "Read timed out")))]
+      (is (= {:errors {:email-smtp-username "Wrong username or password"
+                       :email-smtp-password "Wrong username or password"}}
+             (#'api.email/humanize-error-messages {::email/error exception}))))))
 
 (defn- email-settings
   []
