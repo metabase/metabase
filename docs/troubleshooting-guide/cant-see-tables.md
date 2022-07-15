@@ -11,7 +11,7 @@ You have connected Metabase to a database, but:
 - the tables don't show up as possible data sources when you create a query using the Notebook Editor, or
 - you can no longer see tables that you used to be able to see.
 
-If you can see the tables, but some of the rows or columns seem to be missing, please check out the [troubleshooting guide for sandboxing][sandboxing].
+If you have a different issue, see [related problems](#do-you-have-a-different-problem).
 
 ## Is your browser showing you a cached list of tables?
 
@@ -91,6 +91,12 @@ If the administrator's account can see the tables but an individual person canno
 2. Go to Admin > Troubleshooting > Logs and see if there are any error messages saying that the "sync" operation could not run (e.g., because the network or the database itself was temporarily down).
 3. If there are no suspicious error messages, log out of Metabase, close the browser tab, log back into Metabase in a new browser tab, and try to access your table again.
 
+## Do you have a different problem?
+
+- [My data sandboxes aren't working][troubleshooting-sandboxing].
+- [My permissions aren't working][troubleshooting-permissions].
+- [I can't view or edit a question or dashboard][troubleshooting-view-edit].
+
 ## Are you still stuck?
 
 If you can’t solve your problem using the troubleshooting guides:
@@ -102,6 +108,6 @@ If you can’t solve your problem using the troubleshooting guides:
 [data-model]: ../administration-guide/03-metadata-editing.html
 [discourse]: https://discourse.metabase.com/
 [known-issues]: ./known-issues.html
-[sandboxing]: ./sandboxing.html
 [troubleshooting-permissions]: ./permissions.html
-[troubleshooting-database-permissions]: (./data-permissions.html#troubleshooting-database-permissions)
+[troubleshooting-sandboxing]: ./sandboxing.html
+[troubleshooting-view-edit]: ./cant-view-or-edit.html

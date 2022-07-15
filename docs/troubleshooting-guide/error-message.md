@@ -43,4 +43,4 @@ title: Troubleshooting error messages
 [sql-error-function-does-not-exist]: /learn/debugging-sql/sql-syntax.html#sql-function-does-not-exist
 [sql-error-message]: #sql-error-messages
 [sql-error-not-found]: /learn/debugging-sql/sql-syntax.html#column-or-table-name-is-not-found-or-not-recognized
-[permission-denied]: ./data-permissions#troubleshooting-database-permissions
+[permission-denied]: ./data-permissions#getting-a-permission-denied-error-message

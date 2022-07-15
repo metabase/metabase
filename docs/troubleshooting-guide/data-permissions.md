@@ -12,13 +12,13 @@ If a person has the wrong level of access to the data that's returned by a quest
 
 ### Native query (SQL) permissions
 
-- [A user group can't access the SQL editor](#a-user-group-cant-access-the-sql-editor).
-- [A user group with SQL permissions aren't being restricted by their data sandbox][sql-sandboxing].
+- [A user group can't access the SQL editor][sql-access].
+- [A user group with SQL permissions isn't being restricted by their data sandbox][sql-sandboxing].
 
 ### Table or schema permissions
 
-- [A user group has the wrong access to a table or schema](#a-user-group-have-the-wrong-access-to-a-table-or-schema).
-- [A user group can view collections that contain restricted data][collections-restricted-data].
+- [A user group has the wrong access to a table or schema](#a-user-group-has-the-wrong-access-to-a-table-or-schema).
+- [A user group can view collections that contain restricted data](#a-user-group-can-view-collections-that-contain-restricted-data).
 - [Getting a "permission denied" error message](#getting-a-permission-denied-error-message).
 - [Checking someone's access to a table or schema](#checking-someones-access-to-a-table-or-schema).
 
@@ -28,6 +28,7 @@ If a person has the wrong level of access to the data that's returned by a quest
 2. Go to **Admin** > **Permissions** and select the relevant group.
 3. Find the database that you want to grant SQL access to.
 4. Select **Unrestricted** from the **Data access** dropdown.
+5. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
 
 **Explanation** 
 
@@ -35,12 +36,13 @@ To give a group access to the [native SQL editor][native-query-editing], you mus
 
 For more information about the different types of database permissions, check out the [section on data access][data-access] in our permissions documentation.
 
-## A user group have the wrong access to a table or schema 
+## A user group has the wrong access to a table or schema 
 
 1. Go to **Admin** > **People** and check if the person is in [more than one group with conflicting permissions][group-permissions].
 2. If the person is in multiple groups:
     - Remove the person from the group with wider permissions, or
     - Go to **Admin** > **Permissions** and change the **Data access** permission type.
+3. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
 
 **Explanation** 
 
@@ -56,8 +58,8 @@ Remember that everyone is a member of the **All Users** group. We recommend you 
 
 1. Go to **Admin** > **Permissions** and select the user group.
 2. Select the database or table that you want to restrict.
-3. Choose **Block** from the dropdown.
-4. Click **Save**.
+3. Choose **Block** from the dropdown and click **Save**.
+4. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
 
 **Explanation**
 
@@ -79,10 +81,15 @@ If you get an error message that says something like "permission denied to \<you
 4. If you cannot access the table or schema in both step 1 and 3, ask your database admin to:
     - Grant permissions to the role that Metabase is using to connect, or
     - Provide a set of database credentials with the correct permissions.
+5. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
 
 **Explanation** 
 
-Your database has its own set of permissions that are configured for each person (or application) that logs in. Database permissions apply at the level of your database connection, _before_ your data and collection permissions are applied in Metabase. This means that settings configured on the database side can prevent Metabase from connecting to certain schemas or tables, regardless of what you've set up on the Metabase side.
+Your database has its own set of permissions that are configured for each person (or application) that logs in. 
+
+Database permissions apply at the level of your database connection, _before_ your data and collection permissions are applied in Metabase. 
+
+This means that settings configured on the database side can prevent Metabase from connecting to certain schemas or tables, regardless of what you've set up on the Metabase side.
 
 ## Checking someone's access to a table or schema
 
@@ -105,9 +112,9 @@ If you can’t solve your problem using the troubleshooting guides:
 
 [admin-permissions]: ../administration-guide/05-setting-permissions.html
 [block-data-permission]: ../administration-guide/data-permissions.html#block-access
+[cant-see-tables]: ./cant-see-tables.html
 [collection-permissions]: ../administration-guide/06-collections.html
-[collections-restricted-data]: ./data-permissions#people-can-view-collections-that-contain-restricted-data
-[data-access]: /administration-guide/data-permissions.html#data-access
+[data-access]: ../administration-guide/data-permissions.html#data-access
 [data-permissions]: ../administration-guide/data-permissions.html
 [discourse]: https://discourse.metabase.com/
 [groups]: ../administration-guide/04-managing-users.html#groups
@@ -117,6 +124,8 @@ If you can’t solve your problem using the troubleshooting guides:
 [native-query-editing]: ../administration-guide/data-permissions.html#native-querying
 [no-self-service]: ../administration-guide/data-permissions.html#no-self-service-access
 [pricing]: https://www.metabase.com/pricing
+[proxies]: ./proxies.html
+[sql-access]: ./data-permissions#a-user-group-cant-access-the-sql-editor
 [sql-sandboxing]: ./sandboxing.html#is-the-question-written-in-sql
 [table-schema-access]: ./data-permissions#people-have-the-wrong-access-to-a-table-or-schema
 [troubleshooting-data-sandboxing]: ./sandboxing.html
