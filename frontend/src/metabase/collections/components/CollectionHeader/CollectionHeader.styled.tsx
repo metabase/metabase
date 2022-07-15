@@ -21,10 +21,7 @@ export const HeaderActions = styled.div`
   display: flex;
   margin-top: 0.5rem;
   align-self: start;
-
-  ${Button.Root} {
-    margin-left: 0.5rem;
-  }
+  gap: 0.5rem;
 `;
 
 interface CollectionHeaderButtonProps {
