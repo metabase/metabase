@@ -61,6 +61,18 @@ export default Object.assign(ListViz, {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     ...columnSettings({ hidden: true }),
+    "buttons.edit": {
+      section: t`Actions`,
+      title: t`Edit button`,
+      widget: "toggle",
+      default: true,
+    },
+    "buttons.delete": {
+      section: t`Actions`,
+      title: t`Delete button`,
+      widget: "toggle",
+      default: true,
+    },
     "list.columns": {
       section: t`Columns`,
       title: t`Columns`,
