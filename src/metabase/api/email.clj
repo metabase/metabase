@@ -73,20 +73,27 @@
   [:as {settings :body}]
   {settings su/Map}
   (validation/check-has-application-permission :setting)
-  (let [settings (-> settings
-                     (select-keys (keys mb-to-smtp-settings))
-                     (set/rename-keys mb-to-smtp-settings))
-        settings (cond-> settings
-                   (string? (:port settings))     (update :port #(Long/parseLong ^String %))
-                   (string? (:security settings)) (update :security keyword))
+  ;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
+  ;; the obfuscated version
+  (let [obfuscated? (and (:email-smtp-password settings) (email/email-smtp-password)
+                         (= (:email-smtp-password settings) (setting/obfuscate-value (email/email-smtp-password))))
+        settings    (-> (cond-> settings
+                          obfuscated?
+                          (assoc :email-smtp-password (email/email-smtp-password)))
+                        (select-keys (keys mb-to-smtp-settings))
+                        (set/rename-keys mb-to-smtp-settings))
+        settings    (cond-> settings
+                      (string? (:port settings))     (update :port #(Long/parseLong ^String %))
+                      (string? (:security settings)) (update :security keyword))
         response (email/test-smtp-connection settings)]
     (if-not (::email/error response)
       ;; test was good, save our settings
-      (assoc (setting/set-many! (set/rename-keys response (set/map-invert mb-to-smtp-settings)))
-             :with-corrections  (let [[_ corrections] (data/diff settings response)]
-                                  (-> corrections
-                                      (set/rename-keys (set/map-invert mb-to-smtp-settings))
-                                      humanize-email-corrections)))
+      (cond-> (assoc (setting/set-many! (set/rename-keys response (set/map-invert mb-to-smtp-settings)))
+                     :with-corrections  (let [[_ corrections] (data/diff settings response)]
+                                          (-> corrections
+                                              (set/rename-keys (set/map-invert mb-to-smtp-settings))
+                                              humanize-email-corrections)))
+        obfuscated? (update :email-smtp-password setting/obfuscate-value))
       ;; test failed, return response message
       {:status 400
        :body   (humanize-error-messages response)})))
