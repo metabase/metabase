@@ -1,9 +1,7 @@
-(ns metabase.test-runner.assert-exprs.unify-test
+(ns metabase.test-runner.assert-exprs.approximately-equal-test
   (:require
    [clojure.test :refer :all]
    [metabase.test-runner.assert-exprs :as assert-exprs]
-   [methodical.core :as methodical]
-   [metabase.test-runner.assert-exprs.unify :as unify]
    [metabase.util.date-2 :as u.date]))
 
 (comment assert-exprs/keep-me)
@@ -35,7 +33,7 @@
       (is (≈ {:a 100}
              {:a 100, :b 200})))))
 
-(deftest custom-unify-methods
+(deftest custom-approximately-equal-methods
   (is (≈ {[String java.time.temporal.Temporal]
           (fn [_next-method expected actual]
             (let [actual-str (u.date/format actual)]

@@ -5,7 +5,7 @@
             [clojure.test :as t]
             [clojure.walk :as walk]
             [schema.core :as s]
-            [metabase.test-runner.assert-exprs.unify :as unify]))
+            [metabase.test-runner.assert-exprs.approximately-equal :as approximately-equal]))
 
 (defmethod t/assert-expr 're= [msg [_ pattern actual]]
   `(let [pattern#  ~pattern
@@ -151,8 +151,8 @@
 (defn ≈-report
   [message multifn expected actual]
   (let [error (if multifn
-                (unify/unify multifn expected actual)
-                (unify/unify expected actual))]
+                (approximately-equal/≈ multifn expected actual)
+                (approximately-equal/≈ expected actual))]
     {:type     (if (not error) :pass :fail)
      :message  message
      :expected expected
