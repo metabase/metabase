@@ -14,29 +14,32 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [toucan.db :as db])
   (:import java.sql.Connection))
 
 (defmulti parse-sql-error
   "Parses the raw error message returned after an error in the driver database occurs, and converts it into a sequence
   of maps with a :column and :message key indicating what went wrong."
-  {:arglists '([driver ^java.sql.Connection connection e]), :added "0.44.0"}
+  {:arglists '([driver database e]), :added "0.44.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defn- parse-error
   "Returns errors in a way that indicates which column had the problem. Can be used to highlight errors in forms."
-  [driver conn e]
+  [driver database e]
   (let [default-method? (= (get-method parse-sql-error driver)
                            (get-method parse-sql-error :default))]
     (if default-method?
       (ex-data e)
       (let [message (ex-message e)]
-        (if-let [errors (and message
-                             (parse-sql-error driver conn message))]
-
-          {:errors (->> errors
+        (if-let [parsed-errors (when message
+                                 (try
+                                   (parse-sql-error driver database message)
+                                   (catch Throwable e
+                                     (log/error e (trs "Error parsing SQL error message {0}: {1}" (pr-str message) (ex-message e)))
+                                     nil)))]
+          {:errors (->> parsed-errors
                         (m/index-by :column)
                         (m/map-vals :message))}
           {:message (or message (pr-str e))})))))
@@ -129,7 +132,7 @@
   `(do-with-jdbc-transaction ~database-id (fn [~(vary-meta connection-binding assoc :tag 'Connection)] ~@body)))
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/delete]
-  [driver _action _database {database-id :database, :as query}]
+  [driver _action database {database-id :database, :as query}]
   (let [raw-hsql    (qp.store/with-store
                       (try
                         (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
@@ -155,13 +158,13 @@
         (catch Exception e
           (let [e-data (if (::incorrect-number-deleted (ex-data e))
                          (ex-data e)
-                         (parse-error driver conn e))]
+                         (parse-error driver database e))]
             (throw
              (ex-info (or (ex-message e) "Delete action error.")
                       (assoc e-data :status-code 400)))))))))
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
-  [driver _action _database {database-id :database :keys [update-row] :as query}]
+  [driver _action database {database-id :database :keys [update-row] :as query}]
   (let [raw-hsql     (qp.store/with-store
                        (try
                          (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
@@ -189,7 +192,7 @@
         (catch Exception e
           (let [e-data (if (::incorrect-number-updated (ex-data e))
                          (ex-data e)
-                         (parse-error driver conn e))]
+                         (parse-error driver database e))]
             (throw
              (ex-info (or (ex-message e) "Update action error.")
                       (assoc e-data :status-code 400)))))))))
