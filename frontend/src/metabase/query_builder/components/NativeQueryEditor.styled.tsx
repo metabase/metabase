@@ -57,7 +57,7 @@ export const NativeQueryEditorRoot = styled.div`
     text-align: center;
   }
 
-  .NativeQueryEditor .ace_editor .ace_gutter {
+  .ace_editor .ace_gutter {
     background-color: ${color("bg-light")};
   }
 `;
