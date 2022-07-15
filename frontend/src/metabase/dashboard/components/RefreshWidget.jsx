@@ -58,7 +58,7 @@ export default class RefreshWidget extends Component {
           elapsed == null ? (
             <Tooltip tooltip={t`Auto-refresh`}>
               <DashboardHeaderButton>
-                <ClockIcon width={18} height={18} className={className} />
+                <ClockIcon width={16} height={16} className={className} />
               </DashboardHeaderButton>
             </Tooltip>
           ) : (
