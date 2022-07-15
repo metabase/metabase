@@ -45,7 +45,9 @@ import {
   StyledLastEditInfoLabel,
   StyledQuestionDataSource,
   SavedQuestionLeftSideRoot,
+  AdHocLeftSideRoot,
   HeaderDivider,
+  ViewHeaderActionPanel,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -216,7 +218,7 @@ function SavedQuestionLeftSide(props) {
                 : []),
 
               <SavedQuestionHeaderButton
-                key="question-title"
+                key={question.displayName()}
                 question={question}
                 onSave={onHeaderChange}
               />,
@@ -266,7 +268,7 @@ function AhHocQuestionLeftSide(props) {
 
   const handleTitleClick = () => onOpenModal(MODAL_TYPES.SAVE);
   return (
-    <div>
+    <AdHocLeftSideRoot>
       <ViewHeaderMainLeftContentContainer>
         <AdHocViewHeading color="medium">
           {isNative ? (
@@ -292,7 +294,7 @@ function AhHocQuestionLeftSide(props) {
           />
         )}
       </ViewHeaderLeftSubHeading>
-    </div>
+    </AdHocLeftSideRoot>
   );
 }
 
@@ -418,10 +420,7 @@ function ViewTitleHeaderRightSide(props) {
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
   return (
-    <div
-      className="ml-auto flex align-center"
-      data-testid="qb-header-action-panel"
-    >
+    <ViewHeaderActionPanel data-testid="qb-header-action-panel">
       {QuestionFilters.shouldRender(props) && (
         <FilterHeaderToggle
           className="ml2 mr1"
@@ -462,7 +461,6 @@ function ViewTitleHeaderRightSide(props) {
       )}
       {QuestionNotebookButton.shouldRender(props) && (
         <QuestionNotebookButton
-          className="hide sm-show"
           ml={2}
           question={question}
           isShowingNotebook={isShowingNotebook}
@@ -484,8 +482,8 @@ function ViewTitleHeaderRightSide(props) {
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && (
         <RunButtonWithTooltip
-          className={cx("text-brand-hover text-dark hide", {
-            "sm-show": !isShowingNotebook || isNative,
+          className={cx("text-brand-hover text-dark", {
+            hide: isShowingNotebook,
             "text-white-hover": isResultDirty,
           })}
           medium
@@ -531,7 +529,7 @@ function ViewTitleHeaderRightSide(props) {
           {t`Save`}
         </SaveButton>
       )}
-    </div>
+    </ViewHeaderActionPanel>
   );
 }
 

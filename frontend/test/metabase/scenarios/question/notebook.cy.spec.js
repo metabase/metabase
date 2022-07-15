@@ -10,6 +10,7 @@ import {
   visualize,
   summarize,
   filter,
+  filterField,
   startNewQuestion,
 } from "__support__/e2e/helpers";
 
@@ -393,9 +394,9 @@ describe("scenarios > question > notebook", () => {
     filter();
     cy.findByText("Summaries").click();
 
-    cy.findByLabelText("Max of Name").click();
-    cy.findByText("Contains").click();
-    cy.findByText("Starts with").click();
+    filterField("Max of Name", {
+      operator: "Starts with",
+    });
   });
 
   it("should treat max/min on a category as a string filter (metabase#22154)", () => {
@@ -413,9 +414,9 @@ describe("scenarios > question > notebook", () => {
 
     filter();
     cy.findByText("Summaries").click();
-    cy.findByLabelText("Min of Vendor").click();
-    cy.findByText("Contains").click();
-    cy.findByText("Ends with").click();
+    filterField("Min of Vendor", {
+      operator: "ends with",
+    });
   });
 
   // flaky test

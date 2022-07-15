@@ -116,7 +116,11 @@
 
 ;; * native-query-snippet
 (s/def ::content ::not-empty-string)
-(s/def ::parameters #{[{:id "a"}]})
+
+(s/def :parameter/id   ::not-empty-string)
+(s/def :parameter/type ::base_type)
+(s/def ::parameter  (s/keys :req-un [:parameter/id :parameter/type]))
+(s/def ::parameters (s/coll-of ::parameter))
 
 ;; * pulse
 (s/def ::row pos-int?)
@@ -187,8 +191,10 @@
    :card                         {:prefix    :c
                                   :spec      ::card
                                   :insert!   {:model Card}
-                                  :relations {:creator_id  [:core-user :id]
-                                              :database_id [:database :id]}}
+                                  :relations {:creator_id    [:core-user :id]
+                                              :database_id   [:database :id]
+                                              :table_id      [:table :id]
+                                              :collection_id [:collection :id]}}
    :dashboard                    {:prefix    :d
                                   :spec      ::dashboard
                                   :insert!   {:model Dashboard}
@@ -204,7 +210,9 @@
                                   :insert! {:model DashboardCardSeries}}
    :dimension                    {:prefix  :dim
                                   :spec    ::dimension
-                                  :insert! {:model Dimension}}
+                                  :insert! {:model Dimension}
+                                  :relations {:field_id                [:field :id]
+                                              :human_readable_field_id [:field :id]}}
    :field                        {:prefix      :field
                                   :spec        ::field
                                   :insert!     {:model Field}
@@ -265,6 +273,10 @@
 
     ;; Field names need to be unique within their table. This enforces it, and appends junk to names if needed.
     (= :field ent-type)
+    (update :name unique-name)
+
+    ;; [Field ID, Dimension name] pairs need to be unique. This enforces it, and appends junk to names if needed.
+    (= :dimension ent-type)
     (update :name unique-name)
 
     (and (:description visit-val) (coin-toss 0.2))

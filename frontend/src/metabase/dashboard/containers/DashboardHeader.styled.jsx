@@ -3,36 +3,31 @@ import { color } from "metabase/lib/colors";
 
 import Button from "metabase/core/components/Button";
 
-export const DashboardHeaderButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 12px;
-  border-radius: 6px;
+export const DashboardHeaderActionDivider = styled.div`
+  height: 1.25rem;
+  padding-left: 0.75rem;
+  margin-left: 0.75rem;
+  width: 0px;
+  border-left: 1px solid ${color("border-dark")};
+`;
+
+export const DashboardHeaderButton = styled(Button)`
+  padding: 0.25rem 0.5rem;
+  height: 2rem;
+  width: 2rem;
   color: ${props => (props.isActive ? color("brand") : color("text-dark"))};
-  background-color: ${props =>
-    props.isActive ? color("brand-light") : "transparent"};
-  transition: all 200ms;
 
-  &:hover:enabled {
-    cursor: pointer;
-    color: ${props => (props.isActive ? color("white") : color("brand"))};
-    background-color: ${props =>
-      props.isActive ? color("brand") : "transparent"};
+  &:hover {
+    color: ${color("brand")};
+    background-color: ${color("bg-medium")};
   }
 
-  &:disabled {
-    color: ${color("text-light")};
+  svg {
+    vertical-align: middle;
   }
 `;
 
-export const DashboardHeaderActionContainer = styled.div`
-  display: flex;
-  padding-left: 0.5rem;
-  border-left: 1px solid ${color("border")};
-`;
-
-export const DashboardHeaderInfoButton = styled(Button)`
-  color: ${props =>
-    props.isShowingDashboardInfoSidebar ? color("brand") : color("text-dark")};
-`;
+DashboardHeaderButton.defaultProps = {
+  onlyIcon: true,
+  iconSize: 16,
+};

@@ -12,7 +12,8 @@
   (:require [clojure.tools.logging :as log]
             [metabase.models.serialization.hash :as serdes.hash]
             [toucan.db :as db]
-            [toucan.models :as models]))
+            [toucan.models :as models])
+  (:import [java.time Instant LocalDateTime OffsetDateTime ZoneId]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              :serdes/meta                                                      |
@@ -194,17 +195,6 @@
   (eduction (map (partial extract-one model opts))
             (extract-query model opts)))
 
-(defn raw-reducible-query
-  "Helper for calling Toucan's raw [[db/reducible-query]]. With just the model name, fetches everything. You can filter
-  with a HoneySQL map like `{:where [:= :archived true]}`.
-
-  Returns a reducible stream of JDBC row maps."
-  ([model-name]
-   (raw-reducible-query model-name nil))
-  ([model-name honeysql-form]
-   (db/reducible-query (merge {:select [:*] :from [(symbol model-name)]}
-                              honeysql-form))))
-
 (defn- model-name->table
   "The model name is not necessarily the table name. This pulls the table name from the Toucan model."
   [model-name]
@@ -213,22 +203,46 @@
       db/resolve-model
       :table))
 
+(defn raw-reducible-query
+  "Helper for calling Toucan's raw [[db/reducible-query]]. With just the model name, fetches everything. You can filter
+  with a HoneySQL map like `{:where [:= :archived true]}`.
+
+  Returns a reducible stream of JDBC row maps."
+  ([model-name]
+   (raw-reducible-query model-name nil))
+  ([model-name honeysql-form]
+   (db/reducible-query (merge {:select [:*] :from [(model-name->table model-name)]}
+                              honeysql-form))))
+
 (defmethod extract-query :default [model-name _]
-  (raw-reducible-query (model-name->table model-name)))
+  (raw-reducible-query model-name))
+
+(defn- ->zoned-date-time
+  "Given an Instant, LocalDateTime, or ZonedDateTime, convert it to a ZonedDateTime at UTC.
+  LocalDateTime is treated as already being in UTC."
+  [t]
+  (cond
+    (instance? LocalDateTime  t) (.atZone            ^LocalDateTime  t (ZoneId/of "UTC"))
+    (instance? OffsetDateTime t) (.atZoneSameInstant ^OffsetDateTime t (ZoneId/of "UTC"))
+    (instance? Instant        t) (.atZone            ^Instant        t (ZoneId/of "UTC"))
+    :else                        t))
 
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:
   - Convert to a vanilla Clojure map.
   - Add `:serdes/meta` by calling [[serdes-generate-path]].
   - Drop the primary key.
+  - Making :created_at and :updated_at into UTC-based LocalDateTimes.
 
   Returns the Clojure map."
   [model-name entity]
   (let [model (db/resolve-model (symbol model-name))
         pk    (models/primary-key model)]
-    (-> entity
-        (assoc :serdes/meta (serdes-generate-path model-name entity))
-        (dissoc pk))))
+    (cond-> entity
+      true (assoc :serdes/meta (serdes-generate-path model-name entity))
+      true (dissoc pk)
+      (:created_at entity) (update :created_at ->zoned-date-time)
+      (:updated_at entity) (update :updated_at ->zoned-date-time))))
 
 (defmethod extract-one :default [model-name _opts entity]
   (extract-one-basics model-name entity))

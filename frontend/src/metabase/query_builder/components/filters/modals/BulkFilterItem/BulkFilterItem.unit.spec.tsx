@@ -193,7 +193,6 @@ describe("BulkFilterItem", () => {
     );
 
     screen.getByTestId("value-picker");
-    screen.getByLabelText(intField.name);
   });
 
   it("renders a value picker for float field type", () => {
@@ -217,7 +216,6 @@ describe("BulkFilterItem", () => {
       </Provider>,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(floatField.name);
   });
 
   it("defaults to a between picker for float field type", () => {
@@ -236,8 +234,9 @@ describe("BulkFilterItem", () => {
       </Provider>,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(floatField.name);
-    screen.getByText("Between");
+    screen.getByText(/between/i);
+    screen.getByPlaceholderText("Min");
+    screen.getByPlaceholderText("Max");
   });
 
   it("renders a category picker for category type", () => {
@@ -284,7 +283,6 @@ describe("BulkFilterItem", () => {
       </Provider>,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(pkField.name);
   });
 
   it("renders a value picker for a foreign key", () => {
@@ -308,7 +306,6 @@ describe("BulkFilterItem", () => {
       </Provider>,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(fkField.name);
   });
 
   it("renders a value picker for a text field", () => {
@@ -332,7 +329,6 @@ describe("BulkFilterItem", () => {
       </Provider>,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(textField.name);
     screen.getByText("foo");
   });
 
@@ -351,7 +347,7 @@ describe("BulkFilterItem", () => {
         />
       </Provider>,
     );
-    screen.getByText("Is");
+    screen.getByText(/is/i);
   });
 
   it("defaults text filters to 'contains' operator", () => {
@@ -369,6 +365,6 @@ describe("BulkFilterItem", () => {
         />
       </Provider>,
     );
-    screen.getByText("Contains");
+    screen.getByText(/contains/i);
   });
 });

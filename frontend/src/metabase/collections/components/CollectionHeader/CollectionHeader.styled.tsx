@@ -1,4 +1,6 @@
 import styled from "@emotion/styled";
+import Button from "metabase/core/components/Button";
+import { color } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const HeaderRoot = styled.div`
@@ -20,3 +22,24 @@ export const HeaderActions = styled.div`
   margin-top: 0.5rem;
   align-self: start;
 `;
+
+interface CollectionHeaderButtonProps {
+  to: string;
+}
+
+export const CollectionHeaderButton = styled(
+  Button,
+)<CollectionHeaderButtonProps>`
+  padding: 0.5rem 0.75rem;
+  height: 2.5rem;
+
+  &:hover {
+    color: ${color("brand")};
+    background-color: ${color("bg-medium")};
+  }
+`;
+
+CollectionHeaderButton.defaultProps = {
+  onlyIcon: true,
+  iconSize: 16,
+};

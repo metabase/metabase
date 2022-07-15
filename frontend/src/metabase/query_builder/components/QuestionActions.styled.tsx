@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import Button from "metabase/core/components/Button";
+import EntityMenu from "metabase/components/EntityMenu";
 import DatasetMetadataStrengthIndicator from "./view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
 
 import {
@@ -9,15 +10,11 @@ import {
   shrinkOrExpandDuration,
 } from "metabase/styled-components/theme/button";
 
-export const QuestionActionsContainer = styled.div`
-  border-left: 1px solid ${color("border")};
+export const QuestionActionsDivider = styled.div`
+  border-left: 1px solid ${color("border-dark")};
   margin-left: 1rem;
   padding-left: 0.5rem;
-  display: flex;
-
-  ${Button.Root} {
-    margin-left: 0.5rem;
-  }
+  height: 1.25rem;
 `;
 
 export const StrengthIndicator = styled(DatasetMetadataStrengthIndicator)`

@@ -23,7 +23,7 @@ import {
 import Question from "metabase-lib/lib/Question";
 
 import {
-  QuestionActionsContainer,
+  QuestionActionsDivider,
   BookmarkButton,
   AnimationStates,
   StrengthIndicator,
@@ -200,7 +200,8 @@ const QuestionActions = ({
   }
 
   return (
-    <QuestionActionsContainer data-testid="question-action-buttons-container">
+    <>
+      <QuestionActionsDivider />
       <Tooltip tooltip={bookmarkTooltip}>
         <BookmarkButton
           animation={animation}
@@ -219,6 +220,7 @@ const QuestionActions = ({
           iconSize={HEADER_ICON_SIZE}
           onClick={onInfoClick}
           color={infoButtonColor}
+          data-testId="qb-header-info-button"
         />
       </Tooltip>
       <EntityMenu
@@ -226,7 +228,7 @@ const QuestionActions = ({
         triggerIcon="ellipsis"
         tooltip={t`Move, archive, and more...`}
       />
-    </QuestionActionsContainer>
+    </>
   );
 };
 

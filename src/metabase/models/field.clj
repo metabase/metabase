@@ -11,6 +11,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
@@ -406,18 +407,14 @@
   [(pop (serdes.base/serdes-path field))])
 
 (defmethod serdes.base/extract-one "Field"
-  [_ _ {:keys [table_id] :as field}]
-  (let [table   (db/select-one 'Table :id table_id)
-        db-name (db/select-one-field :name 'Database :id (:db_id table))]
-    (-> (serdes.base/extract-one-basics "Field" field)
-        (assoc :table_id [db-name (:schema table) (:name table)]))))
+  [_ _ field]
+  (-> (serdes.base/extract-one-basics "Field" field)
+      (update :table_id serdes.util/export-table-fk)))
 
 (defmethod serdes.base/load-xform "Field"
-  [{[db-name schema table-name] :table_id :as field}]
-  (let [db       (db/select-one 'Database :name db-name)
-        table-id (db/select-one-field :id 'Table :db_id (:id db) :name table-name :schema schema)]
-    (-> (serdes.base/load-xform-basics field)
-        (assoc :table_id table-id))))
+  [field]
+  (-> (serdes.base/load-xform-basics field)
+      (update :table_id serdes.util/import-table-fk)))
 
 (defmethod serdes.base/load-find-local "Field"
   [path]

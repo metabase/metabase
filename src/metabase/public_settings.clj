@@ -286,21 +286,8 @@
   (deferred-tru "Message to show while a query is running.")
   :visibility :public
   :enabled?   premium-features/enable-whitelabeling?
-  :type       :keyword)
-
-(defsetting show-metabot
-  (deferred-tru "Enables Metabot character on the home page")
-  :visibility :public
-  :type       :boolean
-  :enabled?   premium-features/enable-whitelabeling?
-  :default    true)
-
-(defsetting application-colors-migrated
-  "Stores whether the `application-colors` setting has been migrated to 0.44 expectations"
-  :visibility :internal
-  :type       :boolean
-  :enabled?   premium-features/enable-whitelabeling?
-  :default false)
+  :type       :keyword
+  :default    :doing-science)
 
 (defsetting application-colors
   (deferred-tru
@@ -309,19 +296,7 @@
   :visibility :public
   :type       :json
   :enabled?   premium-features/enable-whitelabeling?
-  :default    {}
-  :getter (fn []
-            (let [current-colors (setting/get-value-of-type :json :application-colors)]
-              (if (application-colors-migrated)
-                current-colors
-                (let [{:keys [accent0 brand summarize accent1 filter accent7]} current-colors
-                      new-colors (cond-> current-colors
-                                   (and brand (not accent0))     (assoc :accent0 brand)
-                                   (and accent1 (not summarize)) (assoc :summarize accent1)
-                                   (and accent7 (not filter))    (assoc :filter accent7))]
-                  (setting/set-value-of-type! :json :application-colors new-colors)
-                  (application-colors-migrated! true)
-                  new-colors)))))
+  :default    {})
 
 (defsetting application-font
   (deferred-tru "This will replace “Lato” as the font family.")
@@ -364,6 +339,20 @@
   :type       :string
   :enabled?   premium-features/enable-whitelabeling?
   :default    "app/assets/img/favicon.ico")
+
+(defsetting show-metabot
+  (deferred-tru "Enables Metabot character on the home page")
+  :visibility :public
+  :type       :boolean
+  :enabled?   premium-features/enable-whitelabeling?
+  :default    true)
+
+(defsetting show-lighthouse-illustration
+  (deferred-tru "Display the lighthouse illustration on the home and login pages.")
+  :visibility :public
+  :type       :boolean
+  :enabled?   premium-features/enable-whitelabeling?
+  :default    true)
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")

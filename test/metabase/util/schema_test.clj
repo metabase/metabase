@@ -17,8 +17,9 @@
 (api/defendpoint POST "/:id/dimension"
   "Sets the dimension for the given object with ID."
   [id :as {{dimension-type :type, dimension-name :name} :body}]
-  {dimension-type          (su/api-param "type" (s/enum "internal" "external"))
-   dimension-name          su/NonBlankString})
+  {dimension-type (su/api-param "type" (s/enum "internal" "external"))
+   dimension-name su/NonBlankString})
+
 (alter-meta! #'POST_:id_dimension assoc :private true)
 
 (deftest ^:parallel api-param-test
@@ -53,13 +54,10 @@
 (deftest ^:parallel distinct-test
   (is (= nil
          (s/check (su/distinct [s/Int]) [])))
-
   (is (= nil
          (s/check (su/distinct [s/Int]) [1])))
-
   (is (= nil
          (s/check (su/distinct [s/Int]) [1 2])))
-
   (is (some? (s/check (su/distinct [s/Int]) [1 2 1]))))
 
 (deftest ^:parallel open-schema-test

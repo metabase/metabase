@@ -10,12 +10,12 @@ export const FullWidthContainer = styled.div`
   width: 100%;
 
   ${breakpointMinSmall} {
-    padding-left: 2em;
-    padding-right: 2em;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
   }
 
   ${breakpointMinMedium} {
-    padding-left: 3em;
-    padding-right: 3em;
+    padding-left: 2rem;
+    padding-right: 2rem;
   }
 `;
