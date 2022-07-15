@@ -7,7 +7,6 @@
     :refer [Card CardEmitter Database Emitter EmitterAction QueryAction]]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
-   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [toucan.db :as db]))
 
