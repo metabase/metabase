@@ -82,6 +82,7 @@
                  :text     (tokens->string text-tokens (not is-match))})))))
 
 (defn- text-score-with
+  "Returns nil if no match is found."
   [weighted-scorers query-tokens search-result]
   (let [total-weight (reduce + (map :weight weighted-scorers))
         scores       (for [column (search-config/searchable-columns-for-model (:model search-result))
@@ -163,6 +164,7 @@
      (count model->sort-position)))
 
 (defn- text-score-with-match
+  "Returns nil if no match is found."
   [raw-search-string result]
   (if (seq raw-search-string)
     (text-score-with match-based-scorers
@@ -270,9 +272,12 @@
 (defn score-and-result
   "Returns a map with the `:score` and `:result`—or nil. The score is a vector of comparable things in priority order."
   ([raw-search-string result]
-   (let [text-score (text-score-with-match raw-search-string result)
+   (let [text-score {:score  (or (:score (text-score-with-match raw-search-string result))
+                                 0)
+                     :weight 10
+                     :name   "text score"}
          scores     (->> (conj (score-result result)
-                               {:score (:score text-score), :weight 10 :name "text score"})
+                               text-score)
                          (filter :score))]
      {:score  (/ (reduce + (map (fn [{:keys [weight score]}] (* weight score)) scores))
                  (reduce + (map :weight scores)))

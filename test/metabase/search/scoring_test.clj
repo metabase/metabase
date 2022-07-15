@@ -280,6 +280,22 @@
                 (map :result)
                 (map :name))))))
 
+(deftest no-text-match-scoring-test
+  (testing "Results with a word match should always rank higher than those without"
+   (let [search-string     "dashboard"
+         labeled-results   {:a {:name "my dashboard" :model "dashboard"}
+                            :b {:name "my dash" :model "dashboard" :bookmark true :collection_position 1}}
+         {:keys [a b]} labeled-results]
+     (is (= (map :name [a   ; Text match
+                        b]) ; No text match, but it's bookmarked and pinned
+            (->> labeled-results
+                 vals
+                 (map (partial scoring/score-and-result search-string))
+                 (sort-by :score)
+                 reverse
+                 (map :result)
+                 (map :name)))))))
+
 (deftest score-and-result-test
   (testing "If all scores are 0, does not divide by zero"
     (with-redefs [scoring/score-result
