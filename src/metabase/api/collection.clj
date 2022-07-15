@@ -60,7 +60,10 @@
       ;; include Root Collection at beginning or results if archived isn't `true`
       (if archived?
         collections
-        (cons (root-collection namespace) collections))
+        (let [root (root-collection namespace)]
+          (cond->> collections
+            (mi/can-read? root)
+            (cons root))))
       (hydrate collections :can_write)
       ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
       ;; and for personal collections we translate the name to user's locale
@@ -649,7 +652,9 @@
   "Return the 'Root' Collection object with standard details added"
   [namespace]
   {namespace (s/maybe su/NonBlankString)}
-  (dissoc (root-collection namespace) ::collection.root/is-root?))
+  (-> (root-collection namespace)
+      (api/read-check)
+      (dissoc ::collection.root/is-root?)))
 
 (defn- visible-model-kwds
   "If you pass in explicitly keywords that you can't see, you can't see them.

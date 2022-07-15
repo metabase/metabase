@@ -259,6 +259,7 @@ class FieldValuesWidgetInner extends Component {
       placeholder,
       forceTokenField = false,
       showOptionsInPopover,
+      checkedColor,
       valueRenderer = value =>
         renderValue(fields, formatOptions, value, {
           autoLoad: true,
@@ -314,11 +315,8 @@ class FieldValuesWidgetInner extends Component {
               value={value.filter(v => v != null)}
               onChange={onChange}
               options={options}
-              optionRenderer={option =>
-                renderValue(fields, formatOptions, option[0], {
-                  autoLoad: false,
-                })
-              }
+              optionRenderer={optionRenderer}
+              checkedColor={checkedColor}
             />
           ))}
         {(!usesListField || forceTokenField) && (

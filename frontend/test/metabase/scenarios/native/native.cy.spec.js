@@ -7,6 +7,7 @@ import {
   summarize,
   sidebar,
   filter,
+  filterField,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -159,12 +160,12 @@ describe("scenarios > question > native", () => {
     FILTERS.forEach(operator => {
       cy.log("Apply a filter");
       filter();
-      cy.findByText("Contains").click();
-      popover().within(() => {
-        cy.findByText(operator).click();
+      filterField("V", {
+        operator,
+        value: "This has a value",
       });
-      cy.findByPlaceholderText("Enter some text").type("This has a value");
-      cy.findByText("Apply").click();
+
+      cy.findByTestId("apply-filters").click();
 
       cy.log(
         `**Mid-point assertion for "${operator}" filter| FAILING in v0.36.6**`,

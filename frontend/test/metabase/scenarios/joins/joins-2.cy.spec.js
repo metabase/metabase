@@ -100,7 +100,7 @@ describe("scenarios > question > joined questions", () => {
           }
         });
       cy.findByText("wolf.dina@yahoo.com").click();
-      cy.button("Apply").click();
+      cy.findByTestId("apply-filters").click();
       cy.contains("Showing 1 row");
     });
 

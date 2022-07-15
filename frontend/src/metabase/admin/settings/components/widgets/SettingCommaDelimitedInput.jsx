@@ -3,6 +3,8 @@ import React from "react";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import cx from "classnames";
 
+const maybeSingletonList = value => (value ? [value] : null);
+
 const SettingCommaDelimitedInput = ({
   setting,
   onChange,
@@ -25,8 +27,13 @@ const SettingCommaDelimitedInput = ({
       // https://github.com/metabase/metabase/issues/22540
       value={setting.value ? setting.value[0] : ""}
       placeholder={setting.placeholder}
-      onChange={fireOnChange ? e => onChange([e.target.value]) : null}
-      onBlurChange={!fireOnChange ? e => onChange([e.target.value]) : null}
+      // If the input's value is empty, setting.value should be null
+      onChange={
+        fireOnChange ? e => onChange(maybeSingletonList(e.target.value)) : null
+      }
+      onBlurChange={
+        !fireOnChange ? e => onChange(maybeSingletonList(e.target.value)) : null
+      }
       autoFocus={autoFocus}
     />
   );
