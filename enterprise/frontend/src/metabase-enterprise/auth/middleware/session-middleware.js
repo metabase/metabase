@@ -35,8 +35,9 @@ export const createSessionMiddleware = (
           wasLoggedIn = isLoggedIn;
 
           if (isLoggedIn) {
-            await store.dispatch(refreshSession());
+            // get the redirect url before refreshing the session because after the refresh the url will be reset
             const redirectUrl = getRedirectUrl();
+            await store.dispatch(refreshSession());
 
             if (redirectUrl !== null) {
               store.dispatch(replace(redirectUrl));

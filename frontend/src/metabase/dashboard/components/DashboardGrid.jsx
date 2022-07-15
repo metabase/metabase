@@ -50,6 +50,7 @@ class DashboardGrid extends Component {
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
+    isNightMode: PropTypes.bool,
     dashboard: PropTypes.object.isRequired,
     parameterValues: PropTypes.object.isRequired,
 
@@ -286,6 +287,7 @@ class DashboardGrid extends Component {
         isEditing={this.props.isEditing}
         isEditingParameter={this.props.isEditingParameter}
         isFullscreen={this.props.isFullscreen}
+        isNightMode={this.props.isNightMode}
         isMobile={isMobile}
         isDataApp={this.props.isDataApp}
         onRemove={this.onDashCardRemove.bind(this, dc)}
