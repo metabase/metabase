@@ -291,7 +291,12 @@ function List({
         origin: {
           row,
           cols: data.cols,
+          rowIndex,
         },
+        data: row.map((value, columnIndex) => ({
+          value,
+          col: data.cols[columnIndex],
+        })),
       };
 
       const isClickable =
