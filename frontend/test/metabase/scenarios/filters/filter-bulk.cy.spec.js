@@ -102,7 +102,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     cy.findByLabelText("20").click();
     cy.button("Add filter").click();
-    cy.button("Apply").click();
+    applyFilters();
 
     cy.findByText("Quantity is equal to 20").should("be.visible");
     cy.findByText("Showing 4 rows").should("be.visible");
@@ -134,7 +134,9 @@ describe("scenarios > filters > bulk filtering", () => {
     modal().within(() => {
       cy.findByText("Product").click();
 
-      filterField("Category").findByText("Gadget").click();
+      filterField("Category")
+        .findByText("Gadget")
+        .click();
     });
 
     applyFilters();
@@ -148,11 +150,15 @@ describe("scenarios > filters > bulk filtering", () => {
     filter();
 
     modal().within(() => {
-      cy.findByText("is less than 30").click();
+      cy.findByText("30").click();
     });
 
     popover().within(() => {
-      cy.findByRole("textbox").click().type("30").clear().type("25");
+      cy.findByRole("textbox")
+        .click()
+        .type("30")
+        .clear()
+        .type("25");
 
       cy.button("Update filter").click();
     });
@@ -169,7 +175,7 @@ describe("scenarios > filters > bulk filtering", () => {
     filter();
 
     modal().within(() => {
-      cy.findByText("is less than 30")
+      cy.findByText("30")
         .parent()
         .within(() => cy.icon("close").click());
     });
@@ -213,7 +219,9 @@ describe("scenarios > filters > bulk filtering", () => {
       filter();
 
       modal().within(() => {
-        filterField("segments").within(() => cy.get("button").click());
+        filterField("segments").within(() =>
+          cy.findByText("Filter segments").click(),
+        );
       });
 
       popover().within(() => {
@@ -229,7 +237,9 @@ describe("scenarios > filters > bulk filtering", () => {
       filter();
 
       modal().within(() => {
-        filterField("segments").within(() => cy.get("button").click());
+        filterField("segments").within(() =>
+          cy.findByText(SEGMENT_2_NAME).click(),
+        );
       });
 
       popover().within(() => {
@@ -335,7 +345,9 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("can add a date shortcut filter from the popover", () => {
-      filterField("Created At").findByLabelText("more options").click();
+      filterField("Created At")
+        .findByLabelText("more options")
+        .click();
 
       cy.findByText("Last 3 Months").click();
 
@@ -359,7 +371,10 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Before").click();
 
       popover().within(() => {
-        cy.get("input").eq(0).clear().type("01/01/2017", { delay: 0 });
+        cy.get("input")
+          .eq(0)
+          .clear()
+          .type("01/01/2017", { delay: 0 });
 
         cy.findByText("Add filter").click();
       });
@@ -378,7 +393,9 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("Can cancel adding date filter", () => {
-      filterField("Created At").findByLabelText("more options").click();
+      filterField("Created At")
+        .findByLabelText("more options")
+        .click();
 
       cy.findByText("Discount").click();
 
@@ -543,6 +560,7 @@ describe("scenarios > filters > bulk filtering", () => {
     beforeEach(() => {
       visitQuestionAdhoc(productsQuestion);
       filter();
+      cy.get("body").type(`{ctrl}k`);
     });
 
     it("can search for a column", () => {
@@ -550,15 +568,19 @@ describe("scenarios > filters > bulk filtering", () => {
         cy.findByText("In").should("not.exist");
         cy.findByText("Category").should("be.visible");
 
-        cy.findByPlaceholderText("Search for a column...").clear().type("vend");
+        cy.findByPlaceholderText("Search for a column...")
+          .clear()
+          .type("vend");
 
         cy.findByText("Category").should("not.exist");
 
         filterField("Vendor")
-          .findByText("In") // "In Products"
+          .findByText("in") // "In Products"
           .should("be.visible");
 
-        filterField("Vendor").findByText("Vendor").should("be.visible");
+        filterField("Vendor")
+          .findByText("Vendor")
+          .should("be.visible");
       });
     });
 
@@ -591,7 +613,7 @@ const modal = () => {
 
 const applyFilters = () => {
   modal().within(() => {
-    cy.button("Apply").click();
+    cy.findByTestId("apply-filters").click();
   });
 
   cy.wait("@dataset");

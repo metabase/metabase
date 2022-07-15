@@ -7,6 +7,7 @@ import {
   summarize,
   sidebar,
   filter,
+  filterField,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -34,7 +35,7 @@ describe("scenarios > question > native", () => {
   it("displays an error when running selected text", () => {
     openNativeEditor().type(
       "select * from orders" +
-        "{leftarrow}".repeat(3) + // move left three
+      "{leftarrow}".repeat(3) + // move left three
         "{shift}{leftarrow}".repeat(19), // highlight back to the front
     );
     cy.get(".NativeQueryEditor .Icon-play").click();
@@ -55,7 +56,9 @@ describe("scenarios > question > native", () => {
       .click({ force: true });
 
     // selecting a question should update the query
-    popover().contains("Orders").click();
+    popover()
+      .contains("Orders")
+      .click();
 
     cy.contains("select * from {{#1}}");
 
@@ -68,7 +71,10 @@ describe("scenarios > question > native", () => {
     cy.get(".ace_content:visible").type("{leftarrow}{leftarrow}{backspace}2");
 
     // sidebar should show updated question title and name
-    cy.contains("Question #2").parent().parent().contains("Orders, Count");
+    cy.contains("Question #2")
+      .parent()
+      .parent()
+      .contains("Orders, Count");
 
     // run query again and see new result
     cy.get(".NativeQueryEditor .Icon-play").click();
@@ -159,12 +165,12 @@ describe("scenarios > question > native", () => {
     FILTERS.forEach(operator => {
       cy.log("Apply a filter");
       filter();
-      cy.findByText("Contains").click();
-      popover().within(() => {
-        cy.findByText(operator).click();
+      filterField("V", {
+        operator,
+        value: "This has a value",
       });
-      cy.findByPlaceholderText("Enter some text").type("This has a value");
-      cy.findByText("Apply").click();
+
+      cy.findByTestId("apply-filters").click();
 
       cy.log(
         `**Mid-point assertion for "${operator}" filter| FAILING in v0.36.6**`,
@@ -193,7 +199,9 @@ describe("scenarios > question > native", () => {
 
   it("should be able to add new columns after hiding some (metabase#15393)", () => {
     openNativeEditor().type("select 1 as visible, 2 as hidden");
-    cy.get(".NativeQueryEditor .Icon-play").as("runQuery").click();
+    cy.get(".NativeQueryEditor .Icon-play")
+      .as("runQuery")
+      .click();
     cy.findByText("Settings").click();
     cy.findByTestId("sidebar-left")
       .as("sidebar")

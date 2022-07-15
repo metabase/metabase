@@ -35,6 +35,7 @@ export const colors: ColorPalette = {
   "bg-light": "#F9FBFC",
   "bg-white": "#FFFFFF",
   "bg-yellow": "#FFFCF2",
+  "bg-night": "#42484E",
   shadow: "rgba(0,0,0,0.08)",
   border: "#EEECEC",
   "border-dark": "#C9CED3",
@@ -92,15 +93,21 @@ export const color = (color: string, palette = colors) => {
 };
 
 export const alpha = (c: string, a: number) => {
-  return Color(color(c)).alpha(a).string();
+  return Color(color(c))
+    .alpha(a)
+    .string();
 };
 
 export const lighten = (c: string, f: number = 0.5) => {
-  return Color(color(c)).lighten(f).string();
+  return Color(color(c))
+    .lighten(f)
+    .string();
 };
 
 export const darken = (c: string, f: number = 0.25) => {
-  return Color(color(c)).darken(f).string();
+  return Color(color(c))
+    .darken(f)
+    .string();
 };
 
 export const tint = (c: string, f: number = 0.125) => {

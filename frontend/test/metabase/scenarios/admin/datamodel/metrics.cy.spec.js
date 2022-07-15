@@ -42,12 +42,16 @@ describe("scenarios > admin > datamodel > metrics", () => {
     cy.findByText("Sort").click();
 
     // Sorts ascending by default
-    popover().contains("Revenue").click();
+    popover()
+      .contains("Revenue")
+      .click();
 
     // Let's make sure it's possible to sort descending as well
     cy.icon("arrow_up").click();
 
-    cy.icon("arrow_down").parent().contains("Revenue");
+    cy.icon("arrow_down")
+      .parent()
+      .contains("Revenue");
 
     visualize();
     // Visualization will render line chart by default. Switch to the table.
@@ -58,14 +62,20 @@ describe("scenarios > admin > datamodel > metrics", () => {
       .first()
       .as("tableHeader")
       .within(() => {
-        cy.get(".cellData").eq(1).invoke("text").should("eq", "Revenue");
+        cy.get(".cellData")
+          .eq(1)
+          .invoke("text")
+          .should("eq", "Revenue");
       });
 
     cy.get("@table")
       .last()
       .as("tableBody")
       .within(() => {
-        cy.get(".cellData").eq(1).invoke("text").should("eq", "50,072.98");
+        cy.get(".cellData")
+          .eq(1)
+          .invoke("text")
+          .should("eq", "50,072.98");
       });
   });
 
@@ -100,7 +110,9 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.wait(["@dataset", "@dataset", "@dataset"]);
 
       cy.findByText("Count").click();
-      popover().contains("Custom Expression").click();
+      popover()
+        .contains("Custom Expression")
+        .click();
 
       cy.get(".ace_text-input")
         .click()
@@ -149,7 +161,9 @@ describe("scenarios > admin > datamodel > metrics", () => {
     it("should see a newly asked question in its questions list", () => {
       // Ask a new qustion
       cy.visit("/reference/metrics/1/questions");
-      cy.get(".full").find(".Button").click();
+      cy.get(".full")
+        .find(".Button")
+        .click();
 
       filter();
       filterField("Total", {
@@ -157,9 +171,11 @@ describe("scenarios > admin > datamodel > metrics", () => {
         value: "50",
       });
 
-      cy.button("Apply").click();
+      cy.findByTestId("apply-filters").click();
       cy.findByText("Save").click();
-      cy.findAllByText("Save").last().click();
+      cy.findAllByText("Save")
+        .last()
+        .click();
       cy.findByText("Not now").click();
 
       // Check the list
@@ -192,10 +208,18 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.url().should("match", /metric\/1$/);
       cy.contains("Edit Your Metric");
       cy.contains(/Total\s+is less than/).click();
-      popover().contains("Less than").click();
-      popover().contains("Greater than").click();
-      popover().find("input").type("{SelectAll}10");
-      popover().contains("Update filter").click();
+      popover()
+        .contains("Less than")
+        .click();
+      popover()
+        .contains("Greater than")
+        .click();
+      popover()
+        .find("input")
+        .type("{SelectAll}10");
+      popover()
+        .contains("Update filter")
+        .click();
 
       // confirm that the preview updated
       cy.contains("Result: 18758");
@@ -220,8 +244,12 @@ describe("scenarios > admin > datamodel > metrics", () => {
         .find(".Icon-ellipsis")
         .click();
       cy.contains("Retire Metric").click();
-      modal().find("textarea").type("delete it");
-      modal().contains("button", "Retire").click();
+      modal()
+        .find("textarea")
+        .type("delete it");
+      modal()
+        .contains("button", "Retire")
+        .click();
     });
   });
 
@@ -269,7 +297,9 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.findByText("Orders").click();
       cy.findByText("Add filters to narrow your answer").click();
       cy.findByText("Custom Expression").click();
-      cy.get(".ace_text-input").clear().type("[ID] > 0 OR [ID] < 9876543210");
+      cy.get(".ace_text-input")
+        .clear()
+        .type("[ID] > 0 OR [ID] < 9876543210");
       cy.button("Done").click();
 
       cy.log("**Assert that there is a filter text visible**");

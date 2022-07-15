@@ -314,6 +314,7 @@ class Dashboard extends Component {
                   {dashboardHasCards(dashboard) ? (
                     <DashboardGrid
                       {...this.props}
+                      isNightMode={shouldRenderAsNightMode}
                       onEditingChange={this.setEditing}
                       isDataApp={this.props.isDataApp}
                     />

@@ -35,7 +35,7 @@
         (reset! db (mt/db))
         (thunk))
       (finally
-        (let [{driver :engine, db-id :id} @db]
+        (when-let [{driver :engine, db-id :id} @db]
           (tx/destroy-db! driver (tx/get-dataset-definition
                                   (data.impl/resolve-dataset-definition 'metabase.actions.test-util 'actions-test-data)))
           (db/delete! Database :id db-id))))))

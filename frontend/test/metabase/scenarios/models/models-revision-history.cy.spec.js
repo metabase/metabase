@@ -52,7 +52,7 @@ describe("scenarios > models > revision history", () => {
       operator: "Not empty",
     });
 
-    cy.button("Apply").click();
+    cy.findByTestId("apply-filters").click();
 
     cy.findByText("Save").click();
     modal().within(() => {
@@ -90,7 +90,7 @@ describe("scenarios > models > revision history", () => {
       placeholder: "min",
       value: "2000",
     });
-    cy.button("Apply").click();
+    cy.findByTestId("apply-filters").click();
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",

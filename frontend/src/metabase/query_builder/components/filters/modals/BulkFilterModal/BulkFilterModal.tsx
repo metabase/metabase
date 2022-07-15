@@ -1,15 +1,17 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
+import { useOnMount } from "metabase/hooks/use-on-mount";
+
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery, {
   FilterSection,
   DimensionOption,
   SegmentOption,
 } from "metabase-lib/lib/queries/StructuredQuery";
-
 import Question from "metabase-lib/lib/Question";
+
 import Button from "metabase/core/components/Button";
 import Tab from "metabase/core/components/Tab";
 import TabContent from "metabase/core/components/TabContent";
@@ -30,7 +32,6 @@ import {
 } from "./BulkFilterModal.styled";
 
 import { fixBetweens, getSearchHits } from "./utils";
-import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
 
 export interface BulkFilterModalProps {
   question: Question;
@@ -43,8 +44,20 @@ const BulkFilterModal = ({
 }: BulkFilterModalProps): JSX.Element | null => {
   const [query, setQuery] = useState(getQuery(question));
   const [isChanged, setIsChanged] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
+
+  useOnMount(() => {
+    const searchToggleListener = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        setSearchQuery("");
+        setShowSearch(showSearch => !showSearch);
+      }
+    };
+    window.addEventListener("keydown", searchToggleListener);
+    return () => window.removeEventListener("keydown", searchToggleListener);
+  });
 
   const filters = useMemo(() => {
     return query.topLevelFilters();
@@ -89,11 +102,22 @@ const BulkFilterModal = ({
     onClose?.();
   }, [query, onClose]);
 
+  const clearFilters = () => {
+    setQuery(query.clearFilters());
+    setIsChanged(true);
+  };
+
   return (
     <ModalRoot>
       <ModalHeader>
-        <ModalTitle>{getTitle(question, query)}</ModalTitle>
-        <FieldSearch value={searchQuery} onChange={setSearchQuery} />
+        <ModalTitle>{t`Filter by`}</ModalTitle>
+        {showSearch ? (
+          <FieldSearch value={searchQuery} onChange={setSearchQuery} />
+        ) : (
+          <ModalCloseButton onClick={onClose}>
+            <Icon name="close" />
+          </ModalCloseButton>
+        )}
       </ModalHeader>
       {sections.length === 1 || searchItems ? (
         <BulkFilterModalSection
@@ -119,12 +143,19 @@ const BulkFilterModal = ({
       )}
       <ModalDivider />
       <ModalFooter>
-        <Button onClick={onClose}>{t`Cancel`}</Button>
+        <Button
+          onClick={clearFilters}
+          borderless
+          disabled={!query.hasFilters()}
+        >
+          {t`Clear all filters`}
+        </Button>
         <Button
           primary
+          data-testid="apply-filters"
           disabled={!isChanged}
           onClick={handleApplyQuery}
-        >{t`Apply`}</Button>
+        >{t`Apply Filters`}</Button>
       </ModalFooter>
     </ModalRoot>
   );
@@ -192,7 +223,7 @@ const BulkFilterModalSectionList = ({
     <TabContent value={tab} onChange={setTab}>
       <ModalTabList>
         {sections.map((section, index) => (
-          <Tab key={index} value={index}>
+          <Tab key={index} value={index} icon={section.icon}>
             {section.name}
           </Tab>
         ))}
@@ -253,6 +284,7 @@ const FieldSearch = ({
         onChange={onChange}
         padding="sm"
         borderRadius="md"
+        autoFocus
         icon={<Icon name="search" size={13} style={{ marginTop: 2 }} />}
       />
     </SearchContainer>

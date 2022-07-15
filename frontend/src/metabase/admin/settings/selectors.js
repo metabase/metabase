@@ -214,7 +214,7 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "string",
         required: false,
         widget: SettingCommaDelimitedInput,
-        validations: [["email_list", t`That's not a valid email addresses`]],
+        validations: [["email_list", t`That's not a valid email address`]],
       },
     ],
   },
@@ -622,7 +622,7 @@ export const getSections = createSelector(
         continue;
       }
 
-      const settings = section.settings.map(function (setting) {
+      const settings = section.settings.map(function(setting) {
         const apiSetting =
           settingsByKey[setting.key] && settingsByKey[setting.key][0];
 

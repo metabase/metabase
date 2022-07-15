@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
    [metabase.models.database :refer [Database]]
    [metabase.models.setting :as setting]
    [metabase.util :as u]
@@ -37,7 +38,7 @@
 
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
-  {:arglists '([action arg-map])}
+  {:arglists '([action arg-map]), :added "0.44.0"}
   (fn [action _arg-map]
     (keyword action)))
 
@@ -49,7 +50,7 @@
   "Return the appropriate spec to use to validate the arg map passed to [[perform-action!*]].
 
     (action-arg-map-spec :row/create) => :actions.args.crud/row.create"
-  {:arglists '([action])}
+  {:arglists '([action]), :added "0.44.0"}
   keyword)
 
 (defmethod action-arg-map-spec :default
@@ -73,7 +74,7 @@
 
   DON'T CALL THIS METHOD DIRECTLY TO PERFORM ACTIONS -- use [[perform-action!]] instead which does normalization,
   validation, and binds Database-local values."
-  {:arglists '([driver action database arg-map])}
+  {:arglists '([driver action database arg-map]), :added "0.44.0"}
   (fn [driver action _database _arg-map]
     [(driver/dispatch-on-initialized-driver driver)
      (keyword action)])
@@ -114,7 +115,7 @@
         spec    (action-arg-map-spec action)
         arg-map (normalize-action-arg-map action arg-map)]
     (when (s/invalid? (s/conform spec arg-map))
-      (throw (ex-info (format "Invalid Action arg map: %s" (s/explain-str spec arg-map))
+      (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
     ;; Check that Actions are enabled globally.
     (when-not (experimental-enable-actions)
@@ -122,7 +123,7 @@
                       {:status-code 400})))
     ;; Check that Actions are enabled for this specific Database.
     (let [{database-id :database}                         arg-map
-          {db-settings :settings, driver :engine, :as db} (Database database-id)]
+          {db-settings :settings, driver :engine, :as db} (api/check-404 (Database database-id))]
       ;; make sure the Driver supports Actions.
       (when-not (driver/database-supports? driver :actions db)
         (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
@@ -145,39 +146,57 @@
 
 ;;;; Action definitions.
 
-;;; Common base spec for all Actions. All Actions at least require
+;;; Common base spec for *all* Actions. All Actions at least require
 ;;;
-;;;    {:database <id>, :query {:source-table <id>}}
+;;;    {:database <id>}
+;;;
+;;; Anything else required depends on the action type.
 
 (s/def :actions.args/id
   (s/and integer? pos?))
 
-(s/def :actions.args.crud.common/database
+(s/def :actions.args.common/database
   :actions.args/id)
 
-(s/def :actions.args.crud.common.query/source-table
+(s/def :actions.args/common
+  (s/keys :req-un [:actions.args.common/database]))
+
+;;; Common base spec for all CRUD row Actions. All CRUD row Actions at least require
+;;;
+;;;    {:database <id>, :query {:source-table <id>}}
+
+(s/def :actions.args.crud.row.common.query/source-table
   :actions.args/id)
 
-(s/def :actions.args.crud.common/query
-  (s/keys :req-un [:actions.args.crud.common.query/source-table]))
+(s/def :actions.args.crud.row.common/query
+  (s/keys :req-un [:actions.args.crud.row.common.query/source-table]))
 
-(s/def :actions.args.crud/common
-  (s/keys :req-un [:actions.args.crud.common/database
-                   :actions.args.crud.common/query]))
+(s/def :actions.args.crud.row/common
+  (s/merge
+   :actions.args/common
+   (s/keys :req-un [:actions.args.crud.row.common/query])))
 
 ;;; the various `:row/*` Actions all treat their args map as an MBQL query.
 
-(defn- normalize-as-mbql-query [query]
-  (let [query (assoc (mbql.normalize/normalize query)
-                     :type :query)]
-    (try
-      (schema/validate mbql.s/Query query)
-      (catch Exception e
-        (throw (ex-info
-                (ex-message e)
-                {:exception-data (ex-data e)
-                 :status-code    400}))))
-    query))
+(defn- normalize-as-mbql-query
+  "Normalize `query` as an MBQL query. Optional arg `:exclude` is a set of *normalized* keys to exclude from recursive
+  normalization, e.g. `:create-row` for the `:row/create` Action (we don't want to normalize the row input since
+  preserving case and `snake_keys` in the request body is important)."
+  ([query]
+   (let [query (mbql.normalize/normalize (assoc query :type :query))]
+     (try
+       (schema/validate mbql.s/Query query)
+       (catch Exception e
+         (throw (ex-info
+                 (ex-message e)
+                 {:exception-data (ex-data e)
+                  :status-code    400}))))
+     query))
+
+  ([query & {:keys [exclude]}]
+   (let [query (update-keys query mbql.u/normalize-token)]
+     (merge (select-keys query exclude)
+            (normalize-as-mbql-query (apply dissoc query exclude))))))
 
 ;;;; `:row/create`
 
@@ -189,14 +208,14 @@
 
 (defmethod normalize-action-arg-map :row/create
   [_action query]
-  (normalize-as-mbql-query query))
+  (normalize-as-mbql-query query :exclude #{:create-row}))
 
 (s/def :actions.args.crud.row.create/create-row
   (s/map-of keyword? any?))
 
 (s/def :actions.args.crud/row.create
   (s/merge
-   :actions.args.crud/common
+   :actions.args.crud.row/common
    (s/keys :req-un [:actions.args.crud.row.create/create-row])))
 
 (defmethod action-arg-map-spec :row/create
@@ -213,14 +232,14 @@
 
 (defmethod normalize-action-arg-map :row/update
   [_action query]
-  (normalize-as-mbql-query query))
+  (normalize-as-mbql-query query :exclude #{:update-row}))
 
 (s/def :actions.args.crud.row.update.query/filter
   vector?) ; MBQL filter clause
 
 (s/def :actions.args.crud.row.update/query
   (s/merge
-   :actions.args.crud.common/query
+   :actions.args.crud.row.common/query
    (s/keys :req-un [:actions.args.crud.row.update.query/filter])))
 
 (s/def :actions.args.crud.row.update/update-row
@@ -228,7 +247,7 @@
 
 (s/def :actions.args.crud/row.update
   (s/merge
-   :actions.args.crud/common
+   :actions.args.crud.row/common
    (s/keys :req-un [:actions.args.crud.row.update/update-row
                     :actions.args.crud.row.update/query])))
 
@@ -252,14 +271,47 @@
 
 (s/def :actions.args.crud.row.delete/query
   (s/merge
-   :actions.args.crud.common/query
+   :actions.args.crud.row.common/query
    (s/keys :req-un [:actions.args.crud.row.delete.query/filter])))
 
 (s/def :actions.args.crud/row.delete
   (s/merge
-   :actions.args.crud/common
+   :actions.args.crud.row/common
    (s/keys :req-un [:actions.args.crud.row.delete/query])))
 
 (defmethod action-arg-map-spec :row/delete
   [_action]
   :actions.args.crud/row.delete)
+
+;;;; Bulk actions
+
+;;;; `:bulk/create`
+
+;;; For `bulk/create` the request body is to `POST /api/action/:action-namespace/:action-name/:table-id` is just a
+;;; vector of rows but the API endpoint itself calls [[perform-action!]] with
+;;;
+;;;    {:database <database-id>, :table-id <table-id>, :arg <request-body>}
+;;;
+;;; and we transform this to
+;;;
+;;;     {:database <database-id>, :table-id <table-id>, :rows <request-body>}
+
+(defmethod normalize-action-arg-map :bulk/create
+  [_action {:keys [database table-id], rows :arg, :as _arg-map}]
+  {:database database, :table-id table-id, :rows rows})
+
+(s/def :actions.args.crud.bulk.create/table-id
+  :actions.args/id)
+
+(s/def :actions.args.crud.bulk.create/rows
+  (s/cat :rows (s/+ (s/map-of keyword? any?))))
+
+(s/def :actions.args.crud.bulk/create
+  (s/merge
+   :actions.args/common
+   (s/keys :req-un [:actions.args.crud.bulk.create/table-id
+                    :actions.args.crud.bulk.create/rows])))
+
+(defmethod action-arg-map-spec :bulk/create
+  [_action]
+  :actions.args.crud.bulk/create)

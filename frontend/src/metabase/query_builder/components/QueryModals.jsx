@@ -176,7 +176,7 @@ class QueryModals extends React.Component {
         />
       </Modal>
     ) : modal === MODAL_TYPES.FILTERS ? (
-      <Modal medium onClose={onCloseModal}>
+      <Modal fit onClose={onCloseModal}>
         <BulkFilterModal question={question} onClose={onCloseModal} />
       </Modal>
     ) : modal === MODAL_TYPES.HISTORY ? (

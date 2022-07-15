@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { keyframes } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import Button from "metabase/core/components/Button";
 
 const expandKeyframes = keyframes`
   50% {
@@ -29,3 +30,27 @@ export const BookmarkIcon = styled(Icon)<BookmarkIconProps>`
   animation-duration: 0.3s;
   animation-timing-function: linear;
 `;
+
+interface BookmarkButtonProps {
+  isBookmarked: boolean;
+}
+
+export const BookmarkButton = styled(Button)<BookmarkButtonProps>`
+  padding: 0.25rem 0.5rem;
+  height: 2rem;
+  width: 2rem;
+
+  &:hover {
+    color: ${({ isBookmarked }) =>
+      isBookmarked ? color("brand") : color("text-dark")};
+    background-color: ${color("bg-medium")};
+  }
+
+  svg {
+    vertical-align: middle;
+  }
+`;
+
+BookmarkButton.defaultProps = {
+  onlyIcon: true,
+};

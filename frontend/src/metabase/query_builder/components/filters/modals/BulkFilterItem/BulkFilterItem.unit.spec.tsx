@@ -234,9 +234,9 @@ describe("BulkFilterItem", () => {
       </Provider>,
     );
     screen.getByTestId("value-picker");
-    screen.getByText("Between");
-    screen.getByPlaceholderText("min");
-    screen.getByPlaceholderText("max");
+    screen.getByText(/between/i);
+    screen.getByPlaceholderText("Min");
+    screen.getByPlaceholderText("Max");
   });
 
   it("renders a category picker for category type", () => {
@@ -347,7 +347,7 @@ describe("BulkFilterItem", () => {
         />
       </Provider>,
     );
-    screen.getByText("Is");
+    screen.getByText(/is/i);
   });
 
   it("defaults text filters to 'contains' operator", () => {
@@ -365,6 +365,6 @@ describe("BulkFilterItem", () => {
         />
       </Provider>,
     );
-    screen.getByText("Contains");
+    screen.getByText(/contains/i);
   });
 });

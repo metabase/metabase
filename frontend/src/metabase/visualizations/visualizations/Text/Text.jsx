@@ -96,8 +96,13 @@ export default class Text extends Component {
   preventDragging = e => e.stopPropagation();
 
   render() {
-    const { className, gridSize, settings, isEditing, isPreviewing } =
-      this.props;
+    const {
+      className,
+      gridSize,
+      settings,
+      isEditing,
+      isPreviewing,
+    } = this.props;
     const isSingleRow = gridSize && gridSize.height === 1;
 
     if (isEditing) {
@@ -127,7 +132,7 @@ export default class Text extends Component {
                     styles["text-card-textarea"],
                   )}
                   name="text"
-                  placeholder={t`Write here, and use Markdown if you'd like`}
+                  placeholder={t`You can use Markdown here, and include variables {{like_this}}`}
                   value={settings.text}
                   onChange={e => this.handleTextChange(e.target.value)}
                   // Prevents text cards from dragging when you actually want to select text

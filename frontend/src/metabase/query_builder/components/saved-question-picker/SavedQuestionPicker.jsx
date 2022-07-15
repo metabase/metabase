@@ -7,7 +7,6 @@ import { connect } from "react-redux";
 import Icon from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 import Collection, {
-  ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,
   buildCollectionTree,
 } from "metabase/entities/collections";
@@ -35,12 +34,15 @@ const propTypes = {
   databaseId: PropTypes.string,
   tableId: PropTypes.string,
   collectionName: PropTypes.string,
+  collection: PropTypes.object,
 };
 
-const OUR_ANALYTICS_COLLECTION = {
-  ...ROOT_COLLECTION,
-  schemaName: t`Everything else`,
-  icon: "folder",
+const getOurAnalyticsCollection = collectionEntity => {
+  return {
+    ...collectionEntity,
+    schemaName: t`Everything else`,
+    icon: "folder",
+  };
 };
 
 const ALL_PERSONAL_COLLECTIONS_ROOT = {
@@ -56,6 +58,7 @@ function SavedQuestionPicker({
   databaseId,
   tableId,
   collectionName,
+  collection: rootCollection,
 }) {
   const collectionTree = useMemo(() => {
     const targetModels = isDatasets ? ["dataset"] : null;
@@ -88,19 +91,20 @@ function SavedQuestionPicker({
     }
 
     return [
-      OUR_ANALYTICS_COLLECTION,
+      ...(rootCollection ? [getOurAnalyticsCollection(rootCollection)] : []),
       ...buildCollectionTree(preparedCollections, { targetModels }),
     ];
-  }, [collections, currentUser, isDatasets]);
+  }, [collections, rootCollection, currentUser, isDatasets]);
 
   const initialCollection = useMemo(
-    () => findCollectionByName(collectionTree, collectionName),
+    () =>
+      findCollectionByName(collectionTree, collectionName) ?? collectionTree[0],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
   const [selectedCollection, setSelectedCollection] = useState(
-    initialCollection || OUR_ANALYTICS_COLLECTION,
+    initialCollection,
   );
 
   const handleSelect = useCallback(collection => {
@@ -121,7 +125,7 @@ function SavedQuestionPicker({
           <Tree
             data={collectionTree}
             onSelect={handleSelect}
-            selectedId={selectedCollection.id}
+            selectedId={selectedCollection?.id}
           />
         </TreeContainer>
       </CollectionsContainer>
@@ -141,6 +145,10 @@ SavedQuestionPicker.propTypes = propTypes;
 const mapStateToProps = ({ currentUser }) => ({ currentUser });
 
 export default _.compose(
+  Collection.load({
+    id: () => "root",
+    loadingAndErrorWrapper: false,
+  }),
   Collection.loadList({
     query: () => ({ tree: true }),
   }),

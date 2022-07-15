@@ -207,7 +207,9 @@ describe("scenarios > collection defaults", () => {
 
       cy.findByText("Orders").as("dragSubject");
 
-      navigationSidebar().findByText("Our analytics").as("dropTarget");
+      navigationSidebar()
+        .findByText("Our analytics")
+        .as("dropTarget");
 
       dragAndDrop("dragSubject", "dropTarget");
 
@@ -218,7 +220,7 @@ describe("scenarios > collection defaults", () => {
       cy.findByText("Orders");
     });
 
-    describe("nested collections with revoked parent access", () => {
+    describe.skip("nested collections with revoked parent access", () => {
       const { first_name, last_name } = nocollection;
       const revokedUsersPersonalCollectionName = `${first_name} ${last_name}'s Personal Collection`;
 
@@ -411,7 +413,9 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          cy.findByTestId("bulk-action-bar").button("Archive").click();
+          cy.findByTestId("bulk-action-bar")
+            .button("Archive")
+            .click();
 
           cy.findByText("Orders").should("not.exist");
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
@@ -423,7 +427,9 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          cy.findByTestId("bulk-action-bar").button("Move").click();
+          cy.findByTestId("bulk-action-bar")
+            .button("Move")
+            .click();
 
           modal().within(() => {
             cy.findByText("First collection").click();
@@ -434,7 +440,9 @@ describe("scenarios > collection defaults", () => {
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
 
           // Check that items were actually moved
-          navigationSidebar().findByText("First collection").click();
+          navigationSidebar()
+            .findByText("First collection")
+            .click();
           cy.findByText("Orders");
         });
       });
@@ -523,7 +531,9 @@ function moveOpenedCollectionTo(newParent) {
   openCollectionMenu();
   popover().within(() => cy.findByText("Move").click());
 
-  cy.findAllByTestId("item-picker-item").contains(newParent).click();
+  cy.findAllByTestId("item-picker-item")
+    .contains(newParent)
+    .click();
 
   cy.button("Move").click();
   // Make sure modal closed

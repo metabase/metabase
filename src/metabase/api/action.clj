@@ -8,6 +8,7 @@
             [metabase.models.action :as action]
             [metabase.models.database :refer [Database]]
             [metabase.models.setting :as setting]
+            [metabase.models.table :as table]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [trs]]
             [toucan.db :as db]))
@@ -22,7 +23,9 @@
   "Generic API endpoint for executing any sort of Action with source Table ID specified as part of the route."
   [action-namespace action-name table-id :as {:keys [body]}]
   (let [action (keyword action-namespace action-name)]
-    (actions/perform-action! action {:table-id table-id, :arg body})))
+    (actions/perform-action! action {:database (api/check-404 (table/table-id->database-id table-id))
+                                     :table-id table-id
+                                     :arg      body})))
 
 (defn check-actions-enabled
   "Check whether Actions are enabled and allowed for the [[metabase.models.database]] with `database-id`, or return a
@@ -55,6 +58,8 @@
   [action-id]
   (db/delete! HTTPAction :action_id action-id)
   api/generic-204-no-content)
+
+;; TODO -- 99% sure these are busted. See https://github.com/metabase/metabase/issues/23935
 
 (api/defendpoint POST "/"
   "Create a new HTTP action."
