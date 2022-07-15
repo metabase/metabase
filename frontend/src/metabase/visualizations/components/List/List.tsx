@@ -286,6 +286,21 @@ function List({
 
       const { right } = listColumnIndexes;
 
+      const clickObject = {
+        settings,
+        origin: {
+          row,
+          cols: data.cols,
+        },
+      };
+
+      const isClickable =
+        isDataApp && checkIsVisualizationClickable(clickObject);
+
+      const onRowClick = () => {
+        onVisualizationClick(clickObject);
+      };
+
       const onEditClick = (event: React.SyntheticEvent) => {
         setFocusedRow(row);
         event.stopPropagation();
@@ -299,7 +314,8 @@ function List({
       return (
         <ListItemContainer
           key={rowIndex}
-          disabled={!isDataApp}
+          onClick={onRowClick}
+          disabled={!isClickable}
           ref={ref}
           data-testid="table-row"
         >
@@ -333,10 +349,13 @@ function List({
     },
     [
       data,
+      settings,
       listColumnIndexes,
       hasEditButton,
       hasDeleteButton,
       isDataApp,
+      checkIsVisualizationClickable,
+      onVisualizationClick,
       renderListItemLeftPart,
       renderListItemCell,
       handleDelete,
