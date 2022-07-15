@@ -17,13 +17,9 @@ describe("Object Detail", () => {
         objectId={778}
         canZoomNextRow={false}
         canZoomPreviousRow={false}
-        isEditing={false}
-        canEdit={false}
-        deleteRow={() => null}
         viewPreviousObjectDetail={() => null}
         viewNextObjectDetail={() => null}
         closeObjectDetail={() => null}
-        onToggleEditingModeClick={() => null}
       />,
     );
     screen.getAllByText(/Large Sandstone Socks/i);
@@ -38,13 +34,9 @@ describe("Object Detail", () => {
         objectId={778}
         canZoomNextRow={true}
         canZoomPreviousRow={false}
-        isEditing={false}
-        canEdit={false}
-        deleteRow={() => null}
         viewPreviousObjectDetail={() => null}
         viewNextObjectDetail={() => null}
         closeObjectDetail={() => null}
-        onToggleEditingModeClick={() => null}
       />,
     );
     const nextDisabled = screen
@@ -108,14 +100,11 @@ describe("Object Detail", () => {
         canZoom={true}
         canZoomPreviousRow={false}
         canZoomNextRow={false}
-        isWritebackEnabled={false}
         followForeignKey={() => null}
         onVisualizationClick={() => null}
         visualizationIsClickable={() => false}
         fetchTableFks={() => null}
-        updateRowFromObjectDetail={() => null}
         loadObjectDetailFKReferences={() => null}
-        deleteRowFromObjectDetail={() => null}
         viewPreviousObjectDetail={() => null}
         viewNextObjectDetail={() => null}
         closeObjectDetail={() => null}
