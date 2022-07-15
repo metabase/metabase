@@ -169,12 +169,6 @@
   background-color: var(--color-bg-white);
 }
 
-/* favorite */
-.text-gold,
-.text-gold-hover:hover {
-  color: var(--color-accent4);
-}
-
 .text-purple,
 .text-purple-hover:hover {
   color: var(--color-accent7);
