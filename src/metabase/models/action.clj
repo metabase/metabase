@@ -49,13 +49,11 @@
 (u/strict-extend (class HTTPAction)
   models/IModel
   (merge Action-subtype-IModel-impl
-         {:types (constantly {:template :json
-                              :response_handle :json
-                              :error_handle :json})}))
+         {:types (constantly {:template :json})}))
 
 (def ^:private encrypted-json-out (comp mi/json-out-with-keywordization encryption/maybe-decrypt))
 
-(defn- normalize-query-actions [database actions]
+(defn- normalize-query-actions [actions]
   (when (seq actions)
     (let [cards (->> (db/query {:select [:card.*
                                          [:db.settings :db_settings]
@@ -63,10 +61,7 @@
                                 :from [[:report_card :card]]
                                 :join [:query_action [:= :query_action.card_id :card.id]
                                        [:metabase_database :db] [:= :card.database_id :db.id]]
-                                :where [:and
-                                        [:= :card.is_write true]
-                                        (when database
-                                          [:= :card.database_id database])]})
+                                :where [:= :card.is_write true]})
                      (map (fn [card]
                             (let [disabled (or (:archived card)
                                                (-> card
@@ -109,9 +104,9 @@
 (defn select-actions
   "Select Actions and fill in sub type information.
    `options` is passed to `db/select` `& options` arg"
-  [database & options]
+  [& options]
   (let [{:keys [query http]} (group-by :type (apply db/select Action options))
-        query-actions (normalize-query-actions database query)
+        query-actions (normalize-query-actions query)
         http-actions (normalize-http-actions http)]
     (sort-by :updated_at (concat query-actions http-actions))))
 
@@ -124,7 +119,7 @@
   (if-let [emitter-ids (seq (filter some? (map :id emitters)))]
     (let [emitter-actions (db/select 'EmitterAction :emitter_id [:in emitter-ids])
           action-id-by-emitter-id (into {} (map (juxt :emitter_id :action_id) emitter-actions))
-          actions (m/index-by :id (select-actions nil :id [:in (map :action_id emitter-actions)]))]
+          actions (m/index-by :id (select-actions :id [:in (map :action_id emitter-actions)]))]
       (for [{emitter-id :id, :as emitter} emitters]
         (some-> emitter (assoc :action (get actions (get action-id-by-emitter-id emitter-id))))))
     emitters))

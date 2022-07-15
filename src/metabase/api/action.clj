@@ -11,7 +11,6 @@
             [metabase.models.table :as table]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [trs]]
-            [schema.core :as s]
             [toucan.db :as db]))
 
 (api/defendpoint POST "/:action-namespace/:action-name"
@@ -48,22 +47,15 @@
 
 (api/defendpoint GET "/"
   "Returns cards that can be used for QueryActions"
-  [database]
-  {database (s/maybe s/Int)}
-  (when database
-    (check-actions-enabled database))
-  (action/select-actions database))
+  []
+  (action/select-actions))
 
 (api/defendpoint GET "/:action-id"
-  [action-id database]
-  (when database
-    (check-actions-enabled database))
-  (first (action/select-actions nil :id action-id)))
+  [action-id]
+  (api/check-404 (first (action/select-actions :id action-id))))
 
 (api/defendpoint DELETE "/:action-id"
-  [action-id database]
-  (when database
-    (check-actions-enabled database))
+  [action-id]
   (db/delete! HTTPAction :action_id action-id)
   api/generic-204-no-content)
 
@@ -71,25 +63,21 @@
 
 (api/defendpoint POST "/"
   "Create a new HTTP action."
-  [action database]
-  (when database
-    (check-actions-enabled database))
-  (when (not= (keyword (:type action)) :http)
-    (throw (ex-info (trs "Action type is not supported") action)))
+  [:as {action :body}]
+  (when (not= "http" (:type action))
+    (throw (ex-info (trs "Action type is not supported") {:status-code 400 :action action})))
   (let [http-action (db/insert! HTTPAction action)]
-    (if-let [action-id  (:action_id http-action)]
-      (first (action/select-actions nil :id action-id))
+    (if-let [action-id (:action_id http-action)]
+      (first (action/select-actions :id action-id))
       ;; db/insert! does not return a value when used with h2
       ;; so we return the most recently updated http action.
-      (last (action/select-actions nil :type "http")))))
+      (last (action/select-actions :type "http")))))
 
 (api/defendpoint PUT "/:id"
-  [id :as {action :body} database]
-  (when database
-    (check-actions-enabled database))
+  [id :as {action :body}]
   (when (not= "http" (:type action))
-    (throw (ex-info (trs "Action type is not supported") action)))
+    (throw (ex-info (trs "Action type is not supported") {:status-code 400 :action action})))
   (db/update! HTTPAction id action)
-  (first (action/select-actions nil :id id)))
+  (first (action/select-actions :id id)))
 
 (api/define-routes actions/+check-actions-enabled api/+check-superuser)
