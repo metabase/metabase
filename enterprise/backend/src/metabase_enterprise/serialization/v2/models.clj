@@ -10,5 +10,6 @@
    "Dimension"
    "Field"
    "Metric"
+   "NativeQuerySnippet"
    "Setting"
    "Table"])

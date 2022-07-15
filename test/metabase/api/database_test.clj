@@ -299,7 +299,7 @@
                                                              :visibility_type   "normal"
                                                              :has_field_values  "list"
                                                              :database_position 1
-                                                             :database_required false})]
+                                                             :database_required true})]
                                      :segments     []
                                      :metrics      []
                                      :id           (mt/id :categories)

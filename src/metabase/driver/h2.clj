@@ -7,6 +7,7 @@
             [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.h2.actions :as h2.actions]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -20,6 +21,9 @@
             [metabase.util.ssh :as ssh])
   (:import [java.sql Clob ResultSet ResultSetMetaData]
            java.time.OffsetTime))
+
+;; method impls live in this namespace
+(comment h2.actions/keep-me)
 
 (driver/register! :h2, :parent :sql-jdbc)
 
