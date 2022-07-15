@@ -34,8 +34,9 @@ interface CollectionHeaderButtonProps {
 export const CollectionHeaderButton = styled(
   Button,
 )<CollectionHeaderButtonProps>`
-  padding: 0.5rem 0.75rem;
-  height: 2.5rem;
+  padding: 0.25rem 0.5rem;
+  height: 2rem;
+  width: 2rem;
 
   &:hover {
     color: ${color("brand")};
