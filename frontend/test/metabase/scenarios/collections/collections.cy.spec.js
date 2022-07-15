@@ -260,21 +260,17 @@ describe("scenarios > collection defaults", () => {
 
       it("should not render collections in items list if user doesn't have collection access (metabase#16555)", () => {
         cy.visit("/collection/root");
-        // Since this user doesn't have access rights to the root collection, it should render empty
-        cy.findByTestId("collection-empty-state");
+        // Since this user doesn't have access rights to the root collection, we should render a warning
+        cy.findByText("You don't have permissions to do that.");
       });
 
-      it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
+      it("should see a child collection in a sidebar even with revoked access to its parents (metabase#14114)", () => {
         cy.visit("/");
 
         navigationSidebar().within(() => {
-          cy.findByText("Our analytics").click();
-        });
-
-        navigationSidebar().within(() => {
-          cy.findByText("Our analytics");
-          cy.findByText("Child");
+          cy.findByText("Our analytics").should("not.exist");
           cy.findByText("Parent").should("not.exist");
+          cy.findByText("Child");
           cy.findByText("Your personal collection");
         });
       });
