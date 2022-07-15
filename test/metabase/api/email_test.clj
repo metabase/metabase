@@ -1,5 +1,6 @@
 (ns metabase.api.email-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.api.email :as api.email]
             [metabase.email :as email]
             [metabase.models.setting :as setting]
@@ -90,7 +91,33 @@
                  (is (= (if success?
                           default-email-settings
                           original-values)
-                        (email-settings)))))))))))
+                        (email-settings))))))))))
+  (testing "Updating values with obfuscated password (#23919)"
+    (mt/with-temporary-setting-values [email-from-address  "notifications@metabase.com"
+                                       email-from-name     "Sender Name"
+                                       email-reply-to      ["reply-to@metabase.com"]
+                                       email-smtp-host     "www.test.com"
+                                       email-smtp-password "preexisting"]
+      (with-redefs [email/test-smtp-connection (fn [settings]
+                                                 (let [obfuscated? (str/starts-with? (:pass settings) "****")]
+                                                   (is (not obfuscated?) "We received an obfuscated password!")
+                                                   (if obfuscated?
+                                                     {::email/error (ex-info "Sent obfuscated password" {})}
+                                                     settings)))]
+        (testing "If we don't change the password we don't see the password"
+          (let [payload  (-> (email-settings)
+                             ;; user changes one property
+                             (assoc :email-from-name "notifications")
+                             ;; the FE will have an obfuscated value
+                             (update :email-smtp-password setting/obfuscate-value))
+                response (mt/user-http-request :crowberto :put 200 "email" payload)]
+            (is (= (setting/obfuscate-value "preexisting") (:email-smtp-password response)))))
+        (testing "If we change the password we can receive the password"
+          (let [payload  (-> (email-settings)
+                             ;; user types in a new password
+                             (assoc :email-smtp-password "new-password"))
+                response (mt/user-http-request :crowberto :put 200 "email" payload)]
+            (is (= "new-password" (:email-smtp-password response)))))))))
 
 (deftest clear-email-settings-test
   (testing "DELETE /api/email"
