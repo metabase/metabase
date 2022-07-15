@@ -1118,7 +1118,7 @@ export const fetchDashboardParameterValuesWithCache = createThunkAction(
       const endpoint = query
         ? DashboardApi.parameterSearch
         : DashboardApi.parameterValues;
-      const results = await endpoint({
+      const { values, has_more_values } = await endpoint({
         paramId: parameter.id,
         dashId: dashboardId,
         query,
@@ -1127,7 +1127,8 @@ export const fetchDashboardParameterValuesWithCache = createThunkAction(
 
       return {
         cacheKey,
-        results: results.map(result => [].concat(result)),
+        results: values.map(value => [].concat(value)),
+        has_more_values: query ? true : has_more_values,
       };
     },
 );
