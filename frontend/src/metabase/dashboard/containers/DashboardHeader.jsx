@@ -20,7 +20,6 @@ import { getDashboardActions } from "metabase/dashboard/components/DashboardActi
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
-  DashboardHeaderButtonContainer,
 } from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
@@ -344,13 +343,12 @@ class DashboardHeader extends Component {
               }
             />
           </Tooltip>,
-          <DashboardHeaderButtonContainer key="dashboard-action-menu-button">
-            <EntityMenu
-              items={extraButtons}
-              triggerIcon="ellipsis"
-              tooltip={t`Move, archive, and more...`}
-            />
-          </DashboardHeaderButtonContainer>,
+          <EntityMenu
+            key="dashboard-action-menu-button"
+            items={extraButtons}
+            triggerIcon="ellipsis"
+            tooltip={t`Move, archive, and more...`}
+          />,
         ],
       );
     }
