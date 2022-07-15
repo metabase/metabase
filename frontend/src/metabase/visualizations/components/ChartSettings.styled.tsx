@@ -15,8 +15,4 @@ export const SectionContainer = styled.div`
 
 export const SectionWarnings = styled(Warnings)`
   color: ${color("accent4")};
-
-  &:hover {
-    color: ${color("accent4")};
-  }
 `;

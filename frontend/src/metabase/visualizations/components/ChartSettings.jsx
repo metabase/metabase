@@ -314,7 +314,7 @@ class ChartSettings extends Component {
             <div className="Grid-cell flex flex-column pt2">
               <div className="mx4 flex flex-column">
                 <SectionWarnings
-                  className="mx2 align-self-end text-gold"
+                  className="mx2 align-self-end"
                   warnings={this.state.warnings}
                   size={20}
                 />
