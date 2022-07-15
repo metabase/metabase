@@ -15,6 +15,7 @@
             [metabase.http-client :as client]
             [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
             [metabase.models.params.chain-filter-test :as chain-filer-test]
+            [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
