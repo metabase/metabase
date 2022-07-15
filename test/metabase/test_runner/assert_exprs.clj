@@ -4,7 +4,8 @@
   (:require [clojure.data :as data]
             [clojure.test :as t]
             [clojure.walk :as walk]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [metabase.test-runner.assert-exprs.unify :as unify]))
 
 (defmethod t/assert-expr 're= [msg [_ pattern actual]]
   `(let [pattern#  ~pattern
@@ -146,3 +147,22 @@
       (fn []
         (t/do-report
          (sql=-report ~message ~expected query#))))))
+
+(defn ≈-report
+  [message multifn expected actual]
+  (let [error (if multifn
+                (unify/unify multifn expected actual)
+                (unify/unify expected actual))]
+    {:type     (if (not error) :pass :fail)
+     :message  message
+     :expected expected
+     :actual   actual
+     :diffs    [[actual [error nil]]]}))
+
+(defmethod t/assert-expr '≈
+  [message [_ & form]]
+  (let [[multifn expected actual] (case (count form)
+                                    2 (cons nil form)
+                                    3 form
+                                    (throw (ex-info "≈ expects either 2 or 3 arguments" {:form form})))]
+    `(t/do-report (≈-report ~message ~multifn ~expected ~actual))))
