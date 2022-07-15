@@ -116,7 +116,10 @@ class FieldValuesWidgetInner extends Component {
     let valuesMode = this.state.valuesMode;
     try {
       if (usesChainFilterEndpoints(this.props.dashboard)) {
-        options = await this.fetchDashboardParamValues(query);
+        const { results, has_more_values } =
+          await this.fetchDashboardParamValues(query);
+        options = results;
+        valuesMode = has_more_values ? "search" : valuesMode;
       } else {
         options = await this.fetchFieldValues(query);
         const { fields, disableSearch, disablePKRemappingForSearch } =
@@ -220,6 +223,9 @@ class FieldValuesWidgetInner extends Component {
 
   search = _.debounce(async value => {
     if (!value) {
+      this.setState({
+        loadingState: "LOADED",
+      });
       return;
     }
 
@@ -260,7 +266,7 @@ class FieldValuesWidgetInner extends Component {
       showOptionsInPopover,
       checkedColor,
     } = this.props;
-    const { loadingState, options = [] } = this.state;
+    const { loadingState, options = [], valuesMode } = this.state;
 
     const tokenFieldPlaceholder = getTokenFieldPlaceholder({
       fields,
@@ -269,14 +275,16 @@ class FieldValuesWidgetInner extends Component {
       disablePKRemappingForSearch,
       loadingState,
       options,
+      valuesMode,
     });
 
     const isLoading = loadingState === "LOADING";
-    const usesListField = hasList({
-      fields,
-      disableSearch,
-      options,
-    });
+    const usesListField =
+      hasList({
+        fields,
+        disableSearch,
+        options,
+      }) && valuesMode === "list";
 
     return (
       <div
@@ -500,22 +508,29 @@ function isExtensionOfPreviousSearch(value, lastValue, options, maxResults) {
   );
 }
 
-function isSearchable(fields, disableSearch, disablePKRemappingForSearch) {
+function isSearchable(
+  fields,
+  disableSearch,
+  disablePKRemappingForSearch,
+  valuesMode,
+) {
   return (
     !disableSearch &&
     // search is available if:
     // all fields have a valid search field
-    fields.every(field => searchField(field, disablePKRemappingForSearch)) &&
-    // at least one field is set to display as "search" or is a list field that has an incomplete value set
-    fields.some(
-      f =>
-        f.has_field_values === "search" ||
-        (f.has_field_values === "list" && f.has_more_values === true),
-    ) &&
-    // and all fields are either "search" or "list"
-    fields.every(
-      f => f.has_field_values === "search" || f.has_field_values === "list",
-    )
+    ((fields.every(field => searchField(field, disablePKRemappingForSearch)) &&
+      // at least one field is set to display as "search" or is a list field that has an incomplete value set
+      fields.some(
+        f =>
+          f.has_field_values === "search" ||
+          (f.has_field_values === "list" && f.has_more_values === true),
+      ) &&
+      // and all fields are either "search" or "list"
+      fields.every(
+        f => f.has_field_values === "search" || f.has_field_values === "list",
+      )) ||
+      // OR if the component has been set to valuesMode by the dashboard params value action call
+      valuesMode === "search")
   );
 }
 
@@ -526,6 +541,7 @@ function getTokenFieldPlaceholder({
   disablePKRemappingForSearch,
   loadingState,
   options,
+  valuesMode,
 }) {
   if (placeholder) {
     return placeholder;
@@ -541,7 +557,9 @@ function getTokenFieldPlaceholder({
     })
   ) {
     return t`Search the list`;
-  } else if (isSearchable(fields, disableSearch, disablePKRemappingForSearch)) {
+  } else if (
+    isSearchable(fields, disableSearch, disablePKRemappingForSearch, valuesMode)
+  ) {
     return getSearchableTokenFieldPlaceholder(
       fields,
       firstField,
@@ -563,7 +581,7 @@ function renderOptions(
     disableSearch,
     disablePKRemappingForSearch,
   } = props;
-  const { loadingState, options } = state;
+  const { loadingState, options, valuesMode } = state;
 
   if (alwaysShowOptions || isFocused) {
     if (optionsList) {
@@ -573,13 +591,19 @@ function renderOptions(
         fields,
         disableSearch,
         options,
-      })
+      }) &&
+      valuesMode === "list"
     ) {
       if (isAllSelected) {
         return <EveryOptionState />;
       }
     } else if (
-      isSearchable(fields, disableSearch, disablePKRemappingForSearch)
+      isSearchable(
+        fields,
+        disableSearch,
+        disablePKRemappingForSearch,
+        valuesMode,
+      )
     ) {
       if (loadingState === "LOADING") {
         return <LoadingState />;
@@ -614,7 +638,9 @@ function getValuesMode(fields, disableSearch, disablePKRemappingForSearch) {
     return "none";
   }
 
-  if (isSearchable(fields, disableSearch, disablePKRemappingForSearch)) {
+  if (
+    isSearchable(fields, disableSearch, disablePKRemappingForSearch, undefined)
+  ) {
     return "search";
   }
 
