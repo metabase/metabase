@@ -149,4 +149,14 @@ describe("QuestionDetailsSidebarPanel", () => {
       expect(screen.queryByText(/verified this/)).toBeInTheDocument();
     });
   });
+
+  describe("read-only permissions", () => {
+    it("should disable input field for description", () => {
+      setup({
+        question: getQuestion({ description: "Foo bar", can_write: false }),
+      });
+      expect(screen.queryByText("Foo bar")).toBeInTheDocument();
+      expect(screen.queryByText("Foo bar")).toBeDisabled();
+    });
+  });
 });
