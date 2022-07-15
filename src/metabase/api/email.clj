@@ -31,9 +31,16 @@
                                 :email-smtp-port "Wrong host or port"}}
           creds-error {:errors {:email-smtp-username "Wrong username or password"
                                 :email-smtp-password "Wrong username or password"}}
-          message     (str/join ": " (map ex-message (u/full-exception-chain error)))]
-          (log/warn "Problem connecting to mail server:" message)
-      (condp re-find message
+          exceptions  (u/full-exception-chain error)
+          message     (str/join ": " (map ex-message exceptions))
+          match-error (fn match-error [regex-or-exception-class [message exceptions]]
+                        (cond (instance? java.util.regex.Pattern regex-or-exception-class)
+                              (re-find regex-or-exception-class message)
+
+                              (class? regex-or-exception-class)
+                              (some (partial instance? regex-or-exception-class) exceptions)))]
+      (log/warn "Problem connecting to mail server:" message)
+      (condp match-error [message exceptions]
         ;; bad host = "Unknown SMTP host: foobar"
         #"^Unknown SMTP host:.*$"
         conn-error
@@ -54,8 +61,10 @@
         #"^435 4.7.8 Error: authentication failed:.*$"
         creds-error
 
+        javax.mail.AuthenticationFailedException
+        creds-error
+
         ;; everything else :(
-        #".*"
         {:message (str "Sorry, something went wrong. Please try again. Error: " message)}))))
 
 (defn- humanize-email-corrections
