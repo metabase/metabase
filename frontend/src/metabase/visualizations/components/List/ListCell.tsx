@@ -34,6 +34,7 @@ export interface ListCellProps
   value: Value;
   rowIndex: number;
   columnIndex: number;
+  slot: "left" | "right";
   checkIsVisualizationClickable: (clickObject: ClickObject) => boolean;
 }
 
@@ -84,6 +85,7 @@ function ListCell({
   settings,
   rowIndex,
   columnIndex,
+  slot,
   getExtraDataForClick,
   checkIsVisualizationClickable,
   onVisualizationClick,
@@ -146,17 +148,13 @@ function ListCell({
   }, [clicked, extraData, onVisualizationClick]);
 
   const type: CellType = useMemo(() => {
-    const isPrimarySlot = columnIndex < 3;
+    const isPrimarySlot = slot === "left";
     const isListItemImage = isPrimarySlot && columnSettings.view_as === "image";
     if (isListItemImage) {
       return "image";
     }
-    const isPK = cols[columnIndex].semantic_type === "type/PK";
-    if (isPrimarySlot && isPK) {
-      return "pk";
-    }
     return isPrimarySlot ? "primary" : "secondary";
-  }, [cols, columnIndex, columnSettings]);
+  }, [slot, columnSettings]);
 
   const classNames = cx("fullscreen-normal-text fullscreen-night-text", {
     link: isClickable,

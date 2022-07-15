@@ -6,16 +6,20 @@ import { color } from "metabase/lib/colors";
 import { CellType } from "./types";
 
 function getCellWidth(type: CellType) {
-  if (type === "image") {
+  if (type === "image" || type === "action") {
     return "5%";
   }
-  if (type === "pk") {
-    return "2%";
-  }
   if (type === "primary") {
-    return "30%";
+    return "10%";
   }
   return "unset";
+}
+
+function getCellAlignment(type: CellType) {
+  if (type === "primary" || type === "image") {
+    return "left";
+  }
+  return "right";
 }
 
 export const CellRoot = styled.td<{ type: CellType }>`
@@ -24,7 +28,7 @@ export const CellRoot = styled.td<{ type: CellType }>`
 
   color: ${color("text-dark")};
   font-weight: bold;
-  text-align: ${props => (props.type === "secondary" ? "right" : "unset")};
+  text-align: ${props => getCellAlignment(props.type)};
   white-space: nowrap;
 
   width: ${props => getCellWidth(props.type)};

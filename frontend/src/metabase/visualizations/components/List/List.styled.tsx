@@ -1,6 +1,8 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
+import Button from "metabase/core/components/Button";
+
 import { color } from "metabase/lib/colors";
 
 export const Root = styled.div`
@@ -83,4 +85,8 @@ export const ListRow = styled.tr`
 
     pointer-events: none;
   }
+`;
+
+export const RowActionButton = styled(Button)`
+  margin-left: 0.5rem;
 `;
