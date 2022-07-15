@@ -34,6 +34,7 @@ import { DashboardWithCards } from "metabase-types/types/Dashboard";
 import { VisualizationProps } from "metabase-types/types/Visualization";
 import { State } from "metabase-types/store";
 
+import { CellSlot } from "./types";
 import ListCell from "./ListCell";
 import {
   Root,
@@ -222,7 +223,7 @@ function List({
   const hasDeleteButton = settings["buttons.delete"];
 
   const renderListItemCell = useCallback(
-    (rowIndex: number, columnIndex: number, slot: "left" | "right") => (
+    (rowIndex: number, columnIndex: number, slot: CellSlot) => (
       <ListCell
         value={data.rows[rowIndex][columnIndex]}
         slot={slot}
