@@ -155,8 +155,20 @@ describe("QuestionDetailsSidebarPanel", () => {
       setup({
         question: getQuestion({ description: "Foo bar", can_write: false }),
       });
-      expect(screen.queryByText("Foo bar")).toBeInTheDocument();
-      expect(screen.queryByText("Foo bar")).toBeDisabled();
+      expect(screen.queryByPlaceholderText("Add description")).toHaveValue(
+        "Foo bar",
+      );
+      expect(screen.queryByPlaceholderText("Add description")).toBeDisabled();
+    });
+
+    it("should display 'No description' if description is null and user does not have write permissions", () => {
+      setup({
+        question: getQuestion({ description: null, can_write: false }),
+      });
+      expect(
+        screen.queryByPlaceholderText("No description"),
+      ).toBeInTheDocument();
+      expect(screen.queryByPlaceholderText("No description")).toBeDisabled();
     });
   });
 });

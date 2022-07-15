@@ -51,7 +51,9 @@ export const QuestionInfoSidebar = ({
         <Header>{t`About`}</Header>
         <EditableText
           initialValue={description}
-          placeholder={t`Add description`}
+          placeholder={
+            !description && !canWrite ? t`No description` : t`Add description`
+          }
           isOptional
           isMultiline
           isDisabled={!canWrite}
