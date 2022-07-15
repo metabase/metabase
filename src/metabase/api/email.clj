@@ -33,14 +33,14 @@
                                 :email-smtp-password "Wrong username or password"}}
           exceptions  (u/full-exception-chain error)
           message     (str/join ": " (map ex-message exceptions))
-          check       (fn check [regex|exception-class [m es]]
-                        (cond (instance? java.util.regex.Pattern regex|exception-class)
-                              (re-find regex|exception-class m)
+          match-error (fn match-error [regex-or-exception-class [message exceptions]]
+                        (cond (instance? java.util.regex.Pattern regex-or-exception-class)
+                              (re-find regex-or-exception-class message)
 
-                              (class? regex|exception-class)
-                              (some (partial instance? regex|exception-class) es)))]
+                              (class? regex-or-exception-class)
+                              (some (partial instance? regex-or-exception-class) exceptions)))]
       (log/warn "Problem connecting to mail server:" message)
-      (condp check [message exceptions]
+      (condp match-error [message exceptions]
         ;; bad host = "Unknown SMTP host: foobar"
         #"^Unknown SMTP host:.*$"
         conn-error
