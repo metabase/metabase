@@ -404,8 +404,9 @@ export class DeleteAlertSection extends Component {
             <p className="h4 pr2">{jt`Stop delivery and delete this alert. There's no undo, so be careful.`}</p>
             <ModalWithTrigger
               ref={ref => (this.deleteModal = ref)}
-              triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
-              triggerElement="Delete this Alert"
+              as={Button}
+              triggerClasses="Button--danger flex-align-right flex-no-shrink"
+              triggerElement={t`Delete this Alert`}
             >
               <DeleteModalWithConfirm
                 objectType="alert"

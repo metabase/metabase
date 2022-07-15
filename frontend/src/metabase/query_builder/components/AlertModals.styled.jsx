@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
+import Button from "metabase/core/components/Button";
 
 export const AlertModalFooter = styled.div`
   display: flex;
@@ -10,18 +11,19 @@ export const AlertModalFooter = styled.div`
 `;
 
 export const DangerZone = styled.div`
-  .Button--danger {
+  ${Button.Root} {
     opacity: 0.4;
     background: ${color("bg-light")};
     border: 1px solid ${color("border")};
     color: ${color("text-dark")};
+    transition: none;
   }
 
   &:hover {
     border-color: ${color("accent3")};
     transition: border 0.3s ease-in;
 
-    .Button--danger {
+    ${Button.Root} {
       opacity: 1;
       background-color: ${color("accent3")};
       border-color: ${color("accent3")};
