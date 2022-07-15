@@ -48,6 +48,10 @@
 (def random-fake-token
   "d7ad0b5f9ddfd1953b1b427b75d620e4ba91d38e7bcbc09d8982480863dbc611")
 
+(defn- random-token []
+  (let [alphabet (into [] (concat (range 0 10) (map char (range (int \a) (int \g)))))]
+    (apply str (repeatedly 64 #(rand-nth alphabet)))))
+
 (deftest fetch-token-status-test
   (tt/with-temp User [_user {:email "admin@example.com"}]
     (let [print-token "d7ad...c611"]
@@ -61,6 +65,31 @@
       (testing "With the backend unavailable"
         (let [result (token-status-response random-fake-token {:status 500})]
           (is (false? (:valid result)))))
+      (testing "On other errors"
+        (binding [clj-http.client/request (fn [& args]
+                                            ;; note originally the code caught clojure.lang.ExceptionInfo so don't
+                                            ;; throw an ex-info here
+                                            (throw (Exception. "network issues")))]
+          (is (= {:valid         false
+                  :status        "Unable to validate token"
+                  :error-details "network issues"}
+                 (premium-features/fetch-token-status (apply str (repeat 64 "b")))))))
+      (testing "Only attempt the token once"
+        (let [call-count (atom 0)]
+          (binding [clj-http.client/request (fn [& args]
+                                              (swap! call-count inc)
+                                              (throw (Exception. "no internet")))]
+            (mt/with-temporary-raw-setting-values [:premium-embedding-token (random-token)]
+              (doseq [premium-setting [premium-features/hide-embed-branding?
+                                       premium-features/enable-whitelabeling?
+                                       premium-features/enable-audit-app?
+                                       premium-features/enable-sandboxes?
+                                       premium-features/enable-sso?
+                                       premium-features/enable-advanced-config?
+                                       premium-features/enable-content-management?]]
+                (is (false? (premium-setting))
+                    (str (:name (meta premium-setting)) "is not false")))
+              (is (= @call-count 1))))))
 
       (testing "With a valid token"
         (let [result (token-status-response random-fake-token {:status 200
