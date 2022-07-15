@@ -9,6 +9,7 @@
             [metabase.api.public :as api.public]
             [metabase.http-client :as client]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Dimension Field FieldValues]]
+            [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.test :as mt]
@@ -1005,12 +1006,14 @@
                (db/update! Dashboard (u/the-id dashboard) :public_uuid uuid)))
         (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
           (let [url (format "public/dashboard/%s/params/%s/values" uuid (:category-id param-keys))]
-            (is (= [2 3 4 5 6]
-                   (take 5 (client/client :get 200 url))))))
+            (is (= {:values          [2 3 4 5 6]
+                    :has_more_values false}
+                   (chain-filter-test/take-n-values 5 (client/client :get 200 url))))))
         (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:query"
           (let [url (format "public/dashboard/%s/params/%s/search/food" uuid (:category-name param-keys))]
-            (is (= ["Fast Food" "Food Truck" "Seafood"]
-                   (take 3 (client/client :get 200 url))))))))))
+            (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                    :has_more_values false}
+                   (chain-filter-test/take-n-values 3 (client/client :get 200 url))))))))))
 
 (deftest chain-filter-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
@@ -1023,12 +1026,14 @@
                    (db/update! Dashboard (u/the-id dashboard) :public_uuid uuid)))
             (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
               (let [url (format "public/dashboard/%s/params/%s/values" uuid (:category-id param-keys))]
-                (is (= [2 3 4 5 6]
-                       (take 5 (mt/user-http-request :rasta :get 200 url))))))
+                (is (= {:values          [2 3 4 5 6]
+                        :has_more_values false}
+                       (chain-filter-test/take-n-values 5 (mt/user-http-request :rasta :get 200 url))))))
             (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:prefix"
               (let [url (format "public/dashboard/%s/params/%s/search/food" uuid (:category-name param-keys))]
-                (is (= ["Fast Food" "Food Truck" "Seafood"]
-                       (take 3 (mt/user-http-request :rasta :get 200 url))))))))))))
+                (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                        :has_more_values false}
+                       (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))))))
 
 ;; Pivot tables
 
