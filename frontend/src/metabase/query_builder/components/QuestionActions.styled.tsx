@@ -4,8 +4,8 @@ import DatasetMetadataStrengthIndicator from "./view/sidebars/DatasetManagementS
 
 export const QuestionActionsDivider = styled.div`
   border-left: 1px solid ${color("border-dark")};
-  margin-left: 1rem;
-  padding-left: 0.5rem;
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
   height: 1.25rem;
 `;
 
