@@ -305,3 +305,58 @@
           (testing "Should not have committed any of the valid rows"
             (is (= 75
                    (categories-row-count)))))))))
+
+(deftest bulk-delete-happy-path-test
+  (testing "POST /api/action/bulk/delete/:table-id"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.test-util/with-actions-test-data-and-actions-enabled
+        (is (= 75
+               (categories-row-count)))
+        (is (= {:created-rows [{(format-field-name :id) 76, (format-field-name :name) "NEW_A"}
+                               {(format-field-name :id) 77, (format-field-name :name) "NEW_B"}]}
+               (mt/user-http-request :crowberto :post 200
+                                     (format "action/bulk/create/%d" (mt/id :categories))
+                                     [{(format-field-name :name) "NEW_A"}
+                                      {(format-field-name :name) "NEW_B"}])))
+        (is (= 77
+               (categories-row-count)))
+        (is (= {:success true}
+               (mt/user-http-request :crowberto :post 200
+                                     (format "action/bulk/delete/%d" (mt/id :categories))
+                                     [{"ID" 76}
+                                      {"ID" 77}])))
+        (is (= 75
+               (categories-row-count)))))))
+
+(deftest bulk-delete-failure-test
+  (testing "POST /api/action/bulk/delete/:table-id"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.test-util/with-actions-test-data-and-actions-enabled
+        (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+          (actions.test-util/with-actions-test-data-and-actions-enabled
+            (testing "error in some of the rows"
+              (is (= 75
+                     (categories-row-count)))
+              (is (= {:created-rows [{(format-field-name :id) 76, (format-field-name :name) "NEW_A"}
+                                     {(format-field-name :id) 77, (format-field-name :name) "NEW_B"}]}
+                     (mt/user-http-request :crowberto :post 200
+                                           (format "action/bulk/create/%d" (mt/id :categories))
+                                           [{(format-field-name :name) "NEW_A"}
+                                            {(format-field-name :name) "NEW_B"}])))
+              (is (= 77
+                     (categories-row-count)))
+
+              (testing "Should report indices of bad rows"
+                (is (= {:errors
+                        [{:index 1,
+                          :error "Error filtering against :type/BigInteger Field: unable to parse String \"foo\" to a :type/BigInteger"}
+                         {:index 3,
+                          :error "Sorry, this would delete 0 rows, but you can only act on 1"}]}
+                       (mt/user-http-request :crowberto :post 400
+                                             (format "action/bulk/delete/%d" (mt/id :categories))
+                                             [{"ID" 76}
+                                              {"ID" "foo"}
+                                              {"ID" 77}
+                                              {"ID" 107}]))))
+              (is (= 77
+                     (categories-row-count))))))))))

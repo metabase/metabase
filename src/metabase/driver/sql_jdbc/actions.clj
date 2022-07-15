@@ -14,7 +14,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :refer [tru trs]]
             [toucan.db :as db])
   (:import java.sql.Connection))
 
@@ -303,3 +303,57 @@
             [(conj errors {:index row-index, :error (ex-message e)})
              created-rows]))))
      rows)))
+
+(defn- pk-values->filters [table-id pk-values]
+  ;; check that all pk-values have the same shape
+  (when-not (apply = (map (comp set keys) pk-values))
+    (throw (ex-info (trs "Inconsistent row selection.")
+                    {:status-code 400, :pk-values pk-values})))
+  (let [given-pks (set (keys (first pk-values)))
+        table-pks (into {} (map (juxt :name :id) (filter #(= (:semantic_type %) :type/PK) (:fields (first (table/with-fields [(Table table-id)]))))))]
+    (when-not (= given-pks (set (keys table-pks)))
+      (throw (ex-info (trs "Must select with all PKs.")
+                      {:status-code 400, :given-pks (sort given-pks) :table-pks (sort (keys table-pks))})))
+    (map
+      (fn [pk-value]
+        (into [:and]
+              (mapv (fn [[pk-name value]]
+                      [:= [:field (get table-pks pk-name) nil] value])
+                    pk-value)))
+      pk-values)))
+
+(defmethod actions/perform-action!* [:sql-jdbc :bulk/delete]
+  [driver _action {database-id :id, :as database} {:keys [table-id pk-values]}]
+  (log/tracef "Deleting %d rows" (count pk-values))
+  (with-jdbc-transaction [conn database-id]
+    (transduce
+      (m/indexed)
+      (fn
+        ([]
+         [[] []])
+        ([[errors]]
+         ;; if there were any errors throw an Exception with all the error messages.
+         (when (seq errors)
+           (.rollback conn)
+           (throw (ex-info (tru "Error(s) deleting rows.")
+                           {:status-code 400, :errors errors})))
+         ;; if there we no errors then return the created rows.
+         {:success true})
+        ([[errors] [row-index delete-filter]]
+         (try
+           (do-nested-transaction
+             driver
+             conn
+             (fn []
+               (actions/perform-action!*
+                 driver
+                 :row/delete
+                 database
+                 {:database   database-id
+                  :type       :query
+                  :query      {:source-table table-id
+                               :filter delete-filter}})))
+           [errors]
+           (catch Throwable e
+             [(conj errors {:index row-index, :error (ex-message e)})]))))
+      (pk-values->filters table-id pk-values))))

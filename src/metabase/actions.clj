@@ -1,17 +1,17 @@
 (ns metabase.actions
   "Code related to the new writeback Actions."
-  (:require
-   [clojure.spec.alpha :as s]
-   [metabase.api.common :as api]
-   [metabase.driver :as driver]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.setting :as setting]
-   [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
-   [schema.core :as schema]))
+  (:require [clojure.spec.alpha :as s]
+            [medley.core :as m]
+            [metabase.api.common :as api]
+            [metabase.driver :as driver]
+            [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.setting :as setting]
+            [metabase.util :as u]
+            [metabase.util.i18n :as i18n]
+            [schema.core :as schema]))
 
 (setting/defsetting experimental-enable-actions
   (i18n/deferred-tru "Whether to enable using the new experimental Actions features globally. (Actions must also be enabled for each Database.)")
@@ -285,6 +285,9 @@
 
 ;;;; Bulk actions
 
+(s/def :actions.args.crud.bulk/table-id
+  :actions.args/id)
+
 ;;;; `:bulk/create`
 
 ;;; For `bulk/create` the request body is to `POST /api/action/:action-namespace/:action-name/:table-id` is just a
@@ -300,18 +303,54 @@
   [_action {:keys [database table-id], rows :arg, :as _arg-map}]
   {:database database, :table-id table-id, :rows rows})
 
-(s/def :actions.args.crud.bulk.create/table-id
-  :actions.args/id)
-
 (s/def :actions.args.crud.bulk.create/rows
   (s/cat :rows (s/+ (s/map-of keyword? any?))))
 
 (s/def :actions.args.crud.bulk/create
   (s/merge
    :actions.args/common
-   (s/keys :req-un [:actions.args.crud.bulk.create/table-id
+   (s/keys :req-un [:actions.args.crud.bulk/table-id
                     :actions.args.crud.bulk.create/rows])))
 
 (defmethod action-arg-map-spec :bulk/create
   [_action]
   :actions.args.crud.bulk/create)
+
+;;;; `:bulk/delete`
+
+;;; For `bulk/delete` the request body is to `POST /api/action/:action-namespace/:action-name/:table-id` is just a
+;;; vector of rows but the API endpoint itself calls [[perform-action!]] with
+;;;
+;;;    {:database <database-id>, :table-id <table-id>, :arg <request-body>}
+;;;
+;;; and we transform this to
+;;;
+;;;     {:database <database-id>, :table-id <table-id>, :pk-values <request-body>}
+;;;
+;;; Request-body should look like:
+;;;
+;;;    ;; single pk, two rows
+;;;    [{"ID": 76},
+;;;     {"ID": 77}]
+;;;
+;;;    ;; multiple pks, one row
+;;;    [{"PK1": 1, "PK2": "john"}]
+
+
+(defmethod normalize-action-arg-map :bulk/delete
+  [_action {:keys [database table-id], pk-values :arg, :as _arg-map}]
+  {:database database, :table-id table-id, :pk-values (map #(m/map-keys name %) pk-values)})
+
+(s/def :actions.args.crud.bulk.delete/pk-values
+  ;; TODO keys should be a mbql field??
+  (s/coll-of (s/map-of any? any?)))
+
+(s/def :actions.args.crud.bulk/delete
+  (s/merge
+    :actions.args/common
+    (s/keys :req-un [:actions.args.crud.bulk/table-id
+                     :actions.args.crud.bulk.delete/pk-values])))
+
+(defmethod action-arg-map-spec :bulk/delete
+  [_action]
+  :actions.args.crud.bulk/delete)
