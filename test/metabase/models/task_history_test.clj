@@ -84,7 +84,7 @@
 (deftest snowplow-tracking-test
   (snowplow-test/with-fake-snowplow-collector
     (let [t1 (t/zoned-date-time)]
-      (testing "insert a task history should track a snowplow event"
+      (testing "inserting a task history should track a snowplow event"
         (is (= {:data   {"duration"     10
                          "ended_at"     true
                          "started_at"   true
@@ -98,7 +98,7 @@
                                         :task_details {:apple  40
                                                        :orange 2}))))
 
-        (testing "should have user id if *current-user-id* is binded"
+        (testing "should have user id if *current-user-id* is bound"
           (binding [*current-user-id* 1]
             (is (= {:data    {"duration"     10
                               "ended_at"     true
