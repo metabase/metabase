@@ -1,32 +1,33 @@
 import styled from "@emotion/styled";
+import { color } from "metabase/lib/colors";
 
 export const NativeQueryEditorRoot = styled.div`
   .ace_editor {
     height: 100%;
-    background-color: var(--color-bg-light);
-    color: var(--color-text-dark);
+    background-color: ${color("bg-light")};
+    color: ${color("text-dark")};
   }
 
   .ace_editor .ace_keyword {
-    color: var(--color-saturated-purple);
+    color: ${color("saturated-purple")};
   }
 
   .ace_editor .ace_function,
   .ace_editor .ace_variable {
-    color: var(--color-saturated-blue);
+    color: ${color("saturated-blue")};
   }
 
   .ace_editor .ace_constant,
   .ace_editor .ace_type {
-    color: var(--color-saturated-red);
+    color: ${color("saturated-red")};
   }
 
   .ace_editor .ace_string {
-    color: var(--color-saturated-green);
+    color: ${color("saturated-green")};
   }
 
   .ace_editor .ace_templateTag {
-    color: var(--color-brand);
+    color: ${color("color-brand")};
   }
 
   .react-resizable {
@@ -49,7 +50,7 @@ export const NativeQueryEditorRoot = styled.div`
     padding-top: 2px;
     font-size: 10px;
     font-weight: 700;
-    color: var(--color-text-light);
+    color: ${color("text-light")};
     padding-left: 0;
     padding-right: 7px;
     display: block;
@@ -57,6 +58,6 @@ export const NativeQueryEditorRoot = styled.div`
   }
 
   .NativeQueryEditor .ace_editor .ace_gutter {
-    background-color: var(--color-bg-light);
+    background-color: ${color("bg-light")};
   }
 `;
