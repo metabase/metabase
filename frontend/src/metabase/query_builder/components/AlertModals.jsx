@@ -15,7 +15,7 @@ import Icon from "metabase/components/Icon";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
-import { AlertModalFooter } from "./AlertModals.styled";
+import { AlertModalFooter, DangerZone } from "./AlertModals.styled";
 
 import User from "metabase/entities/users";
 
@@ -393,7 +393,7 @@ export class DeleteAlertSection extends Component {
     const { onDeleteAlert } = this.props;
 
     return (
-      <div className="DangerZone mt4 pt4 mb2 p3 rounded bordered relative">
+      <DangerZone className="DangerZone mt4 pt4 mb2 p3 rounded bordered relative">
         <h3
           className="text-error absolute top bg-white px1"
           style={{ marginTop: "-12px" }}
@@ -417,7 +417,7 @@ export class DeleteAlertSection extends Component {
             </ModalWithTrigger>
           </div>
         </div>
-      </div>
+      </DangerZone>
     );
   }
 }
