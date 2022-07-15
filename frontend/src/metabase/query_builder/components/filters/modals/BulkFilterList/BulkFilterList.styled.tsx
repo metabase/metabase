@@ -15,6 +15,14 @@ export const ListRow = styled.div`
   }
 `;
 
+export const FilterContainer = styled.div`
+  &:not(:last-of-type) {
+    border-bottom: 1px solid ${color("border")};
+    margin-bottom: ${space(2)};
+    padding-bottom: ${space(2)};
+  }
+`;
+
 export const ListRowLabel = styled(Ellipsified)`
   padding: 0.625rem 1rem 0.625rem 0;
   color: ${color("black")};

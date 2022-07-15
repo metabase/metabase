@@ -2,8 +2,11 @@
 
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
+import { Provider } from "react-redux";
+
 import userEvent from "@testing-library/user-event";
 
+import { getStore } from "__support__/entities-store";
 import { metadata } from "__support__/sample_database_fixture";
 
 import Field from "metabase-lib/lib/metadata/Field";
@@ -13,6 +16,8 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import { InlineCategoryPickerComponent } from "./InlineCategoryPicker";
 import { MAX_INLINE_CATEGORIES } from "./constants";
+
+const store = getStore();
 
 const smallCategoryField = new Field({
   database_type: "test",
@@ -339,9 +344,9 @@ describe("InlineCategoryPicker", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("should fall back to bulk filter if the filter operator is not =", async () => {
+  it("should fall back to a bulk (popover) picker if there are many options", () => {
     const testFilter = new Filter(
-      ["!=", ["field", smallCategoryField.id, null], undefined],
+      ["=", ["field", largeCategoryField.id, null], undefined],
       null,
       query,
     );
@@ -354,14 +359,49 @@ describe("InlineCategoryPicker", () => {
         filter={testFilter}
         newFilter={testFilter}
         onChange={changeSpy}
-        fieldValues={smallCategoryField.values}
+        fieldValues={largeCategoryField.values}
         fetchFieldValues={fetchSpy}
-        dimension={smallDimension}
+        dimension={largeDimension}
         onClear={changeSpy}
       />,
     );
 
     expect(screen.queryByTestId("category-picker")).not.toBeInTheDocument();
     expect(screen.queryByTestId("select-button")).toBeInTheDocument();
+  });
+
+  const fieldSizes = [
+    { name: "large", field: largeCategoryField, dimension: largeDimension },
+    { name: "small", field: smallCategoryField, dimension: smallDimension },
+  ];
+
+  fieldSizes.forEach(({ name, field, dimension }) => {
+    it(`should fall back to value picker if the filter operator is not = or != with a ${name} set of field values`, () => {
+      const testFilter = new Filter(
+        ["contains", ["field", field.id, null], undefined],
+        null,
+        query,
+      );
+      const changeSpy = jest.fn();
+      const fetchSpy = jest.fn();
+
+      render(
+        <Provider store={store}>
+          <InlineCategoryPickerComponent
+            query={query}
+            filter={testFilter}
+            newFilter={testFilter}
+            onChange={changeSpy}
+            fieldValues={field.values}
+            fetchFieldValues={fetchSpy}
+            dimension={dimension}
+            onClear={changeSpy}
+          />
+        </Provider>,
+      );
+
+      expect(screen.queryByTestId("category-picker")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("value-picker")).toBeInTheDocument();
+    });
   });
 });
