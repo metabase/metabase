@@ -25,7 +25,7 @@ describe("FontFilesWidget", () => {
 
   it("should add a font file with an invalid URL", () => {
     const file = createMockFontFile({
-      src: "/regular.ttf?raw=true",
+      src: "invalid",
       fontWeight: 400,
       fontFormat: "woff2",
     });
