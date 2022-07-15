@@ -124,14 +124,6 @@
         (is (= [] (mt/rows (mt/run-mbql-query categories {:filter [:= $id 50]})))
             "Selecting for deleted rows should return an empty result")))))
 
-;; TODO: update test for this when we get something other than categories
-#_(deftest row-delete-row-with-constraint-fails-test
-    (mt/with-temporary-setting-values [experimental-enable-actions true]
-      (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-        (testing "Should return a 400 when deleting the row violates a foreign key constraint"
-          (let [request-body (mt/mbql-query categories {:filter [:= $id 22]})]
-            (mt/user-http-request :crowberto :post 400 "action/row/delete" request-body))))))
-
 (defn- mock-requests
   "Mock requests for testing validation for various actions. Don't use these for happy path tests! It's way too hard to
   wrap your head around them. Use them for validating preconditions and stuff like that."
@@ -237,6 +229,45 @@
                        (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one)))
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))
+
+(deftest row-delete-unparseable-values-test
+  (testing "POST /api/action/row/delete"
+    (testing "should return error message if value cannot be parsed correctly for Field in question"
+      (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+        (actions.test-util/with-actions-test-data-and-actions-enabled
+          (is (schema= {:message  #"Error filtering against :type/(Big)?Integer Field: unable to parse String \"one\" to a :type/(Big)?Integer"
+                        s/Keyword s/Any}
+                       ;; TODO -- this really should be returning a 400 but we need to rework the code in
+                       ;; [[metabase.driver.sql-jdbc.actions]] a little to have that happen without changing other stuff
+                       ;; that SHOULD be returning a 404
+                       (mt/user-http-request :crowberto :post 404
+                                             "action/row/delete"
+                                             (mt/mbql-query categories {:filter [:= $id "one"]})))
+              "Delete should return the right shape")
+          (testing "no rows should have been deleted"
+            (is (= 75
+                   (categories-row-count)))))))))
+
+(deftest row-delete-fk-constraint-violation-test
+  (testing "POST /api/action/row/delete"
+    (testing "FK constraint violations errors should have nice error messages (at least for Postgres)"
+      (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+        (actions.test-util/with-actions-test-data-tables #{"venues" "categories"}
+          (actions.test-util/with-actions-test-data-and-actions-enabled
+            ;; attempting to delete the `Pizza` category should fail because there are several rows in `venues` that have
+            ;; this `category_id` -- it's an FK constraint violation.
+            (is (schema= (case driver/*driver*
+                           ;; TODO -- we need nice error messages for `:h2`, and need to implement
+                           ;; [[metabase.driver.sql-jdbc.actions/parse-sql-error]] for it
+                           :h2       #"Referential integrity constraint violation.*PUBLIC\.VENUES FOREIGN KEY\(CATEGORY_ID\) REFERENCES PUBLIC\.CATEGORIES\(ID\).*"
+                           :postgres {:errors {:id #"violates foreign key constraint .*"}})
+                         (mt/user-http-request :crowberto :post 400
+                                               "action/row/delete"
+                                               (mt/mbql-query categories {:filter [:= $id 58]})))
+                "Delete should return the right shape")
+            (testing "no rows should have been deleted"
+              (is (= 75
+                     (categories-row-count))))))))))
 
 (deftest unknown-row-action-gives-404
   (actions.test-util/with-actions-enabled

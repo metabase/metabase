@@ -3,25 +3,31 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
-(defn- constraint->columns [conn constraint-name]
-  (->> ["select column_name from information_schema.constraint_column_usage where constraint_name = ?" constraint-name]
-       (jdbc/query conn {:identifers identity, :transaction? false})
-       (map :column_name)))
-
-(defn- violates-not-null-constraint [_conn error-message]
+(defn- maybe-parse-not-null-error [_database error-message]
   (let [[match? value column]
         (re-find #"ERROR:\s+(\w+) value in column \"([^\"]+)\" violates not-null constraint" error-message)]
     (when match?
       [{:message (tru "{0} violates not-null constraint" value)
         :column column}])))
 
-(defn- violates-unique-constraint [conn error-message]
+(defn- constraint->column-names
+  "Given a constraint with `constraint-name` fetch the column names associated with that constraint."
+  [database constraint-name]
+  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database))
+        sql-args  ["select column_name from information_schema.constraint_column_usage where constraint_name = ?" constraint-name]]
+    (into []
+          (map :column_name)
+          (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false}))))
+
+(defn- maybe-parse-unique-constraint-error [database error-message]
   (let [[match? constraint _value]
         (re-find #"ERROR:\s+duplicate key value violates unique constraint \"([^\"]+)\"" error-message)]
     (when match?
-      (let [columns (constraint->columns conn constraint)]
+      (let [columns (constraint->column-names database constraint)]
         (mapv
          (fn [column]
            {:message (tru "violates unique constraint {0}" constraint)
@@ -29,26 +35,26 @@
             :column column})
          columns)))))
 
-(defn- update-or-delete-with-fk-constraint [conn error-message]
+(defn- maybe-parse-fk-constraint-error [database error-message]
   (let [[match? table constraint ref-table _columns _value]
         (re-find #"ERROR:\s+update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"" error-message)]
     (when match?
-      (let [columns (constraint->columns conn constraint)]
+      (let [columns (constraint->column-names database constraint)]
         (mapv
          (fn [column]
-           {:message (tru "violates foreign key constraint {0}" constraint)
-            :table table
-            :ref-table ref-table
+           {:message    (tru "violates foreign key constraint {0}" constraint)
+            :table      table
+            :ref-table  ref-table
             :constraint constraint
-            :column column})
+            :column     column})
          columns)))))
 
 (defmethod sql-jdbc.actions/parse-sql-error :postgres
-  [_driver conn message]
-  (some #(% conn message)
-        [violates-not-null-constraint
-         violates-unique-constraint
-         update-or-delete-with-fk-constraint]))
+  [_driver database message]
+  (some #(% database message)
+        [maybe-parse-not-null-error
+         maybe-parse-unique-constraint-error
+         maybe-parse-fk-constraint-error]))
 
 (defmethod sql-jdbc.actions/base-type->sql-type-map :postgres
   [_driver]

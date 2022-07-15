@@ -11,20 +11,63 @@
    [metabase.test.data.interface :as tx]
    [toucan.db :as db]))
 
-#_ {:clj-kondo/ignore [:unused-private-var]}
-(def ^:private actions-test-data
-  "This is basically the same as [[defs/test-data]] but it only includes the `categories` table for faster loading. It's
-  meant to be reloaded at the start of every test using it so tests can do destructive things against it e.g. deleting
-  rows. (With one Table it takes ~100ms/~250ms instead of ~200ms/~450ms for H2/Postgres respectively to load all the
-  data and sync it.)"
-  ;; TODO -- this is still annoyingly SLOW we need to optimize this a bit can't be waiting 200ms for every single test
-  (tx/transformed-dataset-definition
-   "actions-test-data"
-   defs/test-data
-   (fn [database-definition]
-     (update database-definition :table-definitions (fn [table-definitions]
-                                                      (filter #(= (:table-name %) "categories")
-                                                              table-definitions))))))
+(def ^:dynamic ^:private *actions-test-data-tables*
+  #{"categories"})
+
+(defn do-with-actions-test-data-tables
+  "Impl for [[with-actions-test-data-tables]]."
+  [tables thunk]
+  ;; make sure all the table names are valid so we can catch errors/typos
+  (let [valid-table-names-set (into #{}
+                                    (map :table-name)
+                                    (:table-definitions (tx/get-dataset-definition defs/test-data)))]
+    (doseq [table-name tables]
+      (assert (contains? valid-table-names-set table-name)
+              (format "Invalid table for `with-actions-test-data-tables` %s. Valid tables: %s"
+                      (pr-str table-name)
+                      (pr-str valid-table-names-set)))))
+  (binding [*actions-test-data-tables* (set tables)]
+    (thunk)))
+
+(defmacro with-actions-test-data-tables
+  "Override the tables that should be included in the [[actions-test-data]] test data DB when
+  using [[with-actions-test-data]]. Normally only the `categories` table is included for maximum speed since this is
+  usually enough to test things. Sometimes, however, you need some of the other tables, e.g. to test FK constraints
+  failures:
+
+    ;; using categories AND venues will let us test FK constraint failures
+    (actions.test-util/with-actions-test-data-tables #{\"categories\" \"venues\"}
+      (actions.test-util/with-actions-test-data
+        ...))
+
+  Note that [[with-actions-test-data-tables]] needs to wrap [[with-actions-test-data]]; it won't work the other way
+  around."
+  {:style/indent 1}
+  [tables & body]
+  `(do-with-actions-test-data-tables ~tables (^:once fn* [] ~@body)))
+
+(defrecord ^:private ActionsTestDatasetDefinition [])
+
+(defmethod tx/get-dataset-definition ActionsTestDatasetDefinition
+  [_this]
+  (tx/get-dataset-definition
+   (tx/transformed-dataset-definition
+    "actions-test-data"
+    defs/test-data
+    (fn [database-definition]
+      (update database-definition :table-definitions (fn [table-definitions]
+                                                       (filter #(contains? *actions-test-data-tables* (:table-name %))
+                                                               table-definitions)))))))
+
+(def actions-test-data
+  "This is basically the same as [[defs/test-data]] but it only includes the [[*actions-test-data-tables*]] Tables (by
+  default, only `categories`) for faster loading. It's meant to be reloaded at the start of every test using it so
+  tests can do destructive things against it e.g. deleting rows. (With one Table it takes ~100ms/~250ms instead of
+  ~200ms/~450ms for H2/Postgres respectively to load all the data and sync it.)
+
+  You can use [[with-actions-test-data-tables]] if you need something other than the `categories` table, e.g. for
+  testing FK constraints."
+  (ActionsTestDatasetDefinition.))
 
 (defn do-with-actions-test-data
   "Impl for [[with-actions-test-data]] macro."
@@ -36,8 +79,7 @@
         (thunk))
       (finally
         (when-let [{driver :engine, db-id :id} @db]
-          (tx/destroy-db! driver (tx/get-dataset-definition
-                                  (data.impl/resolve-dataset-definition 'metabase.actions.test-util 'actions-test-data)))
+          (tx/destroy-db! driver (tx/get-dataset-definition actions-test-data))
           (db/delete! Database :id db-id))))))
 
 (defmacro with-actions-test-data
