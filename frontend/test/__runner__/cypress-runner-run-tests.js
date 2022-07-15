@@ -2,6 +2,8 @@ const { patch } = require("cy2");
 const cypress = require("cypress");
 const arg = require("arg");
 
+const { executeYarnCommand } = require("./cypress-runner-utils");
+
 const args = arg(
   {
     "--folder": String, // The name of the folder to run files from
@@ -35,6 +37,11 @@ const getSourceFolder = folder => {
 };
 
 const runCypress = async (baseUrl, exitFunction) => {
+  await executeYarnCommand({
+    command: "yarn run clean-cypress-artifacts",
+    message: "Removing the existing Cypress artifacts\n",
+  });
+
   /**
    * We need to patch CYPRESS_API_URL with cy2 in order to use currents.dev dashboard for recording.
    * This is applicable only when you explicitly use the `--record` flag, with the provided `--key`.
@@ -65,8 +72,13 @@ const runCypress = async (baseUrl, exitFunction) => {
       ? await cypress.open(finalConfig)
       : await cypress.run(finalConfig);
 
-    // At least one test failed
+    // At least one test failed, so let's generate HTML report that helps us determine what went wrong
     if (totalFailed > 0) {
+      await executeYarnCommand({
+        command: "yarn run generate-cypress-html-report",
+        message: "Generating Mochawesome HTML report\n",
+      });
+
       await exitFunction(1);
     }
 
