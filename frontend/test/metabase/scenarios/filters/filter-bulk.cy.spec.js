@@ -134,9 +134,7 @@ describe("scenarios > filters > bulk filtering", () => {
     modal().within(() => {
       cy.findByText("Product").click();
 
-      filterField("Category")
-        .findByText("Gadget")
-        .click();
+      filterField("Category").findByText("Gadget").click();
     });
 
     applyFilters();
@@ -154,11 +152,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     popover().within(() => {
-      cy.findByRole("textbox")
-        .click()
-        .type("30")
-        .clear()
-        .type("25");
+      cy.findByRole("textbox").click().type("30").clear().type("25");
 
       cy.button("Update filter").click();
     });
@@ -345,9 +339,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("can add a date shortcut filter from the popover", () => {
-      filterField("Created At")
-        .findByLabelText("more options")
-        .click();
+      filterField("Created At").findByLabelText("more options").click();
 
       cy.findByText("Last 3 Months").click();
 
@@ -371,10 +363,7 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Before").click();
 
       popover().within(() => {
-        cy.get("input")
-          .eq(0)
-          .clear()
-          .type("01/01/2017", { delay: 0 });
+        cy.get("input").eq(0).clear().type("01/01/2017", { delay: 0 });
 
         cy.findByText("Add filter").click();
       });
@@ -393,9 +382,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("Can cancel adding date filter", () => {
-      filterField("Created At")
-        .findByLabelText("more options")
-        .click();
+      filterField("Created At").findByLabelText("more options").click();
 
       cy.findByText("Discount").click();
 
@@ -568,9 +555,7 @@ describe("scenarios > filters > bulk filtering", () => {
         cy.findByText("In").should("not.exist");
         cy.findByText("Category").should("be.visible");
 
-        cy.findByPlaceholderText("Search for a column...")
-          .clear()
-          .type("vend");
+        cy.findByPlaceholderText("Search for a column...").clear().type("vend");
 
         cy.findByText("Category").should("not.exist");
 
@@ -578,9 +563,7 @@ describe("scenarios > filters > bulk filtering", () => {
           .findByText("in") // "In Products"
           .should("be.visible");
 
-        filterField("Vendor")
-          .findByText("Vendor")
-          .should("be.visible");
+        filterField("Vendor").findByText("Vendor").should("be.visible");
       });
     });
 

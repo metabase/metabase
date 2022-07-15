@@ -33,14 +33,15 @@ export const BulkFilterItem = ({
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterItemProps): JSX.Element => {
-  const fieldPickerType = useMemo(() => getFieldPickerType(dimension.field()), [
-    dimension,
-  ]);
+  const fieldPickerType = useMemo(
+    () => getFieldPickerType(dimension.field()),
+    [dimension],
+  );
 
-  const newFilter = useMemo(() => getNewFilter(query, dimension), [
-    query,
-    dimension,
-  ]);
+  const newFilter = useMemo(
+    () => getNewFilter(query, dimension),
+    [query, dimension],
+  );
 
   const handleChange = useCallback(
     (newFilter: Filter) => {

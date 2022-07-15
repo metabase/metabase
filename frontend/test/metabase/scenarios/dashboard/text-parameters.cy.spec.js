@@ -48,9 +48,7 @@ describe.skip("scenarios > dashboard > parameters in text cards", () => {
 
     cy.findByText("1").click();
     popover().within(() => {
-      cy.findByRole("textbox")
-        .click()
-        .type("2{enter}");
+      cy.findByRole("textbox").click().type("2{enter}");
       cy.button("Update filter").click();
     });
     cy.findByText("Variable: 1 and 2").should("exist");
@@ -80,9 +78,7 @@ describe.skip("scenarios > dashboard > parameters in text cards", () => {
     filterWidget().click();
     popover().within(() => {
       cy.findByRole("textbox").type(`1{enter}`);
-      cy.findByRole("textbox")
-        .click()
-        .type("2{enter}");
+      cy.findByRole("textbox").click().type("2{enter}");
       cy.button("Add filter").click();
     });
 

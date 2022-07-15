@@ -138,12 +138,8 @@ describe("scenarios > organization > timelines > collection", () => {
       });
       cy.findByText("15").click();
       cy.findByText("Add time").click();
-      cy.findByLabelText("Hours")
-        .clear()
-        .type("10");
-      cy.findByLabelText("Minutes")
-        .clear()
-        .type("20");
+      cy.findByLabelText("Hours").clear().type("10");
+      cy.findByLabelText("Minutes").clear().type("20");
       cy.findByText("Done").click();
       cy.findByText("Create").click();
       cy.wait("@createEvent");
@@ -182,9 +178,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
       openMenu("RC1");
       cy.findByText("Edit event").click();
-      cy.findByLabelText("Event name")
-        .clear()
-        .type("RC2");
+      cy.findByLabelText("Event name").clear().type("RC2");
       cy.button("Update").click();
       cy.wait("@updateEvent");
 
@@ -361,9 +355,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.visit("/collection/root/timelines");
       openMenu("Releases");
       cy.findByText("Edit timeline details").click();
-      cy.findByLabelText("Name")
-        .clear()
-        .type("Launches");
+      cy.findByLabelText("Name").clear().type("Launches");
       cy.findByText("Update").click();
       cy.wait("@updateTimeline");
 
@@ -513,9 +505,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.icon("calendar").click();
       openMenu("1st collection events");
       cy.findByText("Edit timeline details").click();
-      cy.findByLabelText("Name")
-        .clear()
-        .type("Releases");
+      cy.findByLabelText("Name").clear().type("Releases");
       cy.button("Update").click();
       cy.wait("@updateTimeline");
       cy.findByText("Releases");

@@ -28,9 +28,7 @@ describe("scenarios > question > saved", () => {
     summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    popover()
-      .findByText("Total")
-      .click();
+    popover().findByText("Total").click();
     // Save the question
     cy.findByText("Save").click();
     modal().within(() => {

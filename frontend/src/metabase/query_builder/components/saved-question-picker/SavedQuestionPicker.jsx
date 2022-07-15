@@ -103,9 +103,8 @@ function SavedQuestionPicker({
     [],
   );
 
-  const [selectedCollection, setSelectedCollection] = useState(
-    initialCollection,
-  );
+  const [selectedCollection, setSelectedCollection] =
+    useState(initialCollection);
 
   const handleSelect = useCallback(collection => {
     if (collection.id === PERSONAL_COLLECTIONS.id) {

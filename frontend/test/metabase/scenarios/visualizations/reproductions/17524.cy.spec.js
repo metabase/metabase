@@ -58,9 +58,7 @@ describe("issue 17524", () => {
 
       cy.get("polygon");
 
-      cy.icon("play")
-        .last()
-        .click();
+      cy.icon("play").last().click();
 
       cy.get("polygon");
       cy.findByText("Save").should("not.exist");

@@ -68,10 +68,7 @@ export default function DefaultPicker({
   const isBetweenLayout =
     operator.name === "between" && operatorFields.length === 2;
 
-  const visualizationSettings = filter
-    ?.query()
-    ?.question()
-    ?.settings();
+  const visualizationSettings = filter?.query()?.question()?.settings();
 
   const key = keyForColumn(dimension.column());
   const columnSettings = visualizationSettings?.column_settings?.[key];

@@ -93,21 +93,15 @@ export const color = (color: string, palette = colors) => {
 };
 
 export const alpha = (c: string, a: number) => {
-  return Color(color(c))
-    .alpha(a)
-    .string();
+  return Color(color(c)).alpha(a).string();
 };
 
 export const lighten = (c: string, f: number = 0.5) => {
-  return Color(color(c))
-    .lighten(f)
-    .string();
+  return Color(color(c)).lighten(f).string();
 };
 
 export const darken = (c: string, f: number = 0.25) => {
-  return Color(color(c))
-    .darken(f)
-    .string();
+  return Color(color(c)).darken(f).string();
 };
 
 export const tint = (c: string, f: number = 0.125) => {

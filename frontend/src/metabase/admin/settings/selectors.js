@@ -622,7 +622,7 @@ export const getSections = createSelector(
         continue;
       }
 
-      const settings = section.settings.map(function(setting) {
+      const settings = section.settings.map(function (setting) {
         const apiSetting =
           settingsByKey[setting.key] && settingsByKey[setting.key][0];
 

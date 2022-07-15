@@ -27,9 +27,9 @@ interface CollectionHeaderButtonProps {
   to: string;
 }
 
-export const CollectionHeaderButton = styled(Button)<
-  CollectionHeaderButtonProps
->`
+export const CollectionHeaderButton = styled(
+  Button,
+)<CollectionHeaderButtonProps>`
   padding: 0.5rem 0.75rem;
   height: 2.5rem;
 

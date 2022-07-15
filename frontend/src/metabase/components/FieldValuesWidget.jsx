@@ -119,11 +119,8 @@ class FieldValuesWidgetInner extends Component {
         options = await this.fetchDashboardParamValues(query);
       } else {
         options = await this.fetchFieldValues(query);
-        const {
-          fields,
-          disableSearch,
-          disablePKRemappingForSearch,
-        } = this.props;
+        const { fields, disableSearch, disablePKRemappingForSearch } =
+          this.props;
         valuesMode = getValuesMode(
           fields,
           disableSearch,
@@ -349,9 +346,7 @@ class FieldValuesWidgetInner extends Component {
               return option.some(
                 value =>
                   value != null &&
-                  String(value)
-                    .toLowerCase()
-                    .includes(lowerCaseFilterString),
+                  String(value).toLowerCase().includes(lowerCaseFilterString),
               );
             }}
             onInputChange={this.onInputChange}
