@@ -4,7 +4,6 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
-import Icon from "metabase/components/Icon";
 import MetabaseSettings from "metabase/lib/settings";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
 import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
@@ -54,15 +53,12 @@ export const getDashboardActions = (
     if (canCreateSubscription && !isFullscreen) {
       buttons.push(
         <Tooltip tooltip={t`Subscriptions`} key="dashboard-subscriptions">
-          <span>
-            <DashboardHeaderButton
-              disabled={!canManageSubscriptions}
-              onClick={onSharingClick}
-              data-metabase-event="Dashboard;Subscriptions"
-            >
-              <Icon size={18} name="subscription" />
-            </DashboardHeaderButton>
-          </span>
+          <DashboardHeaderButton
+            icon="subscription"
+            disabled={!canManageSubscriptions}
+            onClick={onSharingClick}
+            data-metabase-event="Dashboard;Subscriptions"
+          />
         </Tooltip>,
       );
     }
@@ -89,15 +85,13 @@ export const getDashboardActions = (
                   : t`Add data to share this dashboard`
               }
             >
-              <DashboardHeaderButton>
-                <Icon
-                  name="share"
-                  className={cx({
-                    "text-brand-hover": canShareDashboard,
-                    "text-light": !canShareDashboard,
-                  })}
-                />
-              </DashboardHeaderButton>
+              <DashboardHeaderButton
+                icon="share"
+                className={cx({
+                  "text-brand-hover": canShareDashboard,
+                  "text-light": !canShareDashboard,
+                })}
+              />
             </Tooltip>
           }
         />,
