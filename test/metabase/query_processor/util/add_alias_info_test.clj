@@ -187,6 +187,7 @@
                 {:aggregation [[:aggregation-options
                                 [:count]
                                 {:name               "count"
+                                 ::add/source-alias  "count"
                                  ::add/desired-alias "count"
                                  ::add/position      0}]]
                  :filter      [:!=
@@ -211,16 +212,19 @@
                                 :aggregation  [[:aggregation-options
                                                 [:count]
                                                 {:name               "count"
+                                                 ::add/source-alias  "count"
                                                  ::add/desired-alias "count"
                                                  ::add/position      0}]
                                                [:aggregation-options
                                                 [:count]
                                                 {:name               "count_2"
+                                                 ::add/source-alias  "count_2"
                                                  ::add/desired-alias "count_2"
                                                  ::add/position      1}]
                                                [:aggregation-options
                                                 [:count]
                                                 {:name               "count_3"
+                                                 ::add/source-alias  "count_3"
                                                  ::add/desired-alias "count_3"
                                                  ::add/position      2}]]}
                  :fields       [[:field "count" {:base-type          :type/BigInteger
@@ -305,6 +309,7 @@
                                                               [:avg [:field %reviews.rating {::add/source-table $$reviews
                                                                                              ::add/source-alias "RATING"}]]
                                                               {:name               "avg"
+                                                               ::add/source-alias  "avg"
                                                                ::add/desired-alias "avg"
                                                                ::add/position      1}]]
                                               :breakout     [[:field %products.category {:join-alias         "P2"
@@ -370,9 +375,12 @@
 
 (driver/register! ::custom-escape :parent :h2)
 
+(defn- prefix-alias [alias]
+  (str "COOL." alias))
+
 (defmethod driver/escape-alias ::custom-escape
   [_driver field-alias]
-  (str "COOL." field-alias))
+  (prefix-alias field-alias))
 
 (deftest custom-escape-alias-test
   (let [db (mt/db)]
@@ -399,6 +407,7 @@
                                                ::add/position      0}]]
                             {:aggregation [[:aggregation-options [:count] {:name               "COOL.count"
                                                                            ::add/position      1
+                                                                           ::add/source-alias  "count"
                                                                            ::add/desired-alias "COOL.count"}]]
                              :breakout    [double-price]
                              :order-by    [[:asc double-price]]})))
@@ -410,6 +419,55 @@
                                           :limit        1}
                            :aggregation  [[:count]]
                            :breakout     [[:field "double_price" {:base-type :type/Integer}]]})
+                        add-alias-info
+                        :query)))))))
+
+(deftest custom-escape-alias-filtering-aggregation-test
+  (let [db (mt/db)]
+    (driver/with-driver ::custom-escape
+      (mt/with-db db
+        (is (query= (mt/$ids venues
+                      (let [price [:field %price {::add/source-table  $$venues
+                                                  ::add/source-alias  "PRICE"
+                                                  ::add/desired-alias "COOL.PRICE"
+                                                  ::add/position      0}]
+                            outer-price (-> price
+                                            (assoc-in [2 ::add/source-table] ::add/source)
+                                            (update-in [2 ::add/source-alias] prefix-alias)
+                                            (update-in [2 ::add/desired-alias] prefix-alias))
+                            count-opts {:name "COOL.strange count"
+                                        ::add/source-alias "strange count"
+                                        ::add/desired-alias "COOL.strange count"
+                                        ::add/position 1}
+                            outer-count-opts (-> count-opts
+                                                 (dissoc :name)
+                                                 (assoc :base-type :type/BigInteger
+                                                        ::add/source-table ::add/source)
+                                                 (update ::add/source-alias prefix-alias)
+                                                 (update ::add/desired-alias prefix-alias))]
+                        {:source-query
+                         {:source-table $$venues
+                          :breakout     [price]
+                          :aggregation  [[:aggregation-options [:count] count-opts]]
+                          :order-by     [[:asc price]]}
+                         :fields [outer-price
+                                  [:field
+                                   "strange count"
+                                   outer-count-opts]]
+                         :filter [:<
+                                  [:field
+                                   "strange count"
+                                   outer-count-opts]
+                                  [:value 10 {:base_type :type/BigInteger}]]
+                         :limit 1}))
+                    (-> (mt/mbql-query venues
+                          {:source-query {:source-table $$venues
+                                          :aggregation  [[:aggregation-options
+                                                          [:count]
+                                                          {:name "strange count"}]]
+                                          :breakout     [$price]}
+                           :filter       [:< [:field "strange count" {:base-type :type/BigInteger}] 10]
+                           :limit        1})
                         add-alias-info
                         :query)))))))
 
@@ -555,6 +613,7 @@
                                                           ::add/source-alias "USER_ID"}]]
                                   {:name               "sum"
                                    ::add/position      0
+                                   ::add/source-alias  "sum"
                                    ::add/desired-alias "sum"}]]
                    :order-by    [[:asc [:aggregation 0 {::add/desired-alias "sum"
                                                         ::add/position      0}]]]})
@@ -569,6 +628,7 @@
                  :breakout    [[:expression "count" {::add/desired-alias "count"
                                                      ::add/position      0}]]
                  :aggregation [[:aggregation-options [:count] {:name               "count_2"
+                                                               ::add/source-alias  "count"
                                                                ::add/desired-alias "count_2"
                                                                ::add/position      1}]]
                  :order-by    [[:asc [:expression "count" {::add/desired-alias "count"
