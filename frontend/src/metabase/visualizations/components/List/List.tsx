@@ -276,7 +276,7 @@ function List({
               renderListItemCell(rowIndex, columnIndex, "right"),
             )}
             {hasEditButton && (
-              <RowActionButtonContainer type="action">
+              <RowActionButtonContainer slot="right">
                 <Button
                   disabled={!isDataApp}
                   onClick={onEditClick}
@@ -285,7 +285,7 @@ function List({
               </RowActionButtonContainer>
             )}
             {hasDeleteButton && (
-              <RowActionButtonContainer type="action">
+              <RowActionButtonContainer slot="right">
                 <Button
                   disabled={!isDataApp}
                   onClick={onDeleteClick}
