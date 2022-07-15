@@ -250,10 +250,35 @@
 saved later when it is ready."
   1500)
 
-(def ^:private metadata-async-timeout
+(def ^:private metadata-async-timeout-ms
   "Duration in milliseconds to wait for the metadata before abandoning the asynchronous metadata saving. Default is 15
   minutes."
-  (* 1000 60 15))
+  (u/minutes->ms 15))
+
+(defn- schedule-metadata-saving
+  "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up
+  to [[metadata-async-timeout-ms]] for the metadata, and then saves it if the query of the card has not changed."
+  [result-metadata-chan card]
+  (a/go
+    (let [timeoutc        (a/timeout metadata-async-timeout-ms)
+          [metadata port] (a/alts! [result-metadata-chan timeoutc])
+          id              (:id card)]
+      (cond (= port timeoutc)
+            (do (a/close! result-metadata-chan)
+                (log/info (trs "Metadata not ready in {0} minutes, abandoning"
+                               (long (/ metadata-async-timeout-ms 1000 60)))))
+
+            (not (seq metadata))
+            (log/info (trs "Not updating metadata asynchronously for card {0} because no metadata"
+                           id))
+            :else
+            (future
+              (let [current-query (db/select-one-field :dataset_query Card :id id)]
+                (if (= (:dataset_query card) current-query)
+                  (do (db/update! Card id {:result_metadata metadata})
+                      (log/info (trs "Metadata updated asynchronously for card {0}" id)))
+                  (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
+                                 id)))))))))
 
 (defn- create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
@@ -294,30 +319,7 @@ saved later when it is ready."
                           :collection [:moderation_reviews :moderator_details])
                  (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
       (when timed-out?
-        (.submit clojure.lang.Agent/pooledExecutor
-                 ^Runnable
-                 (fn []
-                   (try
-                     (let [timeoutc        (a/timeout metadata-async-timeout)
-                           [metadata port] (a/alts!! [result-metadata-chan timeoutc])
-                           id              (:id <>)
-                           current-query   (db/select-one-field :dataset_query Card :id id)]
-                       (cond (= port timeoutc)
-                             (log/info (trs "Metadata not ready in 15 minutes, abandoning"))
-
-                             (and (seq metadata) (= current-query (:dataset_query <>)))
-                             (do (db/update! Card id {:result_metadata metadata})
-                                 (log/info (trs "Metadata updated asynchronously for card {0}" id)))
-
-                             (not= current-query (:dataset_query <>))
-                             (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
-                                            id))
-
-                             (not (seq metadata))
-                             (log/info (trs "Not updating metadata asynchronously for card {0} because no metadata"
-                                            id))))
-                     (catch Exception e
-                       (log/warn e (trs "Error updating card metadata asynchronously"))))))))))
+        (schedule-metadata-saving result-metadata-chan <>)))))
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
@@ -590,29 +592,7 @@ saved later when it is ready."
       (u/prog1 (update-card! card-before-update card-updates)
         (when timed-out?
           (log/info (trs "Metadata not available soon enough. Saving card {0} and asynchronously updating metadata" id))
-          (.submit clojure.lang.Agent/pooledExecutor
-                   ^Runnable
-                   (fn []
-                     (try
-                       (let [timeoutc        (a/timeout metadata-async-timeout)
-                             [metadata port] (a/alts!! [result-metadata-chan timeoutc])
-                             current-query   (db/select-one-field :dataset_query Card :id id)]
-                         (cond (= port timeoutc)
-                               (log/info (trs "Metadata not ready in 15 minutes, abandoning"))
-
-                               (and (seq metadata) (= current-query (:dataset_query <>)))
-                               (do (db/update! Card id {:result_metadata metadata})
-                                   (log/info (trs "Metadata updated asynchronously for card {0}" id)))
-
-                               (not= current-query (:dataset_query <>))
-                               (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
-                                              id))
-
-                               (not (seq metadata))
-                               (log/info (trs "Not updating metadata asynchronously for card {0} because no metadata"
-                                              id))))
-                       (catch Exception e
-                         (log/warn e (trs "Error updating card metadata asynchronously")))))))))))
+          (schedule-metadata-saving result-metadata-chan <>))))))
 
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
