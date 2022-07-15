@@ -538,3 +538,10 @@ describe("View Header | Saved native question", () => {
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
   });
 });
+
+describe("View Header | Read only permissions", () => {
+  it("should disable the input field for the question title", () => {
+    setup({ question: getSavedGUIQuestion({ can_write: false }) });
+    expect(screen.queryByTestId("saved-question-header-title")).toBeDisabled();
+  });
+});
