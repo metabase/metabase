@@ -12,8 +12,8 @@ interface EntityMenuIconButtonProps {
 }
 
 export const EntityMenuIconButton = styled(Button)<EntityMenuIconButtonProps>`
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
 
   ${({ color }) => (color ? `color: ${color}` : null)};
 

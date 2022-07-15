@@ -127,6 +127,7 @@ export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBar
   display: flex;
   align-items: center;
   color: ${color("text-dark")};
+  margin-right: -1rem;
 
   ${breakpointMinSmall} {
     margin-left: auto;
@@ -154,6 +155,7 @@ export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBar
 export const HeaderButtonSection = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
+  gap: 0.5rem;
 
   ${breakpointMaxMedium} {
     ${props =>
