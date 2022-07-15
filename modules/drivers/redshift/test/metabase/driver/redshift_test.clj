@@ -181,31 +181,45 @@
   (mt/test-driver
     :redshift
     (testing "Redshift specific types should be synced correctly"
-      (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
-            tbl-nm       "redshift_specific_types"
-            qual-tbl-nm  (str redshift.test/session-schema-name "." tbl-nm)
-            view-nm      "late_binding_view"
-            qual-view-nm (str redshift.test/session-schema-name "." view-nm)]
+      (let [db-details     (tx/dbdef->connection-details :redshift nil nil)
+            tbl-nm         "redshift_specific_types"
+            qual-tbl-nm    (str redshift.test/session-schema-name "." tbl-nm)
+            view-nm        "late_binding_view"
+            qual-view-nm   (str redshift.test/session-schema-name "." view-nm)
+            ;; pursuant to #21215, weirder late binding views will not even have the parameterization
+            view-nm-2      "weirder_late_binding_view"
+            qual-view-nm-2 (str redshift.test/session-schema-name "." view-nm-2)]
         (mt/with-temp Database [database {:engine :redshift, :details db-details}]
           ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
           (redshift.test/execute!
            (str "DROP TABLE IF EXISTS %1$s;%n"
                 "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));%n"
-                "CREATE OR REPLACE VIEW %2$s AS SELECT * FROM %1$s WITH NO SCHEMA BINDING;")
+                "CREATE OR REPLACE VIEW %2$s AS SELECT * FROM %1$s WITH NO SCHEMA BINDING;"
+                "CREATE OR REPLACE VIEW %3$s AS SELECT numeric_col::numeric, cast(weird_varchar as character varying) FROM %1$s WITH NO SCHEMA BINDING;")
            qual-tbl-nm
-           qual-view-nm)
-          ;; sync the schema again to pick up the new view (and table, though we aren't checking that)
+           qual-view-nm
+           qual-view-nm-2)
+          ;; sync the schema again to pick up the new views (and table, though we aren't checking that)
           (sync/sync-database! database)
           (is (contains?
-               (db/select-field :name Table :db_id (u/the-id database)) ; the new view should have been synced
-               view-nm))
-          (let [table-id (db/select-one-id Table :db_id (u/the-id database), :name view-nm)]
+                (db/select-field :name Table :db_id (u/the-id database)) ; the new view should have been synced
+                view-nm))
+          (is (contains?
+                (db/select-field :name Table :db_id (u/the-id database)) ; the new view should have been synced
+                view-nm-2))
+          (let [table-id   (db/select-one-id Table :db_id (u/the-id database), :name view-nm)
+                table-id-2 (db/select-one-id Table :db_id (u/the-id database), :name view-nm-2)]
             ;; and its columns' :base_type should have been identified correctly
             (is (= [{:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}
                     {:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}]
                    (map
                     (partial into {})
-                    (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))
+                    (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))
+            (is (= [{:name "numeric_col",   :database_type "numeric",           :base_type :type/Decimal}
+                    {:name "weird_varchar", :database_type "character varying", :base_type :type/Text}]
+                   (map
+                     (partial into {})
+                     (db/select [Field :name :database_type :base_type] :table_id table-id-2 {:order-by [:name]}))))))))))
 
 (deftest filtered-syncable-schemas-test
   (mt/test-driver :redshift
