@@ -1,4 +1,4 @@
-bc(ns metabase.test-runner.assert-exprs.unify
+(ns metabase.test-runner.assert-exprs.unify
   (:require
    [clojure.string :as str]
    [metabase.util :as u]
@@ -9,18 +9,18 @@ bc(ns metabase.test-runner.assert-exprs.unify
   (fn [expected actual]
     [(type expected) (type actual)]))
 
-(def ^:dynamic ^:private *unify-nesting-level* 0)
+(def ^:dynamic ^:private *recursion-level* 0)
 
-(def ^:dynamic *debug-unify* true)
+(def ^:dynamic *debug* true)
 
 (def ^:dynamic *unify*
   unify*)
 
 (methodical/defmethod unify* :around :default
   [expected actual]
-  (if-not *debug-unify*
+  (if-not *debug*
     (next-method expected actual)
-    (let [space                  (str/join (repeat (* *unify-nesting-level* 2) \space))
+    (let [space                  (str/join (repeat (* *recursion-level* 2) \space))
           =>                     (str space '=> \space)
           dispatch-val           [(type expected) (type actual)]
           effective-dispatch-val (methodical/effective-dispatch-value *unify* dispatch-val)]
@@ -29,7 +29,7 @@ bc(ns metabase.test-runner.assert-exprs.unify
                     \newline => (pr-str (if (= effective-dispatch-val :default)
                                           (list 'unify :default)
                                           (cons 'unify effective-dispatch-val)))))
-      (let [result (binding [*unify-nesting-level* (inc *unify-nesting-level*)]
+      (let [result (binding [*recursion-level* (inc *recursion-level*)]
                      (next-method expected actual))]
         (println => (u/colorize (if (nil? result) :green :red)
                                 (pr-str result)))
