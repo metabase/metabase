@@ -536,8 +536,8 @@
   "Whether we should use cached `FieldValues` instead of running a query via the QP."
   [field-id]
   (and
-   field-id
-   (field-values/field-should-have-field-values? field-id)))
+    field-id
+    (field-values/field-should-have-field-values? field-id)))
 
 (defn- cached-field-values [field-id constraints {:keys [limit]}]
   ;; TODO: why don't we remap the human readable values here?
@@ -555,7 +555,8 @@
 
     ;; fetch possible values of venue price (between 1 and 4 inclusive) where category name is 'BBQ'
     (chain-filter %venues.price {%categories.name \"BBQ\"})
-    ;; -> [1 2 3] (there are no BBQ places with price = 4)
+    ;; -> {:values          [1 2 3] (there are no BBQ places with price = 4)
+           :has_more_values false}
 
   `options` are key-value options. Currently only one option is supported, `:limit`:
 
@@ -627,7 +628,8 @@
               constraints       (merge constraints query-constraint)
               result            (unremapped-chain-filter field-id constraints options)]
           (update result :values #(add-human-readable-values % v->human-readable))))
-      []))
+      {:values          []
+       :has_more_values false}))
 
 (defn- search-cached-field-values? [field-id constraints]
   (and (use-cached-field-values? field-id)

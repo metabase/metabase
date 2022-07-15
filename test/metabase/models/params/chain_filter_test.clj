@@ -23,60 +23,78 @@
      ~query
      ~@options))
 
+(defn ^:private take-n-values
+  [n result]
+  (update result :values #(take n %)))
+
 (deftest chain-filter-test
   (testing "Show me expensive restaurants"
-    (is (= ["Dal Rae Restaurant"
-            "Lawry's The Prime Rib"
-            "Pacific Dining Car - Santa Monica"
-            "Sushi Nakazawa"
-            "Sushi Yasuda"
-            "Tanoshi Sushi & Sake Bar"]
+    (is (= {:values          ["Dal Rae Restaurant"
+                              "Lawry's The Prime Rib"
+                              "Pacific Dining Car - Santa Monica"
+                              "Sushi Nakazawa"
+                              "Sushi Yasuda"
+                              "Tanoshi Sushi & Sake Bar"]
+            :has_more_values false}
            (chain-filter venues.name {venues.price 4}))))
   (testing "Show me categories that have expensive restaurants"
-    (is (= ["Japanese" "Steakhouse"]
+    (is (= {:values          ["Japanese" "Steakhouse"]
+            :has_more_values false}
            (chain-filter categories.name {venues.price 4})))
     (testing "Should work with string versions of param values"
-      (is (= ["Japanese" "Steakhouse"]
+      (is (= {:values          ["Japanese" "Steakhouse"]
+              :has_more_values false}
              (chain-filter categories.name {venues.price "4"})))))
   (testing "Show me categories starting with s (case-insensitive) that have expensive restaurants"
-    (is (= ["Steakhouse"]
+    (is (= {:values          ["Steakhouse"]
+            :has_more_values false}
            (chain-filter categories.name {venues.price 4, categories.name [:starts-with "s" {:case-sensitive false}]}))))
   (testing "Show me cheap Thai restaurants"
-    (is (= ["Kinaree Thai Bistro" "Krua Siri"]
+    (is (= {:values          ["Kinaree Thai Bistro" "Krua Siri"]
+            :has_more_values false}
            (chain-filter venues.name {venues.price 1, categories.name "Thai"}))))
   (testing "Show me the categories that have cheap restaurants"
-    (is (= ["Asian" "BBQ" "Bakery" "Bar" "Burger" "Caribbean" "Deli" "Karaoke" "Mexican" "Pizza" "Southern" "Thai"]
+    (is (= {:values          ["Asian" "BBQ" "Bakery" "Bar" "Burger" "Caribbean"
+                              "Deli" "Karaoke" "Mexican" "Pizza" "Southern" "Thai"]
+            :has_more_values false}
            (chain-filter categories.name {venues.price 1}))))
   (testing "Show me cheap restaurants with the word 'taco' in their name (case-insensitive)"
-    (is (= ["Tacos Villa Corona" "Tito's Tacos"]
+    (is (= {:values          ["Tacos Villa Corona" "Tito's Tacos"]
+            :has_more_values false}
            (chain-filter venues.name {venues.price 1, venues.name [:contains "tAcO" {:case-sensitive false}]}))))
   (testing "Show me the first 3 expensive restaurants"
-    (is (= ["Dal Rae Restaurant" "Lawry's The Prime Rib" "Pacific Dining Car - Santa Monica"]
+    (is (= {:values          ["Dal Rae Restaurant" "Lawry's The Prime Rib" "Pacific Dining Car - Santa Monica"]
+            :has_more_values false}
            (chain-filter venues.name {venues.price 4} :limit 3))))
   (testing "Oh yeah, we actually support arbitrary MBQL filter clauses. Neat!"
-    (is (= ["Festa" "Fred 62"]
+    (is (= {:values          ["Festa" "Fred 62"]
+            :has_more_values false}
            (chain-filter venues.name {venues.price [:between 2 3]
                                       venues.name  [:starts-with "f" {:case-sensitive false}]})))))
 
 (deftest multiple-values-test
   (testing "Chain filtering should support multiple values for a single parameter (as a vector or set of values)"
     (testing "Show me restaurants with price = 1 or 2 with the word 'BBQ' in their name (case-sensitive)"
-      (is (= ["Baby Blues BBQ" "Beachwood BBQ & Brewing" "Bludso's BBQ"]
+      (is (= {:values          ["Baby Blues BBQ" "Beachwood BBQ & Brewing" "Bludso's BBQ"]
+              :has_more_values false}
              (chain-filter venues.name {venues.price #{1 2}, venues.name [:contains "BBQ"]}))))
     (testing "Show me the possible values of price for Bakery *or* BBQ restaurants"
-      (is (= [1 2 3]
+      (is (= {:values          [1 2 3]
+              :has_more_values false}
              (chain-filter venues.price {categories.name ["Bakery" "BBQ"]}))))))
 
 (deftest auto-parse-string-params-test
   (testing "Parameters that come in as strings (i.e., all of them that come in via the API) should work as intended"
-    (is (= ["Baby Blues BBQ" "Beachwood BBQ & Brewing" "Bludso's BBQ"]
+    (is (= {:values          ["Baby Blues BBQ" "Beachwood BBQ & Brewing" "Bludso's BBQ"]
+            :has_more_values false}
            (chain-filter venues.name {venues.price ["1" "2"], venues.name [:contains "BBQ"]})))))
 
 (deftest unrelated-params-test
   (testing "Parameters that are completely unrelated (don't apply to this Table) should just get ignored entirely"
     ;; there is no way to join from venues -> users so users.id should get ignored
     (binding [chain-filter/*enable-reverse-joins* false]
-      (is (= [1 2 3]
+      (is (= {:values          [1 2 3]
+              :has_more_values false}
              (chain-filter venues.price {categories.name ["Bakery" "BBQ"]
                                          users.id        [1 2 3]}))))))
 
@@ -212,35 +230,43 @@
   (mt/dataset airports
     (testing "Should be able to filter against other tables with that require multiple joins\n"
       (testing "single direct join: Airport -> Municipality"
-        (is (= ["San Francisco International Airport"]
+        (is (= {:values          ["San Francisco International Airport"]
+                :has_more_values false}
                (chain-filter airport.name {municipality.name ["San Francisco"]}))))
       (testing "2 joins required: Airport -> Municipality -> Region"
-        (is (= ["Beale Air Force Base"
-                "Edwards Air Force Base"
-                "John Wayne Airport-Orange County Airport"]
-               (take 3 (chain-filter airport.name {region.name ["California"]})))))
+        (is (= {:values          ["Beale Air Force Base"
+                                  "Edwards Air Force Base"
+                                  "John Wayne Airport-Orange County Airport"]
+                :has_more_values false}
+               (take-n-values 3 (chain-filter airport.name {region.name ["California"]})))))
       (testing "3 joins required: Airport -> Municipality -> Region -> Country"
-        (is (= ["Abraham Lincoln Capital Airport"
-                "Albuquerque International Sunport"
-                "Altus Air Force Base"]
-               (take 3 (chain-filter airport.name {country.name ["United States"]})))))
+        (is (= {:values          ["Abraham Lincoln Capital Airport"
+                                  "Albuquerque International Sunport"
+                                  "Altus Air Force Base"]
+                :has_more_values false}
+               (take-n-values 3 (chain-filter airport.name {country.name ["United States"]})))))
       (testing "4 joins required: Airport -> Municipality -> Region -> Country -> Continent"
-        (is (= ["Afonso Pena Airport"
-                "Alejandro Velasco Astete International Airport"
-                "Carrasco International /General C L Berisso Airport"]
-               (take 3 (chain-filter airport.name {continent.name ["South America"]})))))
+        (is (= {:values          ["Afonso Pena Airport"
+                                  "Alejandro Velasco Astete International Airport"
+                                  "Carrasco International /General C L Berisso Airport"]
+                :has_more_values false}
+               (take-n-values 3 (chain-filter airport.name {continent.name ["South America"]})))))
       (testing "[backwards]"
         (testing "single direct join: Municipality -> Airport"
-          (is (= ["San Francisco"]
+          (is (= {:values          ["San Francisco"]
+                  :has_more_values false}
                  (chain-filter municipality.name {airport.name ["San Francisco International Airport"]}))))
         (testing "2 joins required: Region -> Municipality -> Airport"
-          (is (= ["California"]
+          (is (= {:values          ["California"]
+                  :has_more_values false}
                  (chain-filter region.name {airport.name ["San Francisco International Airport"]}))))
         (testing "3 joins required: Country -> Region -> Municipality -> Airport"
-          (is (= ["United States"]
+          (is (= {:values          ["United States"]
+                  :has_more_values false}
                  (chain-filter country.name {airport.name ["San Francisco International Airport"]}))))
         (testing "4 joins required: Continent -> Region -> Municipality -> Airport"
-          (is (= ["North America"]
+          (is (= {:values          ["North America"]
+                  :has_more_values false}
                  (chain-filter continent.name {airport.name ["San Francisco International Airport"]}))))))))
 
 (deftest filterable-field-ids-test
@@ -258,14 +284,17 @@
 
 (deftest chain-filter-search-test
   (testing "Show me categories containing 'eak' (case-insensitive) that have expensive restaurants"
-    (is (= ["Steakhouse"]
-           (mt/$ids (chain-filter/chain-filter-search %categories.name {%venues.price 4} "eak")))))
+    (is (= {:values          ["Steakhouse"]
+            :has_more_values false}
+           (chain-filter-search categories.name {venues.price 4} "eak"))))
   (testing "Show me cheap restaurants including with 'taco' (case-insensitive)"
-    (is (= ["Tacos Villa Corona" "Tito's Tacos"]
-           (mt/$ids (chain-filter/chain-filter-search %venues.name {%venues.price 1} "tAcO")))))
+    (is (= {:values          ["Tacos Villa Corona" "Tito's Tacos"]
+            :has_more_values false}
+           (chain-filter-search venues.name {venues.price 1} "tAcO"))))
   (testing "search for something crazy = should return empty results"
-    (is (= []
-           (mt/$ids (chain-filter/chain-filter-search %categories.name {%venues.price 4} "zzzzz")))))
+    (is (= {:values          []
+            :has_more_values false}
+           (chain-filter-search categories.name {venues.price 4} "zzzzz"))))
   (testing "Field that doesn't exist should throw a 404"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -291,32 +320,43 @@
   (with-human-readable-values-remapping
     (testing "Show me category IDs for categories"
       ;; there are no restaurants with category 1
-      (is (= [[2 "American"]
-              [3 "Artisan"]
-              [4 "Asian"]]
-             (take 3 (mt/$ids (chain-filter/chain-filter %venues.category_id nil))))))
+      (is (= {:values          [[2 "American"]
+                                [3 "Artisan"]
+                                [4 "Asian"]]
+              :has_more_values false}
+             (take-n-values 3 (chain-filter venues.category_id nil)))))
     (testing "Show me category IDs for categories that have expensive restaurants"
-      (is (= [[40 "Japanese"]
-              [67 "Steakhouse"]]
-             (mt/$ids (chain-filter/chain-filter %venues.category_id {%venues.price 4})))))
+      (is (= {:values          [[40 "Japanese"]
+                                [67 "Steakhouse"]]
+              :has_more_values false}
+             (take-n-values 3 (chain-filter venues.category_id {venues.price 4})))))
     (testing "Show me the category 40 (constraints do not support remapping)"
-      (is (= [[40 "Japanese"]]
-             (mt/$ids (chain-filter/chain-filter %venues.category_id {%venues.category_id 40})))))))
+      (is (= {:values          [[40 "Japanese"]]
+              :has_more_values false}
+             (take-n-values 3 (chain-filter venues.category_id {venues.category_id 40})))))))
 
 (deftest human-readable-values-remapped-chain-filter-search-test
   (with-human-readable-values-remapping
     (testing "Show me category IDs [whose name] contains 'bar'"
-      (doseq [constraints [nil {}]]
-        (testing (format "\nconstraints = %s" (pr-str constraints))
-          (is (= [[7 "Bar"]
-                  [74 "Wine Bar"]]
-                 (mt/$ids (chain-filter/chain-filter-search %venues.category_id constraints "bar")))))))
+      (testing "\nconstraints = {}"
+        (is (= {:values          [[7 "Bar"]
+                                  [74 "Wine Bar"]]
+                :has_more_values false}
+               (chain-filter-search venues.category_id {} "bar")))))
+    (testing "\nconstraints = nil"
+      (is (= {:values          [[7 "Bar"]
+                                [74 "Wine Bar"]]
+              :has_more_values false}
+             (chain-filter-search venues.category_id nil "bar"))))
+
     (testing "Show me category IDs [whose name] contains 'house' that have expensive restaurants"
-      (is (= [[67 "Steakhouse"]]
-             (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "house")))))
+      (is (= {:values          [[67 "Steakhouse"]]
+              :has_more_values false}
+             (chain-filter-search venues.category_id {venues.price 4} "house"))))
     (testing "search for something crazy: should return empty results"
-      (is (= []
-             (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "zzzzz")))))))
+      (is (= {:values          []
+              :has_more_values false}
+             (chain-filter-search venues.category_id {venues.price 4} "zzzzz"))))))
 
 (deftest field-to-field-remapped-field-id-test
   (is (= (mt/id :venues :name)
@@ -325,31 +365,36 @@
 (deftest field-to-field-remapped-chain-filter-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
     (testing "Show me venue IDs (names)"
-      (is (= [[29 "20th Century Cafe"]
-              [8 "25°"]
-              [93 "33 Taps"]]
-             (take 3 (chain-filter/chain-filter (mt/id :venues :id) nil)))))
+      (is (= {:values [[29 "20th Century Cafe"]
+                       [8 "25°"]
+                       [93 "33 Taps"]]
+              :has_more_values false}
+             (take-n-values 3 (chain-filter venues.id nil)))))
     (testing "Show me expensive venue IDs (names)"
-      (is (= [[55 "Dal Rae Restaurant"]
-              [61 "Lawry's The Prime Rib"]
-              [16 "Pacific Dining Car - Santa Monica"]]
-             (take 3 (mt/$ids (chain-filter/chain-filter %venues.id {%venues.price 4}))))))))
+      (is (= {:values          [[55 "Dal Rae Restaurant"]
+                                [61 "Lawry's The Prime Rib"]
+                                [16 "Pacific Dining Car - Santa Monica"]]
+              :has_more_values false}
+             (take-n-values 3 (chain-filter venues.id {venues.price 4})))))))
 
 (deftest field-to-field-remapped-chain-filter-search-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
     (testing "Show me venue IDs that [have a remapped name that] contains 'sushi'"
-      (is (= [[76 "Beyond Sushi"]
-              [80 "Blue Ribbon Sushi"]
-              [77 "Sushi Nakazawa"]]
-             (take 3 (chain-filter/chain-filter-search (mt/id :venues :id) nil "sushi")))))
+      (is (= {:values          [[76 "Beyond Sushi"]
+                                [80 "Blue Ribbon Sushi"]
+                                [77 "Sushi Nakazawa"]]
+              :has_more_values false}
+             (take-n-values 3 (chain-filter-search venues.id nil "sushi")))))
     (testing "Show me venue IDs that [have a remapped name that] contain 'sushi' that are expensive"
-      (is (= [[77 "Sushi Nakazawa"]
-              [79 "Sushi Yasuda"]
-              [81 "Tanoshi Sushi & Sake Bar"]]
-             (mt/$ids (chain-filter/chain-filter-search %venues.id {%venues.price 4} "sushi")))))
+      (is (= {:values          [[77 "Sushi Nakazawa"]
+                                [79 "Sushi Yasuda"]
+                                [81 "Tanoshi Sushi & Sake Bar"]]
+              :has_more_values false}
+             (chain-filter-search venues.id {venues.price 4} "sushi"))))
     (testing "search for something crazy = should return empty results"
-      (is (= []
-             (mt/$ids (chain-filter/chain-filter-search %venues.id {%venues.price 4} "zzzzz")))))))
+      (is (= {:values          []
+              :has_more_values false}
+             (chain-filter-search venues.id {venues.price 4} "zzzzz"))))))
 
 (defmacro with-fk-field-to-field-remapping {:style/indent 0} [& body]
   `(mt/with-column-remappings [~'venues.category_id ~'categories.name]
@@ -364,33 +409,45 @@
   (with-fk-field-to-field-remapping
     (testing "Show me category IDs for categories"
       ;; there are no restaurants with category 1
-      (is (= [[2 "American"]
-              [3 "Artisan"]
-              [4 "Asian"]]
-             (take 3 (mt/$ids (chain-filter/chain-filter %venues.category_id nil))))))
+      (is (= {:values          [[2 "American"]
+                                [3 "Artisan"]
+                                [4 "Asian"]]
+              :has_more_values false}
+             (take-n-values 3 (chain-filter venues.category_id nil)))))
     (testing "Show me category IDs for categories that have expensive restaurants"
-      (is (= [[40 "Japanese"]
-              [67 "Steakhouse"]]
-             (mt/$ids (chain-filter/chain-filter %venues.category_id {%venues.price 4})))))
+      (is (= {:values          [[40 "Japanese"]
+                                [67 "Steakhouse"]]
+              :has_more_values false}
+             (chain-filter venues.category_id {venues.price 4}))))
     (testing "Show me the category 40 (constraints do not support remapping)"
-      (is (= [[40 "Japanese"]]
-             (mt/$ids (chain-filter/chain-filter %venues.category_id {%venues.category_id 40})))))))
+      (is (= {:values          [[40 "Japanese"]]
+              :has_more_values false}
+             (chain-filter venues.category_id {venues.category_id 40}))))))
 
 (deftest fk-field-to-field-remapped-chain-filter-search-test
   (with-fk-field-to-field-remapping
     (testing "Show me categories containing 'ar'"
-      (doseq [constraints [nil {}]]
-        (testing (format "\nconstraints = %s" (pr-str constraints))
-          (is (= [[3 "Artisan"]
-                  [7 "Bar"]
-                  [14 "Caribbean"]]
-                 (take 3 (mt/$ids (chain-filter/chain-filter-search %venues.category_id constraints "ar"))))))))
+      (testing "\nconstraints = {}"
+        (is (= {:values          [[3 "Artisan"]
+                                  [7 "Bar"]
+                                  [14 "Caribbean"]]
+                :has_more_values false}
+               (take-n-values 3 (chain-filter-search venues.category_id {} "ar")))))
+      (testing "\nconstraints = nil"
+        (is (= {:values         [[3 "Artisan"]
+                                 [7 "Bar"]
+                                 [14 "Caribbean"]]
+                :has_more_values false}
+               (take-n-values 3 (chain-filter-search venues.category_id nil "ar"))))))
+
     (testing "Show me categories containing 'house' that have expensive restaurants"
-      (is (= [[67 "Steakhouse"]]
-             (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "house")))))
+      (is (= {:values          [[67 "Steakhouse"]]
+              :has_more_values false}
+             (chain-filter-search venues.category_id {venues.price 4} "house"))))
     (testing "search for something crazy = should return empty results"
-      (is (= []
-             (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "zzzzz")))))))
+      (is (= {:values          []
+              :has_more_values false}
+             (chain-filter-search venues.category_id {venues.price 4} "zzzzz"))))))
 
 (deftest use-cached-field-values-test
   (testing "chain-filter should use cached FieldValues if applicable (#13832)"
@@ -401,8 +458,9 @@
           (chain-filter categories.name nil)
           (with-redefs [params.field-values/create-advanced-field-values! (fn [& _args]
                                                                             (assert false "Should not be called"))]
-            (is (= ["African" "American"]
-                   (take 2 (chain-filter categories.name nil))))
+            (is (= {:values          ["African" "American" "Artisan"]
+                    :has_more_values false}
+                   (take-n-values 3 (chain-filter categories.name nil))))
             (is (= 1 (db/count FieldValues :field_id field-id :type :full)))))
 
         (testing "should create a linked-filter FieldValues when have constraints"
@@ -412,13 +470,15 @@
           (chain-filter categories.name {venues.price 4})
           (with-redefs [params.field-values/create-advanced-field-values! (fn [& _args]
                                                                             (assert false "Should not be called"))]
-            (is (= ["Japanese" "Steakhouse"]
+            (is (= {:values          ["Japanese" "Steakhouse"]
+                    :has_more_values false}
                    (chain-filter categories.name {venues.price 4})))
             (is (= 1 (db/count FieldValues :field_id field-id :type :linked-filter)))))
 
         (testing "should do in-memory search with the cached FieldValues when search without constraints"
           (mt/with-temp-vals-in-db FieldValues (db/select-one-id FieldValues :field_id field-id :type "full") {:values ["Good" "Bad"]}
-            (is (= ["Good"]
+            (is (= {:values          ["Good"]
+                    :has_more_values false}
                    (chain-filter-search categories.name nil "ood")))))
 
         (testing "search with constraitns"
@@ -437,14 +497,16 @@
                               ;; in [[params.field-values/fetch-advanced-field-values]]
                               ;; we want this to false to test this case
                               :has_more_values false)
-            (is (= ["Good"]
+            (is (= {:values          ["Good"]
+                    :has_more_values false}
                    (chain-filter-search categories.name {venues.price 4} "o")))
             (testing "Shouldn't use cached FieldValues if has_more_values=true"
               (db/update-where! FieldValues {:field_id field-id
                                              :type     "linked-filter"}
                                 :has_more_values true)
-              (is (= "Steakhouse"
-                     (first (chain-filter-search categories.name {venues.price 4} "o")))))))))))
+              (is (= {:values          ["Steakhouse"]
+                      :has_more_values false}
+                     (chain-filter-search categories.name {venues.price 4} "o"))))))))))
 
 (deftest time-interval-test
   (testing "chain-filter should accept time interval strings like `past32weeks` for temporal Fields"
@@ -465,15 +527,18 @@
     (mt/dataset nil-values-dataset
       (mt/$ids tbl
         (letfn [(thunk []
-                  (doseq [[field expected-values] {:mytype  ["empty" "null" "value"]
-                                                   :myfield [nil "" "value"]}]
+                  (doseq [[field expected-values] {:mytype  {:values          ["empty" "null" "value"]
+                                                             :has_more_values false}
+                                                   :myfield {:values          [nil "" "value"]
+                                                             :has_more_values false}}]
                     (testing "chain-filter"
                       ;; sorting can differ a bit based on whether we use FieldValues or not... not sure why this is
                       ;; the case, but that's not important for this test anyway. Just sort everything
                       (is (= expected-values
-                             (sort (chain-filter/chain-filter (mt/id :tbl field) {})))))
+                             (update (chain-filter/chain-filter (mt/id :tbl field) {}) :values sort))))
                     (testing "chain-filter-search"
-                      (is (= ["value"]
+                      (is (= {:values          ["value"]
+                              :has_more_values false}
                              (chain-filter/chain-filter-search (mt/id :tbl field) {} "val"))))))]
           (testing "no FieldValues"
             (thunk))
