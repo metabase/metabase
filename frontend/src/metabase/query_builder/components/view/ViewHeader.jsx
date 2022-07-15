@@ -436,14 +436,13 @@ function ViewTitleHeaderRightSide(props) {
           primary
           icon="add"
           onClick={() => onOpenModal(MODAL_TYPES.INSERT_ROW)}
-          ml={1}
         >
           {t`New row`}
         </Button>
       )}
       {QuestionFilterWidget.shouldRender(props) && (
         <QuestionFilterWidget
-          className="hide sm-show ml1"
+          className="hide sm-show"
           isShowingFilterSidebar={isShowingFilterSidebar}
           onAddFilter={onAddFilter}
           onOpenModal={onOpenModal}
@@ -453,7 +452,6 @@ function ViewTitleHeaderRightSide(props) {
       {QuestionSummarizeWidget.shouldRender(props) && (
         <QuestionSummarizeWidget
           className="hide sm-show"
-          ml={1}
           isShowingSummarySidebar={isShowingSummarySidebar}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
@@ -464,7 +462,6 @@ function ViewTitleHeaderRightSide(props) {
         <ViewHeaderIconButtonContainer>
           <QuestionNotebookButton
             iconSize={16}
-            ml={2}
             question={question}
             isShowingNotebook={isShowingNotebook}
             setQueryBuilderMode={setQueryBuilderMode}
@@ -486,17 +483,15 @@ function ViewTitleHeaderRightSide(props) {
         </ViewHeaderIconButtonContainer>
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
-      {hasRunButton && (
+      {hasRunButton && !isShowingNotebook && (
         <ViewHeaderIconButtonContainer>
           <RunButtonWithTooltip
             className={cx("text-brand-hover text-dark", {
-              hide: isShowingNotebook,
               "text-white-hover": isResultDirty,
             })}
             iconSize={16}
             onlyIcon
             medium
-            ml={1}
             compact
             result={result}
             isRunning={isRunning}

@@ -188,6 +188,7 @@ export const ViewHeaderActionPanel = styled.div`
   display: flex;
   align-items: center;
   margin-left: auto;
+  gap: 0.5rem;
 
   ${breakpointMaxSmall} {
     margin-left: 0;
@@ -196,10 +197,6 @@ export const ViewHeaderActionPanel = styled.div`
     border-top: 1px solid ${color("border")};
     margin-top: 1rem;
     padding: 0.5rem 2.5rem 0 2rem;
-  }
-
-  ${Button.Root} {
-    margin-left: 0.5rem;
   }
 `;
 
