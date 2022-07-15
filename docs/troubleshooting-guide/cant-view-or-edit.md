@@ -44,5 +44,5 @@ If you can’t solve your problem using the troubleshooting guides:
 [learn-permissions]: /learn/permissions/index.html
 [permission-denied]: ./data-permissions#getting-a-permission-denied-error-message
 [proxies]: ./proxies.html
-[sql-access]: ./data-permissions#people-cant-access-the-sql-editor
+[sql-access]: ./data-permissions#a-user-group-cant-access-the-sql-editor
 [troubleshooting-data-permissions]: ./data-permissions.html

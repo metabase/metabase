@@ -50,7 +50,7 @@ If a person is a member of multiple [groups][groups], Metabase will grant the _m
 
 For example, if a person is a member of two groups — one which grants [Unrestricted][unrestricted] access to a database or table and another that grants [No self-service][no-self-service] access — that person will have full unrestricted access.
 
-Remember that everyone is a member of the **All Users** group. We recommend you revoke permissions from the **All users** group, and create new groups to selectively apply permissions to your data sources.
+Remember that everyone is a member of the **All Users** group. We recommend you revoke permissions from the **All Users** group, and create new groups to selectively apply permissions to your data sources.
 
 ## A user group can view collections that contain restricted data
 
