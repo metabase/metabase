@@ -31,7 +31,7 @@
   [field-id constraints]
   (if (field-is-sandboxed? (db/select-one Field :id field-id))
     (str (hash [api/*current-user-id*
-                (hash @api/*current-user-permissions-set*)
+                @api/*current-user-permissions-set*
                 field-id
                 constraints]))
     (field-values/default-hash-key-for-linked-filters field-id constraints)))
@@ -39,9 +39,8 @@
 (defenterprise hash-key-for-sandbox
   "Returns a hash-key for linked-filter FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
   :feature :sandboxes
-  [field-id user-id user-permissions-set]
-  (if (field-is-sandboxed? (db/select-one Field :id field-id))
+  [field-id]
+  (when (field-is-sandboxed? (db/select-one Field :id field-id))
     (str (hash [field-id
-                user-id
-                (hash user-permissions-set)]))
-    nil))
+                api/*current-user-id*
+                @api/*current-user-permissions-set*]))))

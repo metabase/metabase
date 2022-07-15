@@ -1,8 +1,7 @@
 (ns metabase.models.params.field-values
   "Code related to fetching FieldValues for Fields to populate parameter widgets. Always used by the field
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
-  (:require [metabase.api.common :as api]
-            [metabase.models.field-values :as field-values :refer [FieldValues]]
+  (:require [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -26,9 +25,9 @@
   ;; read permissions for a Field = partial permissions for its parent Table (including EE segmented permissions)
   (mi/can-read? field))
 
-(defn- format-field-values
+(defn- postprocess-field-values
   "Format a FieldValues to use by params functions.
-  ;; (format-field-values (FieldValues 1))
+  ;; (postprocess-field-values (FieldValues 1) (Field 1))
   ;; => {:values          [1 2 3 4]
          :field_id        1
          :has_more_values boolean}"
@@ -68,7 +67,7 @@
     (field-values/hash-key-for-linked-filters field-id constraints)
 
     :sandbox
-    (field-values/hash-key-for-sandbox field-id api/*current-user-id* @api/*current-user-permissions-set*)))
+    (field-values/hash-key-for-sandbox field-id)))
 
 (defn create-advanced-field-values!
   "Fetch and create a FieldValues for `field` with type `fv-type`.
@@ -129,7 +128,7 @@
      :has_field_values boolean}"
   [field]
   (-> (get-or-create-field-values-for-current-user!* field)
-      (format-field-values field)))
+      (postprocess-field-values field)))
 
 (defn get-or-create-linked-filter-field-values!
   "Fetch linked-filter FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These are
@@ -145,4 +144,4 @@
      :has_field_values boolean}"
   [field constraints]
   (-> (get-or-create-advanced-field-values! :linked-filter field constraints)
-      (format-field-values field)))
+      (postprocess-field-values field)))

@@ -534,7 +534,6 @@
   [field-id]
   (and
    field-id
-   ;; check whether the Field *should* have Field values. Not whether it actually does.
    (field-values/field-should-have-field-values? field-id)))
 
 (defn- cached-field-values [field-id constraints {:keys [limit]}]
