@@ -231,23 +231,11 @@ function List({
         value={data.rows[rowIndex][columnIndex]}
         slot={slot}
         data={data}
-        series={series}
         settings={settings}
-        rowIndex={rowIndex}
         columnIndex={columnIndex}
-        getExtraDataForClick={getExtraDataForClick}
-        checkIsVisualizationClickable={checkIsVisualizationClickable}
-        onVisualizationClick={onVisualizationClick}
       />
     ),
-    [
-      series,
-      settings,
-      data,
-      checkIsVisualizationClickable,
-      getExtraDataForClick,
-      onVisualizationClick,
-    ],
+    [settings, data],
   );
 
   const renderListItemLeftPart = useCallback(
