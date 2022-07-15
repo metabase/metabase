@@ -14,6 +14,9 @@
       [{:message (tru "{0} violates not-null constraint" value)
         :column column}])))
 
+  ;; TODO -- we should probably be TTL caching this information. Otherwise parsing 100 errors for a bulk action will
+  ;; result in 100 identical data warehouse queries. It's not like constraint columns are something we would expect to
+  ;; change regularly anyway.
 (defn- constraint->column-names
   "Given a constraint with `constraint-name` fetch the column names associated with that constraint."
   [database constraint-name]

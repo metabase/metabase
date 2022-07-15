@@ -250,7 +250,7 @@
 
 (deftest row-delete-fk-constraint-violation-test
   (testing "POST /api/action/row/delete"
-    (testing "FK constraint violations errors should have nice error messages (at least for Postgres)"
+    (testing "FK constraint violations errors should have nice error messages (at least for Postgres) (#24021)"
       (mt/test-drivers (mt/normal-drivers-with-feature :actions)
         (actions.test-util/with-actions-test-data-tables #{"venues" "categories"}
           (actions.test-util/with-actions-test-data-and-actions-enabled
