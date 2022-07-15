@@ -58,6 +58,7 @@ interface ListVizDispatchProps {
 interface ListVizOwnProps extends VisualizationProps {
   dashboard?: DashboardWithCards;
   isDataApp?: boolean;
+  isQueryBuilder?: boolean;
   metadata: Metadata;
   getColumnTitle: (columnIndex: number) => string;
 }
@@ -79,6 +80,7 @@ function List({
   height,
   className,
   isDataApp,
+  isQueryBuilder,
   onVisualizationClick,
   visualizationIsClickable,
   getExtraDataForClick,
@@ -295,7 +297,12 @@ function List({
       };
 
       return (
-        <ListItemContainer key={rowIndex} ref={ref} data-testid="table-row">
+        <ListItemContainer
+          key={rowIndex}
+          disabled={!isDataApp}
+          ref={ref}
+          data-testid="table-row"
+        >
           {renderListItemLeftPart(rowIndex)}
           <ListItemContent>
             {right.map(columnIndex =>
@@ -338,7 +345,7 @@ function List({
 
   return (
     <>
-      <Root className={className}>
+      <Root className={className} isQueryBuilder={isQueryBuilder}>
         <ContentContainer>
           {paginatedRowIndexes.map(renderListItem)}
         </ContentContainer>

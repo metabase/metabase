@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
 
@@ -7,13 +8,19 @@ import { CellRoot } from "./ListCell.styled";
 
 export const LIST_ITEM_VERTICAL_GAP = "16px";
 
-export const Root = styled.div`
+export const Root = styled.div<{ isQueryBuilder?: boolean }>`
   display: flex;
   flex-direction: column;
   position: relative;
+
+  ${props =>
+    props.isQueryBuilder &&
+    css`
+      margin: 2rem 6rem;
+    `}
 `;
 
-export const ListItemContainer = styled.div`
+export const ListItemContainer = styled.div<{ disabled?: boolean }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -27,10 +34,14 @@ export const ListItemContainer = styled.div`
 
   transition: all 0.1s ease-in-out;
 
-  &:hover {
-    cursor: pointer;
-    transform: scale(0.97);
-  }
+  ${props =>
+    !props.disabled &&
+    css`
+      &:hover {
+        cursor: pointer;
+        transform: scale(0.97);
+      }
+    `}
 `;
 
 export const ListItemContent = styled.div`
