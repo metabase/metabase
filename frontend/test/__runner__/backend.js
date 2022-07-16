@@ -121,7 +121,7 @@ const BackendResource = createSharedResource("BackendResource", {
     }
     try {
       if (server.dbFile) {
-        await fs.unlink(`${server.dbFile}.mv.db`);
+        fs.unlinkSync(`${server.dbFile}.mv.db`);
       }
     } catch (e) {}
   },
