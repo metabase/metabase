@@ -186,4 +186,4 @@ function delay(duration) {
   return new Promise((resolve, reject) => setTimeout(resolve, duration));
 }
 
-module.exports = { DEFAULT_DB_KEY, BackendResource, isReady };
+module.exports = BackendResource;
