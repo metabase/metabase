@@ -276,32 +276,67 @@ describe("QB Actions > updateQuestion", () => {
   });
 
   describe("saved questions and models", () => {
-    [...SAVED_QUESTION_TEST_CASES, ...MODEL_TEST_CASES].forEach(testCase => {
-      const { question, questionType } = testCase;
+    describe("common", () => {
+      [...SAVED_QUESTION_TEST_CASES, ...MODEL_TEST_CASES].forEach(testCase => {
+        const { question, questionType } = testCase;
 
-      describe(questionType, () => {
-        it("turns question into ad-hoc", async () => {
-          const { result } = await setup({ question });
+        describe(questionType, () => {
+          it("turns question into ad-hoc", async () => {
+            const { result } = await setup({ question });
 
-          expect(result.card.id).toBeUndefined();
-          expect(result.card.name).toBeUndefined();
-          expect(result.card.description).toBeUndefined();
-          expect(result.card.dataset_query).toEqual(question.datasetQuery());
-          expect(result.card.visualization_settings).toEqual(
-            question.settings(),
-          );
-        });
-
-        it("doesn't turn read-only questions into ad-hoc", async () => {
-          const readOnly = question.clone();
-          readOnly.query().isEditable = () => false;
-          readOnly.query().readOnly = () => true;
-
-          const { result } = await setup({ question: readOnly });
-
-          expect(result.card).toEqual(readOnly.card());
+            expect(result.card.id).toBeUndefined();
+            expect(result.card.name).toBeUndefined();
+            expect(result.card.description).toBeUndefined();
+            expect(result.card.dataset_query).toEqual(question.datasetQuery());
+            expect(result.card.visualization_settings).toEqual(
+              question.settings(),
+            );
+          });
         });
       });
+    });
+
+    describe("structured questions and models", () => {
+      [TEST_CASE.SAVED_STRUCTURED_QUESTION, TEST_CASE.STRUCTURED_MODEL].forEach(
+        testCase => {
+          const { question, questionType } = testCase;
+
+          describe(questionType, () => {
+            it("doesn't turn read-only questions into ad-hoc", async () => {
+              const readOnly = question.clone();
+              readOnly.query().isEditable = () => false;
+              readOnly.query().readOnly = () => true;
+
+              const { result } = await setup({ question: readOnly });
+
+              expect(result.card).toEqual(readOnly.card());
+            });
+          });
+        },
+      );
+    });
+
+    describe("native questions and models", () => {
+      [TEST_CASE.SAVED_NATIVE_QUESTION, TEST_CASE.NATIVE_MODEL].forEach(
+        testCase => {
+          const { question, questionType } = testCase;
+
+          describe(questionType, () => {
+            it("doesn't turn read-only questions into ad-hoc", async () => {
+              const readOnly = question.clone();
+              readOnly.query().isEditable = () => false;
+              readOnly.query().readOnly = () => true;
+
+              const { result } = await setup({ question: readOnly });
+
+              expect(result.card).toEqual({
+                ...readOnly.card(),
+                parameters: [],
+              });
+            });
+          });
+        },
+      );
     });
   });
 
@@ -320,27 +355,48 @@ describe("QB Actions > updateQuestion", () => {
   });
 
   describe("models", () => {
-    MODEL_TEST_CASES.forEach(testCase => {
-      const { question, questionType } = testCase;
+    describe("common", () => {
+      MODEL_TEST_CASES.forEach(testCase => {
+        const { question, questionType } = testCase;
 
-      describe(questionType, () => {
-        it("doesn't turn into ad-hoc in 'dataset' QB mode", async () => {
-          const { result } = await setup({
-            question,
-            queryBuilderMode: "dataset",
+        describe(questionType, () => {
+          it("un-marks new ad-hoc question as model", async () => {
+            const { result } = await setup({ question });
+            expect(result.card.dataset).toBe(false);
           });
-          expect(result.card).toEqual(question.card());
-        });
 
-        it("un-marks new ad-hoc question as model", async () => {
-          const { result } = await setup({ question });
-          expect(result.card.dataset).toBe(false);
+          it("triggers question details sidebar closing when turning model into ad-hoc question", async () => {
+            const closeSidebarSpy = jest.spyOn(ui, "onCloseQuestionInfo");
+            await setup({ question, isShowingTemplateTagsEditor: true });
+            expect(closeSidebarSpy).toHaveBeenCalledTimes(1);
+          });
         });
+      });
+    });
 
-        it("triggers question details sidebar closing when turning model into ad-hoc question", async () => {
-          const closeSidebarSpy = jest.spyOn(ui, "onCloseQuestionInfo");
-          await setup({ question, isShowingTemplateTagsEditor: true });
-          expect(closeSidebarSpy).toHaveBeenCalledTimes(1);
+    describe("structured", () => {
+      const { question } = TEST_CASE.STRUCTURED_MODEL;
+
+      it("doesn't turn into ad-hoc in 'dataset' QB mode", async () => {
+        const { result } = await setup({
+          question,
+          queryBuilderMode: "dataset",
+        });
+        expect(result.card).toEqual(question.card());
+      });
+    });
+
+    describe("native", () => {
+      const { question } = TEST_CASE.NATIVE_MODEL;
+
+      it("doesn't turn into ad-hoc in 'dataset' QB mode", async () => {
+        const { result } = await setup({
+          question,
+          queryBuilderMode: "dataset",
+        });
+        expect(result.card).toEqual({
+          ...question.card(),
+          parameters: [],
         });
       });
     });
