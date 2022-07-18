@@ -55,6 +55,8 @@ export const ListItemContainer = styled.div<{ disabled?: boolean }>`
 
   background-color: ${color("bg-white")};
 
+  overflow-x: hidden;
+
   transition: all 0.1s ease-in-out;
 
   ${props =>
