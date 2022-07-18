@@ -407,7 +407,7 @@
   [(pop (serdes.base/serdes-path field))])
 
 (defmethod serdes.base/extract-one "Field"
-  [_ _ field]
+  [_model-name _opts field]
   (-> (serdes.base/extract-one-basics "Field" field)
       (update :table_id serdes.util/export-table-fk)))
 

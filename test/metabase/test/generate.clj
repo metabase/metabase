@@ -262,21 +262,21 @@
   (cond-> visit-val
     ;; Fields have a unique position per table. Keep a counter of the number of fields per table and update it, giving
     ;; the new value to the current field. Defaults to 1.
-    (= :field ent-type)
+    (= ent-type :field)
     (assoc :position
            (-> (swap! field-positions update-in [:table-fields (:table_id visit-val)] (fnil inc 0))
                (get-in [:table-fields (:table_id visit-val)])))
 
     ;; Table names need to be unique within their database. This enforces it, and appends junk to names if needed.
-    (= :table ent-type)
+    (= ent-type :table)
     (update :name unique-name)
 
     ;; Field names need to be unique within their table. This enforces it, and appends junk to names if needed.
-    (= :field ent-type)
+    (= ent-type :field)
     (update :name unique-name)
 
     ;; [Field ID, Dimension name] pairs need to be unique. This enforces it, and appends junk to names if needed.
-    (= :dimension ent-type)
+    (= ent-type :dimension)
     (update :name unique-name)
 
     (and (:description visit-val) (coin-toss 0.2))
