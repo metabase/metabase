@@ -18,7 +18,7 @@ import { BulkFilterItem } from "../BulkFilterItem";
 import { SegmentFilterSelect } from "../BulkFilterSelect";
 import { InlineOperatorSelector } from "../InlineOperatorSelector";
 import { ListRoot, ListRow, FilterContainer } from "./BulkFilterList.styled";
-import { sortDimensions } from "./utils";
+import { sortDimensions, isDimensionValid } from "./utils";
 
 export interface BulkFilterListProps {
   query: StructuredQuery;
