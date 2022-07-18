@@ -22,6 +22,18 @@ export const OptionHeader = styled.h4`
   margin-bottom: ${space(1)};
 `;
 
+export const PublicLinkHeader = styled(OptionHeader)`
+  color: ${color("brand")};
+`;
+
+export const PublicEmbedHeader = styled(OptionHeader)`
+  color: ${color("summarize")};
+`;
+
+export const EmbedWidgetHeader = styled(OptionHeader)`
+  color: ${color("filter")};
+`;
+
 interface DescriptionProps {
   enableMouseEvents?: boolean;
 }
