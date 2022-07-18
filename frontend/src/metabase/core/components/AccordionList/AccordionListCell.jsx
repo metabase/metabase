@@ -34,6 +34,7 @@ export const AccordionListCell = ({
   showItemArrows,
   itemTestId,
   getItemClassName,
+  getItemStyles,
   searchInputProps,
   hasCursor,
 }) => {
@@ -128,6 +129,7 @@ export const AccordionListCell = ({
           },
           getItemClassName(item, itemIndex),
         )}
+        style={getItemStyles(item, itemIndex)}
       >
         <span
           className={cx(

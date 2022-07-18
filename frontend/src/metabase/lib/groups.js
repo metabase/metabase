@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import { color } from "metabase/lib/colors";
 
 const SPECIAL_GROUP_NAMES = new Map([
   ["All Users", t`All Users`],
@@ -23,10 +24,10 @@ export function canEditMembership(group) {
 
 export function getGroupColor(group) {
   return isAdminGroup(group)
-    ? "text-purple"
+    ? color("filter")
     : isDefaultGroup(group)
-    ? "text-medium"
-    : "text-brand";
+    ? color("text-medium")
+    : color("brand");
 }
 
 export function getGroupNameLocalized(group) {

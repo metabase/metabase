@@ -78,6 +78,7 @@ export default class AccordionList extends Component {
     renderItemExtra: PropTypes.func,
     renderItemWrapper: PropTypes.func,
     getItemClassName: PropTypes.func,
+    getItemStyles: PropTypes.func,
 
     alwaysTogglable: PropTypes.bool,
     alwaysExpanded: PropTypes.bool,
@@ -121,6 +122,7 @@ export default class AccordionList extends Component {
     renderItemExtra: item => null,
     renderItemIcon: item => item.icon && <Icon name={item.icon} size={18} />,
     getItemClassName: item => item.className,
+    getItemStyles: item => {},
     hasInitialFocus: true,
   };
 
