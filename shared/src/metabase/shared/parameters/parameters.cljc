@@ -3,8 +3,10 @@
   #?@
       (:clj
        [(:require [clojure.string :as str]
+                  [java-time :as t]
                   [metabase.mbql.normalize :as mbql.normalize]
-                  [metabase.shared.util.i18n :refer [trs]])]
+                  [metabase.shared.util.i18n :refer [trs]]
+                  [metabase.util.date-2.parse.builder :as b])]
        :cljs
        [(:require ["moment" :as moment]
                   [clojure.string :as str]
@@ -24,23 +26,35 @@
 (defmethod formatted-value :date/single
   [_ value]
   #?(:cljs (.format (moment value) "MMMM D, YYYY")
-     :clj value))
+     :clj (t/format "MMMM d, yyyy" (t/local-date value))))
 
 (defmethod formatted-value :date/month-year
   [_ value]
   #?(:cljs (let [m (moment value "YYYY-MM")]
              (if (.isValid m) (.format m "MMMM, YYYY") ""))
-     :clj value))
+     :clj (t/format "MMMM, yyyy" (t/year-month value))))
+
+#?(:clj
+   (def ^:private quarter-formatter-in
+     (b/formatter
+      "Q" (b/value :iso/quarter-of-year 1) "-" (b/value :year 4))))
+
+#?(:clj
+   (def ^:private quarter-formatter-out
+     (b/formatter
+      "Q" (b/value :iso/quarter-of-year 1) ", " (b/value :year 4))))
 
 (defmethod formatted-value :date/quarter-year
   [_ value]
   #?(:cljs (let [m (moment value "[Q]Q-YYYY")]
              (if (.isValid m) (.format m "[Q]Q, YYYY") ""))
-     :clj value))
+     :clj (.format quarter-formatter-out
+                   (.parse quarter-formatter-in value))))
 
 (defmethod formatted-value :date/range
   [_ value]
-  (let [[start end] (str/split value "~")]
+  (def value value)
+  (let [[start end] (str/split value #"~")]
     (if (and start end)
       (str (formatted-value :date/single start)
            " - "
@@ -100,8 +114,12 @@
         value    (:value param)
         tyype    (:type param)]
     (if value
-      (-> (formatted-value tyype value)
-          escape-chars)
+      (try (-> (formatted-value tyype value)
+               escape-chars)
+           (catch Throwable _
+             ;; If we got an exception (most likely during date parsing/formatting), fallback to the default
+             ;; implementation of formatted-value
+             (formatted-value :default value)))
       ;; If this parameter has no value, return the original {{tag}} so that no substitution is done.
       (first match))))
 

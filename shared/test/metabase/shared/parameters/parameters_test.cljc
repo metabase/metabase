@@ -141,26 +141,24 @@
       {"foo" {:value "today"}}
       "today"))
 
-  #?(:cljs
-     (t/testing "Date/time values are formatted correctly when called in CLJS (TODO: update this test when Clojure
-                implementation is added)"
-       (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
-         "{{foo}}"
-         {"foo" {:type :date/single :value "2022-07-09"}}
-         "July 9\\, 2022"
+ (t/testing "Date/time values are formatted correctly"
+   (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
+     "{{foo}}"
+     {"foo" {:type :date/single :value "2022-07-09"}}
+     "July 9\\, 2022"
 
-         "{{foo}}"
-         {"foo" {:type :date/range :value "2022-07-06~2022-07-09"}}
-         "July 6\\, 2022 \\- July 9\\, 2022"
+     "{{foo}}"
+     {"foo" {:type :date/range :value "2022-07-06~2022-07-09"}}
+     "July 6\\, 2022 \\- July 9\\, 2022"
 
-         "{{foo}}"
-         {"foo" {:type :date/month-year :value "2022-07"}}
-         "July\\, 2022"
+     "{{foo}}"
+     {"foo" {:type :date/month-year :value "2022-07"}}
+     "July\\, 2022"
 
-         "{{foo}}"
-         {"foo" {:type :date/all-options :value "~2022-07-09"}}
-         "July 9\\, 2022"
+     "{{foo}}"
+     {"foo" {:type :date/all-options :value "~2022-07-09"}}
+     "July 9\\, 2022"
 
-         "{{foo}}"
-         {"foo" {:type :date/all-options :value "2022-07-06~2022-07-09"}}
-         "July 6\\, 2022 \\- July 9\\, 2022"))))
+     "{{foo}}"
+     {"foo" {:type :date/all-options :value "2022-07-06~2022-07-09"}}
+     "July 6\\, 2022 \\- July 9\\, 2022")))
