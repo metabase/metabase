@@ -566,19 +566,6 @@
   font-weight: bold;
 }
 
-.FilterRemove-field {
-  border-radius: 99px;
-  opacity: 0;
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--filter-color);
-  border: 1px solid var(--filter-color);
-  transition: opacity 0.3s ease-out;
-}
-
 .FilterInput:hover .FilterRemove-field {
   opacity: 1;
 }
