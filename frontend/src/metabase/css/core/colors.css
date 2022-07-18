@@ -7,7 +7,6 @@
   --color-accent1: #88bf4d;
   --color-accent2: #a989c5;
   --color-accent3: #ef8c8c;
-  --color-accent4: #f9d45c;
   --color-accent5: #f2a86f;
   --color-accent6: #98d9d9;
   --color-accent7: #7172ad;
@@ -337,13 +336,6 @@
 }
 .text-dashboard {
   color: var(--color-brand);
-}
-
-.bg-pulse {
-  background-color: var(--color-accent4);
-}
-.text-pulse {
-  color: var(--color-accent4);
 }
 
 .bg-question {
