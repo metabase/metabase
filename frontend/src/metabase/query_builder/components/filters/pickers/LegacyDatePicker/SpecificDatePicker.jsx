@@ -12,6 +12,7 @@ import HoursMinutesInput from "../DatePicker/HoursMinutesInput";
 
 import moment from "moment";
 import cx from "classnames";
+import { TimeLabel } from "./SpecificDatePicker.styled";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
@@ -118,8 +119,7 @@ export default class SpecificDatePicker extends Component {
         {!hideTimeSelectors && (
           <div className={cx({ py2: calendar }, { mb3: !calendar })}>
             {hours == null || minutes == null ? (
-              <div
-                className="text-purple-hover cursor-pointer flex align-center"
+              <TimeLabel
                 onClick={() =>
                   this.onChange(
                     date,
@@ -130,7 +130,7 @@ export default class SpecificDatePicker extends Component {
               >
                 <Icon className="mr1" name="clock" />
                 {t`Add a time`}
-              </div>
+              </TimeLabel>
             ) : (
               <HoursMinutesInput
                 onClear={() => this.onChange(date, null, null)}
