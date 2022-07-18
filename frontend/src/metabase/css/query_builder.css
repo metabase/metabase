@@ -527,11 +527,6 @@
   color: var(--filter-color);
 }
 
-.List-item--customfield .Icon,
-.List-item--customfield .List-item-title {
-  color: var(--color-brand);
-}
-
 .List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
 .List-item--selected .FieldList-grouping-trigger {
   visibility: visible;
