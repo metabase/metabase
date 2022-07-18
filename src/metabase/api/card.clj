@@ -15,20 +15,16 @@
             [metabase.email.messages :as messages]
             [metabase.events :as events]
             [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.bookmark :as bookmark :refer [CardBookmark]]
-            [metabase.models.card :as card :refer [Card]]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.database :refer [Database]]
+            [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table ViewLog]]
+            [metabase.models.collection :as collection]
             [metabase.models.interface :as mi]
             [metabase.models.moderation-review :as moderation-review]
-            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
-            [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.models.persisted-info :as persisted-info]
+            [metabase.models.pulse :as pulse]
             [metabase.models.query :as query]
             [metabase.models.query.permissions :as query-perms]
             [metabase.models.revision.last-edit :as last-edit]
-            [metabase.models.table :refer [Table]]
             [metabase.models.timeline :as timeline]
-            [metabase.models.view-log :refer [ViewLog]]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.pivot :as qp.pivot]
@@ -725,7 +721,6 @@ saved later when it is ready."
                  :ignore-cached-results? true
                  :format-rows?           false
                  :js-int-to-string?      false}))
-
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
