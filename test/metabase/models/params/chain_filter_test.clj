@@ -6,6 +6,7 @@
             [metabase.models.params.chain-filter :as chain-filter]
             [metabase.models.params.field-values :as params.field-values]
             [metabase.test :as mt]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (defmacro ^:private chain-filter [field field->value & options]
@@ -70,7 +71,7 @@
            (chain-filter venues.name {venues.price 1, venues.name [:contains "tAcO" {:case-sensitive false}]}))))
   (testing "Show me the first 3 expensive restaurants"
     (is (= {:values          ["Dal Rae Restaurant" "Lawry's The Prime Rib" "Pacific Dining Car - Santa Monica"]
-            :has_more_values false}
+            :has_more_values true}
            (chain-filter venues.name {venues.price 4} :limit 3))))
   (testing "Oh yeah, we actually support arbitrary MBQL filter clauses. Neat!"
     (is (= {:values          ["Festa" "Fred 62"]
@@ -556,7 +557,77 @@
                   (is (#'chain-filter/use-cached-field-values? %myfield)))
                 (thunk)))))))))
 
+(defn- do-with-clean-field-values-for-field
+  [field-or-field-id thunk]
+  (mt/with-model-cleanup [FieldValues]
+    (let [field-id         (u/the-id field-or-field-id)
+          has_field_values (db/select-one-field :has_field_values Field :id field-id)
+          fvs              (db/select FieldValues :field_id field-id)]
+      ;; switch to "list" to prevent [[field-values/create-or-update-full-field-values!]]
+      ;; from changing this to `nil` if the field is `auto-list` and exceeds threshholds
+      (db/update! Field field-id :has_field_values "list")
+      (db/delete! FieldValues :field_id field-id)
+      (try
+        (thunk)
+        (finally
+         (db/update! Field field-id :has_field_values has_field_values)
+         (db/insert-many! FieldValues fvs))))))
+
+(defmacro ^:private with-clean-field-values-for-field
+  "Run `body` with all FieldValues for `field-id` deleted.
+  Restores the deleted FieldValues when we're done."
+  {:style/indent 1}
+  [field-or-field-id & body]
+  `(do-with-clean-field-values-for-field ~field-or-field-id (fn [] ~@body)))
+
 (deftest chain-filter-has-more-values-test
   (testing "the `has_more_values` property should be correct\n"
-    (testing "has_more_values=false")
-    (testing "has_more_values=true")))
+    (testing "for cached fields"
+      (testing "without contraints"
+        (with-clean-field-values-for-field (mt/id :categories :name)
+          (testing "`false` for field has values less than [[field-values/*total-max-length*]] threshold"
+            (is (= false
+                   (:has_more_values (chain-filter categories.name {})))))
+
+          (testing "`true` if the limit option is less than the count of values of fieldvalues"
+            (is (= true
+                   (:has_more_values (chain-filter categories.name {} :limit 1)))))
+          (testing "`false` if the limit option is greater the count of values of fieldvalues"
+            (is (= false
+                   (:has_more_values (chain-filter categories.name {} :limit Integer/MAX_VALUE))))))
+
+        (testing "`true` if the values of a field exceeds our [[field-values/*total-max-length*]] limit"
+          (with-clean-field-values-for-field (mt/id :categories :name)
+            (binding [field-values/*total-max-length* 10]
+              (is (= true
+                     (:has_more_values (chain-filter categories.name {}))))))))
+
+      (testing "with contraints"
+        (with-clean-field-values-for-field (mt/id :categories :name)
+          (testing "`false` for field has values less than [[field-values/*total-max-length*]] threshold"
+            (is (= false
+                   (:has_more_values (chain-filter categories.name {venues.price 4})))))
+
+          (testing "`true` if the limit option is less than the count of values of fieldvalues"
+            (is (= true
+                   (:has_more_values (chain-filter categories.name {venues.price 4} :limit 1)))))
+          (testing "`false` if the limit option is greater the count of values of fieldvalues"
+            (is (= false
+                   (:has_more_values (chain-filter categories.name {venues.price 4} :limit Integer/MAX_VALUE))))))
+
+        (with-clean-field-values-for-field (mt/id :categories :name)
+          (testing "`true` if the values of a field exceeds our [[field-values/*total-max-length*]] limit"
+              (binding [field-values/*total-max-length* 10]
+                (is (= true
+                       (:has_more_values (chain-filter categories.name {venues.price 4})))))))))
+
+    (testing "for non-cached fields"
+      (testing "with contraints"
+        (with-clean-field-values-for-field (mt/id :venues :latitude)
+          (testing "`false` if we don't specify limit"
+            (is (= false
+                   (:has_more_values (chain-filter venues.latitude {venues.price 4})))))
+
+          (testing "`true` if the limit is less than the number of values the field has"
+            (is (= true
+                   (:has_more_values (chain-filter venues.latitude {venues.price 4} :limit 1))))))))))

@@ -551,7 +551,9 @@
                                            (params.field-values/get-or-create-linked-filter-field-values! (Field field-id) constraints))]
     {:values          (cond->> (map first values)
                         limit (take limit))
-     :has_more_values has_more_values}))
+     :has_more_values (or (when limit
+                            (< limit (count values)))
+                          has_more_values)}))
 
 (s/defn chain-filter
   "Fetch a sequence of possible values of Field with `field-id` by restricting the possible values to rows that match
