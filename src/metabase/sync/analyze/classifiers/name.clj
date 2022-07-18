@@ -107,7 +107,9 @@
    [#"description"                 text-type        :type/Description]
    [#"title"                       text-type        :type/Title]
    [#"comment"                     text-type        :type/Comment]
+   [#"birthda(?:te|y)"             date-type        :type/Birthdate]
    [#"birthda(?:te|y)"             timestamp-type   :type/Birthdate]
+   [#"(?:te|y)(?:_?)of(?:_?)birth" date-type        :type/Birthdate]
    [#"(?:te|y)(?:_?)of(?:_?)birth" timestamp-type   :type/Birthdate]])
 
 ;; Check that all the pattern tuples are valid
