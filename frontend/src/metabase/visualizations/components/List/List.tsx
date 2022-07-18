@@ -74,7 +74,6 @@ function List({
   card,
   dashboard,
   data,
-  series,
   settings,
   metadata,
   height,
@@ -83,7 +82,6 @@ function List({
   isQueryBuilder,
   onVisualizationClick,
   visualizationIsClickable,
-  getExtraDataForClick,
   updateRow,
   deleteRow,
 }: ListVizProps) {
