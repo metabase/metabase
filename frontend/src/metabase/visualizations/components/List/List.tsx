@@ -42,6 +42,7 @@ import {
   Footer,
   ListItemContainer,
   ListItemContent,
+  RowActionsContainer,
   RowActionButtonContainer,
   LIST_ITEM_VERTICAL_GAP,
 } from "./List.styled";
@@ -315,24 +316,28 @@ function List({
             {right.map(columnIndex =>
               renderListItemCell(rowIndex, columnIndex, "right"),
             )}
-            {hasEditButton && (
-              <RowActionButtonContainer slot="right">
-                <Button
-                  disabled={!isDataApp}
-                  onClick={onEditClick}
-                  small
-                >{t`Edit`}</Button>
-              </RowActionButtonContainer>
-            )}
-            {hasDeleteButton && (
-              <RowActionButtonContainer slot="right">
-                <Button
-                  disabled={!isDataApp}
-                  onClick={onDeleteClick}
-                  small
-                  danger
-                >{t`Delete`}</Button>
-              </RowActionButtonContainer>
+            {(hasEditButton || hasDeleteButton) && (
+              <RowActionsContainer>
+                {hasEditButton && (
+                  <RowActionButtonContainer slot="right">
+                    <Button
+                      disabled={!isDataApp}
+                      onClick={onEditClick}
+                      small
+                    >{t`Edit`}</Button>
+                  </RowActionButtonContainer>
+                )}
+                {hasDeleteButton && (
+                  <RowActionButtonContainer slot="right">
+                    <Button
+                      disabled={!isDataApp}
+                      onClick={onDeleteClick}
+                      small
+                      danger
+                    >{t`Delete`}</Button>
+                  </RowActionButtonContainer>
+                )}
+              </RowActionsContainer>
             )}
           </ListItemContent>
         </ListItemContainer>

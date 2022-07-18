@@ -20,6 +20,17 @@ export const Root = styled.div<{ isQueryBuilder?: boolean }>`
     `}
 `;
 
+export const RowActionsContainer = styled.div`
+  display: flex;
+  align-items: center;
+  transition: all 0.1s ease-in-out;
+`;
+
+export const RowActionButtonContainer = styled(CellRoot)`
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+`;
+
 export const ListItemContainer = styled.div<{ disabled?: boolean }>`
   display: flex;
   align-items: center;
@@ -42,6 +53,18 @@ export const ListItemContainer = styled.div<{ disabled?: boolean }>`
         transform: scale(0.97);
       }
     `}
+
+  ${RowActionsContainer} {
+    width: 0;
+    opacity: 0;
+  }
+
+  &:hover {
+    ${RowActionsContainer} {
+      width: 100%;
+      opacity: 1;
+    }
+  }
 `;
 
 export const ListItemContent = styled.div`
@@ -63,9 +86,4 @@ export const ContentContainer = styled.div`
 
 export const Footer = styled(TableFooter)`
   margin-top: 0.5rem;
-`;
-
-export const RowActionButtonContainer = styled(CellRoot)`
-  padding-left: 0.25rem;
-  padding-right: 0.25rem;
 `;
