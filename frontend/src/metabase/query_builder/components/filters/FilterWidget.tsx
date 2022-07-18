@@ -5,9 +5,9 @@ import Popover from "metabase/components/Popover";
 import FilterPopover from "./FilterPopover";
 import FilterComponent from "metabase/query_builder/components/Filter";
 
-import cx from "classnames";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import { FilterWidgetRoot } from "./FilterWidget.styled";
 
 type PillProps = {
   field: string;
@@ -128,12 +128,12 @@ export default class FilterWidget extends Component<Props, State> {
 
   render() {
     return (
-      <div className={cx("Query-filter", { selected: this.state.isOpen })}>
+      <FilterWidgetRoot isSelected={this.state.isOpen}>
         <div className="flex justify-center" onClick={this.open}>
           {this.renderFilter()}
           {this.renderPopover()}
         </div>
-      </div>
+      </FilterWidgetRoot>
     );
   }
 }
