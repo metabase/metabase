@@ -27,10 +27,13 @@ export const QueryOption = styled.span`
   }
 `;
 
-export const FilterField = styled.div`
+export const FilterSection = styled.div`
   display: flex;
   align-items: center;
   flex-shrink: 0;
+`;
+
+export const FilterField = styled(FilterSection)`
   color: ${color("filter")};
   font-weight: 700;
 
@@ -43,10 +46,7 @@ export const FilterField = styled.div`
   }
 `;
 
-export const FilterOperator = styled.div`
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
+export const FilterOperator = styled(FilterSection)`
   color: ${color("filter")};
 
   ${QueryOption} {
