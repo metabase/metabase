@@ -359,22 +359,6 @@
 
 /* FILTER BY SECTION */
 
-.Filter-section-value .QueryOption {
-  color: white;
-  background-color: var(--filter-color);
-  border: 1px solid var(--filter-color);
-  border-radius: 6px;
-  padding: 0.5em;
-  padding-top: 0.3em;
-  padding-bottom: 0.3em;
-  margin-bottom: 0.2em;
-}
-
-.Filter-section-value {
-  padding-right: 0.5em;
-  padding-bottom: 0.25em;
-}
-
 .Filter-section-sort-field.selected .QueryOption,
 .Filter-section-sort-direction.selected .QueryOption {
   color: inherit;
