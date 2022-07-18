@@ -63,10 +63,6 @@
   border-color: color-mod(var(--color-accent2) alpha(-80%)) !important;
 }
 
-.border-purple {
-  border-color: var(--color-accent7) !important;
-}
-
 .border-error,
 :local(.border-error) {
   border-color: var(--color-error) !important;
