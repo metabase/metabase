@@ -205,18 +205,18 @@ function List({
   );
 
   const listColumnIndexes = useMemo<{ left: number[]; right: number[] }>(() => {
-    const left = settings["list.columns"].left.map((idOrFieldRef: any) =>
-      cols.findIndex(
+    function getColumnIndex(idOrFieldRef: any) {
+      if (idOrFieldRef === null) {
+        return null;
+      }
+      return cols.findIndex(
         col =>
           col.id === idOrFieldRef || _.isEqual(col.field_ref, idOrFieldRef),
-      ),
-    );
-    const right = settings["list.columns"].right.map((idOrFieldRef: any) =>
-      cols.findIndex(
-        col =>
-          col.id === idOrFieldRef || _.isEqual(col.field_ref, idOrFieldRef),
-      ),
-    );
+      );
+    }
+
+    const left = settings["list.columns"].left.map(getColumnIndex);
+    const right = settings["list.columns"].right.map(getColumnIndex);
     return { left, right };
   }, [cols, settings]);
 
@@ -224,16 +224,21 @@ function List({
   const hasDeleteButton = settings["buttons.delete"];
 
   const renderListItemCell = useCallback(
-    (rowIndex: number, columnIndex: number, slot: CellSlot) => (
-      <ListCell
-        key={`${rowIndex}-${columnIndex}`}
-        value={data.rows[rowIndex][columnIndex]}
-        slot={slot}
-        data={data}
-        settings={settings}
-        columnIndex={columnIndex}
-      />
-    ),
+    (rowIndex: number, columnIndex: number | null, slot: CellSlot) => {
+      if (columnIndex === null) {
+        return null;
+      }
+      return (
+        <ListCell
+          key={`${rowIndex}-${columnIndex}`}
+          value={data.rows[rowIndex][columnIndex]}
+          slot={slot}
+          data={data}
+          settings={settings}
+          columnIndex={columnIndex}
+        />
+      );
+    },
     [settings, data],
   );
 

@@ -80,10 +80,18 @@ function ChartSettingsListColumns({
     [columns, onShowWidget],
   );
 
-  const options = columns.map(column => ({
+  const columnOptions = columns.map(column => ({
     name: column.display_name,
     value: column.id || column.field_ref,
   }));
+
+  const options = [
+    {
+      name: t`None`,
+      value: null,
+    },
+    ...columnOptions,
+  ];
 
   return (
     <div>
@@ -100,6 +108,7 @@ function ChartSettingsListColumns({
           <Button
             icon="gear"
             onlyIcon
+            disabled={fieldIdOrFieldRef === null}
             onClick={() => onColumnSettingsClick(fieldIdOrFieldRef)}
           />
         </ColumnItemContainer>
@@ -118,6 +127,7 @@ function ChartSettingsListColumns({
           <Button
             icon="gear"
             onlyIcon
+            disabled={fieldIdOrFieldRef === null}
             onClick={() => onColumnSettingsClick(fieldIdOrFieldRef)}
           />
         </ColumnItemContainer>
