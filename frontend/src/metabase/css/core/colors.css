@@ -208,10 +208,6 @@
   background-color: var(--color-accent2);
 }
 
-.bg-purple-light {
-  background-color: color-mod(var(--color-accent7) alpha(-85%));
-}
-
 .bg-green,
 .bg-green-hover:hover {
   background-color: var(--color-accent1);
