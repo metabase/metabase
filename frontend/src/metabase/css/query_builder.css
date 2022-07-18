@@ -532,13 +532,6 @@
   color: var(--color-brand);
 }
 
-.FieldList-grouping-trigger {
-  display: flex;
-  visibility: hidden;
-  border-left: 2px solid color-mod(var(--filter-color) alpha(-90%));
-  color: color-mod(var(--color-text-white) alpha(-50%));
-}
-
 .List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
 .List-item--selected .FieldList-grouping-trigger {
   visibility: visible;
