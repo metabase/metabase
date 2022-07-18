@@ -45,51 +45,7 @@ const BackendResource = createSharedResource("BackendResource", {
       if (server.dbKey !== server.dbFile) {
         fs.copyFileSync(`${server.dbKey}.mv.db`, `${server.dbFile}.mv.db`);
       }
-
-      server.process = spawn(
-        "java",
-        [
-          "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
-          "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
-          // "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit
-          "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
-          "-Duser.timezone=US/Pacific",
-          `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
-          "-jar",
-          "target/uberjar/metabase.jar",
-        ],
-        {
-          env: {
-            MB_DB_TYPE: "h2",
-            MB_DB_FILE: server.dbFile,
-            MB_JETTY_HOST: "0.0.0.0",
-            MB_JETTY_PORT: server.port,
-            MB_ENABLE_TEST_ENDPOINTS: "true",
-            MB_PREMIUM_EMBEDDING_TOKEN:
-              (process.env["MB_EDITION"] === "ee" &&
-                process.env["ENTERPRISE_TOKEN"]) ||
-              undefined,
-            MB_FIELD_FILTER_OPERATORS_ENABLED: "true",
-            MB_USER_DEFAULTS: JSON.stringify({
-              token: "123456",
-              user: {
-                first_name: "Testy",
-                last_name: "McTestface",
-                email: "testy@metabase.test",
-                site_name: "Epic Team",
-              },
-            }),
-            MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
-            MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
-            PATH: process.env.PATH,
-          },
-          stdio:
-            process.env["DISABLE_LOGGING"] ||
-            process.env["DISABLE_LOGGING_BACKEND"]
-              ? "ignore"
-              : "inherit",
-        },
-      );
+      setServerProcess(server);
     }
     if (!(await isReady(server.host))) {
       process.stdout.write(
@@ -193,6 +149,52 @@ function createSharedResource(
 // Copied here from `frontend/src/metabase/lib/promise.js` to decouple Cypress from Typescript
 function delay(duration) {
   return new Promise((resolve, reject) => setTimeout(resolve, duration));
+}
+
+function setServerProcess(server) {
+  server.process = spawn(
+    "java",
+    [
+      "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
+      "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
+      // "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit
+      "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
+      "-Duser.timezone=US/Pacific",
+      `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
+      "-jar",
+      "target/uberjar/metabase.jar",
+    ],
+    {
+      env: {
+        MB_DB_TYPE: "h2",
+        MB_DB_FILE: server.dbFile,
+        MB_JETTY_HOST: "0.0.0.0",
+        MB_JETTY_PORT: server.port,
+        MB_ENABLE_TEST_ENDPOINTS: "true",
+        MB_PREMIUM_EMBEDDING_TOKEN:
+          (process.env["MB_EDITION"] === "ee" &&
+            process.env["ENTERPRISE_TOKEN"]) ||
+          undefined,
+        MB_FIELD_FILTER_OPERATORS_ENABLED: "true",
+        MB_USER_DEFAULTS: JSON.stringify({
+          token: "123456",
+          user: {
+            first_name: "Testy",
+            last_name: "McTestface",
+            email: "testy@metabase.test",
+            site_name: "Epic Team",
+          },
+        }),
+        MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
+        MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
+        PATH: process.env.PATH,
+      },
+      stdio:
+        process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_BACKEND"]
+          ? "ignore"
+          : "inherit",
+    },
+  );
 }
 
 module.exports = { DEFAULT_DB_KEY, BackendResource, isReady };
