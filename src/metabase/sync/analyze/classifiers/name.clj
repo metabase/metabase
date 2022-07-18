@@ -31,6 +31,7 @@
    *  Convert field name to lowercase before matching against a pattern
    *  Consider a nil set-of-valid-base-types to mean \"match any base type\""
   [[#"^id$"                        any-type         :type/PK]
+   [#"^.*_category$"               int-or-text-type :type/Category]
    [#"^.*_lat$"                    float-type       :type/Latitude]
    [#"^.*_latitude$"               float-type       :type/Latitude]
    [#"^.*_lon$"                    float-type       :type/Longitude]
