@@ -452,7 +452,7 @@ function getNonSearchableTokenFieldPlaceholder(firstField) {
   return t`Enter some text`;
 }
 
-function searchField(field, disablePKRemappingForSearch) {
+export function searchField(field, disablePKRemappingForSearch) {
   if (disablePKRemappingForSearch && field.isPK()) {
     return field.isSearchable() ? field : null;
   }
@@ -508,7 +508,7 @@ function isExtensionOfPreviousSearch(value, lastValue, options, maxResults) {
   );
 }
 
-function isSearchable({
+export function isSearchable({
   fields,
   disableSearch,
   disablePKRemappingForSearch,
@@ -518,19 +518,20 @@ function isSearchable({
     !disableSearch &&
     // search is available if:
     // all fields have a valid search field
-    ((fields.every(field => searchField(field, disablePKRemappingForSearch)) &&
-      // at least one field is set to display as "search" or is a list field that has an incomplete value set
-      fields.some(
-        f =>
-          f.has_field_values === "search" ||
-          (f.has_field_values === "list" && f.has_more_values === true),
-      ) &&
-      // and all fields are either "search" or "list"
-      fields.every(
-        f => f.has_field_values === "search" || f.has_field_values === "list",
-      )) ||
-      // OR if the component has been set to valuesMode by the dashboard params value action call
-      valuesMode === "search")
+    // the component has already been set to "search" mode
+    // (`valuesMode` can be set by the dashboard parameter values endpoint call)
+    (valuesMode === "search" ||
+      (fields.every(field => searchField(field, disablePKRemappingForSearch)) &&
+        // at least one field is set to display as "search" or is a list field that has an incomplete value set
+        fields.some(
+          f =>
+            f.has_field_values === "search" ||
+            (f.has_field_values === "list" && f.has_more_values === true),
+        ) &&
+        // and all fields are either "search" or "list"
+        fields.every(
+          f => f.has_field_values === "search" || f.has_field_values === "list",
+        )))
   );
 }
 
@@ -638,7 +639,11 @@ function renderValue(fields, formatOptions, value, options) {
   );
 }
 
-function getValuesMode(fields, disableSearch, disablePKRemappingForSearch) {
+export function getValuesMode(
+  fields,
+  disableSearch,
+  disablePKRemappingForSearch,
+) {
   if (fields.length === 0) {
     return "none";
   }
