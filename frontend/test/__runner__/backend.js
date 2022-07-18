@@ -130,13 +130,7 @@ async function isReady(host) {
 
 function createSharedResource(
   resourceName,
-  {
-    defaultOptions,
-    getKey = options => JSON.stringify(options),
-    create = options => ({}),
-    start = resource => {},
-    stop = resource => {},
-  },
+  { defaultOptions, getKey, create, start, stop },
 ) {
   const entriesByKey = new Map();
   const entriesByResource = new Map();
