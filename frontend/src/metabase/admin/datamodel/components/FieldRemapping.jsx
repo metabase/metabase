@@ -8,7 +8,6 @@ import cx from "classnames";
 import SelectButton from "metabase/core/components/SelectButton";
 import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import FieldList from "metabase/query_builder/components/FieldList";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
@@ -18,7 +17,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import Question from "metabase-lib/lib/Question";
-import { FieldMappingContainer } from "./FieldRemapping.styled";
+import { FieldMappingContainer, ForeignKeyList } from "./FieldRemapping.styled";
 
 const MAP_OPTIONS = {
   original: { type: "original", name: t`Use original value` },
@@ -305,8 +304,7 @@ export default class FieldRemapping extends React.Component {
                 isInitiallyOpen={isChoosingInitialFkTarget}
                 onClose={this.onFkPopoverDismiss}
               >
-                <FieldList
-                  className="text-purple"
+                <ForeignKeyList
                   field={fkMappingField}
                   fieldOptions={{
                     count: 0,

@@ -174,11 +174,6 @@
   color: var(--color-accent4);
 }
 
-.text-purple,
-.text-purple-hover:hover {
-  color: var(--color-accent7);
-}
-
 .text-green,
 .text-green-hover:hover {
   color: var(--color-accent1);
