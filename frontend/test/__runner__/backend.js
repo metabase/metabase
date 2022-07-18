@@ -41,17 +41,17 @@ const BackendResource = createSharedResource("BackendResource", {
         fs.copyFileSync(`${server.dbKey}.mv.db`, `${server.dbFile}.mv.db`);
       }
 
+      const javaFlags = [
+        "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
+        "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
+        "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
+        "-Duser.timezone=US/Pacific",
+        `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
+      ];
+
       server.process = spawn(
         "java",
-        [
-          "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
-          "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
-          "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
-          "-Duser.timezone=US/Pacific",
-          `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
-          "-jar",
-          "target/uberjar/metabase.jar",
-        ],
+        [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
         {
           env: {
             MB_DB_TYPE: "h2",
