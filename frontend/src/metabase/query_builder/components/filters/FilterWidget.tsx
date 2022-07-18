@@ -7,7 +7,12 @@ import FilterComponent from "metabase/query_builder/components/Filter";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { FilterWidgetRoot } from "./FilterWidget.styled";
+import {
+  FilterField,
+  FilterOperator,
+  FilterWidgetRoot,
+  QueryOption,
+} from "./FilterWidget.styled";
 
 type PillProps = {
   field: string;
@@ -30,23 +35,21 @@ export const filterWidgetFilterRenderer = ({
         paddingLeft: 0,
       }}
     >
-      {field && (
-        <div className="Filter-section Filter-section-field QueryOption">
-          {field}
-        </div>
-      )}
+      {field && <FilterField>{field}</FilterField>}
       {field && operator ? <span>&nbsp;</span> : null}
       {operator && (
-        <div className="Filter-section Filter-section-operator">
-          <a className="QueryOption flex align-center">{operator}</a>
-        </div>
+        <FilterOperator>
+          <QueryOption as="a" className="QueryOption flex align-center">
+            {operator}
+          </QueryOption>
+        </FilterOperator>
       )}
     </div>
     {values.length > 0 && (
       <div className="flex align-center flex-wrap">
         {values.map((value, valueIndex) => (
           <div key={valueIndex} className="Filter-section Filter-section-value">
-            <span className="QueryOption">{value}</span>
+            <QueryOption className="QueryOption">{value}</QueryOption>
           </div>
         ))}
       </div>

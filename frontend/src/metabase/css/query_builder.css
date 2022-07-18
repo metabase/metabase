@@ -344,14 +344,6 @@
   padding-right: 10px;
 }
 
-.QueryOption {
-  font-weight: 700;
-}
-
-.QueryOption:hover {
-  cursor: pointer;
-}
-
 /* @transitions */
 
 .AddToDashSuccess {
@@ -367,17 +359,6 @@
 
 /* FILTER BY SECTION */
 
-.Filter-section-field,
-.Filter-section-operator {
-  color: var(--filter-color);
-}
-
-.Filter-section-field .QueryOption {
-  color: var(--filter-color);
-}
-.Filter-section-operator .QueryOption {
-  color: var(--filter-color);
-}
 .Filter-section-value .QueryOption {
   color: white;
   background-color: var(--filter-color);

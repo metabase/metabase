@@ -18,3 +18,38 @@ export const FilterWidgetRoot = styled.div<FilterWidgetRootProps>`
       border-color: ${color("filter")};
     `}
 `;
+
+export const QueryOption = styled.span`
+  font-weight: 700;
+
+  &:hover {
+    cursor: pointer;
+  }
+`;
+
+export const FilterField = styled.div`
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: ${color("filter")};
+  font-weight: 700;
+
+  &:hover {
+    cursor: pointer;
+  }
+
+  ${QueryOption} {
+    color: ${color("filter")};
+  }
+`;
+
+export const FilterOperator = styled.div`
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: ${color("filter")};
+
+  ${QueryOption} {
+    color: ${color("filter")};
+  }
+`;
