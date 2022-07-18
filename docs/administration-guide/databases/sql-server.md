@@ -2,7 +2,7 @@
 title: Microsoft SQL Server
 ---
 
-# Microsoft SQL server
+# Microsoft SQL Server
 
 ## Connecting to SQL Server with varying ports
 
