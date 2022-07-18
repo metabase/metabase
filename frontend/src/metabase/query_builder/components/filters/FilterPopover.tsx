@@ -314,7 +314,6 @@ export default class FilterPopover extends Component<Props, State> {
                     filter={filter}
                     onFilterChange={this.handleFilterChange}
                     onCommit={this.handleCommit}
-                    minWidth={isSidebar ? null : MIN_WIDTH}
                     maxWidth={isSidebar ? null : MAX_WIDTH}
                     primaryColor={primaryColor}
                     checkedColor={checkedColor}
