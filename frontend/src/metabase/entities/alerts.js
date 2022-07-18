@@ -23,12 +23,14 @@ const Alerts = createEntity({
       );
     },
 
-    unsubscribe: ({ id }) => async dispatch => {
-      await AlertApi.unsubscribe({ id });
-      dispatch(addUndo({ message: t`Successfully unsubscribed` }));
-      dispatch({ type: UNSUBSCRIBE, payload: { id } });
-      dispatch({ type: Alerts.actionTypes.INVALIDATE_LISTS_ACTION });
-    },
+    unsubscribe:
+      ({ id }) =>
+      async dispatch => {
+        await AlertApi.unsubscribe({ id });
+        dispatch(addUndo({ message: t`Successfully unsubscribed` }));
+        dispatch({ type: UNSUBSCRIBE, payload: { id } });
+        dispatch({ type: Alerts.actionTypes.INVALIDATE_LISTS_ACTION });
+      },
 
     setChannels: ({ id }, channels, opts) => {
       return Alerts.actions.update(

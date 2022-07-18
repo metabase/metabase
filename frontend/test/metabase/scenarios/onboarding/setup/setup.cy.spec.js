@@ -48,9 +48,7 @@ describe("scenarios > setup", () => {
       // "Next" should be disabled on the blank form
       // NOTE: unclear why cy.findByText("Next", { selector: "button" }) doesn't work
       // alternative: cy.contains("Next").should("be.disabled");
-      cy.findByText("Next")
-        .closest("button")
-        .should("be.disabled");
+      cy.findByText("Next").closest("button").should("be.disabled");
 
       cy.findByLabelText("First name").type("Testy");
       cy.findByLabelText("Last name").type("McTestface");
@@ -63,9 +61,7 @@ describe("scenarios > setup", () => {
 
       // the form shouldn't be valid yet and we should display an error
       cy.findByText("must include one number", { exact: false });
-      cy.findByText("Next")
-        .closest("button")
-        .should("be.disabled");
+      cy.findByText("Next").closest("button").should("be.disabled");
 
       // now try a strong password that doesn't match
       const strongPassword = "QJbHYJN3tPW[";
@@ -78,9 +74,7 @@ describe("scenarios > setup", () => {
         .blur();
 
       // tell the user about the mismatch after clicking "Next"
-      cy.findByText("Next")
-        .closest("button")
-        .should("be.disabled");
+      cy.findByText("Next").closest("button").should("be.disabled");
       cy.findByText("passwords do not match", { exact: false });
 
       // fix that mismatch
@@ -125,9 +119,7 @@ describe("scenarios > setup", () => {
       cy.findByText("Show more options").click();
       cy.findByText("H2").click();
       cy.findByLabelText("Display name").type("Metabase H2");
-      cy.findByText("Connect database")
-        .closest("button")
-        .should("be.disabled");
+      cy.findByText("Connect database").closest("button").should("be.disabled");
 
       const dbFilename = "frontend/test/__runner__/empty.db";
       const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;

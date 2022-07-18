@@ -75,18 +75,19 @@
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
    (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map :public)]
-     {:bootstrapJS        (load-inline-js "index_bootstrap")
-      :googleAnalyticsJS  (load-inline-js "index_ganalytics")
-      :bootstrapJSON      (escape-script (json/generate-string public-settings))
-      :localizationJSON   (escape-script (load-localization (:locale params)))
-      :language           (hiccup.util/escape-html (public-settings/site-locale))
-      :favicon            (hiccup.util/escape-html (public-settings/application-favicon-url))
-      :applicationName    (hiccup.util/escape-html (public-settings/application-name))
-      :uri                (hiccup.util/escape-html uri)
-      :baseHref           (hiccup.util/escape-html (base-href))
-      :embedCode          (when embeddable? (embed/head uri))
-      :enableGoogleAuth   (boolean google-auth-client-id)
-      :enableAnonTracking (boolean anon-tracking-enabled)})))
+     {:bootstrapJS          (load-inline-js "index_bootstrap")
+      :googleAnalyticsJS    (load-inline-js "index_ganalytics")
+      :bootstrapJSON        (escape-script (json/generate-string public-settings))
+      :userLocalizationJSON (escape-script (load-localization (:locale params)))
+      :siteLocalizationJSON (escape-script (load-localization (public-settings/site-locale)))
+      :language             (hiccup.util/escape-html (public-settings/site-locale))
+      :favicon              (hiccup.util/escape-html (public-settings/application-favicon-url))
+      :applicationName      (hiccup.util/escape-html (public-settings/application-name))
+      :uri                  (hiccup.util/escape-html uri)
+      :baseHref             (hiccup.util/escape-html (base-href))
+      :embedCode            (when embeddable? (embed/head uri))
+      :enableGoogleAuth     (boolean google-auth-client-id)
+      :enableAnonTracking   (boolean anon-tracking-enabled)})))
 
 (defn- load-init-template []
   (load-template

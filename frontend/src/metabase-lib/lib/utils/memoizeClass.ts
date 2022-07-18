@@ -44,7 +44,7 @@ export function memoizeClass<T>(
       // Memoize
       Object.defineProperty(Class.prototype, key, {
         ...descriptor,
-        value: function(...args: any[]) {
+        value: function (...args: any[]) {
           const path = [this, method, args.length, ...args];
           const last = path.pop();
           const map = path.reduce(

@@ -1083,12 +1083,7 @@ export class FieldDimension extends Dimension {
 
     if (this.fk()) {
       const fkDisplayName =
-        this.fk() &&
-        stripId(
-          this.fk()
-            .field()
-            .displayName(),
-        );
+        this.fk() && stripId(this.fk().field().displayName());
       displayName = `${fkDisplayName} ${FK_SYMBOL} ${displayName}`;
     } else if (this.joinAlias()) {
       displayName = `${this.joinAlias()} ${FK_SYMBOL} ${displayName}`;

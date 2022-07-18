@@ -148,10 +148,6 @@ jobs:
       env:
         TERM: xterm
 
-    - name: Generate Mochawesome Reports
-      if: failure()
-      run: yarn generate-cypress-html-report
-
     - name: Upload Cypress Artifacts upon failure
       uses: actions/upload-artifact@v2
       if: failure()

@@ -1,9 +1,57 @@
+import { popover } from "__support__/e2e/helpers";
+
 export function summarize({ mode } = {}) {
   initiateAction("Summarize", mode);
 }
 
 export function filter({ mode } = {}) {
   initiateAction("Filter", mode);
+}
+
+export function filterField(fieldName, { operator, value, placeholder } = {}) {
+  if (operator) {
+    changeOperator(getFilterField(fieldName), operator);
+  }
+
+  if (value) {
+    changeValue(getFilterField(fieldName), value, placeholder);
+  }
+
+  return getFilterField(fieldName);
+}
+
+export function filterFieldPopover(fieldName, { value, placeholder } = {}) {
+  getFilterField(fieldName).within(() => {
+    cy.findByTestId("select-button").click();
+  });
+
+  if (value) {
+    changeValue(popover(), value, placeholder);
+  }
+  return popover();
+}
+
+function getFilterField(fieldName) {
+  return cy.findByTestId(`filter-field-${fieldName}`);
+}
+
+function changeOperator(subject, operator) {
+  subject.findByTestId("operator-select").click();
+
+  cy.findByTestId("operator-options")
+    .findAllByText(new RegExp(operator, "i"))
+    .first()
+    .click();
+}
+
+function changeValue(subject, newValue, placeholder) {
+  subject.within(() => {
+    const input = placeholder
+      ? cy.findByPlaceholderText(new RegExp(placeholder, "i"))
+      : cy.get("input").first();
+
+    input.clear().type(newValue);
+  });
 }
 
 /**
@@ -16,16 +64,12 @@ function initiateAction(actionType, mode) {
   const icon = getIcon(actionType);
 
   if (mode === "notebook") {
-    cy.findAllByTestId("action-buttons")
-      .find(`.Icon-${icon}`)
-      .click();
+    cy.findAllByTestId("action-buttons").find(`.Icon-${icon}`).click();
   } else {
     // This line could potentially reduce or completely eliminate binning flakes where sidebar renders empty because of the race condition
     cy.findByText(/^Doing science/).should("not.exist");
 
-    cy.findByTestId("qb-header-action-panel")
-      .contains(actionType)
-      .click();
+    cy.findByTestId("qb-header-action-panel").contains(actionType).click();
   }
 }
 

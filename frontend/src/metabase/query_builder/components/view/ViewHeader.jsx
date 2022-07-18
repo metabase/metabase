@@ -45,6 +45,10 @@ import {
   StyledLastEditInfoLabel,
   StyledQuestionDataSource,
   SavedQuestionLeftSideRoot,
+  AdHocLeftSideRoot,
+  HeaderDivider,
+  ViewHeaderActionPanel,
+  ViewHeaderIconButtonContainer,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -116,11 +120,7 @@ export function ViewTitleHeader(props) {
   const isDataset = question.isDataset();
 
   const isSummarized =
-    isStructured &&
-    question
-      .query()
-      .topLevelQuery()
-      .hasAggregations();
+    isStructured && question.query().topLevelQuery().hasAggregations();
 
   return (
     <>
@@ -188,6 +188,7 @@ function SavedQuestionLeftSide(props) {
   });
 
   const hasLastEditInfo = question.lastEditInfo() != null;
+  const isDataset = question.isDataset();
 
   const onHeaderChange = useCallback(
     name => {
@@ -204,16 +205,31 @@ function SavedQuestionLeftSide(props) {
       showSubHeader={showSubHeader}
     >
       <ViewHeaderMainLeftContentContainer>
-        <SavedQuestionHeaderButtonContainer>
-          <SavedQuestionHeaderButton
-            question={question}
-            onSave={onHeaderChange}
+        <SavedQuestionHeaderButtonContainer isDataset={isDataset}>
+          <HeadBreadcrumbs
+            divider={<HeaderDivider>/</HeaderDivider>}
+            parts={[
+              ...(isAdditionalInfoVisible && isDataset
+                ? [
+                    <DatasetCollectionBadge
+                      key="collection"
+                      dataset={question}
+                    />,
+                  ]
+                : []),
+
+              <SavedQuestionHeaderButton
+                key={question.displayName()}
+                question={question}
+                onSave={onHeaderChange}
+              />,
+            ]}
           />
         </SavedQuestionHeaderButtonContainer>
       </ViewHeaderMainLeftContentContainer>
       {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
-          {QuestionDataSource.shouldRender(props) && (
+          {QuestionDataSource.shouldRender(props) && !isDataset && (
             <StyledQuestionDataSource
               question={question}
               isObjectDetail={isObjectDetail}
@@ -253,7 +269,7 @@ function AhHocQuestionLeftSide(props) {
 
   const handleTitleClick = () => onOpenModal(MODAL_TYPES.SAVE);
   return (
-    <div>
+    <AdHocLeftSideRoot>
       <ViewHeaderMainLeftContentContainer>
         <AdHocViewHeading color="medium">
           {isNative ? (
@@ -279,7 +295,7 @@ function AhHocQuestionLeftSide(props) {
           />
         )}
       </ViewHeaderLeftSubHeading>
-    </div>
+    </AdHocLeftSideRoot>
   );
 }
 
@@ -405,10 +421,7 @@ function ViewTitleHeaderRightSide(props) {
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
   return (
-    <div
-      className="ml-auto flex align-center"
-      data-testid="qb-header-action-panel"
-    >
+    <ViewHeaderActionPanel data-testid="qb-header-action-panel">
       {QuestionFilters.shouldRender(props) && (
         <FilterHeaderToggle
           className="ml2 mr1"
@@ -423,14 +436,13 @@ function ViewTitleHeaderRightSide(props) {
           primary
           icon="add"
           onClick={() => onOpenModal(MODAL_TYPES.INSERT_ROW)}
-          ml={1}
         >
           {t`New row`}
         </Button>
       )}
       {QuestionFilterWidget.shouldRender(props) && (
         <QuestionFilterWidget
-          className="hide sm-show ml1"
+          className="hide sm-show"
           isShowingFilterSidebar={isShowingFilterSidebar}
           onAddFilter={onAddFilter}
           onOpenModal={onOpenModal}
@@ -440,7 +452,6 @@ function ViewTitleHeaderRightSide(props) {
       {QuestionSummarizeWidget.shouldRender(props) && (
         <QuestionSummarizeWidget
           className="hide sm-show"
-          ml={1}
           isShowingSummarySidebar={isShowingSummarySidebar}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
@@ -448,44 +459,48 @@ function ViewTitleHeaderRightSide(props) {
         />
       )}
       {QuestionNotebookButton.shouldRender(props) && (
-        <QuestionNotebookButton
-          className="hide sm-show"
-          ml={2}
-          question={question}
-          isShowingNotebook={isShowingNotebook}
-          setQueryBuilderMode={setQueryBuilderMode}
-          data-metabase-event={
-            isShowingNotebook
-              ? `Notebook Mode;Go to View Mode`
-              : `View Mode; Go to Notebook Mode`
-          }
-        />
+        <ViewHeaderIconButtonContainer>
+          <QuestionNotebookButton
+            iconSize={16}
+            question={question}
+            isShowingNotebook={isShowingNotebook}
+            setQueryBuilderMode={setQueryBuilderMode}
+            data-metabase-event={
+              isShowingNotebook
+                ? `Notebook Mode;Go to View Mode`
+                : `View Mode; Go to Notebook Mode`
+            }
+          />
+        </ViewHeaderIconButtonContainer>
       )}
       {NativeQueryButton.shouldRender(props) && (
-        <NativeQueryButton
-          size={16}
-          question={question}
-          data-metabase-event="Notebook Mode; Convert to SQL Click"
-        />
+        <ViewHeaderIconButtonContainer>
+          <NativeQueryButton
+            size={16}
+            question={question}
+            data-metabase-event="Notebook Mode; Convert to SQL Click"
+          />
+        </ViewHeaderIconButtonContainer>
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
-      {hasRunButton && (
-        <RunButtonWithTooltip
-          className={cx("text-brand-hover text-dark hide", {
-            "sm-show": !isShowingNotebook || isNative,
-            "text-white-hover": isResultDirty,
-          })}
-          medium
-          borderless
-          ml={1}
-          compact
-          result={result}
-          isRunning={isRunning}
-          isDirty={isResultDirty}
-          isPreviewing={isPreviewing}
-          onRun={() => runQuestionQuery({ ignoreCache: true })}
-          onCancel={cancelQuery}
-        />
+      {hasRunButton && !isShowingNotebook && (
+        <ViewHeaderIconButtonContainer>
+          <RunButtonWithTooltip
+            className={cx("text-brand-hover text-dark", {
+              "text-white-hover": isResultDirty,
+            })}
+            iconSize={16}
+            onlyIcon
+            medium
+            compact
+            result={result}
+            isRunning={isRunning}
+            isDirty={isResultDirty}
+            isPreviewing={isPreviewing}
+            onRun={() => runQuestionQuery({ ignoreCache: true })}
+            onCancel={cancelQuery}
+          />
+        </ViewHeaderIconButtonContainer>
       )}
       {isSaved && (
         <QuestionActions
@@ -518,7 +533,7 @@ function ViewTitleHeaderRightSide(props) {
           {t`Save`}
         </SaveButton>
       )}
-    </div>
+    </ViewHeaderActionPanel>
   );
 }
 

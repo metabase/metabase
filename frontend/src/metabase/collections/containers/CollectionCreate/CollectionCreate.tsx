@@ -48,9 +48,8 @@ function CollectionCreate({
   onClose,
   onSaved,
 }: CollectionCreateProps) {
-  const [parentCollectionId, setParentCollectionId] = useState<CollectionId>(
-    initialCollectionId,
-  );
+  const [parentCollectionId, setParentCollectionId] =
+    useState<CollectionId>(initialCollectionId);
   const [hasSetParentCollection, setHasSetParentCollection] = useState(false);
 
   useEffect(() => {

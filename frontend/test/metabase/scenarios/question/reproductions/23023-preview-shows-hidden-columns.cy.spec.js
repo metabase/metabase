@@ -46,13 +46,9 @@ describe("issue 23023", () => {
 
     openNotebook();
 
-    cy.icon("play")
-      .eq(1)
-      .click();
+    cy.icon("play").eq(1).click();
 
     cy.findAllByTestId("header-cell").contains("Products → Category");
-    cy.findAllByTestId("header-cell")
-      .contains("Tax")
-      .should("not.exist");
+    cy.findAllByTestId("header-cell").contains("Tax").should("not.exist");
   });
 });

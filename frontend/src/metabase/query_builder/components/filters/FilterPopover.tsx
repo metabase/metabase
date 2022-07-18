@@ -23,6 +23,7 @@ import { isStartingFrom } from "metabase/lib/query_time";
 import { Button } from "./FilterPopover.styled";
 import DatePicker from "./pickers/DatePicker/DatePicker";
 import TimePicker from "./pickers/TimePicker";
+import { DateShortcutOptions } from "./pickers/DatePicker/DatePickerShortcutOptions";
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
@@ -43,10 +44,12 @@ type Props = {
 
   noCommitButton?: boolean;
   showFieldPicker?: boolean;
+  dateShortcutOptions?: DateShortcutOptions;
   showCustom?: boolean;
   isNew?: boolean;
   isSidebar?: boolean;
   isTopLevel?: boolean;
+  checkedColor?: string;
 };
 
 type State = {
@@ -164,6 +167,8 @@ export default class FilterPopover extends Component<Props, State> {
       isSidebar,
       isTopLevel,
       showCustom,
+      dateShortcutOptions,
+      checkedColor,
     } = this.props;
     const { filter, editingFilter, choosingField } = this.state;
 
@@ -254,6 +259,7 @@ export default class FilterPopover extends Component<Props, State> {
               className={className}
               isSidebar={isSidebar}
               filter={filter}
+              dateShortcutOptions={dateShortcutOptions}
               primaryColor={primaryColor}
               minWidth={isSidebar ? null : MIN_WIDTH}
               maxWidth={isSidebar ? null : MAX_WIDTH}
@@ -308,6 +314,7 @@ export default class FilterPopover extends Component<Props, State> {
                     minWidth={isSidebar ? null : MIN_WIDTH}
                     maxWidth={isSidebar ? null : MAX_WIDTH}
                     primaryColor={primaryColor}
+                    checkedColor={checkedColor}
                   />
                 </>
               )}

@@ -9,9 +9,7 @@ describeEE("audit > ad-hoc", () => {
       cy.signInAsNormalUser();
 
       openNativeEditor().type("SELECT 123");
-      cy.icon("play")
-        .first()
-        .click();
+      cy.icon("play").first().click();
 
       // make sure results rendered before moving forward
       cy.get(".ScalarValue").contains("123");

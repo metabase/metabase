@@ -1,8 +1,12 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { connect } from "react-redux";
 
 import { t } from "ttag";
 import _ from "underscore";
+
+import Questions from "metabase/entities/questions";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 
@@ -25,8 +29,13 @@ import BulkFilterModal from "metabase/query_builder/components/filters/modals/Bu
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
+import QuestionMoveToast from "./QuestionMoveToast";
 
-export default class QueryModals extends React.Component {
+const mapDispatchToProps = {
+  setQuestionCollection: Questions.actions.setCollection,
+};
+
+class QueryModals extends React.Component {
   showAlertsAfterQuestionSaved = () => {
     const { questionAlerts, user, onCloseModal, onOpenModal } = this.props;
 
@@ -46,13 +55,8 @@ export default class QueryModals extends React.Component {
   };
 
   render() {
-    const {
-      modal,
-      modalContext,
-      question,
-      onCloseModal,
-      onOpenModal,
-    } = this.props;
+    const { modal, modalContext, question, onCloseModal, onOpenModal } =
+      this.props;
 
     return modal === MODAL_TYPES.SAVE ? (
       <Modal form onClose={onCloseModal}>
@@ -155,7 +159,7 @@ export default class QueryModals extends React.Component {
         />
       </Modal>
     ) : modal === MODAL_TYPES.FILTERS ? (
-      <Modal onClose={onCloseModal}>
+      <Modal fit onClose={onCloseModal}>
         <BulkFilterModal question={question} onClose={onCloseModal} />
       </Modal>
     ) : modal === MODAL_TYPES.HISTORY ? (
@@ -176,11 +180,21 @@ export default class QueryModals extends React.Component {
           initialCollectionId={question.collectionId()}
           onClose={onCloseModal}
           onMove={collection => {
-            const card = question
-              .setCollectionId(collection && collection.id)
-              .card();
-
-            this.props.onSave(card);
+            this.props.setQuestionCollection(
+              { id: question.id() },
+              collection,
+              {
+                notify: {
+                  message: (
+                    <QuestionMoveToast
+                      isModel={question.isDataset()}
+                      collectionId={collection.id || ROOT_COLLECTION.id}
+                    />
+                  ),
+                  undo: false,
+                },
+              },
+            );
             onCloseModal();
           }}
         />
@@ -242,3 +256,5 @@ export default class QueryModals extends React.Component {
     ) : null;
   }
 }
+
+export default connect(null, mapDispatchToProps)(QueryModals);

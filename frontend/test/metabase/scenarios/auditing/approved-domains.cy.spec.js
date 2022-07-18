@@ -65,10 +65,7 @@ describeEE("scenarios > sharing > approved domains (EE)", () => {
 });
 
 function addEmailRecipient(email) {
-  cy.findByRole("textbox")
-    .click()
-    .type(`${email}`)
-    .blur();
+  cy.findByRole("textbox").click().type(`${email}`).blur();
 }
 
 function setAllowedDomains() {

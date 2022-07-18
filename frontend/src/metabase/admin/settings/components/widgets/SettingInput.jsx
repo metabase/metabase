@@ -4,6 +4,15 @@ import React from "react";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import cx from "classnames";
 
+const getValue = (value, type) => {
+  if (type === "number") {
+    const numericValue = parseInt(value);
+    return isNaN(numericValue) ? null : numericValue;
+  }
+
+  return value;
+};
+
 const SettingInput = ({
   setting,
   onChange,
@@ -24,8 +33,12 @@ const SettingInput = ({
     type={type}
     value={setting.value || ""}
     placeholder={setting.placeholder}
-    onChange={fireOnChange ? e => onChange(e.target.value) : null}
-    onBlurChange={!fireOnChange ? e => onChange(e.target.value) : null}
+    onChange={
+      fireOnChange ? e => onChange(getValue(e.target.value, type)) : null
+    }
+    onBlurChange={
+      !fireOnChange ? e => onChange(getValue(e.target.value, type)) : null
+    }
     autoFocus={autoFocus}
   />
 );

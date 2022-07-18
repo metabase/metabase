@@ -69,9 +69,7 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
         });
 
         cy.visit(`/dashboard/${DASHBOARD_ID}?location=AK&location=CA`);
-        filterWidget()
-          .contains(/\{0\}/)
-          .should("not.exist");
+        filterWidget().contains(/\{0\}/).should("not.exist");
       });
     });
   });

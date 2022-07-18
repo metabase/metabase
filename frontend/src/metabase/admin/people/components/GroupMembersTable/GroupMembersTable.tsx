@@ -65,10 +65,11 @@ function GroupMembersTable({
 
   const hasMembers = groupMemberships.length > 0;
 
-  const handleAddUser: GroupMembersTableProps["onAddUserDone"] = async userIds => {
-    await onAddUserDone(userIds);
-    reload();
-  };
+  const handleAddUser: GroupMembersTableProps["onAddUserDone"] =
+    async userIds => {
+      await onAddUserDone(userIds);
+      reload();
+    };
 
   const handleRemoveUser = async (membershipId: number) => {
     await onMembershipRemove(membershipId);

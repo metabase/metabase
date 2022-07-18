@@ -10,10 +10,7 @@ import { t } from "ttag";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
-  getHasCustomBranding,
   getHasCustomColors,
-  getHideMetabot,
-  hasCustomBranding,
   getLoadingMessage,
 } from "metabase-enterprise/settings/selectors";
 import MetabaseSettings from "metabase/lib/settings";
@@ -21,6 +18,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontWidget from "./components/FontWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
+import LighthouseToggleWidget from "./components/LighthouseToggleWidget";
 import MetabotToggleWidget from "./components/MetabotToggleWidget";
 import LogoUpload from "./components/LogoUpload";
 import LogoIcon from "./components/LogoIcon";
@@ -87,15 +85,23 @@ if (hasPremiumFeature("whitelabel")) {
           type: "boolean",
           widget: MetabotToggleWidget,
           defaultValue: true,
-          getHidden: settings => hasCustomBranding(settings),
+        },
+        {
+          key: "show-lighthouse-illustration",
+          display_name: t`Lighthouse illustration`,
+          description: null,
+          type: "boolean",
+          widget: LighthouseToggleWidget,
+          defaultValue: true,
         },
       ],
     },
     ...sections,
   }));
 
-  PLUGIN_APP_INIT_FUCTIONS.push(({ root }) => {
+  PLUGIN_APP_INIT_FUCTIONS.push(() => {
     updateColors();
+    MetabaseSettings.on("application-colors", updateColors);
   });
 
   enabledApplicationNameReplacement();
@@ -106,6 +112,4 @@ if (hasPremiumFeature("whitelabel")) {
 
 // these selectors control whitelabeling UI
 PLUGIN_SELECTORS.getHasCustomColors = getHasCustomColors;
-PLUGIN_SELECTORS.getHasCustomBranding = getHasCustomBranding;
-PLUGIN_SELECTORS.getHideMetabot = getHideMetabot;
 PLUGIN_SELECTORS.getLoadingMessage = getLoadingMessage;

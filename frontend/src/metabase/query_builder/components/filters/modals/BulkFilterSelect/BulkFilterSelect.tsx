@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from "react";
+import { t } from "ttag";
 
 import StructuredQuery, {
   SegmentOption,
@@ -9,6 +10,7 @@ import Dimension from "metabase-lib/lib/Dimension";
 import { isBoolean } from "metabase/lib/schema_metadata";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { DateShortcutOptions } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
 
 import {
   SelectFilterButton,
@@ -20,6 +22,7 @@ export interface BulkFilterSelectProps {
   query: StructuredQuery;
   filter?: Filter;
   dimension: Dimension;
+  dateShortcutOptions?: DateShortcutOptions;
   customTrigger?: ({ onClick }: { onClick: () => void }) => JSX.Element;
   handleChange: (newFilter: Filter) => void;
   handleClear: () => void;
@@ -29,12 +32,16 @@ export const BulkFilterSelect = ({
   query,
   filter,
   dimension,
+  dateShortcutOptions,
   customTrigger,
   handleChange,
   handleClear,
 }: BulkFilterSelectProps): JSX.Element => {
   const name = useMemo(() => {
-    return filter?.displayName({ includeDimension: false });
+    return filter?.displayName({
+      includeDimension: false,
+      includeOperator: false,
+    });
   }, [filter]);
 
   const newFilter = useMemo(() => {
@@ -47,15 +54,16 @@ export const BulkFilterSelect = ({
       renderTrigger={
         customTrigger
           ? customTrigger
-          : ({ onClick }) => (
+          : ({ onClick, visible }) => (
               <SelectFilterButton
                 hasValue={filter != null}
                 highlighted
                 aria-label={dimension.displayName()}
                 onClick={onClick}
                 onClear={handleClear}
+                isActive={visible}
               >
-                {name}
+                {name || t`Filter by ${dimension.displayName()}`}
               </SelectFilterButton>
             )
       }
@@ -66,8 +74,10 @@ export const BulkFilterSelect = ({
           isNew={filter == null}
           showCustom={false}
           showFieldPicker={false}
+          dateShortcutOptions={dateShortcutOptions}
           onChangeFilter={handleChange}
           onClose={closePopover}
+          checkedColor="brand"
           commitOnBlur
         />
       )}
@@ -141,6 +151,7 @@ export const SegmentFilterSelect = ({
         highlighted: true,
         onClear: onClearSegments,
       }}
+      placeholder={t`Filter segments`}
       buttonText={
         activeSegmentOptions.length > 1
           ? `${activeSegmentOptions.length} segments`

@@ -360,7 +360,7 @@ export const getRoutes = store => (
     <Route
       path="/_internal"
       getChildRoutes={(partialNextState, callback) =>
-        require.ensure([], function(require) {
+        require.ensure([], function (require) {
           callback(null, [require("metabase/internal/routes").default]);
         })
       }

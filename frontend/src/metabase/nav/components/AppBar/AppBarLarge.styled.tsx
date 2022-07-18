@@ -4,14 +4,20 @@ import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { LogoLink } from "./AppBarLogo.styled";
 import { SidebarButton } from "./AppBarToggle.styled";
 
-export const AppBarRoot = styled.div`
+interface AppBarRootProps {
+  isNavBarOpen?: boolean;
+}
+
+export const AppBarRoot = styled.div<AppBarRootProps>`
   display: flex;
   align-items: center;
   gap: 1rem;
   height: ${APP_BAR_HEIGHT};
   padding: 0 1rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid
+    ${props => (props.isNavBarOpen ? color("border") : "transparent")};
   background-color: ${color("bg-white")};
+  transition: border-bottom-color 200ms ease;
 `;
 
 export interface AppBarLeftContainerProps {
@@ -46,19 +52,20 @@ export const AppBarRightContainer = styled.div`
   align-items: center;
   gap: 1rem;
   max-width: 32.5rem;
+  justify-content: end;
 `;
 
 export interface AppBarInfoContainerProps {
-  isNavBarOpen?: boolean;
+  isVisible?: boolean;
 }
 
 export const AppBarInfoContainer = styled.div<AppBarInfoContainerProps>`
   display: flex;
   min-width: 0;
-  opacity: ${props => (props.isNavBarOpen ? 0 : 1)};
-  visibility: ${props => (props.isNavBarOpen ? "hidden" : "visible")};
+  opacity: ${props => (props.isVisible ? 1 : 0)};
+  visibility: ${props => (props.isVisible ? "visible" : "hidden")};
   transition: ${props =>
-    props.isNavBarOpen ? `opacity 0.5s, visibility 0s` : `opacity 0.5s`};
+    props.isVisible ? `opacity 0.5s` : `opacity 0.5s, visibility 0s`};
 `;
 
 export const AppBarProfileLinkContainer = styled.div`

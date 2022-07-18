@@ -31,13 +31,9 @@ export function getColorplethColorScale(
   color,
   { lightness = 92, darken = 0.2, darkenLast = 0.3, saturate = 0.1 } = {},
 ) {
-  const lightColor = Color(color)
-    .lightness(lightness)
-    .saturate(saturate);
+  const lightColor = Color(color).lightness(lightness).saturate(saturate);
 
-  const darkColor = Color(color)
-    .darken(darken)
-    .saturate(saturate);
+  const darkColor = Color(color).darken(darken).saturate(saturate);
 
   const scale = d3.scale
     .linear()

@@ -2,5 +2,14 @@
 
 (def exported-models
   "The list of models which are exported by serialization. Used for production code and by tests."
-  ["Collection"
-   "Setting"])
+  ["Card"
+   "Collection"
+   "Dashboard"
+   "DashboardCard"
+   "Database"
+   "Dimension"
+   "Field"
+   "Metric"
+   "NativeQuerySnippet"
+   "Setting"
+   "Table"])

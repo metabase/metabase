@@ -126,9 +126,6 @@
   [status query group_id include_deactivated]
   (cond-> {}
         true (hh/merge-where (status-clause status include_deactivated))
-        true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-                               (when (segmented-user?)
-                                 [:= :core_user.id api/*current-user-id*])))
         (some? query) (hh/merge-where (query-clause query))
         (some? group_id) (hh/merge-right-join :permissions_group_membership
                                               [:= :core_user.id :permissions_group_membership.user_id])

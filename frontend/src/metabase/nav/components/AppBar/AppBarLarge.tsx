@@ -42,14 +42,16 @@ const AppBarLarge = ({
   onLogout,
 }: AppBarLargeProps): JSX.Element => {
   return (
-    <AppBarRoot>
+    <AppBarRoot isNavBarOpen={isNavBarOpen}>
       <AppBarLeftContainer isNavBarVisible={isNavBarVisible}>
         <AppBarLogo
           isNavBarOpen={isNavBarOpen}
           isToggleVisible={isNavBarVisible}
           onToggleClick={onToggleNavbar}
         />
-        <AppBarInfoContainer isNavBarOpen={isNavBarOpen}>
+        <AppBarInfoContainer
+          isVisible={!isNavBarOpen || isQuestionLineageVisible}
+        >
           {isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (

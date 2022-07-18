@@ -35,16 +35,23 @@ const checkIfShouldToggleStickiness = (dashboard, shouldBeSticky) => {
   return shouldBeSticky !== isParametersWidgetSticky;
 };
 
-const checkIfParametersWidgetShouldBeSticky = dashboard => {
-  const isStickyForDevice = !(
+const checkIfDeviceShouldDisplayStickyFilters = dashboard =>
+  !(
     dashboard.state.parametersListLength > MAXIMUM_PARAMETERS_FOR_STICKINESS &&
     isSmallScreen()
   );
-  const offsetTop =
-    dashboard.state.parametersWidgetOffsetTop ||
-    dashboard.parametersWidgetRef.offsetTop;
 
-  return isStickyForDevice && getMainElement().scrollTop >= offsetTop;
+const checkIfParametersWidgetShouldBeSticky = dashboard => {
+  const deviceShouldDisplayStickyFilters =
+    checkIfDeviceShouldDisplayStickyFilters(dashboard);
+
+  if (!deviceShouldDisplayStickyFilters) {
+    return false;
+  }
+
+  const offsetTop = getOffsetTop(dashboard);
+
+  return getMainElement().scrollTop >= offsetTop;
 };
 
 const updateParametersAndCardsContainerStyle = (dashboard, shouldBeSticky) => {
@@ -54,3 +61,7 @@ const updateParametersAndCardsContainerStyle = (dashboard, shouldBeSticky) => {
 
   dashboard.parametersAndCardsContainerRef.style.paddingTop = paddingTop;
 };
+
+const getOffsetTop = dashboard =>
+  dashboard.state.parametersWidgetOffsetTop ||
+  dashboard.parametersWidgetRef.offsetTop;

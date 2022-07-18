@@ -11,10 +11,7 @@ import SelectButton from "metabase/core/components/SelectButton";
 
 // set the display automatically then run
 function updateAndRun(query) {
-  query
-    .question()
-    .setDefaultDisplay()
-    .update(null, { run: true });
+  query.question().setDefaultDisplay().update(null, { run: true });
 }
 
 export default class TimeseriesGroupingWidget extends Component {

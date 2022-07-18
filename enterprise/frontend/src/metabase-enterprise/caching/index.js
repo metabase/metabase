@@ -3,11 +3,11 @@ import { t, jt } from "ttag";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
 import Link from "metabase/core/components/Link";
-import { CacheTTLField } from "./components/CacheTTLField";
-import { DatabaseCacheTTLField } from "./components/DatabaseCacheTTLField";
-import { QuestionCacheTTLField } from "./components/QuestionCacheTTLField";
-import { QuestionCacheSection } from "./components/QuestionCacheSection";
-import { DashboardCacheSection } from "./components/DashboardCacheSection";
+import CacheTTLField from "./components/CacheTTLField";
+import DatabaseCacheTTLField from "./components/DatabaseCacheTTLField";
+import QuestionCacheTTLField from "./components/QuestionCacheTTLField";
+import QuestionCacheSection from "./components/QuestionCacheSection";
+import DashboardCacheSection from "./components/DashboardCacheSection";
 
 import {
   getQuestionsImplicitCacheTTL,

@@ -32,7 +32,7 @@ interface DashboardHeaderProps {
   editingSubtitle: string;
   editingButtons: JSX.Element[];
   editWarning: string;
-  headerButtons: React.ReactNode[][];
+  headerButtons: React.ReactNode[];
   headerClassName: string;
   headerModalMessage: string;
   isEditing: boolean;
@@ -85,29 +85,25 @@ const DashboardHeader = ({
   }, [isModalOpened]);
 
   const _headerButtons = useMemo(
-    () =>
-      headerButtons.map((section, sectionIndex) => {
-        return (
-          section.length > 0 && (
-            <HeaderButtonSection
-              key={sectionIndex}
-              className="Header-buttonSection"
-              isNavBarOpen={isNavBarOpen}
-            >
-              {section}
-            </HeaderButtonSection>
-          )
-        );
-      }),
+    () => (
+      <HeaderButtonSection
+        className="Header-buttonSection"
+        isNavBarOpen={isNavBarOpen}
+      >
+        {headerButtons}
+      </HeaderButtonSection>
+    ),
     [headerButtons, isNavBarOpen],
   );
 
   const handleUpdateCaption = useCallback(
     async (name: string) => {
       await setDashboardAttribute("name", name);
-      await onSave();
+      if (!isEditing) {
+        await onSave();
+      }
     },
-    [setDashboardAttribute, onSave],
+    [setDashboardAttribute, onSave, isEditing],
   );
 
   useOnMount(() => {
@@ -142,7 +138,7 @@ const DashboardHeader = ({
         <HeaderContent showSubHeader={showSubHeader}>
           <HeaderCaptionContainer>
             <HeaderCaption
-              key={dashboard.id}
+              key={dashboard.name}
               initialValue={dashboard.name}
               placeholder={t`Add title`}
               isDisabled={!dashboard.can_write}

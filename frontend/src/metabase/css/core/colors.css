@@ -31,6 +31,7 @@
   --color-focus: #cbe2f7;
   --color-shadow: rgba(0, 0, 0, 0.13);
   --color-border: #eeecec;
+  --color-border-dark: #c9ced3;
 
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
   --color-saturated-blue: #2d86d4;
@@ -38,10 +39,6 @@
   --color-saturated-purple: #885ab1;
   --color-saturated-red: #ed6e6e;
   --color-saturated-yellow: #f9cf48;
-
-  /* night mode colors */
-  --night-mode-color: color-mod(var(--color-text-white) alpha(-14%));
-  --night-mode-card: #42484e;
 }
 
 /* NOTE: DEPRECATED, replaced with colors above

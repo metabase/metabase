@@ -37,8 +37,5 @@ describeEE("visual tests > admin > fonts", () => {
 });
 
 const waitForFont = font => {
-  cy.document()
-    .its("fonts")
-    .invoke("check", `14px ${font}`)
-    .should("be.true");
+  cy.document().its("fonts").invoke("check", `14px ${font}`).should("be.true");
 };

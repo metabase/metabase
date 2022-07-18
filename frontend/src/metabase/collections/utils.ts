@@ -9,7 +9,7 @@ export type Item = {
   copy?: boolean;
   collection_position?: number | null;
   collection_preview?: boolean | null;
-  has_required_parameters?: boolean | null;
+  fully_parametrized?: boolean | null;
   getIcon: () => { name: string };
   getUrl: () => string;
   setArchived: (isArchived: boolean) => void;
@@ -81,15 +81,21 @@ export function isItemPinned(item: Item) {
 }
 
 export function isPreviewShown(item: Item) {
-  return isPreviewEnabled(item) && hasRequiredParameters(item);
+  return isPreviewEnabled(item) && isFullyParametrized(item);
 }
 
 export function isPreviewEnabled(item: Item) {
   return item.collection_preview ?? true;
 }
 
-export function hasRequiredParameters(item: Item) {
-  return item.has_required_parameters ?? true;
+export function isFullyParametrized(item: Item) {
+  return item.fully_parametrized ?? true;
+}
+
+export function coerceCollectionId(
+  collectionId: number | null | undefined,
+): string | number {
+  return collectionId == null ? "root" : collectionId;
 }
 
 // API requires items in "root" collection be persisted with a "null" collection ID

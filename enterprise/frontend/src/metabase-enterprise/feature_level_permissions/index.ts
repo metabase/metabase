@@ -23,10 +23,12 @@ if (hasPremiumFeature("advanced_permissions")) {
     databaseManagementPermissionAllowedPathGetter,
   );
 
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions = getFeatureLevelDataPermissions;
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions =
+    getFeatureLevelDataPermissions;
 
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns = getDataColumns;
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDownloadWidgetMessageOverride = getDownloadWidgetMessageOverride;
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDownloadWidgetMessageOverride =
+    getDownloadWidgetMessageOverride;
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.canDownloadResults = canDownloadResults;
 
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps = {

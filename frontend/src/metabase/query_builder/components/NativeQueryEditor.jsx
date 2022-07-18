@@ -193,10 +193,7 @@ class NativeQueryEditor extends Component {
     const selectedText = this._editor?.getSelectedText();
 
     if (selectedText) {
-      const temporaryCard = query
-        .setQueryText(selectedText)
-        .question()
-        .card();
+      const temporaryCard = query.setQueryText(selectedText).question().card();
 
       runQuestionQuery({
         overrideWithCard: temporaryCard,
@@ -273,7 +270,7 @@ class NativeQueryEditor extends Component {
           }
 
           // transform results of the API call into what ACE expects
-          const js_results = results.map(function(result) {
+          const js_results = results.map(function (result) {
             return {
               name: result[0],
               value: result[0],

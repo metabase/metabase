@@ -65,7 +65,13 @@ const CollectionMenu = ({
   }
 
   if (items.length > 0) {
-    return <EntityMenu items={items} triggerIcon="ellipsis" />;
+    return (
+      <EntityMenu
+        items={items}
+        triggerIcon="ellipsis"
+        tooltip={t`Move, archive, and more...`}
+      />
+    );
   } else {
     return null;
   }

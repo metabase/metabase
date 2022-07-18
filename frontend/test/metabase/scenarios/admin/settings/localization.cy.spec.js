@@ -108,15 +108,11 @@ describe("scenarios > admin > localization", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".TableInteractive-header")
-      .next()
-      .as("resultTable");
+    cy.get(".TableInteractive-header").next().as("resultTable");
 
     cy.get("@resultTable").within(() => {
       // The third cell in the first row (CREATED_AT_DAY)
-      cy.get(".cellData")
-        .eq(2)
-        .should("not.contain", "Sunday");
+      cy.get(".cellData").eq(2).should("not.contain", "Sunday");
     });
   });
 
@@ -192,23 +188,17 @@ describe("scenarios > admin > localization", () => {
 
     // update the date input in the widget
     const date = new Date();
-    const dateString = `${date.getFullYear()}/${date.getMonth() +
-      1}/${date.getDate()}`;
-    cy.findByDisplayValue(dateString)
-      .clear()
-      .type("2018/5/15")
-      .blur();
+    const dateString = `${date.getFullYear()}/${
+      date.getMonth() + 1
+    }/${date.getDate()}`;
+    cy.findByDisplayValue(dateString).clear().type("2018/5/15").blur();
 
     // add a time to the date
     const TIME_SELECTOR_DEFAULT_HOUR = 12;
     const TIME_SELECTOR_DEFAULT_MINUTE = 30;
     cy.findByText("Add a time").click();
-    cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_HOUR}`)
-      .clear()
-      .type("19");
-    cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_MINUTE}`)
-      .clear()
-      .type("56");
+    cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_HOUR}`).clear().type("19");
+    cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_MINUTE}`).clear().type("56");
 
     // apply the date filter
     cy.button("Add filter").click();

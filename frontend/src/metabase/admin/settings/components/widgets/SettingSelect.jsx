@@ -1,15 +1,17 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import cx from "classnames";
 
 import Select, { Option } from "metabase/core/components/Select";
 
 const SettingSelect = ({
+  className,
   setting: { placeholder, value, options, defaultValue, searchProp, key },
   onChange,
   disabled,
 }) => (
   <Select
-    className="SettingsInput"
+    className={cx("SettingsInput", className)}
     placeholder={placeholder}
     value={value}
     defaultValue={defaultValue}
