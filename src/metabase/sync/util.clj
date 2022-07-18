@@ -458,13 +458,17 @@
    database  :- i/DatabaseInstance
    {:keys [steps] :as sync-md} :- SyncOperationMetadata]
   (try
-    (db/insert-many! TaskHistory
-      (cons (create-task-history operation database sync-md)
-            (for [[step-name step-info] steps
-                  :let                  [task-details (dissoc step-info :start-time :end-time :log-summary-fn)]]
-              (assoc (create-task-history step-name database step-info)
-                :task_details (when (seq task-details)
-                                task-details)))))
+    (->> (for [[step-name step-info] steps
+               :let                  [task-details (dissoc step-info :start-time :end-time :log-summary-fn)]]
+           (assoc (create-task-history step-name database step-info)
+                  :task_details (when (seq task-details)
+                                  task-details)))
+         (cons (create-task-history operation database sync-md))
+         ;; Using `insert!` instead of `insert-many!` here to make sure
+         ;; `post-insert` is triggered
+         (map #(db/insert! TaskHistory %))
+         (map :id)
+         doall)
     (catch Throwable e
       (log/warn e (trs "Error saving task history")))))
 

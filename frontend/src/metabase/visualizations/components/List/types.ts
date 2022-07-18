@@ -1,1 +1,2 @@
-export type CellType = "image" | "action" | "primary" | "secondary";
+export type CellSlot = "left" | "right";
+export type ListVariant = "basic" | "info";

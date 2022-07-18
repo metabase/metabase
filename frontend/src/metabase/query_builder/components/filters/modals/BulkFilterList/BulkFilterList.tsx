@@ -17,12 +17,7 @@ import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { BulkFilterItem } from "../BulkFilterItem";
 import { SegmentFilterSelect } from "../BulkFilterSelect";
 import { InlineOperatorSelector } from "../InlineOperatorSelector";
-import {
-  ListRoot,
-  ListRow,
-  ListRowLabel,
-  FilterDivider,
-} from "./BulkFilterList.styled";
+import { ListRoot, ListRow, FilterContainer } from "./BulkFilterList.styled";
 import { sortDimensions } from "./utils";
 
 export interface BulkFilterListProps {
@@ -132,11 +127,13 @@ const BulkFilterListItem = ({
   }, [filters, dimension]);
 
   return (
-    <ListRow data-testid={`filter-field-${dimension.displayName()}`}>
+    <ListRow>
       {options.map((filter, index) => (
-        <>
+        <FilterContainer
+          key={index}
+          data-testid={`filter-field-${dimension.displayName()}`}
+        >
           <BulkFilterItem
-            key={index}
             query={query}
             isSearch={isSearch}
             filter={filter}
@@ -145,8 +142,7 @@ const BulkFilterListItem = ({
             onChangeFilter={onChangeFilter}
             onRemoveFilter={onRemoveFilter}
           />
-          <FilterDivider />
-        </>
+        </FilterContainer>
       ))}
     </ListRow>
   );

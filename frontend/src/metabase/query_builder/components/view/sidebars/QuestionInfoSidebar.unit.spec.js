@@ -149,4 +149,26 @@ describe("QuestionDetailsSidebarPanel", () => {
       expect(screen.queryByText(/verified this/)).toBeInTheDocument();
     });
   });
+
+  describe("read-only permissions", () => {
+    it("should disable input field for description", () => {
+      setup({
+        question: getQuestion({ description: "Foo bar", can_write: false }),
+      });
+      expect(screen.queryByPlaceholderText("Add description")).toHaveValue(
+        "Foo bar",
+      );
+      expect(screen.queryByPlaceholderText("Add description")).toBeDisabled();
+    });
+
+    it("should display 'No description' if description is null and user does not have write permissions", () => {
+      setup({
+        question: getQuestion({ description: null, can_write: false }),
+      });
+      expect(
+        screen.queryByPlaceholderText("No description"),
+      ).toBeInTheDocument();
+      expect(screen.queryByPlaceholderText("No description")).toBeDisabled();
+    });
+  });
 });

@@ -13,25 +13,20 @@
             [metabase.api.common.validation :as validation]
             [metabase.api.dataset :as api.dataset]
             [metabase.api.timeline :as api.timeline]
-            [metabase.async.util :as async.u]
             [metabase.driver :as driver]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
             [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.bookmark :as bookmark :refer [CardBookmark]]
-            [metabase.models.card :as card :refer [Card]]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.database :refer [Database]]
+            [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table ViewLog]]
+            [metabase.models.collection :as collection]
             [metabase.models.interface :as mi]
             [metabase.models.moderation-review :as moderation-review]
-            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
-            [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.models.persisted-info :as persisted-info]
+            [metabase.models.pulse :as pulse]
             [metabase.models.query :as query]
             [metabase.models.query.permissions :as query-perms]
             [metabase.models.revision.last-edit :as last-edit]
-            [metabase.models.table :refer [Table]]
             [metabase.models.timeline :as timeline]
-            [metabase.models.view-log :refer [ViewLog]]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.pivot :as qp.pivot]
@@ -288,31 +283,44 @@
                                (assoc (ex-data e) :errors {:is_write message})
                                e))))))))))
 
-(defn- save-new-card-async!
-  "Save `card-data` as a new Card on a separate thread. Returns a channel to fetch the response; closing this channel
-  will cancel the save."
-  [card-data user]
-  (async.u/cancelable-thread
-    (let [card (db/transaction
-                 ;; Adding a new card at `collection_position` could cause other cards in this
-                 ;; collection to change position, check that and fix it if needed
-                 (api/maybe-reconcile-collection-position! card-data)
-                 (db/insert! Card card-data))]
-      (events/publish-event! :card-create card)
-      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
-      ;; currently has with returned one -- See #4283
-      (-> card
-          (hydrate :creator
-                   :dashboard_count
-                   :can_write
-                   :average_query_time
-                   :last_query_start
-                   :collection [:moderation_reviews :moderator_details])
-          (assoc :last-edit-info (last-edit/edit-information-for-user user))))))
+(def ^:private metadata-sync-wait-ms
+  "Duration in milliseconds to wait for the metadata before saving the card without the metadata. That metadata will be
+saved later when it is ready."
+  1500)
 
-(defn- create-card-async!
-  "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
-  thrown. Closing this channel before it finishes will cancel the Card creation."
+(def ^:private metadata-async-timeout-ms
+  "Duration in milliseconds to wait for the metadata before abandoning the asynchronous metadata saving. Default is 15
+  minutes."
+  (u/minutes->ms 15))
+
+(defn- schedule-metadata-saving
+  "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up
+  to [[metadata-async-timeout-ms]] for the metadata, and then saves it if the query of the card has not changed."
+  [result-metadata-chan card]
+  (a/go
+    (let [timeoutc        (a/timeout metadata-async-timeout-ms)
+          [metadata port] (a/alts! [result-metadata-chan timeoutc])
+          id              (:id card)]
+      (cond (= port timeoutc)
+            (do (a/close! result-metadata-chan)
+                (log/info (trs "Metadata not ready in {0} minutes, abandoning"
+                               (long (/ metadata-async-timeout-ms 1000 60)))))
+
+            (not (seq metadata))
+            (log/info (trs "Not updating metadata asynchronously for card {0} because no metadata"
+                           id))
+            :else
+            (future
+              (let [current-query (db/select-one-field :dataset_query Card :id id)]
+                (if (= (:dataset_query card) current-query)
+                  (do (db/update! Card id {:result_metadata metadata})
+                      (log/info (trs "Metadata updated asynchronously for card {0}" id)))
+                  (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
+                                 id)))))))))
+
+(defn- create-card!
+  "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
+  the card will be saved without metadata and it will be saved to the card in the future when it is ready."
   [{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data}]
   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
   ;; `api/maybe-reconcile-collection-position!`
@@ -324,24 +332,35 @@
                                     :dataset (boolean (:dataset card-data))
                                     :parameters (or parameters [])
                                     :parameter_mappings (or parameter_mappings []))
-        result-metadata-chan (result-metadata-async {:query dataset_query
+        result-metadata-chan (result-metadata-async {:query    dataset_query
                                                      :metadata result_metadata
                                                      :dataset? dataset})
-        out-chan             (a/promise-chan)]
-    (a/go
-      (try
-        (let [card-data (assoc card-data :result_metadata (a/<! result-metadata-chan))]
-          (a/close! result-metadata-chan)
-          ;; now do the actual saving on a separate thread so we don't tie up our precious core.async thread. Pipe the
-          ;; result into `out-chan`.
-          (async.u/promise-pipe (save-new-card-async! card-data @api/*current-user*) out-chan))
-        (catch Throwable e
-          (a/put! out-chan e)
-          (a/close! out-chan))))
-    ;; Return a channel
-    out-chan))
+        metadata-timeout     (a/timeout metadata-sync-wait-ms)
+        [metadata port]      (a/alts!! [result-metadata-chan metadata-timeout])
+        timed-out?           (= port metadata-timeout)
+        card                 (db/transaction
+                              ;; Adding a new card at `collection_position` could cause other cards in this
+                              ;; collection to change position, check that and fix it if needed
+                              (api/maybe-reconcile-collection-position! card-data)
+                              (db/insert! Card (cond-> card-data
+                                                 (not timed-out?)
+                                                 (assoc :result_metadata metadata))))]
+    (events/publish-event! :card-create card)
+    (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata"))
+    ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
+    ;; returned one -- See #4283
+    (u/prog1 (-> card
+                 (hydrate :creator
+                          :dashboard_count
+                          :can_write
+                          :average_query_time
+                          :last_query_start
+                          :collection [:moderation_reviews :moderator_details])
+                 (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
+      (when timed-out?
+        (schedule-metadata-saving result-metadata-chan <>)))))
 
-(api/defendpoint ^:returns-chan POST "/"
+(api/defendpoint POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl is_write], :as body} :body}]
@@ -363,18 +382,16 @@
   (collection/check-write-perms-for-collection collection_id)
   ;; if `is_write` was passed, check that it's allowed to be set.
   (check-allowed-to-set-is-write body)
-  ;; Return a channel that can be used to fetch the results asynchronously
-  (create-card-async! body))
+  (create-card! body))
 
-(api/defendpoint ^:returns-chan POST "/:id/copy"
+(api/defendpoint POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
   [id]
   {id (s/maybe su/IntGreaterThanZero)}
   (let [orig-card (api/read-check Card id)
         new-name  (str (trs "Copy of ") (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
-    ;; Return a channel that can be used to fetch the results asynchronously
-    (create-card-async! new-card)))
+    (create-card! new-card)))
 
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
@@ -533,49 +550,49 @@
     :query_type ;; these first three may not even be changeable
     :dataset_query})
 
-(defn- update-card-async!
-  "Update a Card asynchronously. Returns a `core.async` promise channel that will return updated Card."
+(defn- update-card!
+  "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
+  included, otherwise the metadata will be saved to the database asynchronously."
   [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
-  (async.u/cancelable-thread
-    ;; Setting up a transaction here so that we don't get a partially reconciled/updated card.
-    (db/transaction
-      (api/maybe-reconcile-collection-position! card-before-update card-updates)
+  (db/transaction
+   (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
-      (when (and (card-is-verified? card-before-update)
-                 (changed? card-compare-keys card-before-update card-updates))
-        ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
-        ;; to remove it regardless if enterprise edition is present at the moment.
-        (moderation-review/create-review! {:moderated_item_id   id
-                                           :moderated_item_type "card"
-                                           :moderator_id        api/*current-user-id*
-                                           :status              nil
-                                           :text                (tru "Unverified due to edit")}))
-      ;; ok, now save the Card
-      (db/update! Card id
-        ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
-        ;; modified if they're passed in as non-nil
-        (u/select-keys-when card-updates
-          :present #{:collection_id :collection_position :description :cache_ttl :dataset :is_write}
-          :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
-                     :parameters :parameter_mappings :embedding_params :result_metadata :is_write :collection_preview})))
+   (when (and (card-is-verified? card-before-update)
+              (changed? card-compare-keys card-before-update card-updates))
+     ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
+     ;; to remove it regardless if enterprise edition is present at the moment.
+     (moderation-review/create-review! {:moderated_item_id   id
+                                        :moderated_item_type "card"
+                                        :moderator_id        api/*current-user-id*
+                                        :status              nil
+                                        :text                (tru "Unverified due to edit")}))
+   ;; ok, now save the Card
+   (db/update! Card id
+     ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
+     ;; modified if they're passed in as non-nil
+     (u/select-keys-when card-updates
+       :present #{:collection_id :collection_position :description :cache_ttl :dataset :is_write}
+       :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
+                  :parameters :parameter_mappings :embedding_params :result_metadata :is_write :collection_preview})))
     ;; Fetch the updated Card from the DB
-    (let [card (Card id)]
-      (delete-alerts-if-needed! card-before-update card)
-      (publish-card-update! card archived)
-      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
-      ;; has with returned one -- See #4142
-      (-> card
-          (hydrate :creator
-                   :dashboard_count
-                   :can_write
-                   :average_query_time
-                   :last_query_start
-                   :collection [:moderation_reviews :moderator_details])
-          (cond-> (:dataset card) (hydrate :persisted))
-          (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
-(api/defendpoint ^:returns-chan PUT "/:id"
+  (let [card (Card id)]
+    (delete-alerts-if-needed! card-before-update card)
+    (publish-card-update! card archived)
+    ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
+    ;; has with returned one -- See #4142
+    (-> card
+        (hydrate :creator
+                 :dashboard_count
+                 :can_write
+                 :average_query_time
+                 :last_query_start
+                 :collection [:moderation_reviews :moderator_details])
+        (cond-> (:dataset card) (hydrate :persisted))
+        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
+
+(api/defendpoint PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
                    collection_position enable_embedding embedding_params result_metadata parameters
@@ -605,26 +622,26 @@
                check-allowed-to-set-is-write]]
       (f card-before-update card-updates))
     ;; make sure we have the correct `result_metadata`
-    (let [result-metadata-chan (result-metadata-async {:original-query    (:dataset_query card-before-update)
-                                                       :query             dataset_query
-                                                       :metadata          result_metadata
-                                                       :original-metadata (:result_metadata card-before-update)
-                                                       :dataset?          (if (some? dataset)
-                                                                            dataset
-                                                                            (:dataset card-before-update))})
-          out-chan             (a/promise-chan)
-          card-updates         (merge card-updates
-                                      (when dataset
-                                        {:display :table}))]
-      ;; asynchronously wait for our updated result metadata, then after that call `update-card-async!`, which is done
-      ;; on a non-core.async thread. Pipe the results of that into `out-chan`.
-      (a/go
-        (try
-          (let [card-updates (assoc card-updates :result_metadata (a/<! result-metadata-chan))]
-            (async.u/promise-pipe (update-card-async! card-before-update card-updates) out-chan))
-          (finally
-            (a/close! result-metadata-chan))))
-      out-chan)))
+    (let [result-metadata-chan  (result-metadata-async {:original-query    (:dataset_query card-before-update)
+                                                        :query             dataset_query
+                                                        :metadata          result_metadata
+                                                        :original-metadata (:result_metadata card-before-update)
+                                                        :dataset?          (if (some? dataset)
+                                                                             dataset
+                                                                             (:dataset card-before-update))})
+          card-updates          (merge card-updates
+                                       (when dataset
+                                         {:display :table}))
+          metadata-timeout      (a/timeout metadata-sync-wait-ms)
+          [fresh-metadata port] (a/alts!! [result-metadata-chan metadata-timeout])
+          timed-out?            (= port metadata-timeout)
+          card-updates          (cond-> card-updates
+                                  (not timed-out?)
+                                  (assoc :result_metadata fresh-metadata))]
+      (u/prog1 (update-card! card-before-update card-updates)
+        (when timed-out?
+          (log/info (trs "Metadata not available soon enough. Saving card {0} and asynchronously updating metadata" id))
+          (schedule-metadata-saving result-metadata-chan <>))))))
 
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
@@ -757,7 +774,6 @@
                  :ignore-cached-results? true
                  :format-rows?           false
                  :js-int-to-string?      false}))
-
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

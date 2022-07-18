@@ -210,7 +210,9 @@
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
                                  (describe-database query-db-id)))
-                          {:status-code 400})))))))
+                          {:status-code           400
+                           :query-database        query-db-id
+                           :field-filter-database field-db-id})))))))
 
 (defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
   (when is-write?
