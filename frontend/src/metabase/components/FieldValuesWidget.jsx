@@ -514,24 +514,32 @@ export function isSearchable({
   disablePKRemappingForSearch,
   valuesMode,
 }) {
+  function everyFieldIsSearchable() {
+    return fields.every(field =>
+      searchField(field, disablePKRemappingForSearch),
+    );
+  }
+
+  function someFieldIsConfiguredForSearch() {
+    return fields.some(
+      f =>
+        f.has_field_values === "search" ||
+        (f.has_field_values === "list" && f.has_more_values === true),
+    );
+  }
+
+  function everyFieldIsConfiguredToShowValues() {
+    return fields.every(
+      f => f.has_field_values === "search" || f.has_field_values === "list",
+    );
+  }
+
   return (
     !disableSearch &&
-    // search is available if:
-    // all fields have a valid search field
-    // the component has already been set to "search" mode
-    // (`valuesMode` can be set by the dashboard parameter values endpoint call)
     (valuesMode === "search" ||
-      (fields.every(field => searchField(field, disablePKRemappingForSearch)) &&
-        // at least one field is set to display as "search" or is a list field that has an incomplete value set
-        fields.some(
-          f =>
-            f.has_field_values === "search" ||
-            (f.has_field_values === "list" && f.has_more_values === true),
-        ) &&
-        // and all fields are either "search" or "list"
-        fields.every(
-          f => f.has_field_values === "search" || f.has_field_values === "list",
-        )))
+      (everyFieldIsSearchable() &&
+        someFieldIsConfiguredForSearch() &&
+        everyFieldIsConfiguredToShowValues()))
   );
 }
 
