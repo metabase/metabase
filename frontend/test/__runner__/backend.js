@@ -7,8 +7,6 @@ const { spawn } = require("child_process");
 
 const fetch = require("isomorphic-fetch");
 
-const DEFAULT_DB_KEY = "/test_db_fixture.db";
-
 let testDbId = 0;
 const getDbFile = () =>
   path.join(os.tmpdir(), `metabase-test-${process.pid}-${testDbId++}.db`);
@@ -17,10 +15,10 @@ let port = 4000;
 const getPort = () => port++;
 
 const BackendResource = createSharedResource("BackendResource", {
-  getKey({ dbKey = DEFAULT_DB_KEY }) {
+  getKey({ dbKey }) {
     return dbKey || {};
   },
-  create({ dbKey = DEFAULT_DB_KEY }) {
+  create({ dbKey }) {
     const dbFile = getDbFile();
     const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
     const e2eHost = process.env["E2E_HOST"];
