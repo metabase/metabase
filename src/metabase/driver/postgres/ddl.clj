@@ -1,11 +1,11 @@
-(ns metabase.driver.ddl.postgres
+(ns metabase.driver.postgres.ddl
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
             [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.ddl.sql :as ddl.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql.ddl :as sql.ddl]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.util.i18n :refer [trs]]))
@@ -20,7 +20,7 @@
   (let [existing-timeout (->> (hsql/format {:select [:setting]
                                             :from [:pg_settings]
                                             :where [:= :name "statement_timeout"]})
-                              (ddl.sql/jdbc-query tx)
+                              (sql.ddl/jdbc-query tx)
                               first
                               :setting
                               parse-long)
@@ -29,22 +29,22 @@
                       ten-minutes
                       (min ten-minutes existing-timeout))]
     ;; Can't use a prepared parameter with these statements
-    (ddl.sql/execute! tx [(format "SET LOCAL statement_timeout TO '%s'" (str new-timeout))])))
+    (sql.ddl/execute! tx [(format "SET LOCAL statement_timeout TO '%s'" (str new-timeout))])))
 
 (defmethod ddl.i/refresh! :postgres [_driver database definition dataset-query]
   (let [{:keys [query params]} (qp/compile dataset-query)]
     (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
       (jdbc/with-db-transaction [tx conn]
         (set-statement-timeout! tx)
-        (ddl.sql/execute! tx [(ddl.sql/drop-table-sql database (:table-name definition))])
-        (ddl.sql/execute! tx (into [(ddl.sql/create-table-sql database definition query)] params)))
+        (sql.ddl/execute! tx [(sql.ddl/drop-table-sql database (:table-name definition))])
+        (sql.ddl/execute! tx (into [(sql.ddl/create-table-sql database definition query)] params)))
       {:state :success})))
 
 (defmethod ddl.i/unpersist! :postgres
   [_driver database persisted-info]
   (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
     (try
-      (ddl.sql/execute! conn [(ddl.sql/drop-table-sql database (:table_name persisted-info))])
+      (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database (:table_name persisted-info))])
       (catch Exception e
         (log/warn e)
         (throw e)))))
@@ -56,25 +56,25 @@
         steps       [[:persist.check/create-schema
                       (fn check-schema [conn]
                         (let [existing-schemas (->> ["select schema_name from information_schema.schemata"]
-                                                    (ddl.sql/jdbc-query conn)
+                                                    (sql.ddl/jdbc-query conn)
                                                     (map :schema_name)
                                                     (into #{}))]
                           (or (contains? existing-schemas schema-name)
-                              (ddl.sql/execute! conn [(ddl.sql/create-schema-sql database)]))))]
+                              (sql.ddl/execute! conn [(sql.ddl/create-schema-sql database)]))))]
                      [:persist.check/create-table
                       (fn create-table [conn]
-                        (ddl.sql/execute! conn [(ddl.sql/create-table-sql database
+                        (sql.ddl/execute! conn [(sql.ddl/create-table-sql database
                                                           {:table-name table-name
                                                            :field-definitions [{:field-name "field"
                                                                                 :base-type :type/Text}]}
                                                           "values (1)")]))]
                      [:persist.check/read-table
                       (fn read-table [conn]
-                        (ddl.sql/jdbc-query conn [(format "select * from %s.%s"
+                        (sql.ddl/jdbc-query conn [(format "select * from %s.%s"
                                              schema-name table-name)]))]
                      [:persist.check/delete-table
                       (fn delete-table [conn]
-                        (ddl.sql/execute! conn [(ddl.sql/drop-table-sql database table-name)]))]]]
+                        (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database table-name)]))]]]
     (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
       (jdbc/with-db-transaction
         [tx conn]

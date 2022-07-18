@@ -12,7 +12,7 @@
             [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.ddl.mysql :as ddl.mysql]
+            [metabase.driver.mysql.ddl :as mysql.ddl]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -31,7 +31,7 @@
            [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
 (comment
-  ddl.mysql/keep-me)
+  mysql.ddl/keep-me)
 
 (driver/register! :mysql, :parent :sql-jdbc)
 
