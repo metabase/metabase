@@ -3,44 +3,34 @@
   #?@
       (:clj
        [(:require [clojure.string :as str]
-                  [java-time :as t]
                   [metabase.mbql.normalize :as mbql.normalize]
                   [metabase.shared.util.i18n :refer [trs]]
                   [metabase.util.date-2 :as u.date]
                   [metabase.util.date-2.parse.builder :as b]
-                  [metabase.util.i18n.impl :as i18n])]
+                  [metabase.util.i18n.impl :as i18n.impl])]
        :cljs
        [(:require ["moment" :as moment]
                   [clojure.string :as str]
                   [metabase.mbql.normalize :as mbql.normalize]
                   [metabase.shared.util.i18n :refer [trs]])]))
 
-(def ^:private ^:dynamic *locale*
-  "The current locale to use for date formatting, as a string."
-  nil)
-
-(defn- formatted-list
-  [values]
-  (str (str/join ", " (butlast values)) (trs " and ") (last values)))
-
 (defmulti formatted-value
   "Formats a value appropriately for inclusion in a text card, based on its type. Does not do any escaping.
   For datetime parameters, the logic here should mirror the logic (as best as possible) in
   frontend/src/metabase/parameters/utils/date-formatting.ts"
-  (fn [tyype _value] (keyword tyype)))
+  (fn [tyype _locale _value] (keyword tyype)))
 
 (defmethod formatted-value :date/single
-  [_ value]
-  #?(:cljs (let [m (.locale (moment value) *locale*)]
+  [_ locale value]
+  #?(:cljs (let [m (.locale (moment value) locale)]
              (.format m "MMMM D, YYYY"))
-     :clj  (u.date/format "MMMM d, yyyy" (u.date/parse value) *locale*)))
+     :clj  (u.date/format "MMMM d, yyyy" (u.date/parse value) locale)))
 
 (defmethod formatted-value :date/month-year
-  [_ value]
-  (def value value)
-  #?(:cljs (let [m (.locale (moment value "YYYY-MM") *locale*)]
+  [_ locale value]
+  #?(:cljs (let [m (.locale (moment value "YYYY-MM") locale)]
              (if (.isValid m) (.format m "MMMM, YYYY") ""))
-     :clj  (u.date/format "MMMM, yyyy" (u.date/parse value) *locale*)))
+     :clj  (u.date/format "MMMM, yyyy" (u.date/parse value) locale)))
 
 #?(:clj
    (def ^:private quarter-formatter-in
@@ -53,24 +43,25 @@
       "Q" (b/value :iso/quarter-of-year 1) ", " (b/value :year 4))))
 
 (defmethod formatted-value :date/quarter-year
-  [_ value]
-  #?(:cljs (let [m (.locale (moment value "[Q]Q-YYYY") *locale*)]
+  [_ locale value]
+  (def locale locale)
+  (def value value)
+  #?(:cljs (let [m (.locale (moment value "[Q]Q-YYYY") locale)]
              (if (.isValid m) (.format m "[Q]Q, YYYY") ""))
-     :clj (.format (.withLocale quarter-formatter-out (i18n/locale *locale*))
+     :clj (.format (.withLocale quarter-formatter-out (i18n.impl/locale locale))
                    (.parse quarter-formatter-in value))))
 
 (defmethod formatted-value :date/range
-  [_ value]
-  (def value value)
+  [_ locale value]
   (let [[start end] (str/split value #"~")]
     (if (and start end)
-      (str (formatted-value :date/single start)
+      (str (formatted-value :date/single locale start)
            " - "
-           (formatted-value :date/single end))
+           (formatted-value :date/single locale end))
       "")))
 
 (defmethod formatted-value :date/relative
-  [_ value]
+  [_ locale value]
   (case value
     "today"      (trs "Today")
     "yesterday"  (trs "Yesterday")
@@ -84,26 +75,31 @@
     "thismonth"  (trs "This Month")
     "thisyear"   (trs "This Year")
     ;; Always fallback to default formatting, just in case
-    (formatted-value :default value)))
+    (formatted-value :default locale value)))
 
 (defmethod formatted-value :date/all-options
-  [_ value]
+  [_ locale value]
   ;; Test value against a series of regexes (similar to those in metabase/parameters/utils/mbql.js) to determine
   ;; the appropriate formatting, since it is not encoded in the parameter type.
   ;; TODO: this is a partial implementation that only handles simple dates
   (condp (fn [re value] (->> (re-find re value) second)) value
-    #"^~?([0-9-T:]+)~?$"       :>> (partial formatted-value :date/single)
-    #"^([0-9-T:]+~[0-9-T:]+)$" :>> (partial formatted-value :date/range)
+    #"^~?([0-9-T:]+)~?$"       :>> (partial formatted-value :date/single locale)
+    #"^([0-9-T:]+~[0-9-T:]+)$" :>> (partial formatted-value :date/range locale)
     (str value)))
 
-(defmethod formatted-value :default
-  [_ value]
-  (cond
-    (and (sequential? value) (> (count value) 1))
-    (formatted-list value)
+(defn formatted-list
+  "Given a seq of parameter values, returns them as a single comma-separated string. Does not do additional formatting
+  on the values."
+  [values]
+  (if (= (count values) 1)
+    (str first values)
+    (str (str/join ", " (butlast values)) (trs " and ") (last values))))
 
+(defmethod formatted-value :default
+  [_ _ value]
+  (cond
     (sequential? value)
-    (str (first value))
+    (formatted-list value)
 
     :else
     (str value)))
@@ -116,18 +112,18 @@
   (str/replace text escaped-chars-regex #(str \\ %)))
 
 (defn- replacement
-  [tag->param match]
+  [tag->param locale match]
   (let [tag-name (second match)
         param    (get tag->param tag-name)
         value    (:value param)
         tyype    (:type param)]
     (if value
-      (try (-> (formatted-value tyype value)
+      (try (-> (formatted-value tyype locale value)
                escape-chars)
            (catch Throwable _
              ;; If we got an exception (most likely during date parsing/formatting), fallback to the default
              ;; implementation of formatted-value
-             (formatted-value :default value)))
+             (formatted-value :default locale value)))
       ;; If this parameter has no value, return the original {{tag}} so that no substitution is done.
       (first match))))
 
@@ -166,5 +162,4 @@
                                             (assoc acc tag (normalize-parameter param)))
                                           {}
                                           tag->param)]
-     (binding [*locale* locale]
-       (str/replace text template-tag-regex (partial replacement tag->normalized-param))))))
+     (str/replace text template-tag-regex (partial replacement tag->normalized-param locale)))))
