@@ -4,11 +4,11 @@ title: Working with MySQL in Metabase
 
 # Working with MySQL in Metabase
 
-This page includes some helpful info for connecting Metabase to your MySQL database.
-
-  - [Connecting to MySQL 8+ servers](#connecting-to-mysql-8-servers)
-  - [Unable to log in with correct credentials](#unable-to-log-in-with-correct-credentials)
-  - [Raising a MySQL Docker container of MySQL 8+](#raising-a-mysql-docker-container-of-mysql-8)
+- [Connecting to MySQL 8+ servers](#connecting-to-mysql-8-servers)
+- [Unable to log in with correct credentials](#unable-to-log-in-with-correct-credentials)
+- [Raising a MySQL Docker container of MySQL 8+](#raising-a-mysql-docker-container-of-mysql-8)
+- [Note on syncing records that include JSON](#note-on-syncing-records-that-include-json)
+- [Connecting to MySQL with varying ports](#connecting-to-mysql-with-varying-ports)
 
 ## Connecting to MySQL 8+ servers
 
@@ -39,11 +39,11 @@ Remember to drop the old user: `DROP USER 'metabase'@'localhost';`.
 
 If you are spinning up a new MySQL container, and:
 
- - you want Metabase to connect to the container without having to manually create the user or change the authentication mechanism,
- - or you're facing a `RSA public key is not available client side (option serverRsaPublicKeyFile not set)` error,
- 
+- you want Metabase to connect to the container without having to manually create the user or change the authentication mechanism,
+- or you're facing a `RSA public key is not available client side (option serverRsaPublicKeyFile not set)` error,
+
 Use the `['--default-authentication-plugin=mysql_native_password']` modifiers when you run the container, like so:
- 
+
 - a simple docker run: `docker run -p 3306:3306 -e MYSQL_ROOT_PASSWORD=xxxxxx mysql:8.xx.xx --default-authentication-plugin=mysql_native_password`
 
 - or in docker-compose:
@@ -53,7 +53,7 @@ mysql:
     image: mysql:8.xx.xx
     container_name: mysql
     hostname: mysql
-    ports: 
+    ports:
       - 3306:3306
     environment:
       - "MYSQL_ROOT_PASSWORD=xxxxxx"
@@ -73,3 +73,6 @@ The problem is that if the keys in the JSON vary record to record, the first fiv
 
 2. **This JSON support doesn't work with MariaDB**, due to implementation differences between MySQL and MariaDB.
 
+## Connecting to MySQL with varying ports
+
+If your MySQL port changes or uses multiple ports, simply leave the port field blank.
