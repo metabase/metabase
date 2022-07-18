@@ -97,7 +97,7 @@ describe("dashboard reducers", () => {
   });
 
   describe("SET_EDITING_DASHBOARD", () => {
-    it("should preserve sidebar state if payload is true to signify the entering of dashboard edit mode", () => {
+    it("should clear sideabr state when entering edit mode", () => {
       const state = {
         ...initState,
         sidebar: { name: "foo", props: { abc: 123 } },
@@ -107,7 +107,7 @@ describe("dashboard reducers", () => {
           type: SET_EDITING_DASHBOARD,
           payload: true,
         }),
-      ).toEqual({ ...state, isEditing: true });
+      ).toEqual({ ...state, isEditing: true, sidebar: { props: {} } });
     });
 
     it("should clear sideabr state when leaving edit mode", () => {
