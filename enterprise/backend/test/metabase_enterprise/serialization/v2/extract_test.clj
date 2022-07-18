@@ -6,7 +6,7 @@
                                      NativeQuerySnippet Table User]]
             [metabase.models.serialization.base :as serdes.base]
             [schema.core :as s])
-  (:import java.time.ZonedDateTime))
+  (:import [java.time LocalDateTime OffsetDateTime]))
 
 (defn- select-one [model-name where]
   (first (into [] (serdes.base/raw-reducible-query model-name {:where where}))))
@@ -135,8 +135,8 @@
                         :creator_id                  (s/eq "mark@direstrai.ts")
                         :collection_id               (s/eq coll-eid)
                         :dataset_query               (s/eq "{\"json\": \"string values\"}")
-                        :created_at                  ZonedDateTime
-                        (s/optional-key :updated_at) ZonedDateTime
+                        :created_at                  LocalDateTime
+                        (s/optional-key :updated_at) LocalDateTime
                         s/Keyword                    s/Any}
                        ser))
           (is (not (contains? ser :id)))
@@ -153,8 +153,8 @@
                         :creator_id                  (s/eq "mark@direstrai.ts")
                         :collection_id               (s/eq coll-eid)
                         :dataset_query               (s/eq "{}") ; Undecoded, still a string.
-                        :created_at                  ZonedDateTime
-                        (s/optional-key :updated_at) ZonedDateTime
+                        :created_at                  LocalDateTime
+                        (s/optional-key :updated_at) LocalDateTime
                         s/Keyword      s/Any}
                        ser))
           (is (not (contains? ser :id)))
@@ -274,8 +274,8 @@
           (is (schema= {:serdes/meta                 (s/eq [{:model "Metric" :id m1-eid :label "My Metric"}])
                         :table_id                    (s/eq ["My Database" nil "Schemaless Table"])
                         :creator_id                  (s/eq "ann@heart.band")
-                        :created_at                  ZonedDateTime
-                        (s/optional-key :updated_at) ZonedDateTime
+                        :created_at                  LocalDateTime
+                        (s/optional-key :updated_at) LocalDateTime
                         s/Keyword                    s/Any}
                        ser))
           (is (not (contains? ser :id)))
@@ -310,8 +310,8 @@
                                                                :label "Snippet 1"}])
                           :collection_id               (s/eq coll-eid)
                           :creator_id                  (s/eq "ann@heart.band")
-                          :created_at                  ZonedDateTime
-                          (s/optional-key :updated_at) ZonedDateTime
+                          :created_at                  OffsetDateTime
+                          (s/optional-key :updated_at) OffsetDateTime
                           s/Keyword                    s/Any}
                          ser))
             (is (not (contains? ser :id)))
@@ -327,8 +327,8 @@
                                                                   :label "Snippet 2"}])
                           (s/optional-key :collection_id) (s/eq nil)
                           :creator_id                     (s/eq "ann@heart.band")
-                          :created_at                     ZonedDateTime
-                          (s/optional-key :updated_at)    ZonedDateTime
+                          :created_at                     OffsetDateTime
+                          (s/optional-key :updated_at)    OffsetDateTime
                           s/Keyword                       s/Any}
                          ser))
             (is (not (contains? ser :id)))

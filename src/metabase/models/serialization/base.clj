@@ -12,8 +12,7 @@
   (:require [clojure.tools.logging :as log]
             [metabase.models.serialization.hash :as serdes.hash]
             [toucan.db :as db]
-            [toucan.models :as models])
-  (:import [java.time Instant LocalDateTime OffsetDateTime ZoneId]))
+            [toucan.models :as models]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              :serdes/meta                                                      |
