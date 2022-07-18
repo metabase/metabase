@@ -27,7 +27,7 @@ export const NativeQueryEditorRoot = styled.div`
   }
 
   .ace_editor .ace_templateTag {
-    color: ${color("color-brand")};
+    color: ${color("brand")};
   }
 
   .react-resizable {
