@@ -73,9 +73,19 @@ export default Object.assign(ListViz, {
       widget: "toggle",
       default: true,
     },
+    "list.variant": {
+      section: t`Options`,
+      title: t`Variant`,
+      widget: "radio",
+      options: [
+        { name: t`Basic`, value: "basic" },
+        { name: t`Info`, value: "info" },
+      ],
+      default: "basic",
+    },
     "list.columns": {
-      section: t`Columns`,
-      title: t`Columns`,
+      section: t`Options`,
+      title: t`Options`,
       widget: ChartSettingsListColumns,
       getDefault: ([
         {
