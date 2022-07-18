@@ -86,7 +86,7 @@
           :label (:name snippet))])
 
 (defmethod serdes.base/extract-one "NativeQuerySnippet"
-  [_ _ snippet]
+  [_model-name _opts snippet]
   (-> (serdes.base/extract-one-basics "NativeQuerySnippet" snippet)
       (update :creator_id serdes.util/export-fk-keyed 'User :email)
       (update :collection_id #(when % (serdes.util/export-fk % 'Collection)))))
