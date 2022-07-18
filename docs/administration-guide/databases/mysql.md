@@ -1,14 +1,13 @@
 ---
-title: Working with MySQL in Metabase
+title: MySQL
 ---
 
-# Working with MySQL in Metabase
+# MySQL
 
 - [Connecting to MySQL 8+ servers](#connecting-to-mysql-8-servers)
 - [Unable to log in with correct credentials](#unable-to-log-in-with-correct-credentials)
 - [Raising a MySQL Docker container of MySQL 8+](#raising-a-mysql-docker-container-of-mysql-8)
 - [Note on syncing records that include JSON](#note-on-syncing-records-that-include-json)
-- [Connecting to MySQL with varying ports](#connecting-to-mysql-with-varying-ports)
 
 ## Connecting to MySQL 8+ servers
 
@@ -72,7 +71,3 @@ mysql:
 The problem is that if the keys in the JSON vary record to record, the first five hundred rows may not capture all the keys used by JSON objects in that JSON field. To get Metabase to infer all the JSON keys, you'll need to add the additional keys to the JSON objects in the first five hundred rows.
 
 2. **This JSON support doesn't work with MariaDB**, due to implementation differences between MySQL and MariaDB.
-
-## Connecting to MySQL with varying ports
-
-If your MySQL port changes or uses multiple ports, simply leave the port field blank.
