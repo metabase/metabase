@@ -274,6 +274,7 @@ export function absolute(date) {
   if (typeof date === "string") {
     return moment(date);
   } else if (Array.isArray(date) && date[0] === "relative-datetime") {
+    console.log("🚀", moment().localeData()._week);
     return moment().add(date[1], date[2]);
   } else {
     console.warn("Unknown datetime format", date);
