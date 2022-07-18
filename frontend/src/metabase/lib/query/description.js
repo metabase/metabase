@@ -11,6 +11,7 @@ import { format as formatExpression } from "metabase/lib/expressions/format";
 import * as AGGREGATION from "./aggregation";
 import * as QUERY from "./query";
 import * as FIELD_REF from "./field_ref";
+import { FilterClause } from "./description.styled";
 
 // NOTE: This doesn't support every MBQL clause, e.x. joins. It should also be moved to StructuredQuery.
 
@@ -152,11 +153,7 @@ export function getFilterClauseDescription(tableMetadata, filter, options) {
   } else if (filter[0] === "segment") {
     const segment = _.findWhere(tableMetadata.segments, { id: filter[1] });
     const name = segment ? segment.name : "[Unknown Segment]";
-    return options.jsx ? (
-      <span className="text-purple text-bold">{name}</span>
-    ) : (
-      name
-    );
+    return options.jsx ? <FilterClause>{name}</FilterClause> : name;
   } else {
     return getFieldName(tableMetadata, filter[1], options);
   }
@@ -313,7 +310,7 @@ export function formatFilterDescription({ filter }, options = {}) {
       filter.map(f => {
         if (f["segment"] != null) {
           return options.jsx ? (
-            <span className="text-purple text-bold">{f["segment"]}</span>
+            <FilterClause>{f["segment"]}</FilterClause>
           ) : (
             f["segment"]
           );
