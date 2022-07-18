@@ -186,7 +186,7 @@
             qual-tbl-nm    (str redshift.test/session-schema-name "." tbl-nm)
             view-nm        "late_binding_view"
             qual-view-nm   (str redshift.test/session-schema-name "." view-nm)
-            ;; pursuant to #21215, weirder late binding views will not even have the parameterization
+            ;; pursuant to #21215, weirder late binding views will not even have the parameters called
             view-nm-2      "weirder_late_binding_view"
             qual-view-nm-2 (str redshift.test/session-schema-name "." view-nm-2)]
         (mt/with-temp Database [database {:engine :redshift, :details db-details}]
