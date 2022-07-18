@@ -37,7 +37,8 @@ export const ListItemContainer = styled.div<{ disabled?: boolean }>`
   justify-content: space-between;
   height: 4rem;
   border-radius: 8px;
-  box-shadow: 4px 5px 10px 3px ${color("shadow")};
+  box-shadow: 2px 3px 5px ${color("shadow")};
+  border: 1px solid transparent;
 
   padding: 0 0.5rem;
 
@@ -50,7 +51,7 @@ export const ListItemContainer = styled.div<{ disabled?: boolean }>`
     css`
       &:hover {
         cursor: pointer;
-        transform: scale(0.97);
+        border-color: ${color("border")};
       }
     `}
 
