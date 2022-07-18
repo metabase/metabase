@@ -16,6 +16,7 @@
             [metabase.db :as mdb]
             [metabase.driver.common.parameters :as params]
             [metabase.driver.common.parameters.parse :as params.parse]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.collection.graph :as graph]
@@ -304,9 +305,9 @@
 (declare fully-parametrized-text?)
 
 (defn- fully-parametrized-snippet? [tag]
-  (and (= (keyword (:type tag)) :snippet)
+  (and (= (:type tag) :snippet)
        (let [{:keys [content template_tags]} (NativeQuerySnippet (:snippet-id tag))]
-         (fully-parametrized-text? content (update-keys template_tags keyword)))))
+         (fully-parametrized-text? content template_tags))))
 
 (defn- fully-parametrized-text?
   "Decide if `text`, usually (a part of) a query, is fully parametrized given the parameter types
@@ -329,14 +330,14 @@
   [text template-tags]
   (let [obligatory-params (into #{}
                                 (comp (filter params/Param?)
-                                      (map (comp keyword :k)))
+                                      (map :k))
                                 (params.parse/parse text))]
-    (and (every? #(or (:default %) (= (:type %) "dimension") (fully-parametrized-snippet? %))
+    (and (every? #(or (:default %) (= (:type %) :dimension) (fully-parametrized-snippet? %))
                  (map template-tags obligatory-params))
          (every? #(or (:default %) (not (:required %))) (vals template-tags)))))
 
 (defn- fully-parametrized-query? [row]
-  (let [native-query (-> row :dataset_query (json/parse-string keyword) :native)]
+  (let [native-query (-> row :dataset_query json/parse-string mbql.normalize/normalize :native)]
     (if-let [template-tags (:template-tags native-query)]
       (fully-parametrized-text? (:query native-query) template-tags)
       true)))
