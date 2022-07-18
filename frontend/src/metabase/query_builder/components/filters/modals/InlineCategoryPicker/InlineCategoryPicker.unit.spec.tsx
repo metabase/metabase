@@ -2,11 +2,9 @@
 
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
-import { Provider } from "react-redux";
-
 import userEvent from "@testing-library/user-event";
 
-import { getStore } from "__support__/entities-store";
+import { renderWithProviders } from "__support__/ui";
 import { metadata } from "__support__/sample_database_fixture";
 
 import Field from "metabase-lib/lib/metadata/Field";
@@ -16,8 +14,6 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import { InlineCategoryPickerComponent } from "./InlineCategoryPicker";
 import { MAX_INLINE_CATEGORIES } from "./constants";
-
-const store = getStore();
 
 const smallCategoryField = new Field({
   database_type: "test",
@@ -385,19 +381,17 @@ describe("InlineCategoryPicker", () => {
       const changeSpy = jest.fn();
       const fetchSpy = jest.fn();
 
-      render(
-        <Provider store={store}>
-          <InlineCategoryPickerComponent
-            query={query}
-            filter={testFilter}
-            newFilter={testFilter}
-            onChange={changeSpy}
-            fieldValues={field.values}
-            fetchFieldValues={fetchSpy}
-            dimension={dimension}
-            onClear={changeSpy}
-          />
-        </Provider>,
+      renderWithProviders(
+        <InlineCategoryPickerComponent
+          query={query}
+          filter={testFilter}
+          newFilter={testFilter}
+          onChange={changeSpy}
+          fieldValues={field.values}
+          fetchFieldValues={fetchSpy}
+          dimension={dimension}
+          onClear={changeSpy}
+        />,
       );
 
       expect(screen.queryByTestId("category-picker")).not.toBeInTheDocument();
