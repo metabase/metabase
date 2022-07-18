@@ -312,20 +312,12 @@
       (actions.test-util/with-actions-test-data-and-actions-enabled
         (is (= 75
                (categories-row-count)))
-        (is (= {:created-rows [{(format-field-name :id) 76, (format-field-name :name) "NEW_A"}
-                               {(format-field-name :id) 77, (format-field-name :name) "NEW_B"}]}
-               (mt/user-http-request :crowberto :post 200
-                                     (format "action/bulk/create/%d" (mt/id :categories))
-                                     [{(format-field-name :name) "NEW_A"}
-                                      {(format-field-name :name) "NEW_B"}])))
-        (is (= 77
-               (categories-row-count)))
         (is (= {:success true}
                (mt/user-http-request :crowberto :post 200
                                      (format "action/bulk/delete/%d" (mt/id :categories))
-                                     [{"ID" 76}
-                                      {"ID" 77}])))
-        (is (= 75
+                                     [{"ID" 74}
+                                      {"ID" 75}])))
+        (is (= 73
                (categories-row-count)))))))
 
 (deftest bulk-delete-failure-test
@@ -337,15 +329,6 @@
             (testing "error in some of the rows"
               (is (= 75
                      (categories-row-count)))
-              (is (= {:created-rows [{(format-field-name :id) 76, (format-field-name :name) "NEW_A"}
-                                     {(format-field-name :id) 77, (format-field-name :name) "NEW_B"}]}
-                     (mt/user-http-request :crowberto :post 200
-                                           (format "action/bulk/create/%d" (mt/id :categories))
-                                           [{(format-field-name :name) "NEW_A"}
-                                            {(format-field-name :name) "NEW_B"}])))
-              (is (= 77
-                     (categories-row-count)))
-
               (testing "Should report indices of bad rows"
                 (is (= {:errors
                         [{:index 1,
@@ -354,9 +337,30 @@
                           :error "Sorry, this would delete 0 rows, but you can only act on 1"}]}
                        (mt/user-http-request :crowberto :post 400
                                              (format "action/bulk/delete/%d" (mt/id :categories))
-                                             [{"ID" 76}
+                                             [{"ID" 74}
                                               {"ID" "foo"}
-                                              {"ID" 77}
+                                              {"ID" 75}
                                               {"ID" 107}]))))
-              (is (= 77
+              (testing "Should report inconsistent keys"
+                (is (partial= {:message "Some rows have different sets of columns: #{\"NONID\"}, #{\"ID\"}"}
+                              (mt/user-http-request :crowberto :post 400
+                                                    (format "action/bulk/delete/%d" (mt/id :categories))
+                                                    [{"ID" 74}
+                                                     {"NONID" 75}]))))
+              (testing "Should report non-pk keys"
+                (is (partial= {:message "Rows have the wrong columns: expected #{\"ID\"}, but got #{\"NONID\"}"}
+                              (mt/user-http-request :crowberto :post 400
+                                                    (format "action/bulk/delete/%d" (mt/id :categories))
+                                                    [{"NONID" 75}]))))
+              (testing "Should report repeat rows"
+                (is (partial= {:message "Rows need to be unique: repeated rows {\"ID\" 74} × 3, {\"ID\" 75} × 2"}
+                              (mt/user-http-request :crowberto :post 400
+                                                    (format "action/bulk/delete/%d" (mt/id :categories))
+                                                    [{"ID" 73}
+                                                     {"ID" 74}
+                                                     {"ID" 74}
+                                                     {"ID" 74}
+                                                     {"ID" 75}
+                                                     {"ID" 75}]))))
+              (is (= 75
                      (categories-row-count))))))))))

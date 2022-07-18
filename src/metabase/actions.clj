@@ -1,17 +1,18 @@
 (ns metabase.actions
   "Code related to the new writeback Actions."
-  (:require [clojure.spec.alpha :as s]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.driver :as driver]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.setting :as setting]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n]
-            [schema.core :as schema]))
+  (:require
+   [clojure.spec.alpha :as s]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.driver :as driver]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.setting :as setting]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
+   [schema.core :as schema]))
 
 (setting/defsetting experimental-enable-actions
   (i18n/deferred-tru "Whether to enable using the new experimental Actions features globally. (Actions must also be enabled for each Database.)")
@@ -285,8 +286,11 @@
 
 ;;;; Bulk actions
 
-(s/def :actions.args.crud.bulk/table-id
+(s/def :actions.args.crud.bulk.common/table-id
   :actions.args/id)
+
+(s/def :actions.args.crud.bulk/common
+  (s/keys :req-un [:actions.args.crud.bulk.common/table-id]))
 
 ;;;; `:bulk/create`
 
@@ -309,8 +313,8 @@
 (s/def :actions.args.crud.bulk/create
   (s/merge
    :actions.args/common
-   (s/keys :req-un [:actions.args.crud.bulk/table-id
-                    :actions.args.crud.bulk.create/rows])))
+   :actions.args.crud.bulk/common
+   (s/keys :req-un [:actions.args.crud.bulk.create/rows])))
 
 (defmethod action-arg-map-spec :bulk/create
   [_action]
@@ -325,7 +329,7 @@
 ;;;
 ;;; and we transform this to
 ;;;
-;;;     {:database <database-id>, :table-id <table-id>, :pk-values <request-body>}
+;;;     {:database <database-id>, :table-id <table-id>, :pk-value-maps <request-body>}
 ;;;
 ;;; Request-body should look like:
 ;;;
@@ -336,20 +340,18 @@
 ;;;    ;; multiple pks, one row
 ;;;    [{"PK1": 1, "PK2": "john"}]
 
-
 (defmethod normalize-action-arg-map :bulk/delete
-  [_action {:keys [database table-id], pk-values :arg, :as _arg-map}]
-  {:database database, :table-id table-id, :pk-values (map #(m/map-keys name %) pk-values)})
+  [_action {:keys [database table-id], pk-value-maps :arg, :as _arg-map}]
+  {:database database, :table-id table-id, :pk-value-maps (map #(m/map-keys name %) pk-value-maps)})
 
-(s/def :actions.args.crud.bulk.delete/pk-values
-  ;; TODO keys should be a mbql field??
-  (s/coll-of (s/map-of any? any?)))
+(s/def :actions.args.crud.bulk.delete/pk-value-maps
+  (s/coll-of (s/map-of string? any?)))
 
 (s/def :actions.args.crud.bulk/delete
   (s/merge
     :actions.args/common
-    (s/keys :req-un [:actions.args.crud.bulk/table-id
-                     :actions.args.crud.bulk.delete/pk-values])))
+    :actions.args.crud.bulk/common
+    (s/keys :req-un [:actions.args.crud.bulk.delete/pk-value-maps])))
 
 (defmethod action-arg-map-spec :bulk/delete
   [_action]

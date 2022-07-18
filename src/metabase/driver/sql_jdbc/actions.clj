@@ -4,17 +4,19 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.actions :as actions]
+            [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.util :as driver.u]
-            [metabase.models.table :as table :refer [Table]]
+            [metabase.models :refer [Field Table]]
+            [metabase.models.table :as table]
             [metabase.query-processor :as qp]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.i18n :refer [tru]]
             [toucan.db :as db])
   (:import java.sql.Connection))
 
@@ -304,27 +306,59 @@
              created-rows]))))
      rows)))
 
-(defn- pk-values->filters [table-id pk-values]
-  ;; check that all pk-values have the same shape
-  (when-not (apply = (map (comp set keys) pk-values))
-    (throw (ex-info (trs "Inconsistent row selection.")
-                    {:status-code 400, :pk-values pk-values})))
-  (let [given-pks (set (keys (first pk-values)))
-        table-pks (into {} (map (juxt :name :id) (filter #(= (:semantic_type %) :type/PK) (:fields (first (table/with-fields [(Table table-id)]))))))]
-    (when-not (= given-pks (set (keys table-pks)))
-      (throw (ex-info (trs "Must select with all PKs.")
-                      {:status-code 400, :given-pks (sort given-pks) :table-pks (sort (keys table-pks))})))
-    (map
-      (fn [pk-value]
-        (into [:and]
-              (mapv (fn [[pk-name value]]
-                      [:= [:field (get table-pks pk-name) nil] value])
-                    pk-value)))
-      pk-values)))
+(defn- check-consistent-pk-value-map-keys [pk-value-maps]
+  (let [all-pk-value-map-column-sets (reduce
+                                      (fn [seen-set pk-value-map]
+                                        (conj seen-set (set (keys pk-value-map))))
+                                      #{}
+                                      pk-value-maps)]
+    (when (> (count all-pk-value-map-column-sets) 1)
+      (throw (ex-info (tru "Some rows have different sets of columns: {0}"
+                           (str/join ", " (map pr-str all-pk-value-map-column-sets)))
+                      {:status-code 400, :column-sets all-pk-value-map-column-sets})))))
+
+(defn- check-pk-value-maps-have-expected-columns [pk-value-maps expected-columns]
+  ;; we only actually need to check the first map since [[check-consistent-pk-value-map-keys]] should have checked that
+  ;; they all have the same keys.
+  (let [expected-columns (set expected-columns)
+        actual-columns   (set (keys (first pk-value-maps)))]
+    (when-not (= actual-columns expected-columns)
+      (throw (ex-info (tru "Rows have the wrong columns: expected {0}, but got {1}" expected-columns actual-columns)
+                      {:status-code 400, :expected-columns expected-columns, :actual-columns actual-columns})))))
+
+(defn- check-unique-pk-value-maps [pk-value-maps]
+  (when-let [repeats (->> pk-value-maps
+                          frequencies
+                          (filter (comp #(> % 1) val))
+                          set
+                          not-empty)]
+    (throw (ex-info (tru "Rows need to be unique: repeated rows {0}"
+                         (->> repeats
+                              (map #(format "%s × %d" (pr-str (key %)) (val %)))
+                              (str/join ", ")))
+                    {:status-code 400, :repeated-rows repeats}))))
+
+(defn- pk-value-maps->honeysql-filter-clauses [table-id pk-value-maps]
+  (let [pk-name->id (db/select-field->id
+                      :name Field
+                      {:where [:and
+                               [:= :table_id table-id]
+                               (mdb.u/isa :semantic_type :type/PK)]})]
+    ;; validate the keys in `pk-value-maps`
+    (check-consistent-pk-value-map-keys pk-value-maps)
+    (check-pk-value-maps-have-expected-columns pk-value-maps (keys pk-name->id))
+    (check-unique-pk-value-maps pk-value-maps)
+    ;; now build the HoneySQL filter clauses
+    (for [pk-value-map pk-value-maps]
+      (into [:and]
+            (for [[pk-name value] pk-value-map]
+              [:=
+               [:field (get pk-name->id pk-name) nil]
+               value])))))
 
 (defmethod actions/perform-action!* [:sql-jdbc :bulk/delete]
-  [driver _action {database-id :id, :as database} {:keys [table-id pk-values]}]
-  (log/tracef "Deleting %d rows" (count pk-values))
+  [driver _action {database-id :id, :as database} {:keys [table-id pk-value-maps]}]
+  (log/tracef "Deleting %d rows" (count pk-value-maps))
   (with-jdbc-transaction [conn database-id]
     (transduce
       (m/indexed)
@@ -356,4 +390,4 @@
            [errors]
            (catch Throwable e
              [(conj errors {:index row-index, :error (ex-message e)})]))))
-      (pk-values->filters table-id pk-values))))
+      (pk-value-maps->honeysql-filter-clauses table-id pk-value-maps))))
