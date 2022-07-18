@@ -12,7 +12,7 @@ import HoursMinutesInput from "../DatePicker/HoursMinutesInput";
 
 import moment from "moment";
 import cx from "classnames";
-import { TimeLabel } from "./SpecificDatePicker.styled";
+import { CalendarIcon, TimeLabel } from "./SpecificDatePicker.styled";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
@@ -94,8 +94,7 @@ export default class SpecificDatePicker extends Component {
           />
 
           {calendar && (
-            <Icon
-              className="mr1 text-purple-hover cursor-pointer"
+            <CalendarIcon
               name="calendar"
               onClick={() =>
                 this.setState({ showCalendar: !this.state.showCalendar })
