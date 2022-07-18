@@ -45,6 +45,7 @@ import {
   Footer,
   ListItemContainer,
   ListItemContent,
+  BulkSelectionControlContainer,
   RowActionsContainer,
   RowActionButtonContainer,
   LIST_ITEM_VERTICAL_GAP,
@@ -232,9 +233,16 @@ function List({
   const hasEditButton = settings["buttons.edit"];
   const hasDeleteButton = settings["buttons.delete"];
 
-  const hasBulkSelection = useMemo(() => {
+  const canSelectForBulkAction = useMemo(() => {
     return (
       !bulkActions.cardId || bulkActions.cardId === connectedDashCard?.card_id
+    );
+  }, [connectedDashCard, bulkActions]);
+
+  const isSelectingItems = useMemo(() => {
+    return (
+      bulkActions.cardId === connectedDashCard?.card_id &&
+      bulkActions.selectedRowIndexes.length > 0
     );
   }, [connectedDashCard, bulkActions]);
 
@@ -243,23 +251,25 @@ function List({
       const isSelected = bulkActions.selectedRowIndexes.includes(rowIndex);
 
       return (
-        <CheckBox
-          checked={isSelected}
-          onClick={stopClickPropagation}
-          onChange={event => {
-            const isSelectedNow = event.target.checked;
-            if (isSelectedNow) {
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore
-              bulkActions.addRow(card.id, rowIndex);
-            } else {
-              bulkActions.removeRow(rowIndex);
-            }
-          }}
-        />
+        <BulkSelectionControlContainer isSelectingItems={isSelectingItems}>
+          <CheckBox
+            checked={isSelected}
+            onClick={stopClickPropagation}
+            onChange={event => {
+              const isSelectedNow = event.target.checked;
+              if (isSelectedNow) {
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
+                bulkActions.addRow(card.id, rowIndex);
+              } else {
+                bulkActions.removeRow(rowIndex);
+              }
+            }}
+          />
+        </BulkSelectionControlContainer>
       );
     },
-    [card, bulkActions],
+    [card, bulkActions, isSelectingItems],
   );
 
   const renderListItemCell = useCallback(
@@ -290,7 +300,7 @@ function List({
         const [firstColumnIndex, secondColumnIndex, thirdColumnIndex] = left;
         return (
           <ListItemContent>
-            {hasBulkSelection && renderBulkSelectionControl(rowIndex)}
+            {canSelectForBulkAction && renderBulkSelectionControl(rowIndex)}
             {renderListItemCell(rowIndex, firstColumnIndex, "left")}
             <div>
               {renderListItemCell(rowIndex, secondColumnIndex, "left")}
@@ -302,7 +312,7 @@ function List({
 
       return (
         <ListItemContent>
-          {hasBulkSelection && renderBulkSelectionControl(rowIndex)}
+          {canSelectForBulkAction && renderBulkSelectionControl(rowIndex)}
           {left.map(columnIndex =>
             renderListItemCell(rowIndex, columnIndex, "left"),
           )}
@@ -312,7 +322,7 @@ function List({
     [
       settings,
       listColumnIndexes,
-      hasBulkSelection,
+      canSelectForBulkAction,
       renderListItemCell,
       renderBulkSelectionControl,
     ],
