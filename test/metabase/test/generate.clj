@@ -210,7 +210,9 @@
                                   :insert! {:model DashboardCardSeries}}
    :dimension                    {:prefix  :dim
                                   :spec    ::dimension
-                                  :insert! {:model Dimension}}
+                                  :insert! {:model Dimension}
+                                  :relations {:field_id                [:field :id]
+                                              :human_readable_field_id [:field :id]}}
    :field                        {:prefix      :field
                                   :spec        ::field
                                   :insert!     {:model Field}
@@ -271,6 +273,10 @@
 
     ;; Field names need to be unique within their table. This enforces it, and appends junk to names if needed.
     (= :field ent-type)
+    (update :name unique-name)
+
+    ;; [Field ID, Dimension name] pairs need to be unique. This enforces it, and appends junk to names if needed.
+    (= :dimension ent-type)
     (update :name unique-name)
 
     (and (:description visit-val) (coin-toss 0.2))

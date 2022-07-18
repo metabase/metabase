@@ -218,7 +218,7 @@ describe("scenarios > collection defaults", () => {
       cy.findByText("Orders");
     });
 
-    describe("nested collections with revoked parent access", () => {
+    describe.skip("nested collections with revoked parent access", () => {
       const { first_name, last_name } = nocollection;
       const revokedUsersPersonalCollectionName = `${first_name} ${last_name}'s Personal Collection`;
 
@@ -258,25 +258,19 @@ describe("scenarios > collection defaults", () => {
         cy.signIn("nocollection");
       });
 
-      it("should not render collections in items list if user doesn't have collection access (metabase#16555)", () => {
-        cy.visit("/collection/root");
-        // Since this user doesn't have access rights to the root collection, it should render empty
-        cy.findByTestId("collection-empty-state");
-      });
-
-      it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
+      it("should see a child collection in a sidebar even with revoked access to its parents (metabase#14114, metabase#16555, metabase#20716)", () => {
         cy.visit("/");
 
         navigationSidebar().within(() => {
-          cy.findByText("Our analytics").click();
-        });
-
-        navigationSidebar().within(() => {
-          cy.findByText("Our analytics");
-          cy.findByText("Child");
+          cy.findByText("Our analytics").should("not.exist");
           cy.findByText("Parent").should("not.exist");
+          cy.findByText("Child");
           cy.findByText("Your personal collection");
         });
+
+        // Even if user tries to navigate directly to the root collection, we have to make sure its content is not shown
+        cy.visit("/collection/root");
+        cy.findByText("You don't have permissions to do that.");
       });
 
       it("should be able to choose a child collection when saving a question (metabase#14052)", () => {

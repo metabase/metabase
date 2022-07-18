@@ -102,8 +102,7 @@
         (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
                         Collection [collection-2 {:name "Collection 2"}]]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
-          (is (= ["Our analytics"
-                  "Collection 1"
+          (is (= ["Collection 1"
                   "Rasta Toucan's Personal Collection"]
                  (->> (mt/user-http-request :rasta :get 200 "collection")
                       (filter (fn [{collection-name :name}]
@@ -1161,12 +1160,6 @@
 
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
 
-(defn- api-get-root-collection-ancestors
-  "Call the API with Rasta to fetch the 'Root' Collection and put the `:effective_` results in a nice format for the
-  tests below."
-  [& additional-get-params]
-  (format-ancestors (mt/user-http-request :rasta :get 200 "collection/root")))
-
 (defn- api-get-root-collection-children
   [& additional-get-params]
   (mt/boolean-ids-and-timestamps (:data (apply mt/user-http-request :rasta :get 200 "collection/root/items" additional-get-params))))
@@ -1183,20 +1176,12 @@
   (testing "GET /api/collection/root/items"
     (testing "Do top-level collections show up as children of the Root Collection?"
       (with-collection-hierarchy [a b c d e f g]
-        (testing "ancestors"
-          (is (= {:effective_ancestors []
-                  :effective_location  nil}
-                 (api-get-root-collection-ancestors))))
         (testing "children"
           (is (= (map collection-item ["A" "Rasta Toucan's Personal Collection"])
                  (remove-non-test-collections (api-get-root-collection-children)))))))
 
     (testing "...and collapsing children should work for the Root Collection as well"
       (with-collection-hierarchy [b d e f g]
-        (testing "ancestors"
-          (is (= {:effective_ancestors []
-                  :effective_location  nil}
-                 (api-get-root-collection-ancestors))))
         (testing "children"
           (is (= (map collection-item ["B" "D" "F" "Rasta Toucan's Personal Collection"])
                  (remove-non-test-collections (api-get-root-collection-children)))))))
@@ -1204,10 +1189,6 @@
     (testing "does `archived` work on Collections as well?"
       (with-collection-hierarchy [a b d e f g]
         (db/update! Collection (u/the-id a) :archived true)
-        (testing "ancestors"
-          (is (= {:effective_ancestors []
-                  :effective_location  nil}
-                 (api-get-root-collection-ancestors :archived true))))
         (testing "children"
           (is (= [(collection-item "A")]
                  (remove-non-test-collections (api-get-root-collection-children :archived true)))))))
@@ -1430,26 +1411,6 @@
                (-> (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id collection))
                                          {:name "foo"})
                    :authority_level)))))
-    (testing "Admins can mark a tree as official"
-      (mt/with-temp* [Collection [collection]
-                      Collection [sub-collection]
-                      Collection [sub-sub-collection]]
-        (collection/move-collection! sub-collection (collection/children-location collection))
-        (collection/move-collection! sub-sub-collection
-                                     ;; needs updated path so reload
-                                     (collection/children-location (Collection (:id sub-collection))))
-        (is (= "official"
-               (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                         {:authority_level "official" :update_collection_tree_authority_level true})
-                   :authority_level)))
-        ;; descended and marked sub collections
-        (is (= :official (db/select-one-field :authority_level Collection :id (:id sub-collection))))
-        (is (= :official (db/select-one-field :authority_level Collection :id (:id sub-sub-collection))))
-        (testing "Non-admins cannot apply types to the whole tree"
-          (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
-                                {:name "new name" :update_collection_tree_authority_level true})
-          (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
-                                {:name "new name" :authority_level nil :update_collection_tree_authority_level true}))))
     (testing "check that users without write perms aren't allowed to update a Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]

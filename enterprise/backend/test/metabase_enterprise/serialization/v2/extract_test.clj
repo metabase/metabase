@@ -2,8 +2,10 @@
   (:require [clojure.test :refer :all]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Table User]]
-            [metabase.models.serialization.base :as serdes.base]))
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field Metric
+                                     NativeQuerySnippet Table User]]
+            [metabase.models.serialization.base :as serdes.base])
+  (:import java.time.ZonedDateTime))
 
 (defn- select-one [model-name where]
   (first (into [] (serdes.base/raw-reducible-query model-name {:where where}))))
@@ -123,12 +125,15 @@
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c1-id]))]
           (is (= {:serdes/meta   [{:model "Card" :id c1-eid}]
-                  :table         ["My Database" nil "Schemaless Table"]
+                  :table_id      ["My Database" nil "Schemaless Table"]
                   :creator_id    "mark@direstrai.ts"
                   :collection_id coll-eid
                   :dataset_query "{\"json\": \"string values\"}"} ; Undecoded, still a string.
-                 (select-keys ser [:serdes/meta :table :creator_id :collection_id :dataset_query])))
+                 (select-keys ser [:serdes/meta :table_id :creator_id :collection_id :dataset_query])))
           (is (not (contains? ser :id)))
+          (is (instance? ZonedDateTime (:created_at ser)))
+          (is (or (nil? (:updated_at ser))
+                  (instance? ZonedDateTime (:updated_at ser))))
 
           (testing "cards depend on their Table and Collection"
             (is (= #{[{:model "Database"   :id "My Database"}
@@ -138,11 +143,11 @@
 
         (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c2-id]))]
           (is (= {:serdes/meta   [{:model "Card" :id c2-eid}]
-                  :table         ["My Database" "PUBLIC" "Schema'd Table"]
+                  :table_id      ["My Database" "PUBLIC" "Schema'd Table"]
                   :creator_id    "mark@direstrai.ts"
                   :collection_id coll-eid
                   :dataset_query "{}"} ; Undecoded, still a string.
-                 (select-keys ser [:serdes/meta :table :creator_id :collection_id :dataset_query])))
+                 (select-keys ser [:serdes/meta :table_id :creator_id :collection_id :dataset_query])))
           (is (not (contains? ser :id)))
 
           (testing "cards depend on their Table and Collection"
@@ -183,3 +188,132 @@
         (testing "dashboard cards whose dashboards are in personal collections are returned for the :user"
           (is (= #{dc1-eid dc2-eid}
                  (by-model "DashboardCard" (serdes.base/extract-all "DashboardCard" {:user dave-id})))))))))
+
+(deftest dimensions-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [;; Simple case: a singular field, no human-readable field.
+                       Database   [{db-id        :id}        {:name "My Database"}]
+                       Table      [{no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}]
+                       Field      [{email-id     :id}        {:name "email" :table_id no-schema-id}]
+                       Dimension  [{dim1-id      :id
+                                    dim1-eid     :entity_id} {:name     "Vanilla Dimension"
+                                                              :field_id email-id
+                                                              :type     "internal"}]
+
+                       ;; Advanced case: :field_id is the foreign key, :human_readable_field_id the real target field.
+                       Table      [{this-table   :id}        {:name        "Schema'd Table"
+                                                              :db_id       db-id
+                                                              :schema      "PUBLIC"}]
+                       Field      [{fk-id        :id}        {:name "foreign_id" :table_id this-table}]
+                       Table      [{other-table  :id}        {:name        "Foreign Table"
+                                                              :db_id       db-id
+                                                              :schema      "PUBLIC"}]
+                       Field      [{target-id    :id}        {:name "real_field" :table_id other-table}]
+                       Dimension  [{dim2-id      :id
+                                    dim2-eid     :entity_id} {:name     "Foreign Dimension"
+                                                              :type     "external"
+                                                              :field_id fk-id
+                                                              :human_readable_field_id target-id}]]
+      (testing "vanilla user-created dimensions"
+        (let [ser (serdes.base/extract-one "Dimension" {} (select-one "Dimension" [:= :id dim1-id]))]
+          (is (= {:serdes/meta             [{:model "Dimension" :id dim1-eid}]
+                  :field_id                ["My Database" nil "Schemaless Table" "email"]
+                  :human_readable_field_id nil}
+                 (select-keys ser [:serdes/meta :field_id :human_readable_field_id])))
+          (is (not (contains? ser :id)))
+
+          (testing "depend on the one Field"
+            (is (= #{[{:model "Database"   :id "My Database"}
+                      {:model "Table"      :id "Schemaless Table"}
+                      {:model "Field"      :id "email"}]}
+                   (set (serdes.base/serdes-dependencies ser)))))))
+
+      (testing "foreign key dimensions"
+        (let [ser (serdes.base/extract-one "Dimension" {} (select-one "Dimension" [:= :id dim2-id]))]
+          (is (= {:serdes/meta             [{:model "Dimension" :id dim2-eid}]
+                  :field_id                ["My Database" "PUBLIC" "Schema'd Table" "foreign_id"]
+                  :human_readable_field_id ["My Database" "PUBLIC" "Foreign Table"  "real_field"]}
+                 (select-keys ser [:serdes/meta :field_id :human_readable_field_id])))
+          (is (not (contains? ser :id)))
+
+          (testing "depend on both Fields"
+            (is (= #{[{:model "Database"   :id "My Database"}
+                      {:model "Schema"     :id "PUBLIC"}
+                      {:model "Table"      :id "Schema'd Table"}
+                      {:model "Field"      :id "foreign_id"}]
+                     [{:model "Database"   :id "My Database"}
+                      {:model "Schema"     :id "PUBLIC"}
+                      {:model "Table"      :id "Foreign Table"}
+                      {:model "Field"      :id "real_field"}]}
+                   (set (serdes.base/serdes-dependencies ser))))))))))
+
+(deftest metrics-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User       [{ann-id       :id}        {:first_name "Ann"
+                                                              :last_name  "Wilson"
+                                                              :email      "ann@heart.band"}]
+                       Database   [{db-id        :id}        {:name "My Database"}]
+                       Table      [{no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}]
+                       Metric     [{m1-id        :id
+                                    m1-eid       :entity_id} {:name       "My Metric"
+                                                              :creator_id ann-id
+                                                              :table_id   no-schema-id}]]
+      (testing "metrics"
+        (let [ser (serdes.base/extract-one "Metric" {} (select-one "Metric" [:= :id m1-id]))]
+          (is (= {:serdes/meta             [{:model "Metric" :id m1-eid :label "My Metric"}]
+                  :table_id                ["My Database" nil "Schemaless Table"]
+                  :creator_id              "ann@heart.band"}
+                 (select-keys ser [:serdes/meta :table_id :creator_id])))
+          (is (not (contains? ser :id)))
+
+          (testing "depend on the Table"
+            (is (= #{[{:model "Database"   :id "My Database"}
+                      {:model "Table"      :id "Schemaless Table"}]}
+                   (set (serdes.base/serdes-dependencies ser))))))))))
+
+(deftest native-query-snippets-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User               [{ann-id       :id}        {:first_name "Ann"
+                                                                      :last_name  "Wilson"
+                                                                      :email      "ann@heart.band"}]
+                       Collection         [{coll-id     :id
+                                            coll-eid    :entity_id}  {:name              "Shared Collection"
+                                                                      :personal_owner_id nil
+                                                                      :namespace         :snippets}]
+                       NativeQuerySnippet [{s1-id       :id
+                                            s1-eid      :entity_id}  {:name          "Snippet 1"
+                                                                      :collection_id coll-id
+                                                                      :creator_id    ann-id}]
+                       NativeQuerySnippet [{s2-id       :id
+                                            s2-eid      :entity_id}  {:name          "Snippet 2"
+                                                                      :collection_id nil
+                                                                      :creator_id    ann-id}]]
+      (testing "native query snippets"
+        (testing "can belong to :snippets collections"
+          (let [ser (serdes.base/extract-one "NativeQuerySnippet" {} (select-one "NativeQuerySnippet" [:= :id s1-id]))]
+            (is (= {:serdes/meta             [{:model "NativeQuerySnippet" :id s1-eid :label "Snippet 1"}]
+                    :collection_id           coll-eid
+                    :creator_id              "ann@heart.band"}
+                   (select-keys ser [:serdes/meta :collection_id :creator_id])))
+            (is (not (contains? ser :id)))
+            (is (instance? ZonedDateTime (:created_at ser)))
+            (is (or (nil? (:updated_at ser))
+                    (instance? ZonedDateTime (:updated_at ser))))
+
+            (testing "and depend on the Collection"
+              (is (= #{[{:model "Collection" :id coll-eid}]}
+                     (set (serdes.base/serdes-dependencies ser)))))))
+
+        (testing "or can be outside collections"
+          (let [ser (serdes.base/extract-one "NativeQuerySnippet" {} (select-one "NativeQuerySnippet" [:= :id s2-id]))]
+            (is (= {:serdes/meta             [{:model "NativeQuerySnippet" :id s2-eid :label "Snippet 2"}]
+                    :collection_id           nil
+                    :creator_id              "ann@heart.band"}
+                   (select-keys ser [:serdes/meta :collection_id :creator_id])))
+            (is (not (contains? ser :id)))
+            (is (instance? ZonedDateTime (:created_at ser)))
+            (is (or (nil? (:updated_at ser))
+                    (instance? ZonedDateTime (:updated_at ser))))
+
+            (testing "and has no deps"
+              (is (empty? (serdes.base/serdes-dependencies ser))))))))))

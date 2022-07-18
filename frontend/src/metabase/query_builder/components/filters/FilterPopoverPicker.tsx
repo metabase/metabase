@@ -15,6 +15,7 @@ type Props = {
   minWidth?: number | null;
   maxWidth?: number | null;
   primaryColor?: string;
+  checkedColor?: string;
 };
 
 export default class FilterPopoverPicker extends React.Component<Props> {
@@ -42,6 +43,7 @@ export default class FilterPopoverPicker extends React.Component<Props> {
       minWidth,
       maxWidth,
       primaryColor,
+      checkedColor,
     } = this.props;
 
     const setValue = (index: number, value: any) => {
@@ -80,6 +82,7 @@ export default class FilterPopoverPicker extends React.Component<Props> {
         minWidth={minWidth}
         maxWidth={maxWidth}
         isSidebar={isSidebar}
+        checkedColor={checkedColor}
       />
     );
   }

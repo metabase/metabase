@@ -133,6 +133,12 @@ export const StyledQuestionDataSource = styled(QuestionDataSource)`
   }
 `;
 
+export const AdHocLeftSideRoot = styled.div`
+  ${breakpointMaxSmall} {
+    padding: 0 1.25rem;
+  }
+`;
+
 export const SavedQuestionLeftSideRoot = styled.div`
   ${SavedQuestionHeaderButtonContainer} {
     transition: all 400ms ease;
@@ -182,6 +188,7 @@ export const ViewHeaderActionPanel = styled.div`
   display: flex;
   align-items: center;
   margin-left: auto;
+  gap: 0.5rem;
 
   ${breakpointMaxSmall} {
     margin-left: 0;
@@ -191,8 +198,17 @@ export const ViewHeaderActionPanel = styled.div`
     margin-top: 1rem;
     padding: 0.5rem 2.5rem 0 2rem;
   }
+`;
 
+export const ViewHeaderIconButtonContainer = styled.div`
   ${Button.Root} {
-    margin-left: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    height: 2rem;
+    width: 2rem;
+
+    &:hover {
+      color: ${color("brand")};
+      background-color: ${color("bg-medium")};
+    }
   }
 `;

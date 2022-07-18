@@ -1,15 +1,27 @@
 import styled from "@emotion/styled";
 
+import { breakpointMaxSmall } from "metabase/styled-components/theme";
+
 import { color } from "metabase/lib/colors";
 import EditableText from "metabase/core/components/EditableText";
 
-export const DashboardInfoSidebarRoot = styled.div`
+export const DashboardInfoSidebarRoot = styled.aside`
   width: 360px;
   padding: 0 2rem 0.5rem;
   background: ${color("white")};
   border-left: 1px solid ${color("border")};
   height: 100%;
   overflow-y: auto;
+  box-sizing: border-box;
+
+  ${breakpointMaxSmall} {
+    position: absolute;
+    width: 90%;
+    right: 0px;
+    z-index: 2;
+    height: auto;
+    border-bottom: 1px solid ${color("border")};
+  }
 `;
 
 export const HistoryHeader = styled.h3`

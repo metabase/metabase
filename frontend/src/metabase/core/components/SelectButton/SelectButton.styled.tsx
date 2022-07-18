@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-
+import { space } from "metabase/styled-components/theme";
 interface SelectButtonRootProps {
   hasValue: boolean;
   fullWidth: boolean;
@@ -27,7 +27,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
       hasValue && highlighted ? color("brand") : color("border-dark")};
   background-color: ${({ hasValue, highlighted }) =>
     hasValue && highlighted ? color("brand") : color("white")};
-  border-radius: 8px;
+  border-radius: ${space(1)};
   font-weight: 700;
   min-width: 104px;
   transition: all 200ms;

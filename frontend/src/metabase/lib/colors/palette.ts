@@ -35,6 +35,7 @@ export const colors: ColorPalette = {
   "bg-light": "#F9FBFC",
   "bg-white": "#FFFFFF",
   "bg-yellow": "#FFFCF2",
+  "bg-night": "#42484E",
   shadow: "rgba(0,0,0,0.08)",
   border: "#EEECEC",
   "border-dark": "#C9CED3",
@@ -47,6 +48,8 @@ export const colors: ColorPalette = {
   "saturated-yellow": "#F9CF48",
 };
 /* eslint-enable no-color-literals */
+
+export const originalColors = { ...colors };
 
 const aliases: Record<string, (palette: ColorPalette) => string> = {
   dashboard: palette => color("brand", palette),
@@ -109,4 +112,16 @@ export const tint = (c: string, f: number = 0.125) => {
 export const shade = (c: string, f: number = 0.125) => {
   const value = Color(color(c));
   return value.lightness(value.lightness() - f * 100).hex();
+};
+
+export const hueRotate = (c: string) => {
+  return Color(color(c)).hue() - Color(color(c, originalColors)).hue();
+};
+
+export const isLight = (c: string) => {
+  return Color(color(c)).isLight();
+};
+
+export const isDark = (c: string) => {
+  return Color(color(c)).isDark();
 };

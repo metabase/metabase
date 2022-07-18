@@ -7,6 +7,9 @@
    "Dashboard"
    "DashboardCard"
    "Database"
+   "Dimension"
    "Field"
+   "Metric"
+   "NativeQuerySnippet"
    "Setting"
    "Table"])

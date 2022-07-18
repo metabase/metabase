@@ -49,6 +49,7 @@ type Props = {
   isNew?: boolean;
   isSidebar?: boolean;
   isTopLevel?: boolean;
+  checkedColor?: string;
 };
 
 type State = {
@@ -167,6 +168,7 @@ export default class FilterPopover extends Component<Props, State> {
       isTopLevel,
       showCustom,
       dateShortcutOptions,
+      checkedColor,
     } = this.props;
     const { filter, editingFilter, choosingField } = this.state;
 
@@ -312,6 +314,7 @@ export default class FilterPopover extends Component<Props, State> {
                     minWidth={isSidebar ? null : MIN_WIDTH}
                     maxWidth={isSidebar ? null : MAX_WIDTH}
                     primaryColor={primaryColor}
+                    checkedColor={checkedColor}
                   />
                 </>
               )}

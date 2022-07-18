@@ -154,15 +154,6 @@ describe("scenarios > question > settings", () => {
        * Helper functions related to THIS test only
        */
 
-      function getSidebarColumns() {
-        return cy
-          .findByText("Click and drag to change their order")
-          .scrollIntoView()
-          .should("be.visible")
-          .parent()
-          .find(".cursor-grab");
-      }
-
       function reloadResults() {
         cy.icon("play").last().click();
       }
@@ -221,6 +212,28 @@ describe("scenarios > question > settings", () => {
 
       sidebar().findByText(newColumnTitle);
     });
+
+    it("should respect symbol settings for all currencies", () => {
+      openOrdersTable();
+      cy.contains("Settings").click();
+
+      getSidebarColumns()
+        .eq("4")
+        .within(() => {
+          cy.icon("gear").click();
+        });
+
+      cy.findByText("Normal").click();
+      cy.findByText("Currency").click();
+
+      cy.findByText("US Dollar").click();
+      cy.findByText("Bitcoin").click();
+
+      cy.findByText("In every table cell").click();
+
+      cy.findByText("₿ 2.07");
+      cy.findByText("₿ 6.10");
+    });
   });
 
   describe("resetting state", () => {
@@ -247,3 +260,12 @@ describe("scenarios > question > settings", () => {
     });
   });
 });
+
+function getSidebarColumns() {
+  return cy
+    .findByText("Click and drag to change their order")
+    .scrollIntoView()
+    .should("be.visible")
+    .parent()
+    .find(".cursor-grab");
+}
