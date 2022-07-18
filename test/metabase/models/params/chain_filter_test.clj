@@ -555,3 +555,8 @@
                   (is (field-values/field-should-have-field-values? %myfield))
                   (is (#'chain-filter/use-cached-field-values? %myfield)))
                 (thunk)))))))))
+
+(deftest chain-filter-has-more-values-test
+  (testing "the `has_more_values` property should be correct\n"
+    (testing "has_more_values=false")
+    (testing "has_more_values=true")))

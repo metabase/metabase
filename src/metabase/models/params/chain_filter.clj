@@ -448,7 +448,12 @@
                                              ;;    (f metadata) -> ((map first) conj)
                                              ((map first) conj)))})]
         {:values          values
-         :has_more_values (= (count values) query-limit)})
+         ;; It's unlikely that we don't have a query-limit, but better safe than sorry and default it true
+         ;; so that calling chain-filter-search on the same field will search from DB.
+         :has_more_values (if (nil? query-limit)
+                            true
+                            (= (count values) query-limit))})
+
       (catch Throwable e
         (throw (ex-info (tru "Error executing chain filter query")
                         {:field-id    field-id

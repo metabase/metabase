@@ -51,6 +51,9 @@
       (classloader/require 'metabase.models.params.chain-filter)
       (let [{:keys [values has_more_values]} ((resolve 'metabase.models.params.chain-filter/unremapped-chain-filter)
                                               (:id field) constraints {})
+            ;; we have a hard limit for how many values we want to store in FieldValues,
+            ;; let's make sure we respect that limit here.
+            ;; For a more detailed docs on this limt check out [[field-values/distinct-values]]
             limited-values                   (field-values/take-by-length field-values/*total-max-length* values)]
        {:values          limited-values
         :has_more_values (or (> (count values)
