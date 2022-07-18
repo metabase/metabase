@@ -508,12 +508,12 @@ function isExtensionOfPreviousSearch(value, lastValue, options, maxResults) {
   );
 }
 
-function isSearchable(
+function isSearchable({
   fields,
   disableSearch,
   disablePKRemappingForSearch,
   valuesMode,
-) {
+}) {
   return (
     !disableSearch &&
     // search is available if:
@@ -558,7 +558,12 @@ function getTokenFieldPlaceholder({
   ) {
     return t`Search the list`;
   } else if (
-    isSearchable(fields, disableSearch, disablePKRemappingForSearch, valuesMode)
+    isSearchable({
+      fields,
+      disableSearch,
+      disablePKRemappingForSearch,
+      valuesMode,
+    })
   ) {
     return getSearchableTokenFieldPlaceholder(
       fields,
@@ -598,12 +603,12 @@ function renderOptions(
         return <EveryOptionState />;
       }
     } else if (
-      isSearchable(
+      isSearchable({
         fields,
         disableSearch,
         disablePKRemappingForSearch,
         valuesMode,
-      )
+      })
     ) {
       if (loadingState === "LOADING") {
         return <LoadingState />;
@@ -639,7 +644,12 @@ function getValuesMode(fields, disableSearch, disablePKRemappingForSearch) {
   }
 
   if (
-    isSearchable(fields, disableSearch, disablePKRemappingForSearch, undefined)
+    isSearchable({
+      fields,
+      disableSearch,
+      disablePKRemappingForSearch,
+      valuesMode: undefined,
+    })
   ) {
     return "search";
   }
