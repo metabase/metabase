@@ -36,6 +36,7 @@ export const colors: ColorPalette = {
   "bg-white": "#FFFFFF",
   "bg-yellow": "#FFFCF2",
   "bg-night": "#42484E",
+  "bg-error": "#ED6E6E55",
   shadow: "rgba(0,0,0,0.08)",
   border: "#EEECEC",
   "border-dark": "#C9CED3",
