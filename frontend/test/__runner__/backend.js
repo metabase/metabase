@@ -49,31 +49,30 @@ const BackendResource = createSharedResource("BackendResource", {
         `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
       ];
 
+      const databaseConfig = {
+        MB_DB_TYPE: "h2",
+        MB_DB_FILE: server.dbFile,
+        MB_JETTY_HOST: "0.0.0.0",
+        MB_JETTY_PORT: server.port,
+        MB_ENABLE_TEST_ENDPOINTS: "true",
+        MB_PREMIUM_EMBEDDING_TOKEN:
+          (process.env["MB_EDITION"] === "ee" &&
+            process.env["ENTERPRISE_TOKEN"]) ||
+          undefined,
+      };
+
+      const snowplowConfig = {
+        MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
+        MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
+      };
+
       server.process = spawn(
         "java",
         [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
         {
           env: {
-            MB_DB_TYPE: "h2",
-            MB_DB_FILE: server.dbFile,
-            MB_JETTY_HOST: "0.0.0.0",
-            MB_JETTY_PORT: server.port,
-            MB_ENABLE_TEST_ENDPOINTS: "true",
-            MB_PREMIUM_EMBEDDING_TOKEN:
-              (process.env["MB_EDITION"] === "ee" &&
-                process.env["ENTERPRISE_TOKEN"]) ||
-              undefined,
-            MB_USER_DEFAULTS: JSON.stringify({
-              token: "123456",
-              user: {
-                first_name: "Testy",
-                last_name: "McTestface",
-                email: "testy@metabase.test",
-                site_name: "Epic Team",
-              },
-            }),
-            MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
-            MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
+            ...databaseConfig,
+            ...snowplowConfig,
             PATH: process.env.PATH,
           },
           stdio:
