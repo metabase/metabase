@@ -351,9 +351,9 @@
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
 
-;; Metabase attempts to display all timestamps into either the local time of the server, or the :report-timezone 
-;; setting's value if it's set in the Admin console. We prefer to have timestamps displayed in the wall clock time
-;; of their respective timezones. The below methods accomplish that (somewhat hackily)
+;; Metabase attempts to display all timestamps into either the :report-timezone setting's value if it is set 
+;; or the timezone of the server. The below methods display timestamps in user's respective timezone to avoid
+;; timezone conversion for every user. ( The method accomplishes this somewhat hackily)
 
 (defn- read-timestamp-column-thunk [^ResultSet rs ^Integer i]
 	  (fn []
