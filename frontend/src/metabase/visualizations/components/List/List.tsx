@@ -352,7 +352,18 @@ function List({
         isDataApp && checkIsVisualizationClickable(clickObject);
 
       const onRowClick = () => {
-        onVisualizationClick(clickObject);
+        if (isSelectingItems) {
+          const isSelected = bulkActions.selectedRowIndexes.includes(rowIndex);
+          if (isSelected) {
+            bulkActions.removeRow(rowIndex);
+          } else {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            bulkActions.addRow(card.id, rowIndex);
+          }
+        } else {
+          onVisualizationClick(clickObject);
+        }
       };
 
       const onEditClick = (event: React.SyntheticEvent) => {
@@ -365,11 +376,13 @@ function List({
         event.stopPropagation();
       };
 
+      const canClick = isSelectingItems || isClickable;
+
       return (
         <ListItemContainer
           key={rowIndex}
           onClick={onRowClick}
-          disabled={!isClickable}
+          disabled={!canClick}
           ref={ref}
           data-testid="table-row"
         >
@@ -406,12 +419,15 @@ function List({
       );
     },
     [
+      card,
       data,
       settings,
       listColumnIndexes,
       hasEditButton,
       hasDeleteButton,
       isDataApp,
+      isSelectingItems,
+      bulkActions,
       checkIsVisualizationClickable,
       onVisualizationClick,
       renderListItemLeftPart,
