@@ -15,9 +15,6 @@ let port = 4000;
 const getPort = () => port++;
 
 const BackendResource = createSharedResource("BackendResource", {
-  getKey({ dbKey }) {
-    return dbKey || {};
-  },
   create({ dbKey }) {
     const dbFile = getDbFile();
     const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
@@ -128,7 +125,7 @@ async function isReady(host) {
 
 function createSharedResource(
   resourceName,
-  { defaultOptions, getKey, create, start, stop },
+  { defaultOptions, create, start, stop },
 ) {
   const entriesByKey = new Map();
   const entriesByResource = new Map();
@@ -146,7 +143,8 @@ function createSharedResource(
 
   return {
     get(options = defaultOptions) {
-      const key = getKey(options);
+      const dbKey = options;
+      const key = dbKey || {};
       let entry = entriesByKey.get(key);
       if (!entry) {
         entry = {
