@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -24,10 +24,10 @@ import Question from "metabase-lib/lib/Question";
 
 import {
   QuestionActionsDivider,
-  BookmarkButton,
-  AnimationStates,
   StrengthIndicator,
 } from "./QuestionActions.styled";
+import BookmarkToggle from "metabase/core/components/BookmarkToggle";
+import { ViewHeaderIconButtonContainer } from "./view/ViewHeader.styled";
 
 const HEADER_ICON_SIZE = 16;
 
@@ -76,13 +76,6 @@ const QuestionActions = ({
   isModerator,
   softReloadCard,
 }: Props) => {
-  const [animation, setAnimation] = useState<AnimationStates>(null);
-
-  const handleClickBookmark = () => {
-    handleBookmark();
-    setAnimation(isBookmarked ? "shrink" : "expand");
-  };
-  const bookmarkButtonColor = isBookmarked ? color("brand") : undefined;
   const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
 
   const infoButtonColor = isShowingQuestionInfoSidebar
@@ -203,25 +196,23 @@ const QuestionActions = ({
     <>
       <QuestionActionsDivider />
       <Tooltip tooltip={bookmarkTooltip}>
-        <BookmarkButton
-          animation={animation}
+        <BookmarkToggle
+          onCreateBookmark={handleBookmark}
+          onDeleteBookmark={handleBookmark}
           isBookmarked={isBookmarked}
-          onlyIcon
-          icon="bookmark"
-          iconSize={HEADER_ICON_SIZE}
-          onClick={handleClickBookmark}
-          color={bookmarkButtonColor}
         />
       </Tooltip>
       <Tooltip tooltip={t`More info`}>
-        <Button
-          onlyIcon
-          icon="info"
-          iconSize={HEADER_ICON_SIZE}
-          onClick={onInfoClick}
-          color={infoButtonColor}
-          data-testId="qb-header-info-button"
-        />
+        <ViewHeaderIconButtonContainer>
+          <Button
+            onlyIcon
+            icon="info"
+            iconSize={HEADER_ICON_SIZE}
+            onClick={onInfoClick}
+            color={infoButtonColor}
+            data-testId="qb-header-info-button"
+          />
+        </ViewHeaderIconButtonContainer>
       </Tooltip>
       <EntityMenu
         items={extraButtons}
