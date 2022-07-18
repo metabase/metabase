@@ -4,6 +4,8 @@ import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
+import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
+
 import { color, alpha } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
@@ -18,6 +20,8 @@ export const ViewHeaderContainer = styled(ViewSection)`
     flex-direction: column;
     align-items: start;
     padding: ${space(1)} 0;
+    ${({ isNavBarOpen }) =>
+      isNavBarOpen ? `margin-top: ${APP_SUBHEADER_HEIGHT};` : null}
   }
 `;
 
