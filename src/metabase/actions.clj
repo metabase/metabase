@@ -2,6 +2,7 @@
   "Code related to the new writeback Actions."
   (:require
    [clojure.spec.alpha :as s]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -285,6 +286,12 @@
 
 ;;;; Bulk actions
 
+(s/def :actions.args.crud.bulk.common/table-id
+  :actions.args/id)
+
+(s/def :actions.args.crud.bulk/common
+  (s/keys :req-un [:actions.args.crud.bulk.common/table-id]))
+
 ;;;; `:bulk/create`
 
 ;;; For `bulk/create` the request body is to `POST /api/action/:action-namespace/:action-name/:table-id` is just a
@@ -300,18 +307,52 @@
   [_action {:keys [database table-id], rows :arg, :as _arg-map}]
   {:database database, :table-id table-id, :rows rows})
 
-(s/def :actions.args.crud.bulk.create/table-id
-  :actions.args/id)
-
 (s/def :actions.args.crud.bulk.create/rows
   (s/cat :rows (s/+ (s/map-of keyword? any?))))
 
 (s/def :actions.args.crud.bulk/create
   (s/merge
    :actions.args/common
-   (s/keys :req-un [:actions.args.crud.bulk.create/table-id
-                    :actions.args.crud.bulk.create/rows])))
+   :actions.args.crud.bulk/common
+   (s/keys :req-un [:actions.args.crud.bulk.create/rows])))
 
 (defmethod action-arg-map-spec :bulk/create
   [_action]
   :actions.args.crud.bulk/create)
+
+;;;; `:bulk/delete`
+
+;;; For `bulk/delete` the request body is to `POST /api/action/:action-namespace/:action-name/:table-id` is just a
+;;; vector of rows but the API endpoint itself calls [[perform-action!]] with
+;;;
+;;;    {:database <database-id>, :table-id <table-id>, :arg <request-body>}
+;;;
+;;; and we transform this to
+;;;
+;;;     {:database <database-id>, :table-id <table-id>, :pk-value-maps <request-body>}
+;;;
+;;; Request-body should look like:
+;;;
+;;;    ;; single pk, two rows
+;;;    [{"ID": 76},
+;;;     {"ID": 77}]
+;;;
+;;;    ;; multiple pks, one row
+;;;    [{"PK1": 1, "PK2": "john"}]
+
+(defmethod normalize-action-arg-map :bulk/delete
+  [_action {:keys [database table-id], pk-value-maps :arg, :as _arg-map}]
+  {:database database, :table-id table-id, :pk-value-maps (map #(m/map-keys name %) pk-value-maps)})
+
+(s/def :actions.args.crud.bulk.delete/pk-value-maps
+  (s/coll-of (s/map-of string? any?)))
+
+(s/def :actions.args.crud.bulk/delete
+  (s/merge
+    :actions.args/common
+    :actions.args.crud.bulk/common
+    (s/keys :req-un [:actions.args.crud.bulk.delete/pk-value-maps])))
+
+(defmethod action-arg-map-spec :bulk/delete
+  [_action]
+  :actions.args.crud.bulk/delete)
