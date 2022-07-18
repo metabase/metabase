@@ -398,7 +398,7 @@
           (mt/with-model-cleanup [Card]
             (is (schema= {:enable_embedding (s/eq false)
                           s/Keyword         s/Any}
-                         (mt/user-http-request :crowberto :post 202 "card" {:name                   "My Card"
+                         (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
                                                                             :display                :table
                                                                             :dataset_query          (mt/mbql-query venues)
                                                                             :visualization_settings {}
@@ -2212,7 +2212,7 @@
                             (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))
             (when fail?
               (testing "\nNo-op update should be allowed."
-                (is (some? (mt/user-http-request user :put 202 (str "card/" card-id) {:is_write initial-value})))))))))))
+                (is (some? (mt/user-http-request user :put 200 (str "card/" card-id) {:is_write initial-value})))))))))))
 
 (defn- test-create-is-write-card [{:keys [user query status-code result-fn]
                                    :or   {user  :crowberto
@@ -2307,7 +2307,7 @@
                test-create-is-write-card]]
       ;; TODO -- Setting `is_write` also needs to create the `Action` and `QueryAction`. Unsetting should delete those
       ;; rows. Add tests for these once that code is in place.
-      (f {:status-code 202
+      (f {:status-code 200
           :result-fn            (fn [result]
                                   (is (map? result)))}))))
 (defn- do-with-persistence-setup [f]
