@@ -54,6 +54,10 @@ function getBoundingClientRectSafe(ref: React.RefObject<HTMLBaseElement>) {
   return ref.current?.getBoundingClientRect?.() ?? ({} as DOMRect);
 }
 
+function stopClickPropagation(event: React.SyntheticEvent) {
+  event.stopPropagation();
+}
+
 interface ListVizDispatchProps {
   updateRow: (payload: UpdateRowFromDataAppPayload) => void;
   deleteRow: (payload: DeleteRowFromDataAppPayload) => void;
@@ -241,6 +245,7 @@ function List({
       return (
         <CheckBox
           checked={isSelected}
+          onClick={stopClickPropagation}
           onChange={event => {
             const isSelectedNow = event.target.checked;
             if (isSelectedNow) {
