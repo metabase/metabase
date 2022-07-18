@@ -107,20 +107,6 @@ export const getQuestion = ({
 export const getQuestionUrl = getQuestionArgs =>
   Urls.question(null, { hash: getQuestion(getQuestionArgs) });
 
-export const typeToLinkClass = {
-  dashboard: "text-green",
-  metric: "text-brand",
-  segment: "text-purple",
-  table: "text-purple",
-};
-
-export const typeToBgClass = {
-  dashboard: "bg-green",
-  metric: "bg-brand",
-  segment: "bg-purple",
-  table: "bg-purple",
-};
-
 // little utility function to determine if we 'has' things, useful
 // for handling entity empty states
 export const has = entity => entity && entity.length > 0;
