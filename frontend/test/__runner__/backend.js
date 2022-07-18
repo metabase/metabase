@@ -64,7 +64,6 @@ const BackendResource = createSharedResource("BackendResource", {
               (process.env["MB_EDITION"] === "ee" &&
                 process.env["ENTERPRISE_TOKEN"]) ||
               undefined,
-            MB_FIELD_FILTER_OPERATORS_ENABLED: "true",
             MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
             MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
             PATH: process.env.PATH,
