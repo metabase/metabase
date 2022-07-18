@@ -199,10 +199,6 @@
   background-color: var(--color-bg-light);
 }
 
-.bg-gold {
-  background-color: var(--color-accent4);
-}
-
 .bg-purple,
 .bg-purple-hover:hover {
   background-color: var(--color-accent2);
