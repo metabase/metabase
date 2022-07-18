@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import _ from "underscore";
 import { jt } from "ttag";
+
 import { isFK, isPK, TYPE, isa } from "metabase/lib/types";
 import { isLocalField } from "metabase/lib/query/field_ref";
 import { isDate, isNumeric } from "metabase/lib/schema_metadata";
@@ -17,7 +17,7 @@ function getFiltersForColumn(column) {
       { name: "=", operator: "=" },
       { name: "≠", operator: "!=" },
     ];
-  } else if (!_.any(INVALID_TYPES, type => isa(column.base_type, type))) {
+  } else if (!INVALID_TYPES.some(type => isa(column.base_type, type))) {
     return [
       { name: "=", operator: "=" },
       { name: "≠", operator: "!=" },

@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import { TYPE, isa } from "metabase/lib/types";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
@@ -16,7 +15,7 @@ export default function ColumnFilterDrill({ question, clicked }) {
     !query.isEditable() ||
     !clicked ||
     !clicked.column ||
-    _.any(INVALID_TYPES, type => isa(clicked.column.base_type, type)) ||
+    INVALID_TYPES.some(type => isa(clicked.column.base_type, type)) ||
     clicked.column.field_ref == null ||
     clicked.value !== undefined
   ) {
