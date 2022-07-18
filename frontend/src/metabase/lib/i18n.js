@@ -58,15 +58,20 @@ function updateMomentStartOfWeek() {
 // if the start of week Setting is updated, update the moment start of week
 MetabaseSettings.on("start-of-week", updateMomentStartOfWeek);
 
-export function setLocalization(translationsObject) {
+function setLanguage(translationsObject) {
   const locale = translationsObject.headers.language;
-
   addMsgIds(translationsObject);
 
-  // add and set locale with C-3PO
+  // add and set locale with ttag
   addLocale(locale, translationsObject);
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useLocale(locale);
+}
+
+function setLocalization(translationsObject) {
+  const locale = translationsObject.headers.language;
+
+  setLanguage(translationsObject);
 
   updateMomentLocale(locale);
   updateMomentStartOfWeek(locale);
@@ -116,16 +121,22 @@ function addMsgIds(translationsObject) {
 // Runs `f` with the current language for ttag set to the instance (site) locale rather than the user locale, then
 // restores the user locale. This can be used for translating specific strings into the instance language; e.g. for
 // parameter values in dashboard text cards that should be translated the same for all users viewing the dashboard.
-export function withInstanceLocalization(f) {
+export function withInstanceLanguage(f) {
   if (window.MetabaseSiteLocalization) {
-    setLocalization(window.MetabaseSiteLocalization);
+    setLanguage(window.MetabaseSiteLocalization);
   }
   try {
     return f();
   } finally {
     if (window.MetabaseUserLocalization) {
-      setLocalization(window.MetabaseUserLocalization);
+      setLanguage(window.MetabaseUserLocalization);
     }
+  }
+}
+
+export function siteLocale() {
+  if (window.MetabaseSiteLocalization) {
+    return window.MetabaseSiteLocalization.headers.language;
   }
 }
 

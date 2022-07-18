@@ -6,16 +6,22 @@
                   [java-time :as t]
                   [metabase.mbql.normalize :as mbql.normalize]
                   [metabase.shared.util.i18n :refer [trs]]
-                  [metabase.util.date-2.parse.builder :as b])]
+                  [metabase.util.date-2 :as u.date]
+                  [metabase.util.date-2.parse.builder :as b]
+                  [metabase.util.i18n.impl :as i18n])]
        :cljs
        [(:require ["moment" :as moment]
                   [clojure.string :as str]
                   [metabase.mbql.normalize :as mbql.normalize]
                   [metabase.shared.util.i18n :refer [trs]])]))
 
+(def ^:private ^:dynamic *locale*
+  "The current locale to use for date formatting, as a string."
+  nil)
+
 (defn- formatted-list
   [values]
-  (str (str/join ", " (butlast values)) " " (trs "and") " " (last values)))
+  (str (str/join ", " (butlast values)) (trs " and ") (last values)))
 
 (defmulti formatted-value
   "Formats a value appropriately for inclusion in a text card, based on its type. Does not do any escaping.
@@ -25,14 +31,16 @@
 
 (defmethod formatted-value :date/single
   [_ value]
-  #?(:cljs (.format (moment value) "MMMM D, YYYY")
-     :clj (t/format "MMMM d, yyyy" (t/local-date value))))
+  #?(:cljs (let [m (.locale (moment value) *locale*)]
+             (.format m "MMMM D, YYYY"))
+     :clj  (u.date/format "MMMM d, yyyy" (u.date/parse value) *locale*)))
 
 (defmethod formatted-value :date/month-year
   [_ value]
-  #?(:cljs (let [m (moment value "YYYY-MM")]
+  (def value value)
+  #?(:cljs (let [m (.locale (moment value "YYYY-MM") *locale*)]
              (if (.isValid m) (.format m "MMMM, YYYY") ""))
-     :clj (t/format "MMMM, yyyy" (t/year-month value))))
+     :clj  (u.date/format "MMMM, yyyy" (u.date/parse value) *locale*)))
 
 #?(:clj
    (def ^:private quarter-formatter-in
@@ -46,9 +54,9 @@
 
 (defmethod formatted-value :date/quarter-year
   [_ value]
-  #?(:cljs (let [m (moment value "[Q]Q-YYYY")]
+  #?(:cljs (let [m (.locale (moment value "[Q]Q-YYYY") *locale*)]
              (if (.isValid m) (.format m "[Q]Q, YYYY") ""))
-     :clj (.format quarter-formatter-out
+     :clj (.format (.withLocale quarter-formatter-out (i18n/locale *locale*))
                    (.parse quarter-formatter-in value))))
 
 (defmethod formatted-value :date/range
@@ -149,11 +157,14 @@
 (defn ^:export substitute_tags
   "Given the context of a text dashboard card, replace all template tags in the text with their corresponding values,
   formatted and escaped appropriately."
-  [text tag->param]
-  (let [tag->param #?(:clj tag->param
-                      :cljs (js->clj tag->param))
-        tag->normalized-param (reduce-kv (fn [acc tag param]
-                                           (assoc acc tag (normalize-parameter param)))
-                                         {}
-                                         tag->param)]
-     (str/replace text template-tag-regex (partial replacement tag->normalized-param))))
+  ([text tag->param]
+   (substitute_tags text tag->param "en"))
+  ([text tag->param locale]
+   (let [tag->param #?(:clj tag->param
+                       :cljs (js->clj tag->param))
+         tag->normalized-param (reduce-kv (fn [acc tag param]
+                                            (assoc acc tag (normalize-parameter param)))
+                                          {}
+                                          tag->param)]
+     (binding [*locale* locale]
+       (str/replace text template-tag-regex (partial replacement tag->normalized-param))))))

@@ -8,7 +8,7 @@ import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
 
-import { withInstanceLocalization } from "metabase/lib/i18n";
+import { withInstanceLanguage, siteLocale } from "metabase/lib/i18n";
 
 import { substitute_tags } from "cljs/metabase.shared.parameters.parameters";
 
@@ -135,8 +135,8 @@ export default class Text extends Component {
     if (!_.isEmpty(parametersByTag)) {
       // Temporarily override language to use site language, so that all viewers of a dashboard see parameter values
       // translated the same way.
-      content = withInstanceLocalization(() =>
-        substitute_tags(content, parametersByTag),
+      content = withInstanceLanguage(() =>
+        substitute_tags(content, parametersByTag, siteLocale()),
       );
     }
 
