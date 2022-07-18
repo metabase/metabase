@@ -1,6 +1,5 @@
 :root {
   --selection-color: var(--color-text-light);
-  --filter-color: var(--color-accent7);
 }
 
 #react_qb_viz {
@@ -364,14 +363,6 @@
   color: inherit;
 }
 
-.FilterPopover .ColumnarSelector-row--selected,
-.FilterPopover .PopoverHeader-item.selected {
-  color: var(--filter-color) !important;
-}
-.FilterPopover .ColumnarSelector-row:hover {
-  background-color: var(--filter-color) !important;
-}
-
 /* VIEW SECTION */
 
 .View-section-aggregation,
@@ -520,11 +511,6 @@
 
 .PopoverBody.AddToDashboard {
   min-width: 25em;
-}
-
-.List-item--segment .Icon,
-.List-item--segment .List-item-title {
-  color: var(--filter-color);
 }
 
 .List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
