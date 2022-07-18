@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const fs = require("fs-promise");
+const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { spawn } = require("child_process");
@@ -43,7 +43,7 @@ const BackendResource = createSharedResource("BackendResource", {
   async start(server) {
     if (!server.process) {
       if (server.dbKey !== server.dbFile) {
-        await fs.copy(`${server.dbKey}.mv.db`, `${server.dbFile}.mv.db`);
+        fs.copyFileSync(`${server.dbKey}.mv.db`, `${server.dbFile}.mv.db`);
       }
 
       server.process = spawn(
@@ -121,7 +121,7 @@ const BackendResource = createSharedResource("BackendResource", {
     }
     try {
       if (server.dbFile) {
-        await fs.unlink(`${server.dbFile}.mv.db`);
+        fs.unlinkSync(`${server.dbFile}.mv.db`);
       }
     } catch (e) {}
   },

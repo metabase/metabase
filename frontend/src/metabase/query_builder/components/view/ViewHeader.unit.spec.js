@@ -55,6 +55,7 @@ const SAVED_QUESTION = {
   name: "Q1",
   description: null,
   collection_id: null,
+  can_write: true,
 };
 
 function getQuestion(card) {
@@ -356,11 +357,13 @@ describe("ViewHeader", () => {
           xhrMock.teardown();
         });
 
-        it("opens details sidebar on question name click", () => {
+        it("calls save function on title update", () => {
           const { onSave } = setup({ question });
           const title = screen.getByTestId("saved-question-header-title");
-          userEvent.type(title, "New Title");
-          fireEvent.blur(title);
+          userEvent.clear(title);
+          userEvent.type(title, "New Title{enter}");
+          expect(title).toHaveValue("New Title");
+          title.blur();
           expect(onSave).toHaveBeenCalled();
         });
 
@@ -536,5 +539,12 @@ describe("View Header | Saved native question", () => {
   it("doesn't offer to explore results if nested queries are disabled", () => {
     setupSavedNative({ settings: { enableNestedQueries: false } });
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
+  });
+});
+
+describe("View Header | Read only permissions", () => {
+  it("should disable the input field for the question title", () => {
+    setup({ question: getSavedGUIQuestion({ can_write: false }) });
+    expect(screen.queryByTestId("saved-question-header-title")).toBeDisabled();
   });
 });

@@ -96,6 +96,7 @@ class FieldValuesWidgetInner extends Component {
     style: {},
     formatOptions: {},
     maxWidth: 500,
+    disableList: false,
     disableSearch: false,
     showOptionsInPopover: false,
   };
@@ -254,6 +255,7 @@ class FieldValuesWidgetInner extends Component {
       parameter,
       prefix,
       disableSearch,
+      disableList,
       disablePKRemappingForSearch,
       formatOptions,
       placeholder,
@@ -290,11 +292,13 @@ class FieldValuesWidgetInner extends Component {
     });
 
     const isLoading = loadingState === "LOADING";
-    const usesListField = hasList({
-      fields,
-      disableSearch,
-      options,
-    });
+    const usesListField =
+      !disableList &&
+      hasList({
+        fields,
+        disableSearch,
+        options,
+      });
 
     return (
       <div

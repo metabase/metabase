@@ -76,7 +76,7 @@
           ;; if there was an error fetching the token, log it and return a generic message about the
           ;; token being invalid. This message will get displayed in the Settings page in the admin panel so
           ;; we do not want something complicated
-          (catch clojure.lang.ExceptionInfo e
+          (catch Exception e
             (log/error e (trs "Error fetching token status:"))
             (let [body (u/ignore-exceptions (some-> (ex-data e) :body (json/parse-string keyword)))]
               (or

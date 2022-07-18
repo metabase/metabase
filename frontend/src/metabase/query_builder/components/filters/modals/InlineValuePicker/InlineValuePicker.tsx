@@ -1,10 +1,10 @@
 import React, { useCallback, useMemo } from "react";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-import Field from "metabase-lib/lib/metadata/Field";
 import { t } from "ttag";
 
+import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Field from "metabase-lib/lib/metadata/Field";
+
 import {
-  OperatorSelector,
   ArgumentSelector,
   ValuesPickerContainer,
   BetweenContainer,
@@ -83,6 +83,7 @@ function ValuesInput({
         fields={[field]}
         multi={!!filter?.operator()?.multi}
         showOptionsInPopover
+        disableList
       />
     );
   }

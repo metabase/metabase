@@ -186,7 +186,7 @@
 
 (defn- exports [query]
   (into #{} (mbql.u/match (dissoc query :source-query :source-metadata :joins)
-              [(_ :guard #{:field :expression :aggregation}) _ (_ :guard (every-pred map? ::position))])))
+              [(_ :guard #{:field :expression :aggregation-options}) _ (_ :guard (every-pred map? ::position))])))
 
 (defn- join-with-alias [{:keys [joins]} join-alias]
   (some (fn [join]
@@ -216,12 +216,16 @@
         (when-let [field-name (let [[_ id-or-name] field-clause]
                                 (when (string? id-or-name)
                                   id-or-name))]
-          (when-let [expression-exports (not-empty (filter (partial mbql.u/is-clause? :expression) all-exports))]
-            (some
-             (fn [[_ expression-name :as expression-clause]]
-               (when (= expression-name field-name)
-                 expression-clause))
-             expression-exports))))))
+          (or (some
+               (fn [[_ expression-name :as expression-clause]]
+                 (when (= expression-name field-name)
+                   expression-clause))
+               (filter (partial mbql.u/is-clause? :expression) all-exports))
+              (some
+               (fn [[_ _ opts :as aggregation-options-clause]]
+                 (when (= (::source-alias opts) field-name)
+                   aggregation-options-clause))
+               (filter (partial mbql.u/is-clause? :aggregation-options) all-exports)))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
@@ -347,6 +351,7 @@
         unique-alias (unique-alias-fn position original-ag-name)]
     [:aggregation-options wrapped-ag-clause (assoc opts
                                                    :name           unique-alias
+                                                   ::source-alias  original-ag-name
                                                    ::position      position
                                                    ::desired-alias unique-alias)]))
 
