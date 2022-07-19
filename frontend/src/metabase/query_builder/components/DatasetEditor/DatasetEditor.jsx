@@ -24,6 +24,7 @@ import {
 
 import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
+import { checkCanBeModel } from "metabase/lib/data-modeling/utils";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
@@ -32,6 +33,7 @@ import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import EditorTabs from "./EditorTabs";
 import { TabHintToast } from "./TabHintToast";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 import {
   Root,
@@ -60,6 +62,7 @@ const propTypes = {
   onCancelDatasetChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
   runQuestionQuery: PropTypes.func.isRequired,
+  onOpenModal: PropTypes.func.isRequired,
 
   // Native editor sidebars
   isShowingTemplateTagsEditor: PropTypes.bool.isRequired,
@@ -182,6 +185,7 @@ function DatasetEditor(props) {
     onSave,
     handleResize,
     runQuestionQuery,
+    onOpenModal,
   } = props;
 
   // It's important to reload the query to refresh metadata when coming from the model page
@@ -318,9 +322,14 @@ function DatasetEditor(props) {
   }, [setQueryBuilderMode, onCancelDatasetChanges]);
 
   const handleSave = useCallback(async () => {
-    await onSave(dataset.card(), { rerunQuery: true });
-    setQueryBuilderMode("view");
-  }, [dataset, onSave, setQueryBuilderMode]);
+    if (checkCanBeModel(dataset)) {
+      await onSave(dataset.card(), { rerunQuery: true });
+      setQueryBuilderMode("view");
+    } else {
+      onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);
+      throw new Error(t`Variables in models aren't supported yet`);
+    }
+  }, [dataset, onSave, setQueryBuilderMode, onOpenModal]);
 
   const handleColumnSelect = useCallback(
     column => {
