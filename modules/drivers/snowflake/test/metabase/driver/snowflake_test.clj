@@ -16,7 +16,7 @@
             [metabase.util :as u]
             [toucan.db :as db]))
 
-(deftest ddl-statements-test
+(deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
     (testing "Create DB DDL statements"
       (is (= "DROP DATABASE IF EXISTS \"v3_test-data\"; CREATE DATABASE \"v3_test-data\";"
@@ -29,7 +29,7 @@
                "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
                 \"last_login\" TIMESTAMP_LTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
                "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"categories\";"
-               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT NOT NULL,
                 PRIMARY KEY (\"id\")) ;"
                "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"venues\";"
                "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
