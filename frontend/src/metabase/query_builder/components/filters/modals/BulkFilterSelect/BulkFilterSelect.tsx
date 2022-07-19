@@ -36,7 +36,7 @@ export const BulkFilterSelect = ({
   customTrigger,
   handleChange,
   handleClear,
-}: BulkFilterSelectProps): JSX.Element => {
+}: BulkFilterSelectProps) => {
   const name = useMemo(() => {
     return filter?.displayName({
       includeDimension: false,
@@ -48,6 +48,17 @@ export const BulkFilterSelect = ({
     return getNewFilter(query, dimension);
   }, [query, dimension]);
 
+  const hideArgumentSelector = [
+    "is-null",
+    "not-null",
+    "is-empty",
+    "not-empty",
+  ].includes(filter?.operatorName());
+
+  if (hideArgumentSelector) {
+    return null;
+  }
+
   return (
     <TippyPopoverWithTrigger
       sizeToFit
@@ -56,14 +67,16 @@ export const BulkFilterSelect = ({
           ? customTrigger
           : ({ onClick, visible }) => (
               <SelectFilterButton
-                hasValue={filter != null}
+                hasValue={!!filter?.isValid()}
                 highlighted
                 aria-label={dimension.displayName()}
                 onClick={onClick}
                 onClear={handleClear}
                 isActive={visible}
               >
-                {name || t`Filter by ${dimension.displayName()}`}
+                {filter?.isValid()
+                  ? name
+                  : t`Filter by ${dimension.displayName()}`}
               </SelectFilterButton>
             )
       }
@@ -74,6 +87,7 @@ export const BulkFilterSelect = ({
           isNew={filter == null}
           showCustom={false}
           showFieldPicker={false}
+          showOperatorSelector={false}
           dateShortcutOptions={dateShortcutOptions}
           onChangeFilter={handleChange}
           onClose={closePopover}

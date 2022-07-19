@@ -379,8 +379,7 @@ const sidebar = handleActions(
       next: () => DEFAULT_SIDEBAR,
     },
     [SET_EDITING_DASHBOARD]: {
-      next: (state, { payload: isEditing }) =>
-        isEditing ? state : DEFAULT_SIDEBAR,
+      next: () => DEFAULT_SIDEBAR,
     },
     [REMOVE_PARAMETER]: {
       next: () => DEFAULT_SIDEBAR,

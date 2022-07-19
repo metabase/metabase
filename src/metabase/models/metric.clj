@@ -105,7 +105,7 @@
     [(assoc base :label (:name metric))]))
 
 (defmethod serdes.base/extract-one "Metric"
-  [_ _ metric]
+  [_model-name _opts metric]
   (-> (serdes.base/extract-one-basics "Metric" metric)
       (update :table_id   serdes.util/export-table-fk)
       (update :creator_id serdes.util/export-fk-keyed 'User :email)))

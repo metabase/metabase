@@ -198,17 +198,20 @@
       format-string)
     format-string))
 
-(def ^:private month-style-overrides
-  "Overrides for the date-style in a column's viz settings if :unit is :month."
-  {"m/d/yyyy"     "m/yyyy"
-   "yyyy/m/d"     "yyyy/m"
-   "mmmm d, yyyy" "mmmm, yyyy"})
+(defn- month-style
+  "For a given date format, returns the format to use in exports if :unit is :month"
+  [date-format]
+  (case date-format
+    "m/d/yyyy" "m/yyyy"
+    "yyyy/m/d" "yyyy/m"
+    ;; Default for all other styles
+    "mmmm, yyyy"))
 
 (defn- date-format
   [format-settings unit]
   (let [base-style (str/lower-case (::mb.viz/date-style format-settings "mmmm d, yyyy"))
         unit-style (case unit
-                     :month (get month-style-overrides base-style)
+                     :month (month-style base-style)
                      :year "yyyy"
                      base-style)]
     (->> unit-style

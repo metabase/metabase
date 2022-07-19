@@ -44,6 +44,7 @@ type Props = {
 
   noCommitButton?: boolean;
   showFieldPicker?: boolean;
+  showOperatorSelector?: boolean;
   dateShortcutOptions?: DateShortcutOptions;
   showCustom?: boolean;
   isNew?: boolean;
@@ -163,6 +164,7 @@ export default class FilterPopover extends Component<Props, State> {
       style,
       query,
       showFieldPicker,
+      showOperatorSelector,
       fieldPickerTitle,
       isSidebar,
       isTopLevel,
@@ -304,6 +306,7 @@ export default class FilterPopover extends Component<Props, State> {
                     onFilterChange={this.handleFilterChange}
                     onBack={onBack}
                     showFieldPicker={showFieldPicker}
+                    forceShowOperatorSelector={showOperatorSelector}
                   />
                   <FilterPopoverPicker
                     className={isSidebar ? "p1" : "px1 pt1 pb1"}

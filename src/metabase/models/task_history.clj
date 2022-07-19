@@ -1,11 +1,16 @@
 (ns metabase.models.task-history
-  (:require [cheshire.generate :refer [add-encoder encode-map]]
+  (:require [cheshire.core :as json]
+            [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.tools.logging :as log]
             [java-time :as t]
+            [metabase.analytics.snowplow :as snowplow]
+            [metabase.api.common :refer [*current-user-id*]]
+            [metabase.models.database :refer [Database]]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -37,10 +42,30 @@
       (perms/application-perms-path :monitoring)
       "/")})
 
+(defn- task->snowplow-event
+  [task]
+  (let [task-details (:task_details task)]
+   (merge {:task_id      (:id task)
+           :task_name    (:task task)
+           :duration     (:duration task)
+           :task_details (json/generate-string task-details)
+           :started_at   (u.date/format (:started_at task))
+           :ended_at     (u.date/format (:ended_at task))}
+          (when-let [db-id (:db_id task)]
+            {:db_id     db-id
+             :db_engine (db/select-one-field :engine Database :id db-id)}))))
+
+(defn- post-insert
+  [task]
+  (u/prog1 task
+    (snowplow/track-event! ::snowplow/new-task-history *current-user-id* (task->snowplow-event <>))))
+
 (u/strict-extend (class TaskHistory)
   models/IModel
   (merge models/IModelDefaults
-         {:types (constantly {:task_details :json})})
+         {:types      (constantly {:task_details :json})
+          :post-insert post-insert})
+
   mi/IObjectPermissions
   (merge mi/IObjectPermissionsDefaults
          {:can-read?         (partial mi/current-user-has-full-permissions? :read)

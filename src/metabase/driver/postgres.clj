@@ -13,7 +13,7 @@
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.ddl.postgres :as ddl.postgres]
+            [metabase.driver.postgres.ddl :as postgres.ddl]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -37,7 +37,7 @@
            metabase.util.honeysql_extensions.Identifier))
 
 (comment
-  ddl.postgres/keep-me)
+  postgres.ddl/keep-me)
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
