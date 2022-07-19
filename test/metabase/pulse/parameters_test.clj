@@ -6,11 +6,11 @@
 
 (deftest value-string-test
   (testing "If a filter has multiple values, they are concatenated into a comma-separated string"
-    (is (= "CA, NY"
+    (is (= "CA, NY and NJ"
            (params/value-string (-> test-dashboard :parameters first)))))
 
-  (testing "If a filter has a single default value, it is returned unmodified"
-    (is (= "Q1-2021"
+  (testing "If a filter has a single default value, it is formatted appropriately"
+    (is (= "Q1, 2021"
            (params/value-string (-> test-dashboard :parameters second))))))
 
 (deftest dashboard-url-test

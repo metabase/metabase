@@ -7,7 +7,8 @@
                   [metabase.shared.util.i18n :refer [trs]]
                   [metabase.util.date-2 :as u.date]
                   [metabase.util.date-2.parse.builder :as b]
-                  [metabase.util.i18n.impl :as i18n.impl])]
+                  [metabase.util.i18n.impl :as i18n.impl])
+        (:import java.time.format.DateTimeFormatter)]
        :cljs
        [(:require ["moment" :as moment]
                   [clojure.string :as str]
@@ -44,12 +45,10 @@
 
 (defmethod formatted-value :date/quarter-year
   [_ locale value]
-  (def locale locale)
-  (def value value)
   #?(:cljs (let [m (.locale (moment value "[Q]Q-YYYY") locale)]
              (if (.isValid m) (.format m "[Q]Q, YYYY") ""))
-     :clj (.format (.withLocale quarter-formatter-out (i18n.impl/locale locale))
-                   (.parse quarter-formatter-in value))))
+     :clj (.format (.withLocale ^DateTimeFormatter quarter-formatter-out (i18n.impl/locale locale))
+                   (.parse ^DateTimeFormatter quarter-formatter-in value))))
 
 (defmethod formatted-value :date/range
   [_ locale value]
@@ -92,7 +91,7 @@
   on the values."
   [values]
   (if (= (count values) 1)
-    (str first values)
+    (str (first values))
     (str (str/join ", " (butlast values)) (trs " and ") (last values))))
 
 (defmethod formatted-value :default
@@ -120,7 +119,7 @@
     (if value
       (try (-> (formatted-value tyype locale value)
                escape-chars)
-           (catch Throwable _
+           (catch #?(:clj Throwable :cljs js/Error) _
              ;; If we got an exception (most likely during date parsing/formatting), fallback to the default
              ;; implementation of formatted-value
              (formatted-value :default locale value)))

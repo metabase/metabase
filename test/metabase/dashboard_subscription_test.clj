@@ -317,8 +317,8 @@
                   :attachments
                   [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
                              {:type "section",
-                              :fields [{:type "mrkdwn", :text "*State*\nCA, NY"}
-                                       {:type "mrkdwn", :text "*Quarter and Year*\nQ1-2021"}]}
+                              :fields [{:type "mrkdwn", :text "*State*\nCA and NY"}
+                                       {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
                              {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
                    {:title           card-name
                     :rendered-info   {:attachments false, :content true, :render/text true},
