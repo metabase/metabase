@@ -6,6 +6,7 @@ import { createAction } from "redux-actions";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
 import Utils from "metabase/lib/utils";
+import Snippets from "metabase/entities/snippets";
 
 import {
   getNativeEditorCursorOffset,
@@ -143,10 +144,13 @@ export const setTemplateTag = createThunkAction(
         },
       );
 
+      const snippets = Snippets.selectors.getList(getState());
       return assoc(
         updatedTagsCard,
         "parameters",
-        getTemplateTagParameters(getTemplateTagsForParameters(updatedTagsCard)),
+        getTemplateTagParameters(
+          getTemplateTagsForParameters(updatedTagsCard, snippets),
+        ),
       );
     };
   },

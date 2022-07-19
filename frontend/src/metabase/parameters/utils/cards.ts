@@ -55,10 +55,13 @@ export function getTemplateTagParameters(
   tags: TemplateTag[],
 ): ParameterWithTarget[] {
   return tags
-    .filter(
-      tag =>
-        tag.type != null && (tag["widget-type"] || tag.type !== "dimension"),
-    )
+    .filter(tag => {
+      return (
+        tag.type != null &&
+        (tag["widget-type"] || tag.type !== "dimension") &&
+        !tag.name.startsWith("snippet:")
+      );
+    })
     .map(getTemplateTagParameter);
 }
 
@@ -89,7 +92,10 @@ export function getSnippetsTemplateTags(card: Card, snippets: any[]) {
   return [];
 }
 
-export function getTemplateTagsForParameters(card: Card, snippets = null) {
+export function getTemplateTagsForParameters(
+  card: Card,
+  snippets: any[] | null,
+) {
   const templateTags: TemplateTag[] =
     card &&
     card.dataset_query &&
@@ -98,18 +104,21 @@ export function getTemplateTagsForParameters(card: Card, snippets = null) {
       ? Object.values(card.dataset_query.native["template-tags"])
       : [];
 
-  const filteredTags = templateTags.filter(
+  const templateTagParameters = templateTags.filter(
     // this should only return template tags that define a parameter of the card
     tag => tag.type !== "card" && tag.type !== "snippet",
   );
 
-  const snippetTags = snippets ? getSnippetsTemplateTags(card, snippets) : [];
-
-  return filteredTags.concat(
-    snippetTags.filter(snippetTag => {
-      return !filteredTags.find(tag => tag.name === snippetTag.name);
-    }),
+  const templateTagParameterNames = new Set(
+    templateTagParameters.map(tag => tag.name),
   );
+
+  const snippetTags = snippets ? getSnippetsTemplateTags(card, snippets) : [];
+  const uniqueSnippetTags = snippetTags.filter(
+    tag => !templateTagParameterNames.has(tag.name),
+  );
+
+  return [...templateTagParameters, ...uniqueSnippetTags];
 }
 
 export function getParametersFromCard(
@@ -123,7 +132,7 @@ export function getParametersFromCard(
     return card.parameters;
   }
 
-  const tags = getTemplateTagsForParameters(card);
+  const tags = getTemplateTagsForParameters(card, null);
   return getTemplateTagParameters(tags);
 }
 
