@@ -10,14 +10,12 @@ const fetch = require("isomorphic-fetch");
 const generateTempDbPath = () =>
   path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
 
-let port = 4000;
-const getPort = () => port++;
+const port = 4000;
 
 const BackendResource = createSharedResource("BackendResource", {
   create({ dbKey }) {
     const dbFile = generateTempDbPath();
     const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
-    const port = getPort();
 
     return {
       dbKey: absoluteDbKey,
