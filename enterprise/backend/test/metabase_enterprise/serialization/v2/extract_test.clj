@@ -1,6 +1,5 @@
 (ns metabase-enterprise.serialization.v2.extract-test
   (:require [clojure.test :refer :all]
-            [java-time :as t]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field Metric
