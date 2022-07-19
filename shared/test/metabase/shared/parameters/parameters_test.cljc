@@ -168,15 +168,15 @@
      "July 6\\, 2022 \\- July 9\\, 2022")
 
    (t/testing "Date values are formatted using the locale passed in as an argument"
-     (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param "zh"))
+     (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param "es"))
        "{{foo}}"
        {"foo" {:type :date/single :value "2022-07-09"}}
-       "七月 9\\, 2022"
+       "julio 9\\, 2022"
 
        "{{foo}}"
        {"foo" {:type :date/range :value "2022-01-06~2022-04-09"}}
-       "一月 6\\, 2022 \\- 四月 9\\, 2022"
+       "enero 6\\, 2022 \\- abril 9\\, 2022"
 
        "{{foo}}"
        {"foo" {:type :date/month-year :value "2019-08"}}
-       "八月\\, 2019"))))
+       "agosto\\, 2019"))))
