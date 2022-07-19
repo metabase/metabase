@@ -33,8 +33,6 @@ import {
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
 
-import cx from "classnames";
-
 const mapStateToProps = (state, props) => {
   return {
     isBookmarked: getIsBookmarked(state, props),
@@ -299,17 +297,12 @@ class DashboardHeader extends Component {
           >
             <div>
               <Tooltip tooltip={t`Add a filter`}>
-                <a
+                <DashboardHeaderButton
                   key="parameters"
-                  className={cx("text-brand-hover", {
-                    "text-brand": isAddParameterPopoverOpen,
-                  })}
                   onClick={showAddParameterPopover}
                 >
-                  <DashboardHeaderButton>
-                    <Icon name="filter" />
-                  </DashboardHeaderButton>
-                </a>
+                  <Icon name="filter" />
+                </DashboardHeaderButton>
               </Tooltip>
             </div>
           </TippyPopover>

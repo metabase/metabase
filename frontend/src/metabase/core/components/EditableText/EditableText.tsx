@@ -7,6 +7,7 @@ import React, {
   useLayoutEffect,
   useCallback,
   useState,
+  useRef,
 } from "react";
 
 import { usePrevious } from "metabase/hooks/use-previous";
@@ -49,6 +50,7 @@ const EditableText = forwardRef(function EditableText(
   const [submitValue, setSubmitValue] = useState(initialValue ?? "");
   const displayValue = inputValue ? inputValue : placeholder;
   const previousInitialValue = usePrevious(initialValue);
+  const submitOnBlur = useRef(true);
 
   useLayoutEffect(() => {
     if (previousInitialValue !== initialValue) {
@@ -56,29 +58,36 @@ const EditableText = forwardRef(function EditableText(
     }
   }, [previousInitialValue, initialValue]);
 
-  const handleBlur = useCallback(() => {
-    if (!isOptional && !inputValue) {
-      setInputValue(submitValue);
-    } else if (inputValue !== submitValue) {
-      setSubmitValue(inputValue);
-      onChange?.(inputValue);
-    }
-    onBlur?.();
-  }, [inputValue, submitValue, isOptional, onChange, onBlur]);
+  const handleBlur = useCallback(
+    e => {
+      if (!isOptional && !inputValue) {
+        setInputValue(submitValue);
+      } else if (inputValue !== submitValue && submitOnBlur.current) {
+        setSubmitValue(inputValue);
+        onChange?.(inputValue);
+      }
+      onBlur?.();
+    },
+    [inputValue, submitValue, isOptional, onChange, onBlur],
+  );
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
       setInputValue(event.currentTarget.value);
+      submitOnBlur.current = true;
     },
-    [],
+    [submitOnBlur],
   );
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Escape") {
         setInputValue(submitValue);
+        submitOnBlur.current = false;
+        event.currentTarget.blur();
       } else if (event.key === "Enter" && !isMultiline) {
         event.preventDefault();
+        submitOnBlur.current = true;
         event.currentTarget.blur();
       }
     },

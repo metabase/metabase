@@ -50,7 +50,7 @@ export const BulkFilterItem = ({
     [filter, onAddFilter, onChangeFilter],
   );
 
-  const changeOperator = (newOperator: any) => {
+  const changeOperator = (newOperator: string) => {
     handleChange((filter ?? newFilter).setOperator(newOperator));
   };
 
@@ -94,6 +94,7 @@ export const BulkFilterItem = ({
             operators={dimension.filterOperators(currentOperator)}
             iconName="list"
             tableName={tableName}
+            onChange={changeOperator}
           />
           <InlineCategoryPicker
             query={query}
@@ -150,6 +151,7 @@ export const BulkFilterItem = ({
             operators={dimension.filterOperators(currentOperator)}
             iconName={dimension.icon() ?? undefined}
             tableName={tableName}
+            onChange={changeOperator}
           />
           <BulkFilterSelect
             query={query}
