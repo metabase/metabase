@@ -9,16 +9,6 @@ const fetch = require("isomorphic-fetch");
 
 const BackendResource = createSharedResource();
 
-async function isReady(host) {
-  try {
-    const response = await fetch(`${host}/api/health`);
-    if (response.status === 200) {
-      return true;
-    }
-  } catch (e) {}
-  return false;
-}
-
 function createSharedResource() {
   return {
     createServer() {
@@ -100,6 +90,7 @@ function createSharedResource() {
           },
         );
       }
+
       if (!(await isReady(server.host))) {
         process.stdout.write(
           "Waiting for backend (host=" +
@@ -117,9 +108,20 @@ function createSharedResource() {
         }
         process.stdout.write("\n");
       }
+
       console.log(
         "Backend ready (host=" + server.host + " dbFile=" + server.dbFile + ")",
       );
+
+      async function isReady(host) {
+        try {
+          const response = await fetch(`${host}/api/health`);
+          if (response.status === 200) {
+            return true;
+          }
+        } catch (e) {}
+        return false;
+      }
     },
     async stop(server) {
       if (server.process) {
