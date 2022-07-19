@@ -8,6 +8,7 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
+import MetabaseSettings from "metabase/lib/settings";
 
 export const DATETIME_UNITS = [
   // "default",
@@ -64,6 +65,16 @@ export function computeFilterTimeRange(filter) {
   } else if (operator === "between" && values[0] && values[1]) {
     start = absolute(values[0]).startOf(bucketing);
     end = absolute(values[1]).endOf(bucketing);
+  }
+
+  if (values[0][2] === "week") {
+    const startOfWeek = MetabaseSettings.get("start-of-week");
+    const startOfWeekIndex = moment()
+      .localeData()
+      .weekdays()
+      .indexOf(startOfWeek.charAt(0).toUpperCase() + startOfWeek.slice(1));
+    start = start.clone().add(startOfWeekIndex, "day");
+    end = end.clone().add(startOfWeekIndex, "day");
   }
 
   return [start, end];
