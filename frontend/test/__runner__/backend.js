@@ -7,93 +7,7 @@ const { spawn } = require("child_process");
 
 const fetch = require("isomorphic-fetch");
 
-const BackendResource = createSharedResource({
-  async start(server) {
-    if (!server.process) {
-      const javaFlags = [
-        "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
-        "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
-        "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
-        "-Duser.timezone=US/Pacific",
-        `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
-      ];
-
-      const metabaseConfig = {
-        MB_DB_TYPE: "h2",
-        MB_DB_FILE: server.dbFile,
-        MB_JETTY_HOST: "0.0.0.0",
-        MB_JETTY_PORT: server.port,
-        MB_ENABLE_TEST_ENDPOINTS: "true",
-        MB_PREMIUM_EMBEDDING_TOKEN:
-          (process.env["MB_EDITION"] === "ee" &&
-            process.env["ENTERPRISE_TOKEN"]) ||
-          undefined,
-      };
-
-      /**
-       * This ENV is used for Cloud instances only, and is subject to change.
-       * As such, it is not documented anywhere in the code base!
-       *
-       * WARNING:
-       * Changing values here will break the related E2E test.
-       */
-      const userDefaults = {
-        MB_USER_DEFAULTS: JSON.stringify({
-          token: "123456",
-          user: {
-            first_name: "Testy",
-            last_name: "McTestface",
-            email: "testy@metabase.test",
-            site_name: "Epic Team",
-          },
-        }),
-      };
-
-      const snowplowConfig = {
-        MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
-        MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
-      };
-
-      server.process = spawn(
-        "java",
-        [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
-        {
-          env: {
-            ...metabaseConfig,
-            ...userDefaults,
-            ...snowplowConfig,
-            PATH: process.env.PATH,
-          },
-          stdio:
-            process.env["DISABLE_LOGGING"] ||
-            process.env["DISABLE_LOGGING_BACKEND"]
-              ? "ignore"
-              : "inherit",
-        },
-      );
-    }
-    if (!(await isReady(server.host))) {
-      process.stdout.write(
-        "Waiting for backend (host=" +
-          server.host +
-          " dbKey=" +
-          server.dbKey +
-          ")",
-      );
-      while (!(await isReady(server.host))) {
-        if (!process.env["CI"]) {
-          // disable for CI since it break's CircleCI's no_output_timeout
-          process.stdout.write(".");
-        }
-        await delay(500);
-      }
-      process.stdout.write("\n");
-    }
-    console.log(
-      "Backend ready (host=" + server.host + " dbKey=" + server.dbKey + ")",
-    );
-  },
-});
+const BackendResource = createSharedResource();
 
 async function isReady(host) {
   try {
@@ -105,7 +19,7 @@ async function isReady(host) {
   return false;
 }
 
-function createSharedResource({ start }) {
+function createSharedResource() {
   return {
     createServer() {
       const generateTempDbPath = () =>
@@ -123,7 +37,89 @@ function createSharedResource({ start }) {
       return server;
     },
     async start(server) {
-      return start(server);
+      if (!server.process) {
+        const javaFlags = [
+          "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
+          "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
+          "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
+          "-Duser.timezone=US/Pacific",
+          `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
+        ];
+
+        const metabaseConfig = {
+          MB_DB_TYPE: "h2",
+          MB_DB_FILE: server.dbFile,
+          MB_JETTY_HOST: "0.0.0.0",
+          MB_JETTY_PORT: server.port,
+          MB_ENABLE_TEST_ENDPOINTS: "true",
+          MB_PREMIUM_EMBEDDING_TOKEN:
+            (process.env["MB_EDITION"] === "ee" &&
+              process.env["ENTERPRISE_TOKEN"]) ||
+            undefined,
+        };
+
+        /**
+         * This ENV is used for Cloud instances only, and is subject to change.
+         * As such, it is not documented anywhere in the code base!
+         *
+         * WARNING:
+         * Changing values here will break the related E2E test.
+         */
+        const userDefaults = {
+          MB_USER_DEFAULTS: JSON.stringify({
+            token: "123456",
+            user: {
+              first_name: "Testy",
+              last_name: "McTestface",
+              email: "testy@metabase.test",
+              site_name: "Epic Team",
+            },
+          }),
+        };
+
+        const snowplowConfig = {
+          MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
+          MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
+        };
+
+        server.process = spawn(
+          "java",
+          [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
+          {
+            env: {
+              ...metabaseConfig,
+              ...userDefaults,
+              ...snowplowConfig,
+              PATH: process.env.PATH,
+            },
+            stdio:
+              process.env["DISABLE_LOGGING"] ||
+              process.env["DISABLE_LOGGING_BACKEND"]
+                ? "ignore"
+                : "inherit",
+          },
+        );
+      }
+      if (!(await isReady(server.host))) {
+        process.stdout.write(
+          "Waiting for backend (host=" +
+            server.host +
+            " dbFile=" +
+            server.dbFile +
+            ")",
+        );
+        while (!(await isReady(server.host))) {
+          if (!process.env["CI"]) {
+            // disable for CI since it break's CircleCI's no_output_timeout
+            process.stdout.write(".");
+          }
+          await delay(500);
+        }
+        process.stdout.write("\n");
+      }
+      console.log(
+        "Backend ready (host=" + server.host + " dbFile=" + server.dbFile + ")",
+      );
     },
     async stop(server) {
       if (server.process) {
