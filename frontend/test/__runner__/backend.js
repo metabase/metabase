@@ -126,7 +126,7 @@ function createSharedResource(resourceName, { defaultOptions, start, stop }) {
   const entriesByKey = new Map();
   const entriesByResource = new Map();
 
-  function kill(entry) {
+  function destroy(entry) {
     if (entriesByKey.has(entry.key)) {
       entriesByKey.delete(entry.key);
       entriesByResource.delete(entry.resource);
@@ -177,7 +177,7 @@ function createSharedResource(resourceName, { defaultOptions, start, stop }) {
     async stop(resource) {
       const entry = entriesByResource.get(resource);
       if (entry && --entry.references <= 0) {
-        await kill(entry);
+        await destroy(entry);
       }
     },
   };
