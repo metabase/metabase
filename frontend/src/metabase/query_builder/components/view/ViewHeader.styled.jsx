@@ -4,6 +4,8 @@ import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
+import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
+
 import { color, alpha } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
@@ -18,6 +20,8 @@ export const ViewHeaderContainer = styled(ViewSection)`
     flex-direction: column;
     align-items: start;
     padding: ${space(1)} 0;
+    ${({ isNavBarOpen }) =>
+      isNavBarOpen ? `margin-top: ${APP_SUBHEADER_HEIGHT};` : null}
   }
 `;
 
@@ -67,7 +71,7 @@ export const HeaderButton = styled(Button)`
   color: ${({ active }) => (active ? "white" : color("text-dark"))};
   &:hover {
     background-color: ${({ color = getDefaultColor() }) => alpha(color, 0.15)};
-    color: ${color};
+    color: ${({ color }) => color};
   }
   transition: background 300ms linear, border 300ms linear;
   > .Icon {

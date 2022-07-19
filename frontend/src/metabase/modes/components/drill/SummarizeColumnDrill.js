@@ -1,10 +1,15 @@
 /* eslint-disable react/prop-types */
 import { fieldRefForColumn } from "metabase/lib/dataset";
+import { t } from "ttag";
+import _ from "underscore";
+
+import { TYPE, isa } from "metabase/lib/types";
 import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
-import { t } from "ttag";
+
+const INVALID_TYPES = [TYPE.Structured];
 
 const AGGREGATIONS = {
   sum: {
@@ -26,7 +31,11 @@ const AGGREGATIONS = {
 
 export default ({ question, clicked = {} }) => {
   const { column, value } = clicked;
-  if (!column || value !== undefined) {
+  if (
+    !column ||
+    value !== undefined ||
+    _.any(INVALID_TYPES, type => isa(clicked.column.base_type, type))
+  ) {
     return [];
   }
 

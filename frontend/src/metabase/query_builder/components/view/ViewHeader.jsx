@@ -65,6 +65,7 @@ const viewTitleHeaderPropTypes = {
   isRunning: PropTypes.bool,
   isResultDirty: PropTypes.bool,
   isNativeEditorOpen: PropTypes.bool,
+  isNavBarOpen: PropTypes.bool,
   isShowingFilterSidebar: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
@@ -92,7 +93,7 @@ const viewTitleHeaderPropTypes = {
 };
 
 export function ViewTitleHeader(props) {
-  const { question, className, style } = props;
+  const { question, className, style, isNavBarOpen } = props;
 
   const [
     areFiltersExpanded,
@@ -128,6 +129,7 @@ export function ViewTitleHeader(props) {
         className={className}
         style={style}
         data-testid="qb-header"
+        isNavBarOpen={isNavBarOpen}
       >
         {isSaved ? (
           <SavedQuestionLeftSide {...props} />
