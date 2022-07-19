@@ -6,7 +6,7 @@ const BackendResource = require("./backend.js");
 
 const e2eHost = process.env["E2E_HOST"];
 
-const server = BackendResource.get({ dbKey: "" });
+const server = BackendResource.createServer();
 const baseUrl = e2eHost || server.host;
 
 const init = async () => {

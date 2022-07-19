@@ -10,10 +10,6 @@ const fetch = require("isomorphic-fetch");
 const BackendResource = createSharedResource("BackendResource", {
   async start(server) {
     if (!server.process) {
-      if (server.dbKey !== server.dbFile) {
-        fs.copyFileSync(`${server.dbKey}.mv.db`, `${server.dbFile}.mv.db`);
-      }
-
       const javaFlags = [
         "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
         "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
@@ -122,7 +118,7 @@ async function isReady(host) {
   return false;
 }
 
-function createSharedResource(resourceName, { defaultOptions, start, stop }) {
+function createSharedResource(resourceName, { start, stop }) {
   const entriesByKey = new Map();
   const entriesByResource = new Map();
 
@@ -137,38 +133,21 @@ function createSharedResource(resourceName, { defaultOptions, start, stop }) {
     }
   }
 
-  function createServerConfig({ dbKey }) {
-    const generateTempDbPath = () =>
-      path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
-
-    const port = 4000;
-    const dbFile = generateTempDbPath();
-    const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
-
-    return {
-      dbKey: absoluteDbKey,
-      dbFile: dbFile,
-      host: `http://localhost:${port}`,
-      port: port,
-    };
-  }
-
   return {
-    get(options = defaultOptions) {
-      const dbKey = options;
-      const key = dbKey || {};
-      let entry = entriesByKey.get(key);
-      if (!entry) {
-        entry = {
-          key: key,
-          references: 0,
-          resource: createServerConfig(options),
-        };
-        entriesByKey.set(entry.key, entry);
-        entriesByResource.set(entry.resource, entry);
-      }
-      ++entry.references;
-      return entry.resource;
+    createServer() {
+      const generateTempDbPath = () =>
+        path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
+
+      const port = 4000;
+      const dbFile = generateTempDbPath();
+
+      const server = {
+        dbFile: dbFile,
+        host: `http://localhost:${port}`,
+        port: port,
+      };
+
+      return server;
     },
     async start(resource) {
       const entry = entriesByResource.get(resource);
