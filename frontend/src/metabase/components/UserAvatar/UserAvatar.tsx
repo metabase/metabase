@@ -31,7 +31,7 @@ export default function UserAvatar({
 }
 
 function initial(name?: string | null) {
-  return typeof name === "string" ? name.charAt(0).toUpperCase() : "";
+  return name ? name.charAt(0).toUpperCase() : "";
 }
 
 function userInitials(user: User | Group) {
@@ -52,13 +52,11 @@ function nameInitials(user: User | Group) {
 }
 
 function emailInitials(user: User) {
-  if (user.email && MetabaseUtils.isEmail(user.email)) {
-    const emailUsername = user.email.split("@")[0];
-    return emailUsername.slice(0, 2).toUpperCase();
-  }
-
-  if (MetabaseUtils.isEmail(user.common_name)) {
-    const emailUsername = user.common_name.split("@")[0];
+  const email = [user.email, user.common_name].find(maybeEmail =>
+    MetabaseUtils.isEmail(maybeEmail),
+  );
+  if (email) {
+    const emailUsername = email.split("@")[0];
     return emailUsername.slice(0, 2).toUpperCase();
   }
 
