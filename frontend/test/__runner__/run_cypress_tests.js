@@ -2,11 +2,11 @@ const { printBold } = require("./cypress-runner-utils");
 const runCypress = require("./cypress-runner-run-tests");
 const getVersion = require("./cypress-runner-get-version");
 const generateSnapshots = require("./cypress-runner-generate-snapshots");
-const BackendResource = require("./backend.js");
+const CypressBackend = require("./backend.js");
 
 const e2eHost = process.env["E2E_HOST"];
 
-const server = BackendResource.createServer();
+const server = CypressBackend.createServer();
 const baseUrl = e2eHost || server.host;
 
 const init = async () => {
@@ -15,7 +15,7 @@ const init = async () => {
     await getVersion();
 
     printBold("Starting backend");
-    await BackendResource.start(server);
+    await CypressBackend.start(server);
 
     printBold("Generating snapshots");
     await generateSnapshots(baseUrl, cleanup);
@@ -28,7 +28,7 @@ const init = async () => {
 const cleanup = async (exitCode = 0) => {
   if (!e2eHost) {
     printBold("Cleaning up...");
-    await BackendResource.stop(server);
+    await CypressBackend.stop(server);
   }
 
   process.exit(exitCode);

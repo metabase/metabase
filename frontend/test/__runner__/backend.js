@@ -7,9 +7,9 @@ const { spawn } = require("child_process");
 
 const fetch = require("isomorphic-fetch");
 
-const BackendResource = createSharedResource();
+const CypressBackend = e2eBackend();
 
-function createSharedResource() {
+function e2eBackend() {
   return {
     createServer() {
       const generateTempDbPath = () =>
@@ -148,4 +148,4 @@ function createSharedResource() {
   };
 }
 
-module.exports = BackendResource;
+module.exports = CypressBackend;
