@@ -435,7 +435,8 @@
   (testing (format "TEST DRIVERS => %s" (tx.env/test-drivers))
     (testing (format "\nNORMAL DRIVERS => %s" (pr-str (mt/normal-drivers)))
       (testing (format "\nDRIVERS WITH ACTIONS => %s" (pr-str (mt/normal-drivers-with-feature :actions)))
-        (is (= 1 2))))))
+        (when (= driver/*driver* :postgres)
+          (is (= 1 2)))))))
 
 (deftest why-is-postgres-not-failing-1
   (mt/test-driver :postgres
