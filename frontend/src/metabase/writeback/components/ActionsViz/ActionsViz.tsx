@@ -269,6 +269,7 @@ function ActionsViz({
           dashCard: connectedDashCard,
           rowIndexes: bulkActions.selectedRowIndexes,
         });
+        bulkActions.clearSelection();
       },
     });
   }

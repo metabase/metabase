@@ -27,6 +27,7 @@ export type DataAppContextType = {
     selectedRowIndexes: number[];
     addRow: (cardId: number, index: number) => void;
     removeRow: (index: number) => void;
+    clearSelection: () => void;
   };
   isLoaded: boolean;
   format: (text: string) => string;
@@ -39,6 +40,7 @@ export const DataAppContext = createContext<DataAppContextType>({
     selectedRowIndexes: [],
     addRow: _.noop,
     removeRow: _.noop,
+    clearSelection: _.noop,
   },
   isLoaded: true,
   format: (text: string) => text,

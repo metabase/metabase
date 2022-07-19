@@ -78,6 +78,11 @@ function DataAppContextProvider({
     [selectedRows],
   );
 
+  const handleClearSelection = useCallback(() => {
+    setSelectedRows([]);
+    setBulkActionCardId(null);
+  }, []);
+
   const objectDetails = useMemo(
     () =>
       Object.values(dashCards).filter(
@@ -126,6 +131,7 @@ function DataAppContextProvider({
         selectedRowIndexes: selectedRows,
         addRow: handleRowSelected,
         removeRow: handleRowDeselected,
+        clearSelection: handleClearSelection,
       },
       format: (text: string) => text,
     };
@@ -149,6 +155,7 @@ function DataAppContextProvider({
     selectedRows,
     handleRowSelected,
     handleRowDeselected,
+    handleClearSelection,
   ]);
 
   return (
