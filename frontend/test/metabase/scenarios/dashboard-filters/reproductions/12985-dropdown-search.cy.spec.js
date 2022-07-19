@@ -3,7 +3,7 @@ import {
   filterWidget,
   popover,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -93,9 +93,7 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
         cy.findByText("Category").click();
       });
     cy.log("Failing to show dropdown in v0.36.0 through v.0.37.0");
-    popover()
-      .contains("Gadget")
-      .click();
+    popover().contains("Gadget").click();
     cy.findByText("Add filter").click();
     cy.url().should("contain", "?category=Gadget");
     cy.findByText("Ergonomic Silk Coat");
@@ -164,13 +162,9 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
       });
     });
 
-    filterWidget()
-      .contains("Category")
-      .click();
+    filterWidget().contains("Category").click();
     // It will fail at this point until the issue is fixed because popover never appears
-    popover()
-      .contains("Gadget")
-      .click();
+    popover().contains("Gadget").click();
     cy.findByText("Add filter").click();
     cy.url().should("contain", "?category=Gadget");
     cy.findByText("Ergonomic Silk Coat");

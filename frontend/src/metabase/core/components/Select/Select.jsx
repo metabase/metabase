@@ -33,6 +33,7 @@ class Select extends Component {
     multiple: PropTypes.bool,
     placeholder: PropTypes.string,
     disabled: PropTypes.bool,
+    hiddenIcons: PropTypes.bool,
 
     // PopoverWithTrigger props
     isInitiallyOpen: PropTypes.bool,
@@ -41,6 +42,7 @@ class Select extends Component {
 
     // SelectButton props
     buttonProps: PropTypes.object,
+    buttonText: PropTypes.string, // will override selected options text
 
     // AccordianList props
     searchProp: PropTypes.string,
@@ -48,6 +50,7 @@ class Select extends Component {
     searchPlaceholder: PropTypes.string,
     searchFuzzy: PropTypes.bool,
     hideEmptySectionsInSearch: PropTypes.bool,
+    width: PropTypes.number,
 
     optionNameFn: PropTypes.func,
     optionValueFn: PropTypes.func,
@@ -136,6 +139,7 @@ class Select extends Component {
       value = this.itemIsSelected(option)
         ? values.filter(value => value !== optionValue)
         : [...values, optionValue];
+      value.changedItem = optionValue;
     } else {
       value = optionValue;
     }
@@ -147,6 +151,10 @@ class Select extends Component {
   };
 
   renderItemIcon = item => {
+    if (this.props.hiddenIcons) {
+      return null;
+    }
+
     const icon = this.props.optionIconFn(item);
     if (icon) {
       return (
@@ -194,6 +202,7 @@ class Select extends Component {
       isInitiallyOpen,
       onClose,
       disabled,
+      width,
     } = this.props;
 
     const sections = this._getSections();
@@ -216,7 +225,9 @@ class Select extends Component {
               disabled={disabled}
               {...buttonProps}
             >
-              {selectedNames.length > 0
+              {this.props.buttonText
+                ? this.props.buttonText
+                : selectedNames.length > 0
                 ? selectedNames.map((name, index) => (
                     <span key={index}>
                       {name}
@@ -241,6 +252,7 @@ class Select extends Component {
           sections={sections}
           className="MB-Select text-brand"
           alwaysExpanded
+          width={width}
           itemIsSelected={this.itemIsSelected}
           itemIsClickable={this.itemIsClickable}
           renderItemName={this.props.optionNameFn}

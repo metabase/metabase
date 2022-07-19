@@ -1,4 +1,4 @@
-import { restore, popover, describeEE } from "__support__/e2e/cypress";
+import { restore, popover, describeEE } from "__support__/e2e/helpers";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
@@ -10,7 +10,7 @@ describeEE("issue 17763", () => {
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        "1": { data: { schemas: "block", native: "none" } },
+        1: { data: { schemas: "block", native: "none" } },
       },
     });
   });
@@ -20,9 +20,7 @@ describeEE("issue 17763", () => {
 
     cy.findByText("Block").click();
 
-    popover()
-      .contains("Granular")
-      .click();
+    popover().contains("Granular").click();
 
     cy.location("pathname").should(
       "eq",
@@ -30,9 +28,7 @@ describeEE("issue 17763", () => {
     );
 
     cy.findByTestId("permission-table").within(() => {
-      cy.findAllByText("No self-service")
-        .first()
-        .click();
+      cy.findAllByText("No self-service").first().click();
     });
 
     popover().within(() => {

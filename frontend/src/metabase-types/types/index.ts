@@ -15,13 +15,11 @@ export type LocationDescriptor = {
   hash: string;
   pathname: string;
   search?: string;
-  query?: { [key: string]: string };
+  query?: Record<string, any>;
 };
 
 /* Map of query string names to string values */
-export type QueryParams = {
-  [key: string]: string;
-};
+export type QueryParams = Record<string, any>;
 
 /* Metabase API error object returned by the backend */
 export type ApiError = {
@@ -34,3 +32,8 @@ export type Moment = {
   locale: () => Moment;
   format: (format: string) => string;
 };
+
+export type AsyncFn = (...args: any[]) => Promise<any>;
+
+export type AsyncReturnType<T extends (...args: any) => Promise<any>> =
+  T extends (...args: any) => Promise<infer R> ? R : any;

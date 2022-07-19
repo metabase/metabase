@@ -1,3 +1,7 @@
+---
+title: Caching query results
+---
+
 # Caching query results
 
 Metabase now gives you the ability to automatically cache the results of queries that take a long time to run.

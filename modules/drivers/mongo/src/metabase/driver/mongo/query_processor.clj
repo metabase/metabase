@@ -6,6 +6,7 @@
             [clojure.walk :as walk]
             [flatland.ordered.map :as ordered-map]
             [java-time :as t]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
@@ -244,9 +245,10 @@
   [[_ value {base-type :base_type}]]
   (if (and (isa? base-type :type/MongoBSONID)
            (some? value))
-    ;; Passing a nil to the ObjectId constructor throws an exception
+    ;; Passing nil or "" to the ObjectId constructor throws an exception
     ;; "invalid hexadecimal representation of an ObjectId: []" so, just treat it as nil
-    (ObjectId. (str value))
+    (when (not= value "")
+      (ObjectId. (str value)))
     value))
 
 (defn- $date-from-string [s]
@@ -363,8 +365,68 @@
 (defmethod ->rvalue :concat    [[_ & args]] {"$concat" (mapv ->rvalue args)})
 (defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (mapv ->rvalue args)})
 
-(defmethod ->rvalue :+ [[_ & args]] {"$add" (mapv ->rvalue args)})
-(defmethod ->rvalue :- [[_ & args]] {"$subtract" (mapv ->rvalue args)})
+;;; Intervals are not first class Mongo citizens, so they cannot be translated on their own.
+;;; The only thing we can do with them is adding to or subtracting from a date valued expression.
+;;; Also, date arithmetic with intervals was first implemented in version 5. (Before that only
+;;; ordinary addition could be used: one of the operands of the addition could be a date, their
+;;; rest of the operands had to be integers and would be treated as milliseconds.)
+;;; Because of this, whenever we translate date arithmetic with intervals, we check the major
+;;; version of the database and throw a nice exception if it's less than 5.
+
+(defn- get-mongo-version []
+  (:version (driver/describe-database :mongo (qp.store/database))))
+
+(defn- get-major-version [version]
+  (some-> version (str/split #"\.") first parse-long))
+
+(defn- check-date-operations-supported []
+  (let [mongo-version (get-mongo-version)
+        major-version (get-major-version mongo-version)]
+    (when (and major-version (< major-version 5))
+      (throw (ex-info "Date arithmetic not supported in versions before 5"
+                      {:database-version mongo-version})))))
+
+(defn- interval? [expr]
+  (and (vector? expr) (= (first expr) :interval)))
+
+(defn- summarize-interval [op date-expr [_ amount unit]]
+  {op {:startDate date-expr
+       :unit unit
+       :amount amount}})
+
+(defn- summarize-num-or-interval [number-op date-op mongo-expr mbql-expr]
+  (cond
+    (interval? mbql-expr) (summarize-interval date-op mongo-expr mbql-expr)
+    (contains? mongo-expr number-op) (update mongo-expr number-op conj (->rvalue mbql-expr))
+    :else {number-op [mongo-expr (->rvalue mbql-expr)]}))
+
+(def ^:private num-or-interval-reducer
+  {:+ (partial summarize-num-or-interval "$add" "$dateAdd")
+   :- (partial summarize-num-or-interval "$subtract" "$dateSubtract")})
+
+(defmethod ->rvalue :+ [[_ & args]]
+  ;; Addition is commutative and any but not all elements of `args` can be intervals.
+  ;; We pick the first arg that is not an interval and add the rest of args to it.
+  ;; (It's the callers responsibility to make sure that the first non-interval argument
+  ;; represents a date and not an offset like an integer would.)
+  ;; If none of the args is an interval, we shortcut with a simple addition.
+  (if (some interval? args)
+    (if-let [[arg others] (u/pick-first (complement interval?) args)]
+      (do
+        (check-date-operations-supported)
+        (reduce (num-or-interval-reducer :+) (->rvalue arg) others))
+      (throw (ex-info "Summing intervals is not supported" {:args args})))
+    {"$add" (mapv ->rvalue args)}))
+
+(defmethod ->rvalue :- [[_ & [arg & others :as args]]]
+  ;; Subtraction is not commutative so `arg` cannot be an interval.
+  ;; If none of the args is an interval, we shortcut with a simple subtraction.
+  (if (some interval? others)
+    (do
+      (check-date-operations-supported)
+      (reduce (num-or-interval-reducer :-) (->rvalue arg) others))
+    {"$subtract" (mapv ->rvalue args)}))
+
 (defmethod ->rvalue :* [[_ & args]] {"$multiply" (mapv ->rvalue args)})
 (defmethod ->rvalue :/ [[_ & args]] {"$divide" (mapv ->rvalue args)})
 

@@ -59,7 +59,7 @@ export function initBrush(parent, child, onBrushChange, onBrushEnd) {
     moveToBack(parent.select(".brush").node());
     // remove the escape keydown listener
     window.removeEventListener("keydown", onKeyDown, true);
-    // reset the fitler and redraw
+    // reset the filter and redraw
     child.filterAll();
     parent.redraw();
 
@@ -78,7 +78,7 @@ export function initBrush(parent, child, onBrushChange, onBrushEnd) {
     }
   };
 
-  parent.on("pretransition.custom", function(chart) {
+  parent.on("pretransition.custom", function (chart) {
     // move brush to the back so tootips/clicks still work
     moveToBack(chart.select(".brush").node());
     // remove the handles since we can't adjust them anyway

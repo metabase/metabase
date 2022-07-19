@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 describe("issue 20517", () => {
   beforeEach(() => {
@@ -13,9 +13,7 @@ describe("issue 20517", () => {
   it("should be able to save metadata changes with empty description (metabase#20517)", () => {
     cy.visit("/model/1/metadata");
 
-    cy.findByLabelText("Description")
-      .clear()
-      .blur();
+    cy.findByLabelText("Description").clear().blur();
 
     cy.button("Save changes").click();
 

@@ -182,12 +182,8 @@ export default class FieldRemapping extends React.Component {
   };
 
   onForeignKeyFieldChange = async foreignKeyClause => {
-    const {
-      table,
-      field,
-      fetchTableMetadata,
-      updateFieldDimension,
-    } = this.props;
+    const { table, field, fetchTableMetadata, updateFieldDimension } =
+      this.props;
 
     this.clearEditingStates();
 

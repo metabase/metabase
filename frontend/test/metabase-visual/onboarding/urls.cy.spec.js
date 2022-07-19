@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 describe("visual tests > onboarding > URLs", () => {
   beforeEach(() => {
@@ -36,6 +36,7 @@ describe("visual tests > onboarding > URLs", () => {
 
     cy.findByText("First collection");
     cy.findByText("Your personal collection");
+    cy.findByText("Orders");
 
     cy.percySnapshot();
   });

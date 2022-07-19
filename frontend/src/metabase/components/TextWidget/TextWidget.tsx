@@ -21,11 +21,6 @@ type State = {
 };
 
 class TextWidget extends React.Component<Props, State> {
-  state: State = {
-    value: null,
-    isFocused: false,
-  };
-
   static defaultProps = {
     isEditing: false,
     commitImmediately: false,
@@ -34,18 +29,21 @@ class TextWidget extends React.Component<Props, State> {
 
   constructor(props: Props) {
     super(props);
+
+    this.state = {
+      value: props.value,
+      isFocused: false,
+    };
   }
 
   static noPopover = true;
-
-  static format = (value: string) => value;
 
   UNSAFE_componentWillMount() {
     this.UNSAFE_componentWillReceiveProps(this.props);
   }
 
   UNSAFE_componentWillReceiveProps(nextProps: Props) {
-    if (nextProps.value !== this.state.value) {
+    if (nextProps.value !== this.props.value) {
       this.setState({ value: nextProps.value }, () => {
         // HACK: Address Safari rendering bug which causes https://github.com/metabase/metabase/issues/5335
         forceRedraw(ReactDOM.findDOMNode(this));
@@ -54,13 +52,8 @@ class TextWidget extends React.Component<Props, State> {
   }
 
   render() {
-    const {
-      setValue,
-      className,
-      isEditing,
-      focusChanged,
-      disabled,
-    } = this.props;
+    const { setValue, className, isEditing, focusChanged, disabled } =
+      this.props;
     const defaultPlaceholder = this.state.isFocused
       ? ""
       : this.props.placeholder || t`Enter a value...`;
@@ -103,9 +96,7 @@ class TextWidget extends React.Component<Props, State> {
           changeFocus(false);
           this.setState({ value: this.props.value });
         }}
-        placeholder={
-          isEditing ? t`Enter a default value...` : defaultPlaceholder
-        }
+        placeholder={isEditing ? t`Enter a default value…` : defaultPlaceholder}
         disabled={disabled}
       />
     );

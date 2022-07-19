@@ -4,11 +4,11 @@ import {
   openOrdersTable,
   openPeopleTable,
   openProductsTable,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > question > object details", () => {
   const FIRST_ORDER_ID = 9676;
@@ -130,33 +130,38 @@ describe("scenarios > question > object details", () => {
       .click();
     // Popover is blocking the city. If it renders, Cypress will not be able to click on "Searsboro" and the test will fail.
     // Unfortunately, asserting that the popover does not exist will give us a false positive result.
-    cy.findByTestId("object-detail")
-      .findByText("Searsboro")
-      .click();
+    cy.findByTestId("object-detail").findByText("Searsboro").click();
+  });
+
+  it("should work with non-numeric IDs (metabse#22768)", () => {
+    cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
+      semantic_type: null,
+    });
+
+    cy.request("PUT", `/api/field/${PRODUCTS.TITLE}`, {
+      semantic_type: "type/PK",
+    });
+
+    openProductsTable({ limit: 5 });
+
+    cy.findByTextEnsureVisible("Rustic Paper Wallet").click();
+
+    cy.location("search").should("eq", "?objectId=Rustic%20Paper%20Wallet");
+    cy.findByTestId("object-detail").contains("Rustic Paper Wallet");
   });
 });
 
 function drillPK({ id }) {
-  cy.get(".Table-ID")
-    .contains(id)
-    .first()
-    .click();
+  cy.get(".Table-ID").contains(id).first().click();
 }
 
 function drillFK({ id }) {
-  cy.get(".Table-FK")
-    .contains(id)
-    .first()
-    .click();
-  popover()
-    .findByText("View details")
-    .click();
+  cy.get(".Table-FK").contains(id).first().click();
+  popover().findByText("View details").click();
 }
 
 function assertDetailView({ id, entityName, byFK = false }) {
-  cy.get("h2")
-    .should("contain", entityName)
-    .should("contain", id);
+  cy.get("h2").should("contain", entityName).should("contain", id);
 
   const pattern = byFK
     ? new RegExp("/question#*")

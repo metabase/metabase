@@ -1,5 +1,5 @@
 import Field from "metabase-lib/lib/metadata/Field";
-import { hasFieldValues, getFieldIds } from "./fields";
+import { hasFieldValues, hasFields } from "./fields";
 
 describe("parameters/utils/fields", () => {
   describe("hasFieldValues", () => {
@@ -27,26 +27,15 @@ describe("parameters/utils/fields", () => {
     });
   });
 
-  describe("getFieldIds", () => {
-    it("should handle a parameter with no fields", () => {
-      expect(getFieldIds({})).toEqual([]);
+  describe("hasFields", () => {
+    it("should be false when the parameter has no fields", () => {
+      expect(hasFields({ fields: [] })).toBe(false);
+      expect(hasFields({})).toBe(false);
     });
 
-    it("should return number field ids", () => {
-      expect(getFieldIds({ field_ids: [1, 2, 3] })).toEqual([1, 2, 3]);
-    });
-
-    it("should filter out virtual field ids", () => {
-      expect(getFieldIds({ field_ids: [1, "two", 3] })).toEqual([1, 3]);
-    });
-
-    it("should favor the field_id prop for whatever reason", () => {
-      expect(
-        getFieldIds({
-          field_id: 1,
-          field_ids: [2, 3],
-        }),
-      ).toEqual([1]);
+    it("should be true when a field on the parameter has values", () => {
+      const mockField = new Field({ id: 1, name: "foo" });
+      expect(hasFields({ fields: [mockField] })).toBe(true);
     });
   });
 });

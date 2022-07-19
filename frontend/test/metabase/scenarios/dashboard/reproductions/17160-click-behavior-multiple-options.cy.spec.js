@@ -1,5 +1,4 @@
-import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
-
+import { restore, visitDashboard } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -9,107 +8,64 @@ const CATEGORY_FILTER_PARAMETER_ID = "7c9ege62";
 
 describe("issue 17160", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
     restore();
     cy.signInAsAdmin();
-
-    cy.createNativeQuestion({
-      name: `17160Q`,
-      native: {
-        query: "SELECT * FROM products WHERE {{CATEGORY}}",
-        "template-tags": {
-          CATEGORY: {
-            id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
-            name: "CATEGORY",
-            display_name: "CATEGORY",
-            type: "dimension",
-            dimension: ["field", PRODUCTS.CATEGORY, null],
-            "widget-type": "category",
-            default: null,
-          },
-        },
-      },
-    }).then(({ body: { id: questionId } }) => {
-      cy.createDashboard({ name: "17160D" }).then(
-        ({ body: { id: dashboardId } }) => {
-          // Add the question to the dashboard
-          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-            cardId: questionId,
-          }).then(({ body: { id: dashCardId } }) => {
-            // Add dashboard filter
-            cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-              parameters: [
-                {
-                  id: CATEGORY_FILTER_PARAMETER_ID,
-                  name: "Category",
-                  slug: "category",
-                  sectionId: "string",
-                  type: "string/=",
-                },
-              ],
-            });
-
-            createTargetDashboardForClickBehavior().then(targetDashboardId => {
-              // Create a click behavior and resize the question card
-              cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-                cards: [
-                  {
-                    id: dashCardId,
-                    card_id: questionId,
-                    row: 0,
-                    col: 0,
-                    sizeX: 12,
-                    sizeY: 10,
-                    parameter_mappings: [
-                      {
-                        parameter_id: CATEGORY_FILTER_PARAMETER_ID,
-                        card_id: 4,
-                        target: ["dimension", ["template-tag", "CATEGORY"]],
-                      },
-                    ],
-                    visualization_settings: getVisualSettingsWithClickBehavior(
-                      questionId,
-                      targetDashboardId,
-                    ),
-                  },
-                ],
-              });
-
-              visitDashboard(dashboardId);
-            });
-          });
-        },
-      );
-    });
   });
 
-  it("should pass multiple filter values to a SQL question parameter (metabase#17160)", () => {
-    cy.findByText("Category").click();
+  it("should pass multiple filter values to questions and dashboards (metabase#17160-1)", () => {
+    setupRegularDashboards();
 
-    popover().within(() => {
-      cy.findByText("Doohickey").click();
-      cy.findByText("Gadget").click();
+    // 1. Check click behavior connected to a question
+    visitSourceDashboard();
 
-      cy.button("Add filter").click();
-    });
-
-    // Check click behavior connected to a question
-    cy.findAllByText("click-behavior-question-label")
-      .eq(0)
-      .click();
+    cy.findAllByText("click-behavior-question-label").eq(0).click();
+    cy.wait("@cardQuery");
 
     cy.url().should("include", "/question");
 
     assertMultipleValuesFilterState();
 
-    // Go back to the dashboard
-    cy.go("back");
+    // 2. Check click behavior connected to a dashboard
+    visitSourceDashboard();
 
-    // Check click behavior connected to a dashboard
-    cy.findAllByText("click-behavior-dashboard-label")
-      .eq(0)
-      .click();
+    cy.get("@targetDashboardId").then(id => {
+      cy.intercept("POST", `/api/dashboard/${id}/dashcard/*/card/*/query`).as(
+        "targetDashcardQuery",
+      );
+
+      cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
+      cy.wait("@targetDashcardQuery");
+    });
 
     cy.url().should("include", "/dashboard");
+    cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
+    cy.findByText(TARGET_DASHBOARD_NAME);
+
+    assertMultipleValuesFilterState();
+  });
+
+  it("should pass multiple filter values to public questions and dashboards (metabase#17160-2)", () => {
+    setupPublicDashboards();
+
+    // 1. Check click behavior connected to a public question
+    visitPublicSourceDashboard();
+
+    cy.findAllByText("click-behavior-question-label").eq(0).click();
+
+    cy.url().should("include", "/public/question");
+
+    assertMultipleValuesFilterState();
+
+    // 2. Check click behavior connected to a publicdashboard
+    visitPublicSourceDashboard();
+
+    cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
+
+    cy.url().should("include", "/public/dashboard");
+    cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
+
     cy.findByText(TARGET_DASHBOARD_NAME);
 
     assertMultipleValuesFilterState();
@@ -127,11 +83,100 @@ function assertMultipleValuesFilterState() {
   );
 }
 
-function getVisualSettingsWithClickBehavior(questionTarget, dashboardTarget) {
+function setup(shouldUsePublicLinks) {
+  cy.createNativeQuestion({
+    name: `17160Q`,
+    native: {
+      query: "SELECT * FROM products WHERE {{CATEGORY}}",
+      "template-tags": {
+        CATEGORY: {
+          id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
+          name: "CATEGORY",
+          display_name: "CATEGORY",
+          type: "dimension",
+          dimension: ["field", PRODUCTS.CATEGORY, null],
+          "widget-type": "category",
+          default: null,
+        },
+      },
+    },
+  }).then(({ body: { id: questionId } }) => {
+    // Share the question
+    cy.request("POST", `/api/card/${questionId}/public_link`);
+
+    cy.createDashboard({ name: "17160D" }).then(
+      ({ body: { id: dashboardId } }) => {
+        // Share the dashboard
+        cy.request("POST", `/api/dashboard/${dashboardId}/public_link`).then(
+          ({ body: { uuid } }) => {
+            cy.wrap(uuid).as("sourceDashboardUUID");
+          },
+        );
+        cy.wrap(dashboardId).as("sourceDashboardId");
+
+        // Add the question to the dashboard
+        cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+          cardId: questionId,
+        }).then(({ body: { id: dashCardId } }) => {
+          // Add dashboard filter
+          cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+            parameters: [
+              {
+                default: ["Doohickey", "Gadget"],
+                id: CATEGORY_FILTER_PARAMETER_ID,
+                name: "Category",
+                slug: "category",
+                sectionId: "string",
+                type: "string/=",
+              },
+            ],
+          });
+
+          createTargetDashboard().then(targetDashboardId => {
+            cy.wrap(targetDashboardId).as("targetDashboardId");
+
+            // Create a click behavior and resize the question card
+            cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+              cards: [
+                {
+                  id: dashCardId,
+                  card_id: questionId,
+                  row: 0,
+                  col: 0,
+                  sizeX: 12,
+                  sizeY: 10,
+                  parameter_mappings: [
+                    {
+                      parameter_id: CATEGORY_FILTER_PARAMETER_ID,
+                      card_id: 4,
+                      target: ["dimension", ["template-tag", "CATEGORY"]],
+                    },
+                  ],
+                  visualization_settings: getVisualSettingsWithClickBehavior(
+                    questionId,
+                    targetDashboardId,
+                    shouldUsePublicLinks,
+                  ),
+                },
+              ],
+            });
+          });
+        });
+      },
+    );
+  });
+}
+
+function getVisualSettingsWithClickBehavior(
+  questionTarget,
+  dashboardTarget,
+  shouldUsePublicLinks = false,
+) {
   return {
     column_settings: {
       '["name","ID"]': {
         click_behavior: {
+          use_public_link: shouldUsePublicLinks,
           targetId: questionTarget,
           parameterMapping: {
             "6b8b10ef-0104-1047-1e1b-2492d5954322": {
@@ -155,6 +200,7 @@ function getVisualSettingsWithClickBehavior(questionTarget, dashboardTarget) {
 
       '["name","EAN"]': {
         click_behavior: {
+          use_public_link: shouldUsePublicLinks,
           targetId: dashboardTarget,
           parameterMapping: {
             dd19ec03: {
@@ -179,7 +225,7 @@ function getVisualSettingsWithClickBehavior(questionTarget, dashboardTarget) {
   };
 }
 
-function createTargetDashboardForClickBehavior() {
+function createTargetDashboard() {
   return cy
     .createQuestionAndDashboard({
       dashboardDetails: {
@@ -192,6 +238,10 @@ function createTargetDashboardForClickBehavior() {
       },
     })
     .then(({ body: { id, card_id, dashboard_id } }) => {
+      // Share the dashboard
+      cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`);
+
+      // Add a filter
       cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
         parameters: [
           {
@@ -204,7 +254,7 @@ function createTargetDashboardForClickBehavior() {
         ],
       });
 
-      // Create a click behavior and resize the question card
+      // Resize the question card and connect the filter to it
       return cy
         .request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
           cards: [
@@ -229,4 +279,26 @@ function createTargetDashboardForClickBehavior() {
           return dashboard_id;
         });
     });
+}
+
+function setupRegularDashboards() {
+  return setup(false);
+}
+
+function setupPublicDashboards() {
+  return setup(true);
+}
+
+function visitSourceDashboard() {
+  cy.get("@sourceDashboardId").then(id => {
+    visitDashboard(id);
+  });
+}
+
+function visitPublicSourceDashboard() {
+  cy.get("@sourceDashboardUUID").then(uuid => {
+    cy.visit(`/public/dashboard/${uuid}`);
+
+    cy.findByTextEnsureVisible("Enormous Wool Car");
+  });
 }

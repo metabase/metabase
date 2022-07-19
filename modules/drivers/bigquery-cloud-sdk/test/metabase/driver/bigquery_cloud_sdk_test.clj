@@ -356,7 +356,7 @@
             (let [synced-tables (db/select Table :db_id (mt/id))]
               (is (partial= {true [{:name "messages"} {:name "users"}]
                              false [{:name "messages"} {:name "users"}]}
-                            (-> (group-by :active (doto synced-tables tap>))
+                            (-> (group-by :active synced-tables)
                                 (update-vals #(sort-by :name %)))))))
           (finally (db/delete! Table :db_id (mt/id) :active false)))))))
 

@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -44,9 +44,7 @@ describe("scenarios > visualizations > scalar", () => {
 
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
 
-    cy.get(".ScalarValue")
-      .invoke("text")
-      .should("eq", "1");
+    cy.get(".ScalarValue").invoke("text").should("eq", "1");
 
     cy.icon("arrow_down");
 

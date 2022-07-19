@@ -7,6 +7,7 @@
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :as pulse]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.test :as mt]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
             [metabase.util :as u]
@@ -22,6 +23,7 @@
 (defn- remove-uneeded-pulse-keys [pulse]
   (-> pulse
       (dissoc :id :creator :created_at :updated_at)
+      (update :entity_id boolean)
       (update :cards (fn [cards]
                        (for [card cards]
                          (dissoc card :id))))
@@ -66,6 +68,7 @@
               {:creator_id (mt/user->id :rasta)
                :creator    (user-details :rasta)
                :name       "Lodi Dodi"
+               :entity_id  true
                :cards      [{:name               "Test Card"
                              :description        nil
                              :collection_id      nil
@@ -84,6 +87,7 @@
                                                     (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})]})
              (-> (dissoc (pulse/retrieve-pulse pulse-id) :id :pulse_id :created_at :updated_at)
                  (update :creator  dissoc :date_joined :last_login)
+                 (update :entity_id boolean)
                  (update :cards    (fn [cards] (for [card cards]
                                                  (dissoc card :id))))
                  (update :channels (fn [channels] (for [channel channels]
@@ -143,6 +147,7 @@
               pulse-defaults
               {:creator_id (mt/user->id :rasta)
                :name       "Booyah!"
+               :entity_id  true
                :channels   [(merge pulse-channel-defaults
                                    {:schedule_type :daily
                                     :schedule_hour 18
@@ -211,6 +216,7 @@
     (is (= (merge pulse-defaults
                   {:creator_id (mt/user->id :rasta)
                    :name       "We like to party"
+                   :entity_id  true
                    :cards      [{:name               "Bar Card"
                                  :description        nil
                                  :collection_id      nil
@@ -447,3 +453,11 @@
       (binding [api/*current-user-id* (:creator_id subscription)]
         (is (not (mi/can-read? subscription)))
         (is (not (mi/can-write? subscription)))))))
+
+(deftest identity-hash-test
+  (testing "Pulse hashes are composed of the name and the collection hash"
+    (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/"}]
+                    Pulse       [pulse {:name "my pulse" :collection_id (:id coll)}]]
+      (is (= "6432d0a9"
+             (serdes.hash/raw-hash ["my pulse" (serdes.hash/identity-hash coll)])
+             (serdes.hash/identity-hash pulse))))))

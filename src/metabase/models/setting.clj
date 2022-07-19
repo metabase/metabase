@@ -81,6 +81,8 @@
             [environ.core :as env]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -131,6 +133,8 @@
   Primarily used in test to disable retired setting check."
   false)
 
+(declare admin-writable-site-wide-settings get-value-of-type set-value-of-type!)
+
 (models/defmodel Setting
   "The model that underlies [[defsetting]]."
   :setting)
@@ -139,9 +143,23 @@
   models/IModel
   (merge models/IModelDefaults
          {:types       (constantly {:value :encrypted-text})
-          :primary-key (constantly :key)}))
+          :primary-key (constantly :key)})
 
-(declare get-value-of-type)
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:key])})
+
+(defmethod serdes.base/extract-all "Setting" [_model _opts]
+  (for [{:keys [key value]} (admin-writable-site-wide-settings
+                              :getter (partial get-value-of-type :string))]
+    {:serdes/meta [{:model "Setting" :id (name key)}]
+     :key key
+     :value value}))
+
+(defmethod serdes.base/load-find-local "Setting" [[{:keys [id]}]]
+  (get-value-of-type :string (keyword id)))
+
+(defmethod serdes.base/load-one! "Setting" [{:keys [key value]} _]
+  (set-value-of-type! :string key value))
 
 (def ^:private Type
   (s/pred (fn [a-type]
@@ -222,7 +240,10 @@
    ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
    ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
    ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
-   :on-change   (s/maybe clojure.lang.IFn)})
+   :on-change   (s/maybe clojure.lang.IFn)
+
+   ;; optional fn called whether to allow the getter to return a value. Useful for ensuring premium settings are not available to
+   :enabled?    (s/maybe clojure.lang.IFn)})
 
 (defonce ^:private registered-settings
   (atom {}))
@@ -383,15 +404,24 @@
 (defn- db-or-cache-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
   ^String [setting-definition-or-name]
-  (let [setting (resolve-setting setting-definition-or-name)]
-    (when (allows-site-wide-values? setting)
+  (let [setting       (resolve-setting setting-definition-or-name)
+        db-is-set-up? (or (requiring-resolve 'metabase.db/db-is-set-up?)
+                          ;; this should never be hit. it is just overly cautious against a NPE here. But no way this
+                          ;; cannot resolve
+                          (constantly false))]
+    ;; cannot use db (and cache populated from db) if db is not set up
+    (when (and (db-is-set-up?) (allows-site-wide-values? setting))
       (let [v (if *disable-cache*
                 (db/select-one-field :value Setting :key (setting-name setting-definition-or-name))
                 (do
                   (setting.cache/restore-cache-if-needed!)
-                  (clojure.core/get (setting.cache/cache) (setting-name setting-definition-or-name))))]
-        (when (seq v)
-          v)))))
+                  (let [cache (setting.cache/cache)]
+                    (if (nil? cache)
+                      ;; If another thread is populating the cache for the first time, we will have a nil value for
+                      ;; the cache and must hit the db while the cache populates
+                      (db/select-one-field :value Setting :key (setting-name setting-definition-or-name))
+                      (clojure.core/get cache (setting-name setting-definition-or-name))))))]
+        (not-empty v)))))
 
 (defn default-value
   "Get the `:default` value of `setting-definition-or-name` if one was specified."
@@ -511,12 +541,14 @@
   looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
   if any."
   [setting-definition-or-name]
-  (let [{:keys [cache? getter]} (resolve-setting setting-definition-or-name)
-        disable-cache?          (not cache?)]
-    (if (= *disable-cache* disable-cache?)
-      (getter)
-      (binding [*disable-cache* disable-cache?]
-        (getter)))))
+  (let [{:keys [cache? getter enabled? default]} (resolve-setting setting-definition-or-name)
+        disable-cache?                           (not cache?)]
+    (if (or (nil? enabled?) (enabled?))
+      (if (= *disable-cache* disable-cache?)
+        (getter)
+        (binding [*disable-cache* disable-cache?]
+          (getter)))
+      default)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -731,7 +763,8 @@
                  :cache?         true
                  :database-local :never
                  :user-local     :never
-                 :deprecated     nil}
+                 :deprecated     nil
+                 :enabled?       nil}
                 (dissoc setting :name :type :default)))
       (s/validate SettingDefinition <>)
       (validate-default-value-for-type <>)
@@ -826,21 +859,11 @@
 (defn- valid-trs-or-tru? [desc]
   (is-form? allowed-deferred-i18n-forms desc))
 
-(defn- valid-str-of-trs-or-tru? [maybe-str-expr]
-  (when (is-form? #{`str} maybe-str-expr)
-    ;; When there are several i18n'd sentences, there will probably be a surrounding `str` invocation and a space in
-    ;; between the sentences, remove those to validate the i18n clauses
-    (let [exprs-without-strs (remove (every-pred string? str/blank?) (rest maybe-str-expr))]
-      ;; We should have at lease 1 i18n clause, so ensure `exprs-without-strs` is not empty
-      (and (seq exprs-without-strs)
-           (every? valid-trs-or-tru? exprs-without-strs)))))
-
 (defn- validate-description-form
-  "Check that `description-form` is a i18n form (e.g. [[metabase.util.i18n/deferred-tru]]), or a [[str]] form consisting
-  of one or more deferred i18n forms. Returns `description-form` as-is."
+  "Check that `description-form` is a i18n form (e.g. [[metabase.util.i18n/deferred-tru]]). Returns `description-form`
+  as-is."
   [description-form]
-  (when-not (or (valid-trs-or-tru? description-form)
-                (valid-str-of-trs-or-tru? description-form))
+  (when-not (valid-trs-or-tru? description-form)
     ;; this doesn't need to be i18n'ed because it's a compile-time error.
     (throw (ex-info (str "defsetting docstrings must be an *deferred* i18n form unless the Setting has"
                          " `:visibilty` `:internal` or `:setter` `:none`."

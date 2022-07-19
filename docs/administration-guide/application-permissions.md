@@ -1,10 +1,14 @@
+---
+title: Application permissions
+---
+
 # Application permissions
 
 {% include plans-blockquote.html feature="Application permissions" %}
 
 Application settings are useful for granting groups access to some, but not all, of Metabase's administrative features.
 
-To set application permissions, click on the **Gears** icon at the bottom of the navigation sidebar and go to **Admin settings** > **Permissions** > **Application**.
+To set application permissions, got to the top right of the screen and click on the **gear** icon > **Admin settings** > **Permissions** > **Application**.
 
 - [Settings access](#settings-access)
 - [Monitoring access](#monitoring-access)

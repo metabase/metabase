@@ -338,7 +338,7 @@
                          mt/native-query
                          ;; add default query constraints to ensure the default limit of 2000 is overridden by the
                          ;; `:rowcount-override` connection property we defined in the details above
-                         (assoc :constraints qp.constraints/default-query-constraints)
+                         (assoc :constraints (qp.constraints/default-query-constraints))
                          qp/process-query
                          mt/rows
                          ffirst))))))))

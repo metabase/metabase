@@ -1,5 +1,6 @@
 (ns metabase.api.persist
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
@@ -30,6 +31,8 @@
                              :p.refresh_begin :p.refresh_end
                              :p.table_name :p.creator_id
                              :p.card_id [:c.name :card_name]
+                             [:c.archived :card_archived]
+                             [:c.dataset :card_dataset]
                              [:db.name :database_name]
                              [:col.id :collection_id] [:col.name :collection_name]
                              [:col.authority_level :collection_authority_level]]
@@ -54,7 +57,7 @@
 (api/defendpoint GET "/"
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
-  (validation/check-has-application-permission :setting)
+  (validation/check-has-application-permission :monitoring)
   (let [db-ids (db/select-field :database_id PersistedInfo)
         writable-db-ids (when (seq db-ids)
                           (->> (db/select Database :id [:in db-ids])
@@ -85,19 +88,28 @@
     (api/write-check (Database (:database_id persisted-info)))
     persisted-info))
 
-(def ^:private HoursInterval
-  "Schema representing valid interval hours for refreshing persisted models."
+(def ^:private CronSchedule
+  "Schema representing valid cron schedule for refreshing persisted models."
   (su/with-api-error-message
-    (s/constrained s/Int #(<= 1 % 24)
-                   (deferred-tru "Integer greater than or equal to one and less than or equal to twenty-four"))
-    (deferred-tru "Value must be an integer representing hours greater than or equal to one and less than or equal to twenty-four")))
+    (s/constrained s/Str (fn [t]
+                           (let [parts (str/split t #" ")]
+                             (= 7 (count parts))))
+                   (deferred-tru "String representing a cron schedule"))
+    (deferred-tru "Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>")))
 
-(api/defendpoint POST "/set-interval"
-  "Set the interval (in hours) to refresh persisted models. Shape should be JSON like {hours: 4}."
-  [:as {{:keys [hours], :as _body} :body}]
-  {hours HoursInterval}
+(api/defendpoint POST "/set-refresh-schedule"
+  "Set the cron schedule to refresh persisted models.
+   Shape should be JSON like {cron: \"0 30 1/8 * * ? *\"}."
+  [:as {{:keys [cron], :as _body} :body}]
+  {cron CronSchedule}
   (validation/check-has-application-permission :setting)
-  (public-settings/persisted-model-refresh-interval-hours! hours)
+  (when cron
+    (when-not (and (string? cron)
+                   (org.quartz.CronExpression/isValidExpression cron)
+                   (str/ends-with? cron "*"))
+      (throw (ex-info (tru "Must be a valid cron string not specifying a year")
+                      {:status-code 400})))
+    (public-settings/persisted-model-refresh-cron-schedule! cron))
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
 

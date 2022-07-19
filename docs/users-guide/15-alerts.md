@@ -1,3 +1,7 @@
+---
+title: Getting alerts about questions
+---
+
 # Getting alerts about questions
 
 Whether you're keeping track of revenue, users, or negative reviews, there are often times when you want to be alerted about something. Metabase has a few different kinds of alerts you can set up, and you can choose to be notified via email or Slack.
@@ -46,7 +50,7 @@ Next, click the bell icon in the bottom-right and you'll see that same screen of
 
 ## Results alerts
 
-Lastly, you can get an alert when one of your saved questions returns _any_ result. This kind of alert is the most useful if you have a question that doesn't _usually_ return any results, but you just want to know when it _does_ return results. 
+Lastly, you can get an alert when one of your saved questions returns _any_ result. This kind of alert is the most useful if you have a question that doesn't _usually_ return any results, but you just want to know when it _does_ return results.
 
 For example, you might have a table called `Reviews`, and you want to know any time a customer leaves a bad review, which you consider to be anything below three stars. To set up an alert for this situation, you'd go and create a raw data question (i.e., a question that returns a list of reviews), and add a filter to only include results with one or two stars.
 
@@ -73,3 +77,8 @@ There are a few ways alerts can be stopped:
 - If a saved question that has an alert on it gets edited in such a way that the alert doesn't make sense anymore, the alert will get deleted. For example, if a saved question with a goal line alert on it gets edited, and the goal line is removed entirely, that alert will get deleted.
 - If a question gets archived, any alerts on it will be deleted.
 
+## Viewing existing alerts
+
+{% include plans-blockquote.html feature="Audit logs" %}
+
+To view a list of all alerts and dashboard subscriptions that people have set up in your Metabase, click on the **gear** icon in the upper right and select **Admin settings** > **Audit** > **Subscriptions & Alerts**. See [Audit logs](../enterprise-guide/audit.md).

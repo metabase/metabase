@@ -1,3 +1,7 @@
+---
+title: Joining data
+---
+
 # Joining data
 
 ![Joining](./images/notebook/join-step.png)
@@ -34,6 +38,12 @@ In many cases you might have tables A, B, and C, where A and B have a connection
 Your joins can also include multiple conditions to refine your results. Metabase will combine multiple conditions using the `AND` operator.
 
 ![Joining tables on multiple columns](./images/notebook/joining-on-multiple-columns.png)
+
+## Joining with different operators
+
+You can join tables on comparison conditions like `=`, `≠`, `>`, `≥`, `<`, or `≤`.
+
+![Join operators](./images/notebook/join-operator.png)
 
 ## Further reading
 

@@ -264,6 +264,7 @@ export const MetabaseApi = {
     "/api/database/:dbId/autocomplete_suggestions?search=:prefix",
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
+  db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),
   db_rescan_values: POST("/api/database/:dbId/rescan_values"),
   db_discard_values: POST("/api/database/:dbId/discard_values"),
   db_persist: POST("/api/database/:dbId/persist"),
@@ -432,7 +433,7 @@ export const PersistedModelsApi = {
   getForModel: GET("/api/persist/card/:id"),
   enablePersistence: POST("/api/persist/enable"),
   disablePersistence: POST("/api/persist/disable"),
-  setRefreshInterval: POST("/api/persist/set-interval"),
+  setRefreshSchedule: POST("/api/persist/set-refresh-schedule"),
 };
 
 export const SetupApi = {

@@ -4,7 +4,7 @@ import {
   modal,
   describeEE,
   mockSessionProperty,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("scenarios > admin > databases > edit", () => {
   beforeEach(() => {
@@ -18,9 +18,7 @@ describe("scenarios > admin > databases > edit", () => {
   describe("Database type", () => {
     it("should be disabled for the Sample Dataset (metabase#16382)", () => {
       cy.visit("/admin/databases/1");
-      cy.findByText("H2")
-        .parentsUntil("a")
-        .should("be.disabled");
+      cy.findByText("H2").parentsUntil("a").should("be.disabled");
     });
   });
 
@@ -90,13 +88,8 @@ describe("scenarios > admin > databases > edit", () => {
 
         cy.findByText("Show advanced options").click();
         cy.findByText("Use instance default (TTL)").click();
-        popover()
-          .findByText("Custom")
-          .click();
-        cy.findByDisplayValue("24")
-          .clear()
-          .type("32")
-          .blur();
+        popover().findByText("Custom").click();
+        cy.findByDisplayValue("24").clear().type("32").blur();
 
         cy.button("Save changes").click();
         cy.wait("@databaseUpdate").then(({ request, response }) => {
@@ -107,9 +100,7 @@ describe("scenarios > admin > databases > edit", () => {
           cy.findByTextEnsureVisible("Sample Database").click();
 
           cy.findByTextEnsureVisible("Custom").click();
-          popover()
-            .findByText("Use instance default (TTL)")
-            .click();
+          popover().findByText("Use instance default (TTL)").click();
 
           cy.button("Save changes").click();
           cy.wait("@databaseUpdate").then(({ request }) => {
@@ -148,13 +139,9 @@ describe("scenarios > admin > databases > edit", () => {
       cy.visit("/admin/databases/1");
 
       cy.findByText("Show advanced options").click();
-      cy.findByText("Database syncing")
-        .closest(".Form-field")
-        .as("sync");
+      cy.findByText("Database syncing").closest(".Form-field").as("sync");
 
-      cy.get("@sync")
-        .findByText("Hourly")
-        .click();
+      cy.get("@sync").findByText("Hourly").click();
       popover().within(() => {
         cy.findByText("Daily").click({ force: true });
       });

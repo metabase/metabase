@@ -1,4 +1,4 @@
-import { restore, setupSMTP, visitQuestion } from "__support__/e2e/cypress";
+import { restore, setupSMTP, visitQuestion } from "__support__/e2e/helpers";
 
 describe("scenarios > alert > email_alert", () => {
   beforeEach(() => {
@@ -57,8 +57,5 @@ function openAlertForQuestion(id = 1) {
 }
 
 function toggleChannel(channel) {
-  cy.findByText(channel)
-    .parent()
-    .find("input")
-    .click();
+  cy.findByText(channel).parent().find("input").click();
 }

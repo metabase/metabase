@@ -3,7 +3,7 @@ import {
   popover,
   visualize,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
@@ -61,9 +61,7 @@ function addJoin({
   rightColumn,
   joinType = "left",
 } = {}) {
-  cy.icon("join_left_outer")
-    .last()
-    .click();
+  cy.icon("join_left_outer").last().click();
 
   selectFromDropdown(rightTable).click();
 

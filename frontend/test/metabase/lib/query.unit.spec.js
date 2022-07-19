@@ -50,9 +50,7 @@ describe("Legacy Q_DEPRECATED library", () => {
 
   describe("cleanQuery", () => {
     it("should pass for a query created with metabase-lib", () => {
-      const datasetQuery = ORDERS.query()
-        .aggregate(["count"])
-        .datasetQuery();
+      const datasetQuery = ORDERS.query().aggregate(["count"]).datasetQuery();
 
       // We have to take a copy because the original object isn't extensible
       const copiedDatasetQuery = Utils.copy(datasetQuery);

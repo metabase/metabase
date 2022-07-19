@@ -7,7 +7,7 @@ import {
   setFilter,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { DASHBOARD_SQL_TEXT_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
 import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
@@ -37,9 +37,7 @@ Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
         setFilter("Text or Category", filter);
 
         cy.findByText("Select…").click();
-        popover()
-          .contains("Filter")
-          .click();
+        popover().contains("Filter").click();
       });
 
       it(`should work for "${filter}" when set through the filter widget`, () => {
@@ -54,9 +52,7 @@ Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
       });
 
       it(`should work for "${filter}" when set as the default filter and when that filter is removed (metabase#20493)`, () => {
-        cy.findByText("Default value")
-          .next()
-          .click();
+        cy.findByText("Default value").next().click();
 
         applyFilterByType(filter, value);
 
@@ -66,9 +62,7 @@ Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
           cy.contains(representativeResult);
         });
 
-        filterWidget()
-          .find(".Icon-close")
-          .click();
+        filterWidget().find(".Icon-close").click();
 
         cy.url().should("not.include", value);
 

@@ -1,5 +1,6 @@
 (ns metabase.api.email-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.api.email :as api.email]
             [metabase.email :as email]
             [metabase.models.setting :as setting]
@@ -13,7 +14,16 @@
           {::email/error (Exception. "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar")})))
   (is (= {:message "Sorry, something went wrong. Please try again. Error: Some unexpected message"}
          (#'api.email/humanize-error-messages
-          {::email/error (Exception. "Some unexpected message")}))))
+          {::email/error (Exception. "Some unexpected message")})))
+  (testing "Checks error classes for auth errors (#23918)"
+    (let [exception (javax.mail.AuthenticationFailedException.
+                     "" ;; Office365 returns auth exception with no message so we only saw "Read timed out" prior
+                     (javax.mail.MessagingException.
+                      "Exception reading response"
+                      (java.net.SocketTimeoutException. "Read timed out")))]
+      (is (= {:errors {:email-smtp-username "Wrong username or password"
+                       :email-smtp-password "Wrong username or password"}}
+             (#'api.email/humanize-error-messages {::email/error exception}))))))
 
 (defn- email-settings
   []
@@ -22,7 +32,9 @@
    :email-smtp-security (setting/get :email-smtp-security)
    :email-smtp-username (setting/get :email-smtp-username)
    :email-smtp-password (setting/get :email-smtp-password)
-   :email-from-address  (setting/get :email-from-address)})
+   :email-from-address  (setting/get :email-from-address)
+   :email-from-name     (setting/get :email-from-name)
+   :email-reply-to      (setting/get :email-reply-to)})
 
 (def ^:private default-email-settings
   {:email-smtp-host     "foobar"
@@ -30,11 +42,15 @@
    :email-smtp-security :tls
    :email-smtp-username "munchkin"
    :email-smtp-password "gobble gobble"
-   :email-from-address  "eating@hungry.com"})
+   :email-from-address  "eating@hungry.com"
+   :email-from-name     "Eating"
+   :email-reply-to      ["reply-to@hungry.com"]})
 
 (deftest test-email-settings-test
   (testing "POST /api/email/test -- send a test email"
-    (mt/with-temporary-setting-values [email-from-address "notifications@metabase.com"]
+    (mt/with-temporary-setting-values [email-from-address "notifications@metabase.com"
+                                       email-from-name    "Sender Name"
+                                       email-reply-to     ["reply-to@metabase.com"]]
       (mt/with-fake-inbox
         (testing "Non-admin -- request should fail"
           (is (= "You don't have permissions to do that."
@@ -44,10 +60,11 @@
         (is (= {:ok true}
                (mt/user-http-request :crowberto :post 200 "email/test")))
         (is (= {"crowberto@metabase.com"
-                [{:from    "notifications@metabase.com",
-                  :to      ["crowberto@metabase.com"],
-                  :subject "Metabase Test Email",
-                  :body    "Your Metabase emails are working — hooray!"}]}
+                [{:from     "Sender Name <notifications@metabase.com>",
+                  :to       ["crowberto@metabase.com"],
+                  :reply-to ["reply-to@metabase.com"]
+                  :subject  "Metabase Test Email",
+                  :body     "Your Metabase emails are working — hooray!"}]}
                @mt/inbox))))))
 
 (deftest update-email-settings-test
@@ -66,7 +83,7 @@
                                   (with-redefs [email/retry-delay-ms 0]
                                     (thunk)))}]
       (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
-                                   email-smtp-password email-from-address]
+                                   email-smtp-password email-from-address email-from-name email-reply-to]
         (testing (format "SMTP connection is valid? %b\n" success?)
           (f (fn []
                (testing "API request"
@@ -83,12 +100,38 @@
                  (is (= (if success?
                           default-email-settings
                           original-values)
-                        (email-settings)))))))))))
+                        (email-settings))))))))))
+  (testing "Updating values with obfuscated password (#23919)"
+    (mt/with-temporary-setting-values [email-from-address  "notifications@metabase.com"
+                                       email-from-name     "Sender Name"
+                                       email-reply-to      ["reply-to@metabase.com"]
+                                       email-smtp-host     "www.test.com"
+                                       email-smtp-password "preexisting"]
+      (with-redefs [email/test-smtp-connection (fn [settings]
+                                                 (let [obfuscated? (str/starts-with? (:pass settings) "****")]
+                                                   (is (not obfuscated?) "We received an obfuscated password!")
+                                                   (if obfuscated?
+                                                     {::email/error (ex-info "Sent obfuscated password" {})}
+                                                     settings)))]
+        (testing "If we don't change the password we don't see the password"
+          (let [payload  (-> (email-settings)
+                             ;; user changes one property
+                             (assoc :email-from-name "notifications")
+                             ;; the FE will have an obfuscated value
+                             (update :email-smtp-password setting/obfuscate-value))
+                response (mt/user-http-request :crowberto :put 200 "email" payload)]
+            (is (= (setting/obfuscate-value "preexisting") (:email-smtp-password response)))))
+        (testing "If we change the password we can receive the password"
+          (let [payload  (-> (email-settings)
+                             ;; user types in a new password
+                             (assoc :email-smtp-password "new-password"))
+                response (mt/user-http-request :crowberto :put 200 "email" payload)]
+            (is (= "new-password" (:email-smtp-password response)))))))))
 
 (deftest clear-email-settings-test
   (testing "DELETE /api/email"
     (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
-                                 email-smtp-password email-from-address]
+                                 email-smtp-password email-from-address email-from-name email-reply-to]
       (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
         (is (= (-> default-email-settings
                    (assoc :with-corrections {})
@@ -97,11 +140,13 @@
         (let [new-email-settings (email-settings)]
           (is (nil? (mt/user-http-request :crowberto :delete 204 "email")))
           (is (= default-email-settings
-                 new-email-settings))
+                new-email-settings))
           (is (= {:email-smtp-host     nil
                   :email-smtp-port     nil
                   :email-smtp-security :none
                   :email-smtp-username nil
                   :email-smtp-password nil
-                  :email-from-address  "notifications@metabase.com"}
+                  :email-from-address  "notifications@metabase.com"
+                  :email-from-name     nil
+                  :email-reply-to      nil}
                  (email-settings))))))))

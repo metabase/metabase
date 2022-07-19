@@ -36,6 +36,7 @@ const defaultPickerPropTypes = {
   isSidebar: PropTypes.bool,
   minWidth: PropTypes.number,
   maxWidth: PropTypes.number,
+  checkedColor: PropTypes.string,
 };
 
 const defaultLayoutPropTypes = {
@@ -52,6 +53,7 @@ export default function DefaultPicker({
   minWidth,
   maxWidth,
   isSidebar,
+  checkedColor,
 }) {
   const operator = filter.operator();
   if (!operator) {
@@ -66,10 +68,7 @@ export default function DefaultPicker({
   const isBetweenLayout =
     operator.name === "between" && operatorFields.length === 2;
 
-  const visualizationSettings = filter
-    ?.query()
-    ?.question()
-    ?.settings();
+  const visualizationSettings = filter?.query()?.question()?.settings();
 
   const key = keyForColumn(dimension.column());
   const columnSettings = visualizationSettings?.column_settings?.[key];
@@ -136,6 +135,7 @@ export default function DefaultPicker({
             disableSearch={disableSearch}
             minWidth={minWidth}
             maxWidth={maxWidth}
+            checkedColor={checkedColor}
           />
         );
       } else if (operatorField.type === "text") {

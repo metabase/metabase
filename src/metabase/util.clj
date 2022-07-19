@@ -15,15 +15,15 @@
             [metabase.config :as config]
             [metabase.shared.util :as shared.u]
             [metabase.util.i18n :refer [trs tru]]
+            [nano-id.core :refer [nano-id]]
             [potemkin :as p]
             [ring.util.codec :as codec]
             [weavejester.dependency :as dep])
   (:import [java.math MathContext RoundingMode]
            [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
-           (java.util Locale PriorityQueue)
+           [java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue]
            java.util.concurrent.TimeoutException
-           javax.xml.bind.DatatypeConverter
            [org.apache.commons.validator.routines RegexValidator UrlValidator]))
 
 (comment shared.u/keep-me)
@@ -39,6 +39,15 @@
           (#{\. \? \!} (last s)))
     s
     (str s ".")))
+
+(defn capitalize-first-char
+  "Like string/capitalize, only it ignores the rest of the string
+  to retain case-sensitive capitalization, e.g., PostgreSQL."
+  [s]
+  (if (< (count s) 2)
+    (str/upper-case s)
+    (str (str/upper-case (subs s 0 1))
+         (subs s 1))))
 
 (defn lower-case-en
   "Locale-agnostic version of `clojure.string/lower-case`.
@@ -79,25 +88,6 @@
   {:style/indent 0}
   [& body]
   `(try ~@body (catch Throwable ~'_)))
-
-(defn optional
-  "Helper function for defining functions that accept optional arguments. If `pred?` is true of the first item in `args`,
-  a pair like `[first-arg other-args]` is returned; otherwise, a pair like `[default other-args]` is returned.
-
-  If `default` is not specified, `nil` will be returned when `pred?` is false.
-
-    (defn
-      ^{:arglists ([key? numbers])}
-      wrap-nums [& args]
-      (let [[k nums] (optional keyword? args :nums)]
-        {k nums}))
-    (wrap-nums 1 2 3)          -> {:nums [1 2 3]}
-    (wrap-nums :numbers 1 2 3) -> {:numbers [1 2 3]}"
-  {:arglists '([pred? args]
-               [pred? args default])}
-  [pred? args & [default]]
-  (if (pred? (first args)) [(first args) (next args)]
-      [default args]))
 
 (defmacro varargs
   "Make a properly-tagged Java interop varargs argument. This is basically the same as `into-array` but properly tags
@@ -578,15 +568,28 @@
                    (str/replace s #"\s" "")
                    (re-matches #"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$" s)))))
 
+(def ^Base64$Decoder base64-decoder
+  "A shared Base64 decoder instance."
+  (Base64/getDecoder))
+
+(defn decode-base64-to-bytes
+  "Decodes a Base64 string into bytes."
+  ^bytes [^String string]
+  (.decode base64-decoder string))
+
 (defn decode-base64
-  "Decodes a Base64 string to a UTF-8 string"
+  "Decodes the Base64 string `input` to a UTF-8 string."
   [input]
-  (new java.lang.String (DatatypeConverter/parseBase64Binary input) "UTF-8"))
+  (new java.lang.String (decode-base64-to-bytes input) "UTF-8"))
+
+(def ^Base64$Encoder base64-encoder
+  "A shared Base64 encoder instance."
+  (Base64/getEncoder))
 
 (defn encode-base64
-  "Encodes a string to a Base64 string"
-  [^String input]
-  (DatatypeConverter/printBase64Binary (.getBytes input "UTF-8")))
+  "Encodes the UTF-8 encoding of the string `input` to a Base64 string."
+  ^String [^String input]
+  (.encodeToString base64-encoder (.getBytes input "UTF-8")))
 
 (def ^{:arglists '([n])} safe-inc
   "Increment `n` if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
@@ -625,7 +628,7 @@
     (long (math/floor (/ (Math/log (math/abs x))
                          (Math/log 10))))))
 
-(defn update-when
+(defn update-if-exists
   "Like `clojure.core/update` but does not create a new key if it does not exist. Useful when you don't want to create
   cruft."
   [m k f & args]
@@ -633,7 +636,7 @@
     (apply update m k f args)
     m))
 
-(defn update-in-when
+(defn update-in-if-exists
   "Like `clojure.core/update-in` but does not create new keys if they do not exist. Useful when you don't want to create
   cruft."
   [m ks f & args]
@@ -956,3 +959,19 @@
   [email-address domain]
   {:pre [(email? email-address)]}
   (= (email->domain email-address) domain))
+
+(defn generate-nano-id
+  "Generates a random NanoID string. Usually these are used for the entity_id field of various models."
+  []
+  (nano-id))
+
+(defn pick-first
+  "Returns a pair [match others] where match is the first element of `coll` for which `pred` returns
+  a truthy value and others is a sequence of the other elements of `coll` with the order preserved.
+  Returns nil if no element satisfies `pred`."
+  [pred coll]
+  (loop [xs (seq coll), prefix []]
+    (when-let [[x & xs] xs]
+      (if (pred x)
+        [x (concat prefix xs)]
+        (recur xs (conj prefix x))))))

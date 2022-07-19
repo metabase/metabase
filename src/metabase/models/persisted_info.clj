@@ -74,7 +74,9 @@
   {:batched-hydrate :persisted}
   [cards]
   (when (seq cards)
-    (let [existing-ids (db/select-field :card_id PersistedInfo :card_id [:in (map :id cards)])]
+    (let [existing-ids (db/select-field :card_id PersistedInfo
+                                        :card_id [:in (map :id cards)]
+                                        :state [:not-in ["off" "deletable"]])]
       (map (fn [{id :id :as card}]
              (assoc card :persisted (contains? existing-ids id)))
            cards))))
@@ -108,7 +110,7 @@
      :creator_id      user-id}))
 
 (defn ready-unpersisted-models!
-  "Looks for all models in database and creates a persisted-info ready to be synced."
+  "Looks for all new models in database and creates a persisted-info ready to be synced."
   [database-id]
   (let [cards (db/select Card {:where [:and
                                        [:= :database_id database-id]
@@ -121,7 +123,7 @@
 (comment
   (ready-unpersisted-models! 183))
 
-(defn turn-on!
+(defn turn-on-model!
   "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."
   [user-id card]
   (let [card-id (u/the-id card)
@@ -136,3 +138,16 @@
                                        :active false, :state "creating", :state_change_at :%now)
                            (db/select-one PersistedInfo :card_id card-id)))]
     persisted-info))
+
+(defn ready-database!
+  "Sets PersistedInfo state to `creating` for models without a PeristedInfo or those in a `deletable` state.
+   Will ignore explicitly set `off` models."
+  [database-id]
+  (db/update! PersistedInfo
+              {:where [:and
+                       [:= :database_id database-id]
+                       [:= :state "deletable"]]
+               :set {:active false,
+                     :state "creating",
+                     :state_change_at :%now}})
+  (ready-unpersisted-models! database-id))

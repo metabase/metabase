@@ -1,3 +1,7 @@
+---
+title: Running the Metabase JAR file
+---
+
 # Running the Metabase JAR file
 
 To run Metabase via a JAR file, you will need to have a Java Runtime Environment (JRE) installed on your system.
@@ -12,7 +16,7 @@ To run Metabase via a JAR file, you will need to have a Java Runtime Environment
 
 If you have Java installed:
 
-1. [Download Metabase](https://metabase.com/start/jar.html).
+1. [Download Metabase](https://metabase.com/start/oss/jar).
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
    ```
@@ -39,7 +43,7 @@ If Java isn't installed, you'll need to install it before you can run Metabase. 
 
 ### 2. Download Metabase
 
-[Download the Metabase JAR](https://www.metabase.com/start/oss/jar.html).
+[Download the Metabase JAR](https://www.metabase.com/start/oss/jar).
 
 ### 3. Create a new directory and move the Metabase JAR into it
 

@@ -7,6 +7,9 @@
             [metabase.models.dependency :as dependency :refer [Dependency]]
             [metabase.models.interface :as mi]
             [metabase.models.revision :as revision]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -37,7 +40,8 @@
   (merge
    models/IModelDefaults
    {:types      (constantly {:definition :metric-segment-definition})
-    :properties (constantly {:timestamped? true})
+    :properties (constantly {:timestamped? true
+                             :entity_id    true})
     :pre-update pre-update
     :pre-delete pre-delete})
   mi/IObjectPermissions
@@ -48,7 +52,10 @@
     ;; for the time being you need to be a superuser in order to create or update Metrics because the UI for doing so
     ;; is only exposed in the admin panel
     :can-write?        mi/superuser?
-    :can-create?       mi/superuser?}))
+    :can-create?       mi/superuser?})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
 
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
@@ -90,6 +97,27 @@
   dependency/IDependent
   {:dependencies metric-dependencies})
 
+;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
+
+(defmethod serdes.base/serdes-generate-path "Metric"
+  [_ metric]
+  (let [base (serdes.base/infer-self-path "Metric" metric)]
+    [(assoc base :label (:name metric))]))
+
+(defmethod serdes.base/extract-one "Metric"
+  [_model-name _opts metric]
+  (-> (serdes.base/extract-one-basics "Metric" metric)
+      (update :table_id   serdes.util/export-table-fk)
+      (update :creator_id serdes.util/export-fk-keyed 'User :email)))
+
+(defmethod serdes.base/load-xform "Metric" [metric]
+  (-> metric
+      serdes.base/load-xform-basics
+      (update :table_id   serdes.util/import-table-fk)
+      (update :creator_id serdes.util/import-fk-keyed 'User :email)))
+
+(defmethod serdes.base/serdes-dependencies "Metric" [{:keys [table_id]}]
+  [(serdes.util/table->path table_id)])
 
 ;;; ----------------------------------------------------- OTHER ------------------------------------------------------
 

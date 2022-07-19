@@ -35,9 +35,9 @@
   (log/spy :error (type message))
   (condp re-matches message
     #"(?s).*Object does not exist.*$"
-    (driver.common/connection-error-messages :database-name-incorrect)
+    :database-name-incorrect
 
-    #"(?s).*" ; default - the Snowflake errors have a \n in them
+    ; default - the Snowflake errors have a \n in them
     message))
 
 (defmethod driver/db-start-of-week :snowflake

@@ -30,7 +30,7 @@ import {
   HIDE_ADD_PARAMETER_POPOVER,
   SET_SIDEBAR,
   CLOSE_SIDEBAR,
-  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
   SAVE_DASHBOARD_AND_CARDS,
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
@@ -284,7 +284,7 @@ const parameterValuesSearchCache = handleActions(
     [SAVE_DASHBOARD_AND_CARDS]: {
       next: () => ({}),
     },
-    [FETCH_DASHBOARD_PARAMETER_FIELD_VALUES]: {
+    [FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE]: {
       next: (state, { payload }) =>
         payload ? assoc(state, payload.cacheKey, payload.results) : state,
     },
@@ -379,8 +379,7 @@ const sidebar = handleActions(
       next: () => DEFAULT_SIDEBAR,
     },
     [SET_EDITING_DASHBOARD]: {
-      next: (state, { payload: isEditing }) =>
-        isEditing ? state : DEFAULT_SIDEBAR,
+      next: () => DEFAULT_SIDEBAR,
     },
     [REMOVE_PARAMETER]: {
       next: () => DEFAULT_SIDEBAR,

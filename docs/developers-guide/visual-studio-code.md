@@ -1,6 +1,10 @@
-## Developing with Visual Studio Code
+---
+title: Developing with Visual Studio Code
+---
 
-### Debugging
+# Developing with Visual Studio Code
+
+## Debugging
 
 First, install the following extension:
 * [Debugger for Firefox](https://marketplace.visualstudio.com/items?itemName=firefox-devtools.vscode-firefox-debug)
@@ -18,7 +22,7 @@ After that, begin the debugging session by choosing menu _Run_, _Start Debugging
 
 For more details, please refer to the complete VS Code documentation on [Debugging](https://code.visualstudio.com/docs/editor/debugging).
 
-### Docker-based Workflow
+## Docker-based Workflow
 
 These instructions allow you to work on Metabase codebase on Windows, Linux, or macOS using [Visual Studio Code](https://code.visualstudio.com/), **without** manually installing the necessary dependencies. This is possible by leveraging Docker container and the Remote Containers extension from VS Code.
 
@@ -56,4 +60,3 @@ Steps:
 5. After a while (after all JavaScript and Clojure dependencies are completely downloaded), open localhost:3000 with your web browser.
 
 See [here](dev-branch-docker.md) for more on running development branches of Metabase using Docker.
-

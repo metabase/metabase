@@ -3,7 +3,7 @@ import {
   visitEmbeddedPage,
   filterWidget,
   popover,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import {
   nativeQuestionDetails,
@@ -77,9 +77,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         .and("contain", "AK")
         .and("not.contain", "TX");
 
-      cy.get(".bar")
-        .should("have.length", 1)
-        .realHover();
+      cy.get(".bar").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -100,9 +98,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
-      cy.get(".bar")
-        .should("have.length", 1)
-        .realHover();
+      cy.get(".bar").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -124,9 +120,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       filterWidget().should("have.length", 2);
 
-      cy.get(".bar")
-        .should("have.length", 1)
-        .realHover();
+      cy.get(".bar").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -147,9 +141,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
-      cy.get(".bar")
-        .should("have.length", 1)
-        .realHover();
+      cy.get(".bar").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -170,19 +162,14 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         });
       });
 
-      cy.get(".bar")
-        .should("have.length", 1)
-        .realHover();
+      cy.get(".bar").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
         testPairedTooltipValues("Count", "68");
       });
 
-      filterWidget()
-        .should("have.length", 1)
-        .and("contain", "City")
-        .click();
+      filterWidget().should("have.length", 1).and("contain", "City").click();
 
       popover()
         .last()
@@ -196,9 +183,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
-      cy.get(".bar")
-        .should("have.length", 1)
-        .realHover();
+      cy.get(".bar").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -223,10 +208,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         visitEmbeddedPage(payload);
       });
 
-      filterWidget()
-        .should("have.length", 1)
-        .and("contain", "City")
-        .click();
+      filterWidget().should("have.length", 1).and("contain", "City").click();
 
       popover()
         .last()
@@ -276,10 +258,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       cy.location("search").should("eq", "?id_filter=1");
 
       // But it should still be editable, and that's why we see two filter widgets
-      filterWidget()
-        .should("have.length", 2)
-        .contains("Category")
-        .click();
+      filterWidget().should("have.length", 2).contains("Category").click();
 
       popover().within(() => {
         cy.findByText("Gizmo").click();
@@ -309,10 +288,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
         cy.location("search").should("eq", "?id_filter=4");
 
-        filterWidget()
-          .should("have.length", 2)
-          .contains("Category")
-          .click();
+        filterWidget().should("have.length", 2).contains("Category").click();
 
         popover().within(() => {
           cy.findByText("Doohickey").click();
@@ -355,11 +331,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.findByText("2 selections").click();
 
         // Remove one of the previously set filter values
-        popover()
-          .findByText("29")
-          .closest("li")
-          .find(".Icon-close")
-          .click();
+        popover().findByText("29").closest("li").find(".Icon-close").click();
         cy.button("Update filter").click();
 
         cy.findByTestId("table-row")
@@ -443,26 +415,17 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 });
 
 function openFilterOptions(name) {
-  filterWidget()
-    .contains(name)
-    .click();
+  filterWidget().contains(name).click();
 }
 
 function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1)
-    .closest("td")
-    .siblings("td")
-    .findByText(val2);
+  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  cy.get(".x-axis-label")
-    .invoke("text")
-    .should("eq", xLabel);
+  cy.get(".x-axis-label").invoke("text").should("eq", xLabel);
 
-  cy.get(".y-axis-label")
-    .invoke("text")
-    .should("eq", yLabel);
+  cy.get(".y-axis-label").invoke("text").should("eq", yLabel);
 }
 
 function getXAxisValues() {

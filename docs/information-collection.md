@@ -1,4 +1,8 @@
-# About the Information we collect:
+---
+title: About the information we collect
+---
+
+# About the information we collect
 
 Metabase uses Google Analytics and Snowplow to collect anonymous usage information from the installed servers that enable this feature. Below is a representative list of the events we have instrumented, as well as the information we collect about the user performing the action and the instance being used.
 
@@ -14,7 +18,7 @@ If you're in the process of setting up your Metabase, an admin can also toggle o
 
 In the list below, we spell out exactly why we collect each bit of information.
 
-### Example questions we want to answer:
+## Example questions we want to answer
 
 - Is our query interface working?
   - Are users stopping halfway through a question?
@@ -30,7 +34,7 @@ In the list below, we spell out exactly why we collect each bit of information.
 - How often are questions saved?
 - How often are saved questions added to dashboards?
 
-### What we will do with the answers to these questions:
+## What we will do with the answers to these questions
 
 - Prioritize improvements in the query interface vs the SQL interface
 - Optimize the product for common usage patterns
@@ -39,11 +43,11 @@ In the list below, we spell out exactly why we collect each bit of information.
 
 While we will closely follow reported issues and feature requests, we aim to make as many of our users happy and provide them with improvements in features that matter to them. Allowing us to collect information about your instance gives your users a vote in future improvements in a direct way.
 
-# The data we collect:
+## The data we collect
 
 NOTE: We never capture any specific details in any of our tracking methodology such as user details, table names, field names, etc. Collected data is limited to the types of actions users are taking with the product.
 
-### Google Analytics Events
+## Google Analytics Events
 
 | Category             | Action                                                                                                                                                                   | Why we collect this                                                                                                                                                                                                                                   |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -56,7 +60,7 @@ NOTE: We never capture any specific details in any of our tracking methodology s
 | Databases            | We simply capture when databases are created or removed and what types of databases are being used                                                                       | This helps Metabase ensure that we spend the most time and attention on the types of databases that are most popular to users.                                                                                                                        |
 | Data Model           | The saving and updates on tables, fields, segments, and metrics are all counted, along with a few other details such as what types of special metadata choices are made. | We use this data to help ensure that Metabase provides an appropriate set of options for users to describe their data and also gives us a sense for how much time users spend marking up their schemas.                                               |
 
-### Snowplow Events
+## Snowplow Events
 
 | Category               | Action                                                                                                                                                            | Why we collect this                                                                                                                         |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -65,7 +69,7 @@ NOTE: We never capture any specific details in any of our tracking methodology s
 | Dashboard              | When you create a new dashboard or add a new question to a dashboard.                                                                                             | We can use this to determine if Metabase is adding value to your organization, and therefore if we're doing our jobs correctly.             |
 | Account                | When a new user is created or a new instance is set up.                                                                                                           | This powers basic reporting to help us understand how your Metabase team is growing.                                                        |
 
-### Server-side Analytics
+## Server-side Analytics
 
 | Metric                                            | An example of why we collect this                                                                                                                       |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -92,3 +96,7 @@ NOTE: We never capture any specific details in any of our tracking methodology s
 | OS and JVM Version                                | Can we deprecate Java 7 yet?                                                                                                                        |
 
 Note this is meant to be representative. The actual code that is running to generate this can be audited at [https://github.com/metabase/metabase/blob/master/src/metabase/analytics/](https://github.com/metabase/metabase/blob/master/src/metabase/analytics).
+
+## Data privacy
+
+Check out our page on [data privacy and security](https://www.metabase.com/security).

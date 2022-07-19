@@ -27,9 +27,9 @@ describe("ScalarValue utils", () => {
         totalNumGridCols: 10,
       });
       expect(fontSize).toEqual(
-        `${MIN_SIZE_REM +
-          HEIGHT_ADJUSTMENT_FACTOR +
-          WIDTH_ADJUSTMENT_FACTOR}rem`,
+        `${
+          MIN_SIZE_REM + HEIGHT_ADJUSTMENT_FACTOR + WIDTH_ADJUSTMENT_FACTOR
+        }rem`,
       );
     });
 

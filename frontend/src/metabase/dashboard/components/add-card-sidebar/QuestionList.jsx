@@ -6,7 +6,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import EmptyState from "metabase/components/EmptyState";
 import Search from "metabase/entities/search";
-import { SelectList } from "metabase/components/select-list";
+import SelectList from "metabase/components/SelectList";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 
 import { EmptyStateContainer, QuestionListItem } from "./QuestionList.styled";

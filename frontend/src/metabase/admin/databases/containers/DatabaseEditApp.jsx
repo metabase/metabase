@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 
 import { t } from "ttag";
 import _ from "underscore";
+import { updateIn } from "icepick";
 
 import title from "metabase/hoc/Title";
 
@@ -19,23 +20,18 @@ import { getSetting } from "metabase/selectors/settings";
 
 import Database from "metabase-lib/lib/metadata/Database";
 
-import {
-  getEditingDatabase,
-  getDatabaseCreationStep,
-  getInitializeError,
-} from "../selectors";
+import { getEditingDatabase, getInitializeError } from "../selectors";
 
 import {
   reset,
   initializeDatabase,
   saveDatabase,
   syncDatabaseSchema,
+  dismissSyncSpinner,
   rescanDatabaseFields,
   discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
-  persistDatabase,
-  unpersistDatabase,
 } from "../database";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
@@ -53,7 +49,6 @@ const mapStateToProps = state => {
 
   return {
     database: database ? new Database(database) : undefined,
-    databaseCreationStep: getDatabaseCreationStep(state),
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
     isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
@@ -65,10 +60,9 @@ const mapDispatchToProps = {
   initializeDatabase,
   saveDatabase,
   syncDatabaseSchema,
+  dismissSyncSpinner,
   rescanDatabaseFields,
   discardSavedFieldValues,
-  persistDatabase,
-  unpersistDatabase,
   deleteDatabase,
   selectEngine,
 };
@@ -81,15 +75,13 @@ class DatabaseEditApp extends Component {
   static propTypes = {
     database: PropTypes.object,
     metadata: PropTypes.object,
-    databaseCreationStep: PropTypes.string,
     params: PropTypes.object.isRequired,
     reset: PropTypes.func.isRequired,
     initializeDatabase: PropTypes.func.isRequired,
     syncDatabaseSchema: PropTypes.func.isRequired,
+    dismissSyncSpinner: PropTypes.func.isRequired,
     rescanDatabaseFields: PropTypes.func.isRequired,
     discardSavedFieldValues: PropTypes.func.isRequired,
-    persistDatabase: PropTypes.func.isRequired,
-    unpersistDatabase: PropTypes.func.isRequired,
     deleteDatabase: PropTypes.func.isRequired,
     saveDatabase: PropTypes.func.isRequired,
     selectEngine: PropTypes.func.isRequired,
@@ -111,8 +103,7 @@ class DatabaseEditApp extends Component {
       initializeError,
       rescanDatabaseFields,
       syncDatabaseSchema,
-      persistDatabase,
-      unpersistDatabase,
+      dismissSyncSpinner,
       isAdmin,
       isModelPersistenceEnabled,
     } = this.props;
@@ -123,6 +114,14 @@ class DatabaseEditApp extends Component {
       [t`Databases`, "/admin/databases"],
       [addingNewDatabase ? t`Add Database` : database.name],
     ];
+
+    const handleSubmit = async database => {
+      try {
+        await this.props.saveDatabase(database);
+      } catch (error) {
+        throw getSubmitError(error);
+      }
+    };
 
     return (
       <DatabaseEditRoot>
@@ -138,9 +137,9 @@ class DatabaseEditApp extends Component {
                 {() => (
                   <Databases.Form
                     database={database}
-                    form={Databases.forms.connection}
+                    form={Databases.forms.details}
                     formName={DATABASE_FORM_NAME}
-                    onSubmit={this.props.saveDatabase}
+                    onSubmit={handleSubmit}
                     submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
                     submitButtonComponent={Button}
                   >
@@ -200,8 +199,7 @@ class DatabaseEditApp extends Component {
               discardSavedFieldValues={discardSavedFieldValues}
               rescanDatabaseFields={rescanDatabaseFields}
               syncDatabaseSchema={syncDatabaseSchema}
-              persistDatabase={persistDatabase}
-              unpersistDatabase={unpersistDatabase}
+              dismissSyncSpinner={dismissSyncSpinner}
             />
           )}
         </DatabaseEditMain>
@@ -209,6 +207,16 @@ class DatabaseEditApp extends Component {
     );
   }
 }
+
+const getSubmitError = error => {
+  if (_.isObject(error?.data?.errors)) {
+    return updateIn(error, ["data", "errors"], errors => ({
+      details: errors,
+    }));
+  }
+
+  return error;
+};
 
 export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),

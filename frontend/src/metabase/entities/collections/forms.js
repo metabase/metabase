@@ -79,10 +79,9 @@ export const getFormSelector = createSelector(
       !isPersonalOrPersonalChild(parentCollection, collectionList);
 
     if (canManageAuthorityLevel) {
-      extraFields.push(...PLUGIN_COLLECTIONS.authorityLevelFormFields);
+      extraFields.push(...PLUGIN_COLLECTIONS.getAuthorityLevelFormFields());
     }
 
-    const form = createForm({ extraFields });
-    return form;
+    return createForm({ extraFields });
   },
 );

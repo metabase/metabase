@@ -3,7 +3,7 @@ import {
   openNativeEditor,
   filterWidget,
   popover,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
@@ -146,9 +146,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       .should("be.visible");
 
     // collapse editor
-    cy.get(".Icon-contract")
-      .first()
-      .click();
+    cy.get(".Icon-contract").first().click();
 
     cy.get("fieldset")
       .findByText("Testingparamvisbility77")

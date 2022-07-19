@@ -1,9 +1,68 @@
 import {
+  getTemplateTagsForParameters,
   getTemplateTagParameters,
   remapParameterValuesToTemplateTags,
 } from "./cards";
 
 describe("parameters/utils/cards", () => {
+  describe("getTemplateTagsForParameters", () => {
+    it("should return an empty array for an invalid card", () => {
+      expect(getTemplateTagsForParameters({})).toEqual([]);
+    });
+
+    it("should return an empty array for a non-native query", () => {
+      const card = {
+        dataset_query: {
+          type: "query",
+        },
+      };
+      expect(getTemplateTagsForParameters(card)).toEqual([]);
+    });
+
+    it("should return an empty array for a non-parametrized query", () => {
+      const card = {
+        dataset_query: {
+          type: "query",
+          native: {
+            query: "select * from PRODUCTS",
+          },
+        },
+      };
+      expect(getTemplateTagsForParameters(card)).toEqual([]);
+    });
+
+    it("should extract the template tags defining the parameters", () => {
+      const card = {
+        dataset_query: {
+          type: "native",
+          native: {
+            query: "select * from PRODUCTS where RATING > {{stars}}",
+            "template-tags": {
+              stars: {
+                type: "number",
+                name: "stars",
+                id: "xyz777",
+              },
+              "snippet: foo": {
+                type: "snippet",
+                id: "abc123",
+                name: "snippet: foo",
+                "snippet-id": 6,
+              },
+            },
+          },
+        },
+      };
+      expect(getTemplateTagsForParameters(card)).toEqual([
+        {
+          type: "number",
+          name: "stars",
+          id: "xyz777",
+        },
+      ]);
+    });
+  });
+
   describe("getTemplateTagParameters", () => {
     let tags;
     beforeEach(() => {

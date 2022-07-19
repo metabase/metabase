@@ -167,7 +167,9 @@
                    (future (slack/refresh-channels-and-usernames-when-needed!))
                    (assoc-in chan-types
                              [:slack :fields 0 :options]
-                             (slack/slack-cached-channels-and-usernames))
+                             (->> (slack/slack-cached-channels-and-usernames)
+                                  :channels
+                                  (map :display-name)))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
@@ -176,7 +178,10 @@
   [{query :dataset_query, card-id :id}]
   (binding [qp.perms/*card-id* card-id]
     (qp/process-query-and-save-execution!
-     (assoc query :async? false)
+     (assoc query
+            :async? false
+            :middleware {:process-viz-settings? true
+                         :js-int-to-string?     false})
      {:executed-by api/*current-user-id*
       :context     :pulse
       :card-id     card-id})))

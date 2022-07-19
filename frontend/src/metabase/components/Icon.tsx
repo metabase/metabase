@@ -23,7 +23,7 @@ export const IconWrapper = styled.div<IconWrapperProps>`
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 99px;
+  border-radius: 6px;
   cursor: pointer;
   color: ${props => (props.open ? c("brand") : "inherit")};
   // special cases for certain icons
@@ -32,20 +32,19 @@ export const IconWrapper = styled.div<IconWrapperProps>`
   & > .icon.icon-share {
     transform: translateY(-2px);
   }
-  ${hover};
+
+  &:hover {
+    color: ${({ hover }) => hover?.color ?? c("brand")};
+    background-color: ${({ hover }) =>
+      hover?.backgroundColor ?? c("bg-medium")};
+  }
+
   transition: all 300ms ease-in-out;
 
   @media (prefers-reduced-motion) {
     transition: none;
   }
 `;
-
-IconWrapper.defaultProps = {
-  hover: {
-    backgroundColor: c("bg-medium"),
-    color: c("brand"),
-  },
-};
 
 const stringOrNumberPropType = PropTypes.oneOfType([
   PropTypes.number,
@@ -62,6 +61,7 @@ export const iconPropTypes = {
   tooltip: PropTypes.string,
   className: PropTypes.string,
   onClick: PropTypes.func,
+  style: PropTypes.object,
 };
 
 export type IconProps = PropTypes.InferProps<typeof iconPropTypes> & {

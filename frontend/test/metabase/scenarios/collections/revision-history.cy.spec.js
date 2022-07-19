@@ -3,7 +3,9 @@ import {
   visitDashboard,
   saveDashboard,
   visitQuestion,
-} from "__support__/e2e/cypress";
+  questionInfoButton,
+  rightSidebar,
+} from "__support__/e2e/helpers";
 
 import { onlyOn } from "@cypress/skip-test";
 
@@ -37,7 +39,7 @@ describe("revision history", () => {
 
       openRevisionHistory();
 
-      cy.findByText("created this");
+      cy.findByText(/created this/);
 
       cy.findAllByText("Revert").should("not.exist");
     });
@@ -45,9 +47,7 @@ describe("revision history", () => {
     it.skip("dashboard should update properly on revert (metabase#6884)", () => {
       visitAndEditDashboard(1);
       // Add another question without changing its size or moving it afterwards
-      cy.icon("add")
-        .last()
-        .click();
+      cy.icon("add").last().click();
       cy.findByText("Orders, Count").click();
       saveDashboard();
       // Revert the card to the state when the second card was added
@@ -85,29 +85,22 @@ describe("revision history", () => {
               }
             });
 
-            it("should be able to get to the dashboard revision modal directly via url", () => {
-              cy.visit("/dashboard/1/history");
-              cy.findByText("created this");
-              cy.findAllByRole("button", { name: "Revert" });
-            });
-
             it("should be able to revert a dashboard (metabase#15237)", () => {
               visitDashboard(1);
               openRevisionHistory();
-              clickRevert("created this");
+              clickRevert(/created this/);
 
               cy.wait("@revert").then(({ response: { statusCode, body } }) => {
                 expect(statusCode).to.eq(200);
                 expect(body.cause).not.to.exist;
               });
 
-              cy.findAllByText(/Revert/).should("not.exist");
               // We reverted the dashboard to the state prior to adding any cards to it
               cy.findByText("This dashboard is looking empty.");
 
               // Should be able to revert back again
-              cy.findByText("Revision history").click();
-              clickRevert("rearranged the cards");
+              cy.findByText("History");
+              clickRevert(/rearranged the cards/);
 
               cy.wait("@revert").then(({ response: { statusCode, body } }) => {
                 expect(statusCode).to.eq(200);
@@ -123,7 +116,8 @@ describe("revision history", () => {
               visitQuestion(1);
 
               cy.findByTestId("revision-history-button").click();
-              cy.findByText("Revert").click();
+
+              cy.findByTestId("question-revert-button").click();
 
               cy.wait("@revert").then(({ response: { statusCode, body } }) => {
                 expect(statusCode).to.eq(200);
@@ -138,12 +132,10 @@ describe("revision history", () => {
 
               visitQuestion(1);
 
-              cy.findByTestId("saved-question-header-button").click();
+              questionInfoButton().click();
               cy.findByText("History").click();
               // Last revert is the original state
-              cy.findAllByText("Revert")
-                .last()
-                .click();
+              cy.findAllByTestId("question-revert-button").last().click();
 
               cy.wait("@revert").then(({ response: { statusCode, body } }) => {
                 expect(statusCode).to.eq(200);
@@ -181,11 +173,7 @@ describe("revision history", () => {
 });
 
 function clickRevert(event_name, index = 0) {
-  cy.findAllByText(event_name)
-    .eq(index)
-    .closest("tr")
-    .findByText(/Revert/i)
-    .click();
+  cy.findAllByText(event_name).eq(index).siblings("button").first().click();
 }
 
 function visitAndEditDashboard(id) {
@@ -195,7 +183,9 @@ function visitAndEditDashboard(id) {
 
 function openRevisionHistory() {
   cy.get("main header").within(() => {
-    cy.icon("ellipsis").click();
+    cy.icon("info").click();
   });
-  cy.findByText("Revision history").click();
+  rightSidebar().within(() => {
+    cy.findByText("History");
+  });
 }

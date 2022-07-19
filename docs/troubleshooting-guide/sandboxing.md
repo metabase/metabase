@@ -1,3 +1,7 @@
+---
+title: Troubleshooting sandbox access to rows and columns
+---
+
 # Troubleshooting sandbox access to rows and columns
 
 [Sandboxing data][sandboxing-your-data] gives some people access to only a subset of the data. (The term comes from the practice of putting children in a sandbox to play safely.) To implement sandboxing, Metabase runs a query that filters rows and/or selects a subset of columns from a table based on [the person's permissions][permissions]; the person's query then runs on the initial query's result (i.e., it runs on the sandboxed data).
@@ -7,7 +11,7 @@ These articles will help you understand how sandboxing works:
 - [Data Sandboxing: setting row-level permissions][row-permissions].
 - [Advanced data sandboxing: limiting access to columns][column-permissions].
 
-If you can't see tables at all, check out [I can't see my tables][cant-see-tables].
+If you have a different data access issue, see [related problems](#do-you-have-a-different-problem).
 
 ## People can't see **rows** in a table they _should_ be able to see
 
@@ -154,18 +158,24 @@ Someone is supposed to be able to view some of the values in a table in their qu
 
 The administrator can [create a new group][groups] to capture precisely who's allowed access to what.
 
+## Do you have a different problem?
+
+- [I have a different permissions issue][troubleshooting-permissions].
+- [I can't see my tables][cant-see-tables].
+
 [authenticating-with-saml]: ../enterprise-guide/authenticating-with-saml.html
-[locked-parameters]: /learn/embedding/embedding-charts-and-dashboards.html#hide-or-lock-parameters-to-restrict-what-data-is-shown
+[cant-see-tables]: cant-see-tables.html
 [column-permissions]: /learn/permissions/data-sandboxing-column-permissions.html
 [data-model]: ../administration-guide/03-metadata-editing.html
 [data-permissions]: /learn/permissions/data-permissions.html
 [groups]: ../administration-guide/04-managing-users.html#groups
 [jwt-auth]: ../enterprise-guide/authenticating-with-jwt.html
+[locked-parameters]: /learn/embedding/embedding-charts-and-dashboards.html#hide-or-lock-parameters-to-restrict-what-data-is-shown
 [permissions]: /learn/permissions/data-permissions.html
 [public-sharing]: ../administration-guide/12-public-links.html
 [row-permissions]: /learn/permissions/data-sandboxing-row-permissions.html
 [sandboxing-your-data]: ../enterprise-guide/data-sandboxes.html
 [signed-embedding]: /learn/embedding/embedding-charts-and-dashboards.html#enable-embedding-in-other-applications
-[cant-see-tables]: cant-see-tables.html
 [sandbox-limitations]: ../enterprise-guide/data-sandboxes.html#current-limitations
+[troubleshooting-permissions]: ./permissions.html
 [unsupported-databases]: ../enterprise-guide/data-sandboxes.html#data-sandboxes-do-not-support-non-sql-databases

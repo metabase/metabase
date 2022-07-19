@@ -4,7 +4,6 @@
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
             [saml20-clj.core :as saml]
@@ -108,12 +107,10 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   (deferred-tru "URL of JWT based login page"))
 
 (defsetting jwt-shared-secret
-  (deferred-tru "String used to seed the private key used to validate JWT messages")
-  :setter (fn [new-value]
-            (when (seq new-value)
-              (assert (u/hexadecimal-string? new-value)
-                       "Invalid JWT Shared Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string)."))
-            (setting/set-value-of-type! :string :jwt-shared-secret new-value)))
+  (deferred-tru (str "String used to seed the private key used to validate JWT messages."
+                     " "
+                     "A hexadecimal-encoded 256-bit key (i.e., a 64-character string) is strongly recommended."))
+  :type :string)
 
 (defsetting jwt-attribute-email
   (deferred-tru "Key to retrieve the JWT user's email address")

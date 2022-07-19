@@ -1,3 +1,7 @@
+---
+title: Connecting to a PostgreSQL database
+---
+
 # Connecting to a PostgreSQL database
 
 In addition to specifying the host, port, database name and user credentials for the database connection, you have the option of securing that connection.
@@ -64,6 +68,19 @@ You can set up an SSH tunnel by supplying the tunnel host, port, tunnel username
 
 For more, see [SSH tunneling in Metabase][ssh-tunnel].
 
+## Google Cloud Platform Application Default Credentials
+
+When running on [Google Cloud SQL][gcp-cloud-sql] you can utilize [Application Default Credentials][gcp-adc] to securely connect to your database.
+
+To utilize Application Default Credentials you must specify the following additional JDBC connection string options:
+
+- socketFactory - The class name to use as the SocketFactory when establishing a socket connection
+  - e.g. `socketFactory=com.google.cloud.sql.postgres.SocketFactory`
+- cloudSqlInstance - The instance connection name (found on the instance details page)
+  - e.g. `cloudSqlInstance=my-project:us-central1:my-db`
+
+For more, see the [Cloud SQL Connector for Java documentation][gcp-cloud-sql-connector]
+
 ## Advanced options
 
 ### Additional JDBC connection string options
@@ -82,12 +99,14 @@ This is a lightweight process that checks for updates to this database’s schem
 
 This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.
 
-## Note on syncing records that include JSON 
+## Note on syncing records that include JSON
 
-Postgres JSON fields don’t have schema, so Metabase can’t rely on table metadata to define which keys a JSON field has. To work around the lack of schema, Metabase will get the first ten thousand records and parse the JSON in those records to infer the JSON's "schema". The reason Metabase limits itself to ten thousand records is so that syncing metadata doesn't put unnecessary strain on your database.
+**Metabase will infer the JSON "schema" based on the keys in the first five hundred rows of a table.** PostgreSQL JSON fields lack schema, so Metabase can’t rely on table metadata to define which keys a JSON field has. To work around the lack of schema, Metabase will get the first five hundred records and parse the JSON in those records to infer the JSON's "schema". The reason Metabase limits itself to five hundred records is so that syncing metadata doesn't put unnecessary strain on your database.
 
-The problem is that if the keys in the JSON vary record to record, the first ten thousand rows may not capture all the keys used by JSON objects in that JSON field. To get Metabase to infer all the JSON keys, you'll need to add the additional keys to the JSON objects in the first ten thousand row.
+The problem is that if the keys in the JSON vary record to record, the first five hundred rows may not capture all the keys used by JSON objects in that JSON field. To get Metabase to infer all the JSON keys for that table, you'll need to add the additional keys to the JSON objects in the first five hundred rows.
 
 [ssl-modes]: https://jdbc.postgresql.org/documentation/head/ssl-client.html
 [ssh-tunnel]: ../ssh-tunnel-for-database-connections.html
-
+[gcp-cloud-sql]: https://cloud.google.com/sql
+[gcp-adc]: https://developers.google.com/identity/protocols/application-default-credentials
+[gcp-cloud-sql-connector]: https://github.com/GoogleCloudPlatform/cloud-sql-jdbc-socket-factory/blob/main/docs/jdbc-postgres.md#creating-the-jdbc-url

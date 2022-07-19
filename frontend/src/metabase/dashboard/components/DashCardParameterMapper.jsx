@@ -6,7 +6,7 @@ import DashCardCardParameterMapper from "../components/DashCardCardParameterMapp
 
 import { color } from "metabase/lib/colors";
 
-const DashCardParameterMapper = ({ dashcard }) => (
+const DashCardParameterMapper = ({ dashcard, isMobile }) => (
   <div className="relative flex-full flex flex-column layout-centered">
     {dashcard.series && dashcard.series.length > 0 && (
       <div
@@ -26,6 +26,7 @@ const DashCardParameterMapper = ({ dashcard }) => (
           key={`${dashcard.id},${card.id}`}
           dashcard={dashcard}
           card={card}
+          isMobile={isMobile}
         />
       ))}
     </div>

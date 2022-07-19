@@ -1,6 +1,8 @@
-import { ForeignKey } from "../api/foreignKey";
+import { ForeignKey } from "./foreign-key";
 import { Database } from "./database";
 import { Field } from "./field";
+
+export type TableId = number | string; // can be string for virtual questions (e.g. "card__17")
 
 export type VisibilityType =
   | null
@@ -13,7 +15,7 @@ export type VisibilityType =
   | "cruft";
 
 export interface Table {
-  id: number;
+  id: TableId;
   db_id: number;
   db?: Database;
   name: string;

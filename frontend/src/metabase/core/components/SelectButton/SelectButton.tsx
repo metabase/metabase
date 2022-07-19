@@ -21,6 +21,7 @@ export interface SelectButtonProps
   disabled?: boolean;
   fullWidth?: boolean;
   highlighted?: boolean;
+  onClick?: () => void;
   onClear?: () => void;
   dataTestId?: string;
 }
@@ -35,6 +36,7 @@ const SelectButton = forwardRef(function SelectButton(
     disabled = false,
     fullWidth = true,
     highlighted = false,
+    onClick,
     onClear,
     dataTestId,
     ...rest
@@ -70,6 +72,7 @@ const SelectButton = forwardRef(function SelectButton(
       disabled={disabled}
       highlighted={highlighted}
       fullWidth={fullWidth}
+      onClick={onClick}
       {...rest}
     >
       {React.isValidElement(left) && left}
@@ -81,7 +84,7 @@ const SelectButton = forwardRef(function SelectButton(
         size={12}
         hasValue={hasValue}
         highlighted={highlighted}
-        onClick={onClear ? handleClear : undefined}
+        onClick={rightIcon === "close" ? handleClear : undefined}
       />
     </SelectButtonRoot>
   );

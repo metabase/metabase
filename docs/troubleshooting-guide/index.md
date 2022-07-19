@@ -1,3 +1,7 @@
+---
+title: What are you having trouble with?
+---
+
 # What are you having trouble with?
 
 This page collects resources for getting you unstuck.
@@ -20,23 +24,29 @@ Problems, their causes, how to detect them, and how to fix them.
 
 ### Permissions
 
-- [Fixing permissions issues][permissions].
-- [Managing data sandboxing][sandbox].
+- [My permissions aren't working][permissions].
+- [My data sandboxes aren't working][sandbox].
 
-### Data Sources
+### Databases
 
-- [Connecting to data warehouses with Metabase][datawarehouse].
+- [I can't connect to a database][datawarehouse].
 - [I can't see my tables][cant-see-tables].
-- [Fixing missing or out-of-sync tables and columns][sync-fingerprint-scan].
+- [The data in Metabase doesn't match my database][sync-fingerprint-scan].
+- [My connection or query is timing out][timeout].
 
 ### Questions and dashboards
 
-- [Saving questions or dashboards][proxies].
-- [My dashboard is slow][slow-dashboard].
+- [I can't save my question or dashboard][proxies].
+- [I can't view or edit my question or dashboard][view-edit].
+- [My dashboard is slow or failing to load][slow-dashboard].
 - [My SQL question doesn't work][sql].
 - [The dates and times in my questions and charts are wrong][incorrect-times].
 - [My dashboard filters don't work][filters].
 - [My dashboard's linked filters don't work][linked-filters].
+
+### Models
+
+- [My model doesn't work][models].
 
 ### Email and alerts
 
@@ -48,7 +58,8 @@ Problems, their causes, how to detect them, and how to fix them.
 
 ## Think you found a bug?
 
-Let us know by [filing a bug report][bugs].
+- [How to find known bugs or limitations][known-issues].
+- [Filing a bug report][bugs].
 
 ## Feature requests
 
@@ -58,7 +69,7 @@ See [Requesting new features][feature-request].
 
 Metabase will log errors, both on the server and in the browser console, depending on where the error occurs, which can help you track down an issue. Administrators will have access to the server logs, and everyone with a browser can open the developer tools to see the console logs.
 
-**Accessing the Metabase server logs**: You can look for the logs that Metabase leaves on the server's file system (or wherever else you collect logs). If you're logged into Metabase with an Admin account, you can also access the logs by clicking on the **gears** icon in the bottom of the navigation sidebar, selecting **Admin settings** > **Troubleshooting** tab, then viewing the **Logs** tab. Check out [How to read the server logs][server-logs].
+**Accessing the Metabase server logs**: You can look for the logs that Metabase leaves on the server's file system (or wherever else you collect logs). If you're logged into Metabase with an Admin account, you can also access the logs by going to the top right of the screen and clicking on the **gear** icon > **Admin settings** > **Troubleshooting** > **Logs**. Check out [How to read the server logs][server-logs].
 
 **Checking for Javascript console errors:** Metabase will send debugging information and errors to your browser's developer console. To open the developer console, follow the instructions for your web browser:
 
@@ -93,10 +104,12 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [firefox]: https://developer.mozilla.org/en-US/docs/Tools/Web_Console/Opening_the_Web_Console
 [forum]: https://discourse.metabase.com/
 [incorrect-times]: ./timezones.html
+[known-issues]: ./known-issues.html
 [ldap]: ./ldap.html
 [learn]: https://www.metabase.com/learn
 [linked-filters]: ./linked-filters.html
 [login]: ./cant-log-in.html
+[models]: ./models.html
 [not-sending-email]: ./cant-send-email.html
 [permissions]: ./permissions.html
 [proxies]: ./proxies.html
@@ -109,4 +122,6 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [slow-dashboard]: ./my-dashboard-is-slow.html
 [sql]: ./sql.html
 [sync-fingerprint-scan]: ./sync-fingerprint-scan.html
+[timeout]: ./timeout.html
 [upgrade]: ../operations-guide/upgrading-metabase.html
+[view-edit]: ./cant-view-or-edit.html

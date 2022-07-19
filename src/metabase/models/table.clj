@@ -11,6 +11,8 @@
             [metabase.models.metric :refer [Metric retrieve-metrics]]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.segment :refer [retrieve-segments Segment]]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -75,7 +77,10 @@
   (merge mi/IObjectPermissionsDefaults
          {:can-read?         (partial mi/current-user-has-full-permissions? :read)
           :can-write?        (partial mi/current-user-has-full-permissions? :write)
-          :perms-objects-set perms-objects-set}))
+          :perms-objects-set perms-objects-set})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:schema :name (serdes.hash/hydrated-hash :db)])})
 
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
@@ -204,7 +209,6 @@
         {:order-by       field-order-rule}))
     tables))
 
-
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
 
 (defn qualified-identifier
@@ -226,3 +230,36 @@
    (fn [table-id]
      {:pre [(integer? table-id)]}
      (db/select-one-field :db_id Table, :id table-id))))
+
+;;; ------------------------------------------------- Serialization -------------------------------------------------
+(defmethod serdes.base/serdes-dependencies "Table" [table]
+  [[{:model "Database" :id (:db_id table)}]])
+
+(defmethod serdes.base/serdes-generate-path "Table" [_ table]
+  (let [db-name (db/select-one-field :name 'Database :id (:db_id table))]
+    (filterv some? [{:model "Database" :id db-name}
+                    (when (:schema table)
+                      {:model "Schema" :id (:schema table)})
+                    {:model "Table" :id (:name table)}])))
+
+(defmethod serdes.base/serdes-entity-id "Table" [_ {:keys [name]}]
+  name)
+
+(defmethod serdes.base/load-find-local "Table"
+  [path]
+  (let [db-name     (-> path first :id)
+        schema-name (when (= 3 (count path))
+                      (-> path second :id))
+        table-name  (-> path last :id)
+        db-id       (db/select-one-field :id Database :name db-name)]
+    (db/select-one-field :id Table :name table-name :db_id db-id :schema schema-name)))
+
+(defmethod serdes.base/extract-one "Table"
+  [_model-name _opts {:keys [db_id] :as table}]
+  (-> (serdes.base/extract-one-basics "Table" table)
+      (assoc :db_id (db/select-one-field :name 'Database :id db_id))))
+
+(defmethod serdes.base/load-xform "Table"
+  [{:keys [db_id] :as table}]
+  (-> (serdes.base/load-xform-basics table)
+      (assoc :db_id (db/select-one-field :id 'Database :name db_id))))

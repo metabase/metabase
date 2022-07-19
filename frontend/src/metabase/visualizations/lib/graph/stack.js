@@ -21,13 +21,13 @@ export function stack() {
     }
 
     // convert series to canonical two-dimensional representation
-    let series = data.map(function(d, i) {
+    let series = data.map(function (d, i) {
       return values.call(stack, d, i);
     });
 
     // convert each series to canonical [[x,y]] representation
-    let points = series.map(function(d) {
-      return d.map(function(v, i) {
+    let points = series.map(function (d) {
+      return d.map(function (v, i) {
         return [x.call(stack, v, i), y.call(stack, v, i)];
       });
     });
@@ -51,7 +51,7 @@ export function stack() {
     return data;
   }
 
-  stack.values = function(x) {
+  stack.values = function (x) {
     if (!arguments.length) {
       return values;
     }
@@ -60,7 +60,7 @@ export function stack() {
     return stack;
   };
 
-  stack.order = function(x) {
+  stack.order = function (x) {
     if (!arguments.length) {
       return order;
     }
@@ -69,7 +69,7 @@ export function stack() {
     return stack;
   };
 
-  stack.offset = function(x) {
+  stack.offset = function (x) {
     if (!arguments.length) {
       return offset;
     }
@@ -78,7 +78,7 @@ export function stack() {
     return stack;
   };
 
-  stack.x = function(z) {
+  stack.x = function (z) {
     if (!arguments.length) {
       return x;
     }
@@ -87,7 +87,7 @@ export function stack() {
     return stack;
   };
 
-  stack.y = function(z) {
+  stack.y = function (z) {
     if (!arguments.length) {
       return y;
     }
@@ -96,7 +96,7 @@ export function stack() {
     return stack;
   };
 
-  stack.out = function(z) {
+  stack.out = function (z) {
     if (!arguments.length) {
       return out;
     }

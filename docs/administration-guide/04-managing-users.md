@@ -1,8 +1,10 @@
+---
+title: Managing people and groups
+---
+
 # Managing people and groups
 
-To start managing people, first go to the **Admin panel** by clicking on the **gear** icon in the bottom of the navigation sidebar and selecting **Admin settings**.
-
-In the Admin panel, select the **People** tab from the menu bar at the top of the screen. You'll see a list of all the people in your organization.
+To start managing people, click on the **gear** icon > **Admin settings** > **People**. You'll see a list f all the people in your organization.
 
 ![Admin menu](images/AdminBar.png)
 
@@ -42,8 +44,8 @@ You can edit someone's name and email address by clicking the three dots icon an
 
 Search for a person and look for an icon beside their name.
 
-- If they log in using Google credentials, Metabase displays a Google icon. 
-- If they log in using an email address and password stored in Metabase, no icon is shown. 
+- If they log in using Google credentials, Metabase displays a Google icon.
+- If they log in using an email address and password stored in Metabase, no icon is shown.
 
 Note that the type of user is set when the account is first created: if you create a user in Metabase, but that person then logs in via Google or some other form of [SSO](sso.md), the latter's icon will _not_ show up next to their name.
 
@@ -117,7 +119,7 @@ It's important that your All Users group should never have _greater_ access for 
 
 #### Creating a group and adding people to it
 
-To create a group, go to **Admin settings** > **People** > **Groups**, and click the **Add a group** button. 
+To create a group, go to **Admin settings** > **People** > **Groups**, and click the **Add a group** button.
 
 We recommend creating groups that correspond to the teams your company or organization has, such as Human Resources, Engineering, Finance, and so on. By default, newly created groups don’t have access to anything.
 
@@ -129,7 +131,7 @@ To remove a group, click the X icon to the right of a group in the list to remov
 
 #### Adding people to groups
 
-Adding people to groups allows you to assign 
+Adding people to groups allows you to assign
 
 - [Data access](05-setting-permissions.md),
 - [Collection permissions](06-collections.md),
@@ -156,10 +158,9 @@ Group managers are not admins, so their powers are limited. They cannot create n
 
 To promote someone to become a group manager:
 
-1. Click on the **Gear** icon at the bottom of the navigation sidebar.
-2. Go to **Admin settings** > **People** > **Groups**.
-3. Select the group you want the person to manage. If the person isn't already in the group, you'll need to add that person to the group.
-4. Find the person you want to promote, hover over their member type, and click the up arrow to promote them to group manager. If you want to demote them, click on the down arrow.
+1. At the top right of the screen, click the **gear** icon > **Admin settings** > **People** > **Groups**.
+2. Select the group you want the person to manage. If the person isn't already in the group, you'll need to add that person to the group.
+3. Find the person you want to promote, hover over their member type, and click the up arrow to promote them to group manager. If you want to demote them, click on the down arrow.
 
 ### Grouping strategies
 

@@ -4,6 +4,7 @@ import _ from "underscore";
 type PopoverData = {
   contentEl: Element;
   backdropEl?: Element;
+  ignoreEl?: Element;
   close: (e: MouseEvent | KeyboardEvent) => void;
 };
 
@@ -36,7 +37,8 @@ export function shouldClosePopover(
       mostRecentPopover === popoverData &&
       !isEventInsideElement(e, mostRecentPopover.contentEl) &&
       (!popoverData.backdropEl ||
-        isEventInsideElement(e, popoverData.backdropEl))
+        isEventInsideElement(e, popoverData.backdropEl)) &&
+      (!popoverData.ignoreEl || !isEventInsideElement(e, popoverData.ignoreEl))
     );
   }
 

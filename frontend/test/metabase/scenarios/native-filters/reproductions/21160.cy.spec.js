@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 const filterName = "Number comma";
 
@@ -31,9 +31,7 @@ describe("issue 21160", () => {
     runQuery();
     resultAssertion("21");
 
-    getInput()
-      .clear()
-      .type("123,456,789,321{enter}");
+    getInput().clear().type("123,456,789,321{enter}");
 
     runQuery();
     resultAssertion("18");
@@ -49,9 +47,7 @@ function runQuery() {
 }
 
 function resultAssertion(res) {
-  cy.get(".ScalarValue")
-    .invoke("text")
-    .should("eq", res);
+  cy.get(".ScalarValue").invoke("text").should("eq", res);
 }
 
 function getInput() {

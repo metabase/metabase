@@ -2,12 +2,16 @@ import {
   restore,
   modal,
   describeEE,
-  describeOSS,
+  isOSS,
   openNewCollectionItemFlowFor,
   appBar,
   navigationSidebar,
   closeNavigationSidebar,
-} from "__support__/e2e/cypress";
+  getCollectionActions,
+  popover,
+  openCollectionMenu,
+} from "__support__/e2e/helpers";
+
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -24,10 +28,6 @@ describeEE("collections types", () => {
   beforeEach(() => {
     restore();
   });
-
-  const TREE_UPDATE_REGULAR_MESSAGE = "Make all sub-collections Regular, too.";
-  const TREE_UPDATE_OFFICIAL_MESSAGE =
-    "Make all sub-collections Official, too.";
 
   it("should be able to manage collection authority level", () => {
     cy.signInAsAdmin();
@@ -56,56 +56,6 @@ describeEE("collections types", () => {
     testOfficialQuestionBadgeInRegularDashboard();
   });
 
-  it("should be able to update authority level for collection children", () => {
-    cy.signInAsAdmin();
-    cy.visit("/collection/root");
-    cy.findByText("First collection").click();
-
-    // Test not visible when creating a new collection
-    openNewCollectionItemFlowFor("collection");
-    modal().within(() => {
-      cy.findByText(TREE_UPDATE_REGULAR_MESSAGE).should("not.exist");
-      cy.findByText(TREE_UPDATE_OFFICIAL_MESSAGE).should("not.exist");
-      setOfficial();
-      cy.findByText(TREE_UPDATE_REGULAR_MESSAGE).should("not.exist");
-      cy.findByText(TREE_UPDATE_OFFICIAL_MESSAGE).should("not.exist");
-      cy.icon("close").click();
-    });
-
-    // Test can make all children official
-    editCollection();
-    modal().within(() => {
-      cy.findByText(TREE_UPDATE_REGULAR_MESSAGE).should("not.exist");
-      cy.findByText(TREE_UPDATE_OFFICIAL_MESSAGE).should("not.exist");
-      setOfficial();
-      cy.findByText(TREE_UPDATE_REGULAR_MESSAGE).should("not.exist");
-      cy.findByText(TREE_UPDATE_OFFICIAL_MESSAGE).click();
-      cy.button("Update").click();
-    });
-
-    getSidebarCollectionChildrenFor("First collection").within(() => {
-      expandCollectionChildren("Second collection");
-      cy.icon("badge").should("have.length", 2);
-      cy.icon("folder").should("not.exist");
-    });
-
-    // Test can make all children regular
-    editCollection();
-    modal().within(() => {
-      cy.findByText(TREE_UPDATE_REGULAR_MESSAGE).should("not.exist");
-      cy.findByText(TREE_UPDATE_OFFICIAL_MESSAGE).should("not.exist");
-      setOfficial(false);
-      cy.findByText(TREE_UPDATE_REGULAR_MESSAGE).click();
-      cy.findByText(TREE_UPDATE_OFFICIAL_MESSAGE).should("not.exist");
-      cy.button("Update").click();
-    });
-
-    getSidebarCollectionChildrenFor("First collection").within(() => {
-      cy.icon("folder").should("have.length", 2);
-      cy.icon("badge").should("not.exist");
-    });
-  });
-
   it("should not see collection type field if not admin", () => {
     cy.signIn("normal");
     cy.visit("/collection/root");
@@ -118,9 +68,9 @@ describeEE("collections types", () => {
       cy.icon("close").click();
     });
 
-    editCollection();
-    modal().within(() => {
-      assertNoCollectionTypeInput();
+    openCollectionMenu();
+    popover().within(() => {
+      assertNoCollectionTypeOption();
     });
   });
 
@@ -129,7 +79,9 @@ describeEE("collections types", () => {
     cy.visit("/collection/root");
 
     openCollection("Your personal collection");
-    cy.icon("pencil").should("not.exist");
+    getCollectionActions().within(() => {
+      cy.icon("ellipsis").should("not.exist");
+    });
 
     openNewCollectionItemFlowFor("collection");
     modal().within(() => {
@@ -148,8 +100,10 @@ describeEE("collections types", () => {
   });
 });
 
-describeOSS("collection types", () => {
+describe("collection types", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    cy.onlyOn(isOSS);
+
     restore();
     cy.signInAsAdmin();
   });
@@ -164,10 +118,8 @@ describeOSS("collection types", () => {
     });
 
     openCollection("First collection");
-    editCollection();
-    modal().within(() => {
-      assertNoCollectionTypeInput();
-    });
+    openCollectionMenu();
+    assertNoCollectionTypeOption();
   });
 
   it("should not display official collection icon", () => {
@@ -199,15 +151,12 @@ function testOfficialBadgePresence(expectBadge = true) {
 
   // Dashboard Page
   cy.findByText("Official Dashboard").click();
-  closeNavigationSidebar();
-  assertHasCollectionBadge(expectBadge);
+  assertHasCollectionBadgeInNavbar(expectBadge);
 
   // Question Page
-  cy.get("main")
-    .findByText(COLLECTION_NAME)
-    .click();
+  cy.get("header").findByText(COLLECTION_NAME).click();
   cy.findByText("Official Question").click();
-  assertHasCollectionBadge(expectBadge);
+  assertHasCollectionBadgeInNavbar(expectBadge);
 
   // Search
   testOfficialBadgeInSearch({
@@ -228,10 +177,7 @@ function testOfficialBadgeInSearch({
   question,
   expectBadge,
 }) {
-  appBar()
-    .findByPlaceholderText("Search…")
-    .as("searchBar")
-    .type(searchQuery);
+  appBar().findByPlaceholderText("Search…").as("searchBar").type(searchQuery);
 
   cy.findByTestId("search-results-list").within(() => {
     assertSearchResultBadge(collection, {
@@ -268,57 +214,29 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
 }
 
 function openCollection(collectionName) {
-  navigationSidebar()
-    .findByText(collectionName)
-    .click();
-}
-
-function editCollection() {
-  cy.icon("pencil").click();
-  cy.findByText("Edit this collection").click();
-}
-
-function expandCollectionChildren(collectionName) {
-  cy.findByText(collectionName)
-    .parentsUntil("[data-testid=sidebar-collection-link-root]")
-    .find(".Icon-chevronright")
-    .click();
-}
-
-function getSidebarCollectionChildrenFor(item) {
-  return navigationSidebar()
-    .findByText(item)
-    .parentsUntil("[data-testid=sidebar-collection-link-root]")
-    .parent()
-    .next("ul");
-}
-
-function setOfficial(official = true) {
-  const isOfficialNow = !official;
-  cy.findByLabelText("Regular").should(
-    isOfficialNow ? "not.be.checked" : "be.checked",
-  );
-  cy.findByLabelText("Official").should(
-    isOfficialNow ? "be.checked" : "not.be.checked",
-  );
-  cy.findByText(official ? "Official" : "Regular").click();
+  navigationSidebar().findByText(collectionName).click();
 }
 
 function createAndOpenOfficialCollection({ name }) {
   openNewCollectionItemFlowFor("collection");
   modal().within(() => {
     cy.findByLabelText("Name").type(name);
-    setOfficial();
+    cy.findByText("Official").click();
     cy.button("Create").click();
   });
-  cy.findByText(name).click();
+  navigationSidebar().within(() => {
+    cy.findByText(name).click();
+  });
 }
 
 function changeCollectionTypeTo(type) {
-  editCollection();
-  modal().within(() => {
-    setOfficial(type === "official");
-    cy.button("Update").click();
+  openCollectionMenu();
+  popover().within(() => {
+    if (type === "official") {
+      cy.findByText("Make collection official").click();
+    } else {
+      cy.findByText("Remove Official badge").click();
+    }
   });
 }
 
@@ -326,6 +244,11 @@ function assertNoCollectionTypeInput() {
   cy.findByText(/Collection type/i).should("not.exist");
   cy.findByText("Regular").should("not.exist");
   cy.findByText("Official").should("not.exist");
+}
+
+function assertNoCollectionTypeOption() {
+  cy.findByText("Make collection official").should("not.exist");
+  cy.findByText("Remove Official badge").should("not.exist");
 }
 
 function assertSidebarIcon(collectionName, expectedIcon) {
@@ -346,11 +269,15 @@ function assertSearchResultBadge(itemName, opts) {
     });
 }
 
-function assertHasCollectionBadge(expectBadge = true) {
-  cy.get("main")
+const assertHasCollectionBadgeInNavbar = (expectBadge = true) => {
+  closeNavigationSidebar();
+  cy.get("header")
     .findByText(COLLECTION_NAME)
     .parent()
     .within(() => {
       cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
+      if (expectBadge) {
+        cy.icon("badge").should("be.visible");
+      }
     });
-}
+};

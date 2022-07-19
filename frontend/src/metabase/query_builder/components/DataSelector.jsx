@@ -991,11 +991,8 @@ export class UnconnectedDataSelector extends Component {
   };
 
   getSearchInputPlaceholder = () => {
-    const {
-      activeStep,
-      selectedDataBucketId,
-      isSavedQuestionPickerShown,
-    } = this.state;
+    const { activeStep, selectedDataBucketId, isSavedQuestionPickerShown } =
+      this.state;
     if (activeStep === DATA_BUCKET_STEP) {
       return t`Search for some data…`;
     }
@@ -1467,7 +1464,7 @@ const TablePicker = ({
           hasInitialFocus={hasInitialFocus}
           sections={sections}
           maxHeight={Infinity}
-          width={"100%"}
+          width="100%"
           searchable={hasFiltering && tables.length >= minTablesToShowSearch}
           onChange={item => onChangeTable(item.table)}
           itemIsSelected={item =>
@@ -1565,7 +1562,7 @@ class FieldPicker extends Component {
           hasInitialFocus={hasInitialFocus}
           sections={sections}
           maxHeight={Infinity}
-          width={"100%"}
+          width="100%"
           searchable={hasFiltering}
           onChange={item => onChangeField(item.field)}
           itemIsSelected={item =>

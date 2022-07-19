@@ -112,11 +112,8 @@ describe("schemas", () => {
       const payload = { foo: "bar" };
 
       const schemaId = generateSchemaId(databaseId, collectionName, payload);
-      const [
-        decodedDatabaseId,
-        decodedCollectionName,
-        decodedPayload,
-      ] = parseSchemaId(schemaId);
+      const [decodedDatabaseId, decodedCollectionName, decodedPayload] =
+        parseSchemaId(schemaId);
 
       expect({
         databaseId: decodedDatabaseId,

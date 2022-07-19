@@ -8,6 +8,7 @@
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.mysql :as mysql]
+            [metabase.driver.mysql.ddl :as mysql.ddl]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -442,7 +443,7 @@
                    {:name "big_json"}))))))))
 
 (deftest json-query-test
-  (let [boop-identifier (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {})]
+  (let [boop-identifier (:form (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {}))]
     (testing "Transforming MBQL query with JSON in it to mysql query works"
       (let [boop-field {:nfc_path [:bleh :meh] :database_type "integer"}]
         (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"meh\""]
@@ -475,3 +476,32 @@
                           "ORDER BY JSON_EXTRACT(`json`.`json_bit`, ?) ASC")
                      (:query compile-res)))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
+
+(deftest complicated-json-identifier-test
+  (mt/test-driver :mysql
+    (when (not (is-mariadb? (u/id (mt/db))))
+      (testing "Deal with complicated identifier (#22967, but for mysql)"
+        (mt/dataset json
+          (let [database (mt/db)
+                table    (db/select-one Table :db_id (u/id database) :name "json")]
+            (sync/sync-table! table)
+            (let [field    (db/select-one Field :table_id (u/id table) :name "json_bit → 1234")]
+              (mt/with-everything-store
+                (let [field-clause [:field (u/the-id field) {:binning
+                                                             {:strategy :num-bins,
+                                                              :num-bins 100,
+                                                              :min-value 0.75,
+                                                              :max-value 54.0,
+                                                              :bin-width 0.75}}]]
+                  (is (= ["((floor(((JSON_EXTRACT(json.json_bit, ?) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
+                         (hsql/format (sql.qp/->honeysql :mysql field-clause)))))))))))))
+
+(deftest ddl.execute-with-timeout-test
+  (mt/test-driver :mysql
+    (mt/dataset json
+      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+        (is (thrown-with-msg?
+              Exception
+              #"Killed mysql process id \d+ due to timeout."
+              (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
+        (is (= true (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))

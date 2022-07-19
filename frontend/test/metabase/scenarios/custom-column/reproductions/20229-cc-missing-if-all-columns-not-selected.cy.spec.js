@@ -1,4 +1,4 @@
-import { restore, popover, visualize } from "__support__/e2e/cypress";
+import { restore, popover, visualize } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -51,8 +51,5 @@ function ccAssertion() {
 }
 
 function unselectColumn(column) {
-  cy.findByText(column)
-    .siblings()
-    .find(".Icon-check")
-    .click({ force: true });
+  cy.findByText(column).siblings().find(".Icon-check").click({ force: true });
 }

@@ -8,9 +8,15 @@ jobs:
     if: github.event.pull_request.merged == true && (contains(github.event.pull_request.labels.*.name, 'backport') && github.event.action == 'closed' || github.event.label.name == 'backport')
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      - uses: tibdex/github-app-token@v1
+        id: generate-token
+        with:
+          app_id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
 
       - uses: ./.github/actions/find-squashed-commit
         name: Find commit
@@ -25,8 +31,8 @@ jobs:
 
       - id: create_backport_pull_request
         run: |
-          git config --global user.email "metabase-github-automation@metabase.com"
-          git config --global user.name "$GITHUB_ACTOR"
+          git config --global user.email "metabase-bot@metabase.com"
+          git config --global user.name "Metabase bot"
 
           BACKPORT_BRANCH="backport-$COMMIT"
 
@@ -54,7 +60,7 @@ jobs:
           TARGET_BRANCH: ${{ steps.get_latest_release_branch.outputs.branch-name }}
           ORIGINAL_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
           ORIGINAL_TITLE: ${{ github.event.pull_request.title }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
           COMMIT: ${{ steps.find_commit.outputs.commit }}
 
       - uses: ./.github/actions/notify-pull-request

@@ -4,7 +4,7 @@ import { updateIn } from "icepick";
 import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
-  PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS,
+  PLUGIN_IS_PASSWORD_USER,
 } from "metabase/plugins";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -19,7 +19,7 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
     Button: require("metabase/auth/containers/GoogleButton").default,
   };
 
-  return MetabaseSettings.googleAuthEnabled()
+  return MetabaseSettings.isGoogleAuthConfigured()
     ? [googleProvider, ...providers]
     : providers;
 });
@@ -41,7 +41,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
     component: SettingsGoogleForm,
-    sidebar: false,
     settings: [
       {
         key: "google-auth-client-id",
@@ -56,4 +55,4 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   },
 }));
 
-PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(user => !user.google_auth);
+PLUGIN_IS_PASSWORD_USER.push(user => !user.google_auth);

@@ -21,7 +21,7 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { isSmallScreen } from "metabase/lib/dom";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { SearchResults } from "./SearchResults";
+import SearchResults from "./SearchResults";
 import RecentsList from "./RecentsList";
 import {
   SearchInputContainer,
@@ -30,6 +30,7 @@ import {
   SearchInput,
   SearchResultsFloatingContainer,
   SearchResultsContainer,
+  SearchBarRoot,
 } from "./SearchBar.styled";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
@@ -77,9 +78,8 @@ function SearchBar({
     getSearchTextFromLocation(location),
   );
 
-  const [isActive, { turnOn: setActive, turnOff: setInactive }] = useToggle(
-    false,
-  );
+  const [isActive, { turnOn: setActive, turnOff: setInactive }] =
+    useToggle(false);
 
   const wasActive = usePrevious(isActive);
   const previousLocation = usePrevious(location);
@@ -165,7 +165,7 @@ function SearchBar({
   );
 
   return (
-    <div ref={container}>
+    <SearchBarRoot ref={container}>
       <SearchInputContainer isActive={isActive} onClick={onInputContainerClick}>
         <SearchIcon name="search" isActive={isActive} />
         <SearchInput
@@ -194,7 +194,7 @@ function SearchBar({
           )}
         </SearchResultsFloatingContainer>
       )}
-    </div>
+    </SearchBarRoot>
   );
 }
 export default _.compose(

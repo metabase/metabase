@@ -229,10 +229,10 @@ describe("Database", () => {
       const database = new Database({
         id: 123,
       });
-      Question.prototype.setDefaultQuery = jest.fn(function() {
+      Question.prototype.setDefaultQuery = jest.fn(function () {
         return this;
       });
-      Question.prototype.setDefaultDisplay = jest.fn(function() {
+      Question.prototype.setDefaultDisplay = jest.fn(function () {
         return this;
       });
       const question = database.newQuestion();
