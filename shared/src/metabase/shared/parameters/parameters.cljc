@@ -15,6 +15,8 @@
                   [metabase.mbql.normalize :as mbql.normalize]
                   [metabase.shared.util.i18n :refer [trs]])]))
 
+#?(:cljs (comment moment/keep-me))
+
 (defmulti formatted-value
   "Formats a value appropriately for inclusion in a text card, based on its type. Does not do any escaping.
   For datetime parameters, the logic here should mirror the logic (as best as possible) in

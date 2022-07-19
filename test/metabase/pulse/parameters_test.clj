@@ -16,7 +16,7 @@
 (deftest dashboard-url-test
   (mt/with-temporary-setting-values [site-url "https://metabase.com"]
     (testing "A valid dashboard URL can be generated with filters included"
-      (is (= "https://metabase.com/dashboard/1?state=CA&state=NY&quarter_and_year=Q1-2021"
+      (is (= "https://metabase.com/dashboard/1?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021"
              (params/dashboard-url 1 (:parameters test-dashboard)))))
 
     (testing "If no filters are set, the base dashboard url is returned"
