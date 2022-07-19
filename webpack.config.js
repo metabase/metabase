@@ -72,6 +72,12 @@ const config = (module.exports = {
         exclude: /node_modules|cljs/,
         use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
       },
+      {
+        test: /\.js$/,
+        include: /node_modules\/svelte-jsoneditor/,
+        use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+        resolve: { fullySpecified: false },
+      },
       ...(shouldUseEslint
         ? [
             {

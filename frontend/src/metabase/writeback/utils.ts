@@ -10,7 +10,7 @@ import { TemplateTag } from "metabase-types/types/Query";
 import { DashCard } from "metabase-types/types/Dashboard";
 import { ParameterId, ParameterTarget } from "metabase-types/types/Parameter";
 
-import { WritebackAction } from "./types";
+import { WritebackAction, HttpAction, RowAction } from "./types";
 
 const DB_WRITEBACK_FEATURE = "actions";
 const DB_WRITEBACK_SETTING = "database-enable-actions";
@@ -63,6 +63,18 @@ export const isEditableField = (field: Field) => {
   return true;
 };
 
+export const isQueryAction = (
+  action: WritebackAction,
+): action is WritebackAction & RowAction => {
+  return action.type === "query";
+};
+
+export const isHttpAction = (
+  action: WritebackAction,
+): action is WritebackAction & HttpAction => {
+  return action.type === "http";
+};
+
 export const isActionButtonDashCard = (dashCard: DashCard) =>
   dashCard.visualization_settings?.virtual_card?.display === "action-button";
 
@@ -85,7 +97,7 @@ export function getActionTemplateTagType(tag: TemplateTag) {
   }
 }
 
-export const getActionEmitterParameterMappings = (action: WritebackAction) => {
+export const getQueryActionParameterMappings = (action: WritebackAction) => {
   if (action.type === "http") {
     return {};
   }
@@ -101,4 +113,26 @@ export const getActionEmitterParameterMappings = (action: WritebackAction) => {
   });
 
   return parameterMappings;
+};
+
+const getHttpActionParameterMappings = (
+  action: WritebackAction & HttpAction,
+) => {
+  const parameters = Object.values(action.template.parameters);
+  const parameterMappings: Record<ParameterId, ParameterTarget> = {};
+
+  parameters.forEach(parameter => {
+    parameterMappings[parameter.id] = [
+      "variable",
+      ["template-tag", parameter.name],
+    ];
+  });
+
+  return parameterMappings;
+};
+
+export const getActionEmitterParameterMappings = (action: WritebackAction) => {
+  return isQueryAction(action)
+    ? getQueryActionParameterMappings(action)
+    : getHttpActionParameterMappings(action);
 };
