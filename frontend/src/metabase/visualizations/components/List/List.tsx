@@ -380,6 +380,9 @@ function List({
 
       const canClick = isSelectingItems || isClickable;
 
+      const hasInlineActions =
+        !isSelectingItems && (hasEditButton || hasDeleteButton);
+
       return (
         <ListItemContainer
           key={rowIndex}
@@ -393,7 +396,7 @@ function List({
             {right.map(columnIndex =>
               renderListItemCell(rowIndex, columnIndex, "right"),
             )}
-            {(hasEditButton || hasDeleteButton) && (
+            {hasInlineActions && (
               <RowActionsContainer>
                 {hasEditButton && (
                   <RowActionButtonContainer slot="right">
