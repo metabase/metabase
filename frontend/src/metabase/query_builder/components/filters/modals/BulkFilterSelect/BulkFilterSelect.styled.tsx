@@ -12,7 +12,6 @@ type SelectFilterButtonProps = {
 export const SelectFilterButton = styled(SelectButton)<SelectFilterButtonProps>`
   grid-column: 2;
   height: 55px;
-  max-width: 500px; // to match inputs
 
   ${({ isActive }) => (isActive ? `border-color: ${color("brand")};` : "")}
 
@@ -23,7 +22,6 @@ export const SelectFilterButton = styled(SelectButton)<SelectFilterButtonProps>`
 
 export const SegmentSelect = styled(Select)`
   height: 55px;
-  max-width: 500px; // to match inputs
 `;
 
 export const SelectFilterPopover = styled(FilterPopover)`
