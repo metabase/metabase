@@ -83,11 +83,9 @@
       (actions.test-util/with-actions-test-data-and-actions-enabled
         (is (= 75
                (categories-row-count)))
-        (is (schema= {:message  (s/constrained
-                                 s/Str
-                                 (case driver/*driver*
-                                   :h2       #(str/starts-with? % "Data conversion error converting \"created_row\"")
-                                   :postgres #(str/starts-with? % "ERROR: invalid input syntax for type integer: \"created_row\"")))
+        (is (schema= {:message  (case driver/*driver*
+                                  :h2       #"^Data conversion error converting \"created_row\""
+                                  :postgres #"^ERROR: invalid input syntax for (?:type )?integer: \"created_row\"")
                       s/Keyword s/Any}
                      ;; bad data -- ID is a string instead of an Integer.
                      (mt/user-http-request :crowberto :post 400
@@ -353,11 +351,9 @@
                                                      :postgres #(str/starts-with? % "ERROR: null value in column \"name\"")))}
                                           "first error")
                                    (s/one {:index (s/eq 3)
-                                           :error (s/constrained
-                                                   s/Str
-                                                   (case driver/*driver*
-                                                     :h2       #(str/starts-with? % "Data conversion error converting \"STRING\"")
-                                                     :postgres #(str/starts-with? % "ERROR: invalid input syntax for type integer: \"STRING\"")))}
+                                           :error (case driver/*driver*
+                                                    :h2       #"^Data conversion error converting \"STRING\""
+                                                    :postgres #"^ERROR: invalid input syntax for (?:type )?integer: \"STRING\"")}
                                           "second error")]}
                          (mt/user-http-request :crowberto :post 400
                                                (format "action/bulk/create/%d" (mt/id :categories))
