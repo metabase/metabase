@@ -61,6 +61,25 @@ const BackendResource = createSharedResource("BackendResource", {
           undefined,
       };
 
+      /**
+       * This ENV is used for Cloud instances only, and is subject to change.
+       * As such, it is not documented anywhere in the code base!
+       *
+       * WARNING:
+       * Changing values here will break the related E2E test.
+       */
+      const userDefaults = {
+        MB_USER_DEFAULTS: JSON.stringify({
+          token: "123456",
+          user: {
+            first_name: "Testy",
+            last_name: "McTestface",
+            email: "testy@metabase.test",
+            site_name: "Epic Team",
+          },
+        }),
+      };
+
       const snowplowConfig = {
         MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
         MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
@@ -72,6 +91,7 @@ const BackendResource = createSharedResource("BackendResource", {
         {
           env: {
             ...databaseConfig,
+            ...userDefaults,
             ...snowplowConfig,
             PATH: process.env.PATH,
           },
