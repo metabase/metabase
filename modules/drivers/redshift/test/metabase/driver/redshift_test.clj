@@ -195,8 +195,9 @@
            (str "DROP TABLE IF EXISTS %1$s;%n"
                 "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));%n"
                 "CREATE OR REPLACE VIEW %2$s AS SELECT * FROM %1$s WITH NO SCHEMA BINDING;"
-                "CREATE OR REPLACE VIEW %3$s AS SELECT CASE WHEN true = false THEN 11387.133 END AS numeric_col,
-                CASE WHEN true = false THEN 'blah blah blah' END AS weird_varchar FROM %1$s WITH NO SCHEMA BINDING;")
+                "CREATE OR REPLACE VIEW %3$s AS"
+                  "SELECT CASE WHEN true = false THEN 11387.133 END AS numeric_col,"
+                  "CASE WHEN true = false THEN 'blah blah blah' END AS weird_varchar FROM %1$s WITH NO SCHEMA BINDING;")
            qual-tbl-nm
            qual-view-nm
            qual-view-nm-2)
