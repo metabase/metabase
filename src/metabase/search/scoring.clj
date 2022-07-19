@@ -178,17 +178,17 @@
   [{:keys [model collection_position]}]
   ;; We experimented with favoring lower collection positions, but it wasn't good
   ;; So instead, just give a bonus for items that are pinned at all
-  (when (#{"card" "dashboard" "pulse"} model)
-    (if ((fnil pos? 0) collection_position)
-      1
-      0)))
+  (if (and (#{"card" "dashboard" "pulse"} model)
+           ((fnil pos? 0) collection_position))
+    1
+    0))
 
 (defn- bookmarked-score
   [{:keys [model bookmark]}]
-  (when (#{"card" "collection" "dashboard"} model)
-    (if bookmark
-      1
-      0)))
+  (if (and (#{"card" "collection" "dashboard"} model)
+           bookmark)
+    1
+    0))
 
 (defn- dashboard-count-score
   [{:keys [model dashboardcard_count]}]
