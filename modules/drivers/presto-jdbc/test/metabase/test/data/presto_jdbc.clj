@@ -126,10 +126,10 @@
   ;; Presto doesn't support NOT NULL columns
   (let [tabledef (update tabledef :field-definitions (fn [field-defs]
                                                        (for [field-def field-defs]
-                                                         (dissoc field-def :not-null?))))]
-    ;; strip out the PRIMARY KEY stuff from the CREATE TABLE statement
-    (let [sql ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)]
-      (str/replace sql #", PRIMARY KEY \([^)]+\)" ""))))
+                                                         (dissoc field-def :not-null?))))
+        ;; strip out the PRIMARY KEY stuff from the CREATE TABLE statement
+        sql      ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)]
+    (str/replace sql #", PRIMARY KEY \([^)]+\)" "")))
 
 (deftest ^:parallel create-table-sql-test
   (testing "Make sure logic to strip out NOT NULL and PRIMARY KEY stuff works as expected"
