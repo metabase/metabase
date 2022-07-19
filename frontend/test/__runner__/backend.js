@@ -7,9 +7,8 @@ const { spawn } = require("child_process");
 
 const fetch = require("isomorphic-fetch");
 
-let testDbId = 0;
 const generateTempDbPath = () =>
-  path.join(os.tmpdir(), `metabase-test-${process.pid}-${testDbId++}.db`);
+  path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
 
 let port = 4000;
 const getPort = () => port++;
