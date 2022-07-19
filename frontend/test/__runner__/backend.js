@@ -18,22 +18,14 @@ const BackendResource = createSharedResource("BackendResource", {
   create({ dbKey }) {
     const dbFile = generateTempDbPath();
     const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
-    const e2eHost = process.env["E2E_HOST"];
-    if (e2eHost) {
-      return {
-        dbKey: absoluteDbKey,
-        host: e2eHost,
-        process: { kill: () => {} },
-      };
-    } else {
-      const port = getPort();
-      return {
-        dbKey: absoluteDbKey,
-        dbFile: dbFile,
-        host: `http://localhost:${port}`,
-        port: port,
-      };
-    }
+    const port = getPort();
+
+    return {
+      dbKey: absoluteDbKey,
+      dbFile: dbFile,
+      host: `http://localhost:${port}`,
+      port: port,
+    };
   },
   async start(server) {
     if (!server.process) {
