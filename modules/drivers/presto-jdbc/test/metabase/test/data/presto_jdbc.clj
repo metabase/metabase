@@ -1,11 +1,13 @@
 (ns metabase.test.data.presto-jdbc
   "Presto JDBC driver test extensions."
   (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.config :as config]
             [metabase.connection-pool :as connection-pool]
             [metabase.driver :as driver]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.test.data.dataset-definitions :as defs]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -121,9 +123,20 @@
 
 (defmethod sql.tx/create-table-sql :presto-jdbc
   [driver dbdef tabledef]
-  ;; strip out the PRIMARY KEY stuff from the CREATE TABLE statement
-  (let [sql ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)]
-    (str/replace sql #", PRIMARY KEY \([^)]+\)" "")))
+  ;; Presto doesn't support NOT NULL columns
+  (let [tabledef (update tabledef :field-definitions (fn [field-defs]
+                                                       (for [field-def field-defs]
+                                                         (dissoc field-def :not-null?))))]
+    ;; strip out the PRIMARY KEY stuff from the CREATE TABLE statement
+    (let [sql ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)]
+      (str/replace sql #", PRIMARY KEY \([^)]+\)" ""))))
+
+(deftest ^:parallel create-table-sql-test
+  (testing "Make sure logic to strip out NOT NULL and PRIMARY KEY stuff works as expected"
+    (let [db-def    (tx/get-dataset-definition defs/test-data)
+          table-def (-> db-def :table-definitions second)]
+      (is (= "CREATE TABLE \"test_data\".\"default\".\"categories\" (\"id\" INTEGER, \"name\" VARCHAR) ;"
+             (sql.tx/create-table-sql :presto-jdbc db-def table-def))))))
 
 (defmethod ddl.i/format-name :presto-jdbc [_ table-or-field-name]
   (u/snake-key table-or-field-name))
