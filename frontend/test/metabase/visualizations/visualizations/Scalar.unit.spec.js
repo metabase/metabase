@@ -1,6 +1,5 @@
 import React from "react";
 import { render } from "@testing-library/react";
-
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 
 const series = (value = 1.23) => [
