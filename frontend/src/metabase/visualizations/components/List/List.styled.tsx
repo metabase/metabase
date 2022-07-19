@@ -37,7 +37,8 @@ export const ListItemContainer = styled.div<{ disabled?: boolean }>`
   justify-content: space-between;
   height: 4rem;
   border-radius: 8px;
-  box-shadow: 4px 5px 10px 3px ${color("shadow")};
+  box-shadow: 2px 3px 5px ${color("shadow")};
+  border: 1px solid transparent;
 
   padding: 0 0.5rem;
 
@@ -50,7 +51,7 @@ export const ListItemContainer = styled.div<{ disabled?: boolean }>`
     css`
       &:hover {
         cursor: pointer;
-        transform: scale(0.97);
+        border-color: ${color("border")};
       }
     `}
 
@@ -77,7 +78,7 @@ export const ListItemContent = styled.div`
 // And it's impossible to combine overflow-x: visible with overflow-y: hidden
 // https://stackoverflow.com/questions/6421966/css-overflow-x-visible-and-overflow-y-hidden-causing-scrollbar-issue
 export const ContentContainer = styled.div`
-  margin: 0 1rem;
+  margin: 0 0.3rem;
 
   ${ListItemContainer}:not(:first-of-type) {
     margin-top: ${LIST_ITEM_VERTICAL_GAP};
