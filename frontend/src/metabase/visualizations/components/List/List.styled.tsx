@@ -78,7 +78,7 @@ export const ListItemContent = styled.div`
 // And it's impossible to combine overflow-x: visible with overflow-y: hidden
 // https://stackoverflow.com/questions/6421966/css-overflow-x-visible-and-overflow-y-hidden-causing-scrollbar-issue
 export const ContentContainer = styled.div`
-  margin: 0 1rem;
+  margin: 0 0.3rem;
 
   ${ListItemContainer}:not(:first-of-type) {
     margin-top: ${LIST_ITEM_VERTICAL_GAP};
