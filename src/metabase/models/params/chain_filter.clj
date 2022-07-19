@@ -493,7 +493,7 @@
    constraints       :- (s/maybe ConstraintsMap)
    options           :- (s/maybe Options)]
   (let [result (unremapped-chain-filter field-id constraints options)]
-    (update result :values #(add-human-readable-values % v->human-readable))))
+    (update result :values add-human-readable-values v->human-readable)))
 
 (s/defn ^:private field-to-field-remapped-chain-filter
   "Chain filter, but for Field->Field remappings (e.g. 'remap' `venue.category_id` -> `category.name`; search by
@@ -634,7 +634,7 @@
         (let [query-constraint  {field-id (set unremapped-values)}
               constraints       (merge constraints query-constraint)
               result            (unremapped-chain-filter field-id constraints options)]
-          (update result :values #(add-human-readable-values % v->human-readable))))
+          (update result :values add-human-readable-values v->human-readable)))
       {:values          []
        :has_more_values false}))
 
