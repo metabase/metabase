@@ -21,14 +21,6 @@ describe("NumberPicker", () => {
     expect(spy).toHaveBeenCalledWith([18]);
   });
 
-  it("should display error border on non-numeric values", async () => {
-    const spy = jest.fn();
-    const { container } = render(
-      <NumberPicker values={["foo", "bar"]} onValuesChange={spy} />,
-    );
-    expect(container.querySelectorAll(".border-error")).toHaveLength(1);
-  });
-
   it("should display prefix if prefix prop is populated", async () => {
     const spy = jest.fn();
     render(
