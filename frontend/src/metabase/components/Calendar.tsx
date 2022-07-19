@@ -241,12 +241,14 @@ class Week extends Component<WeekProps> {
         isInRange = !!(selected && selected.isAfter(date, "day"));
       }
       const isEnd = selectAll === "before" && date.isSame(selected, "day");
+      const isSelectedStart =
+        !isEnd && selected && date.isSame(selected, "day");
+      const isSelectedEnd =
+        isEnd || (selectedEnd && date.isSame(selectedEnd, "day"));
       const classes = cx("Calendar-day cursor-pointer text-centered", {
         "Calendar-day--this-month": date.month() === month.month(),
-        "Calendar-day--selected":
-          !isEnd && selected && date.isSame(selected, "day"),
-        "Calendar-day--selected-end":
-          isEnd || (selectedEnd && date.isSame(selectedEnd, "day")),
+        "Calendar-day--selected": isSelectedStart,
+        "Calendar-day--selected-end": isSelectedEnd,
         "Calendar-day--week-start": i === 0,
         "Calendar-day--week-end": i === 6,
         "Calendar-day--in-range":
@@ -265,6 +267,8 @@ class Week extends Component<WeekProps> {
           onClick={this.props.onClickDay.bind(null, date)}
           isInRange={isInRange}
           isSelected={isSelected}
+          isSelectedStart={isSelectedStart}
+          isSelectedEnd={isSelectedEnd}
           primaryColor={this.props.primaryColor}
         >
           {date.date()}

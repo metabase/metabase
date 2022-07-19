@@ -48,13 +48,6 @@
   color: inherit !important;
 }
 
-.Calendar-day--selected,
-.Calendar-day--selected-end {
-  color: white !important;
-  background-color: var(--color-accent7);
-  z-index: 1;
-}
-
 .Calendar--range .Calendar-day--selected {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
