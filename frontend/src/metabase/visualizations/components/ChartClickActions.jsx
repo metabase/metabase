@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 import Tooltip from "metabase/components/Tooltip";
@@ -16,6 +15,7 @@ import { performAction } from "metabase/visualizations/lib/action";
 
 import cx from "classnames";
 import _ from "underscore";
+import { ClickActionLink } from "./ChartClickActions.styled";
 
 // These icons used to be displayed for each row section of actions.
 // We're now just using them as a way to select different sections of actions to style them uniquely.
@@ -275,8 +275,7 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
       action.buttonType === "horizontal",
     "text-small token token-blue text-white-hover bg-brand-hover mr1":
       action.buttonType === "token",
-    "token token-filter text-small text-white-hover mr1":
-      action.buttonType === "token-filter",
+    "text-small text-white-hover mr1": action.buttonType === "token-filter",
   });
   if (action.url) {
     return (
@@ -285,9 +284,10 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
           full: action.buttonType === "horizontal",
         })}
       >
-        <Link
-          to={action.url()}
+        <ClickActionLink
           className={className}
+          to={action.url()}
+          type={action.buttonType}
           onClick={() =>
             MetabaseAnalytics.trackStructEvent(
               "Actions",
@@ -297,7 +297,7 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
           }
         >
           {action.title}
-        </Link>
+        </ClickActionLink>
       </div>
     );
   } else if (
