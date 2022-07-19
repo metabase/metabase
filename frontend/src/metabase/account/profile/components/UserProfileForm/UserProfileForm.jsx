@@ -16,7 +16,9 @@ const UserProfileForm = ({ user }) => {
     }
   }, [previousUser?.locale, user?.locale]);
 
-  return <User.Form user={user} form={User.forms.user} onSaved={handleSaved} />;
+  return (
+    <User.Form user={user} form={User.forms.user(user)} onSaved={handleSaved} />
+  );
 };
 
 UserProfileForm.propTypes = propTypes;

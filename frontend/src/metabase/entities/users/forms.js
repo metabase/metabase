@@ -84,20 +84,22 @@ export default {
       ...PLUGIN_ADMIN_USER_FORM_FIELDS,
     ],
   },
-  user: {
-    fields: user => {
-      const isSsoUser = !PLUGIN_IS_PASSWORD_USER.every(predicate =>
-        predicate(user),
-      );
-
-      if (isSsoUser) {
-        return [getLocaleField()];
-      }
-
+  user: user => {
+    let fields = null;
+    const isSsoUser = !PLUGIN_IS_PASSWORD_USER.every(predicate =>
+      predicate(user),
+    );
+    if (isSsoUser) {
+      fields = [getLocaleField()];
+    } else {
       // password user
-      return [...getNameFields(), getEmailField(), getLocaleField()];
-    },
-    disablePristineSubmit: true,
+      fields = [...getNameFields(), getEmailField(), getLocaleField()];
+    }
+
+    return {
+      fields,
+      disablePristineSubmit: true,
+    };
   },
   setup: () => ({
     fields: [
