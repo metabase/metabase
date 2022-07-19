@@ -188,18 +188,14 @@ export default class DashCard extends Component {
 
     return (
       <DashCardRoot
-        className={cx(
-          "Card rounded flex flex-column hover-parent hover--visibility",
-          {
-            "Card--slow": isSlow === "usually-slow",
-          },
-        )}
+        className="Card rounded flex flex-column hover-parent hover--visibility"
         style={
           hideBackground
             ? { border: 0, background: "transparent", boxShadow: "none" }
             : null
         }
         isNightMode={isNightMode}
+        isUsuallySlow={isSlow === "usually-slow"}
       >
         {isEditingDashboardLayout ? (
           <DashboardCardActionsPanel onMouseDown={this.preventDragging}>

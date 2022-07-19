@@ -41,6 +41,7 @@ export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to se
 import Question from "metabase-lib/lib/Question";
 import Mode from "metabase-lib/lib/Mode";
 import { memoizeClass } from "metabase-lib/lib/utils";
+import { VisualizationSlowSpinner } from "./Visualization.styled";
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
 
@@ -397,12 +398,10 @@ class Visualization extends React.PureComponent {
     const extra = (
       <span className="flex align-center">
         {isSlow && !loading && (
-          <LoadingSpinner
+          <VisualizationSlowSpinner
+            className="Visualization-slow-spinner"
             size={18}
-            className={cx(
-              "Visualization-slow-spinner",
-              isSlow === "usually-slow" ? "text-gold" : "text-slate",
-            )}
+            isUsuallySlow={isSlow === "usually-slow"}
           />
         )}
         {actionButtons}
