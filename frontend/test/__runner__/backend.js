@@ -7,7 +7,7 @@ const { spawn } = require("child_process");
 
 const fetch = require("isomorphic-fetch");
 
-const BackendResource = createSharedResource("BackendResource", {
+const BackendResource = createSharedResource({
   async start(server) {
     if (!server.process) {
       const javaFlags = [
