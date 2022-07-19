@@ -528,6 +528,7 @@ export const ActionsApi = {
   create: POST("/api/action/row/create"),
   update: POST("/api/action/row/update"),
   delete: POST("/api/action/row/delete"),
+  bulkDelete: POST("/api/action/bulk/delete/:tableId"),
 };
 
 export const EmittersApi = {
