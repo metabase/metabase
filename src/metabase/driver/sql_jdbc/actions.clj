@@ -3,6 +3,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [flatland.ordered.set :as ordered-set]
             [medley.core :as m]
             [metabase.actions :as actions]
             [metabase.db.util :as mdb.u]
@@ -12,12 +13,12 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.util :as driver.u]
             [metabase.models.field :refer [Field]]
-            [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import java.sql.Connection))
 
@@ -69,19 +70,19 @@
   types that do not need casting like integer or string."
   [driver column->value table-id]
   (let [type->sql-type (base-type->sql-type-map driver)
-        column->field  (m/index-by (comp keyword #(str/replace % "_" "-") :name)
-                                   (:fields (first (table/with-fields (db/select Table :id table-id)))))]
-    (m/map-kv-vals (fn [col value]
-                     (let [{base-type :base_type :as field} (get column->field col)]
+        column->field  (m/index-by :name (db/select Field :table_id table-id))]
+    (m/map-kv-vals (fn [col-name value]
+                     (let [col-name                         (u/qualified-name col-name)
+                           {base-type :base_type :as field} (get column->field col-name)]
                        (if-let [sql-type (type->sql-type base-type)]
                          (hx/cast sql-type value)
                          (try
                            (sql.qp/->honeysql driver [:value value field])
                            (catch Exception e
-                             (throw (ex-info (str "column cast failed: " col)
-                                             {:column      col
-                                              :original-ex (ex-message e)
-                                              :status-code 400})))))))
+                             (throw (ex-info (str "column cast failed: " (pr-str col-name))
+                                             {:column      col-name
+                                              :status-code 400}
+                                             e)))))))
                    column->value)))
 
 (def ^:private ^:dynamic ^Connection *connection*
@@ -350,6 +351,11 @@
                                          ;; if the field isn't in `field-name->id` then it's an error in our code. Not
                                          ;; i18n'ed because this is not something that should be User facing unless our
                                          ;; backend code is broken.
+                                         ;;
+                                         ;; Unknown column names in user input WILL NOT trigger this error.
+                                         ;; [[row->mbql-filter-clause]] is only used for *known* PK columns that are
+                                         ;; used for the MBQL `:filter` clause. Unknown columns will trigger an error in
+                                         ;; the DW but not here.
                                          _ (assert field-id
                                                    (format "Field %s is not present in field-name->id map"
                                                            (pr-str field-name)))]]
@@ -357,16 +363,15 @@
 
 ;;;; `:bulk/delete`
 
-(defn- check-rows-have-expected-columns-and-no-other-keys
-  "Make sure all `rows` have all the keys in `expected-columns` *and no other keys*, or return a 400."
-  [rows expected-columns]
-  ;; we only actually need to check the first map since [[check-consistent-row-keys]] should have checked that
-  ;; they all have the same keys.
-  (let [expected-columns (set expected-columns)
-        actual-columns   (set (keys (first rows)))]
-    (when-not (= actual-columns expected-columns)
-      (throw (ex-info (tru "Rows have the wrong columns: expected {0}, but got {1}" expected-columns actual-columns)
-                      {:status-code 400, :expected-columns expected-columns, :actual-columns actual-columns})))))
+(s/defn ^:private check-row-has-all-pk-columns
+  "Return a 400 if `row` doesn't have all the required PK columns."
+  [row :- {s/Str s/Any} pk-names :- #{s/Str}]
+  (doseq [pk-key pk-names
+          :when  (not (contains? row pk-key))]
+    (throw (ex-info (tru "Row is missing required primary key column. Required {0}; got {1}"
+                         (pr-str pk-names)
+                         (pr-str (set (keys row))))
+                    {:row row, :pk-names pk-names, :status-code 400}))))
 
 (defn- check-consistent-row-keys
   "Make sure all `rows` have the same keys, or return a 400 response."
@@ -385,15 +390,16 @@
   "Make sure all `rows` are unique, or return a 400 response. It makes no sense to try to delete the same row twice. It
   would fail anyway because the first call would delete it while the second would fail because it deletes zero rows."
   [rows]
-  (when-let [repeats (->> rows
-                          frequencies
-                          (filter (comp #(> % 1) val))
-                          set
-                          not-empty)]
+  (when-let [repeats (not-empty
+                      (into
+                       ;; ordered set so the results are deterministic for test purposes
+                       (ordered-set/ordered-set)
+                       (filter (fn [[_row repeat-count]]
+                                 (> repeat-count 1)))
+                       (frequencies rows)))]
     (throw (ex-info (tru "Rows need to be unique: repeated rows {0}"
-                         (->> repeats
-                              (map #(format "%s × %d" (pr-str (key %)) (val %)))
-                              (str/join ", ")))
+                         (str/join ", " (for [[row repeat-count] repeats]
+                                          (format "%s × %d" (pr-str row) repeat-count))))
                     {:status-code 400, :repeated-rows repeats}))))
 
 (defmethod actions/perform-action!* [:sql-jdbc :bulk/delete]
@@ -402,7 +408,9 @@
   (let [pk-name->id (table-id->pk-field-name->id table-id)]
     ;; validate the keys in `rows`
     (check-consistent-row-keys rows)
-    (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
+    (let [pk-names (set (keys pk-name->id))]
+      (doseq [row rows]
+        (check-row-has-all-pk-columns row pk-names)))
     (check-unique-rows rows)
     ;; now do one `:row/delete` for each row
     (perform-bulk-action-with-repeated-single-row-actions!
@@ -424,41 +432,34 @@
 
 ;;;; `bulk/update`
 
+(s/defn ^:private check-row-has-some-non-pk-columns
+  "Return a 400 if `row` doesn't have any non-PK columns to update."
+  [row :- {s/Str s/Any} pk-names :- #{s/Str}]
+  (let [non-pk-names (set/difference (set (keys row)) pk-names)]
+    (when (empty? non-pk-names)
+      (throw (ex-info (tru "Invalid update row map: no non-PK columns. Got {0}, all of which are PKs."
+                           (pr-str (set (keys row))))
+                      {:status-code 400
+                       :row         row
+                       :all-keys    (set (keys row))
+                       :pk-names    pk-names})))))
+
 (defn- bulk-update-row-xform
   "Create a function to use to transform each row coming in to a `:bulk/update` request into an MBQL query that can be
   passed to `:row/update`."
   [{database-id :id, :as _database} table-id]
   ;; TODO -- make sure all rows specify the PK columns
   (let [pk-name->id (table-id->pk-field-name->id table-id)
-        pk-keys     (set (keys pk-name->id))]
+        pk-names    (set (keys pk-name->id))]
     (fn [row]
-      ;; make sure the row has all of the `pk-keys`.
-      (doseq [pk-key pk-keys
-              :when (not (contains? row pk-key))]
-        (throw (ex-info (tru "Row(s) are missing required primary key column {0}" (pr-str pk-key))
-                        {:row row, :pk-keys pk-keys, :status-code 400})))
-      (let [pk-column->value (select-keys row pk-keys)
-            non-pk-keys      (set/difference (set (keys row)) pk-keys)]
-        (try
-          (when (empty? non-pk-keys)
-            (throw (ex-info (tru "Invalid update row map: no non-PK column. Got {0}, all of which are PKs."
-                                 (pr-str non-pk-keys))
-                            {:status-code 400
-                             :all-keys    (set (keys row))
-                             :pk-keys     pk-keys})))
-          {:database   database-id
-           :type       :query
-           :query      {:source-table table-id
-                        :filter       (row->mbql-filter-clause pk-name->id pk-column->value)}
-           :update-row (select-keys row non-pk-keys)}
-          (catch Throwable e
-            (throw (ex-info (tru "Error building query for bulk update row: {0}" (ex-message e))
-                            {:row         row
-                             :pk-name->id pk-name->id
-                             :pk-keys     pk-keys
-                             :non-pk-keys non-pk-keys
-                             :status-code 400}
-                            e))))))))
+      (check-row-has-all-pk-columns row pk-names)
+      (let [pk-column->value (select-keys row pk-names)]
+        (check-row-has-some-non-pk-columns row pk-names)
+        {:database   database-id
+         :type       :query
+         :query      {:source-table table-id
+                      :filter       (row->mbql-filter-clause pk-name->id pk-column->value)}
+         :update-row (apply dissoc row pk-names)}))))
 
 (defmethod actions/perform-action!* [:sql-jdbc :bulk/update]
   [driver _action database {:keys [table-id rows]}]
