@@ -429,3 +429,17 @@
                                                      {"ID" 75}]))))
               (is (= 75
                      (categories-row-count))))))))))
+
+(deftest why-is-postgres-not-failing-1
+  (testing (format "DRIVERS WITH ACTIONS => %s" (pr-str (mt/normal-drivers-with-feature :actions)))
+    (mt/test-driver :postgres
+      (is (= 1 2)))))
+
+(deftest why-is-postgres-not-failing-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (is (= 1 2))))
+
+(deftest why-is-postgres-not-failing-3
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (actions.test-util/with-actions-test-data-and-actions-enabled
+      (is (= 1 2)))))
