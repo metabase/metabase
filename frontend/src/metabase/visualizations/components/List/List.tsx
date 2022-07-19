@@ -235,16 +235,18 @@ function List({
 
   const canSelectForBulkAction = useMemo(() => {
     return (
-      !bulkActions.cardId || bulkActions.cardId === connectedDashCard?.card_id
+      settings["actions.bulk_enabled"] &&
+      (!bulkActions.cardId || bulkActions.cardId === connectedDashCard?.card_id)
     );
-  }, [connectedDashCard, bulkActions]);
+  }, [connectedDashCard, settings, bulkActions]);
 
   const isSelectingItems = useMemo(() => {
     return (
+      settings["actions.bulk_enabled"] &&
       bulkActions.cardId === connectedDashCard?.card_id &&
       bulkActions.selectedRowIndexes.length > 0
     );
-  }, [connectedDashCard, bulkActions]);
+  }, [connectedDashCard, settings, bulkActions]);
 
   const renderBulkSelectionControl = useCallback(
     (rowIndex: number) => {

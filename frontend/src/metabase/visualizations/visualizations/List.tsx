@@ -73,6 +73,12 @@ export default Object.assign(ListViz, {
       widget: "toggle",
       default: true,
     },
+    "actions.bulk_enabled": {
+      section: t`Actions`,
+      title: t`Bulk actions`,
+      widget: "toggle",
+      default: true,
+    },
     "list.variant": {
       section: t`Options`,
       title: t`Variant`,
