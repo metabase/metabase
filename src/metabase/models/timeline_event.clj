@@ -93,7 +93,10 @@
    mi/IObjectPermissionsDefaults
    {:perms-objects-set perms-objects-set
     :can-read?         (partial mi/current-user-has-full-permissions? :read)
-    :can-write?        (partial mi/current-user-has-full-permissions? :write)}))
+    :can-write?        (partial mi/current-user-has-full-permissions? :write)})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name :timestamp (serdes.hash/hydrated-hash :timeline)])})
 
 ;;;; serialization
 (defmethod serdes.base/serdes-entity-id "TimelineEvent" [_model-name {:keys [timestamp]}]

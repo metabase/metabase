@@ -64,11 +64,6 @@
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
 
 ;;;; serialization
-;(defmethod serdes.base/serdes-generate-path "Timeline"
-;  [_ timeline]
-;  [(assoc (serdes.base/infer-self-path "Timeline" timeline)
-;          :label (:name timeline))])
-
 (defmethod serdes.base/extract-one "Timeline"
   [_model-name _opts timeline]
   (-> (serdes.base/extract-one-basics "Timeline" timeline)
