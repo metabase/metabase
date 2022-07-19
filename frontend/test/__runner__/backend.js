@@ -49,7 +49,7 @@ const BackendResource = createSharedResource("BackendResource", {
         `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
       ];
 
-      const databaseConfig = {
+      const metabaseConfig = {
         MB_DB_TYPE: "h2",
         MB_DB_FILE: server.dbFile,
         MB_JETTY_HOST: "0.0.0.0",
@@ -90,7 +90,7 @@ const BackendResource = createSharedResource("BackendResource", {
         [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
         {
           env: {
-            ...databaseConfig,
+            ...metabaseConfig,
             ...userDefaults,
             ...snowplowConfig,
             PATH: process.env.PATH,
