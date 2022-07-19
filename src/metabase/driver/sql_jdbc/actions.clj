@@ -363,15 +363,16 @@
 
 ;;;; `:bulk/delete`
 
-(s/defn ^:private check-row-has-all-pk-columns
-  "Return a 400 if `row` doesn't have all the required PK columns."
-  [row :- {s/Str s/Any} pk-names :- #{s/Str}]
-  (doseq [pk-key pk-names
-          :when  (not (contains? row pk-key))]
-    (throw (ex-info (tru "Row is missing required primary key column. Required {0}; got {1}"
-                         (pr-str pk-names)
-                         (pr-str (set (keys row))))
-                    {:row row, :pk-names pk-names, :status-code 400}))))
+(defn- check-rows-have-expected-columns-and-no-other-keys
+  "Make sure all `rows` have all the keys in `expected-columns` *and no other keys*, or return a 400."
+  [rows expected-columns]
+  ;; we only actually need to check the first map since [[check-consistent-row-keys]] should have checked that
+  ;; they all have the same keys.
+  (let [expected-columns (set expected-columns)
+        actual-columns   (set (keys (first rows)))]
+    (when-not (= actual-columns expected-columns)
+      (throw (ex-info (tru "Rows have the wrong columns: expected {0}, but got {1}" expected-columns actual-columns)
+                      {:status-code 400, :expected-columns expected-columns, :actual-columns actual-columns})))))
 
 (defn- check-consistent-row-keys
   "Make sure all `rows` have the same keys, or return a 400 response."
@@ -408,9 +409,7 @@
   (let [pk-name->id (table-id->pk-field-name->id table-id)]
     ;; validate the keys in `rows`
     (check-consistent-row-keys rows)
-    (let [pk-names (set (keys pk-name->id))]
-      (doseq [row rows]
-        (check-row-has-all-pk-columns row pk-names)))
+    (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
     (check-unique-rows rows)
     ;; now do one `:row/delete` for each row
     (perform-bulk-action-with-repeated-single-row-actions!
@@ -431,6 +430,16 @@
                                        {:success true})))})))
 
 ;;;; `bulk/update`
+
+(s/defn ^:private check-row-has-all-pk-columns
+  "Return a 400 if `row` doesn't have all the required PK columns."
+  [row :- {s/Str s/Any} pk-names :- #{s/Str}]
+  (doseq [pk-key pk-names
+          :when  (not (contains? row pk-key))]
+    (throw (ex-info (tru "Row is missing required primary key column. Required {0}; got {1}"
+                         (pr-str pk-names)
+                         (pr-str (set (keys row))))
+                    {:row row, :pk-names pk-names, :status-code 400}))))
 
 (s/defn ^:private check-row-has-some-non-pk-columns
   "Return a 400 if `row` doesn't have any non-PK columns to update."

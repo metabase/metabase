@@ -419,12 +419,21 @@
                                                     [{(format-field-name :id) 74}
                                                      {(format-field-name :nonid) 75}]))))
               (testing "Should report non-pk keys"
-                (is (partial= {:message (format "Row is missing required primary key column. Required %s; got %s"
+                (is (partial= {:message (format "Rows have the wrong columns: expected %s, but got %s"
                                                 (pr-str #{(name (format-field-name :id))})
                                                 (pr-str #{(name (format-field-name :nonid))}))}
                               (mt/user-http-request :crowberto :post 400
                                                     (format "action/bulk/delete/%d" (mt/id :categories))
-                                                    [{(format-field-name :nonid) 75}]))))
+                                                    [{(format-field-name :nonid) 75}])))
+                (testing "Even if all PK columns are specified"
+                  (is (partial= {:message (format "Rows have the wrong columns: expected %s, but got %s"
+                                                  (pr-str #{(name (format-field-name :id))})
+                                                  (pr-str #{(name (format-field-name :id))
+                                                            (name (format-field-name :nonid))}))}
+                                (mt/user-http-request :crowberto :post 400
+                                                      (format "action/bulk/delete/%d" (mt/id :categories))
+                                                      [{(format-field-name :id)    75
+                                                        (format-field-name :nonid) 75}])))))
               (testing "Should report repeat rows"
                 (is (partial= {:message (format "Rows need to be unique: repeated rows {%s 74} × 3, {%s 75} × 2"
                                                 (pr-str (name (format-field-name :id)))
