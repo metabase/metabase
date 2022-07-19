@@ -288,24 +288,23 @@
 
 ;;; All bulk Actions require at least
 ;;;
-;;;    {:database <id>, :table-id <id>}
+;;;    {:database <id>, :table-id <id>, :rows [{<key> <value>} ...]}
 
 (s/def :actions.args.crud.bulk.common/table-id
   :actions.args/id)
 
+(s/def :actions.args.crud.bulk/rows
+  (s/cat :rows (s/+ (s/map-of string? any?))))
+
 (s/def :actions.args.crud.bulk/common
   (s/merge
    :actions.args/common
-   (s/keys :req-un [:actions.args.crud.bulk.common/table-id])))
+   (s/keys :req-un [:actions.args.crud.bulk.common/table-id
+                    :actions.args.crud.bulk/rows])))
 
-;;; this is used by several of the bulk actions but not necessarily required.
-(s/def :actions.args.crud.bulk/rows
-  (s/cat :rows (s/+ (s/map-of keyword? any?))))
-
-;;;; `:bulk/create`
-
-;;; For `bulk/create` the request body is to `POST /api/action/:action-namespace/:action-name/:table-id` is just a
-;;; vector of rows but the API endpoint itself calls [[perform-action!]] with
+;;; The request bodies for the bulk CRUD actions are all the same. The body of a request to `POST
+;;; /api/action/:action-namespace/:action-name/:table-id` is just a vector of rows but the API endpoint itself calls
+;;; [[perform-action!]] with
 ;;;
 ;;;    {:database <database-id>, :table-id <table-id>, :arg <request-body>}
 ;;;
@@ -313,30 +312,30 @@
 ;;;
 ;;;     {:database <database-id>, :table-id <table-id>, :rows <request-body>}
 
-(defmethod normalize-action-arg-map :bulk/create
-  [_action {:keys [database table-id], rows :arg, :as _arg-map}]
-  {:database database, :table-id table-id, :rows rows})
+;;;; `:bulk/create`, `:bulk/delete`, `:bulk/update` -- these all have the exact same shapes
 
-(s/def :actions.args.crud.bulk/create
-  (s/merge
-   :actions.args.crud.bulk/common
-   (s/keys :req-un [:actions.args.crud.bulk/rows])))
+(defn- normalize-bulk-crud-action-arg-map
+  [{:keys [database table-id], rows :arg, :as _arg-map}]
+  {:database database, :table-id table-id, :rows (map #(update-keys % u/qualified-name) rows)})
+
+(defmethod normalize-action-arg-map :bulk/create
+  [_action arg-map]
+  (normalize-bulk-crud-action-arg-map arg-map))
 
 (defmethod action-arg-map-spec :bulk/create
   [_action]
-  :actions.args.crud.bulk/create)
+  :actions.args.crud.bulk/common)
+
+(defmethod normalize-action-arg-map :bulk/update
+  [_action arg-map]
+  (normalize-bulk-crud-action-arg-map arg-map))
+
+(defmethod action-arg-map-spec :bulk/update
+  [_action]
+  :actions.args.crud.bulk/common)
 
 ;;;; `:bulk/delete`
 
-;;; For `bulk/delete` the request body is to `POST /api/action/:action-namespace/:action-name/:table-id` is just a
-;;; vector of rows but the API endpoint itself calls [[perform-action!]] with
-;;;
-;;;    {:database <database-id>, :table-id <table-id>, :arg <request-body>}
-;;;
-;;; and we transform this to
-;;;
-;;;     {:database <database-id>, :table-id <table-id>, :pk-value-maps <request-body>}
-;;;
 ;;; Request-body should look like:
 ;;;
 ;;;    ;; single pk, two rows
@@ -347,35 +346,9 @@
 ;;;    [{"PK1": 1, "PK2": "john"}]
 
 (defmethod normalize-action-arg-map :bulk/delete
-  [_action {:keys [database table-id], pk-value-maps :arg, :as _arg-map}]
-  {:database database, :table-id table-id, :pk-value-maps (map #(m/map-keys name %) pk-value-maps)})
-
-(s/def :actions.args.crud.bulk.delete/pk-value-maps
-  (s/coll-of (s/map-of string? any?)))
-
-(s/def :actions.args.crud.bulk/delete
-  (s/merge
-    :actions.args.crud.bulk/common
-    (s/keys :req-un [:actions.args.crud.bulk.delete/pk-value-maps])))
+  [_action arg-map]
+  (normalize-bulk-crud-action-arg-map arg-map))
 
 (defmethod action-arg-map-spec :bulk/delete
   [_action]
-  :actions.args.crud.bulk/delete)
-
-;;;; `:bulk/update`
-
-;; `:bulk/update` has the exact same request shape and transform behavior as `:bulk/create` so go read that if you're
-;; wondering how it's supposed to look.
-
-(defmethod normalize-action-arg-map :bulk/update
-  [_action {:keys [database table-id], rows :arg}]
-  {:database database, :table-id table-id, :rows rows})
-
-(s/def :actions.args.crud.bulk/update
-  (s/merge
-   :actions.args.crud.bulk/common
-   (s/keys :req-un [:actions.args.crud.bulk/rows])))
-
-(defmethod action-arg-map-spec :bulk/update
-  [_action]
-  :actions.args.crud.bulk/update)
+  :actions.args.crud.bulk/common)

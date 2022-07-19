@@ -168,7 +168,8 @@
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
   [driver _action database {database-id :database :keys [update-row] :as query}]
-  (let [raw-hsql     (qp.store/with-store
+  (let [update-row   (update-keys update-row keyword)
+        raw-hsql     (qp.store/with-store
                        (try
                          (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
                          (sql.qp/mbql->honeysql driver query)
@@ -217,7 +218,8 @@
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/create]
   [driver _action _database {database-id :database :keys [create-row] :as query}]
-  (let [raw-hsql    (qp.store/with-store
+  (let [create-row  (update-keys create-row keyword)
+        raw-hsql    (qp.store/with-store
                       (try
                         (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
                         (sql.qp/mbql->honeysql driver query)
@@ -326,30 +328,64 @@
                                                        {:status-code 400, :errors errors})))
                                      {:created-rows (map :created-row successes)})))}))
 
+;;;; Shared stuff for both `:bulk/delete` and `:bulk/update`
+
+(defn- table-id->pk-field-name->id
+  "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
+  [table-id]
+  (db/select-field->id :name Field
+    {:where [:and
+             [:= :table_id table-id]
+             (mdb.u/isa :semantic_type :type/PK)]}))
+
+(defn- row->mbql-filter-clause
+  "Given [[field-name->id]] as returned by [[table-id->pk-field-name->id]] or similar and a `row` of column name to
+  value build an appropriate MBQL filter clause."
+  [field-name->id row]
+  (when (empty? row)
+    (throw (ex-info (tru "Cannot build filter clause: row cannot be empty.")
+                    {:field-name->id field-name->id, :row row, :status-code 400})))
+  (into [:and] (for [[field-name value] row
+                     :let               [field-id (get field-name->id (u/qualified-name field-name))
+                                         ;; if the field isn't in `field-name->id` then it's an error in our code. Not
+                                         ;; i18n'ed because this is not something that should be User facing unless our
+                                         ;; backend code is broken.
+                                         _ (assert field-id
+                                                   (format "Field %s is not present in field-name->id map"
+                                                           (pr-str field-name)))]]
+                 [:= [:field field-id nil] value])))
+
 ;;;; `:bulk/delete`
 
-(defn- check-consistent-pk-value-map-keys [pk-value-maps]
-  (let [all-pk-value-map-column-sets (reduce
-                                      (fn [seen-set pk-value-map]
-                                        (conj seen-set (set (keys pk-value-map))))
-                                      #{}
-                                      pk-value-maps)]
-    (when (> (count all-pk-value-map-column-sets) 1)
-      (throw (ex-info (tru "Some rows have different sets of columns: {0}"
-                           (str/join ", " (map pr-str all-pk-value-map-column-sets)))
-                      {:status-code 400, :column-sets all-pk-value-map-column-sets})))))
-
-(defn- check-pk-value-maps-have-expected-columns [pk-value-maps expected-columns]
-  ;; we only actually need to check the first map since [[check-consistent-pk-value-map-keys]] should have checked that
+(defn- check-rows-have-expected-columns-and-no-other-keys
+  "Make sure all `rows` have all the keys in `expected-columns` *and no other keys*, or return a 400."
+  [rows expected-columns]
+  ;; we only actually need to check the first map since [[check-consistent-row-keys]] should have checked that
   ;; they all have the same keys.
   (let [expected-columns (set expected-columns)
-        actual-columns   (set (keys (first pk-value-maps)))]
+        actual-columns   (set (keys (first rows)))]
     (when-not (= actual-columns expected-columns)
       (throw (ex-info (tru "Rows have the wrong columns: expected {0}, but got {1}" expected-columns actual-columns)
                       {:status-code 400, :expected-columns expected-columns, :actual-columns actual-columns})))))
 
-(defn- check-unique-pk-value-maps [pk-value-maps]
-  (when-let [repeats (->> pk-value-maps
+(defn- check-consistent-row-keys
+  "Make sure all `rows` have the same keys, or return a 400 response."
+  [rows]
+  (let [all-row-column-sets (reduce
+                             (fn [seen-set row]
+                               (conj seen-set (set (keys row))))
+                             #{}
+                             rows)]
+    (when (> (count all-row-column-sets) 1)
+      (throw (ex-info (tru "Some rows have different sets of columns: {0}"
+                           (str/join ", " (map pr-str all-row-column-sets)))
+                      {:status-code 400, :column-sets all-row-column-sets})))))
+
+(defn- check-unique-rows
+  "Make sure all `rows` are unique, or return a 400 response. It makes no sense to try to delete the same row twice. It
+  would fail anyway because the first call would delete it while the second would fail because it deletes zero rows."
+  [rows]
+  (when-let [repeats (->> rows
                           frequencies
                           (filter (comp #(> % 1) val))
                           set
@@ -360,92 +396,69 @@
                               (str/join ", ")))
                     {:status-code 400, :repeated-rows repeats}))))
 
-(defn- pk-value-maps->honeysql-filter-clauses [table-id pk-value-maps]
-  (let [pk-name->id (db/select-field->id
-                      :name Field
-                      {:where [:and
-                               [:= :table_id table-id]
-                               (mdb.u/isa :semantic_type :type/PK)]})]
-    ;; validate the keys in `pk-value-maps`
-    (check-consistent-pk-value-map-keys pk-value-maps)
-    (check-pk-value-maps-have-expected-columns pk-value-maps (keys pk-name->id))
-    (check-unique-pk-value-maps pk-value-maps)
-    ;; now build the HoneySQL filter clauses
-    (for [pk-value-map pk-value-maps]
-      (into [:and]
-            (for [[pk-name value] pk-value-map]
-              [:=
-               [:field (get pk-name->id pk-name) nil]
-               value])))))
-
 (defmethod actions/perform-action!* [:sql-jdbc :bulk/delete]
-  [driver _action {database-id :id, :as database} {:keys [table-id pk-value-maps]}]
-  (log/tracef "Deleting %d rows" (count pk-value-maps))
-  (with-jdbc-transaction [conn database-id]
-    (transduce
-      (m/indexed)
-      (fn
-        ([]
-         [[] []])
-        ([[errors]]
-         ;; if there were any errors throw an Exception with all the error messages.
-         (when (seq errors)
-           (.rollback conn)
-           (throw (ex-info (tru "Error(s) deleting rows.")
-                           {:status-code 400, :errors errors})))
-         ;; if there we no errors then return the created rows.
-         {:success true})
-        ([[errors] [row-index delete-filter]]
-         (try
-           (do-nested-transaction
-             driver
-             conn
-             (fn []
-               (actions/perform-action!*
-                 driver
-                 :row/delete
-                 database
-                 {:database   database-id
-                  :type       :query
-                  :query      {:source-table table-id
-                               :filter delete-filter}})))
-           [errors]
-           (catch Throwable e
-             [(conj errors {:index row-index, :error (ex-message e)})]))))
-      (pk-value-maps->honeysql-filter-clauses table-id pk-value-maps))))
+  [driver _action {database-id :id, :as database} {:keys [table-id rows]}]
+  (log/tracef "Deleting %d rows" (count rows))
+  (let [pk-name->id (table-id->pk-field-name->id table-id)]
+    ;; validate the keys in `rows`
+    (check-consistent-row-keys rows)
+    (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
+    (check-unique-rows rows)
+    ;; now do one `:row/delete` for each row
+    (perform-bulk-action-with-repeated-single-row-actions!
+     {:driver   driver
+      :database database
+      :action   :row/delete
+      :rows     rows
+      :xform    (comp (map (fn [row]
+                             {:database database-id
+                              :type     :query
+                              :query    {:source-table table-id
+                                         :filter       (row->mbql-filter-clause pk-name->id row)}}))
+                      #(completing % (fn [[errors _successes]]
+                                       (when (seq errors)
+                                         (throw (ex-info (tru "Error(s) deleting rows.")
+                                                         {:status-code 400, :errors errors})))
+                                       ;; `:bulk/delete` just returns a simple status message on success.
+                                       {:success true})))})))
 
 ;;;; `bulk/update`
 
-(defn- table-id->pk-field-name->id [table-id]
-  (db/select-field->id :name Field
-    {:where [:and
-             [:= :table_id table-id]
-             (mdb.u/isa :semantic_type :type/PK)]}))
-
-(defn- pk-value-map->honeysql-filter-clause [pk-name->id pk-value-map]
-  (into [:and] (for [[pk-name value] pk-value-map]
-                 [:=
-                  [:field (get pk-name->id (u/qualified-name pk-name)) nil]
-                  value])))
-
-(defn- bulk-update-row-xform [database table-id]
+(defn- bulk-update-row-xform
+  "Create a function to use to transform each row coming in to a `:bulk/update` request into an MBQL query that can be
+  passed to `:row/update`."
+  [{database-id :id, :as _database} table-id]
   ;; TODO -- make sure all rows specify the PK columns
   (let [pk-name->id (table-id->pk-field-name->id table-id)
-        pk-keys     (set (map keyword (keys pk-name->id)))]
+        pk-keys     (set (keys pk-name->id))]
     (fn [row]
+      ;; make sure the row has all of the `pk-keys`.
+      (doseq [pk-key pk-keys
+              :when (not (contains? row pk-key))]
+        (throw (ex-info (tru "Row(s) are missing required primary key column {0}" (pr-str pk-key))
+                        {:row row, :pk-keys pk-keys, :status-code 400})))
       (let [pk-column->value (select-keys row pk-keys)
             non-pk-keys      (set/difference (set (keys row)) pk-keys)]
-        (when (empty? non-pk-keys)
-          (throw (ex-info (tru "Invalid update row map: no non-PK column. Got {0}, all of which are PKs."
-                               (pr-str non-pk-keys))
-                          {:status-code 400
-                           :all-keys    (set (keys row))
-                           :pk-keys     pk-keys})))
-        {:database   (u/the-id database)
-         :type       :query
-         :query      {:source-table table-id
-                      :filter       (pk-value-map->honeysql-filter-clause pk-name->id pk-column->value)}
-         :update-row (select-keys row non-pk-keys)}))))
+        (try
+          (when (empty? non-pk-keys)
+            (throw (ex-info (tru "Invalid update row map: no non-PK column. Got {0}, all of which are PKs."
+                                 (pr-str non-pk-keys))
+                            {:status-code 400
+                             :all-keys    (set (keys row))
+                             :pk-keys     pk-keys})))
+          {:database   database-id
+           :type       :query
+           :query      {:source-table table-id
+                        :filter       (row->mbql-filter-clause pk-name->id pk-column->value)}
+           :update-row (select-keys row non-pk-keys)}
+          (catch Throwable e
+            (throw (ex-info (tru "Error building query for bulk update row: {0}" (ex-message e))
+                            {:row         row
+                             :pk-name->id pk-name->id
+                             :pk-keys     pk-keys
+                             :non-pk-keys non-pk-keys
+                             :status-code 400}
+                            e))))))))
 
 (defmethod actions/perform-action!* [:sql-jdbc :bulk/update]
   [driver _action database {:keys [table-id rows]}]
@@ -460,6 +473,7 @@
                                      (when (seq errors)
                                        (throw (ex-info (tru "Error(s) updating rows.")
                                                        {:status-code 400, :errors errors})))
+                                     ;; `:bulk/update` returns {:rows-updated <number-of-rows-updated>} on success.
                                      (transduce
                                       (map (comp first :rows-updated))
                                       (completing +

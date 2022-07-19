@@ -430,25 +430,69 @@
               (is (= 75
                      (categories-row-count))))))))))
 
+(defn- first-three-categories []
+  (mt/rows (mt/run-mbql-query categories {:filter [:< $id 4], :order-by [[:asc $id]]})))
+
 (deftest bulk-update-happy-path-test
   (testing "POST /api/action/bulk/update/:table-id"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (actions.test-util/with-actions-test-data-and-actions-enabled
-        (letfn [(first-three-categories []
-                  (mt/rows (mt/run-mbql-query categories {:filter [:< $id 4], :order-by [[:asc $id]]})))]
-          (is (= [[1 "African"]
-                  [2 "American"]
+        (is (= [[1 "African"]
+                [2 "American"]
+                [3 "Artisan"]]
+               (first-three-categories)))
+        (is (= {:rows-updated 2}
+               (mt/user-http-request :crowberto :post 200
+                                     (format "action/bulk/update/%d" (mt/id :categories))
+                                     (let [id   (format-field-name :id)
+                                           name (format-field-name :name)]
+                                       [{id 1, name "Seed Bowl"}
+                                        {id 2, name "Millet Treat"}]))))
+        (testing "rows should be updated in the DB"
+          (is (= [[1 "Seed Bowl"]
+                  [2 "Millet Treat"]
                   [3 "Artisan"]]
-                 (first-three-categories)))
-          (is (= {:rows-updated 2}
-                 (mt/user-http-request :crowberto :post 200
-                                       (format "action/bulk/update/%d" (mt/id :categories))
-                                       (let [id   (format-field-name :id)
-                                             name (format-field-name :name)]
-                                         [{id 1, name "Seed Bowl"}
-                                          {id 2, name "Millet Treat"}]))))
-          (testing "rows should be updated in the DB"
-            (is (= [[1 "Seed Bowl"]
-                    [2 "Millet Treat"]
+                 (first-three-categories))))))))
+
+(deftest bulk-update-failure-test
+  (testing "POST /api/action/bulk/update/:table-id"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.test-util/with-actions-test-data-and-actions-enabled
+        (let [id   (format-field-name :id)
+              name (format-field-name :name)]
+          (testing "Initial values"
+            (is (= [[1 "African"]
+                    [2 "American"]
+                    [3 "Artisan"]]
+                   (first-three-categories))))
+          (testing "Should report the index of input rows with errors in the data warehouse"
+            (is (schema= {:errors   [(s/one
+                                      {:index (s/eq 0)
+                                       :error #"^NULL not allowed for column \"NAME\""}
+                                      "first error")
+                                     (s/one
+                                      {:index (s/eq 2)
+                                       :error #"^NULL not allowed for column \"NAME\""}
+                                      "second error")]
+                          s/Keyword s/Any}
+                         (mt/user-http-request :crowberto :post 400
+                                               (format "action/bulk/update/%d" (mt/id :categories))
+                                               [{id 1, name nil}
+                                                {id 2, name "Millet Treat"}
+                                                {id 3, name nil}]))))
+          ;; TODO -- maybe this should come back with the row index as well. Maybe it's a little less important for the
+          ;; Clojure-side validation because an error like this is presumably the result of the frontend passing in bad
+          ;; maps since it should be enforcing this in the FE client as well. Row indexes are more important for errors
+          ;; that happen in the DW since they often can't be enforced in the frontend client OR in the backend without
+          ;; actually hitting the DW
+          (testing "Should validate that every row has required PK columns"
+            (is (partial= {:message "Row(s) are missing required primary key column \"ID\""}
+                          (mt/user-http-request :crowberto :post 400
+                                                (format "action/bulk/update/%d" (mt/id :categories))
+                                                [{id 1, name "Seed Bowl"}
+                                                 {name "Millet Treat"}]))))
+          (testing "Rows should be unchanged"
+            (is (= [[1 "African"]
+                    [2 "American"]
                     [3 "Artisan"]]
                    (first-three-categories)))))))))
