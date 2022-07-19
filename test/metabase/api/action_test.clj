@@ -9,6 +9,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
+            [metabase.test.data.env :as tx.env]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -430,10 +431,15 @@
               (is (= 75
                      (categories-row-count))))))))))
 
+(deftest why-is-postgres-not-failing-0
+  (testing (format "TEST DRIVERS => %s" (tx.env/test-drivers))
+    (testing (format "\nNORMAL DRIVERS => %s" (pr-str (mt/normal-drivers)))
+      (testing (format "\nDRIVERS WITH ACTIONS => %s" (pr-str (mt/normal-drivers-with-feature :actions)))
+        (is (= 1 2))))))
+
 (deftest why-is-postgres-not-failing-1
-  (testing (format "DRIVERS WITH ACTIONS => %s" (pr-str (mt/normal-drivers-with-feature :actions)))
-    (mt/test-driver :postgres
-      (is (= 1 2)))))
+  (mt/test-driver :postgres
+    (is (= 1 2))))
 
 (deftest why-is-postgres-not-failing-2
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
