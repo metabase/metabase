@@ -389,65 +389,63 @@
   (testing "POST /api/action/bulk/delete/:table-id"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (actions.test-util/with-actions-test-data-and-actions-enabled
-        (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-          (actions.test-util/with-actions-test-data-and-actions-enabled
-            (testing "error in some of the rows"
-              (is (= 75
-                     (categories-row-count)))
-              (testing "Should report indices of bad rows"
-                (is (schema= {:errors
-                              [(s/one
-                                {:index (s/eq 1)
-                                 :error #"Error filtering against :type/(?:Big)?Integer Field: unable to parse String \"foo\" to a :type/(?:Big)?Integer"}
-                                "first error")
-                               (s/one
-                                {:index (s/eq 3)
-                                 :error #"Sorry, this would delete 0 rows, but you can only act on 1"}
-                                "second error")]}
-                             (mt/user-http-request :crowberto :post 400
-                                                   (format "action/bulk/delete/%d" (mt/id :categories))
-                                                   [{(format-field-name :id) 74}
-                                                    {(format-field-name :id) "foo"}
-                                                    {(format-field-name :id) 75}
-                                                    {(format-field-name :id) 107}]))))
-              (testing "Should report inconsistent keys"
-                (is (partial= {:message (format "Some rows have different sets of columns: %s, %s"
-                                                (pr-str #{(name (format-field-name :nonid))})
-                                                (pr-str #{(name (format-field-name :id))}))}
-                              (mt/user-http-request :crowberto :post 400
-                                                    (format "action/bulk/delete/%d" (mt/id :categories))
-                                                    [{(format-field-name :id) 74}
-                                                     {(format-field-name :nonid) 75}]))))
-              (testing "Should report non-pk keys"
-                (is (partial= {:message (format "Rows have the wrong columns: expected %s, but got %s"
-                                                (pr-str #{(name (format-field-name :id))})
-                                                (pr-str #{(name (format-field-name :nonid))}))}
-                              (mt/user-http-request :crowberto :post 400
-                                                    (format "action/bulk/delete/%d" (mt/id :categories))
-                                                    [{(format-field-name :nonid) 75}])))
-                (testing "Even if all PK columns are specified"
-                  (is (partial= {:message (format "Rows have the wrong columns: expected %s, but got %s"
-                                                  (pr-str #{(name (format-field-name :id))})
-                                                  (pr-str #{(name (format-field-name :id))
-                                                            (name (format-field-name :nonid))}))}
-                                (mt/user-http-request :crowberto :post 400
-                                                      (format "action/bulk/delete/%d" (mt/id :categories))
-                                                      [{(format-field-name :id)    75
-                                                        (format-field-name :nonid) 75}])))))
-              (testing "Should report repeat rows"
-                (is (partial= {:message (format "Rows need to be unique: repeated rows {%s 74} × 3, {%s 75} × 2"
-                                                (pr-str (name (format-field-name :id)))
-                                                (pr-str (name (format-field-name :id))))}
-                              (mt/user-http-request :crowberto :post 400
-                                                    (format "action/bulk/delete/%d" (mt/id :categories))
-                                                    [{(format-field-name :id) 73}
-                                                     {(format-field-name :id) 74}
-                                                     {(format-field-name :id) 74}
-                                                     {(format-field-name :id) 74}
-                                                     {(format-field-name :id) 75}
-                                                     {(format-field-name :id) 75}]))))
-              (is (= 75
-                     (categories-row-count))))))))))
+        (testing "error in some of the rows"
+          (is (= 75
+                 (categories-row-count)))
+          (testing "Should report indices of bad rows"
+            (is (schema= {:errors
+                          [(s/one
+                            {:index (s/eq 1)
+                             :error #"Error filtering against :type/(?:Big)?Integer Field: unable to parse String \"foo\" to a :type/(?:Big)?Integer"}
+                            "first error")
+                           (s/one
+                            {:index (s/eq 3)
+                             :error #"Sorry, this would delete 0 rows, but you can only act on 1"}
+                            "second error")]}
+                         (mt/user-http-request :crowberto :post 400
+                                               (format "action/bulk/delete/%d" (mt/id :categories))
+                                               [{(format-field-name :id) 74}
+                                                {(format-field-name :id) "foo"}
+                                                {(format-field-name :id) 75}
+                                                {(format-field-name :id) 107}]))))
+          (testing "Should report inconsistent keys"
+            (is (partial= {:message (format "Some rows have different sets of columns: %s, %s"
+                                            (pr-str #{(name (format-field-name :nonid))})
+                                            (pr-str #{(name (format-field-name :id))}))}
+                          (mt/user-http-request :crowberto :post 400
+                                                (format "action/bulk/delete/%d" (mt/id :categories))
+                                                [{(format-field-name :id) 74}
+                                                 {(format-field-name :nonid) 75}]))))
+          (testing "Should report non-pk keys"
+            (is (partial= {:message (format "Rows have the wrong columns: expected %s, but got %s"
+                                            (pr-str #{(name (format-field-name :id))})
+                                            (pr-str #{(name (format-field-name :nonid))}))}
+                          (mt/user-http-request :crowberto :post 400
+                                                (format "action/bulk/delete/%d" (mt/id :categories))
+                                                [{(format-field-name :nonid) 75}])))
+            (testing "Even if all PK columns are specified"
+              (is (partial= {:message (format "Rows have the wrong columns: expected %s, but got %s"
+                                              (pr-str #{(name (format-field-name :id))})
+                                              (pr-str #{(name (format-field-name :id))
+                                                        (name (format-field-name :nonid))}))}
+                            (mt/user-http-request :crowberto :post 400
+                                                  (format "action/bulk/delete/%d" (mt/id :categories))
+                                                  [{(format-field-name :id)    75
+                                                    (format-field-name :nonid) 75}])))))
+          (testing "Should report repeat rows"
+            (is (partial= {:message (format "Rows need to be unique: repeated rows {%s 74} × 3, {%s 75} × 2"
+                                            (pr-str (name (format-field-name :id)))
+                                            (pr-str (name (format-field-name :id))))}
+                          (mt/user-http-request :crowberto :post 400
+                                                (format "action/bulk/delete/%d" (mt/id :categories))
+                                                [{(format-field-name :id) 73}
+                                                 {(format-field-name :id) 74}
+                                                 {(format-field-name :id) 74}
+                                                 {(format-field-name :id) 74}
+                                                 {(format-field-name :id) 75}
+                                                 {(format-field-name :id) 75}]))))
+          (is (= 75
+                 (categories-row-count))))))))
 
 (defn- first-three-categories []
   (mt/rows (mt/run-mbql-query categories {:filter [:< $id 4], :order-by [[:asc $id]]})))
