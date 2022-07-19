@@ -141,7 +141,7 @@
       {"foo" {:value "today"}}
       "today"))
 
- (t/testing "Date/time values are formatted correctly"
+ (t/testing "Date values are formatted correctly"
    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
      "{{foo}}"
      {"foo" {:type :date/single :value "2022-07-09"}}
@@ -156,9 +156,27 @@
      "July\\, 2022"
 
      "{{foo}}"
+     {"foo" {:type :date/quarter-year :value "Q2-2022"}}
+     "Q2\\, 2022"
+
+     "{{foo}}"
      {"foo" {:type :date/all-options :value "~2022-07-09"}}
      "July 9\\, 2022"
 
      "{{foo}}"
      {"foo" {:type :date/all-options :value "2022-07-06~2022-07-09"}}
-     "July 6\\, 2022 \\- July 9\\, 2022")))
+     "July 6\\, 2022 \\- July 9\\, 2022")
+
+   (t/testing "Date values are formatted using the locale passed in as an argument"
+     (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param "zh"))
+       "{{foo}}"
+       {"foo" {:type :date/single :value "2022-07-09"}}
+       "七月 9\\, 2022"
+
+       "{{foo}}"
+       {"foo" {:type :date/range :value "2022-01-06~2022-04-09"}}
+       "一月 6\\, 2022 \\- 四月 9\\, 2022"
+
+       "{{foo}}"
+       {"foo" {:type :date/month-year :value "2019-08"}}
+       "八月\\, 2019"))))
