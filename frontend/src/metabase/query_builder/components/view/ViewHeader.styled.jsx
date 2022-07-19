@@ -71,7 +71,7 @@ export const HeaderButton = styled(Button)`
   color: ${({ active }) => (active ? "white" : color("text-dark"))};
   &:hover {
     background-color: ${({ color = getDefaultColor() }) => alpha(color, 0.15)};
-    color: ${color};
+    color: ${({ color }) => color};
   }
   transition: background 300ms linear, border 300ms linear;
   > .Icon {
