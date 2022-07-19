@@ -113,6 +113,11 @@ function createSharedResource() {
         "Backend ready (host=" + server.host + " dbFile=" + server.dbFile + ")",
       );
 
+      // Copied here from `frontend/src/metabase/lib/promise.js` to decouple Cypress from Typescript
+      function delay(duration) {
+        return new Promise((resolve, reject) => setTimeout(resolve, duration));
+      }
+
       async function isReady(host) {
         try {
           const response = await fetch(`${host}/api/health`);
@@ -141,11 +146,6 @@ function createSharedResource() {
       } catch (e) {}
     },
   };
-}
-
-// Copied here from `frontend/src/metabase/lib/promise.js` to decouple Cypress from Typescript
-function delay(duration) {
-  return new Promise((resolve, reject) => setTimeout(resolve, duration));
 }
 
 module.exports = BackendResource;
