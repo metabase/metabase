@@ -4,6 +4,6 @@ title: Microsoft SQL Server
 
 # Microsoft SQL Server
 
-## Connecting to SQL Server with varying ports
+## Connecting to SQL Server with dynamic ports
 
-If your SQL Server port changes or uses multiple ports, simply leave the port field blank.
+If your SQL Server uses dynamic ports, simply leave the port field blank.
