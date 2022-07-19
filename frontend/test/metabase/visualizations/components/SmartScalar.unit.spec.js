@@ -6,6 +6,12 @@ import { NumberColumn, DateTimeColumn } from "../__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
+const setup = series =>
+  renderWithProviders(<Visualization rawSeries={series} />, {
+    withSettings: true,
+    withEmbedSettings: true,
+  });
+
 const series = ({ rows, insights }) => {
   const cols = [
     DateTimeColumn({ name: "Month" }),
@@ -26,9 +32,8 @@ describe("SmartScalar", () => {
         col: "Count",
       },
     ];
-    const { getAllByText } = renderWithProviders(
-      <Visualization rawSeries={series({ rows, insights })} />,
-    );
+    const { getAllByText } = setup(series({ rows, insights }));
+
     getAllByText("120");
     getAllByText("20%");
     getAllByText("was 100");
@@ -46,9 +51,7 @@ describe("SmartScalar", () => {
         col: "Count",
       },
     ];
-    const { getAllByText } = renderWithProviders(
-      <Visualization rawSeries={series({ rows, insights })} />,
-    );
+    const { getAllByText } = setup(series({ rows, insights }));
     getAllByText("80");
     getAllByText("20%");
     getAllByText("was 100");
@@ -66,9 +69,7 @@ describe("SmartScalar", () => {
         col: "Count",
       },
     ];
-    const { getAllByText } = renderWithProviders(
-      <Visualization rawSeries={series({ rows, insights })} />,
-    );
+    const { getAllByText } = setup(series({ rows, insights }));
     getAllByText("100");
     getAllByText("No change from last month");
   });
@@ -87,9 +88,7 @@ describe("SmartScalar", () => {
         col: "Count",
       },
     ];
-    const { getAllByText } = renderWithProviders(
-      <Visualization rawSeries={series({ rows, insights })} />,
-    );
+    const { getAllByText } = setup(series({ rows, insights }));
     getAllByText("8,000%");
   });
 

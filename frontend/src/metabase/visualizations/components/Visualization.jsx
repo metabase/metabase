@@ -20,6 +20,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
+import { getFont } from "metabase/styled-components/selectors";
 
 import Utils from "metabase/lib/utils";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
@@ -552,11 +553,15 @@ class Visualization extends React.PureComponent {
   }
 }
 
+const mapStateToProps = state => ({
+  fontFamily: getFont(state),
+});
+
 export default _.compose(
   ExplicitSize({
     selector: ".CardVisualization",
     refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
   }),
-  connect(),
+  connect(mapStateToProps),
   memoizeClass("_getQuestionForCardCached"),
 )(Visualization);
