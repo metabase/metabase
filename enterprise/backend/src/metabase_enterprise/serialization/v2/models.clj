@@ -12,4 +12,7 @@
    "Metric"
    "NativeQuerySnippet"
    "Setting"
-   "Table"])
+   "Table"
+   "Timeline"
+   ;"TimelineEvent"   ; Deliberately excluded: events are embedded in timelines.
+   ])

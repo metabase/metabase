@@ -68,7 +68,10 @@
          :metric                 [[30 {:refs {:table_id   (random-keyword "t" 100)
                                               :creator_id (random-keyword "u" 10)}}]]
          :native-query-snippet   [[10 {:refs {:creator_id    (random-keyword "u" 10)
-                                              :collection_id (random-keyword "coll" 10 100)}}]]})
+                                              :collection_id (random-keyword "coll" 10 100)}}]]
+         :timeline               [[10 {:refs {:creator_id    (random-keyword "u" 10)
+                                              :collection_id (random-keyword "coll" 100)}}]]
+         :timeline-event         [[90 {:refs {:timeline_id   (random-keyword "timeline" 10)}}]]})
       (let [extraction (into [] (extract/extract-metabase {}))
             entities   (reduce (fn [m entity]
                                  (update m (-> entity :serdes/meta last :model)
@@ -192,6 +195,22 @@
                          (update :created_at u.date/format)
                          (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "NativeQuerySnippet" filename))))))
+
+          (testing "for timelines and events"
+            (is (= 10 (count (dir->file-set (io/file dump-dir "Timeline")))))
+            (doseq [{:keys [entity_id events name] :as timeline} (get entities "Timeline")
+                    :let [filename (#'u.yaml/leaf-file-name entity_id name)
+                          events   (into [] (for [e events]
+                                              (-> e
+                                                  (update :created_at u.date/format)
+                                                  (update :updated_at u.date/format)
+                                                  (update :timestamp  u.date/format))))]]
+              (is (= (-> timeline
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format)
+                         (assoc :events events))
+                     (yaml/from-file (io/file dump-dir "Timeline" filename))))))
 
           (testing "for settings"
             (is (= (into {} (for [{:keys [key value]} (get entities "Setting")]
