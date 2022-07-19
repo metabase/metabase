@@ -82,7 +82,8 @@
                  :text     (tokens->string text-tokens (not is-match))})))))
 
 (defn- text-score-with
-  "Returns nil if no match is found."
+  "Scores a search result. Returns a map with the score and other info about the text match,
+   if there is one. If there is no match, the score is 0."
   [weighted-scorers query-tokens search-result]
   (let [total-weight (reduce + (map :weight weighted-scorers))
         scores       (for [column (search-config/searchable-columns-for-model (:model search-result))
@@ -97,14 +98,14 @@
                                                              0
                                                              (map :scorer weighted-scorers)))]
                            :when  (and matched-text
-                                       (> score 0))]
+                                       (pos? score))]
                        {:score               (/ score total-weight)
                         :match               matched-text
                         :match-context-thunk #(match-context query-tokens match-tokens)
-                        :column              column
-                        :result              search-result})]
-    (when (seq scores)
-      (apply max-key :score scores))))
+                        :column              column})]
+    (if (seq scores)
+      (apply max-key :score scores)
+      {:score 0})))
 
 (defn- consecutivity-scorer
   [query-tokens match-tokens]
@@ -164,7 +165,6 @@
      (count model->sort-position)))
 
 (defn- text-score-with-match
-  "Returns nil if no match is found."
   [raw-search-string result]
   (if (seq raw-search-string)
     (text-score-with match-based-scorers
@@ -192,10 +192,11 @@
 
 (defn- dashboard-count-score
   [{:keys [model dashboardcard_count]}]
-  (when (= model "card")
+  (if (= model "card")
     (min (/ dashboardcard_count
             search-config/dashboard-count-ceiling)
-         1)))
+         1)
+    0))
 
 (defn- recency-score
   [{:keys [updated_at]}]
@@ -270,18 +271,19 @@
    (weights-and-scores result))
 
 (defn score-and-result
-  "Returns a map with the `:score` and `:result`—or nil. The score is a vector of comparable things in priority order."
+  "Returns a map with the `:score` and `:result`.
+   If there is no text match with the search string, the total score is zero and no result is given."
   ([raw-search-string result]
-   (let [text-score {:score  (or (:score (text-score-with-match raw-search-string result))
-                                 0)
-                     :weight 10
-                     :name   "text score"}
-         scores     (->> (conj (score-result result)
-                               text-score)
-                         (filter :score))]
-     {:score  (/ (reduce + (map (fn [{:keys [weight score]}] (* weight score)) scores))
-                 (reduce + (map :weight scores)))
-      :result (serialize result text-score scores)})))
+   (let [text-match (text-score-with-match raw-search-string result)]
+     (if (pos? (:score text-match))
+       (let [text-score {:score  (:score text-match)
+                         :weight 10
+                         :name   "text score"}
+             scores     (conj (score-result result) text-score)]
+         {:score  (/ (reduce + (map (fn [{:keys [weight score]}] (* weight score)) scores))
+                     (reduce + (map :weight scores)))
+          :result (serialize result text-match scores)})
+       {:score 0}))))
 
 (defn top-results
   "Given a reducible collection (i.e., from `jdbc/reducible-query`) and a transforming function for it, applies the

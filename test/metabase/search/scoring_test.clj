@@ -53,10 +53,10 @@
              (score ["rasta"]
                     (result-row "Rasta")))))
     (testing "misses"
-      (is (nil?
+      (is (zero?
            (score ["rasta"]
                   (result-row "just a straight-up imposter"))))
-      (is (nil?
+      (is (zero?
            (score ["rasta" "the" "toucan"]
                   (result-row "")))))))
 
@@ -83,10 +83,10 @@
              (score ["rasta" "the" "toucan"]
                     (result-row "Rasta may be my favorite of the toucans")))))
     (testing "misses"
-      (is (nil?
+      (is (zero?
            (score ["rasta"]
                   (result-row "just a straight-up imposter"))))
-      (is (nil?
+      (is (zero?
            (score ["rasta" "the" "toucan"]
                   (result-row "")))))))
 
@@ -101,16 +101,16 @@
              (score ["rasta" "the" "toucan"]
                     (result-row "Rasta the Toucan")))))
     (testing "misses"
-      (is (nil?
+      (is (zero?
            (score ["rasta"]
                   (result-row "just a straight-up imposter"))))
-      (is (nil?
+      (is (zero?
            (score ["rasta" "the" "toucan"]
                   (result-row "")))))))
 
 (deftest exact-match-scorer-test
   (let [score (scorer->score #'scoring/exact-match-scorer)]
-    (is (nil?
+    (is (zero?
          (score ["rasta" "the" "toucan"]
                 (result-row "Crowberto el tucan"))))
     (is (= 1/3
@@ -281,20 +281,13 @@
                 (map :name))))))
 
 (deftest no-text-match-scoring-test
-  (testing "Results with a word match should always rank higher than those without"
-   (let [search-string     "dashboard"
-         labeled-results   {:a {:name "my dashboard" :model "dashboard"}
-                            :b {:name "my dash" :model "dashboard" :bookmark true :collection_position 1}}
-         {:keys [a b]} labeled-results]
-     (is (= (map :name [a   ; Text match
-                        b]) ; No text match, but it's bookmarked and pinned
-            (->> labeled-results
-                 vals
-                 (map (partial scoring/score-and-result search-string))
-                 (sort-by :score)
-                 reverse
-                 (map :result)
-                 (map :name)))))))
+  (testing "Results without a text match should have zero score"
+   (let [search-string "dashboard"
+         result        {:name                "my dash"
+                        :model               "dashboard"
+                        :bookmark            true
+                        :collection_position 1}]
+     (is (zero? (:score (scoring/score-and-result search-string result)))))))
 
 (deftest score-and-result-test
   (testing "If all scores are 0, does not divide by zero"
