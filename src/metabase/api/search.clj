@@ -418,8 +418,14 @@
                              ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as needed
                              (map #(update % :bookmark bit->boolean))
                              (map #(update % :archived bit->boolean))
-                             (map (partial scoring/score-and-result (:search-string search-ctx)))
-                             (filter #(pos? (:score %))))
+                             (map (partial scoring/score-and-result (:search-string search-ctx))))
+                             ;; Archived search with a blank search string is used by the client for "show me everything that is archived".
+                             ;; see https://github.com/metabase/metabase/pull/15604
+                             ;; Otherwise, we remove all search results with a score of zero.
+          xf                 (if-not (and (:archived? search-ctx)
+                                          (str/blank? (:search-string search-ctx)))
+                               (comp xf (filter #(pos? (:score %))))
+                               xf)
           total-results     (scoring/top-results reducible-results xf)]
       ;; We get to do this slicing and dicing with the result data because
       ;; the pagination of search is for UI improvement, not for performance.

@@ -171,8 +171,7 @@
                      (tokenize (normalize raw-search-string))
                      result)
     {:score  0
-     :match  ""
-     :result result}))
+     :match  ""}))
 
 (defn- pinned-score
   [{:keys [model collection_position]}]
@@ -272,18 +271,19 @@
 
 (defn score-and-result
   "Returns a map with the `:score` and `:result`.
-   If there is no text match with the search string, the total score is zero and no result is given."
+   If there is no text match with the search string, the total score is zero."
   ([raw-search-string result]
-   (let [text-match (text-score-with-match raw-search-string result)]
+   (let [text-match (text-score-with-match raw-search-string result)
+         text-score {:score  (:score text-match)
+                     :weight 10
+                     :name   "text score"}]
      (if (pos? (:score text-match))
-       (let [text-score {:score  (:score text-match)
-                         :weight 10
-                         :name   "text score"}
-             scores     (conj (score-result result) text-score)]
+       (let [scores (conj (score-result result) text-score)]
          {:score  (/ (reduce + (map (fn [{:keys [weight score]}] (* weight score)) scores))
                      (reduce + (map :weight scores)))
           :result (serialize result text-match scores)})
-       {:score 0}))))
+       {:score  0
+        :result (serialize result text-match [text-score])}))))
 
 (defn top-results
   "Given a reducible collection (i.e., from `jdbc/reducible-query`) and a transforming function for it, applies the
