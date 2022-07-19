@@ -380,8 +380,8 @@
         (is (= {:success true}
                (mt/user-http-request :crowberto :post 200
                                      (format "action/bulk/delete/%d" (mt/id :categories))
-                                     [{"ID" 74}
-                                      {"ID" 75}])))
+                                     [{(format-field-name :id) 74}
+                                      {(format-field-name :id) 75}])))
         (is (= 73
                (categories-row-count)))))))
 
