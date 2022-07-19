@@ -85,16 +85,12 @@ export default {
     ],
   },
   user: user => {
-    let fields = null;
     const isSsoUser = !PLUGIN_IS_PASSWORD_USER.every(predicate =>
       predicate(user),
     );
-    if (isSsoUser) {
-      fields = [getLocaleField()];
-    } else {
-      // password user
-      fields = [...getNameFields(), getEmailField(), getLocaleField()];
-    }
+    const fields = isSsoUser
+      ? [getLocaleField()]
+      : [...getNameFields(), getEmailField(), getLocaleField()];
 
     return {
       fields,
