@@ -7,8 +7,6 @@ const { spawn } = require("child_process");
 
 const fetch = require("isomorphic-fetch");
 
-const DEFAULT_DB_KEY = "/test_db_fixture.db";
-
 let testDbId = 0;
 const getDbFile = () =>
   path.join(os.tmpdir(), `metabase-test-${process.pid}-${testDbId++}.db`);
@@ -17,10 +15,7 @@ let port = 4000;
 const getPort = () => port++;
 
 const BackendResource = createSharedResource("BackendResource", {
-  getKey({ dbKey = DEFAULT_DB_KEY }) {
-    return dbKey || {};
-  },
-  create({ dbKey = DEFAULT_DB_KEY }) {
+  create({ dbKey }) {
     const dbFile = getDbFile();
     const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
     const e2eHost = process.env["E2E_HOST"];
@@ -51,7 +46,6 @@ const BackendResource = createSharedResource("BackendResource", {
         [
           "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
           "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
-          // "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit
           "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
           "-Duser.timezone=US/Pacific",
           `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
@@ -69,7 +63,6 @@ const BackendResource = createSharedResource("BackendResource", {
               (process.env["MB_EDITION"] === "ee" &&
                 process.env["ENTERPRISE_TOKEN"]) ||
               undefined,
-            MB_FIELD_FILTER_OPERATORS_ENABLED: "true",
             MB_USER_DEFAULTS: JSON.stringify({
               token: "123456",
               user: {
@@ -139,13 +132,7 @@ async function isReady(host) {
 
 function createSharedResource(
   resourceName,
-  {
-    defaultOptions,
-    getKey = options => JSON.stringify(options),
-    create = options => ({}),
-    start = resource => {},
-    stop = resource => {},
-  },
+  { defaultOptions, create, start, stop },
 ) {
   const entriesByKey = new Map();
   const entriesByResource = new Map();
@@ -163,7 +150,8 @@ function createSharedResource(
 
   return {
     get(options = defaultOptions) {
-      const key = getKey(options);
+      const dbKey = options;
+      const key = dbKey || {};
       let entry = entriesByKey.get(key);
       if (!entry) {
         entry = {
@@ -195,4 +183,4 @@ function delay(duration) {
   return new Promise((resolve, reject) => setTimeout(resolve, duration));
 }
 
-module.exports = { DEFAULT_DB_KEY, BackendResource, isReady };
+module.exports = BackendResource;

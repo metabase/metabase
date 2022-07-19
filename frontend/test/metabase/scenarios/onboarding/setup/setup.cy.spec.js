@@ -211,6 +211,7 @@ describe("scenarios > setup", () => {
     cy.location("pathname").should("eq", "/");
   });
 
+  // Please see https://github.com/metabase/metabase/pull/18763 for details
   it("should allow pre-filling user details", () => {
     cy.visit(`/setup#123456`);
 

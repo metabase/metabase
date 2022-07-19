@@ -2,9 +2,7 @@ const { printBold } = require("./cypress-runner-utils");
 const runCypress = require("./cypress-runner-run-tests");
 const getVersion = require("./cypress-runner-get-version");
 const generateSnapshots = require("./cypress-runner-generate-snapshots");
-
-// Use require for BackendResource to run it after the mock afterAll has been set
-const BackendResource = require("./backend.js").BackendResource;
+const BackendResource = require("./backend.js");
 
 const server = BackendResource.get({ dbKey: "" });
 const baseUrl = server.host;
