@@ -93,19 +93,6 @@ const BackendResource = createSharedResource("BackendResource", {
       "Backend ready (host=" + server.host + " dbKey=" + server.dbKey + ")",
     );
   },
-  async stop(server) {
-    if (server.process) {
-      server.process.kill("SIGKILL");
-      console.log(
-        "Stopped backend (host=" + server.host + " dbKey=" + server.dbKey + ")",
-      );
-    }
-    try {
-      if (server.dbFile) {
-        fs.unlinkSync(`${server.dbFile}.mv.db`);
-      }
-    } catch (e) {}
-  },
 });
 
 async function isReady(host) {
@@ -118,7 +105,7 @@ async function isReady(host) {
   return false;
 }
 
-function createSharedResource({ start, stop }) {
+function createSharedResource({ start }) {
   return {
     createServer() {
       const generateTempDbPath = () =>
@@ -139,7 +126,21 @@ function createSharedResource({ start, stop }) {
       return start(server);
     },
     async stop(server) {
-      return stop(server);
+      if (server.process) {
+        server.process.kill("SIGKILL");
+        console.log(
+          "Stopped backend (host=" +
+            server.host +
+            " dbFile=" +
+            server.dbFile +
+            ")",
+        );
+      }
+      try {
+        if (server.dbFile) {
+          fs.unlinkSync(`${server.dbFile}.mv.db`);
+        }
+      } catch (e) {}
     },
   };
 }
