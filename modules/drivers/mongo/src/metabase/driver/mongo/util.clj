@@ -54,7 +54,7 @@
   `readPreference=nearest`, can be specified as well; when passed, these are parsed into a `MongoClientOptions` that
   serves as a starting point for the changes made below."
   ^MongoClientOptions [{:keys [ssl additional-options ssl-cert
-                               ssl-use-client-auth client-ssl-cert client-ssl-key client-ssl-key-password]
+                               ssl-use-client-auth client-ssl-cert client-ssl-key]
                         :or   {ssl false, ssl-use-client-auth false}
                         :as   details}]
   (let [client-options (-> (client-options-for-url-params additional-options)
@@ -65,12 +65,11 @@
                            (.sslEnabled ssl))
         server-cert? (not (str/blank? ssl-cert))
         client-cert? (and ssl-use-client-auth
-                          (not-any? str/blank? [client-ssl-cert client-ssl-key client-ssl-key-password]))]
+                          (not-any? str/blank? [client-ssl-cert client-ssl-key]))]
     (if (or server-cert? client-cert?)
       (let [ssl-params (cond-> {}
                          server-cert? (assoc :trust-cert ssl-cert)
                          client-cert? (assoc :private-key client-ssl-key
-                                             :password client-ssl-key-password
                                              :own-cert client-ssl-cert))]
         (.socketFactory client-options (driver.u/ssl-socket-factory ssl-params)))
       client-options)))
@@ -123,8 +122,7 @@
      :ssl-cert                ssl-cert
      :ssl-use-client-auth     ssl-use-client-auth
      :client-ssl-cert         client-ssl-cert
-     :client-ssl-key          (secret/get-secret-string details "client-ssl-key")
-     :client-ssl-key-password (secret/get-secret-string details "client-ssl-key-password")}))
+     :client-ssl-key          (secret/get-secret-string details "client-ssl-key")}))
 
 (defn- fqdn?
   "A very simple way to check if a hostname is fully-qualified:

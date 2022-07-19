@@ -50,12 +50,6 @@ driver:
       secret-kind: pem-cert
       visible-if:
         ssl-use-client-auth: true
-    - name: client-ssl-key-password
-      display-name: Client SSL private key password
-      type: secret
-      secret-kind: password
-      visible-if:
-        ssl-use-client-auth: true
     - ssh-tunnel
     - advanced-options-start
     - merge:

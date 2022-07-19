@@ -548,10 +548,10 @@
 
 (defn ssl-socket-factory
   "Generates an `SocketFactory` with the custom certificates added"
-  ^SocketFactory [& {:keys [private-key password own-cert trust-cert]}]
+  ^SocketFactory [& {:keys [private-key own-cert trust-cert]}]
   (let [ssl-context (SSLContext/getInstance "TLS")]
     (.init ssl-context
-           (when (and private-key password own-cert) (key-managers private-key password own-cert))
+           (when (and private-key own-cert) (key-managers private-key (str (random-uuid)) own-cert))
            (when trust-cert (trust-managers trust-cert))
            nil)
     (.getSocketFactory ssl-context)))
