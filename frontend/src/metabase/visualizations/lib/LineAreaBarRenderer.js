@@ -444,12 +444,23 @@ function applyChartLineBarSettings(
   }
 }
 
+const BUBBLE_SIZE_INDEX = 2;
+
+const getBubbleSizeMaxDomain = (datas, seriesIndex) => {
+  const seriesData = datas[seriesIndex];
+  const sizeValues = seriesData.map(data => data[BUBBLE_SIZE_INDEX]);
+  return d3.max(sizeValues);
+};
+
 // TODO - give this a good name when I figure out what it does
 function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
   chart.keyAccessor(d => d.key[0]).valueAccessor(d => d.key[1]);
 
   if (chart.radiusValueAccessor) {
-    const isBubble = datas[index][0].length > 2;
+    const isBubble = datas[index][0].length > BUBBLE_SIZE_INDEX;
+
+    const bubbleSizeMaxDomain = getBubbleSizeMaxDomain(datas, index);
+
     if (isBubble) {
       const BUBBLE_SCALE_FACTOR_MAX = 64;
       chart
@@ -457,7 +468,7 @@ function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
         .r(
           d3.scale
             .sqrt()
-            .domain([0, yExtent[1] * BUBBLE_SCALE_FACTOR_MAX])
+            .domain([0, bubbleSizeMaxDomain * BUBBLE_SCALE_FACTOR_MAX])
             .range([0, 1]),
         );
     } else {
