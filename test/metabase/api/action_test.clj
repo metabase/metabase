@@ -431,21 +431,19 @@
               (is (= 75
                      (categories-row-count))))))))))
 
-(deftest why-is-postgres-not-failing-0
-  (testing (format "TEST DRIVERS => %s" (tx.env/test-drivers))
-    (testing (format "\nNORMAL DRIVERS => %s" (pr-str (mt/normal-drivers)))
-      (testing (format "\nDRIVERS WITH ACTIONS => %s" (pr-str (mt/normal-drivers-with-feature :actions)))
-        (is (not= driver/*driver* :postgres))))))
-
 (deftest why-is-postgres-not-failing-1
+  (println "HERE !!!")
+  (println (format "TEST DRIVERS => %s" (tx.env/test-drivers)))
+  (println (format "NORMAL DRIVERS => %s" (pr-str (mt/normal-drivers))))
+  (println (format "DRIVERS WITH ACTIONS => %s" (pr-str (mt/normal-drivers-with-feature :actions))))
   (mt/test-driver :postgres
-    (is (not= driver/*driver* :postgres))))
+    (is (= 1 2))))
 
 (deftest why-is-postgres-not-failing-2
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (is (not= driver/*driver* :postgres))))
+    (is (= 1 2))))
 
 (deftest why-is-postgres-not-failing-3
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
-      (is (not= driver/*driver* :postgres)))))
+      (is (= 1 2)))))
