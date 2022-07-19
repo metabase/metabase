@@ -8,7 +8,7 @@ const { spawn } = require("child_process");
 const fetch = require("isomorphic-fetch");
 
 let testDbId = 0;
-const generateTempDbFile = () =>
+const generateTempDbPath = () =>
   path.join(os.tmpdir(), `metabase-test-${process.pid}-${testDbId++}.db`);
 
 let port = 4000;
@@ -16,7 +16,7 @@ const getPort = () => port++;
 
 const BackendResource = createSharedResource("BackendResource", {
   create({ dbKey }) {
-    const dbFile = generateTempDbFile();
+    const dbFile = generateTempDbPath();
     const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
     const e2eHost = process.env["E2E_HOST"];
     if (e2eHost) {
