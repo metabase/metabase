@@ -66,7 +66,7 @@ Some plans allow you to [customize filter values for each subscription](../enter
 
 {% include plans-blockquote.html feature="Audit logs" %}
 
-To view a list of all alerts and dashboard subscriptions that people have set up in your Metabase, click on the **gears** icon in the upper right and select **Admin settings** > **Audit** > **Subscriptions & Alerts**. See [Audit logs](../enterprise-guide/audit.md).
+To view a list of all alerts and dashboard subscriptions that people have set up in your Metabase, click on the **gear** icon in the upper right and select **Admin settings** > **Audit** > **Subscriptions & Alerts**. See [Audit logs](../enterprise-guide/audit.md).
 
 ## Related reading
 
