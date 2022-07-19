@@ -14,5 +14,4 @@
    "Setting"
    "Table"
    "Timeline"
-   ;"TimelineEvent"   ; Deliberately excluded: events are embedded in timelines.
-   ])
+   "TimelineEvent"])

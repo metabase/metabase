@@ -64,19 +64,16 @@
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
 
 ;;;; serialization
-(defmethod serdes.base/serdes-generate-path "Timeline"
-  [_ timeline]
-  [(assoc (serdes.base/infer-self-path "Timeline" timeline)
-          :label (:name timeline))])
+;(defmethod serdes.base/serdes-generate-path "Timeline"
+;  [_ timeline]
+;  [(assoc (serdes.base/infer-self-path "Timeline" timeline)
+;          :label (:name timeline))])
 
 (defmethod serdes.base/extract-one "Timeline"
-  [_model-name opts timeline]
-  (let [extracted (-> (serdes.base/extract-one-basics "Timeline" timeline)
-                      (update :collection_id serdes.util/export-fk 'Collection)
-                      (update :creator_id    serdes.util/export-fk-keyed 'User :email))
-        events    (serdes.base/raw-reducible-query "TimelineEvent" {:where [:= :timeline_id (:id timeline)]
-                                                                    :order-by [:timestamp]})]
-    (assoc extracted :events (into [] (map #(serdes.base/extract-one "TimelineEvent" opts %)) events))))
+  [_model-name _opts timeline]
+  (-> (serdes.base/extract-one-basics "Timeline" timeline)
+      (update :collection_id serdes.util/export-fk 'Collection)
+      (update :creator_id    serdes.util/export-fk-keyed 'User :email)))
 
 (defmethod serdes.base/load-xform "Timeline" [timeline]
   (-> timeline
@@ -86,4 +83,3 @@
 
 (defmethod serdes.base/serdes-dependencies "Timeline" [{:keys [collection_id]}]
   [[{:model "Collection" :id collection_id}]])
-; START HERE: Try extracting some timelines - they include their events, sorted.

@@ -198,19 +198,25 @@
 
           (testing "for timelines and events"
             (is (= 10 (count (dir->file-set (io/file dump-dir "Timeline")))))
-            (doseq [{:keys [entity_id events name] :as timeline} (get entities "Timeline")
-                    :let [filename (#'u.yaml/leaf-file-name entity_id name)
-                          events   (into [] (for [e events]
-                                              (-> e
-                                                  (update :created_at u.date/format)
-                                                  (update :updated_at u.date/format)
-                                                  (update :timestamp  u.date/format))))]]
+            (doseq [{:keys [entity_id] :as timeline} (get entities "Timeline")
+                    :let [filename (#'u.yaml/leaf-file-name entity_id)]]
               (is (= (-> timeline
                          (dissoc :serdes/meta)
                          (update :created_at u.date/format)
-                         (update :updated_at u.date/format)
-                         (assoc :events events))
-                     (yaml/from-file (io/file dump-dir "Timeline" filename))))))
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Timeline" filename)))))
+
+            (is (= 90 (reduce + (for [timeline (get entities "Timeline")]
+                                  (->> (io/file dump-dir "Timeline" (:entity_id timeline) "TimelineEvent")
+                                       dir->file-set
+                                       count)))))
+            (doseq [{:keys [name timeline_id timestamp] :as event} (get entities "TimelineEvent")
+                    :let [filename (#'u.yaml/leaf-file-name timestamp name)]]
+              (is (= (-> event
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Timeline" timeline_id "TimelineEvent" filename))))))
 
           (testing "for settings"
             (is (= (into {} (for [{:keys [key value]} (get entities "Setting")]

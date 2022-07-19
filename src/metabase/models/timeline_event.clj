@@ -5,6 +5,7 @@
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s]
             [toucan.db :as db]
@@ -96,25 +97,28 @@
 
 ;;;; serialization
 (defmethod serdes.base/serdes-entity-id "TimelineEvent" [_model-name {:keys [timestamp]}]
-  (str (t/offset-date-time timestamp)))
+  (u.date/format (t/offset-date-time timestamp)))
 
 (defmethod serdes.base/serdes-generate-path "TimelineEvent"
   [_ event]
-  (let [timeline (db/select-one 'Timeline :id (:timeline_id event))]
+  (let [timeline (db/select-one 'Timeline :id (:timeline_id event))
+        self     (serdes.base/infer-self-path "TimelineEvent" event)]
     (conj (serdes.base/serdes-generate-path "Timeline" timeline)
-          (serdes.base/infer-self-path "TimelineEvent" event))))
+          (assoc self :label (:name event)))))
 
 (defmethod serdes.base/extract-one "TimelineEvent"
   [_model-name _opts event]
   (-> (serdes.base/extract-one-basics "TimelineEvent" event)
       (update :timeline_id serdes.util/export-fk 'Timeline)
-      (update :creator_id  serdes.util/export-fk-keyed 'User :email)))
+      (update :creator_id  serdes.util/export-fk-keyed 'User :email)
+      (update :timestamp   #(u.date/format (t/offset-date-time %)))))
 
-;(defmethod serdes.base/load-xform "TimelineEvent" [event]
-;  (-> event
-;      serdes.base/load-xform-basics
-;      (update :timeline_id serdes.util/import-fk 'Timeline)
-;      (update :creator_id  serdes.util/import-fk-keyed 'User :email)))
-;
-;(defmethod serdes.base/serdes-dependencies "TimelineEvent" [{:keys [timeline_id]}]
-;  [[{:model "Timeline" :id timeline_id}]])
+(defmethod serdes.base/load-xform "TimelineEvent" [event]
+  (-> event
+      serdes.base/load-xform-basics
+      (update :timeline_id serdes.util/import-fk 'Timeline)
+      (update :creator_id  serdes.util/import-fk-keyed 'User :email)
+      (update :timestamp   u.date/parse)))
+
+(defmethod serdes.base/serdes-dependencies "TimelineEvent" [{:keys [timeline_id]}]
+  [[{:model "Timeline" :id timeline_id}]])

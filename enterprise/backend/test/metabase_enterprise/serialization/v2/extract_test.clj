@@ -354,23 +354,13 @@
                                                                       :collection_id coll-id
                                                                       :creator_id    ann-id}]
                        TimelineEvent      [{e1-id       :id}         {:name          "First Event"
+                                                                      :creator_id    ann-id
                                                                       :timestamp     #t "2020-04-11T00:00Z"
-                                                                      :timeline_id   line-id}]
-                       TimelineEvent      [{e2-id       :id}         {:name          "Next Event"
-                                                                      :timestamp     #t "2020-11-19T00:00Z"
-                                                                      :timeline_id   line-id}]
-                       TimelineEvent      [{e3-id       :id}         {:name          "Third Event"
-                                                                      :timestamp     #t "2021-06-14T00:00Z"
-                                                                      :timeline_id   line-id}]
-                       TimelineEvent      [{e4-id       :id}         {:name          "Last Event"
-                                                                      :timestamp     #t "2022-01-01T00:00Z"
                                                                       :timeline_id   line-id}]]
       (testing "timelines"
         (testing "with no events"
           (let [ser (serdes.base/extract-one "Timeline" {} (select-one "Timeline" [:= :id empty-id]))]
-            (is (schema= {:serdes/meta                 (s/eq [{:model "Timeline"
-                                                               :id empty-eid
-                                                               :label "Empty Timeline"}])
+            (is (schema= {:serdes/meta                 (s/eq [{:model "Timeline" :id empty-eid}])
                           :collection_id               (s/eq coll-eid)
                           :creator_id                  (s/eq "ann@heart.band")
                           :created_at                  OffsetDateTime
@@ -384,31 +374,36 @@
                      (set (serdes.base/serdes-dependencies ser)))))))
 
         (testing "with events"
-          (let [ser   (serdes.base/extract-one "Timeline" {} (select-one "Timeline" [:= :id line-id]))
-                line  {:model "Timeline"
-                       :id line-eid
-                       :label "Populated Timeline"}
-                event (fn [name time]
-                        (let [odt (t/offset-date-time time)]
-                          {:serdes/meta (s/eq [line {:model "TimelineEvent" :id (str odt)}])
-                           :name        (s/eq name)
-                           :timestamp   (s/eq odt)
-                           s/Keyword    s/Any}))]
-            (is (schema= {:serdes/meta                    (s/eq [{:model "Timeline"
-                                                                  :id line-eid
-                                                                  :label "Populated Timeline"}])
+          (let [ser   (serdes.base/extract-one "Timeline" {} (select-one "Timeline" [:= :id line-id]))]
+            (is (schema= {:serdes/meta                    (s/eq [{:model "Timeline" :id line-eid}])
                           :collection_id                  (s/eq coll-eid)
                           :creator_id                     (s/eq "ann@heart.band")
                           :created_at                     OffsetDateTime
                           (s/optional-key :updated_at)    OffsetDateTime
-                          :events                         [(s/one (event "First Event" #t "2020-04-11T00:00Z") "1st")
-                                                           (s/one (event "Next Event"  #t "2020-11-19T00:00Z") "2nd")
-                                                           (s/one (event "Third Event" #t "2021-06-14T00:00Z") "3rd")
-                                                           (s/one (event "Last Event"  #t "2022-01-01T00:00Z") "4th")]
                           s/Keyword                       s/Any}
                          ser))
             (is (not (contains? ser :id)))
 
             (testing "depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
-                     (set (serdes.base/serdes-dependencies ser)))))))))))
+                     (set (serdes.base/serdes-dependencies ser))))))))
+
+      (testing "timeline events"
+        (let [ser   (serdes.base/extract-one "TimelineEvent" {} (select-one "TimelineEvent" [:= :id e1-id]))
+              stamp "2020-04-11T00:00:00Z"]
+            (is (schema= {:serdes/meta                    (s/eq [{:model "Timeline" :id line-eid}
+                                                                 {:model "TimelineEvent"
+                                                                  :id    stamp
+                                                                  :label "First Event"}])
+                          :timestamp                      (s/eq stamp)
+                          :timeline_id                    (s/eq line-eid)
+                          :creator_id                     (s/eq "ann@heart.band")
+                          :created_at                     OffsetDateTime
+                          (s/optional-key :updated_at)    OffsetDateTime
+                          s/Keyword                       s/Any}
+                         ser))
+            (is (not (contains? ser :id)))
+
+            (testing "depend on the Timeline"
+              (is (= #{[{:model "Timeline" :id line-eid}]}
+                     (set (serdes.base/serdes-dependencies ser))))))))))
