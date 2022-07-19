@@ -65,3 +65,19 @@ export const deleteRow = (payload: DeleteRowPayload) => {
     },
   });
 };
+
+export type BulkDeletePayload = {
+  table: Table;
+  ids: Record<string, number | string>[];
+};
+
+export const deleteManyRows = (payload: BulkDeletePayload) => {
+  const { table, ids } = payload;
+  return ActionsApi.bulkDelete(
+    {
+      tableId: table.id,
+      body: ids,
+    },
+    { bodyParamName: "body" },
+  );
+};

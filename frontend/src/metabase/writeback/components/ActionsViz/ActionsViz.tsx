@@ -32,9 +32,11 @@ import {
   DeleteRowFromDataAppPayload,
   InsertRowFromDataAppPayload,
   UpdateRowFromDataAppPayload,
+  BulkDeleteFromDataAppPayload,
   deleteRowFromDataApp,
   createRowFromDataApp,
   updateRowFromDataApp,
+  deleteManyRowsFromDataApp,
 } from "metabase/dashboard/writeback-actions";
 
 import { HorizontalAlignmentValue } from "./types";
@@ -117,6 +119,8 @@ interface ActionWizDispatchProps {
   deleteRow: (payload: DeleteRowFromDataAppPayload) => void;
   insertRow: (payload: InsertRowFromDataAppPayload) => void;
   updateRow: (payload: UpdateRowFromDataAppPayload) => void;
+
+  deleteManyRows: (payload: BulkDeleteFromDataAppPayload) => void;
 }
 
 type ActionsVizProps = ActionVizOwnProps &
@@ -134,6 +138,8 @@ const mapDispatchToProps = {
   deleteRow: deleteRowFromDataApp,
   insertRow: createRowFromDataApp,
   updateRow: updateRowFromDataApp,
+
+  deleteManyRows: deleteManyRowsFromDataApp,
 };
 
 function getObjectDetailViewData(
@@ -152,6 +158,7 @@ function ActionsViz({
   deleteRow,
   insertRow,
   updateRow,
+  deleteManyRows,
 }: ActionsVizProps) {
   const [isModalOpen, { turnOn: showModal, turnOff: hideModal }] =
     useToggle(false);
@@ -245,8 +252,8 @@ function ActionsViz({
     }
   }
 
-  function handleBulkDelete() {
-    if (!table) {
+  async function handleBulkDelete() {
+    if (!table || !connectedDashCard) {
       return;
     }
 
@@ -257,10 +264,11 @@ function ActionsViz({
       title: t`Delete ${rowCount} ${objectName}?`,
       message: t`This can't be undone`,
       onConfirm: async () => {
-        alert(
-          "Delete rows at positions: " +
-            bulkActions.selectedRowIndexes.join(", "),
-        );
+        await deleteManyRows({
+          table,
+          dashCard: connectedDashCard,
+          rowIndexes: bulkActions.selectedRowIndexes,
+        });
       },
     });
   }
