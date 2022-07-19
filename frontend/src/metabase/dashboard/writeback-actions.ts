@@ -7,10 +7,12 @@ import {
   createRow,
   updateRow,
   deleteRow,
+  updateManyRows,
   deleteManyRows,
   InsertRowPayload,
   UpdateRowPayload,
   DeleteRowPayload,
+  BulkUpdatePayload,
   BulkDeletePayload,
 } from "metabase/writeback/actions";
 
@@ -91,6 +93,76 @@ export const deleteRowFromDataApp = (payload: DeleteRowFromDataAppPayload) => {
           message: t`Something went wrong while deleting the row`,
         }),
       );
+    }
+  };
+};
+
+export type BulkUpdateFromDataAppPayload = Omit<
+  BulkUpdatePayload,
+  "records"
+> & {
+  dashCard: DashCard;
+  rowIndexes: number[];
+  changes: Record<string, unknown>;
+};
+
+export const updateManyRowsFromDataApp = (
+  payload: BulkUpdateFromDataAppPayload,
+) => {
+  return async (dispatch: any, getState: any) => {
+    function showErrorToast() {
+      dispatch(
+        addUndo({
+          icon: "warning",
+          toastColor: "error",
+          message: t`Something went wrong while updating`,
+        }),
+      );
+    }
+
+    try {
+      const { dashCard, rowIndexes, changes, table } = payload;
+      const data = getCardData(getState())[dashCard.id][dashCard.card_id];
+      const pks = table.primaryKeys();
+
+      const records: Record<string, unknown>[] = [];
+
+      rowIndexes.forEach(rowIndex => {
+        const rowPKs: Record<string, unknown> = {};
+        pks.forEach(pk => {
+          const name = pk.field.name;
+          const rawValue = data.data.rows[rowIndex][pk.index];
+          const value = pk?.field.isNumeric()
+            ? parseInt(rawValue, 10)
+            : rawValue;
+          rowPKs[name] = value;
+        });
+        records.push({
+          ...changes,
+          ...rowPKs,
+        });
+      });
+
+      const result = await updateManyRows({ records, table });
+      if (result?.["rows-updated"] > 0) {
+        dispatch(
+          fetchCardData(dashCard.card, dashCard, {
+            reload: true,
+            ignoreCache: true,
+          }),
+        );
+        dispatch(
+          addUndo({
+            message: t`Successfully updated ${rowIndexes.length} records`,
+            toastColor: "success",
+          }),
+        );
+      } else {
+        showErrorToast();
+      }
+    } catch (err) {
+      console.error(err);
+      showErrorToast();
     }
   };
 };

@@ -32,10 +32,12 @@ import {
   DeleteRowFromDataAppPayload,
   InsertRowFromDataAppPayload,
   UpdateRowFromDataAppPayload,
+  BulkUpdateFromDataAppPayload,
   BulkDeleteFromDataAppPayload,
   deleteRowFromDataApp,
   createRowFromDataApp,
   updateRowFromDataApp,
+  updateManyRowsFromDataApp,
   deleteManyRowsFromDataApp,
 } from "metabase/dashboard/writeback-actions";
 
@@ -120,6 +122,7 @@ interface ActionWizDispatchProps {
   insertRow: (payload: InsertRowFromDataAppPayload) => void;
   updateRow: (payload: UpdateRowFromDataAppPayload) => void;
 
+  updateManyRows: (payload: BulkUpdateFromDataAppPayload) => void;
   deleteManyRows: (payload: BulkDeleteFromDataAppPayload) => void;
 }
 
@@ -139,6 +142,7 @@ const mapDispatchToProps = {
   insertRow: createRowFromDataApp,
   updateRow: updateRowFromDataApp,
 
+  updateManyRows: updateManyRowsFromDataApp,
   deleteManyRows: deleteManyRowsFromDataApp,
 };
 
@@ -158,6 +162,7 @@ function ActionsViz({
   deleteRow,
   insertRow,
   updateRow,
+  updateManyRows,
   deleteManyRows,
 }: ActionsVizProps) {
   const [isModalOpen, { turnOn: showModal, turnOff: hideModal }] =
@@ -171,6 +176,10 @@ function ActionsViz({
   const connectedDashCard = dashboard.ordered_cards.find(
     dashCard => dashCard.id === connectedDashCardId,
   );
+
+  const isSelectingItems =
+    bulkActions.cardId === connectedDashCard?.card_id &&
+    bulkActions.selectedRowIndexes.length > 0;
 
   const question = useMemo(
     () =>
@@ -234,7 +243,7 @@ function ActionsViz({
     }
   }
 
-  function handleUpdate(values: Record<string, unknown>) {
+  function handleSingleRecordUpdate(values: Record<string, unknown>) {
     if (!table || !connectedDashCard || !connectedCardData || !row) {
       return;
     }
@@ -250,6 +259,19 @@ function ActionsViz({
         dashCard: connectedDashCard,
       });
     }
+  }
+
+  async function handleBulkUpdate(values: Record<string, unknown>) {
+    if (!table || !connectedDashCard) {
+      return;
+    }
+    await updateManyRows({
+      table,
+      dashCard: connectedDashCard,
+      rowIndexes: bulkActions.selectedRowIndexes,
+      changes: values,
+    });
+    bulkActions.clearSelection();
   }
 
   async function handleBulkDelete() {
@@ -322,6 +344,18 @@ function ActionsViz({
     }
   }
 
+  function onFormSubmit(values: Record<string, unknown>) {
+    if (row && !isSelectingItems) {
+      return handleSingleRecordUpdate(values);
+    }
+    if (isSelectingItems) {
+      return handleBulkUpdate(values);
+    }
+    return handleInsert(values);
+  }
+
+  const isUpdateForm = row || isSelectingItems;
+
   return (
     <>
       <Root horizontalAlignment={horizontalAlignment}>
@@ -344,7 +378,9 @@ function ActionsViz({
           <WritebackModalForm
             table={table}
             row={row}
-            onSubmit={row ? handleUpdate : handleInsert}
+            type={isUpdateForm ? "update" : "insert"}
+            mode={isSelectingItems ? "bulk" : "row"}
+            onSubmit={onFormSubmit}
             onClose={hideModal}
           />
         </Modal>

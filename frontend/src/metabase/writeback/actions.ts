@@ -43,6 +43,22 @@ export const updateRow = (payload: UpdateRowPayload) => {
   });
 };
 
+export type BulkUpdatePayload = {
+  table: Table;
+  records: Record<string, unknown>[];
+};
+
+export const updateManyRows = (payload: BulkUpdatePayload) => {
+  const { table, records } = payload;
+  return ActionsApi.bulkUpdate(
+    {
+      tableId: table.id,
+      body: records,
+    },
+    { bodyParamName: "body" },
+  );
+};
+
 export type DeleteRowPayload = {
   table: Table;
   id: number | string;
