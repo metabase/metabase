@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color, darken } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { InputSize } from "./types";
 
@@ -25,8 +26,8 @@ export const InputField = styled.input<InputProps>`
   font-size: 1rem;
   color: ${color("text-dark")};
   padding: 0.75rem;
-  border: 1px solid ${darken("border", 0.1)};
-  border-radius: 4px;
+  border: 1px solid ${color("border-dark")};
+  border-radius: ${space(1)};
   background-color: ${props => color(props.readOnly ? "bg-light" : "bg-white")};
   outline: none;
   text-align: inherit;

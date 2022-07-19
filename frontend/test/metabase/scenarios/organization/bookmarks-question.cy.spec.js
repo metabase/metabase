@@ -3,7 +3,7 @@ import {
   navigationSidebar,
   openNavigationSidebar,
   visitQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
 
 describe("scenarios > question > bookmarks", () => {
@@ -34,7 +34,7 @@ describe("scenarios > question > bookmarks", () => {
 });
 
 function toggleBookmark() {
-  cy.findByTestId("question-action-buttons-container").within(() => {
+  cy.findByTestId("qb-header-action-panel").within(() => {
     cy.icon("bookmark").click();
   });
   cy.wait("@toggleBookmark");

@@ -143,9 +143,9 @@ class OtherParameterList extends React.Component {
     }
 
     const { parameter, otherParameters } = this.props;
-    const filtered = parameter.field_ids;
+    const filtered = parameter.fields.map(field => field.id);
     const parameterForId = otherParameters.find(p => p.id === id);
-    const filtering = parameterForId.field_ids;
+    const filtering = parameterForId.fields.map(field => field.id);
     if (filtered.length === 0 || filtering.length === 0) {
       const param = filtered.length === 0 ? parameter : parameterForId;
       const error = t`To view this, ${param.name} must be connected to at least one field.`;
@@ -156,10 +156,9 @@ class OtherParameterList extends React.Component {
       filtered,
       filtering,
     });
-    const columnPairs = Object.entries(
-      result,
-    ).flatMap(([filteredId, filteringIds]) =>
-      filteringIds.map(filteringId => [filteringId, filteredId]),
+    const columnPairs = Object.entries(result).flatMap(
+      ([filteredId, filteringIds]) =>
+        filteringIds.map(filteringId => [filteringId, filteredId]),
     );
 
     this.setState({ columnPairs, loading: false });

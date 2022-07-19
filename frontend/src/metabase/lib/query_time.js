@@ -45,9 +45,7 @@ export function computeFilterTimeRange(filter) {
   if (isStartingFrom(filter)) {
     const [startingFrom, startingFromUnit] = getStartingFrom(filter);
     const [value, unit] = getRelativeDatetimeInterval(filter);
-    const now = moment()
-      .startOf(unit)
-      .add(-startingFrom, startingFromUnit);
+    const now = moment().startOf(unit).add(-startingFrom, startingFromUnit);
     start = now.clone().add(value < 0 ? value : 0, unit);
     end = now.clone().add(value < 0 ? 0 : value, unit);
     if (["day", "week", "month", "quarter", "year"].indexOf(unit) > -1) {
@@ -185,7 +183,9 @@ export function generateTimeIntervalDescription(n, unit) {
 }
 
 export function generateTimeValueDescription(value, bucketing, isExclude) {
-  if (typeof value === "string") {
+  if (typeof value === "number" && bucketing === "hour-of-day") {
+    return moment().hour(value).format("h A");
+  } else if (typeof value === "string") {
     const m = parseTimestamp(value, bucketing);
     if (bucketing) {
       return formatDateTimeWithUnit(value, bucketing, { isExclude });
@@ -511,10 +511,8 @@ export function updateRelativeDatetimeFilter(filter, positive) {
       ? [op, field, newValue, unit, options]
       : [op, field, newValue, unit];
   } else if (isStartingFrom(filter)) {
-    const [
-      _op,
-      [fieldOp, field, [intervalOp, intervalNum, intervalUnit]],
-    ] = filter;
+    const [_op, [fieldOp, field, [intervalOp, intervalNum, intervalUnit]]] =
+      filter;
     const [value, unit] = getRelativeDatetimeInterval(filter);
     const absValue = Math.abs(value);
     const newValue = positive ? absValue : -absValue;
@@ -620,12 +618,7 @@ export const EXCLUDE_UNITS = {
 
 export const EXCLUDE_OPTIONS = {
   [EXCLUDE_UNITS["days"]]: () => {
-    const now = moment()
-      .utc()
-      .hours(0)
-      .minutes(0)
-      .seconds(0)
-      .milliseconds(0);
+    const now = moment().utc().hours(0).minutes(0).seconds(0).milliseconds(0);
     return [
       _.range(0, 7).map(day => {
         const date = now.day(day + 1);
@@ -662,12 +655,7 @@ export const EXCLUDE_OPTIONS = {
     return [_.range(0, 6).map(func), _.range(6, 12).map(func)];
   },
   [EXCLUDE_UNITS["quarters"]]: () => {
-    const now = moment()
-      .utc()
-      .hours(0)
-      .minutes(0)
-      .seconds(0)
-      .milliseconds(0);
+    const now = moment().utc().hours(0).minutes(0).seconds(0).milliseconds(0);
     const suffix = " " + t`quarter`;
     return [
       _.range(1, 5).map(quarter => {
@@ -684,22 +672,15 @@ export const EXCLUDE_OPTIONS = {
     ];
   },
   [EXCLUDE_UNITS["hours"]]: () => {
-    const now = moment()
-      .utc()
-      .minutes(0)
-      .seconds(0)
-      .milliseconds(0);
+    const now = moment().utc().minutes(0).seconds(0).milliseconds(0);
     const func = hour => {
       const date = now.hour(hour);
       const displayName = date.format("h A");
       return {
         displayName,
-        value: date.toISOString(),
-        serialized: date.format("H"),
-        test: value =>
-          moment(value)
-            .utc()
-            .format("h A") === displayName,
+        value: hour,
+        serialized: hour.toString(),
+        test: value => value === hour,
       };
     };
     return [_.range(0, 12).map(func), _.range(12, 24).map(func)];

@@ -96,3 +96,7 @@ NOTE: We never capture any specific details in any of our tracking methodology s
 | OS and JVM Version                                | Can we deprecate Java 7 yet?                                                                                                                        |
 
 Note this is meant to be representative. The actual code that is running to generate this can be audited at [https://github.com/metabase/metabase/blob/master/src/metabase/analytics/](https://github.com/metabase/metabase/blob/master/src/metabase/analytics).
+
+## Data privacy
+
+Check out our page on [data privacy and security](https://www.metabase.com/security).

@@ -64,7 +64,7 @@ describe("metabase/parameters/utils/formatting", () => {
         value: 1.111111111111,
         expected: 1.111111111111,
         fields: [],
-        hasOnlyFieldTargets: false,
+        hasVariableTemplateTagTarget: true,
       },
       {
         type: "string/=",

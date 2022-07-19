@@ -4,7 +4,7 @@ import {
   openProductsTable,
   summarize,
   sidebar,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("time-series filter widget", () => {
   beforeEach(() => {
@@ -17,9 +17,7 @@ describe("time-series filter widget", () => {
   it("should properly display All Time as the initial filtering (metabase#22247)", () => {
     summarize();
 
-    sidebar()
-      .contains("Created At")
-      .click();
+    sidebar().contains("Created At").click();
     cy.wait("@dataset");
 
     cy.findByText("All Time").click();
@@ -36,12 +34,8 @@ describe("time-series filter widget", () => {
 
   // Skip the rest of the tests until https://github.com/metabase/metabase/issues/22973 gets resolved
   it.skip("should allow switching from All Time filter", () => {
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
-    cy.findAllByText("Created At")
-      .last()
-      .click();
+    cy.findAllByText("Summarize").first().click();
+    cy.findAllByText("Created At").last().click();
     cy.wait("@dataset");
     cy.findByText("Done").click();
 
@@ -61,12 +55,8 @@ describe("time-series filter widget", () => {
   });
 
   it.skip("should stay in-sync with the actual filter", () => {
-    cy.findAllByText("Filter")
-      .first()
-      .click();
-    cy.findAllByText("Created At")
-      .last()
-      .click();
+    cy.findAllByText("Filter").first().click();
+    cy.findAllByText("Created At").last().click();
     cy.findByText("Last 3 Months").click();
     cy.wait("@dataset");
 
@@ -76,12 +66,8 @@ describe("time-series filter widget", () => {
     cy.button("Add filter").click();
     cy.wait("@dataset");
 
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
-    cy.findAllByText("Created At")
-      .last()
-      .click();
+    cy.findAllByText("Summarize").first().click();
+    cy.findAllByText("Created At").last().click();
     cy.wait("@dataset");
     cy.findByText("Done").click();
 

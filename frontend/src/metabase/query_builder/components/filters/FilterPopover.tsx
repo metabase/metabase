@@ -23,6 +23,7 @@ import { isStartingFrom } from "metabase/lib/query_time";
 import { Button } from "./FilterPopover.styled";
 import DatePicker from "./pickers/DatePicker/DatePicker";
 import TimePicker from "./pickers/TimePicker";
+import { DateShortcutOptions } from "./pickers/DatePicker/DatePickerShortcutOptions";
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
@@ -43,10 +44,13 @@ type Props = {
 
   noCommitButton?: boolean;
   showFieldPicker?: boolean;
+  showOperatorSelector?: boolean;
+  dateShortcutOptions?: DateShortcutOptions;
   showCustom?: boolean;
   isNew?: boolean;
   isSidebar?: boolean;
   isTopLevel?: boolean;
+  checkedColor?: string;
 };
 
 type State = {
@@ -160,10 +164,13 @@ export default class FilterPopover extends Component<Props, State> {
       style,
       query,
       showFieldPicker,
+      showOperatorSelector,
       fieldPickerTitle,
       isSidebar,
       isTopLevel,
       showCustom,
+      dateShortcutOptions,
+      checkedColor,
     } = this.props;
     const { filter, editingFilter, choosingField } = this.state;
 
@@ -244,25 +251,17 @@ export default class FilterPopover extends Component<Props, State> {
       const onBack = () => {
         this.setState({ choosingField: true });
       };
+
+      const shouldShowDatePicker = field?.isDate() && !field?.isTime();
+
       return (
         <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>
-          {field?.isTime() ? (
-            <TimePicker
-              className={className}
-              isSidebar={isSidebar}
-              filter={filter}
-              primaryColor={primaryColor}
-              minWidth={isSidebar ? null : MIN_WIDTH}
-              maxWidth={isSidebar ? null : MAX_WIDTH}
-              onBack={onBack}
-              onCommit={this.handleCommit}
-              onFilterChange={this.handleFilterChange}
-            />
-          ) : field?.isDate() ? (
+          {shouldShowDatePicker ? (
             <DatePicker
               className={className}
               isSidebar={isSidebar}
               filter={filter}
+              dateShortcutOptions={dateShortcutOptions}
               primaryColor={primaryColor}
               minWidth={isSidebar ? null : MIN_WIDTH}
               maxWidth={isSidebar ? null : MAX_WIDTH}
@@ -287,23 +286,41 @@ export default class FilterPopover extends Component<Props, State> {
             </DatePicker>
           ) : (
             <div className={isSidebar ? "mx2 pt1" : ""}>
-              <FilterPopoverHeader
-                isSidebar={isSidebar}
-                filter={filter}
-                onFilterChange={this.handleFilterChange}
-                onBack={onBack}
-                showFieldPicker={showFieldPicker}
-              />
-              <FilterPopoverPicker
-                className={isSidebar ? "p1" : "px1 pt1 pb1"}
-                isSidebar={isSidebar}
-                filter={filter}
-                onFilterChange={this.handleFilterChange}
-                onCommit={this.handleCommit}
-                minWidth={isSidebar ? null : MIN_WIDTH}
-                maxWidth={isSidebar ? null : MAX_WIDTH}
-                primaryColor={primaryColor}
-              />
+              {field?.isTime() ? (
+                <TimePicker
+                  className={className}
+                  isSidebar={isSidebar}
+                  filter={filter}
+                  primaryColor={primaryColor}
+                  minWidth={isSidebar ? null : MIN_WIDTH}
+                  maxWidth={isSidebar ? null : MAX_WIDTH}
+                  onBack={onBack}
+                  onCommit={this.handleCommit}
+                  onFilterChange={this.handleFilterChange}
+                />
+              ) : (
+                <>
+                  <FilterPopoverHeader
+                    isSidebar={isSidebar}
+                    filter={filter}
+                    onFilterChange={this.handleFilterChange}
+                    onBack={onBack}
+                    showFieldPicker={showFieldPicker}
+                    forceShowOperatorSelector={showOperatorSelector}
+                  />
+                  <FilterPopoverPicker
+                    className={isSidebar ? "p1" : "px1 pt1 pb1"}
+                    isSidebar={isSidebar}
+                    filter={filter}
+                    onFilterChange={this.handleFilterChange}
+                    onCommit={this.handleCommit}
+                    minWidth={isSidebar ? null : MIN_WIDTH}
+                    maxWidth={isSidebar ? null : MAX_WIDTH}
+                    primaryColor={primaryColor}
+                    checkedColor={checkedColor}
+                  />
+                </>
+              )}
               <FilterPopoverFooter
                 className={isSidebar ? "p1" : "px1 pb1"}
                 isSidebar={isSidebar}

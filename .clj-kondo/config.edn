@@ -16,8 +16,6 @@
                       (clojure.core.logic/matcha)
                       (clojure.core.logic/run)
                       (clojure.test/is [query= sql= partial=])
-                      (toucan.util.test/with-temp*)
-                      (metabase.test/with-temp*)
                       (taoensso.nippy/extend-freeze)
                       (taoensso.nippy/extend-thaw)
                       (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
@@ -368,6 +366,7 @@
            metabase.test/with-user-in-groups clojure.core/let
            metabase.test.data.interface/defdataset clojure.core/def
            metabase.test.data.interface/defdataset-edn clojure.core/def
+           metabase-enterprise.serialization.test-util/with-random-dump-dir clojure.core/let
            metabase.driver.mongo.util/with-mongo-connection clojure.core/let
            metabase.driver.mongo.query-processor/mongo-let clojure.core/let
            toucan.db/with-call-counting clojure.core/fn
@@ -396,6 +395,8 @@
    metabase.test/query                                        hooks.metabase.test.data/$ids
    metabase.test/run-mbql-query                               hooks.metabase.test.data/$ids
    metabase.test/with-temp                                    hooks.toucan.util.test/with-temp
+   metabase.test/with-temp*                                   hooks.toucan.util.test/with-temp*
+   metabase-enterprise.serialization.test-util/with-temp-dpc  hooks.toucan.util.test/with-temp*
    metabase.test/with-temporary-setting-values                hooks.metabase.test.util/with-temporary-setting-values
    metabase.test.data/$ids                                    hooks.metabase.test.data/$ids
    metabase.test.data/dataset                                 hooks.metabase.test.data/dataset

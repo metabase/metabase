@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { restore, modal, popover, describeEE } from "__support__/e2e/cypress";
+import { restore, modal, popover, describeEE } from "__support__/e2e/helpers";
 
 describeEE("scenarios > admin > people", () => {
   beforeEach(() => {
@@ -26,9 +26,7 @@ describeEE("scenarios > admin > people", () => {
       });
 
       // Edit group name
-      cy.icon("ellipsis")
-        .eq(0)
-        .click();
+      cy.icon("ellipsis").eq(0).click();
       cy.findByText("Edit Name").click();
       cy.get("input").type(" updated");
       cy.button("Done").click();
@@ -43,9 +41,7 @@ describeEE("scenarios > admin > people", () => {
       cy.findByText("Add").click();
 
       // Find user row
-      cy.findByText("No Collection Tableton")
-        .closest("tr")
-        .as("userRow");
+      cy.findByText("No Collection Tableton").closest("tr").as("userRow");
 
       // Promote to manager and demote back to member
       cy.get("@userRow").within(() => {
@@ -131,9 +127,7 @@ describeEE("scenarios > admin > people", () => {
 
       // Demote myself from being manager
       popover().within(() => {
-        cy.icon("arrow_down")
-          .eq(0)
-          .click();
+        cy.icon("arrow_down").eq(0).click();
       });
       confirmLosingAbilityToManageGroup();
 
@@ -169,9 +163,7 @@ function confirmLosingAbilityToManageGroup() {
 }
 
 function removeFirstGroup() {
-  cy.icon("ellipsis")
-    .eq(0)
-    .click();
+  cy.icon("ellipsis").eq(0).click();
   cy.findByText("Remove Group").click();
   cy.button("Yes").click();
 }

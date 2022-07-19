@@ -1,4 +1,4 @@
-import { restore, summarize, popover, sidebar } from "__support__/e2e/cypress";
+import { restore, summarize, popover, sidebar } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -57,9 +57,7 @@ function removeAggregationItem(item) {
 
 function addAggregationItem(item) {
   cy.findByTestId("add-aggregation-button").click();
-  popover()
-    .contains(item)
-    .click();
+  popover().contains(item).click();
 
   cy.wait("@dataset");
 }

@@ -102,8 +102,7 @@
         (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
                         Collection [collection-2 {:name "Collection 2"}]]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
-          (is (= ["Our analytics"
-                  "Collection 1"
+          (is (= ["Collection 1"
                   "Rasta Toucan's Personal Collection"]
                  (->> (mt/user-http-request :rasta :get 200 "collection")
                       (filter (fn [{collection-name :name}]
@@ -337,8 +336,9 @@
     (let [collection-id-or-nil (when collection-or-id-or-nil
                                  (u/the-id collection-or-id-or-nil))]
       (mt/with-temp* [Card       [{card-id :id}
-                                  {:name          "Birthday Card"
-                                   :collection_id collection-id-or-nil}]
+                                  {:name               "Birthday Card"
+                                   :collection_preview false
+                                   :collection_id      collection-id-or-nil}]
                       Dashboard  [{dashboard-id :id}
                                   {:name          "Dine & Dashboard"
                                    :collection_id collection-id-or-nil}]
@@ -420,11 +420,13 @@
                 [{:id                  card-id
                   :name                (:name card)
                   :collection_position nil
+                  :collection_preview  true
                   :display             "table"
                   :description         nil
                   :entity_id           (:entity_id card)
                   :moderated_status    "verified"
-                  :model               "card"}])
+                  :model               "card"
+                  :fully_parametrized  true}])
                (mt/obj->json->obj
                 (:data (mt/user-http-request :crowberto :get 200
                                              (str "collection/" (u/the-id collection) "/items"))))))))
@@ -464,10 +466,12 @@
       (mt/with-temp Collection [collection {:name "Debt Collection"}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-some-children-of-collection collection
-          (is (= (map default-item [{:name "Acme Products", :model "pulse", :entity_id true}
-                                    {:name "Birthday Card", :description nil, :model "card", :display "table", :entity_id true}
-                                    {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true}
-                                    {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id true}])
+          (is (= (-> (mapv default-item [{:name "Acme Products", :model "pulse", :entity_id true}
+                                         {:name "Birthday Card", :description nil, :model "card",
+                                          :collection_preview false, :display "table", :entity_id true}
+                                         {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true}
+                                         {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id true}])
+                     (assoc-in [1 :fully_parametrized] true))
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
 
@@ -477,15 +481,17 @@
           (with-some-children-of-collection collection
             (is (= ()
                    (mt/boolean-ids-and-timestamps
-                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=no_models"))))))
+                    (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=no_models"))))))
             (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard"))))))
-            (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table", :entity_id true})
+            (is (= [(-> {:name "Birthday Card", :description nil, :model "card",
+                         :collection_preview false, :display "table", :entity_id true}
+                        default-item
+                        (assoc :fully_parametrized true))
                     (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))))))
-
 
     (testing "Let's make sure the `archived` option works."
       (mt/with-temp Collection [collection {:name "Art Collection"}]
@@ -930,7 +936,10 @@
 (deftest fetch-root-items-collection-test
   (testing "GET /api/collection/root/items"
     (testing "Make sure you can see everything for Users that can see everything"
-      (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table"})
+      (is (= [(-> {:name "Birthday Card", :description nil, :model "card",
+                   :collection_preview false, :display "table"}
+                  default-item
+                  (assoc :fully_parametrized true))
               (collection-item "Crowberto Corv's Personal Collection")
               (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
               (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
@@ -973,7 +982,10 @@
             (mt/with-temp* [PermissionsGroup           [group]
                             PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
               (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-              (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table"})
+              (is (= [(-> {:name "Birthday Card", :description nil, :model "card",
+                           :collection_preview false, :display "table"}
+                          default-item
+                          (assoc :fully_parametrized true))
                       (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
                       (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
                       (collection-item "Rasta Toucan's Personal Collection")]
@@ -1037,21 +1049,116 @@
           (is (= [{:name                "Business Card"
                    :description         nil
                    :collection_position nil
+                   :collection_preview  true
                    :display             "table"
                    :moderated_status    nil
                    :entity_id           (:entity_id card)
-                   :model               "card"}]
+                   :model               "card"
+                   :fully_parametrized  true}]
                  (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
+                   (dissoc item :id)))))))
+
+    (testing "fully_parametrized of a card"
+      (testing "can be false"
+        (mt/with-temp Card [card {:name          "Business Card"
+                                  :dataset_query {:native {:template-tags {:param0 {:default 0}
+                                                                           :param1 {:required false}
+                                                                           :param2 {:required false}}
+                                                           :query         "select {{param0}}, {{param1}} [[ , {{param2}} ]]"}}}]
+          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
+                   [{:name                "Business Card"
+                     :description         nil
+                     :collection_position nil
+                     :collection_preview  true
+                     :display             "table"
+                     :moderated_status    nil
+                     :entity_id           (:entity_id card)
+                     :model               "card"
+                     :fully_parametrized  false}
+                    {:name            "Crowberto Corv's Personal Collection"
+                     :description     nil
+                     :model           "collection"
+                     :authority_level nil
+                     :entity_id       (:entity_id collection)
+                     :can_write       true}])
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+                   (dissoc item :id))))))
+
+      (testing "is false even if a required field-filter parameter has no default"
+        (mt/with-temp Card [card {:name          "Business Card"
+                                  :dataset_query {:native {:template-tags {:param0 {:default 0}
+                                                                           :param1 {:type "dimension", :required true}}
+                                                           :query         "select {{param0}}, {{param1}}"}}}]
+          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
+                   [{:name                "Business Card"
+                     :description         nil
+                     :collection_position nil
+                     :collection_preview  true
+                     :display             "table"
+                     :moderated_status    nil
+                     :entity_id           (:entity_id card)
+                     :model               "card"
+                     :fully_parametrized  false}
+                    {:name            "Crowberto Corv's Personal Collection"
+                     :description     nil
+                     :model           "collection"
+                     :authority_level nil
+                     :entity_id       (:entity_id collection)
+                     :can_write       true}])
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+                   (dissoc item :id))))))
+
+      (testing "is false even if an optional required parameter has no default"
+        (mt/with-temp Card [card {:name          "Business Card"
+                                  :dataset_query {:native {:template-tags {:param0 {:default 0}
+                                                                           :param1 {:required true}}
+                                                           :query         "select {{param0}}, [[ , {{param1}} ]]"}}}]
+          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
+                   [{:name                "Business Card"
+                     :description         nil
+                     :collection_position nil
+                     :collection_preview  true
+                     :display             "table"
+                     :moderated_status    nil
+                     :entity_id           (:entity_id card)
+                     :model               "card"
+                     :fully_parametrized  false}
+                    {:name            "Crowberto Corv's Personal Collection"
+                     :description     nil
+                     :model           "collection"
+                     :authority_level nil
+                     :entity_id       (:entity_id collection)
+                     :can_write       true}])
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+                   (dissoc item :id))))))
+
+      (testing "is true if all obligatory parameters have defaults"
+        (mt/with-temp Card [card {:name          "Business Card"
+                                  :dataset_query {:native {:template-tags {:param0 {:required false, :default 0}
+                                                                           :param1 {:required true, :default 1}
+                                                                           :param2 {}
+                                                                           :param3 {:type "dimension"}}
+                                                           :query "select {{param0}}, {{param1}} [[ , {{param2}} ]] from t {{param3}}"}}}]
+          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
+                   [{:name                "Business Card"
+                     :description         nil
+                     :collection_position nil
+                     :collection_preview  true
+                     :display             "table"
+                     :moderated_status    nil
+                     :entity_id           (:entity_id card)
+                     :model               "card"
+                     :fully_parametrized  true}
+                    {:name            "Crowberto Corv's Personal Collection"
+                     :description     nil
+                     :model           "collection"
+                     :authority_level nil
+                     :entity_id       (:entity_id collection)
+                     :can_write       true}])
+                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
                    (dissoc item :id)))))))))
 
-
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
-
-(defn- api-get-root-collection-ancestors
-  "Call the API with Rasta to fetch the 'Root' Collection and put the `:effective_` results in a nice format for the
-  tests below."
-  [& additional-get-params]
-  (format-ancestors (mt/user-http-request :rasta :get 200 "collection/root")))
 
 (defn- api-get-root-collection-children
   [& additional-get-params]
@@ -1069,20 +1176,12 @@
   (testing "GET /api/collection/root/items"
     (testing "Do top-level collections show up as children of the Root Collection?"
       (with-collection-hierarchy [a b c d e f g]
-        (testing "ancestors"
-          (is (= {:effective_ancestors []
-                  :effective_location  nil}
-                 (api-get-root-collection-ancestors))))
         (testing "children"
           (is (= (map collection-item ["A" "Rasta Toucan's Personal Collection"])
                  (remove-non-test-collections (api-get-root-collection-children)))))))
 
     (testing "...and collapsing children should work for the Root Collection as well"
       (with-collection-hierarchy [b d e f g]
-        (testing "ancestors"
-          (is (= {:effective_ancestors []
-                  :effective_location  nil}
-                 (api-get-root-collection-ancestors))))
         (testing "children"
           (is (= (map collection-item ["B" "D" "F" "Rasta Toucan's Personal Collection"])
                  (remove-non-test-collections (api-get-root-collection-children)))))))
@@ -1090,10 +1189,6 @@
     (testing "does `archived` work on Collections as well?"
       (with-collection-hierarchy [a b d e f g]
         (db/update! Collection (u/the-id a) :archived true)
-        (testing "ancestors"
-          (is (= {:effective_ancestors []
-                  :effective_location  nil}
-                 (api-get-root-collection-ancestors :archived true))))
         (testing "children"
           (is (= [(collection-item "A")]
                  (remove-non-test-collections (api-get-root-collection-children :archived true)))))))
@@ -1316,26 +1411,6 @@
                (-> (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id collection))
                                          {:name "foo"})
                    :authority_level)))))
-    (testing "Admins can mark a tree as official"
-      (mt/with-temp* [Collection [collection]
-                      Collection [sub-collection]
-                      Collection [sub-sub-collection]]
-        (collection/move-collection! sub-collection (collection/children-location collection))
-        (collection/move-collection! sub-sub-collection
-                                     ;; needs updated path so reload
-                                     (collection/children-location (Collection (:id sub-collection))))
-        (is (= "official"
-               (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                         {:authority_level "official" :update_collection_tree_authority_level true})
-                   :authority_level)))
-        ;; descended and marked sub collections
-        (is (= :official (db/select-one-field :authority_level Collection :id (:id sub-collection))))
-        (is (= :official (db/select-one-field :authority_level Collection :id (:id sub-sub-collection))))
-        (testing "Non-admins cannot apply types to the whole tree"
-          (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
-                                {:name "new name" :update_collection_tree_authority_level true})
-          (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
-                                {:name "new name" :authority_level nil :update_collection_tree_authority_level true}))))
     (testing "check that users without write perms aren't allowed to update a Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]

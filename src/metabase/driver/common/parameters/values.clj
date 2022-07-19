@@ -11,6 +11,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver.common.parameters :as params]
+            [metabase.driver.common.parameters.parse :as params.parse]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
@@ -18,14 +19,15 @@
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru tru]]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo
            java.text.NumberFormat
            java.util.UUID
-           [metabase.driver.common.parameters CommaSeparatedNumbers FieldFilter MultipleValues ReferencedCardQuery ReferencedQuerySnippet]))
+           [metabase.driver.common.parameters CommaSeparatedNumbers FieldFilter
+            MultipleValues ParsedQuerySnippet ReferencedCardQuery]))
 
 (defmulti ^:private parse-tag
   "Parse a tag by its `:type`, returning an appropriate record type such as
@@ -130,7 +132,7 @@
    {:field (let [field-id (field-filter->field-id field-filter)]
              (qp.store/fetch-and-store-fields! #{field-id})
              (or (qp.store/field field-id)
-                 (throw (ex-info (str (deferred-tru "Can''t find field with ID: {0}" field-id))
+                 (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
                                  {:field-id field-id, :type qp.error-type/invalid-parameter}))))
     :value (field-filter-value tag params)}))
 
@@ -158,8 +160,10 @@
                  :type              qp.error-type/invalid-parameter}
                 e))))))
 
-(s/defmethod parse-tag :snippet :- ReferencedQuerySnippet
-  [{:keys [snippet-name snippet-id], :as tag} :- mbql.s/TemplateTag, _]
+(declare query->params-map)
+
+(s/defmethod parse-tag :snippet :- ParsedQuerySnippet
+  [{:keys [snippet-name snippet-id], :as tag} :- mbql.s/TemplateTag, params]
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
                                        {:tag tag, :type qp.error-type/invalid-parameter})))
@@ -169,10 +173,12 @@
                                         :snippet-name snippet-name
                                         :tag          tag
                                         :type         qp.error-type/invalid-parameter})))]
-    (params/map->ReferencedQuerySnippet
-     {:snippet-id (:id snippet)
-      :content    (:content snippet)})))
-
+    (params/map->ParsedQuerySnippet
+      {:snippet-id   (:id snippet)
+       ;; parse the content of snippet so that we could substitute template-tags inside snippet
+       :parsed-query (params.parse/parse (:content snippet))
+       :param->value (query->params-map  {:template-tags (:template_tags snippet)
+                                          :parameters    params})})))
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 

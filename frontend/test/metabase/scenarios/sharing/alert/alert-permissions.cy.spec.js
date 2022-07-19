@@ -1,4 +1,4 @@
-import { restore, setupSMTP, visitQuestion } from "__support__/e2e/cypress";
+import { restore, setupSMTP, visitQuestion } from "__support__/e2e/helpers";
 
 describe("scenarios > alert > alert permissions", () => {
   // Intentional use of before (not beforeEach) hook because the setup is quite long.
@@ -104,11 +104,7 @@ function createBasicAlert({ firstAlert, includeNormal } = {}) {
   }
 
   if (includeNormal) {
-    cy.findByText("Email alerts to:")
-      .parent()
-      .children()
-      .last()
-      .click();
+    cy.findByText("Email alerts to:").parent().children().last().click();
     cy.findByText("Robert Tableton").click();
   }
   cy.findByText("Done").click();

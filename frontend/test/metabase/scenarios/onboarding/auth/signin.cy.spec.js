@@ -1,4 +1,4 @@
-import { browse, restore } from "__support__/e2e/cypress";
+import { browse, restore } from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const sizes = [
@@ -37,9 +37,7 @@ describe("scenarios > auth > signin", () => {
 
   it("should greet users after successful login", () => {
     cy.visit("/auth/login");
-    cy.findByLabelText("Email address")
-      .should("be.focused")
-      .type(admin.email);
+    cy.findByLabelText("Email address").should("be.focused").type(admin.email);
     cy.findByLabelText("Password").type(admin.password);
     cy.findByText("Sign in").click();
     cy.contains(/[a-z ]+, Bob/i);

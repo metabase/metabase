@@ -15,10 +15,9 @@
    [clojure.test :refer :all]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
-   [metabase.models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup Pulse Setting Table]]
+   [metabase.models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup Pulse Setting Table User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.user :refer [User]]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -596,7 +595,8 @@
                                              :database_id            database-id
                                              :collection_id          nil})]
        (migrate!)
-       (is (= [] (:parameters (first (db/simple-select Card {:where [:= :id card-id]})))))))))
+       (is (= nil
+              (:parameters (first (db/simple-select Card {:where [:= :id card-id]})))))))))
 
 (deftest add-parameter-mappings-to-cards-test
   (testing "Migration v44.00-024: Add parameter_mappings to cards"
@@ -620,5 +620,51 @@
                                      :database_id            database-id
                                      :collection_id          nil})]
         (migrate!)
-        (is (= []
+        (is (= nil
                (:parameter_mappings (first (db/simple-select Card {:where [:= :id card-id]})))))))))
+
+(deftest grant-all-users-root-snippets-collection-readwrite-perms-test
+  (letfn [(perms-path [] "/collection/namespace/snippets/root/")
+          (all-users-group-id []
+            (-> (db/query {:select [:id], :from [PermissionsGroup],
+                           :where [:= :name perms-group/all-users-group-name]})
+                first
+                :id))
+          (get-perms [] (map :name (db/query {:select    [:pg.name]
+                                              :from      [[Permissions :p]]
+                                              :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
+                                              :where     [:= :p.object (perms-path)]})))]
+    (testing "Migration v44.00-033: create a Root Snippets Collection entry for All Users\n"
+      (testing "Should run for new OSS instances"
+        (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
+                              (migrate!)
+                              (is (= ["All Users"] (get-perms)))))
+
+      (testing "Should run for new EE instances"
+        (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
+                              (db/simple-insert! Setting {:key "premium-embedding-token"
+                                                          :value "fake-key"})
+                              (migrate!)
+                              (is (= ["All Users"] (get-perms)))))
+
+      (testing "Should not run for existing OSS instances"
+        (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
+                              (create-raw-user! "ngoc@metabase.com")
+                              (migrate!)
+                              (is (= [] (get-perms)))))
+
+      (testing "Should not run for existing EE instances"
+        (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
+                              (create-raw-user! "ngoc@metabase.com")
+                              (db/simple-insert! Setting {:key "premium-embedding-token"
+                                                          :value "fake-key"})
+                              (migrate!)
+                              (is (= [] (get-perms)))))
+
+      (testing "Should not fail if permissions already exist"
+        (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
+                              (db/execute! {:insert-into Permissions
+                                            :values      [{:object   (perms-path)
+                                                           :group_id (all-users-group-id)}]})
+                              (migrate!)
+                              (is (= ["All Users"] (get-perms))))))))

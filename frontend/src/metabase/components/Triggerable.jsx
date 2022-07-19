@@ -170,6 +170,7 @@ export default ComposedComponent =>
             isOpen={isOpen}
             onClose={this.onClose}
             target={() => this.target()}
+            sizeToFit
           >
             {children}
           </ComposedComponent>

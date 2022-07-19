@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 
-import ChannelFields from "./ChannelFields";
+import SlackChannelField from "../SlackChannelField";
 import DefaultParametersSection from "./DefaultParametersSection";
 import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
 import Heading from "./Heading";
@@ -38,8 +38,6 @@ function _AddEditSlackSidebar({
   handleArchive,
   setPulseParameters,
 }) {
-  const [channelType, setChannelType] = useState("public");
-
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
 
   return (
@@ -55,12 +53,10 @@ function _AddEditSlackSidebar({
       <CaveatMessage />
       <div className="pb2 px4">
         {channelSpec.fields && (
-          <ChannelFields
+          <SlackChannelField
             channel={channel}
             channelSpec={channelSpec}
             onChannelPropertyChange={onChannelPropertyChange}
-            channelType={channelType}
-            setChannelType={setChannelType}
           />
         )}
         <SchedulePicker
@@ -73,9 +69,9 @@ function _AddEditSlackSidebar({
           )}
           scheduleOptions={channelSpec.schedules}
           textBeforeInterval={t`Sent`}
-          textBeforeSendTime={t`${CHANNEL_NOUN_PLURAL[
-            channelSpec && channelSpec.type
-          ] || t`Messages`} will be sent at`}
+          textBeforeSendTime={t`${
+            CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || t`Messages`
+          } will be sent at`}
           onScheduleChange={(newSchedule, changedProp) =>
             onChannelScheduleChange(newSchedule, changedProp)
           }
@@ -91,13 +87,6 @@ function _AddEditSlackSidebar({
             disabled={!isValid}
           />
         </div>
-
-        {channelType === "private" && (
-          <div className="py1">
-            {t`You can double-check you got the channel name right by sending this
-          to your channel now.`}
-          </div>
-        )}
 
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
           <PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component

@@ -541,9 +541,8 @@ describe("Question", () => {
       it("applies a filter to a given filterspec", () => {
         const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
 
-        const drilledQuestion = ordersCountQuestion.drillUnderlyingRecords(
-          dimensions,
-        );
+        const drilledQuestion =
+          ordersCountQuestion.drillUnderlyingRecords(dimensions);
         expect(drilledQuestion.canRun()).toBe(true);
 
         expect(drilledQuestion._card.dataset_query).toEqual({
@@ -576,7 +575,8 @@ describe("Question", () => {
         });
       });
       it("returns underlying records correctly for a broken out query", () => {
-        const underlyingRecordsQuestion = ordersCountQuestion.toUnderlyingRecords();
+        const underlyingRecordsQuestion =
+          ordersCountQuestion.toUnderlyingRecords();
 
         expect(underlyingRecordsQuestion.canRun()).toBe(true);
         // if I actually call the .query() method below, this blows up garbage collection =/
@@ -1007,9 +1007,8 @@ describe("Question", () => {
     it("should set a `_parameterValues` property on the question", () => {
       const parameterValues = { foo: "bar" };
       const question = new Question(card, metadata);
-      const questionWithParameterValues = question.setParameterValues(
-        parameterValues,
-      );
+      const questionWithParameterValues =
+        question.setParameterValues(parameterValues);
 
       expect(question).not.toBe(questionWithParameterValues);
       expect(questionWithParameterValues._parameterValues).toEqual(
@@ -1067,13 +1066,12 @@ describe("Question", () => {
       expect(question.parameters()).toEqual([
         {
           default: undefined,
-          field_id: 1,
           fields: [
             {
               id: 1,
             },
           ],
-          hasOnlyFieldTargets: true,
+          hasVariableTemplateTagTarget: false,
           id: "bbb",
           name: "Foo",
           slug: "foo",
@@ -1082,9 +1080,7 @@ describe("Question", () => {
         },
         {
           default: undefined,
-          field_id: undefined,
-          fields: [],
-          hasOnlyFieldTargets: false,
+          hasVariableTemplateTagTarget: true,
           id: "aaa",
           name: "Bar",
           slug: "bar",
@@ -1122,16 +1118,13 @@ describe("Question", () => {
           target: ["dimension", ["field", 1, null]],
           value: "abc",
           fields: [{ id: 1 }],
-          field_id: 1,
-          hasOnlyFieldTargets: true,
+          hasVariableTemplateTagTarget: false,
         },
         {
           type: "category",
           name: "bar",
           id: "bar_id",
-          fields: [],
-          field_id: undefined,
-          hasOnlyFieldTargets: false,
+          hasVariableTemplateTagTarget: true,
         },
       ]);
     });
@@ -1240,7 +1233,7 @@ describe("Question", () => {
       });
 
       it("should return question URL with string MBQL filter added", () => {
-        const url = question.getUrlWithParameters(parameters, { "1": "bar" });
+        const url = question.getUrlWithParameters(parameters, { 1: "bar" });
 
         const deserializedCard = {
           ...assocIn(
@@ -1259,7 +1252,7 @@ describe("Question", () => {
       });
 
       it("should return question URL with number MBQL filter added", () => {
-        const url = question.getUrlWithParameters(parameters, { "5": 123 });
+        const url = question.getUrlWithParameters(parameters, { 5: 123 });
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question",
@@ -1277,7 +1270,7 @@ describe("Question", () => {
 
       it("should return question URL with date MBQL filter added", () => {
         const url = question.getUrlWithParameters(parameters, {
-          "3": "2017-05",
+          3: "2017-05",
         });
 
         expect(parseUrl(url)).toEqual({
@@ -1298,7 +1291,7 @@ describe("Question", () => {
         const OBJECT_ID = "5";
         const url = question.getUrlWithParameters(
           parameters,
-          { "1": "bar" },
+          { 1: "bar" },
           { objectId: OBJECT_ID },
         );
 
@@ -1317,7 +1310,7 @@ describe("Question", () => {
       });
 
       it("should return a card with attached parameters and parameter values as query params", () => {
-        const url = question.getUrlWithParameters(parameters, { "1": "bar" });
+        const url = question.getUrlWithParameters(parameters, { 1: "bar" });
 
         const deserializedCard = {
           ...card,
@@ -1338,7 +1331,7 @@ describe("Question", () => {
       it("should not include objectId in a URL", () => {
         const url = question.getUrlWithParameters(
           parameters,
-          { "1": "bar" },
+          { 1: "bar" },
           { objectId: 5 },
         );
 
@@ -1398,7 +1391,7 @@ describe("Question", () => {
 
       it("should return question URL with query string parameter when there is a value for a parameter mapped to the question's variable", () => {
         const url = question.getUrlWithParameters(parametersForNativeQ, {
-          "1": "bar",
+          1: "bar",
         });
 
         expect(parseUrl(url)).toEqual({
@@ -1411,7 +1404,7 @@ describe("Question", () => {
       it("should return question URL with query string parameter when there is a value for a parameter mapped to the question's field filter", () => {
         const question = new Question(cardWithFieldFilter, metadata);
         const url = question.getUrlWithParameters(parametersForNativeQ, {
-          "5": "111",
+          5: "111",
         });
 
         expect(parseUrl(url)).toEqual({
@@ -1423,7 +1416,7 @@ describe("Question", () => {
 
       it("should not include objectId in a URL", () => {
         const url = question.getUrlWithParameters(parametersForNativeQ, {
-          "1": "bar",
+          1: "bar",
         });
         expect(parseUrl(url).query.objectId).toBeUndefined();
       });

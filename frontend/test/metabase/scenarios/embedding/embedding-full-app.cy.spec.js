@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -55,12 +55,13 @@ describe("scenarios > embedding > full app", () => {
       visitQuestionUrl({ url: "/question/1" });
 
       cy.findByTestId("qb-header").should("be.visible");
+      cy.findByTestId("qb-header-left-side").realHover();
       cy.findByText(/Edited/).should("be.visible");
 
       cy.icon("refresh").should("be.visible");
       cy.icon("notebook").should("be.visible");
       cy.button("Summarize").should("be.visible");
-      cy.button("Filter").should("be.visible");
+      cy.findByText("Filter").should("be.visible");
     });
 
     it("should hide the question header by a param", () => {
@@ -92,7 +93,6 @@ describe("scenarios > embedding > full app", () => {
 
       cy.findByText("Orders in a dashboard").should("be.visible");
       cy.findByText(/Edited/).should("be.visible");
-      cy.findByText("Our analytics").should("be.visible");
     });
 
     it("should hide the dashboard header by a param", () => {

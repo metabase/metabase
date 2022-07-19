@@ -96,6 +96,10 @@
   :in  (comp json-in normalize-parameters-list)
   :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization))
 
+(models/add-type! :template-tags
+  :in  (comp json-in mbql.normalize/normalize-template-tags)
+  :out (comp (catch-normalization-exceptions mbql.normalize/normalize-template-tags) json-out-with-keywordization))
+
 (def ^:private MetricSegmentDefinition
   {(s/optional-key :filter)      (s/maybe mbql.s/Filter)
    (s/optional-key :aggregation) (s/maybe [mbql.s/Aggregation])
@@ -237,7 +241,9 @@
   :update add-updated-at-timestamp)
 
 (defn- add-entity-id [obj & _]
-  (assoc obj :entity_id (u/generate-nano-id)))
+  (if (contains? obj :entity_id)
+    obj
+    (assoc obj :entity_id (u/generate-nano-id))))
 
 (models/add-property! :entity_id
   :insert add-entity-id)

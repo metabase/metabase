@@ -53,10 +53,7 @@ export default ({ question, clicked }) => {
       question: () => {
         const q = question.drillUnderlyingRecords(dimensions);
         if (extraFilter) {
-          return q
-            .query()
-            .filter(extraFilter)
-            .question();
+          return q.query().filter(extraFilter).question();
         } else {
           return q;
         }

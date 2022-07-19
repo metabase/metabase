@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -52,9 +52,7 @@ describe("issue 21246", () => {
         wrapId: true,
       });
 
-      cy.get(".ScalarValue")
-        .invoke("text")
-        .should("eq", "18,760");
+      cy.get(".ScalarValue").invoke("text").should("eq", "18,760");
     });
   });
 
@@ -79,7 +77,5 @@ describe("issue 21246", () => {
 });
 
 function resultAssertion(res) {
-  cy.get(".ScalarValue")
-    .invoke("text")
-    .should("eq", res);
+  cy.get(".ScalarValue").invoke("text").should("eq", res);
 }

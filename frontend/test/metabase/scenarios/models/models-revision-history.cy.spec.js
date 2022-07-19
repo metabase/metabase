@@ -2,17 +2,16 @@ import {
   restore,
   modal,
   filter,
+  filterField,
   visitQuestion,
   openQuestionActions,
   closeQuestionActions,
   questionInfoButton,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import {
   assertIsModel,
   assertQuestionIsBasedOnModel,
-  selectFromDropdown,
-  selectDimensionOptionFromSidebar,
   saveQuestionBasedOnModel,
   assertIsQuestion,
 } from "./helpers/e2e-models-helpers";
@@ -49,10 +48,11 @@ describe("scenarios > models > revision history", () => {
     cy.get(".LineAreaBarChart");
 
     filter();
-    selectDimensionOptionFromSidebar("Discount");
-    cy.findByText("Equal to").click();
-    selectFromDropdown("Not empty");
-    cy.button("Add filter").click();
+    filterField("Discount", {
+      operator: "Not empty",
+    });
+
+    cy.findByTestId("apply-filters").click();
 
     cy.findByText("Save").click();
     modal().within(() => {
@@ -86,11 +86,11 @@ describe("scenarios > models > revision history", () => {
     cy.get(".LineAreaBarChart").should("not.exist");
 
     filter();
-    selectDimensionOptionFromSidebar("Count");
-    cy.findByText("Equal to").click();
-    selectFromDropdown("Greater than");
-    cy.findByPlaceholderText("Enter a number").type("2000");
-    cy.button("Add filter").click();
+    filterField("Count", {
+      placeholder: "min",
+      value: "2000",
+    });
+    cy.findByTestId("apply-filters").click();
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",

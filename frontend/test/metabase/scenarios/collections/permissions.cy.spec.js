@@ -6,7 +6,8 @@ import {
   appBar,
   navigationSidebar,
   openNativeEditor,
-} from "__support__/e2e/cypress";
+  openCollectionMenu,
+} from "__support__/e2e/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
@@ -57,9 +58,7 @@ describe("collection permissions", () => {
                     appBar().within(() => {
                       cy.icon("add").click();
                     });
-                    popover()
-                      .findByText("Dashboard")
-                      .click();
+                    popover().findByText("Dashboard").click();
                     cy.findByTestId("select-button").findByText(
                       "Our analytics",
                     );
@@ -191,9 +190,7 @@ describe("collection permissions", () => {
                     navigationSidebar().within(() => {
                       cy.icon("ellipsis").click();
                     });
-                    popover()
-                      .findByText("View archive")
-                      .click();
+                    popover().findByText("View archive").click();
                     cy.location("pathname").should("eq", "/archive");
                     cy.findByText("Orders");
                   });
@@ -222,12 +219,9 @@ describe("collection permissions", () => {
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
                     });
 
-                    cy.icon("pencil").click();
-
-                    cy.findByText("Archive this collection").click();
-                    cy.get(".Modal")
-                      .findByText("Archive")
-                      .click();
+                    openCollectionMenu();
+                    popover().within(() => cy.findByText("Archive").click());
+                    cy.get(".Modal").findByText("Archive").click();
 
                     cy.wait("@editCollection");
 
@@ -314,11 +308,9 @@ describe("collection permissions", () => {
                         collection => collection.slug === "third_collection",
                       );
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
-                      cy.icon("pencil").click();
-                      cy.findByText("Archive this collection").click();
-                      cy.get(".Modal")
-                        .findByText("Cancel")
-                        .click();
+                      openCollectionMenu();
+                      popover().within(() => cy.findByText("Archive").click());
+                      cy.get(".Modal").findByText("Cancel").click();
                       cy.location("pathname").should(
                         "eq",
                         `/collection/${THIRD_COLLECTION_ID}-third-collection`,
@@ -364,9 +356,7 @@ describe("collection permissions", () => {
               const { first_name, last_name } = USERS[user];
               cy.visit("/collection/root");
               openEllipsisMenuFor("Orders in a dashboard");
-              popover()
-                .findByText("Duplicate")
-                .click();
+              popover().findByText("Duplicate").click();
               cy.findByTestId("select-button").findByText(
                 `${first_name} ${last_name}'s Personal Collection`,
               );
@@ -431,26 +421,19 @@ describe("collection permissions", () => {
 });
 
 function openEllipsisMenuFor(item, index = 0) {
-  return cy
-    .findAllByText(item)
+  cy.findAllByText(item)
     .eq(index)
     .closest("tr")
-    .find(".Icon-ellipsis")
-    .click({ force: true });
+    .within(() => cy.icon("ellipsis").click());
 }
 
 function clickButton(name) {
-  cy.findByRole("button", { name })
-    .should("not.be.disabled")
-    .click();
+  cy.findByRole("button", { name }).should("not.be.disabled").click();
 }
 
 function pinItem(item) {
-  cy.findAllByText(item)
-    .closest("tr")
-    .within(() => {
-      cy.icon("pin").click();
-    });
+  openEllipsisMenuFor(item);
+  popover().within(() => cy.icon("pin").click());
 }
 
 function exposeChildrenFor(collectionName) {

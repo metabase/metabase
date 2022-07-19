@@ -14,6 +14,7 @@
             [metabase.models.collection.root :as collection.root]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms :refer [Permissions]]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
@@ -905,6 +906,62 @@
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name :namespace parent-identity-hash])})
 
+(defn- collection-query [maybe-user]
+  (serdes.base/raw-reducible-query
+    "Collection"
+    {:where [:and
+             [:= :archived false]
+             (if (nil? maybe-user)
+               [:is :personal_owner_id nil]
+               [:= :personal_owner_id maybe-user])]}))
+
+(defmethod serdes.base/extract-query "Collection" [_ {:keys [user]}]
+  (let [unowned (collection-query nil)]
+    (if user
+      (eduction cat [unowned (collection-query user)])
+      unowned)))
+
+(defmethod serdes.base/extract-one "Collection"
+  ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.
+  ;; Also transform :personal_owner_id from a database ID to the email string, if it's defined.
+  ;; Use the :slug as the human-readable label.
+  [_model-name _opts coll]
+  (let [parent       (some-> coll
+                             :id
+                             Collection
+                             (hydrate :parent_id)
+                             :parent_id
+                             Collection)
+        parent-id    (when parent
+                       (or (:entity_id parent) (serdes.hash/identity-hash parent)))
+        owner-email  (when (:personal_owner_id coll)
+                       (db/select-one-field :email 'User :id (:personal_owner_id coll)))]
+    (-> (serdes.base/extract-one-basics "Collection" coll)
+        (dissoc :location)
+        (assoc :parent_id parent-id :personal_owner_id owner-email)
+        (assoc-in [:serdes/meta 0 :label] (:slug coll)))))
+
+(defmethod serdes.base/load-xform "Collection" [{:keys [parent_id personal_owner_id] :as contents}]
+  (let [loc        (if parent_id
+                     (let [{:keys [id location]} (serdes.base/lookup-by-id Collection parent_id)]
+                       (str location id "/"))
+                     "/")
+        user-id    (when personal_owner_id
+                     (db/select-one-field :id 'User :email personal_owner_id))]
+    (-> contents
+        serdes.base/load-xform-basics
+        (dissoc :parent_id)
+        (assoc :location loc :personal_owner_id user-id))))
+
+(defmethod serdes.base/serdes-dependencies "Collection"
+  [{:keys [parent_id]}]
+  (if parent_id
+    [[{:model "Collection" :id parent_id}]]
+    []))
+
+(defmethod serdes.base/serdes-generate-path "Collection" [_ {:keys [slug] :as coll}]
+  [(cond-> (serdes.base/infer-self-path "Collection" coll)
+     slug  (assoc :label slug))])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |

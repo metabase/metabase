@@ -15,7 +15,7 @@ import Icon from "metabase/components/Icon";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
-import { AlertModalFooter } from "./AlertModals.styled";
+import { AlertModalFooter, DangerZone } from "./AlertModals.styled";
 
 import User from "metabase/entities/users";
 
@@ -313,14 +313,8 @@ class UpdateAlertModalContentInner extends Component {
   };
 
   render() {
-    const {
-      onCancel,
-      question,
-      visualizationSettings,
-      alert,
-      user,
-      isAdmin,
-    } = this.props;
+    const { onCancel, question, visualizationSettings, alert, user, isAdmin } =
+      this.props;
     const { modifiedAlert } = this.state;
 
     const isCurrentUser = alert.creator.id === user.id;
@@ -399,7 +393,7 @@ export class DeleteAlertSection extends Component {
     const { onDeleteAlert } = this.props;
 
     return (
-      <div className="DangerZone mt4 pt4 mb2 p3 rounded bordered relative">
+      <DangerZone className="DangerZone mt4 pt4 mb2 p3 rounded bordered relative">
         <h3
           className="text-error absolute top bg-white px1"
           style={{ marginTop: "-12px" }}
@@ -410,8 +404,9 @@ export class DeleteAlertSection extends Component {
             <p className="h4 pr2">{jt`Stop delivery and delete this alert. There's no undo, so be careful.`}</p>
             <ModalWithTrigger
               ref={ref => (this.deleteModal = ref)}
-              triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
-              triggerElement="Delete this Alert"
+              as={Button}
+              triggerClasses="Button--danger flex-align-right flex-no-shrink"
+              triggerElement={t`Delete this Alert`}
             >
               <DeleteModalWithConfirm
                 objectType="alert"
@@ -423,7 +418,7 @@ export class DeleteAlertSection extends Component {
             </ModalWithTrigger>
           </div>
         </div>
-      </div>
+      </DangerZone>
     );
   }
 }

@@ -5,6 +5,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
@@ -12,7 +13,7 @@
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.ddl.postgres :as ddl.postgres]
+            [metabase.driver.postgres.ddl :as postgres.ddl]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -32,10 +33,11 @@
             [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime]
-           [java.util Date UUID]))
+           [java.util Date UUID]
+           metabase.util.honeysql_extensions.Identifier))
 
 (comment
-  ddl.postgres/keep-me)
+  postgres.ddl/keep-me)
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
@@ -164,12 +166,8 @@
      :visible-if   {"ssl-use-client-auth" true}}
     driver.common/ssh-tunnel-preferences
     driver.common/advanced-options-start
-    {:name         "json-unfolding"
-     :display-name (trs "Unfold JSON Columns")
-     :type         :boolean
-     :visible-if   {"advanced-options" true}
-     :description  (trs "We unfold JSON columns into component fields. This is on by default but you can turn it off if performance is slow.")
-     :default      true}
+    driver.common/json-unfolding
+
     (assoc driver.common/additional-options
            :placeholder "prepareThreshold=0")
     driver.common/default-advanced-options]
@@ -180,14 +178,18 @@
   [_]
   :monday)
 
+(defn- get-typenames [{:keys [nspname typname]}]
+  (cond-> [typname]
+    (not= nspname "public") (conj (format "\"%s\".\"%s\"" nspname typname))))
+
 (defn- enum-types [_driver database]
-  (set
-    (map (comp keyword :typname)
-         (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
-                     [(str "SELECT DISTINCT t.typname "
-                           "FROM pg_enum e "
-                           "LEFT JOIN pg_type t "
-                           "  ON t.oid = e.enumtypid")]))))
+  (into #{}
+        (comp (mapcat get-typenames)
+              (map keyword))
+        (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                       [(str "SELECT nspname, typname "
+                             "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
+                             "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")])))
 
 (def ^:private ^:dynamic *enum-types* nil)
 
@@ -262,6 +264,10 @@
   [_ _ expr]
   (sql.qp/adjust-start-of-week :postgres (partial date-trunc :week) expr))
 
+(defn- quoted? [database-type]
+  (and (str/starts-with? database-type "\"")
+       (str/ends-with? database-type "\"")))
+
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
   (let [[_ value {base-type :base_type, database-type :database_type}] value]
@@ -270,7 +276,9 @@
         :type/UUID         (when (not= "" value) ; support is-empty/non-empty checks
                              (UUID/fromString  value))
         :type/IPAddress    (hx/cast :inet value)
-        :type/PostgresEnum (hx/quoted-cast database-type value)
+        :type/PostgresEnum (if (quoted? database-type)
+                             (hx/cast database-type value)
+                             (hx/quoted-cast database-type value))
         (sql.qp/->honeysql driver value)))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
@@ -305,11 +313,10 @@
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
 (defmethod sql.qp/json-query :postgres
-  [_ identifier nfc-field]
+  [_ unwrapped-identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
-          unwrapped-identifier (:form identifier)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
           names                (format "{%s}" (str/join "," (map handle-name (rest nfc-path))))]
       (reify
@@ -320,11 +327,10 @@
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name opts :as clause]]
-  (let [stored-field (when (integer? id-or-name)
-                       (qp.store/field id-or-name))
+  (let [stored-field  (when (integer? id-or-name)
+                        (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
-        identifier    (parent-method driver clause)
-        _nfc-path     (:nfc_path stored-field)]
+        identifier    (parent-method driver clause)]
     (cond
       (= (:database_type stored-field) "money")
       (pg-conversion identifier :numeric)
@@ -332,7 +338,10 @@
       (field/json-field? stored-field)
       (if (::sql.qp/forced-alias opts)
         (keyword (::add/source-alias opts))
-        (sql.qp/json-query :postgres identifier stored-field))
+        (walk/postwalk #(if (instance? Identifier %)
+                          (sql.qp/json-query :postgres % stored-field)
+                          %)
+                       identifier))
 
       :else
       identifier)))

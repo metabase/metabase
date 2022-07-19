@@ -89,10 +89,10 @@ function TableCell({
     [data, settings, rowIndex, columnIndex, isPivoted, clickedRowData],
   );
 
-  const extraData = useMemo(() => getExtraDataForClick?.(clicked) ?? {}, [
-    clicked,
-    getExtraDataForClick,
-  ]);
+  const extraData = useMemo(
+    () => getExtraDataForClick?.(clicked) ?? {},
+    [clicked, getExtraDataForClick],
+  );
 
   const cellData = useMemo(
     () =>
@@ -143,6 +143,7 @@ function TableCell({
       isRightAligned={isColumnRightAligned(column)}
     >
       <CellContent
+        className="cellData"
         isClickable={isClickable}
         onClick={isClickable ? onClick : undefined}
         data-testid="cell-data"

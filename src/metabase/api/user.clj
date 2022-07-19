@@ -126,13 +126,10 @@
   [status query group_id include_deactivated]
   (cond-> {}
         true (hh/merge-where (status-clause status include_deactivated))
-        true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-                               (when (segmented-user?)
-                                 [:= :id api/*current-user-id*])))
         (some? query) (hh/merge-where (query-clause query))
         (some? group_id) (hh/merge-right-join :permissions_group_membership
                                               [:= :core_user.id :permissions_group_membership.user_id])
-        (some? group_id) (hh/merge-where [:= :group_id group_id])))
+        (some? group_id) (hh/merge-where [:= :permissions_group_membership.group_id group_id])))
 
 (api/defendpoint GET "/"
   "Fetch a list of `Users`. By default returns every active user but only active users.
@@ -184,6 +181,13 @@
     (with-advanced-permissions user)
     user))
 
+(defn- maybe-add-sso-source
+  "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
+  [{:keys [id] :as user}]
+  (if (premium-features/enable-sso?)
+    (assoc user :sso_source (db/select-one-field :sso_source User :id id))
+    user))
+
 (defn- add-has-question-and-dashboard
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard."
   [user]
@@ -212,7 +216,8 @@
       (hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
       add-has-question-and-dashboard
       add-first-login
-      maybe-add-advanced-permissions))
+      maybe-add-advanced-permissions
+      maybe-add-sso-source))
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."

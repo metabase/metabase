@@ -9,6 +9,7 @@ on:
       - "docs/**"
       - "**.md"
       - ".circleci/**"
+      - "**.unit.spec.*"
 
 jobs:
 
@@ -147,12 +148,59 @@ jobs:
       env:
         TERM: xterm
 
-    - name: Upload Cypress recording upon failure
+    - name: Upload Cypress Artifacts upon failure
       uses: actions/upload-artifact@v2
       if: failure()
       with:
-        name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
+        name: cypress-artifacts-${{ matrix.folder }}-${{ matrix.edition }}
         path: |
           ./cypress
           ./logs/test.log
         if-no-files-found: ignore
+
+  visual-regression-tests:
+    if: env.PERCY_TOKEN != null && ${{ github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-20.04
+    timeout-minutes: 45
+    needs: build
+    name: percy-screenshot-recording-${{ matrix.edition }}
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      ENTERPRISE_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+    strategy:
+      matrix:
+        java-version: [11]
+        edition: [ee]
+    services:
+      maildev:
+        image: maildev/maildev:1.1.0
+        ports:
+          - "80:80"
+          - "25:25"
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare JDK ${{ matrix.java-version }}
+      uses: actions/setup-java@v3
+      with:
+        java-version: ${{ matrix.java-version }}
+        distribution: 'temurin'
+    - name: Prepare Cypress environment
+      uses: ./.github/actions/prepare-cypress
+
+    - uses: actions/download-artifact@v2
+      name: Retrieve uberjar artifact for ${{ matrix.edition }}
+      with:
+        name: metabase-${{ matrix.edition }}-uberjar
+    - name: Get the version info
+      run: |
+        jar xf target/uberjar/metabase.jar version.properties
+        mv version.properties resources/
+    - name: Percy Test
+      run: yarn run test-visual-run
+      env:
+        PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}

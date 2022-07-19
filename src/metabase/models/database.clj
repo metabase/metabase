@@ -10,6 +10,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.secret :as secret :refer [Secret]]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -277,3 +278,29 @@
                              details
                              (sensitive-fields-for-db db)))))
     json-generator)))
+
+;;; ------------------------------------------------ Serialization ----------------------------------------------------
+
+(defmethod serdes.base/extract-one "Database"
+  [_model-name {secrets :database/secrets :or {secrets :exclude}} entity]
+  ;; TODO Support alternative encryption of secret database details.
+  ;; There's one optional foreign key: creator_id. Resolve it as an email.
+  (cond-> (serdes.base/extract-one-basics "Database" entity)
+    (:creator_id entity) (assoc :creator_id (db/select-one-field :email 'User :id (:creator_id entity)))
+    (= :exclude secrets) (dissoc :details)))
+
+(defmethod serdes.base/serdes-entity-id "Database"
+  [_ {:keys [name]}]
+  name)
+
+(defmethod serdes.base/serdes-generate-path "Database"
+  [_ {:keys [name]}]
+  [{:model "Database" :id name}])
+
+(defmethod serdes.base/load-find-local "Database"
+  [[{:keys [id]}]]
+  (db/select-one-field :id Database :name id))
+
+(defmethod serdes.base/load-xform "Database" [{:keys [creator_id] :as entity}]
+  (cond-> (serdes.base/load-xform-basics entity)
+    creator_id (assoc :creator_id (db/select-one-field :id 'User :email creator_id))))

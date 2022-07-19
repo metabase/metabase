@@ -33,12 +33,11 @@ const getBorderColor = (colorScheme: ColorScheme, invalid?: boolean) => {
     return color("error");
   }
 
-  return colorScheme === "transparent" ? "transparent" : color("border");
+  return colorScheme === "transparent" ? "transparent" : color("border-dark");
 };
 
 export const Input = styled.input<InputProps>`
-  border: 1px solid ${props =>
-    getBorderColor(props.colorScheme, props.invalid)};
+  border: 1px solid ${props => getBorderColor(props.colorScheme, props.invalid)};
   outline: none;
   width: 100%;
   font-size: 1.12em;

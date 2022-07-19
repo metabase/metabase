@@ -182,13 +182,8 @@ export default class AggregationPopover extends Component {
   }
 
   render() {
-    let {
-      query,
-      dimension,
-      showCustom,
-      showMetrics,
-      alwaysExpanded,
-    } = this.props;
+    let { query, dimension, showCustom, showMetrics, alwaysExpanded } =
+      this.props;
 
     const table = query.table();
     const aggregationOperators = this._getAvailableAggregations();
@@ -265,11 +260,9 @@ export default class AggregationPopover extends Component {
 
     // slightly different layout of "basic" and "common" metrics for alwaysExpanded=true
     if (alwaysExpanded && sections.length > 1) {
-      const [
-        commonAggregationItems,
-        basicAggregationItems,
-      ] = _.partition(aggregationItems, item =>
-        COMMON_AGGREGATIONS.has(item.aggregation.short),
+      const [commonAggregationItems, basicAggregationItems] = _.partition(
+        aggregationItems,
+        item => COMMON_AGGREGATIONS.has(item.aggregation.short),
       );
       // move COMMON_AGGREGATIONS into the "common metrics" section
       sections[0].items = basicAggregationItems;

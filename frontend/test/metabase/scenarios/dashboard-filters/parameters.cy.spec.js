@@ -5,7 +5,7 @@ import {
   openNativeEditor,
   visitDashboard,
   filterWidget,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 // NOTE: some overlap with parameters-embedded.cy.spec.js
@@ -81,24 +81,16 @@ describe("scenarios > dashboard > parameters", () => {
     cy.contains("Text").click();
 
     // After typing "Ga", you should see this name
-    popover()
-      .find("input")
-      .type("Ga");
+    popover().find("input").type("Ga");
     cy.wait("@dashboard");
     popover().contains("Gabrielle Considine");
 
     // Continue typing a "d" and you see "Gadget"
-    popover()
-      .find("input")
-      .type("d");
+    popover().find("input").type("d");
     cy.wait("@dashboard");
-    popover()
-      .contains("Gadget")
-      .click();
+    popover().contains("Gadget").click();
 
-    popover()
-      .contains("Add filter")
-      .click();
+    popover().contains("Add filter").click();
   });
 
   it("should query with a 2 argument parameter", () => {
@@ -132,19 +124,11 @@ describe("scenarios > dashboard > parameters", () => {
 
     // populate the filter inputs
     cy.contains("Between").click();
-    popover()
-      .find("input")
-      .first()
-      .type("3");
+    popover().find("input").first().type("3");
 
-    popover()
-      .find("input")
-      .last()
-      .type("4");
+    popover().find("input").last().type("4");
 
-    popover()
-      .contains("Add filter")
-      .click();
+    popover().contains("Add filter").click();
     cy.wait("@dashboard");
 
     // There should be 8849 orders with a rating >= 3 && <= 4
@@ -184,16 +168,12 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("You're editing this dashboard.").should("not.exist");
 
     cy.contains("Text starts with").click();
-    cy.findByPlaceholderText("Enter some text")
-      .click()
-      .type("Corbin");
+    cy.findByPlaceholderText("Enter some text").click().type("Corbin");
     cy.findByText("Corbin Mertz").should("not.exist");
     cy.findByText("Add filter").click();
 
     cy.contains("Text ends with").click();
-    cy.findByPlaceholderText("Enter some text")
-      .click()
-      .type("dget");
+    cy.findByPlaceholderText("Enter some text").click().type("dget");
     cy.findByText("Widget").should("not.exist");
     cy.findByText("Add filter").click();
   });
@@ -273,13 +253,9 @@ describe("scenarios > dashboard > parameters", () => {
 
     // Remove filter name
     cy.icon("pencil").click();
-    cy.get(".Dashboard")
-      .find(".Icon-gear")
-      .click();
+    cy.get(".Dashboard").find(".Icon-gear").click();
 
-    cy.findByDisplayValue("Text ends with")
-      .clear()
-      .blur();
+    cy.findByDisplayValue("Text ends with").clear().blur();
 
     cy.findByDisplayValue("unnamed");
 
@@ -302,9 +278,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.wait("@collection");
 
     // make {{filter}} a "Field Filter" connected to `Orders > Created At`
-    cy.findAllByTestId("select-button")
-      .contains("Text")
-      .click();
+    cy.findAllByTestId("select-button").contains("Text").click();
     cy.findByText("Field Filter").click();
     popover().within(() => {
       cy.findByText("Sample Database");
@@ -341,13 +315,8 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Update filter").click();
 
     // connect that filter to the second card/question (dashboard already had one question previously)
-    cy.get(".DashCard")
-      .last()
-      .contains("Select")
-      .click();
-    popover()
-      .contains("Filter")
-      .click();
+    cy.get(".DashCard").last().contains("Select").click();
+    popover().contains("Filter").click();
     // save the dashboard
     cy.findByText("Save").click();
     cy.wait("@dashboard");
@@ -565,15 +534,11 @@ describe("scenarios > dashboard > parameters", () => {
 
 function selectFilter(selection, filterName) {
   selection.contains("Select…").click();
-  popover()
-    .contains(filterName)
-    .click({ force: true });
+  popover().contains(filterName).click({ force: true });
 }
 
 function addQuestion(name) {
-  sidebar()
-    .contains(name)
-    .click();
+  sidebar().contains(name).click();
   cy.wait("@cardQuery");
 }
 
@@ -591,14 +556,10 @@ function addCityFilterWithDefault() {
 
   // Create a default value and save filter
   cy.findByText("No default").click();
-  cy.findByPlaceholderText("Search by City")
-    .click()
-    .type("B");
+  cy.findByPlaceholderText("Search by City").click().type("B");
   cy.findByText("Baker").click();
   cy.findByText("Add filter").click();
-  cy.get(".Button--primary")
-    .contains("Done")
-    .click();
+  cy.get(".Button--primary").contains("Done").click();
 
   cy.findByText("Save").click();
   cy.wait("@dashboard");

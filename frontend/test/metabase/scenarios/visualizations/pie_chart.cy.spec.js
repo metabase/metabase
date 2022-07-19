@@ -1,4 +1,4 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import { restore, visitQuestionAdhoc } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -43,9 +43,7 @@ function ensurePieChartRendered(rows, totalValue) {
 
     // legend
     rows.forEach((name, i) => {
-      cy.get(".LegendItem")
-        .contains(name)
-        .should("be.visible");
+      cy.get(".LegendItem").contains(name).should("be.visible");
     });
   });
 }

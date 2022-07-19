@@ -1,11 +1,19 @@
 import { Location } from "history";
 import { createSelector } from "reselect";
 import { getUser } from "metabase/selectors/user";
-import { getIsEditing as getIsEditingDashboard } from "metabase/dashboard/selectors";
+import {
+  getIsEditing as getIsEditingDashboard,
+  getDashboard,
+  getDashboardId,
+} from "metabase/dashboard/selectors";
+import {
+  getOriginalQuestion,
+  getQuestion,
+} from "metabase/query_builder/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { State } from "metabase-types/store";
 
-interface RouterProps {
+export interface RouterProps {
   location: Location;
 }
 
@@ -16,6 +24,12 @@ const EMBEDDED_PATHS_WITH_NAVBAR = [
   /^\/collection\/.*/,
   /^\/archive/,
 ];
+const PATHS_WITH_COLLECTION_BREADCRUMBS = [
+  /\/question\//,
+  /\/model\//,
+  /\/dashboard\//,
+];
+const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
 
 export const getRouterPath = (state: State, props: RouterProps) => {
   return props.location.pathname;
@@ -98,6 +112,11 @@ export const getIsNewButtonVisible = createSelector(
   },
 );
 
+export const getIsProfileLinkVisible = createSelector(
+  [getIsEmbedded],
+  isEmbedded => !isEmbedded,
+);
+
 export const getErrorPage = (state: State) => {
   return state.app.errorPage;
 };
@@ -107,7 +126,25 @@ export const getErrorMessage = (state: State) => {
   return errorPage?.data?.message || errorPage?.data;
 };
 
-export const getBreadcrumbCollectionId = (state: State) =>
-  state.app.breadcrumbs.collectionId;
+export const getCollectionId = createSelector(
+  [getQuestion, getDashboard, getDashboardId],
+  (question, dashboard, dashboardId) =>
+    dashboardId ? dashboard?.collection_id : question?.collectionId(),
+);
 
-export const getShowBreadcumb = (state: State) => state.app.breadcrumbs.show;
+export const getIsCollectionPathVisible = createSelector(
+  [getQuestion, getDashboard, getRouterPath],
+  (question, dashboard, path) =>
+    ((question != null && question.isSaved()) || dashboard != null) &&
+    PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
+);
+
+export const getIsQuestionLineageVisible = createSelector(
+  [getQuestion, getOriginalQuestion, getRouterPath],
+  (question, originalQuestion, path) =>
+    question != null &&
+    !question.isSaved() &&
+    originalQuestion != null &&
+    !originalQuestion.isDataset() &&
+    PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path)),
+);

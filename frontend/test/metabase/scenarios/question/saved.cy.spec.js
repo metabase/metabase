@@ -8,11 +8,13 @@ import {
   startNewQuestion,
   visualize,
   openQuestionActions,
-} from "__support__/e2e/cypress";
-import {
   questionInfoButton,
   rightSidebar,
-} from "../../../__support__/e2e/helpers/e2e-ui-elements-helpers";
+  appbar,
+  getCollectionIdFromSlug,
+  filter,
+  filterField,
+} from "__support__/e2e/helpers";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
@@ -26,9 +28,7 @@ describe("scenarios > question > saved", () => {
     summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    popover()
-      .findByText("Total")
-      .click();
+    popover().findByText("Total").click();
     // Save the question
     cy.findByText("Save").click();
     modal().within(() => {
@@ -119,6 +119,14 @@ describe("scenarios > question > saved", () => {
       cy.findByText("Duplicate").click();
       cy.wait("@cardCreate");
     });
+
+    modal().within(() => {
+      cy.findByText("Not now").click();
+    });
+
+    cy.findByTestId("qb-header-left-side").within(() => {
+      cy.findByDisplayValue("Orders - Duplicate");
+    });
   });
 
   it("should revert a saved question to a previous version", () => {
@@ -130,7 +138,7 @@ describe("scenarios > question > saved", () => {
     rightSidebar().within(() => {
       cy.findByText("History");
 
-      cy.findByPlaceholderText("Description")
+      cy.findByPlaceholderText("Add description")
         .type("This is a question")
         .blur();
 
@@ -154,17 +162,14 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Saved Questions").click();
     cy.findByText("15808").click();
     visualize();
-    cy.findAllByText("Filter")
-      .first()
-      .click();
-    cy.findByTestId("sidebar-right")
-      .findByText(/Rating/i)
-      .click();
-    cy.findByTestId("select-button").findByText("Equal to");
-    cy.findByPlaceholderText("Enter a number").type("4");
-    cy.button("Add filter")
-      .should("not.be.disabled")
-      .click();
+
+    filter();
+    filterField("RATING", {
+      operator: "Equal to",
+      value: "4",
+    });
+    cy.findByTestId("apply-filters").click();
+
     cy.findByText("Synergistic Granite Chair");
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });
@@ -173,5 +178,39 @@ describe("scenarios > question > saved", () => {
     visitQuestion(1);
     cy.findByTestId("question-table-badges").trigger("mouseenter");
     cy.findByText("9 columns");
+  });
+
+  it("should show collection breadcrumbs for a saved question in the root collection", () => {
+    visitQuestion(1);
+    appbar().within(() => cy.findByText("Our analytics").click());
+
+    cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should show collection breadcrumbs for a saved question in a non-root collection", () => {
+    getCollectionIdFromSlug("second_collection", collection_id => {
+      cy.request("PUT", "/api/card/1", { collection_id });
+    });
+
+    visitQuestion(1);
+    appbar().within(() => cy.findByText("Second collection").click());
+
+    cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should show the question lineage when a saved question is changed", () => {
+    visitQuestion(1);
+
+    summarize();
+    rightSidebar().within(() => {
+      cy.findByText("Quantity").click();
+      cy.button("Done").click();
+    });
+
+    appbar().within(() => {
+      cy.findByText("Started from").should("be.visible");
+      cy.findByText("Orders").click();
+      cy.findByText("Started from").should("not.exist");
+    });
   });
 });

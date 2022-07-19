@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
-import { SelectList } from "metabase/components/select-list";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import SelectList from "metabase/components/SelectList";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
 export const SavedQuestionListRoot = styled(SelectList)`
@@ -20,4 +21,9 @@ export const SavedQuestionListItem = styled(SelectList.Item)`
 
 export const SavedQuestionListEmptyState = styled.div`
   margin: 7.5rem 0;
+`;
+
+export const LoadingWrapper = styled(LoadingAndErrorWrapper)`
+  min-height: unset;
+  heigth: 100%;
 `;

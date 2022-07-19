@@ -62,7 +62,7 @@ If you are developing on Windows, you should run Ubuntu on Windows Subsystem for
 
 ### Developing with VS Code in a remote container
 
-Alternatively, without the need to explicitly install the above dependencies, follow the guide [on using Visual Studio Code](deven.md#developing-with-visual-studio-code.md) and its remote container support.
+Alternatively, without the need to explicitly install the above dependencies, follow the guide [on using Visual Studio Code](visual-studio-code.md) and its remote container support.
 
 ## Clone the Metabase repo
 
@@ -143,6 +143,8 @@ The “official” branch of Metabase is called `master`, and other feature deve
    ```
    yarn build-hot
    ```
+   
+If you're having trouble with this step, make sure you are using the LTS version of [Node.js (http://nodejs.org/)](http://nodejs.org/).
 
 {:start="11"}
 11. In your web browser of choice, navigate to [localhost:3000](http://localhost:3000), where you should see Metabase!

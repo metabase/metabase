@@ -1,4 +1,4 @@
-import { restore, openNativeEditor } from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/helpers";
 
 describe("issue 15029", () => {
   beforeEach(() => {
@@ -14,8 +14,6 @@ describe("issue 15029", () => {
       },
     );
 
-    cy.findAllByText("Variable name")
-      .parent()
-      .findByText("number.of.stars");
+    cy.findAllByText("Variable name").parent().findByText("number.of.stars");
   });
 });

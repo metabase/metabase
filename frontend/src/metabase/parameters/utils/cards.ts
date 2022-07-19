@@ -10,7 +10,7 @@ import {
   getValuePopulatedParameters,
   hasParameterValue,
 } from "metabase/parameters/utils/parameter-values";
-import { ParameterWithTarget } from "metabase/parameters/types";
+import { ParameterWithTarget, UiParameter } from "metabase/parameters/types";
 import { Parameter, ParameterTarget } from "metabase-types/types/Parameter";
 import { Card } from "metabase-types/types/Card";
 import { TemplateTag } from "metabase-types/types/Query";
@@ -89,12 +89,12 @@ export function getParametersFromCard(
   return getTemplateTagParameters(tags);
 }
 
-export function getValueAndFieldIdPopulatedParametersFromCard(
+export function getCardUiParameters(
   card: Card,
   metadata: Metadata,
-  parameterValues: { [key: string]: any },
+  parameterValues: { [key: string]: any } = {},
   parameters = getParametersFromCard(card),
-) {
+): UiParameter[] {
   if (!card) {
     return [];
   }
@@ -105,16 +105,19 @@ export function getValueAndFieldIdPopulatedParametersFromCard(
   const question = new Question(card, metadata);
 
   return valuePopulatedParameters.map(parameter => {
-    const target:
-      | ParameterTarget
-      | undefined = (parameter as ParameterWithTarget).target;
+    const target: ParameterTarget | undefined = (
+      parameter as ParameterWithTarget
+    ).target;
     const field = getParameterTargetField(target, metadata, question);
-    return {
-      ...parameter,
-      fields: field == null ? [] : [field],
-      field_id: field?.id,
-      hasOnlyFieldTargets: field != null,
-    };
+    if (field) {
+      return {
+        ...parameter,
+        fields: [field],
+        hasVariableTemplateTagTarget: false,
+      };
+    }
+
+    return { ...parameter, hasVariableTemplateTagTarget: true };
   });
 }
 

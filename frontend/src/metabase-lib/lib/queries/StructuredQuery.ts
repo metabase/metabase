@@ -1263,9 +1263,8 @@ class StructuredQueryInner extends AtomicQuery {
     const joins = this.joins();
 
     for (const join of joins) {
-      const joinedDimensionOptions = join.joinedDimensionOptions(
-        dimensionFilter,
-      );
+      const joinedDimensionOptions =
+        join.joinedDimensionOptions(dimensionFilter);
       dimensionOptions.count += joinedDimensionOptions.count;
       dimensionOptions.fks.push(joinedDimensionOptions);
     }

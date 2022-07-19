@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import {
-  hasRequiredParameters,
+  isFullyParametrized,
   isPreviewShown,
   Item,
 } from "metabase/collections/utils";
@@ -83,7 +83,7 @@ const PinnedQuestionCard = ({
 };
 
 const getSkeletonTooltip = (item: Item) => {
-  if (!hasRequiredParameters(item)) {
+  if (!isFullyParametrized(item)) {
     return t`Open this question and fill in its variables to see it.`;
   } else {
     return undefined;

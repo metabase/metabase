@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 describe("visual tests > admin > permissions", () => {
   beforeEach(() => {

@@ -243,9 +243,13 @@
 (declare form-password-reset-url set-password-reset-token!)
 
 (defn- send-welcome-email! [new-user invitor sent-from-setup?]
-  (let [reset-token (set-password-reset-token! (u/the-id new-user))
-        ;; the new user join url is just a password reset with an indicator that this is a first time user
-        join-url    (str (form-password-reset-url reset-token) "#new")]
+  (let [reset-token               (set-password-reset-token! (u/the-id new-user))
+        should-link-to-login-page (and (public-settings/sso-configured?)
+                                       (not (public-settings/enable-password-login)))
+        join-url                  (if should-link-to-login-page
+                                    (str (public-settings/site-url) "/auth/login")
+                                    ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
+                                    (str (form-password-reset-url reset-token) "#new"))]
     (classloader/require 'metabase.email.messages)
     ((resolve 'metabase.email.messages/send-new-user-email!) new-user invitor join-url sent-from-setup?)))
 
@@ -257,8 +261,8 @@
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  {(s/optional-key :first_name)       su/NonBlankString
-   (s/optional-key :last_name)        su/NonBlankString
+  {(s/optional-key :first_name)       (s/maybe su/NonBlankString)
+   (s/optional-key :last_name)        (s/maybe su/NonBlankString)
    :email                             su/Email
    (s/optional-key :password)         (s/maybe su/NonBlankString)
    (s/optional-key :login_attributes) (s/maybe LoginAttributes)
@@ -348,4 +352,4 @@
        ;; do things like automatically set the `is_superuser` flag for a User
        (doseq [group-id to-add]
          (db/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
-      true))
+    true))

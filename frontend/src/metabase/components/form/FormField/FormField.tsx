@@ -88,7 +88,12 @@ function FormField({
     return null;
   }
 
-  const { name, error: errorProp, visited, active } = {
+  const {
+    name,
+    error: errorProp,
+    visited,
+    active,
+  } = {
     ...(props.field || {}),
     ...props,
   };

@@ -1,4 +1,4 @@
-import { restore, visitDashboard } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -7,7 +7,7 @@ const questionDetails = {
   query: { "source-table": ORDERS_ID },
 };
 
-describe("visual tests > dashboard > filter sidebar", () => {
+describe.skip("visual tests > dashboard > filter sidebar", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

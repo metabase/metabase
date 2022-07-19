@@ -14,6 +14,7 @@
              [Card Collection Dashboard DashboardCard DashboardCardSeries Field FieldValues Pulse Revision Table User]]
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-test :as dashboard-test]
+            [metabase.models.field-values :as field-values]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -114,7 +115,7 @@
            (mt/user-http-request :rasta :post 400 "dashboard" {})))
 
     (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                      "Each parameter must be a map with String :id key")}}
+                                      "Each parameter must be a map with :id and :type keys")}}
            (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
                                                                    :parameters "abc"})))))
 
@@ -673,18 +674,32 @@
 
 (deftest copy-dashboard-cards-test
   (testing "POST /api/dashboard/:id/copy"
-    (testing "Ensure dashboard cards are copied"
-      (mt/with-temp* [Dashboard     [{dashboard-id :id}  {:name "Test Dashboard"}]
+    (testing "Ensure dashboard cards and parameters are copied (#23685)"
+      (mt/with-temp* [Dashboard     [{dashboard-id :id}  {:name       "Test Dashboard"
+                                                          :parameters [{:name "Category ID"
+                                                                        :slug "category_id"
+                                                                        :id   "_CATEGORY_ID_"
+                                                                        :type :category}]}]
                       Card          [{card-id :id}]
                       Card          [{card-id2 :id}]
-                      DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                      DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id2}]]
+                      DashboardCard [{dashcard-id :id} {:dashboard_id       dashboard-id,
+                                                        :card_id            card-id
+                                                        :parameter_mappings [{:parameter_id "random-id"
+                                                                              :card_id      card-id
+                                                                              :target       [:dimension [:field (mt/id :venues :name) nil]]}]}]
+                      DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id2}]]
         (let [copy-id (u/the-id (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" dashboard-id)))]
           (try
             (is (= 2
                    (count (db/select-ids DashboardCard, :dashboard_id copy-id))))
-            (finally
-              (db/delete! Dashboard :id copy-id))))))))
+            (is (= [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category}]
+                   (db/select-one-field :parameters Dashboard :id copy-id)))
+            (is (= [{:parameter_id "random-id"
+                     :card_id      card-id
+                     :target       [:dimension [:field (mt/id :venues :name) nil]]}]
+                   (db/select-one-field :parameter_mappings DashboardCard :id dashcard-id)))
+           (finally
+             (db/delete! Dashboard :id copy-id))))))))
 
 (deftest copy-dashboard-into-correct-collection-test
   (testing "POST /api/dashboard/:id/copy"
@@ -718,7 +733,7 @@
                 :col                    4
                 :row                    4
                 :series                 []
-                :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+                :parameter_mappings     [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
                 :visualization_settings {}
                 :created_at             true
                 :updated_at             true}
@@ -726,7 +741,10 @@
                                          {:cardId                 card-id
                                           :row                    4
                                           :col                    4
-                                          :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+                                          :parameter_mappings     [{:parameter_id "abc"
+                                                                    :card_id 123
+                                                                    :hash "abc"
+                                                                    :target "foo"}]
                                           :visualization_settings {}})
                    (dissoc :id :dashboard_id :card_id :entity_id)
                    (update :created_at boolean)
@@ -735,7 +753,7 @@
                  :sizeY                  2
                  :col                    4
                  :row                    4
-                 :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+                 :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
                  :visualization_settings {}}]
                (map (partial into {})
                     (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings :visualization_settings]
@@ -1377,7 +1395,7 @@
                          query)
                     query-params))
 
-(deftest chain-filter-test
+(deftest dashboard-chain-filter-test
   (testing "GET /api/dashboard/:id/params/:param-key/values"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
       (testing "Show me names of categories"
@@ -1410,9 +1428,9 @@
 
     (testing "Should work if Dashboard has multiple mappings for a single param"
       (with-chain-filter-fixtures [{:keys [dashboard card dashcard param-keys]}]
-        (mt/with-temp* [Card          [card-2 (dissoc card :id)]
+        (mt/with-temp* [Card          [card-2 (dissoc card :id :entity_id)]
                         DashboardCard [dashcard-2 (-> dashcard
-                                                      (dissoc :id :card_id)
+                                                      (dissoc :id :card_id :entity_id)
                                                       (assoc  :card_id (:id card-2)))]]
           (is (= ["African" "American" "Artisan"]
                  (take 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
@@ -1422,8 +1440,12 @@
       (mt/with-temp-copy-of-db
         (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys))))))))))
+          ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
+          ;; but 200 on calls that we could just use the cache.
+          ;; It's not ideal and we definitely need to have a consistent behavior
+          (with-redefs [field-values/field-should-have-field-values? (fn [_] false)]
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys)))))))))))
 
 (deftest chain-filter-search-test
   (testing "GET /api/dashboard/:id/params/:param-key/search/:query"

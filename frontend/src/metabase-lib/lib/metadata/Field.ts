@@ -50,6 +50,8 @@ class FieldInner extends Base {
   base_type: string | null;
   table?: Table;
   target?: Field;
+  has_field_values?: "list" | "search" | "none";
+  values: any[];
 
   getId() {
     if (Array.isArray(this.id)) {
@@ -89,9 +91,7 @@ class FieldInner extends Base {
     }
 
     if (includePath) {
-      displayName += this.path()
-        .map(formatField)
-        .join(": ");
+      displayName += this.path().map(formatField).join(": ");
     } else {
       displayName += formatField(this);
     }

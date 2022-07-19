@@ -35,7 +35,7 @@ const HomeGreeting = ({
   );
 };
 
-const getMessage = (name: string): string => {
+const getMessage = (name: string | null): string => {
   const namePart = name ? `, ${name}` : "";
   const options = [
     t`Hey there${namePart}`,

@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { DatabaseCacheTTLField } from "./DatabaseCacheTTLField";
+import DatabaseCacheTTLField from "./DatabaseCacheTTLField";
 
 function setup({ value = null } = {}) {
   const onChange = jest.fn();

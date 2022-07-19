@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 import { openDetailsSidebar } from "../helpers/e2e-models-helpers";
 
 describe.skip("issue 22517", () => {
@@ -53,8 +53,5 @@ describe.skip("issue 22517", () => {
 });
 
 function renameColumn(column, newName) {
-  cy.findByDisplayValue(column)
-    .clear()
-    .type(newName)
-    .blur();
+  cy.findByDisplayValue(column).clear().type(newName).blur();
 }

@@ -3,7 +3,7 @@ import React, { useCallback } from "react";
 import { Collection } from "metabase-types/api";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
-  hasRequiredParameters,
+  isFullyParametrized,
   isItemPinned,
   isPreviewShown,
   isPreviewEnabled,
@@ -88,13 +88,11 @@ function ActionMenu({
         item={item}
         isBookmarked={isBookmarked}
         isPreviewShown={isPreviewShown(item)}
-        isPreviewAvailable={hasRequiredParameters(item)}
+        isPreviewAvailable={isFullyParametrized(item)}
         onPin={collection.can_write ? handlePin : null}
         onMove={collection.can_write && item.setCollection ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}
-        onArchive={
-          collection.can_write && item.setArchived ? handleArchive : null
-        }
+        onArchive={collection.can_write ? handleArchive : null}
         onToggleBookmark={handleToggleBookmark}
         onTogglePreview={isPreviewOptionShown ? handleTogglePreview : null}
         analyticsContext={ANALYTICS_CONTEXT}

@@ -69,7 +69,7 @@ export default class RecipientPicker extends Component {
             }
             autoFocus={autoFocus && recipients.length === 0}
             multi
-            valueRenderer={value => value.common_name}
+            valueRenderer={value => value.common_name ?? value.email}
             optionRenderer={option => (
               <div className="flex align-center">
                 <span className="text-white">

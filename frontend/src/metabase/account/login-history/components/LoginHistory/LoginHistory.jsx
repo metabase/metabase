@@ -53,8 +53,9 @@ const formatItems = items =>
     return {
       ...item,
       date: parsedTimestamp.format("LL"),
-      time: `${parsedTimestamp.format("LT")} (${item.timezone ||
-        parsedTimestamp.format("Z")})`,
+      time: `${parsedTimestamp.format("LT")} (${
+        item.timezone || parsedTimestamp.format("Z")
+      })`,
     };
   });
 

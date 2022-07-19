@@ -32,7 +32,7 @@
   (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-configured?)]
     (varr)))
 
-(defn- sso-configured?
+(defn sso-configured?
   "Any SSO provider is configured"
   []
   (or (google-auth-configured?)
@@ -85,7 +85,7 @@
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
   its magic getter. Nice!"
-  :visibility :internal
+  :visibility :authenticated
   :setter     :none
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
   :type       ::uuid-nonce)
@@ -175,7 +175,7 @@
   :visibility :public)
 
 (defsetting landing-page
-  (deferred-tru "Default page to show the user")
+  (deferred-tru "Default page to show people when they log in.")
   :visibility :public
   :type       :string
   :default    "")
@@ -213,16 +213,10 @@
   :default    false
   :visibility :authenticated)
 
-(defsetting persisted-model-refresh-interval-hours
-  (deferred-tru "Hour interval to refresh persisted models.")
-  :type       :integer
-  :default    6
-  :visibility :admin)
-
-(defsetting persisted-model-refresh-anchor-time
-  (deferred-tru "Anchor time to begin refreshing persisted models.")
+(defsetting persisted-model-refresh-cron-schedule
+  (deferred-tru "cron syntax string to schedule refreshing persisted models.")
   :type       :string
-  :default    "00:00"
+  :default    "0 0 0/6 * * ? *"
   :visibility :admin)
 
 (def ^:private ^:const global-max-caching-kb
@@ -271,6 +265,12 @@
   :type    :integer
   :default 10)
 
+(defsetting notification-link-base-url
+  (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
+  :visibility :internal
+  :type       :string
+  :enabled?   premium-features/hide-embed-branding?)
+
 (defsetting deprecation-notice-version
   (deferred-tru "Metabase version for which a notice about usage of deprecated features has been shown.")
   :visibility :admin)
@@ -279,7 +279,15 @@
   (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
   :visibility :public
   :type       :string
+  :enabled?   premium-features/enable-whitelabeling?
   :default    "Metabase")
+
+(defsetting loading-message
+  (deferred-tru "Message to show while a query is running.")
+  :visibility :public
+  :enabled?   premium-features/enable-whitelabeling?
+  :type       :keyword
+  :default    :doing-science)
 
 (defsetting application-colors
   (deferred-tru
@@ -287,42 +295,64 @@
         "You might need to refresh your browser to see your changes take effect."))
   :visibility :public
   :type       :json
+  :enabled?   premium-features/enable-whitelabeling?
   :default    {})
 
 (defsetting application-font
-  (deferred-tru
-   (str "This is the primary font used in charts and throughout Metabase. "
-        "You might need to refresh your browser to see your changes take effect."))
+  (deferred-tru "This will replace “Lato” as the font family.")
   :visibility :public
   :type       :string
   :default    "Lato"
+  :enabled?   premium-features/enable-whitelabeling?
   :setter (fn [new-value]
               (when new-value
                 (when-not (u.fonts/available-font? new-value)
                   (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
               (setting/set-value-of-type! :string :application-font new-value)))
 
+(defsetting application-font-files
+  (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
+  :visibility :public
+  :type       :json
+  :enabled?   premium-features/enable-whitelabeling?)
+
 (defn application-color
   "The primary color, a.k.a. brand color"
   []
-  (or (:brand (setting/get-value-of-type :json :application-colors)) "#509EE3"))
+  (or (:brand (application-colors)) "#509EE3"))
 
 (defn secondary-chart-color
   "The first 'Additional chart color'"
   []
-  (or (:accent3 (setting/get-value-of-type :json :application-colors)) "#EF8C8C"))
+  (or (:accent3 (application-colors)) "#EF8C8C"))
 
 (defsetting application-logo-url
   (deferred-tru "For best results, use an SVG file with a transparent background.")
   :visibility :public
   :type       :string
+  :enabled?   premium-features/enable-whitelabeling?
   :default    "app/assets/img/logo.svg")
 
 (defsetting application-favicon-url
   (deferred-tru "The url or image that you want to use as the favicon.")
   :visibility :public
   :type       :string
+  :enabled?   premium-features/enable-whitelabeling?
   :default    "app/assets/img/favicon.ico")
+
+(defsetting show-metabot
+  (deferred-tru "Enables Metabot character on the home page")
+  :visibility :public
+  :type       :boolean
+  :enabled?   premium-features/enable-whitelabeling?
+  :default    true)
+
+(defsetting show-lighthouse-illustration
+  (deferred-tru "Display the lighthouse illustration on the home and login pages.")
+  :visibility :public
+  :type       :boolean
+  :enabled?   premium-features/enable-whitelabeling?
+  :default    true)
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
@@ -474,12 +504,10 @@
                 (setting/set-value-of-type! :boolean :redirect-all-requests-to-https new-value)))
 
 (defsetting start-of-week
-  (str
-    (deferred-tru "This will affect things like grouping by week or filtering in GUI queries.")
-    " "
-    (deferred-tru "It won''t affect most SQL queries,")
-    " "
-    (deferred-tru " although it is used to set the WEEK_START session variable in Snowflake."))
+  (deferred-tru
+    (str "This will affect things like grouping by week or filtering in GUI queries. "
+         "It won''t affect most SQL queries, "
+         "although it is used to set the WEEK_START session variable in Snowflake."))
   :visibility :public
   :type       :keyword
   :default    :sunday)

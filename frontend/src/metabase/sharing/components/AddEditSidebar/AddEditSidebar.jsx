@@ -15,9 +15,7 @@ const mapStateToProps = (state, props) => {
   };
 };
 
-export const AddEditEmailSidebar = connect(mapStateToProps)(
-  _AddEditEmailSidebar,
-);
-export const AddEditSlackSidebar = connect(mapStateToProps)(
-  _AddEditSlackSidebar,
-);
+export const AddEditEmailSidebar =
+  connect(mapStateToProps)(_AddEditEmailSidebar);
+export const AddEditSlackSidebar =
+  connect(mapStateToProps)(_AddEditSlackSidebar);

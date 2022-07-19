@@ -73,12 +73,6 @@
   (classloader/require 'metabase.cmd.reset-password)
   ((resolve 'metabase.cmd.reset-password/reset-password!) email-address))
 
-(defn ^:command refresh-integration-test-db-metadata
-  "Re-sync the frontend integration test DB's metadata for the Sample Database."
-  []
-  (classloader/require 'metabase.cmd.refresh-integration-test-db-metadata)
-  ((resolve 'metabase.cmd.refresh-integration-test-db-metadata/refresh-integration-test-db-metadata)))
-
 (defn ^:command help
   "Show this help message listing valid Metabase commands."
   []

@@ -4,7 +4,7 @@ import {
   summarize,
   popover,
   openQuestionActions,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { selectFromDropdown } from "./helpers/e2e-models-helpers";
 
@@ -26,9 +26,7 @@ describe("scenarios > models query editor", () => {
       cy.visit("/model/1");
       cy.wait("@dataset");
 
-      cy.get(".cellData")
-        .should("contain", "37.65")
-        .and("contain", "109.22");
+      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
 
       openQuestionActions();
 
@@ -51,9 +49,7 @@ describe("scenarios > models query editor", () => {
       cy.button("Save changes").click();
       cy.wait("@updateCard");
 
-      cy.url()
-        .should("include", "/model/1")
-        .and("not.include", "/query");
+      cy.url().should("include", "/model/1").and("not.include", "/query");
       cy.location("hash").should("eq", "");
 
       cy.get(".cellData")
@@ -90,9 +86,7 @@ describe("scenarios > models query editor", () => {
         { visitQuestion: true },
       );
 
-      cy.get(".cellData")
-        .should("contain", "37.65")
-        .and("contain", "109.22");
+      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
 
       openQuestionActions();
 

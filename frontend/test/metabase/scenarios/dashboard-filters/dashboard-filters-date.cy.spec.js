@@ -6,7 +6,7 @@ import {
   saveDashboard,
   setFilter,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { DASHBOARD_DATE_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
@@ -26,10 +26,7 @@ Object.entries(DASHBOARD_DATE_FILTERS).forEach(
         setFilter("Time", filter);
 
         cy.findByText("Select…").click();
-        popover()
-          .contains("Created At")
-          .first()
-          .click();
+        popover().contains("Created At").first().click();
       });
 
       it(`should work for "${filter}" when set through the filter widget`, () => {
@@ -48,9 +45,7 @@ Object.entries(DASHBOARD_DATE_FILTERS).forEach(
       });
 
       it(`should work for "${filter}" when set as the default filter`, () => {
-        cy.findByText("Default value")
-          .next()
-          .click();
+        cy.findByText("Default value").next().click();
 
         dateFilterSelector({
           filterType: filter,

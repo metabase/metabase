@@ -1,4 +1,4 @@
-import { restore, navigationSidebar, popover } from "__support__/e2e/cypress";
+import { restore, navigationSidebar, popover } from "__support__/e2e/helpers";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 
 describe("URLs", () => {
@@ -67,9 +67,7 @@ describe("URLs", () => {
       navigationSidebar().within(() => {
         cy.icon("ellipsis").click();
       });
-      popover()
-        .findByText("Other users' personal collections")
-        .click();
+      popover().findByText("Other users' personal collections").click();
       cy.findByText("All personal collections");
       cy.location("pathname").should("eq", "/collection/users");
     });

@@ -33,7 +33,7 @@ import {
 } from "metabase/lib/dataset";
 import { isTransientId } from "metabase/meta/Card";
 import {
-  getValueAndFieldIdPopulatedParametersFromCard,
+  getCardUiParameters,
   remapParameterValuesToTemplateTags,
 } from "metabase/parameters/utils/cards";
 import { fieldFilterParameterToMBQLFilter } from "metabase/parameters/utils/mbql";
@@ -74,12 +74,14 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
 import { utf8_to_b64url } from "metabase/lib/encoding";
+import { CollectionId } from "metabase-types/api";
 
 type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
   tableId?: TableId;
+  collectionId?: CollectionId;
   metadata?: Metadata;
   parameterValues?: ParameterValues;
   type?: "query" | "native";
@@ -282,6 +284,14 @@ class QuestionInner {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
+  cacheTTL(): number | null {
+    return this._card?.cache_ttl;
+  }
+
+  setCacheTTL(cache) {
+    return this.setCard(assoc(this.card(), "cache_ttl", cache));
+  }
+
   /**
    * returns whether this question is a model
    * @returns boolean
@@ -431,9 +441,7 @@ class QuestionInner {
   }
 
   setDefaultQuery() {
-    return this.query()
-      .setDefaultQuery()
-      .question();
+    return this.query().setDefaultQuery().question();
   }
 
   settings(): VisualizationSettings {
@@ -859,12 +867,20 @@ class QuestionInner {
     return this.setCard(card);
   }
 
-  description(): string | null | undefined {
+  description(): string | null {
     return this._card && this._card.description;
+  }
+
+  setDescription(description) {
+    return this.setCard(assoc(this.card(), "description", description));
   }
 
   lastEditInfo() {
     return this._card && this._card["last-edit-info"];
+  }
+
+  lastQueryStart() {
+    return this._card?.last_query_start;
   }
 
   isSaved(): boolean {
@@ -1161,7 +1177,7 @@ class QuestionInner {
 
   // TODO: Fix incorrect Flow signature
   parameters(): ParameterObject[] {
-    return getValueAndFieldIdPopulatedParametersFromCard(
+    return getCardUiParameters(
       this.card(),
       this.metadata(),
       this._parameterValues,
@@ -1340,6 +1356,10 @@ export default class Question extends memoizeClass<QuestionInner>(
       visualization_settings,
       dataset_query,
     };
+
+    if (type === "native") {
+      card = assocIn(card, ["parameters"], []);
+    }
 
     if (tableId != null) {
       card = assocIn(card, ["dataset_query", "query", "source-table"], tableId);

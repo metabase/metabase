@@ -10,9 +10,7 @@ export function b64_to_utf8(b64) {
 
 // for "URL safe" base64, replace "+" with "-" and "/" with "_" as per RFC 4648
 export function utf8_to_b64url(str) {
-  return utf8_to_b64(str)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
+  return utf8_to_b64(str).replace(/\+/g, "-").replace(/\//g, "_");
 }
 
 export function b64url_to_utf8(b64url) {

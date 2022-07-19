@@ -185,6 +185,9 @@ export function getXValues({ settings, series }) {
     // In the raw series, the dimension isn't necessarily in the first element
     // of each row. This finds the correct column index.
     const columnIndex = getColumnIndex({ settings, data });
+    if (!data.cols[columnIndex]) {
+      continue;
+    }
 
     const parseOptions = getParseOptions({ settings, data });
     let lastValue;
@@ -322,8 +325,8 @@ export function getXInterval({ settings, series }, xValues, warn) {
   } else if (isQuantitative(settings) || isHistogram(settings)) {
     // Get the bin width from binning_info, if available
     // TODO: multiseries?
-    const binningInfo = getFirstNonEmptySeries(series).data.cols[0]
-      .binning_info;
+    const binningInfo =
+      getFirstNonEmptySeries(series).data.cols[0].binning_info;
     if (binningInfo) {
       return binningInfo.bin_width;
     }

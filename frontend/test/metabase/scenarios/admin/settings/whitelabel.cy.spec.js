@@ -1,4 +1,4 @@
-import { describeEE, restore } from "__support__/e2e/cypress";
+import { describeEE, restore } from "__support__/e2e/helpers";
 
 function checkFavicon() {
   cy.request("/api/setting/application-favicon-url")
@@ -26,9 +26,7 @@ describeEE("formatting > whitelabel", () => {
     beforeEach(() => {
       cy.log("Change company name");
       cy.visit("/admin/settings/whitelabel");
-      cy.findByLabelText("Application Name")
-        .clear()
-        .type(COMPANY_NAME);
+      cy.findByLabelText("Application Name").clear().type(COMPANY_NAME);
       // Helps scroll the page up in order to see "Saved" notification
       cy.findByText("Application Name").click();
       cy.findByText("Saved");
@@ -107,9 +105,7 @@ describeEE("formatting > whitelabel", () => {
       cy.findByLabelText("Favicon").type(
         "https://cdn.ecosia.org/assets/images/ico/favicon.ico",
       );
-      cy.get("ul")
-        .eq(1)
-        .click("right");
+      cy.get("ul").eq(1).click("right");
       cy.findByText("Saved");
       checkFavicon();
     });
@@ -119,6 +115,36 @@ describeEE("formatting > whitelabel", () => {
       cy.get('head link[rel="icon"]')
         .get('[href="https://cdn.ecosia.org/assets/images/ico/favicon.ico"]')
         .should("have.length", 1);
+    });
+  });
+
+  describe("loading message", () => {
+    it("should update loading message", () => {
+      cy.visit("/question/1");
+      cy.findByText("Doing science...");
+
+      const runningQueryMessage = "Running query...";
+      changeLoadingMessage(runningQueryMessage);
+      cy.visit("/question/1");
+      cy.findByText(runningQueryMessage);
+
+      const loadingResultsMessage = "Loading results...";
+      changeLoadingMessage(loadingResultsMessage);
+      cy.visit("/question/1");
+      cy.findByText(loadingResultsMessage);
+    });
+  });
+
+  describe("metabot", () => {
+    it("should toggle metabot visibility", () => {
+      cy.visit("/");
+      cy.findByAltText("Metabot");
+
+      cy.visit("/admin/settings/whitelabel");
+      cy.findByText("Display our little friend on the homepage").click();
+
+      cy.visit("/");
+      cy.findByAltText("Metabot").should("not.exist");
     });
   });
 
@@ -137,6 +163,12 @@ describeEE("formatting > whitelabel", () => {
     });
   });
 });
+
+function changeLoadingMessage(message) {
+  cy.visit("/admin/settings/whitelabel");
+  cy.findByTestId("loading-message-select-button").click();
+  cy.findByText(message).click();
+}
 
 function setApplicationFontTo(font) {
   cy.request("PUT", "/api/setting/application-font", {

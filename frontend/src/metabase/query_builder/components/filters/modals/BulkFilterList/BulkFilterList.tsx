@@ -8,21 +8,22 @@ import StructuredQuery, {
   isSegmentOption,
 } from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
-import { ModalDivider } from "../BulkFilterModal/BulkFilterModal.styled";
+import EmptyState from "metabase/components/EmptyState";
+
+import { color } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
+
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { BulkFilterItem } from "../BulkFilterItem";
 import { SegmentFilterSelect } from "../BulkFilterSelect";
-import {
-  ListRoot,
-  ListRow,
-  ListRowContent,
-  ListRowLabel,
-} from "./BulkFilterList.styled";
-import { sortDimensions } from "./utils";
+import { InlineOperatorSelector } from "../InlineOperatorSelector";
+import { ListRoot, ListRow, FilterContainer } from "./BulkFilterList.styled";
+import { sortDimensions, isDimensionValid } from "./utils";
 
 export interface BulkFilterListProps {
   query: StructuredQuery;
   filters: Filter[];
+  isSearch?: boolean;
   options: (DimensionOption | SegmentOption)[];
   onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
@@ -34,6 +35,7 @@ const BulkFilterList = ({
   query,
   filters,
   options,
+  isSearch,
   onAddFilter,
   onChangeFilter,
   onRemoveFilter,
@@ -41,11 +43,35 @@ const BulkFilterList = ({
 }: BulkFilterListProps): JSX.Element => {
   const [dimensions, segments] = useMemo(
     () => [
-      options.filter(isDimensionOption).sort(sortDimensions),
+      options
+        .filter(isDimensionOption)
+        .filter(isDimensionValid)
+        .sort(sortDimensions),
       options.filter(isSegmentOption),
     ],
     [options],
   );
+
+  if (!dimensions.length && !segments.length) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          width: "100%",
+        }}
+      >
+        <EmptyState
+          message={<strong>{t`Didn't find anything`}</strong>}
+          illustrationElement={
+            <Icon name="search" size={40} color={color("text-light")} />
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <ListRoot>
@@ -53,6 +79,7 @@ const BulkFilterList = ({
         <SegmentListItem
           query={query}
           segments={segments}
+          isSearch={isSearch}
           onAddFilter={onAddFilter}
           onRemoveFilter={onRemoveFilter}
           onClearSegments={onClearSegments}
@@ -62,6 +89,7 @@ const BulkFilterList = ({
         <BulkFilterListItem
           key={index}
           query={query}
+          isSearch={isSearch}
           filters={filters}
           dimension={dimension}
           onAddFilter={onAddFilter}
@@ -76,6 +104,7 @@ const BulkFilterList = ({
 interface BulkFilterListItemProps {
   query: StructuredQuery;
   filters: Filter[];
+  isSearch?: boolean;
   dimension: Dimension;
   onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
@@ -85,42 +114,39 @@ interface BulkFilterListItemProps {
 const BulkFilterListItem = ({
   query,
   filters,
+  isSearch,
   dimension,
   onAddFilter,
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterListItemProps): JSX.Element => {
   const options = useMemo(() => {
-    return filters.filter(f => f.dimension()?.isSameBaseDimension(dimension));
+    const filtersForThisDimension = filters.filter(f =>
+      f.dimension()?.isSameBaseDimension(dimension),
+    );
+    return filtersForThisDimension.length
+      ? filtersForThisDimension
+      : [undefined];
   }, [filters, dimension]);
 
   return (
     <ListRow>
-      <ListRowLabel data-testid="dimension-filter-label">
-        {dimension.displayName()}
-      </ListRowLabel>
-      <ListRowContent>
-        {options.map((filter, index) => (
+      {options.map((filter, index) => (
+        <FilterContainer
+          key={index}
+          data-testid={`filter-field-${dimension.displayName()}`}
+        >
           <BulkFilterItem
-            key={index}
             query={query}
+            isSearch={isSearch}
             filter={filter}
             dimension={dimension}
             onAddFilter={onAddFilter}
             onChangeFilter={onChangeFilter}
             onRemoveFilter={onRemoveFilter}
           />
-        ))}
-        {!options.length && (
-          <BulkFilterItem
-            query={query}
-            dimension={dimension}
-            onAddFilter={onAddFilter}
-            onChangeFilter={onChangeFilter}
-            onRemoveFilter={onRemoveFilter}
-          />
-        )}
-      </ListRowContent>
+        </FilterContainer>
+      ))}
     </ListRow>
   );
 };
@@ -128,6 +154,7 @@ const BulkFilterListItem = ({
 interface SegmentListItemProps {
   query: StructuredQuery;
   segments: SegmentOption[];
+  isSearch?: boolean;
   onAddFilter: (filter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
   onClearSegments: () => void;
@@ -136,24 +163,27 @@ interface SegmentListItemProps {
 const SegmentListItem = ({
   query,
   segments,
+  isSearch,
   onAddFilter,
   onRemoveFilter,
   onClearSegments,
 }: SegmentListItemProps): JSX.Element => (
   <>
-    <ListRow>
-      <ListRowLabel>{t`Segments`}</ListRowLabel>
-      <ListRowContent>
-        <SegmentFilterSelect
-          query={query}
-          segments={segments}
-          onAddFilter={onAddFilter}
-          onRemoveFilter={onRemoveFilter}
-          onClearSegments={onClearSegments}
-        />
-      </ListRowContent>
+    <ListRow data-testid="filter-field-segments">
+      <InlineOperatorSelector
+        fieldName={t`Segments`}
+        iconName="filter"
+        tableName={isSearch ? query.table().displayName() : undefined}
+        value="is"
+      />
+      <SegmentFilterSelect
+        query={query}
+        segments={segments}
+        onAddFilter={onAddFilter}
+        onRemoveFilter={onRemoveFilter}
+        onClearSegments={onClearSegments}
+      />
     </ListRow>
-    <ModalDivider marginY="0.5rem" />
   </>
 );
 

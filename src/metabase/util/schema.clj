@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [clojure.walk :as walk]
             [medley.core :as m]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -115,9 +116,10 @@
 
       ;; do the same for sequences of a schema
       (when (vector? schema)
-        (str (deferred-tru "value must be an array.") (when (= (count schema) 1)
-                                                        (when-let [message (api-error-message (first schema))]
-                                                          (str " " (deferred-tru "Each {0}" message))))))))
+        (str (deferred-tru "value must be an array.")
+             (when (= (count schema) 1)
+               (when-let [message (api-error-message (first schema))]
+                 (str " " (deferred-tru "Each {0}" message))))))))
 
 
 (defn non-empty
@@ -328,16 +330,49 @@
     (deferred-tru "value must be a valid JSON string.")))
 
 (def Parameter
-  "Schema for a valid Parameter."
-  (with-api-error-message {:id       NonBlankString
-                           s/Keyword s/Any}
-    (deferred-tru "parameter must be a map with String :id key")))
+  "Schema for a valid Parameter.
+  We're not using [metabase.mbql.schema/Parameter] here because this Parameter is meant to be used for
+  Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
+  (with-api-error-message {:id                         NonBlankString
+                           :type                       (s/conditional
+                                                         string?  NonBlankString
+                                                         keyword? s/Keyword)
+                           ;; Allow blank name and slug #15279
+                           (s/optional-key :name)      s/Str
+                           (s/optional-key :slug)      s/Str
+                           (s/optional-key :default)   s/Any
+                           (s/optional-key :sectionId) NonBlankString
+                           s/Keyword                   s/Any}
+    (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping
   "Schema for a valid Parameter Mapping"
-  (with-api-error-message {:parameter_id       NonBlankString
-                           s/Keyword s/Any}
-    (deferred-tru "parameter mapping must be a String :parameter_id key")))
+  (with-api-error-message {:parameter_id             NonBlankString
+                           :target                   s/Any
+                           (s/optional-key :card_id) IntGreaterThanZero
+                           s/Keyword                 s/Any}
+    (deferred-tru "parameter_mapping must be a map with :parameter_id and :target keys")))
+
+(def ^:private TemplateTagSchema
+  ;; For the full schema that we use in MBQL, check [[metabase.mbql.schema/TemplateTagMap]]
+  {(s/either NonBlankString s/Keyword) {:id                            NonBlankString
+                                        :name                          NonBlankString
+                                        :type                          (apply s/enum (map name mbql.s/template-tag-types))
+                                        (s/optional-key :display-name) s/Str
+                                        (s/optional-key :default)      s/Any
+                                        s/Keyword                      s/Any}})
+
+(def TemplateTags
+  "Schema for a valid Template tags."
+  (with-api-error-message
+    (s/constrained
+      TemplateTagSchema
+      (fn [m]
+        (every? (fn [[tag-name tag-definition]]
+                  (= (name tag-name) (:name tag-definition)))
+                m))
+      "keys in template tag map must match the :name of their values")
+   (deferred-tru "template tags must be a map with key of name->TemplateTag.")))
 
 (def EmbeddingParams
   "Schema for a valid map of embedding params."

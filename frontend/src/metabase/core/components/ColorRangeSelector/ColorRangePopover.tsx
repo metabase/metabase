@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { isEqual } from "lodash";
+import _ from "underscore";
 import ColorPill from "metabase/core/components/ColorPill";
 import ColorRangeToggle from "./ColorRangeToggle";
 import {
@@ -118,9 +118,9 @@ const getDefaultColor = (
   colorMapping: Record<string, string[]>,
 ) => {
   return Object.entries(colorMapping).reduce((selection, [color, range]) => {
-    if (isEqual(value, range)) {
+    if (_.isEqual(value, range)) {
       return color;
-    } else if (isEqual(value, [...range].reverse())) {
+    } else if (_.isEqual(value, [...range].reverse())) {
       return color;
     } else {
       return selection;
@@ -137,7 +137,7 @@ const getInverted = (
   colorMapping: Record<string, string[]>,
 ) => {
   return Object.values(colorMapping).some(range => {
-    return isEqual(value, [...range].reverse());
+    return _.isEqual(value, [...range].reverse());
   });
 };
 

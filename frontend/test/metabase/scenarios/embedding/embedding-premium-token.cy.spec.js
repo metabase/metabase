@@ -1,7 +1,8 @@
-import { restore, isOSS } from "__support__/e2e/cypress";
+import { restore, isOSS } from "__support__/e2e/helpers";
 
-const embeddingPage = "/admin/settings/embedding_in_other_applications";
+const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const licensePage = "/admin/settings/premium-embedding-license";
+const upgradeUrl = "https://www.metabase.com/upgrade/";
 
 // A random embedding token with valid format
 const embeddingToken =
@@ -30,15 +31,17 @@ describe(
       );
 
       cy.visit(embeddingPage);
+      cy.findByText("Full-app embedding").click();
 
-      cy.contains("Have a Premium Embedding license?");
-      cy.contains("Activate it here.").click();
+      cy.contains(
+        "With some of our paid plans, you can embed the full Metabase app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers.",
+      );
+      assertLinkMatchesUrl("some of our paid plans,", upgradeUrl);
 
-      cy.location("pathname").should("eq", licensePage);
+      // Old premium embedding page
+      cy.visit(licensePage);
 
-      cy.findByRole("heading")
-        .invoke("text")
-        .should("eq", "Premium embedding");
+      cy.findByRole("heading").invoke("text").should("eq", "Premium embedding");
 
       cy.findByText(discountedWarning);
 
@@ -46,9 +49,7 @@ describe(
         "Enter the token you bought from the Metabase Store below.",
       );
 
-      cy.findByTestId("license-input")
-        .as("tokenInput")
-        .should("be.empty");
+      cy.findByTestId("license-input").as("tokenInput").should("be.empty");
 
       // 1. Try an invalid token format
       cy.get("@tokenInput").type("Hi");
@@ -64,9 +65,7 @@ describe(
       cy.findByText(invalidTokenMessage);
 
       // 2. Try a valid format, but an invalid token
-      cy.get("@tokenInput")
-        .clear()
-        .type(embeddingToken);
+      cy.get("@tokenInput").clear().type(embeddingToken);
       cy.button("Activate").click();
 
       cy.wait("@saveEmbeddingToken").then(({ response: { body } }) => {
@@ -131,4 +130,10 @@ function stubTokenResponses() {
       "valid-thru": "2122-12-30T23:00:00Z",
     },
   });
+}
+
+function assertLinkMatchesUrl(text, url) {
+  cy.findByRole("link", { name: text })
+    .should("have.attr", "href")
+    .and("eq", url);
 }

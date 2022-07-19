@@ -1,4 +1,4 @@
-import { restore, openReviewsTable, modal } from "__support__/e2e/cypress";
+import { restore, openReviewsTable, modal } from "__support__/e2e/helpers";
 
 describe("visual tests > visualizations > table", () => {
   beforeEach(() => {
@@ -16,9 +16,7 @@ describe("visual tests > visualizations > table", () => {
   });
 
   it("ad-hoc with long column expanded", () => {
-    cy.findAllByTestId("expand-column")
-      .eq(0)
-      .click({ force: true });
+    cy.findAllByTestId("expand-column").eq(0).click({ force: true });
 
     cy.percySnapshot();
   });
@@ -39,7 +37,5 @@ function saveQuestion() {
     cy.wait("@saveQuestion");
   });
 
-  modal()
-    .findByText("Not now")
-    .click();
+  modal().findByText("Not now").click();
 }

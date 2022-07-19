@@ -3,7 +3,7 @@ import {
   popover,
   visitQuestionAdhoc,
   openNativeEditor,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -28,12 +28,8 @@ describe("scenarios > visualizations > maps", () => {
     cy.contains("Visualization").click();
     cy.icon("pinmap").click();
 
-    cy.contains("Map type")
-      .next()
-      .click();
-    popover()
-      .contains("Pin map")
-      .click();
+    cy.contains("Map type").next().click();
+    popover().contains("Pin map").click();
 
     // When the settings sidebar opens, both latitude and longitude selects are
     // open. That makes it difficult to select each in Cypress, so we click
@@ -42,19 +38,11 @@ describe("scenarios > visualizations > maps", () => {
     cy.contains("New question").click();
 
     // select both columns
-    cy.contains("Latitude field")
-      .next()
-      .click();
-    popover()
-      .contains("LAT")
-      .click();
+    cy.contains("Latitude field").next().click();
+    popover().contains("LAT").click();
 
-    cy.contains("Longitude field")
-      .next()
-      .click();
-    popover()
-      .contains("LNG")
-      .click();
+    cy.contains("Longitude field").next().click();
+    popover().contains("LNG").click();
 
     // check that a map appears
     cy.get(".leaflet-container");
@@ -80,9 +68,7 @@ describe("scenarios > visualizations > maps", () => {
       { visitQuestion: true },
     );
 
-    cy.findByText("Visualization")
-      .closest(".Button")
-      .as("vizButton");
+    cy.findByText("Visualization").closest(".Button").as("vizButton");
     cy.get("@vizButton").find(".Icon-pinmap");
     cy.get("@vizButton").click();
     cy.findByText("Choose a visualization");
@@ -90,14 +76,7 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByTestId("sidebar-left").as("vizSidebar");
 
     cy.get("@vizSidebar").within(() => {
-      // There should be a unique class for "selected" viz type
-      cy.icon("pinmap")
-        .parent()
-        .should("have.class", "text-white");
-
-      cy.findByText("Map")
-        .parent()
-        .should("have.css", "opacity", "1");
+      cy.findByText("Map").parent().should("have.css", "opacity", "1");
     });
   });
 

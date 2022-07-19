@@ -5,7 +5,7 @@ import {
   enterCustomColumnDetails,
   visualize,
   summarize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const CC_NAME = "Math";
 describe("issue 13289", () => {
@@ -30,13 +30,9 @@ describe("issue 13289", () => {
 
     cy.findByText("Pick a column to group by").click();
 
-    popover()
-      .findByText(CC_NAME)
-      .click();
+    popover().findByText(CC_NAME).click();
 
-    cy.icon("add")
-      .last()
-      .click();
+    cy.icon("add").last().click();
 
     popover().within(() => {
       cy.findByText("Created At").click();

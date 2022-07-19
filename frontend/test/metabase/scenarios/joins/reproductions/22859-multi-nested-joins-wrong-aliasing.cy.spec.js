@@ -4,7 +4,7 @@ import {
   visualize,
   startNewQuestion,
   openOrdersTable,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -48,13 +48,9 @@ describe.skip("issue 22859 - multiple levels of nesting", () => {
       cy.findByText(questionDetails.name).click();
     });
 
-    popover()
-      .contains("Product ID")
-      .click();
+    popover().contains("Product ID").click();
 
-    popover()
-      .contains("Product ID")
-      .click();
+    popover().contains("Product ID").click();
 
     visualize();
 
@@ -92,10 +88,7 @@ describe.skip("issue 22859 - multiple levels of nesting", () => {
 
 function saveQuestion(name) {
   cy.findByText("Save").click();
-  cy.findByDisplayValue("Orders")
-    .clear()
-    .type(name)
-    .blur();
+  cy.findByDisplayValue("Orders").clear().type(name).blur();
 
   cy.button("Save").click();
   cy.button("Not now").click();

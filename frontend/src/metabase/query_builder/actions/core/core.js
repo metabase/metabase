@@ -26,6 +26,11 @@ import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+import {
+  getTemplateTagsForParameters,
+  getTemplateTagParameters,
+} from "metabase/parameters/utils/cards";
+
 import { trackNewQuestionSaved } from "../../analytics";
 import {
   getCard,
@@ -307,6 +312,14 @@ export const updateQuestion = (
       );
     }
 
+    const newDatasetQuery = newQuestion.query().datasetQuery();
+    // Sync card's parameters with the template tags;
+    if (newDatasetQuery.type === "native") {
+      const templateTags = getTemplateTagsForParameters(newQuestion.card());
+      const parameters = getTemplateTagParameters(templateTags);
+      newQuestion = newQuestion.setParameters(parameters);
+    }
+
     // Replace the current question with a new one
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
@@ -363,13 +376,11 @@ export const updateQuestion = (
 };
 
 // DEPRECATED, still used in a couple places
-export const setDatasetQuery = (datasetQuery, options) => (
-  dispatch,
-  getState,
-) => {
-  const question = getQuestion(getState());
-  dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), options));
-};
+export const setDatasetQuery =
+  (datasetQuery, options) => (dispatch, getState) => {
+    const question = getQuestion(getState());
+    dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), options));
+  };
 
 export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
 export const apiCreateQuestion = question => {

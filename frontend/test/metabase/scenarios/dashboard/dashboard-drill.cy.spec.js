@@ -5,7 +5,7 @@ import {
   filterWidget,
   showDashboardCardActions,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -42,16 +42,12 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     // set the url and text template
     modal().within(() => {
-      cy.get("input")
-        .first()
-        .type("/foo/{{my_number}}/{{my_param}}", {
-          parseSpecialCharSequences: false,
-        });
-      cy.get("input")
-        .last()
-        .type("column value: {{my_number}}", {
-          parseSpecialCharSequences: false,
-        });
+      cy.get("input").first().type("/foo/{{my_number}}/{{my_param}}", {
+        parseSpecialCharSequences: false,
+      });
+      cy.get("input").last().type("column value: {{my_number}}", {
+        parseSpecialCharSequences: false,
+      });
       cy.findByText("Done").click();
     });
 
@@ -146,9 +142,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       },
     );
 
-    cy.findAllByText("18")
-      .first()
-      .click();
+    cy.findAllByText("18").first().click();
     cy.location("pathname").should("eq", "/test/18/CO/Organic");
   });
 
@@ -172,9 +166,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
     popover().within(() => cy.findByText("My Param").click());
 
     // set the text template
-    cy.findByPlaceholderText(
-      "E.x. Details for {{Column Name}}",
-    ).type("num: {{my_number}}", { parseSpecialCharSequences: false });
+    cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
+      "num: {{my_number}}",
+      { parseSpecialCharSequences: false },
+    );
     cy.findByText("Save").click();
 
     // wait to leave editing mode and set a param value
@@ -225,9 +220,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
     popover().within(() => cy.findByText("MY_STRING").click());
 
     // set the text template
-    cy.findByPlaceholderText(
-      "E.x. Details for {{Column Name}}",
-    ).type("text: {{my_string}}", { parseSpecialCharSequences: false });
+    cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
+      "text: {{my_string}}",
+      { parseSpecialCharSequences: false },
+    );
     cy.findByText("Save").click();
 
     // click on table value
@@ -256,12 +252,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByText("URL").click();
 
     modal().within(() => {
-      cy.get("input")
-        .first()
-        .type("/dashboard/2?my_param=Aaron Hand");
-      cy.get("input")
-        .last()
-        .type("Click behavior");
+      cy.get("input").first().type("/dashboard/2?my_param=Aaron Hand");
+      cy.get("input").last().type("Click behavior");
       cy.findByText("Done").click();
     });
 
@@ -421,15 +413,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     visitDashboard(1);
-    cy.findAllByTestId("column-header")
-      .contains("ID")
-      .click()
-      .click();
+    cy.findAllByTestId("column-header").contains("ID").click().click();
 
-    cy.get(".Table-ID")
-      .contains(PK_VALUE)
-      .first()
-      .click();
+    cy.get(".Table-ID").contains(PK_VALUE).first().click();
 
     cy.wait("@dataset");
 
@@ -823,18 +809,14 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
           visitDashboard(DASHBOARD_ID);
 
-          cy.get(".bar")
-            .first()
-            .trigger("mousemove");
+          cy.get(".bar").first().trigger("mousemove");
 
           popover().within(() => {
             testPairedTooltipValues("AXIS", "1");
             testPairedTooltipValues("VALUE", "5");
           });
 
-          cy.get(".bar")
-            .last()
-            .trigger("mousemove");
+          cy.get(".bar").last().trigger("mousemove");
 
           popover().within(() => {
             testPairedTooltipValues("AXIS", "1");
@@ -936,9 +918,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     function setFilterValue(filterName) {
-      filterWidget()
-        .contains(filterName)
-        .click();
+      filterWidget().contains(filterName).click();
       cy.findByPlaceholderText("Enter an ID").type("1,2,");
       cy.button("Add filter").click();
       cy.findByText("2 selections");
@@ -1045,15 +1025,10 @@ function setParamValue(paramName, text) {
 }
 
 function drillThroughCardTitle(title) {
-  cy.findByTestId("legend-caption")
-    .contains(title)
-    .click();
+  cy.findByTestId("legend-caption").contains(title).click();
   cy.contains(`Started from ${title}`);
 }
 
 function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1)
-    .closest("td")
-    .siblings("td")
-    .findByText(val2);
+  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }

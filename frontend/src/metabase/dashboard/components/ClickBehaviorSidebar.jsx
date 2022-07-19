@@ -326,12 +326,8 @@ class ClickBehaviorSidebar extends React.Component {
   };
 
   render() {
-    const {
-      dashboard,
-      dashcard,
-      parameters,
-      hideClickBehaviorSidebar,
-    } = this.props;
+    const { dashboard, dashcard, parameters, hideClickBehaviorSidebar } =
+      this.props;
     const { selectedColumn } = this.state;
 
     const clickBehavior = this.getClickBehavior() || { type: "menu" };

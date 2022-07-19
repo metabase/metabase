@@ -10,19 +10,23 @@ import { t } from "ttag";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
-  getHasCustomBranding,
   getHasCustomColors,
-  getHasCustomLogo,
+  getLoadingMessage,
 } from "metabase-enterprise/settings/selectors";
 import MetabaseSettings from "metabase/lib/settings";
 
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
+import FontWidget from "./components/FontWidget";
+import FontFilesWidget from "./components/FontFilesWidget";
+import LighthouseToggleWidget from "./components/LighthouseToggleWidget";
+import MetabotToggleWidget from "./components/MetabotToggleWidget";
 import LogoUpload from "./components/LogoUpload";
 import LogoIcon from "./components/LogoIcon";
 import {
   updateColors,
   enabledApplicationNameReplacement,
 } from "./lib/whitelabel";
+import { getLoadingMessageOptions } from "./lib/loading-message";
 
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));
@@ -38,17 +42,12 @@ if (hasPremiumFeature("whitelabel")) {
         {
           key: "application-font",
           display_name: t`Font`,
-          type: "select",
-          options: MetabaseSettings.get("available-fonts").map(font => ({
-            name: font,
-            value: font,
-          })),
-          defaultValue: "Lato",
-          onChanged: (oldFont, newFont) => {
-            if (oldFont !== newFont) {
-              window.location.reload();
-            }
-          },
+          widget: FontWidget,
+        },
+        {
+          key: "application-font-files",
+          widget: FontFilesWidget,
+          getHidden: settings => settings["application-font-files"] == null,
         },
         {
           key: "application-colors",
@@ -72,13 +71,37 @@ if (hasPremiumFeature("whitelabel")) {
           type: "string",
           placeholder: "/",
         },
+        {
+          key: "loading-message",
+          display_name: t`Loading message`,
+          type: "select",
+          options: getLoadingMessageOptions(),
+          defaultValue: "doing-science",
+        },
+        {
+          key: "show-metabot",
+          display_name: t`Metabot`,
+          description: null,
+          type: "boolean",
+          widget: MetabotToggleWidget,
+          defaultValue: true,
+        },
+        {
+          key: "show-lighthouse-illustration",
+          display_name: t`Lighthouse illustration`,
+          description: null,
+          type: "boolean",
+          widget: LighthouseToggleWidget,
+          defaultValue: true,
+        },
       ],
     },
     ...sections,
   }));
 
-  PLUGIN_APP_INIT_FUCTIONS.push(({ root }) => {
+  PLUGIN_APP_INIT_FUCTIONS.push(() => {
     updateColors();
+    MetabaseSettings.on("application-colors", updateColors);
   });
 
   enabledApplicationNameReplacement();
@@ -88,6 +111,5 @@ if (hasPremiumFeature("whitelabel")) {
 }
 
 // these selectors control whitelabeling UI
-PLUGIN_SELECTORS.getHasCustomLogo = getHasCustomLogo;
 PLUGIN_SELECTORS.getHasCustomColors = getHasCustomColors;
-PLUGIN_SELECTORS.getHasCustomBranding = getHasCustomBranding;
+PLUGIN_SELECTORS.getLoadingMessage = getLoadingMessage;

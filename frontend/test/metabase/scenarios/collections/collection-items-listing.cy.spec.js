@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -230,9 +230,7 @@ describe("scenarios > collection items listing", () => {
 
 function toggleSortingFor(columnName) {
   const testId = "items-table-head";
-  cy.findByTestId(testId)
-    .findByText(columnName)
-    .click();
+  cy.findByTestId(testId).findByText(columnName).click();
 }
 
 function getAllCollectionItemNames() {
