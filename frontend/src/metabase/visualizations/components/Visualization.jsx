@@ -399,7 +399,7 @@ class Visualization extends React.PureComponent {
       <span className="flex align-center">
         {isSlow && !loading && (
           <VisualizationSlowSpinner
-            className={"Visualization-slow-spinner"}
+            className="Visualization-slow-spinner"
             size={18}
             isUsuallySlow={isSlow === "usually-slow"}
           />
