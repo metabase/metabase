@@ -7,23 +7,7 @@ const { spawn } = require("child_process");
 
 const fetch = require("isomorphic-fetch");
 
-const generateTempDbPath = () =>
-  path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
-
-const port = 4000;
-
 const BackendResource = createSharedResource("BackendResource", {
-  create({ dbKey }) {
-    const dbFile = generateTempDbPath();
-    const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
-
-    return {
-      dbKey: absoluteDbKey,
-      dbFile: dbFile,
-      host: `http://localhost:${port}`,
-      port: port,
-    };
-  },
   async start(server) {
     if (!server.process) {
       if (server.dbKey !== server.dbFile) {
@@ -138,10 +122,7 @@ async function isReady(host) {
   return false;
 }
 
-function createSharedResource(
-  resourceName,
-  { defaultOptions, create, start, stop },
-) {
+function createSharedResource(resourceName, { defaultOptions, start, stop }) {
   const entriesByKey = new Map();
   const entriesByResource = new Map();
 
@@ -156,6 +137,22 @@ function createSharedResource(
     }
   }
 
+  function createServerConfig({ dbKey }) {
+    const generateTempDbPath = () =>
+      path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
+
+    const port = 4000;
+    const dbFile = generateTempDbPath();
+    const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
+
+    return {
+      dbKey: absoluteDbKey,
+      dbFile: dbFile,
+      host: `http://localhost:${port}`,
+      port: port,
+    };
+  }
+
   return {
     get(options = defaultOptions) {
       const dbKey = options;
@@ -165,7 +162,7 @@ function createSharedResource(
         entry = {
           key: key,
           references: 0,
-          resource: create(options),
+          resource: createServerConfig(options),
         };
         entriesByKey.set(entry.key, entry);
         entriesByResource.set(entry.resource, entry);
