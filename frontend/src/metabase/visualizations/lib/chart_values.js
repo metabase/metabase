@@ -61,10 +61,7 @@ export function onRenderValueLabels(
   const barCount = displays.filter(isBarLike).length;
   if (barCount > 0) {
     barWidth = parseFloat(
-      chart
-        .svg()
-        .select("rect.bar")[0][0]
-        .getAttribute("width"),
+      chart.svg().select("rect.bar")[0][0].getAttribute("width"),
     );
   }
 
@@ -110,20 +107,18 @@ export function onRenderValueLabels(
       .flatten(1)
       .value();
 
-    data = data
-      .map(([x, y, step], i) => {
-        const isLocalMin =
-          // first point or prior is greater than y
-          (i < step || data[i - step][1] > y) &&
-          // last point point or next is greater than y
-          (i >= data.length - step || data[i + step][1] > y);
-        const showLabelBelow = isLocalMin && display === "line";
-        const rotated = barCount > 1 && isBarLike(display) && barWidth < 40;
-        const hidden =
-          !showAll && barCount > 1 && isBarLike(display) && barWidth < 20;
-        return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
-      })
-      .filter(d => !(display === "bar" && d.y === 0));
+    data = data.map(([x, y, step], i) => {
+      const isLocalMin =
+        // first point or prior is greater than y
+        (i < step || data[i - step][1] > y) &&
+        // last point point or next is greater than y
+        (i >= data.length - step || data[i + step][1] > y);
+      const showLabelBelow = isLocalMin && display === "line";
+      const rotated = barCount > 1 && isBarLike(display) && barWidth < 40;
+      const hidden =
+        !showAll && barCount > 1 && isBarLike(display) && barWidth < 20;
+      return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
+    });
 
     if (display === "waterfall" && data.length > 0) {
       let total = 0;
@@ -377,10 +372,5 @@ export function onRenderValueLabels(
     ),
   );
 
-  moveToFront(
-    chart
-      .svg()
-      .select(".value-labels")
-      .node().parentNode,
-  );
+  moveToFront(chart.svg().select(".value-labels").node().parentNode);
 }

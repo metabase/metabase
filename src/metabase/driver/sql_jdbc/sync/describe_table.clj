@@ -208,6 +208,11 @@
   "Number of rows to sample for describe-nested-field-columns"
   500)
 
+(def ^:dynamic *nested-field-column-max-row-length*
+  "Max string length for a row for nested field column before we just give up on parsing it.
+  Marked as mutable because we mutate it for tests."
+  50000)
+
 (defn- flattened-row [field-name row]
   (letfn [(flatten-row [row path]
             (lazy-seq
@@ -237,9 +242,15 @@
                (into {} (map (fn [[k v]] [k (type-by-parsing-string v)]) flat-row))))))
 
 (defn- describe-json-xform [member]
-  ((comp (map #(for [[k v] %] [k (json/parse-string v)]))
+  ((comp (map #(for [[k v] %
+                     :when (< (count v) *nested-field-column-max-row-length*)]
+                 [k (json/parse-string v)]))
          (map #(into {} %))
          (map row->types)) member))
+
+(def ^:const max-nested-field-columns
+  "Maximum number of nested field columns."
+  100)
 
 (defn- describe-json-rf
   "Reducing function that takes a bunch of maps from row->types,
@@ -286,13 +297,18 @@
   {java.lang.String                :type/Text
    ;; JSON itself has the single number type, but Java serde of JSON is stricter
    java.lang.Long                  :type/Integer
+   clojure.lang.BigInt             :type/BigInteger
+   java.math.BigInteger            :type/BigInteger
    java.lang.Integer               :type/Integer
    java.lang.Double                :type/Float
+   java.lang.Float                 :type/Float
+   java.math.BigDecimal            :type/Decimal
    java.lang.Number                :type/Number
    java.lang.Boolean               :type/Boolean
    java.time.LocalDateTime         :type/DateTime
    clojure.lang.PersistentVector   :type/Array
-   clojure.lang.PersistentArrayMap :type/Structured})
+   clojure.lang.PersistentArrayMap :type/Structured
+   clojure.lang.PersistentHashMap  :type/Structured})
 
 (def db-type-map
   "Map from MBQL types to database types.
@@ -301,8 +317,18 @@
   although as of writing this is just geared towards Postgres types"
   {:type/Text       "text"
    :type/Integer    "integer"
+   ;; You might think that the ordinary 'bigint' type in Postgres and MySQL should be this.
+   ;; However, Bigint in those DB's maxes out at 2 ^ 64.
+   ;; JSON, like Javascript itself, will happily represent 1.8 * (10^308),
+   ;; Losing digits merrily along the way.
+   ;; We can't really trust anyone to use MAX_SAFE_INTEGER, in JSON-land..
+   ;; So really without forcing arbitrary precision ('decimal' type),
+   ;; we have too many numerical regimes to test.
+   ;; (#22732) was basically the consequence of missing one.
+   :type/BigInteger "decimal"
    :type/Float      "double precision"
    :type/Number     "double precision"
+   :type/Decimal    "decimal"
    :type/Boolean    "boolean"
    :type/DateTime   "timestamp"
    :type/Array      "text"
@@ -323,7 +349,6 @@
         field-hash   (apply hash-set (filter some? valid-fields))]
     field-hash))
 
-
 ;; The name's nested field columns but what the people wanted (issue #708)
 ;; was JSON so what they're getting is JSON.
 (defn describe-nested-field-columns
@@ -337,11 +362,14 @@
       (if (nil? (seq json-fields))
         #{}
         (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
-              table-identifier (apply hx/identifier :field table-identifier-info)
+              table-identifier (apply hx/identifier :table table-identifier-info)
+              quote-type       (case driver :postgres :ansi :mysql :mysql)
               sql-args         (hsql/format {:select json-field-names
                                              :from   [table-identifier]
-                                             :limit  nested-field-sample-limit} {:quoting :ansi})
-              query            (jdbc/reducible-query spec sql-args)
+                                             :limit  nested-field-sample-limit} :quoting quote-type)
+              query            (jdbc/reducible-query spec sql-args {:identifiers identity})
               field-types      (transduce describe-json-xform describe-json-rf query)
               fields           (field-types->fields field-types)]
-          fields)))))
+          (if (> (count fields) max-nested-field-columns)
+            #{}
+            fields))))))

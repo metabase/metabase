@@ -36,7 +36,7 @@
 
 ace.require(
   ["ace/lib/oop", "ace/mode/behaviour", "ace/token_iterator", "ace/lib/lang"],
-  function(oop, { Behaviour }, { TokenIterator }, lang) {
+  function (oop, { Behaviour }, { TokenIterator }, lang) {
     const SAFE_INSERT_IN_TOKENS = [
       "text",
       "paren.rparen",
@@ -51,7 +51,7 @@ ace.require(
 
     let context;
     let contextCache = {};
-    const initContext = function(editor) {
+    const initContext = function (editor) {
       let id = -1;
       if (editor.multiSelect) {
         id = editor.selection.index;
@@ -73,7 +73,7 @@ ace.require(
       };
     };
 
-    const getWrapped = function(selection, selected, opening, closing) {
+    const getWrapped = function (selection, selected, opening, closing) {
       const rowDiff = selection.end.row - selection.start.row;
       return {
         text: opening + selected + closing,
@@ -86,182 +86,180 @@ ace.require(
       };
     };
 
-    const SQLBehaviour = function() {
+    const SQLBehaviour = function () {
       function createInsertDeletePair(name, opening, closing) {
-        this.add(name, "insertion", function(
-          state,
-          action,
-          editor,
-          session,
-          text,
-        ) {
-          if (text === opening) {
-            initContext(editor);
-            const selection = editor.getSelectionRange();
-            const selected = session.doc.getTextRange(selection);
-            if (selected !== "" && editor.getWrapBehavioursEnabled()) {
-              return getWrapped(selection, selected, opening, closing);
-            } else if (SQLBehaviour.isSaneInsertion(editor, session)) {
-              SQLBehaviour.recordAutoInsert(editor, session, closing);
-              return {
-                text: opening + closing,
-                selection: [1, 1],
-              };
-            }
-          } else if (text === closing) {
-            initContext(editor);
-            const cursor = editor.getCursorPosition();
-            const line = session.doc.getLine(cursor.row);
-            const rightChar = line.substring(cursor.column, cursor.column + 1);
-            if (rightChar === closing) {
-              const matching = session.$findOpeningBracket(closing, {
-                column: cursor.column + 1,
-                row: cursor.row,
-              });
-              if (
-                matching !== null &&
-                SQLBehaviour.isAutoInsertedClosing(cursor, line, text)
-              ) {
-                SQLBehaviour.popAutoInsertedClosing();
+        this.add(
+          name,
+          "insertion",
+          function (state, action, editor, session, text) {
+            if (text === opening) {
+              initContext(editor);
+              const selection = editor.getSelectionRange();
+              const selected = session.doc.getTextRange(selection);
+              if (selected !== "" && editor.getWrapBehavioursEnabled()) {
+                return getWrapped(selection, selected, opening, closing);
+              } else if (SQLBehaviour.isSaneInsertion(editor, session)) {
+                SQLBehaviour.recordAutoInsert(editor, session, closing);
                 return {
-                  text: "",
+                  text: opening + closing,
                   selection: [1, 1],
                 };
               }
+            } else if (text === closing) {
+              initContext(editor);
+              const cursor = editor.getCursorPosition();
+              const line = session.doc.getLine(cursor.row);
+              const rightChar = line.substring(
+                cursor.column,
+                cursor.column + 1,
+              );
+              if (rightChar === closing) {
+                const matching = session.$findOpeningBracket(closing, {
+                  column: cursor.column + 1,
+                  row: cursor.row,
+                });
+                if (
+                  matching !== null &&
+                  SQLBehaviour.isAutoInsertedClosing(cursor, line, text)
+                ) {
+                  SQLBehaviour.popAutoInsertedClosing();
+                  return {
+                    text: "",
+                    selection: [1, 1],
+                  };
+                }
+              }
             }
-          }
-        });
+          },
+        );
 
-        this.add(name, "deletion", function(
-          state,
-          action,
-          editor,
-          session,
-          range,
-        ) {
-          const selected = session.doc.getTextRange(range);
-          if (!range.isMultiLine() && selected === opening) {
-            initContext(editor);
-            const line = session.doc.getLine(range.start.row);
-            const rightChar = line.substring(
-              range.start.column + 1,
-              range.start.column + 2,
-            );
-            if (rightChar === closing) {
-              range.end.column++;
-              return range;
+        this.add(
+          name,
+          "deletion",
+          function (state, action, editor, session, range) {
+            const selected = session.doc.getTextRange(range);
+            if (!range.isMultiLine() && selected === opening) {
+              initContext(editor);
+              const line = session.doc.getLine(range.start.row);
+              const rightChar = line.substring(
+                range.start.column + 1,
+                range.start.column + 2,
+              );
+              if (rightChar === closing) {
+                range.end.column++;
+                return range;
+              }
             }
-          }
-        });
+          },
+        );
       }
 
       createInsertDeletePair.call(this, "braces", "{", "}");
       createInsertDeletePair.call(this, "parens", "(", ")");
       createInsertDeletePair.call(this, "brackets", "[", "]");
 
-      this.add("string_dquotes", "insertion", function(
-        state,
-        action,
-        editor,
-        session,
-        text,
-      ) {
-        if (text === '"' || text === "'") {
-          if (
-            this.lineCommentStart &&
-            this.lineCommentStart.indexOf(text) !== -1
-          ) {
-            return;
-          }
-          initContext(editor);
-          const quote = text;
-          const selection = editor.getSelectionRange();
-          const selected = session.doc.getTextRange(selection);
-          if (
-            selected !== "" &&
-            selected !== "'" &&
-            selected !== '"' &&
-            editor.getWrapBehavioursEnabled()
-          ) {
-            return getWrapped(selection, selected, quote, quote);
-          } else if (!selected) {
-            const cursor = editor.getCursorPosition();
-            const line = session.doc.getLine(cursor.row);
-            const leftChar = line.substring(cursor.column - 1, cursor.column);
-            const rightChar = line.substring(cursor.column, cursor.column + 1);
-
-            const token = session.getTokenAt(cursor.row, cursor.column);
-            const rightToken = session.getTokenAt(
-              cursor.row,
-              cursor.column + 1,
-            );
-            // We're escaped.
-            if (leftChar === "\\" && token && /escape/.test(token.type)) {
-              return null;
+      this.add(
+        "string_dquotes",
+        "insertion",
+        function (state, action, editor, session, text) {
+          if (text === '"' || text === "'") {
+            if (
+              this.lineCommentStart &&
+              this.lineCommentStart.indexOf(text) !== -1
+            ) {
+              return;
             }
+            initContext(editor);
+            const quote = text;
+            const selection = editor.getSelectionRange();
+            const selected = session.doc.getTextRange(selection);
+            if (
+              selected !== "" &&
+              selected !== "'" &&
+              selected !== '"' &&
+              editor.getWrapBehavioursEnabled()
+            ) {
+              return getWrapped(selection, selected, quote, quote);
+            } else if (!selected) {
+              const cursor = editor.getCursorPosition();
+              const line = session.doc.getLine(cursor.row);
+              const leftChar = line.substring(cursor.column - 1, cursor.column);
+              const rightChar = line.substring(
+                cursor.column,
+                cursor.column + 1,
+              );
 
-            const stringBefore = token && /string|escape/.test(token.type);
-            const stringAfter =
-              !rightToken || /string|escape/.test(rightToken.type);
-
-            let pair;
-            if (rightChar === quote) {
-              pair = stringBefore !== stringAfter;
-              if (pair && /string\.end/.test(rightToken.type)) {
-                pair = false;
+              const token = session.getTokenAt(cursor.row, cursor.column);
+              const rightToken = session.getTokenAt(
+                cursor.row,
+                cursor.column + 1,
+              );
+              // We're escaped.
+              if (leftChar === "\\" && token && /escape/.test(token.type)) {
+                return null;
               }
-            } else {
-              if (stringBefore && !stringAfter) {
-                return null;
-              } // wrap string with different quote
-              if (stringBefore && stringAfter) {
-                return null;
-              } // do not pair quotes inside strings
-              const wordRe = session.$mode.tokenRe;
-              wordRe.lastIndex = 0;
-              const isWordBefore = wordRe.test(leftChar);
-              wordRe.lastIndex = 0;
-              const isWordAfter = wordRe.test(leftChar);
-              if (isWordBefore || isWordAfter) {
-                return null;
-              } // before or after alphanumeric
-              if (rightChar && !/[\s;,.})\]\\]/.test(rightChar)) {
-                return null;
-              } // there is rightChar and it isn't closing
-              pair = true;
-            }
-            return {
-              text: pair ? quote + quote : "",
-              selection: [1, 1],
-            };
-          }
-        }
-      });
 
-      this.add("string_dquotes", "deletion", function(
-        state,
-        action,
-        editor,
-        session,
-        range,
-      ) {
-        const selected = session.doc.getTextRange(range);
-        if (!range.isMultiLine() && (selected === '"' || selected === "'")) {
-          initContext(editor);
-          const line = session.doc.getLine(range.start.row);
-          const rightChar = line.substring(
-            range.start.column + 1,
-            range.start.column + 2,
-          );
-          if (rightChar === selected) {
-            range.end.column++;
-            return range;
+              const stringBefore = token && /string|escape/.test(token.type);
+              const stringAfter =
+                !rightToken || /string|escape/.test(rightToken.type);
+
+              let pair;
+              if (rightChar === quote) {
+                pair = stringBefore !== stringAfter;
+                if (pair && /string\.end/.test(rightToken.type)) {
+                  pair = false;
+                }
+              } else {
+                if (stringBefore && !stringAfter) {
+                  return null;
+                } // wrap string with different quote
+                if (stringBefore && stringAfter) {
+                  return null;
+                } // do not pair quotes inside strings
+                const wordRe = session.$mode.tokenRe;
+                wordRe.lastIndex = 0;
+                const isWordBefore = wordRe.test(leftChar);
+                wordRe.lastIndex = 0;
+                const isWordAfter = wordRe.test(leftChar);
+                if (isWordBefore || isWordAfter) {
+                  return null;
+                } // before or after alphanumeric
+                if (rightChar && !/[\s;,.})\]\\]/.test(rightChar)) {
+                  return null;
+                } // there is rightChar and it isn't closing
+                pair = true;
+              }
+              return {
+                text: pair ? quote + quote : "",
+                selection: [1, 1],
+              };
+            }
           }
-        }
-      });
+        },
+      );
+
+      this.add(
+        "string_dquotes",
+        "deletion",
+        function (state, action, editor, session, range) {
+          const selected = session.doc.getTextRange(range);
+          if (!range.isMultiLine() && (selected === '"' || selected === "'")) {
+            initContext(editor);
+            const line = session.doc.getLine(range.start.row);
+            const rightChar = line.substring(
+              range.start.column + 1,
+              range.start.column + 2,
+            );
+            if (rightChar === selected) {
+              range.end.column++;
+              return range;
+            }
+          }
+        },
+      );
     };
 
-    SQLBehaviour.isSaneInsertion = function(editor, session) {
+    SQLBehaviour.isSaneInsertion = function (editor, session) {
       const cursor = editor.getCursorPosition();
       const iterator = new TokenIterator(session, cursor.row, cursor.column);
 
@@ -299,11 +297,11 @@ ace.require(
       );
     };
 
-    SQLBehaviour.$matchTokenType = function(token, types) {
+    SQLBehaviour.$matchTokenType = function (token, types) {
       return types.indexOf(token.type || token) > -1;
     };
 
-    SQLBehaviour.recordAutoInsert = function(editor, session, bracket) {
+    SQLBehaviour.recordAutoInsert = function (editor, session, bracket) {
       const cursor = editor.getCursorPosition();
       const line = session.doc.getLine(cursor.row);
       // Reset previous state if text or context changed too much
@@ -321,7 +319,7 @@ ace.require(
       context.autoInsertedBrackets++;
     };
 
-    SQLBehaviour.recordMaybeInsert = function(editor, session, bracket) {
+    SQLBehaviour.recordMaybeInsert = function (editor, session, bracket) {
       const cursor = editor.getCursorPosition();
       const line = session.doc.getLine(cursor.row);
       if (!this.isMaybeInsertedClosing(cursor, line)) {
@@ -333,7 +331,7 @@ ace.require(
       context.maybeInsertedBrackets++;
     };
 
-    SQLBehaviour.isAutoInsertedClosing = function(cursor, line, bracket) {
+    SQLBehaviour.isAutoInsertedClosing = function (cursor, line, bracket) {
       return (
         context.autoInsertedBrackets > 0 &&
         cursor.row === context.autoInsertedRow &&
@@ -342,7 +340,7 @@ ace.require(
       );
     };
 
-    SQLBehaviour.isMaybeInsertedClosing = function(cursor, line) {
+    SQLBehaviour.isMaybeInsertedClosing = function (cursor, line) {
       return (
         context.maybeInsertedBrackets > 0 &&
         cursor.row === context.maybeInsertedRow &&
@@ -351,12 +349,12 @@ ace.require(
       );
     };
 
-    SQLBehaviour.popAutoInsertedClosing = function() {
+    SQLBehaviour.popAutoInsertedClosing = function () {
       context.autoInsertedLineEnd = context.autoInsertedLineEnd.substr(1);
       context.autoInsertedBrackets--;
     };
 
-    SQLBehaviour.clearMaybeInsertedClosing = function() {
+    SQLBehaviour.clearMaybeInsertedClosing = function () {
       if (context) {
         context.maybeInsertedBrackets = 0;
         context.maybeInsertedRow = -1;

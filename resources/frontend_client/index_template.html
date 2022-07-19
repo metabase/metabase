@@ -27,8 +27,12 @@
       {{{bootstrapJSON}}}
     </script>
 
-    <script type="application/json" id="_metabaseLocalization">
-      {{{localizationJSON}}}
+    <script type="application/json" id="_metabaseUserLocalization">
+      {{{userLocalizationJSON}}}
+    </script>
+
+    <script type="application/json" id="_metabaseSiteLocalization">
+      {{{siteLocalizationJSON}}}
     </script>
 
     <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.server.middleware.security -->
@@ -38,10 +42,6 @@
   <body>
     <div id="root"></div>
 
-    <!-- If Google Auth is enabled load the Google Auth JS lib -->
-    {{#enableGoogleAuth}}
-      <script type="text/javascript" src="https://apis.google.com/js/api:client.js" async></script>
-    {{/enableGoogleAuth}}
 
     <!-- Google Analytics -->
     <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.server.middleware.security -->

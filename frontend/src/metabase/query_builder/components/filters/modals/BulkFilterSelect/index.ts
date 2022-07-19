@@ -1,1 +1,1 @@
-export { default } from "./BulkFilterSelect";
+export * from "./BulkFilterSelect";

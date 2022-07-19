@@ -5,7 +5,7 @@ import {
   saveDashboard,
   editDashboard,
   setFilter,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const questionDetails = {
   name: "22524 question",
@@ -39,9 +39,7 @@ describe("issue 22524", () => {
     setFilter("Text or Category", "Dropdown");
 
     cy.findByText("Select…").click();
-    popover()
-      .contains("City")
-      .click();
+    popover().contains("City").click();
 
     saveDashboard();
 
@@ -58,9 +56,7 @@ describe("issue 22524", () => {
       });
 
     // Set parameter value
-    cy.findByPlaceholderText("Text")
-      .clear()
-      .type("Rye{enter}");
+    cy.findByPlaceholderText("Text").clear().type("Rye{enter}");
 
     // Check results
     cy.findByText("2-7900 Cuerno Verde Road");

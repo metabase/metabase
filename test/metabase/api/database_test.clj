@@ -87,7 +87,7 @@
                    (dissoc :schedules)))))
 
       (testing "Superusers should see DB details"
-        (is (= (db-details)
+        (is (= (assoc (db-details) :can-manage true)
                (-> (mt/user-http-request :crowberto :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules))))))
 
@@ -174,7 +174,29 @@
                                              :cache_field_values monthly-schedule}})]
         (is (:let-user-control-scheduling details))
         (is (= "monthly" (-> cache_field_values_schedule u.cron/cron-string->schedule-map :schedule_type)))
-        (is (= "monthly" (-> metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))))))
+        (is (= "monthly" (-> metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))))
+    (testing "well known connection errors are reported properly"
+      (let [dbname (mt/random-name)
+            exception (Exception. (format "FATAL: database \"%s\" does not exist" dbname))]
+        (is (= {:errors {:dbname "check your database name settings"},
+                :message "Looks like the Database name is incorrect."}
+               (with-redefs [driver/can-connect? (fn [& _] (throw exception))]
+                 (mt/user-http-request :crowberto :post 400 "database"
+                                       {:name         dbname
+                                        :engine       "postgres"
+                                        :details      {:host "localhost", :port 5432
+                                                       :dbname "fakedb", :user "rastacan"}}))))))
+    (testing "unknown connection errors are reported properly"
+      (let [exception (Exception. "Unknown driver message" (java.net.ConnectException. "Failed!"))]
+        (is (= {:errors  {:host "check your host settings"
+                          :port "check your port settings"}
+                :message "Hmm, we couldn't connect to the database. Make sure your Host and Port settings are correct"}
+               (with-redefs [driver/available?   (constantly true)
+                             driver/can-connect? (fn [& _] (throw exception))]
+                 (mt/user-http-request :crowberto :post 400 "database"
+                                       {:name    (mt/random-name)
+                                        :engine  (u/qualified-name ::test-driver)
+                                        :details {:db "my_db"}}))))))))
 
 (deftest delete-database-test
   (testing "DELETE /api/database/:id"
@@ -199,8 +221,7 @@
               update! (fn [expected-status-code]
                         (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" db-id) updates))]
           (testing "Should check that connection details are valid on save"
-            (is (= false
-                   (:valid (update! 400)))))
+            (is (string? (:message (update! 400)))))
           (testing "If connection details are valid, we should be able to update the Database"
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
@@ -711,6 +732,18 @@
             (is (= true
                    (deref analyze-called? long-timeout :analyze-never-called)))))))))
 
+(deftest dismiss-spinner-test
+  (testing "Can we dismiss the spinner? (#20863)"
+    (mt/with-temp* [Database [db    {:engine "h2", :details (:details (mt/db)) :initial_sync_status "incomplete"}]
+                    Table    [table {:db_id (u/the-id db) :initial_sync_status "incomplete"}]]
+      (mt/user-http-request :crowberto :post 200 (format "database/%d/dismiss_spinner" (u/the-id db)))
+      (testing "dismissed db spinner"
+        (is (= "complete" (:initial_sync_status
+                            (mt/user-http-request :crowberto :get 200 (format "database/%d" (u/the-id db)))))))
+      (testing "dismissed table spinner"
+        (is (= "complete" (:initial_sync_status
+                            (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table))))))))))
+
 (deftest non-admins-cant-trigger-sync
   (testing "Non-admins should not be allowed to trigger sync"
     (is (= "You don't have permissions to do that."
@@ -772,8 +805,8 @@
 
     (testing "invalid database connection details"
       (testing "calling test-connection-details directly"
-        (is (= {:dbname  "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
-                :message "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
+        (is (= {:errors {:db "check your connection string"}
+                :message "Implicitly relative file paths are not allowed."
                 :valid   false}
                (#'api.database/test-connection-details "h2" {:db "ABC"}))))
 

@@ -1,4 +1,4 @@
-import { cypressWaitAll } from "__support__/e2e/cypress";
+import { cypressWaitAll } from "__support__/e2e/helpers";
 
 Cypress.Commands.add(
   "createDashboardWithQuestions",

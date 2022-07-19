@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 import { openDetailsSidebar } from "../helpers/e2e-models-helpers";
 
 const renamedColumn = "TITLE renamed";
@@ -29,10 +29,7 @@ describe.skip("issue 20624", () => {
     // Open settings for this column
     cy.findByText(renamedColumn).click();
     // Let's set a new name for it
-    cy.findByDisplayValue(renamedColumn)
-      .clear()
-      .type("Foo")
-      .blur();
+    cy.findByDisplayValue(renamedColumn).clear().type("Foo").blur();
 
     cy.button("Save changes").click();
     cy.wait("@updateCard");

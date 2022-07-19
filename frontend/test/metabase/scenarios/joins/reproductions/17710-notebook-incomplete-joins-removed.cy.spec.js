@@ -3,7 +3,7 @@ import {
   popover,
   openOrdersTable,
   visualize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("issue 17710", () => {
   beforeEach(() => {
@@ -16,9 +16,7 @@ describe("issue 17710", () => {
     openOrdersTable({ mode: "notebook" });
 
     cy.findByText("Join data").click();
-    popover()
-      .findByText("Products")
-      .click();
+    popover().findByText("Products").click();
 
     cy.findByTestId("step-join-0-0").within(() => {
       cy.icon("add").click();

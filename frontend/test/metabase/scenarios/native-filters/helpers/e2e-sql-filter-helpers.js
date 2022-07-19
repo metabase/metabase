@@ -1,4 +1,4 @@
-import { filterWidget, popover } from "__support__/e2e/cypress";
+import { filterWidget, popover } from "__support__/e2e/helpers";
 
 // FILTER TYPES
 
@@ -9,9 +9,7 @@ import { filterWidget, popover } from "__support__/e2e/cypress";
  * @param {("Text"|"Number"|"Date"|"Field Filter")} filterType
  */
 export function openTypePickerFromSelectedFilterType(filterType) {
-  cy.findAllByTestId("select-button-content")
-    .contains(filterType)
-    .click();
+  cy.findAllByTestId("select-button-content").contains(filterType).click();
 }
 
 /**
@@ -46,9 +44,7 @@ export function chooseType(filterType) {
  * @param {string} value
  */
 export function setWidgetValue(value) {
-  filterWidget()
-    .click()
-    .type(value);
+  filterWidget().click().type(value);
 }
 
 /**
@@ -57,7 +53,7 @@ export function setWidgetValue(value) {
  * @param {string} value
  */
 export function setDefaultValue(value) {
-  cy.findByPlaceholderText("Enter a default value...").type(value);
+  cy.findByPlaceholderText("Enter a default value…").type(value);
 }
 
 // UI PATTERNS
@@ -66,10 +62,7 @@ export function setDefaultValue(value) {
  * Toggle the required SQL filter on or off. It is off by default.
  */
 export function toggleRequired() {
-  cy.findByText("Required?")
-    .parent()
-    .find("input")
-    .click();
+  cy.findByText("Required?").parent().find("input").click();
 }
 
 // FILTER QUERY

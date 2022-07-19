@@ -4,7 +4,7 @@ import {
   visualize,
   popover,
   summarize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("issue 18589", () => {
   beforeEach(() => {
@@ -31,13 +31,9 @@ describe("issue 18589", () => {
 
 function joinTable(table) {
   cy.findByText("Join data").click();
-  popover()
-    .findByText(table)
-    .click();
+  popover().findByText(table).click();
 }
 
 function selectFromDropdown(option, clickOpts) {
-  popover()
-    .findByText(option)
-    .click(clickOpts);
+  popover().findByText(option).click(clickOpts);
 }

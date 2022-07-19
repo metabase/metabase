@@ -1,4 +1,4 @@
-import { restore, openOrdersTable } from "__support__/e2e/cypress";
+import { restore, openOrdersTable } from "__support__/e2e/helpers";
 
 describe("#22206 adding and removing columns doesn't duplicate columns", () => {
   beforeEach(() => {
@@ -20,9 +20,7 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
       .click();
 
     // rerun query
-    cy.get(".RunButton")
-      .first()
-      .click();
+    cy.get(".RunButton").first().click();
     cy.wait("@dataset");
     cy.findByTestId("loading-spinner").should("not.exist");
 

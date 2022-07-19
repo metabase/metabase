@@ -5,7 +5,7 @@ import {
   startNewQuestion,
   openNavigationSidebar,
   navigationSidebar,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const QUESTION_NAME = "Foo";
 
@@ -49,31 +49,23 @@ function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
 function saveQuestion(name) {
   cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByText("Save").click();
-  cy.findByLabelText("Name")
-    .clear()
-    .type(name);
+  cy.findByLabelText("Name").clear().type(name);
   cy.button("Save").click();
   cy.button("Not now").click();
   cy.wait("@saveQuestion");
 }
 
 function archiveQuestion(questionName) {
-  navigationSidebar()
-    .findByText("Our analytics")
-    .click();
+  navigationSidebar().findByText("Our analytics").click();
   openEllipsisMenuFor(questionName);
-  popover()
-    .findByText("Archive")
-    .click();
+  popover().findByText("Archive").click();
 }
 
 function unarchiveQuestion(questionName) {
   navigationSidebar().within(() => {
     cy.icon("ellipsis").click();
   });
-  popover()
-    .findByText("View archive")
-    .click();
+  popover().findByText("View archive").click();
   cy.findByText(questionName)
     .parent()
     .within(() => {

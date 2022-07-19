@@ -1,0 +1,41 @@
+import React, { forwardRef, HTMLAttributes, Ref } from "react";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import ColorPickerTrigger from "./ColorPickerTrigger";
+import ColorPickerContent from "./ColorPickerContent";
+
+export type ColorPickerAttributes = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "onChange"
+>;
+
+export interface ColorPickerProps extends ColorPickerAttributes {
+  value: string;
+  placeholder?: string;
+  isAuto?: boolean;
+  onChange?: (color?: string) => void;
+}
+
+const ColorPicker = forwardRef(function ColorPicker(
+  { value, placeholder, isAuto, onChange, ...props }: ColorPickerProps,
+  ref: Ref<HTMLDivElement>,
+) {
+  return (
+    <TippyPopoverWithTrigger
+      disableContentSandbox
+      renderTrigger={({ onClick }) => (
+        <ColorPickerTrigger
+          {...props}
+          ref={ref}
+          value={value}
+          placeholder={placeholder}
+          isAuto={isAuto}
+          onClick={onClick}
+          onChange={onChange}
+        />
+      )}
+      popoverContent={<ColorPickerContent value={value} onChange={onChange} />}
+    />
+  );
+});
+
+export default ColorPicker;

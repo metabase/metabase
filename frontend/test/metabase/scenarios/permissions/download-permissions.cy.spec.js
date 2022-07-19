@@ -8,7 +8,7 @@ import {
   assertSheetRowsCount,
   sidebar,
   visitQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -46,9 +46,7 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
 
     cy.log("Make sure we can change download results permission for a table");
 
-    sidebar()
-      .contains("Orders")
-      .click();
+    sidebar().contains("Orders").click();
 
     modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "1 million rows");
 

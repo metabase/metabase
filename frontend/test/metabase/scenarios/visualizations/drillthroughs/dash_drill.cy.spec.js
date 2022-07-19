@@ -1,5 +1,5 @@
 // Imported from drillthroughs.e2e.spec.js
-import { restore, visitDashboard } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -207,9 +207,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 // This class shows up only when card title is already re-rendered.
 // That's why we don't have to wait for a specific XHR, but this works only for SCALAR questions.
 function clickScalarCardTitle(card_name) {
-  cy.get(".Scalar-title")
-    .contains(card_name)
-    .click();
+  cy.get(".Scalar-title").contains(card_name).click();
 }
 
 function addCardToNewDashboard(dashboard_name, card_id) {

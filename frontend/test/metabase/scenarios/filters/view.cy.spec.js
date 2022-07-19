@@ -5,7 +5,7 @@ import {
   filter,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -16,14 +16,12 @@ describe("scenarios > question > view", () => {
     cy.signInAsAdmin();
   });
 
-  describe("filter sidebar", () => {
+  describe.skip("filter sidebar", () => {
     it("should filter a table", () => {
       openOrdersTable();
       filter();
       cy.contains("Vendor").click({ force: true });
-      cy.findByPlaceholderText("Search by Vendor")
-        .clear()
-        .type("A");
+      cy.findByPlaceholderText("Search the list").clear().type("A");
       cy.findByText("Alfreda Konopelski II Group").click();
 
       cy.contains("Add filter").click();
@@ -45,12 +43,8 @@ describe("scenarios > question > view", () => {
     beforeEach(() => {
       // All users upgraded to collection view access
       cy.visit("/admin/permissions/collections/root");
-      cy.icon("close")
-        .first()
-        .click();
-      cy.findAllByRole("option")
-        .contains("View")
-        .click();
+      cy.icon("close").first().click();
+      cy.findAllByRole("option").contains("View").click();
       cy.findByText("Save changes").click();
       cy.findByText("Yes").click();
 
@@ -91,11 +85,9 @@ describe("scenarios > question > view", () => {
     it("should show filters by search for Vendor", () => {
       visitQuestion(4);
 
-      cy.findAllByText("VENDOR")
-        .first()
-        .click();
+      cy.findAllByText("VENDOR").first().click();
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Vendor");
+        cy.findByPlaceholderText("Search the list");
         cy.findByText("Search the list").should("not.exist");
       });
     });
@@ -107,24 +99,18 @@ describe("scenarios > question > view", () => {
       // Filter by category and vendor
       // TODO: this should show values and allow searching
       cy.findByText("This question is written in SQL.");
-      cy.findAllByText("VENDOR")
-        .first()
-        .click();
+      cy.findAllByText("VENDOR").first().click();
       popover().within(() => {
         cy.findByPlaceholderText("Enter some text").type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
-      cy.findAllByText("CATEGORY")
-        .first()
-        .click();
+      cy.findAllByText("CATEGORY").first().click();
       popover().within(() => {
         cy.findByPlaceholderText("Enter some text").type("Widget");
         cy.findByText("Add filter").click();
       });
 
-      cy.get(".RunButton")
-        .last()
-        .click();
+      cy.get(".RunButton").last().click();
 
       cy.findAllByText("Widget");
       cy.findAllByText("Gizmo").should("not.exist");
@@ -139,22 +125,16 @@ describe("scenarios > question > view", () => {
       // Filter by category and vendor
       // TODO: this should show values and allow searching
       cy.findByText("This question is written in SQL.");
-      cy.findAllByText("VENDOR")
-        .first()
-        .click();
+      cy.findAllByText("VENDOR").first().click();
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Vendor")
+        cy.findByPlaceholderText("Enter some text")
           .focus()
           .clear()
           .type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
-      cy.get(".RunButton")
-        .first()
-        .click();
-      cy.findAllByText("CATEGORY")
-        .first()
-        .click();
+      cy.get(".RunButton").first().click();
+      cy.findAllByText("CATEGORY").first().click();
       popover().within(() => {
         cy.findByPlaceholderText("Enter some text")
           .click()
@@ -162,9 +142,7 @@ describe("scenarios > question > view", () => {
           .type("Widget");
         cy.findByText("Add filter").click();
       });
-      cy.get(".RunButton")
-        .last()
-        .click();
+      cy.get(".RunButton").last().click();
 
       cy.get(".TableInteractive-cellWrapper--firstColumn").should(
         "have.length",

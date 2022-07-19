@@ -1,3 +1,7 @@
+---
+title: Privacy
+---
+
 # Privacy 
 
 ## Do you need a Data Processing Agreement with Metabase to comply with GDPR?

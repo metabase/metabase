@@ -51,6 +51,16 @@ export function isVirtualDashCard(dashcard) {
   return _.isObject(dashcard.visualization_settings.virtual_card);
 }
 
+// For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
+// info text about parameter mapping in the card itself or as a tooltip.
+export function showVirtualDashCardInfoText(dashcard, isMobile) {
+  if (isVirtualDashCard(dashcard)) {
+    return isMobile || dashcard.sizeY > 2 || dashcard.sizeX > 5;
+  } else {
+    return true;
+  }
+}
+
 export function getAllDashboardCards(dashboard) {
   const results = [];
   if (dashboard) {

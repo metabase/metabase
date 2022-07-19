@@ -124,9 +124,7 @@ export default class Smart extends React.Component {
     const isSwapped = settings["scalar.switch_positive_negative"];
 
     // if the number is negative but thats been identified as a good thing (e.g. decreased latency somehow?)
-    const changeColor = (isSwapped
-    ? !isNegative
-    : isNegative)
+    const changeColor = (isSwapped ? !isNegative : isNegative)
       ? color("error")
       : color("success");
 

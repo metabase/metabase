@@ -1,3 +1,7 @@
+---
+title: Partner and community drivers
+---
+
 # Partner and community drivers
 
 In addition to our [Officially supported drivers](./administration-guide/01-managing-databases.md#officially-supported-databases), many people build and maintain drivers for database integrations.
@@ -36,7 +40,9 @@ To qualify as a partner driver, the driver must:
 
 Current partner drivers:
 
-- [Firebolt](https://github.com/firebolt-db/metabase-firebolt-driver)
+- [Exasol](https://github.com/exasol/metabase-driver)
+- [Firebolt](https://docs.firebolt.io/integrations/business-intelligence/connecting-to-metabase.html)
+- [Starburst (compatible with Trino)](https://github.com/starburstdata/metabase-driver)
 
 Partner drivers are available to Cloud customers out-of-the-box.
 
@@ -58,7 +64,6 @@ You install these drivers at your own risk. The plugins will run as part of your
 | [Cube.js](https://github.com/lili-data/metabase-cubejs-driver)                          | ![GitHub stars](https://img.shields.io/github/stars/lili-data/metabase-cubejs-driver)                 | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/lili-data/metabase-cubejs-driver)                 |
 | [Datomic](https://github.com/lambdaisland/metabase-datomic)                             | ![GitHub stars](https://img.shields.io/github/stars/lambdaisland/metabase-datomic)                    |                                                                                                                               |
 | [DB2](https://github.com/dludwig-jrt/metabase-db2-driver)                               | ![GitHub stars](https://img.shields.io/github/stars/dludwig-jrt/metabase-db2-driver)                  |                                                                                                                               |
-| [Exasol](https://github.com/exasol/metabase-driver)                                     | ![GitHub stars](https://img.shields.io/github/stars/exasol/metabase-driver)                           | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/exasol/metabase-driver)                           |
 | [Firebird](https://github.com/evosec/metabase-firebird-driver)                          | ![GitHub stars](https://img.shields.io/github/stars/evosec/metabase-firebird-driver)                  | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/evosec/metabase-firebird-driver)                  |
 | [Impala](https://github.com/brenoae/metabase-impala-driver)                             | ![GitHub stars](https://img.shields.io/github/stars/brenoae/metabase-impala-driver)                   | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/brenoae/metabase-impala-driver)                   |
 | [Materialize](https://github.com/MaterializeInc/metabase-materialize-driver)            | ![GitHub stars](https://img.shields.io/github/stars/MaterializeInc/metabase-materialize-driver)       | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/MaterializeInc/metabase-materialize-driver)       |
@@ -70,7 +75,7 @@ If you don't see a driver for your database, then try looking in the comments of
 
 If you are having problems installing or using a community driver, your best bet is to contact the author of the driver.
 
-[Metabase Cloud](https://www.metabase.com/start/hosted/) doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported drivers](./administration-guide/01-managing-databases.md#officially-supported-databases), and the partner drivers listed above.
+[Metabase Cloud](https://www.metabase.com/start/) doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported drivers](./administration-guide/01-managing-databases.md#officially-supported-databases), and the partner drivers listed above.
 
 ## Write your own driver
 

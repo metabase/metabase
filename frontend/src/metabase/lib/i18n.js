@@ -46,12 +46,6 @@ function updateMomentStartOfWeek() {
   if (startOfWeekDayNumber === -1) {
     return;
   }
-  console.log(
-    "Setting moment.js start of week for Locale",
-    moment.locale(),
-    "to",
-    startOfWeekDayName,
-  );
 
   moment.updateLocale(moment.locale(), {
     week: {
@@ -119,7 +113,31 @@ function addMsgIds(translationsObject) {
   }
 }
 
-// set the initial localization
-if (window.MetabaseLocalization) {
-  setLocalization(window.MetabaseLocalization);
+// Runs `f` with the current language for ttag set to the instance (site) locale rather than the user locale, then
+// restores the user locale. This can be used for translating specific strings into the instance language; e.g. for
+// parameter values in dashboard text cards that should be translated the same for all users viewing the dashboard.
+export function withInstanceLocalization(f) {
+  if (window.MetabaseSiteLocalization) {
+    setLocalization(window.MetabaseSiteLocalization);
+  }
+  try {
+    return f();
+  } finally {
+    if (window.MetabaseUserLocalization) {
+      setLocalization(window.MetabaseUserLocalization);
+    }
+  }
+}
+
+// register site locale with ttag, if needed later
+if (window.MetabaseSiteLocalization) {
+  const translationsObject = window.MetabaseSiteLocalization;
+  const locale = translationsObject.headers.language;
+  addMsgIds(translationsObject);
+  addLocale(locale, translationsObject);
+}
+
+// set the initial localization to user locale
+if (window.MetabaseUserLocalization) {
+  setLocalization(window.MetabaseUserLocalization);
 }

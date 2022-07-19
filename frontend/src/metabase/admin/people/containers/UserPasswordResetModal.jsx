@@ -24,7 +24,7 @@ class UserPasswordResetModal extends React.Component {
     const { user, emailConfigured, temporaryPassword, onClose } = this.props;
     return temporaryPassword ? (
       <ModalContent
-        title={t`${user.first_name}'s password has been reset`}
+        title={t`${user.common_name}'s password has been reset`}
         footer={<Button primary onClick={onClose}>{t`Done`}</Button>}
         onClose={onClose}
       >
@@ -34,7 +34,7 @@ class UserPasswordResetModal extends React.Component {
       </ModalContent>
     ) : (
       <ModalContent
-        title={t`Reset ${user.getName()}'s password?`}
+        title={t`Reset ${user.common_name}'s password?`}
         onClose={onClose}
       >
         <p>{t`Are you sure you want to do this?`}</p>
@@ -44,10 +44,10 @@ class UserPasswordResetModal extends React.Component {
             ml="auto"
             onClick={async () => {
               if (emailConfigured) {
-                await user.passwordResetEmail();
+                await user.resetPasswordEmail();
                 onClose();
               } else {
-                await user.passwordResetManual();
+                await user.resetPasswordManual();
               }
             }}
             danger

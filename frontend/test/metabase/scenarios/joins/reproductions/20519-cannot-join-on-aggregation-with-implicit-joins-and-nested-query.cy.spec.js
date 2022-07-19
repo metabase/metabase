@@ -2,7 +2,7 @@ import {
   restore,
   enterCustomColumnDetails,
   visualize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -44,9 +44,7 @@ describe("issue 20519", () => {
 
   // Tightly related issue: metabase#17767
   it("should allow subsequent joins and nested query after summarizing on the implicit joins (metabase#20519)", () => {
-    cy.icon("add_data")
-      .last()
-      .click();
+    cy.icon("add_data").last().click();
 
     enterCustomColumnDetails({
       formula: "1 + 1",

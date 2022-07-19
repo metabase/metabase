@@ -145,13 +145,7 @@ describe("LineAreaBarRenderer-bar", () => {
     function sharedIntervalTests(interval, expectedFormat) {
       describe(`with ${interval}s`, () => {
         const rows = [
-          [
-            moment()
-              .tz(reportTz)
-              .startOf(interval)
-              .toISOString(true),
-            1,
-          ],
+          [moment().tz(reportTz).startOf(interval).toISOString(true), 1],
           [
             moment()
               .tz(reportTz)

@@ -1,16 +1,23 @@
-import { restore, openOrdersTable, modal } from "__support__/e2e/cypress";
+import { restore, openReviewsTable, modal } from "__support__/e2e/helpers";
 
 describe("visual tests > visualizations > table", () => {
   beforeEach(() => {
     restore();
+    cy.viewport(1600, 860);
     cy.signInAsNormalUser();
 
-    openOrdersTable();
+    openReviewsTable();
 
     cy.findByTestId("loading-spinner").should("not.exist");
   });
 
-  it("ad-hoc", () => {
+  it("ad-hoc with long column trimmed", () => {
+    cy.percySnapshot();
+  });
+
+  it("ad-hoc with long column expanded", () => {
+    cy.findAllByTestId("expand-column").eq(0).click({ force: true });
+
     cy.percySnapshot();
   });
 
@@ -30,7 +37,5 @@ function saveQuestion() {
     cy.wait("@saveQuestion");
   });
 
-  modal()
-    .findByText("Not now")
-    .click();
+  modal().findByText("Not now").click();
 }

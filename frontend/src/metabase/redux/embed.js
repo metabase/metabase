@@ -12,7 +12,6 @@ const DEFAULT_OPTIONS = {
   header: true,
   additional_info: true,
   action_buttons: true,
-  font: "Lato",
 };
 
 export const SET_OPTIONS = "metabase/embed/SET_OPTIONS";

@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/helpers";
 
 const questionDetails = {
   native: {
@@ -28,24 +28,16 @@ describe.skip("issue 22527", () => {
       cy.findByTextEnsureVisible("Data").click();
     });
 
-    cy.findByText("Bubble size")
-      .parent()
-      .contains("Select a field")
-      .click();
+    cy.findByText("Bubble size").parent().contains("Select a field").click();
 
-    popover()
-      .contains(/size/i)
-      .click();
+    popover().contains(/size/i).click();
 
     assertion();
   });
 });
 
 function assertion() {
-  cy.get("circle")
-    .should("have.length", 5)
-    .last()
-    .realHover();
+  cy.get("circle").should("have.length", 5).last().realHover();
 
   popover().within(() => {
     testPairedTooltipValues("X", "5");
@@ -55,8 +47,5 @@ function assertion() {
 }
 
 function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1)
-    .closest("td")
-    .siblings("td")
-    .findByText(val2);
+  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }

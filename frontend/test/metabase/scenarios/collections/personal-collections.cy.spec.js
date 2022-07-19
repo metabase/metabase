@@ -4,7 +4,9 @@ import {
   modal,
   navigationSidebar,
   openNewCollectionItemFlowFor,
-} from "__support__/e2e/cypress";
+  getCollectionActions,
+  openCollectionMenu,
+} from "__support__/e2e/helpers";
 
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -31,9 +33,7 @@ describe("personal collections", () => {
       navigationSidebar().within(() => {
         cy.icon("ellipsis").click();
       });
-      popover()
-        .findByText("Other users' personal collections")
-        .click();
+      popover().findByText("Other users' personal collections").click();
       cy.location("pathname").should("eq", "/collection/users");
       cy.findByText(/All personal collections/i);
       Object.values(USERS).forEach(user => {
@@ -54,10 +54,8 @@ describe("personal collections", () => {
       cy.visit("/collection/root");
       cy.findByText("Your personal collection").click();
 
-      cy.findByTestId("collection-menu").within(() => {
-        cy.icon("add");
-        cy.icon("lock").should("not.exist");
-        cy.icon("pencil").should("not.exist");
+      getCollectionActions().within(() => {
+        cy.icon("ellipsis").should("not.exist");
       });
 
       // This leads to an infinite loop and a timeout in the CI
@@ -71,14 +69,13 @@ describe("personal collections", () => {
       // });
 
       // Go to the newly created sub-collection "Foo"
-      navigationSidebar()
-        .findByText("Foo")
-        .click();
+      navigationSidebar().findByText("Foo").click();
 
-      cy.findByTestId("collection-menu").within(() => {
-        // It should be possible to edit sub-collections' details, but not its permissions
-        cy.icon("pencil");
-        cy.icon("lock").should("not.exist");
+      // It should be possible to edit sub-collections' details, but not its permissions
+      cy.findByDisplayValue("Foo").should("be.enabled");
+      openCollectionMenu();
+      popover().within(() => {
+        cy.findByText("Edit permissions").should("not.exist");
       });
 
       // Check that it's not possible to open permissions modal via URL for personal collection child
@@ -91,10 +88,8 @@ describe("personal collections", () => {
       // Go to random user's personal collection
       cy.visit("/collection/5");
 
-      cy.findByTestId("collection-menu").within(() => {
-        cy.icon("add");
-        cy.icon("lock").should("not.exist");
-        cy.icon("pencil").should("not.exist");
+      getCollectionActions().within(() => {
+        cy.icon("ellipsis").should("not.exist");
       });
     });
 
@@ -119,61 +114,28 @@ describe("personal collections", () => {
 
           // Create initial collection inside the personal collection and navigate to it
           addNewCollection("Foo");
-          navigationSidebar()
-            .as("sidebar")
-            .findByText("Foo")
-            .click();
+          navigationSidebar().as("sidebar").findByText("Foo").click();
         });
 
         it("should be able to edit collection(s) inside personal collection", () => {
           // Create new collection inside previously added collection
           addNewCollection("Bar");
-          cy.get("@sidebar")
-            .findByText("Bar")
-            .click();
-          cy.icon("pencil").click();
-          /**
-           * We're testing a few things here:
-           *  1. editing collection's title
-           *  2. editing collection's description and
-           *  3. moving that collection within personal collection
-           *  4. archiving the collection within personal collection (metabase#15343)
-           */
-          cy.findByText("Edit this collection").click();
-          modal().within(() => {
-            cy.findByLabelText("Name") /* [1] */
-              .click()
-              .type("1");
+          cy.get("@sidebar").findByText("Bar").click();
+          cy.findByPlaceholderText("Add title").type("1").blur();
+          cy.findByPlaceholderText("Add description").type("ex-bar").blur();
 
-            cy.findByLabelText("Description") /* [2] */
-              .click()
-              .type("ex-bar", { delay: 0 });
-            cy.findByTestId("select-button").click();
-          });
-          popover()
-            .findByText("My personal collection") /* [3] */
-            .click();
-          cy.button("Update").click();
-          // Clicking on "Foo" would've closed it and would hide its sub-collections (if there were any).
-          // By doing this, we're making sure "Bar" lives at the same level as "Foo"
-          cy.get("@sidebar")
-            .findByText("Foo")
-            .click();
+          cy.get("@sidebar").findByText("Foo").click();
           cy.get("@sidebar").findByText("Bar1");
 
           cy.log(
             "should be able to archive collection(s) inside personal collection (metabase#15343)",
           );
 
-          cy.icon("pencil").click(); /* [4] */
-          cy.findByText("Archive this collection").click();
-          modal()
-            .findByRole("button", { name: "Archive" })
-            .click();
+          openCollectionMenu();
+          popover().within(() => cy.findByText("Archive").click());
+          modal().findByRole("button", { name: "Archive" }).click();
           cy.findByText("Archived collection");
-          cy.get("@sidebar")
-            .findByText("Foo")
-            .should("not.exist");
+          cy.get("@sidebar").findByText("Foo").should("not.exist");
         });
       });
     });

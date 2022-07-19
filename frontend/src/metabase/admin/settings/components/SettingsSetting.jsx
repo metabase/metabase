@@ -13,8 +13,8 @@ import SettingRadio from "./widgets/SettingRadio";
 import SettingToggle from "./widgets/SettingToggle";
 import SettingSelect from "./widgets/SettingSelect";
 import SettingText from "./widgets/SettingText";
-import SettingColor from "./widgets/SettingColor";
 import { settingToFormFieldId } from "./../../settings/utils";
+import { SettingWarning } from "./SettingsSetting.styled";
 
 const SETTING_WIDGET_MAP = {
   string: SettingInput,
@@ -24,7 +24,6 @@ const SETTING_WIDGET_MAP = {
   radio: SettingRadio,
   boolean: SettingToggle,
   text: SettingText,
-  color: SettingColor,
 };
 
 const updatePlaceholderForEnvironmentVars = props => {
@@ -79,9 +78,7 @@ export default class SettingsSetting extends Component {
         {errorMessage && (
           <div className="text-error text-bold pt1">{errorMessage}</div>
         )}
-        {setting.warning && (
-          <div className="text-gold text-bold pt1">{setting.warning}</div>
-        )}
+        {setting.warning && <SettingWarning>{setting.warning}</SettingWarning>}
       </li>
     );
   }

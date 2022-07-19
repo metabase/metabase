@@ -1,10 +1,13 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { jt } from "ttag";
-import { isFK, isPK } from "metabase/lib/types";
+
+import { isFK, isPK, TYPE, isa } from "metabase/lib/types";
 import { isLocalField } from "metabase/lib/query/field_ref";
 import { isDate, isNumeric } from "metabase/lib/schema_metadata";
 import { singularize, pluralize, stripId } from "metabase/lib/formatting";
+
+const INVALID_TYPES = [TYPE.Structured];
 
 function getFiltersForColumn(column) {
   if (isNumeric(column) || isDate(column)) {
@@ -14,11 +17,13 @@ function getFiltersForColumn(column) {
       { name: "=", operator: "=" },
       { name: "≠", operator: "!=" },
     ];
-  } else {
+  } else if (!INVALID_TYPES.some(type => isa(column.base_type, type))) {
     return [
       { name: "=", operator: "=" },
       { name: "≠", operator: "!=" },
     ];
+  } else {
+    return [];
   }
 }
 
@@ -75,10 +80,7 @@ function getComparisonFilter({ question, name, operator, column, value }) {
        * }
        */
 
-      const nestedQuestion = question
-        .query()
-        .nest()
-        .question();
+      const nestedQuestion = question.query().nest().question();
 
       return nestedQuestion.filter(
         operator,

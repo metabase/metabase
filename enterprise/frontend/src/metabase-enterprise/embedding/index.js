@@ -5,6 +5,7 @@ import { updateIn } from "icepick";
 import MetabaseSettings from "metabase/lib/settings";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 if (hasPremiumFeature("embedding")) {
   MetabaseSettings.hideEmbedBranding = () => true;
@@ -13,37 +14,35 @@ if (hasPremiumFeature("embedding")) {
 const APP_ORIGIN_SETTING = {
   key: "embedding-app-origin",
   display_name: t`Embedding the entire Metabase app`,
-  description: jt`If you want to embed all of Metabase, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the ${(
-    <a
-      href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors"
-      className="link"
-    >
-      exact specifications
-    </a>
-  )} for what can be entered.`,
+  description: (
+    <>
+      {jt`With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder. ${(
+        <ExternalLink href="https://www.metabase.com/learn/embedding/multi-tenant-self-service-analytics.html">
+          {t`Learn more.`}
+        </ExternalLink>
+      )}`}
+      <div className="my4">
+        <strong className="block text-dark mb1">{t`Authorized origins`}</strong>
+        {jt`Enter the origins for the websites or web apps where you want to allow embedding, separated by a space. Here are the ${(
+          <ExternalLink href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors">
+            {t`exact specifications`}
+          </ExternalLink>
+        )} for what can be entered.`}
+      </div>
+    </>
+  ),
   placeholder: "https://*.example.com",
   type: "string",
-  getHidden: settings => !settings["enable-embedding"],
+  getHidden: settings =>
+    !settings["enable-embedding"] || !MetabaseSettings.isEnterprise(),
 };
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   updateIn(
     sections,
-    ["embedding_in_other_applications", "settings"],
+    ["embedding-in-other-applications/full-app", "settings"],
     settings => {
-      // insert the app origin setting right after the secret key widget
-      const itemIndex = settings.findIndex(
-        s => s.key === "embedding-secret-key",
-      );
-      const sliceIndex = itemIndex === -1 ? settings.length : itemIndex + 1;
-
-      settings = [
-        ...settings.slice(0, sliceIndex),
-        APP_ORIGIN_SETTING,
-        ...settings.slice(sliceIndex),
-      ];
-
-      return settings;
+      return [...settings, APP_ORIGIN_SETTING];
     },
   ),
 );

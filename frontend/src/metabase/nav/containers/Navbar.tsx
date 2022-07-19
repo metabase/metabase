@@ -30,9 +30,10 @@ const mapStateToProps = (state: State) => ({
 });
 
 function Navbar({ isOpen, user, location, params, adminPaths }: NavbarProps) {
-  const isAdminApp = useMemo(() => location.pathname.startsWith("/admin/"), [
-    location.pathname,
-  ]);
+  const isAdminApp = useMemo(
+    () => location.pathname.startsWith("/admin/"),
+    [location.pathname],
+  );
 
   if (!user) {
     return null;

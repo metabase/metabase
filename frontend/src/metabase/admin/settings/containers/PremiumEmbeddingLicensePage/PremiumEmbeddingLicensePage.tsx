@@ -63,13 +63,8 @@ export const PremiumEmbeddingLicensePage = ({
   );
   const token = tokenSetting?.value;
 
-  const {
-    isLoading,
-    error,
-    tokenStatus,
-    updateToken,
-    isUpdating,
-  } = useLicense();
+  const { isLoading, error, tokenStatus, updateToken, isUpdating } =
+    useLicense();
 
   useEffect(() => {
     initializeSettings();
@@ -96,7 +91,7 @@ export const PremiumEmbeddingLicensePage = ({
   return (
     <AdminLayout>
       <PremiumEmbeddingLicensePageContent>
-        <PremiumEmbeddingHeading>Premium embedding</PremiumEmbeddingHeading>
+        <PremiumEmbeddingHeading>{t`Premium embedding`}</PremiumEmbeddingHeading>
         <PremiumEmbeddingDescription>
           {getDescription(tokenStatus, !!token)}
         </PremiumEmbeddingDescription>

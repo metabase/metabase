@@ -65,10 +65,7 @@ export const QuestionList = React.memo(function QuestionList({
   const filteredQuestions = useMemo(() => {
     const filterText = debouncedSearchText.toLowerCase();
     const filteredQuestions = questions.filter(question =>
-      question
-        .displayName()
-        .toLowerCase()
-        .includes(filterText),
+      question.displayName().toLowerCase().includes(filterText),
     );
 
     filteredQuestions.sort((a, b) => {

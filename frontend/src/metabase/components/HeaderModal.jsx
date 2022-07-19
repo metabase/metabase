@@ -41,7 +41,7 @@ class HeaderModal extends Component {
             className="Button Button--borderless text-brand bg-white text-bold"
             onClick={onDone}
           >{t`Done`}</button>
-          {onCancel && <span className="text-white mx1">or</span>}
+          {onCancel && <span className="text-white mx1">{t`or`}</span>}
           {onCancel && (
             <a
               className="cursor-pointer text-white text-bold"

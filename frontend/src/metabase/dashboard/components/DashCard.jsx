@@ -12,6 +12,7 @@ import Visualization, {
   ERROR_MESSAGE_PERMISSION,
 } from "metabase/visualizations/components/Visualization";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
@@ -31,6 +32,7 @@ import _ from "underscore";
 import { getIn } from "icepick";
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 import Utils from "metabase/lib/utils";
+import { DashCardRoot } from "./DashCard.styled";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
@@ -58,6 +60,7 @@ export default class DashCard extends Component {
     fetchCardData: PropTypes.func.isRequired,
     navigateToNewCardFromDashboard: PropTypes.func.isRequired,
     headerIcon: PropTypes.shape(iconPropTypes),
+    isNightMode: PropTypes.bool,
   };
 
   constructor(props) {
@@ -104,6 +107,7 @@ export default class DashCard extends Component {
       clickBehaviorSidebarDashcard,
       isEditingParameter,
       isFullscreen,
+      isMobile,
       onAddSeries,
       onRemove,
       navigateToNewCardFromDashboard,
@@ -112,6 +116,7 @@ export default class DashCard extends Component {
       parameterValues,
       mode,
       headerIcon,
+      isNightMode,
     } = this.props;
 
     const mainCard = {
@@ -145,10 +150,17 @@ export default class DashCard extends Component {
       loading &&
       _.some(series, s => s.isSlow) &&
       (usuallyFast ? "usually-fast" : "usually-slow");
+
+    const isAccessRestricted = series.some(
+      s =>
+        s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
+        s.error?.status === 403,
+    );
+
     const errors = series.map(s => s.error).filter(e => e);
 
     let errorMessage, errorIcon;
-    if (_.any(errors, e => e && e.status === 403)) {
+    if (isAccessRestricted) {
       errorMessage = ERROR_MESSAGE_PERMISSION;
       errorIcon = "key";
     } else if (errors.length > 0) {
@@ -175,18 +187,15 @@ export default class DashCard extends Component {
     const gridSize = { width: dashcard.sizeX, height: dashcard.sizeY };
 
     return (
-      <div
-        className={cx(
-          "Card bordered rounded flex flex-column hover-parent hover--visibility",
-          {
-            "Card--slow": isSlow === "usually-slow",
-          },
-        )}
+      <DashCardRoot
+        className="Card rounded flex flex-column hover-parent hover--visibility"
         style={
           hideBackground
             ? { border: 0, background: "transparent", boxShadow: "none" }
             : null
         }
+        isNightMode={isNightMode}
+        isUsuallySlow={isSlow === "usually-slow"}
       >
         {isEditingDashboardLayout ? (
           <DashboardCardActionsPanel onMouseDown={this.preventDragging}>
@@ -225,9 +234,13 @@ export default class DashCard extends Component {
           isDashboard
           dispatch={this.props.dispatch}
           dashboard={dashboard}
+          dashcard={dashcard}
+          parameterValues={parameterValues}
           parameterValuesBySlug={parameterValuesBySlug}
           isEditing={isEditing}
           isPreviewing={this.state.isPreviewingCard}
+          isEditingParameter={isEditingParameter}
+          isMobile={isMobile}
           gridSize={gridSize}
           totalNumGridCols={this.props.totalNumGridCols}
           actionButtons={
@@ -247,13 +260,16 @@ export default class DashCard extends Component {
             this.props.onUpdateVisualizationSettings
           }
           replacementContent={
-            (clickBehaviorSidebarDashcard != null || isEditingParameter) &&
+            clickBehaviorSidebarDashcard != null &&
             isVirtualDashCard(dashcard) ? (
               <div className="flex full-height align-center justify-center">
                 <h4 className="text-medium">{t`Text card`}</h4>
               </div>
             ) : isEditingParameter ? (
-              <DashCardParameterMapper dashcard={dashcard} />
+              <DashCardParameterMapper
+                dashcard={dashcard}
+                isMobile={isMobile}
+              />
             ) : clickBehaviorSidebarDashcard != null ? (
               <ClickBehaviorSidebarOverlay
                 dashcard={dashcard}
@@ -283,7 +299,7 @@ export default class DashCard extends Component {
           }
           onChangeLocation={this.props.onChangeLocation}
         />
-      </div>
+      </DashCardRoot>
     );
   }
 }
@@ -432,7 +448,7 @@ const RemoveButton = ({ onRemove }) => (
 const AddSeriesButton = ({ series, onAddSeries }) => (
   <a
     data-testid="add-series-button"
-    data-metabase-event={"Dashboard;Edit Series Modal;open"}
+    data-metabase-event="Dashboard;Edit Series Modal;open"
     className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
     onClick={onAddSeries}
     style={HEADER_ACTION_STYLE}
@@ -456,7 +472,7 @@ const AddSeriesButton = ({ series, onAddSeries }) => (
 const ToggleCardPreviewButton = ({ isPreviewing, onPreviewToggle }) => {
   return (
     <a
-      data-metabase-event={"Dashboard;Text;edit"}
+      data-metabase-event="Dashboard;Text;edit"
       className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
       onClick={onPreviewToggle}
       style={HEADER_ACTION_STYLE}

@@ -3,6 +3,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
+import Databases from "metabase/entities/databases";
 
 const MainPane = ({ databases, show }) => (
   <div>
@@ -13,9 +14,8 @@ const MainPane = ({ databases, show }) => (
       {databases &&
         databases
           .filter(db => !db.is_saved_questions)
-          .filter(db => db.tables && db.tables.length > 0)
           .map(database => (
-            <li className="mb2" key={database.id}>
+            <li className="mb1" key={database.id}>
               <a
                 onClick={() => show("database", database)}
                 className="p1 flex align-center no-decoration bg-medium-hover"
@@ -34,4 +34,4 @@ MainPane.propTypes = {
   databases: PropTypes.array,
 };
 
-export default MainPane;
+export default Databases.loadList()(MainPane);

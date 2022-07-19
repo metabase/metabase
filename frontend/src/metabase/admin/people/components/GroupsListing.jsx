@@ -6,6 +6,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { color } from "metabase/lib/colors";
 import {
   isDefaultGroup,
   isAdminGroup,
@@ -147,8 +148,6 @@ function EditingGroupRow({
 
 // ------------------------------------------------------------ Groups Table: not editing ------------------------------------------------------------
 
-const COLORS = ["bg-error", "bg-purple", "bg-brand", "bg-gold", "bg-green"];
-
 function GroupRow({
   group,
   groupBeingEdited,
@@ -159,7 +158,8 @@ function GroupRow({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }) {
-  const color = COLORS[index % COLORS.length];
+  const colors = getGroupRowColors();
+  const backgroundColor = colors[index % colors.length];
   const showActionsButton = !isDefaultGroup(group) && !isAdminGroup(group);
   const editing = groupBeingEdited && groupBeingEdited.id === group.id;
 
@@ -180,8 +180,8 @@ function GroupRow({
         >
           <span className="text-white">
             <UserAvatar
-              background={color}
               user={{ first_name: getGroupNameLocalized(group) }}
+              bg={backgroundColor}
             />
           </span>
           <span className="ml2 text-bold">{getGroupNameLocalized(group)}</span>
@@ -200,6 +200,14 @@ function GroupRow({
     </tr>
   );
 }
+
+const getGroupRowColors = () => [
+  color("error"),
+  color("accent2"),
+  color("brand"),
+  color("accent4"),
+  color("accent1"),
+];
 
 function GroupsTable({
   groups,

@@ -9,6 +9,8 @@ import {
   CheckBoxLabelProps,
 } from "./types";
 
+import { DEFAULT_ICON_PADDING } from "./constants";
+
 export const CheckBoxRoot = styled.label`
   display: block;
   position: relative;
@@ -37,7 +39,7 @@ export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
   opacity: ${props => (props.disabled ? "0.4" : "")};
 
   ${CheckBoxInput}:focus + & {
-    outline: 2px solid ${color("focus")};
+    outline: 2px solid ${() => color("focus")};
   }
 
   ${CheckBoxInput}:focus:not(:focus-visible) + & {
@@ -47,6 +49,7 @@ export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
 
 export const CheckBoxIcon = styled(Icon)<CheckBoxIconProps>`
   display: block;
+  padding: ${DEFAULT_ICON_PADDING / 2}px;
   color: ${props => color(props.checked ? "white" : props.uncheckedColor)};
   width: ${props => `${props.size}px`};
   height: ${props => `${props.size}px`};

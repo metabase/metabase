@@ -1,4 +1,4 @@
-import { restore, openNativeEditor } from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/helpers";
 
 const dbName = "Sample2";
 
@@ -20,9 +20,7 @@ describe("issue 18148", () => {
 
     cy.findByText(dbName).click();
 
-    cy.get(".ace_content")
-      .should("be.visible")
-      .type("select foo");
+    cy.get(".ace_content").should("be.visible").type("select foo");
 
     cy.findByText("Save").click();
 

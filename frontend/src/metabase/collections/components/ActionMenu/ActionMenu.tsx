@@ -2,22 +2,28 @@ import React, { useCallback } from "react";
 
 import { Collection } from "metabase-types/api";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
-import { Item, isItemPinned } from "metabase/collections/utils";
+import {
+  isFullyParametrized,
+  isItemPinned,
+  isPreviewShown,
+  isPreviewEnabled,
+  Item,
+} from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 
 import { EntityItemMenu } from "./ActionMenu.styled";
 import { BookmarksType } from "metabase-types/api/bookmark";
 
-type Props = {
-  bookmarks?: BookmarksType;
-  createBookmark?: (id: string, collection: string) => void;
-  deleteBookmark?: (id: string, collection: string) => void;
+interface ActionMenuProps {
   className?: string;
   item: Item;
   collection: Collection;
+  bookmarks?: BookmarksType;
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
-};
+  createBookmark?: (id: string, collection: string) => void;
+  deleteBookmark?: (id: string, collection: string) => void;
+}
 
 function getIsBookmarked(item: Item, bookmarks: BookmarksType) {
   const normalizedItemModel = normalizeItemModel(item);
@@ -35,16 +41,18 @@ function normalizeItemModel(item: Item) {
 }
 
 function ActionMenu({
-  bookmarks,
-  createBookmark,
-  deleteBookmark,
   className,
   item,
+  bookmarks,
   collection,
   onCopy,
   onMove,
-}: Props) {
+  createBookmark,
+  deleteBookmark,
+}: ActionMenuProps) {
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
+  const isPreviewOptionShown =
+    isItemPinned(item) && collection.can_write && item.setCollectionPreview;
 
   const handlePin = useCallback(() => {
     item.setPinned(!isItemPinned(item));
@@ -64,11 +72,12 @@ function ActionMenu({
 
   const handleToggleBookmark = useCallback(() => {
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
-
-    const normalizedItemModel = normalizeItemModel(item);
-
-    toggleBookmark?.(item.id.toString(), normalizedItemModel);
+    toggleBookmark?.(item.id.toString(), normalizeItemModel(item));
   }, [createBookmark, deleteBookmark, isBookmarked, item]);
+
+  const handleTogglePreview = useCallback(() => {
+    item?.setCollectionPreview?.(!isPreviewEnabled(item));
+  }, [item]);
 
   return (
     // this component is used within a `<Link>` component,
@@ -78,13 +87,14 @@ function ActionMenu({
         className={className}
         item={item}
         isBookmarked={isBookmarked}
+        isPreviewShown={isPreviewShown(item)}
+        isPreviewAvailable={isFullyParametrized(item)}
         onPin={collection.can_write ? handlePin : null}
         onMove={collection.can_write && item.setCollection ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}
-        onArchive={
-          collection.can_write && item.setArchived ? handleArchive : null
-        }
+        onArchive={collection.can_write ? handleArchive : null}
         onToggleBookmark={handleToggleBookmark}
+        onTogglePreview={isPreviewOptionShown ? handleTogglePreview : null}
         analyticsContext={ANALYTICS_CONTEXT}
       />
     </EventSandbox>

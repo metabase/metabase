@@ -9,7 +9,7 @@ import {
   summarize,
   filter,
   visitQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -44,27 +44,15 @@ describe("scenarios > question > joined questions", () => {
       cy.icon("join_left_outer").click();
       cy.wait("@schema");
 
-      popover()
-        .contains("Reviews")
-        .click();
-      popover()
-        .contains("Product ID")
-        .click();
-      popover()
-        .contains("Product ID")
-        .click();
+      popover().contains("Reviews").click();
+      popover().contains("Product ID").click();
+      popover().contains("Product ID").click();
 
       // get the average rating across all rows (not a useful metric)
       cy.contains("Pick the metric you want to see").click();
-      popover()
-        .contains("Average of")
-        .click();
-      popover()
-        .find(".Icon-join_left_outer")
-        .click();
-      popover()
-        .contains("Rating")
-        .click();
+      popover().contains("Average of").click();
+      popover().find(".Icon-join_left_outer").click();
+      popover().contains("Rating").click();
 
       visualize();
 
@@ -98,8 +86,8 @@ describe("scenarios > question > joined questions", () => {
 
       cy.log("Attempt to filter on the joined table");
       filter();
-      cy.contains("Email").click();
-      cy.contains("People – Email");
+
+      cy.findByText("People - User").click();
       cy.findByPlaceholderText("Search by Email")
         .type("wo")
         .then($el => {
@@ -112,7 +100,7 @@ describe("scenarios > question > joined questions", () => {
           }
         });
       cy.findByText("wolf.dina@yahoo.com").click();
-      cy.button("Add filter").click();
+      cy.findByTestId("apply-filters").click();
       cy.contains("Showing 1 row");
     });
 
@@ -184,9 +172,7 @@ describe("scenarios > question > joined questions", () => {
           "Sum Divide",
         );
 
-        cy.button("Done")
-          .should("not.be.disabled")
-          .click();
+        cy.button("Done").should("not.be.disabled").click();
       });
 
       visualize();
@@ -436,9 +422,7 @@ describe("scenarios > question > joined questions", () => {
         display: "line",
       });
 
-      cy.get(".dot")
-        .eq(2)
-        .click({ force: true });
+      cy.get(".dot").eq(2).click({ force: true });
       cy.findByText("X-ray").click();
 
       cy.wait("@xray").then(xhr => {
@@ -489,9 +473,7 @@ describe("scenarios > question > joined questions", () => {
         .first() // TODO: cy.findAllByText(string).first() is necessary workaround that will be needed ONLY until (metabase#15570) gets fixed
         .isVisibleInPopover();
       // The actual check that will fail until this issue gets fixed
-      cy.findAllByText("Week")
-        .first()
-        .isVisibleInPopover();
+      cy.findAllByText("Week").first().isVisibleInPopover();
     });
 
     it("should add numeric filter on joined table (metabase#15570)", () => {
@@ -520,14 +502,10 @@ describe("scenarios > question > joined questions", () => {
         cy.findByText(/Orders/i).click();
         cy.findByText("Discount").click();
       });
-      cy.findAllByTestId("select-button")
-        .contains("Equal to")
-        .click();
+      cy.findAllByTestId("select-button").contains("Equal to").click();
       cy.findByText("Greater than").click();
       cy.findByPlaceholderText("Enter a number").type(0);
-      cy.button("Add filter")
-        .should("not.be.disabled")
-        .click();
+      cy.button("Add filter").should("not.be.disabled").click();
     });
   });
 });
@@ -566,12 +544,8 @@ function joinTwoSavedQuestions() {
         cy.findByText("Q2").click();
       });
 
-      popover()
-        .findByText("Product ID")
-        .click();
-      popover()
-        .findByText("ID")
-        .click();
+      popover().findByText("Product ID").click();
+      popover().findByText("ID").click();
 
       visualize();
 

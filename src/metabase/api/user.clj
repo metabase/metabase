@@ -61,20 +61,18 @@
       (f user-or-id new-user-group-memberships)
       (maybe-set-user-permissions-groups! user-or-id (map :id new-user-group-memberships)))))
 
-(defn- updated-user-name [user-before-update first_name last_name]
-  (let [prev_first_name (:first_name user-before-update)
-        prev_last_name  (:last_name user-before-update)
-        first_name      (or first_name prev_first_name)
-        last_name       (or last_name prev_last_name)]
-    (when (or (not= first_name prev_first_name)
-              (not= last_name prev_last_name))
-      [first_name last_name])))
+(defn- updated-user-name [user-before-update changes]
+  (let [[previous current] (map #(select-keys % [:first_name :last_name]) [user-before-update changes])
+        updated-names (merge previous current)]
+    (when (not= previous updated-names)
+      updated-names)))
 
-(defn- maybe-update-user-personal-collection-name! [user-before-update first_name last_name]
+(defn- maybe-update-user-personal-collection-name! [user-before-update changes]
   ;; If the user name is updated, we shall also update the personal collection name (if such collection exists).
-  (when-some [[first_name last_name] (updated-user-name user-before-update first_name last_name)]
+  (when-some [{:keys [first_name last_name]} (updated-user-name user-before-update changes)]
     (when-some [collection (collection/user->existing-personal-collection (u/the-id user-before-update))]
-      (let [new-collection-name (collection/format-personal-collection-name first_name last_name :site)]
+      (let [{email :email} user-before-update
+            new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
           (db/update! Collection (:id collection) :name new-collection-name))))))
 
@@ -128,13 +126,10 @@
   [status query group_id include_deactivated]
   (cond-> {}
         true (hh/merge-where (status-clause status include_deactivated))
-        true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-                               (when (segmented-user?)
-                                 [:= :id api/*current-user-id*])))
         (some? query) (hh/merge-where (query-clause query))
         (some? group_id) (hh/merge-right-join :permissions_group_membership
                                               [:= :core_user.id :permissions_group_membership.user_id])
-        (some? group_id) (hh/merge-where [:= :group_id group_id])))
+        (some? group_id) (hh/merge-where [:= :permissions_group_membership.group_id group_id])))
 
 (api/defendpoint GET "/"
   "Fetch a list of `Users`. By default returns every active user but only active users.
@@ -186,6 +181,13 @@
     (with-advanced-permissions user)
     user))
 
+(defn- maybe-add-sso-source
+  "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
+  [{:keys [id] :as user}]
+  (if (premium-features/enable-sso?)
+    (assoc user :sso_source (db/select-one-field :sso_source User :id id))
+    user))
+
 (defn- add-has-question-and-dashboard
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard."
   [user]
@@ -214,7 +216,8 @@
       (hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
       add-has-question-and-dashboard
       add-first-login
-      maybe-add-advanced-permissions))
+      maybe-add-advanced-permissions
+      maybe-add-sso-source))
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
@@ -234,9 +237,9 @@
 (api/defendpoint POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
   [:as {{:keys [first_name last_name email user_group_memberships login_attributes] :as body} :body}]
-  {first_name              su/NonBlankString
-   last_name               su/NonBlankString
-   email                   su/Email
+  {first_name             (s/maybe su/NonBlankString)
+   last_name              (s/maybe su/NonBlankString)
+   email                  su/Email
    user_group_memberships (s/maybe [user/UserGroupMembership])
    login_attributes       (s/maybe user/LoginAttributes)}
   (api/check-superuser)
@@ -299,17 +302,17 @@
     (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
                 "email" (tru "Email address already associated to another user."))
     (db/transaction
-     ;; only user or self can update user info
+     ;; only superuser or self can update user info
      ;; implicitly prevent group manager from updating users' info
      (when (or (= id api/*current-user-id*)
                api/*is-superuser?*)
        (api/check-500
         (db/update! User id (u/select-keys-when body
-                                                :present (into #{:locale} (when api/*is-superuser?* [:login_attributes]))
-                                                :non-nil (set (concat [:first_name :last_name :email]
-                                                                      (when api/*is-superuser?*
-                                                                        [:is_superuser]))))))
-       (maybe-update-user-personal-collection-name! user-before-update first_name last_name))
+                              :present (cond-> #{:first_name :last_name :locale}
+                                         api/*is-superuser?* (conj :login_attributes))
+                              :non-nil (cond-> #{:email}
+                                         api/*is-superuser?* (conj :is_superuser)))))
+       (maybe-update-user-personal-collection-name! user-before-update body))
      (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
       (hydrate :user_group_memberships)))

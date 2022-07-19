@@ -1,4 +1,9 @@
-import { restore, filterWidget, filter } from "__support__/e2e/cypress";
+import {
+  restore,
+  filterWidget,
+  filter,
+  filterField,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -53,9 +58,7 @@ describe("issue 17524", () => {
 
       cy.get("polygon");
 
-      cy.icon("play")
-        .last()
-        .click();
+      cy.icon("play").last().click();
 
       cy.get("polygon");
       cy.findByText("Save").should("not.exist");
@@ -72,12 +75,11 @@ describe("issue 17524", () => {
 
       filter();
 
-      cy.findByText("ID").click();
-      cy.findByText("Is").click();
-      cy.findByText("Greater than").click();
-
-      cy.findByPlaceholderText("Enter an ID").type("1");
-      cy.button("Add filter").click();
+      filterField("ID", {
+        operator: "Greater than",
+        value: "1",
+      });
+      cy.findByTestId("apply-filters").click();
 
       cy.get("polygon");
     });

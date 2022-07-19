@@ -29,7 +29,7 @@ import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
 import FilterSidebar from "./sidebars/FilterSidebar";
-import QuestionDetailsSidebar from "./sidebars/QuestionDetailsSidebar";
+import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
 import { ViewSubHeader } from "./ViewHeader";
@@ -122,15 +122,10 @@ class View extends React.Component {
 
   getLeftSidebar = () => {
     const {
-      question,
       isShowingChartSettingsSidebar,
       isShowingChartTypeSidebar,
-      isShowingQuestionDetailsSidebar,
-      onOpenModal,
       onCloseChartSettings,
       onCloseChartType,
-      isBookmarked,
-      toggleBookmark,
     } = this.props;
 
     if (isShowingChartSettingsSidebar) {
@@ -141,17 +136,6 @@ class View extends React.Component {
 
     if (isShowingChartTypeSidebar) {
       return <ChartTypeSidebar {...this.props} onClose={onCloseChartType} />;
-    }
-
-    if (isShowingQuestionDetailsSidebar) {
-      return (
-        <QuestionDetailsSidebar
-          question={question}
-          onOpenModal={onOpenModal}
-          isBookmarked={isBookmarked}
-          toggleBookmark={toggleBookmark}
-        />
-      );
     }
 
     return null;
@@ -165,6 +149,7 @@ class View extends React.Component {
       isShowingSummarySidebar,
       isShowingFilterSidebar,
       isShowingTimelineSidebar,
+      isShowingQuestionInfoSidebar,
       runQuestionQuery,
       visibleTimelineIds,
       selectedTimelineEventIds,
@@ -177,7 +162,10 @@ class View extends React.Component {
       onCloseSummary,
       onCloseFilter,
       onCloseTimelines,
+      onSave,
     } = this.props;
+
+    const isSaved = question.isSaved();
 
     if (isShowingSummarySidebar) {
       return (
@@ -212,6 +200,10 @@ class View extends React.Component {
       );
     }
 
+    if (isSaved && isShowingQuestionInfoSidebar) {
+      return <QuestionInfoSidebar question={question} onSave={onSave} />;
+    }
+
     return null;
   };
 
@@ -221,6 +213,7 @@ class View extends React.Component {
       isShowingDataReference,
       isShowingSnippetSidebar,
       isShowingTimelineSidebar,
+      isShowingQuestionInfoSidebar,
       toggleTemplateTagsEditor,
       toggleDataReference,
       toggleSnippetSidebar,
@@ -229,6 +222,8 @@ class View extends React.Component {
       selectTimelineEvents,
       deselectTimelineEvents,
       onCloseTimelines,
+      onSave,
+      question,
     } = this.props;
 
     if (isShowingTemplateTagsEditor) {
@@ -256,6 +251,10 @@ class View extends React.Component {
           onClose={onCloseTimelines}
         />
       );
+    }
+
+    if (isShowingQuestionInfoSidebar) {
+      return <QuestionInfoSidebar question={question} onSave={onSave} />;
     }
 
     return null;

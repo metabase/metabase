@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 describe("issue 20045", () => {
   beforeEach(() => {
@@ -18,9 +18,7 @@ describe("issue 20045", () => {
     cy.location("pathname").should("eq", "/model/1-orders-model");
     cy.location("hash").should("eq", "");
 
-    cy.findByTestId("qb-header-action-panel")
-      .find(".Icon-refresh")
-      .click();
+    cy.findByTestId("qb-header-action-panel").find(".Icon-refresh").click();
 
     cy.wait("@dataset");
 

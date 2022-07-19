@@ -17,6 +17,9 @@
             [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
             [metabase.models.revision :as revision]
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.moderation :as moderation]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.async :as qp.async]
@@ -64,11 +67,6 @@
 (models/defmodel Dashboard :report_dashboard)
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(defn- assert-valid-parameters [{:keys [parameters]}]
-  (when (s/check (s/maybe [{:id su/NonBlankString, s/Keyword s/Any}]) parameters)
-    (throw (ex-info (tru ":parameters must be a sequence of maps with String :id keys")
-                    {:parameters parameters}))))
-
 (defn- pre-delete [dashboard]
   (db/delete! 'Revision :model "Dashboard" :model_id (u/the-id dashboard)))
 
@@ -76,12 +74,12 @@
   (let [defaults  {:parameters []}
         dashboard (merge defaults dashboard)]
     (u/prog1 dashboard
-      (assert-valid-parameters dashboard)
+      (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace Dashboard (:collection_id dashboard)))))
 
 (defn- pre-update [dashboard]
   (u/prog1 dashboard
-    (assert-valid-parameters dashboard)
+    (params/assert-valid-parameters dashboard)
     (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 
 (defn- update-dashboard-subscription-pulses!
@@ -134,7 +132,8 @@
 (u/strict-extend (class Dashboard)
   models/IModel
   (merge models/IModelDefaults
-         {:properties  (constantly {:timestamped? true})
+         {:properties  (constantly {:timestamped? true
+                                    :entity_id    true})
           :types       (constantly {:parameters :parameters-list, :embedding_params :json})
           :pre-delete  pre-delete
           :pre-insert  pre-insert
@@ -144,7 +143,10 @@
 
   ;; You can read/write a Dashboard if you can read/write its parent Collection
   mi/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection)
+  perms/IObjectPermissionsForParentCollection
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -414,3 +416,34 @@
                                {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
     (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
                [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               SERIALIZATION                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+(defmethod serdes.base/extract-query "Dashboard" [_ {:keys [user]}]
+  ;; TODO This join over the subset of collections this user can see is shared by a few things - factor it out?
+  (serdes.base/raw-reducible-query
+    "Dashboard"
+    {:select     [:dash.*]
+     :from       [[:report_dashboard :dash]]
+     :left-join  [[:collection :coll] [:= :coll.id :dash.collection_id]]
+     :where      (if user
+                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
+                   [:is :coll.personal_owner_id nil])}))
+
+;; TODO Maybe nest collections -> dashboards -> dashcards?
+(defmethod serdes.base/extract-one "Dashboard"
+  [_model-name _opts dash]
+  (-> (serdes.base/extract-one-basics "Dashboard" dash)
+      (update :collection_id serdes.util/export-fk 'Collection)
+      (update :creator_id    serdes.util/export-fk-keyed 'User :email)))
+
+(defmethod serdes.base/load-xform "Dashboard"
+  [dash]
+  (-> dash
+      (update :collection_id serdes.util/import-fk 'Collection)
+      (update :creator_id    serdes.util/import-fk-keyed 'User :email)))
+
+(defmethod serdes.base/serdes-dependencies "Dashboard"
+  [{:keys [collection_id]}]
+  [[{:model "Collection" :id collection_id}]])

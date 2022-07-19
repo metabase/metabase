@@ -21,7 +21,8 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import { color, getColorsForValues } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
+import { getColorsForValues } from "metabase/lib/colors/charts";
 
 import cx from "classnames";
 
@@ -467,7 +468,7 @@ export default class PieChart extends Component {
               viewBox="0 0 100 100"
               style={{ maxWidth: MAX_PIE_SIZE, maxHeight: MAX_PIE_SIZE }}
             >
-              <g ref={this.chartGroup} transform={`translate(50,50)`}>
+              <g ref={this.chartGroup} transform="translate(50,50)">
                 {pie(slices).map((slice, index) => (
                   <path
                     data-testid="slice"
@@ -489,12 +490,15 @@ export default class PieChart extends Component {
                       "cursor-pointer": getSliceIsClickable(index),
                     })}
                     onClick={
-                      getSliceIsClickable(index) &&
-                      (e =>
-                        onVisualizationClick({
-                          ...getSliceClickObject(index),
-                          event: e.nativeEvent,
-                        }))
+                      // We use a ternary here because using
+                      // `condition && function` yields a console warning.
+                      getSliceIsClickable(index)
+                        ? e =>
+                            onVisualizationClick({
+                              ...getSliceClickObject(index),
+                              event: event.nativeEvent,
+                            })
+                        : undefined
                     }
                   />
                 ))}

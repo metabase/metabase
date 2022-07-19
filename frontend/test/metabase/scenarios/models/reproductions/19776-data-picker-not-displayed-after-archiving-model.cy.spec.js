@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/helpers";
 
 const modelName = "Orders Model";
 
@@ -14,16 +14,12 @@ describe("issue 19776", () => {
     cy.visit("/collection/root");
 
     openEllipsisMenuFor(modelName);
-    popover()
-      .contains("Archive")
-      .click();
+    popover().contains("Archive").click();
 
     cy.findByText("Archived model");
 
     cy.findByText("New").click();
-    cy.findByText("Question")
-      .should("be.visible")
-      .click();
+    cy.findByText("Question").should("be.visible").click();
 
     cy.findByText("Sample Database");
     cy.findByText("Saved Questions");
@@ -32,8 +28,5 @@ describe("issue 19776", () => {
 });
 
 function openEllipsisMenuFor(item) {
-  cy.findByText(item)
-    .closest("tr")
-    .find(".Icon-ellipsis")
-    .click();
+  cy.findByText(item).closest("tr").find(".Icon-ellipsis").click();
 }

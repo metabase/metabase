@@ -1,9 +1,12 @@
-import { restore, runNativeQuery, summarize } from "__support__/e2e/cypress";
-
 import {
-  selectFromDropdown,
-  openDetailsSidebar,
-} from "./helpers/e2e-models-helpers";
+  restore,
+  runNativeQuery,
+  summarize,
+  popover,
+  openQuestionActions,
+} from "__support__/e2e/helpers";
+
+import { selectFromDropdown } from "./helpers/e2e-models-helpers";
 
 describe("scenarios > models query editor", () => {
   beforeEach(() => {
@@ -23,12 +26,14 @@ describe("scenarios > models query editor", () => {
       cy.visit("/model/1");
       cy.wait("@dataset");
 
-      cy.get(".cellData")
-        .should("contain", "37.65")
-        .and("contain", "109.22");
+      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
 
-      openDetailsSidebar();
-      cy.findByText("Edit query definition").click();
+      openQuestionActions();
+
+      popover().within(() => {
+        cy.findByText("Edit query definition").click();
+      });
+
       cy.button("Save changes").should("be.disabled");
 
       cy.findByText("Row limit").click();
@@ -44,9 +49,7 @@ describe("scenarios > models query editor", () => {
       cy.button("Save changes").click();
       cy.wait("@updateCard");
 
-      cy.url()
-        .should("include", "/model/1")
-        .and("not.include", "/query");
+      cy.url().should("include", "/model/1").and("not.include", "/query");
       cy.location("hash").should("eq", "");
 
       cy.get(".cellData")
@@ -83,12 +86,13 @@ describe("scenarios > models query editor", () => {
         { visitQuestion: true },
       );
 
-      cy.get(".cellData")
-        .should("contain", "37.65")
-        .and("contain", "109.22");
+      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
 
-      openDetailsSidebar();
-      cy.findByText("Edit query definition").click();
+      openQuestionActions();
+
+      popover().within(() => {
+        cy.findByText("Edit query definition").click();
+      });
 
       cy.url().should("include", "/query");
       cy.button("Save changes").should("be.disabled");
@@ -124,9 +128,11 @@ describe("scenarios > models query editor", () => {
         { visitQuestion: true },
       );
 
-      openDetailsSidebar();
+      openQuestionActions();
 
-      cy.findByText("Customize metadata").click();
+      popover().within(() => {
+        cy.findByText("Edit metadata").click();
+      });
 
       cy.wait("@cardQuery");
       cy.findByText(/Syntax error in SQL/).should("be.visible");

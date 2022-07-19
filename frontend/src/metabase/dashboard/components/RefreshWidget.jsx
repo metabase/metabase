@@ -58,7 +58,7 @@ export default class RefreshWidget extends Component {
           elapsed == null ? (
             <Tooltip tooltip={t`Auto-refresh`}>
               <DashboardHeaderButton>
-                <ClockIcon width={18} height={18} className={className} />
+                <ClockIcon width={16} height={16} className={className} />
               </DashboardHeaderButton>
             </Tooltip>
           ) : (
@@ -86,7 +86,7 @@ export default class RefreshWidget extends Component {
         targetOffsetY={10}
       >
         <div className={styles.popover}>
-          <div className={styles.title}>Auto Refresh</div>
+          <div className={styles.title}>{t`Auto Refresh`}</div>
           <RefreshOptionList>
             {OPTIONS.map(option => (
               <RefreshOption

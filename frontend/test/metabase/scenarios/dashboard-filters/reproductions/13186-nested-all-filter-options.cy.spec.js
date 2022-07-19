@@ -1,4 +1,4 @@
-import { restore, visitDashboard, popover } from "__support__/e2e/cypress";
+import { restore, visitDashboard, popover } from "__support__/e2e/helpers";
 
 const nativeQuestionDetails = {
   name: "13816_Q1",
@@ -32,9 +32,7 @@ describe("issue 13186", () => {
   it("should show all filter options for a nested question (metabase#13186)", () => {
     // Add Q2 to that dashboard
     cy.icon("pencil").click();
-    cy.icon("add")
-      .last()
-      .click();
+    cy.icon("add").last().click();
     cy.findByText("13816_Q2").click();
 
     // Add filter to the dashboard...

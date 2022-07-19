@@ -2,7 +2,7 @@ import {
   restore,
   openNativeEditor,
   runNativeQuery,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const nativeQuery = "select (random() * random() * random()), pg_sleep(2)";
 
@@ -74,11 +74,7 @@ function enableCaching() {
 }
 
 function setCachingValue(field, value) {
-  cy.findByText(field)
-    .closest("li")
-    .find("input")
-    .type(value)
-    .blur();
+  cy.findByText(field).closest("li").find("input").type(value).blur();
 }
 
 function saveQuestion(name) {
@@ -88,9 +84,7 @@ function saveQuestion(name) {
 
   cy.findByLabelText("Name").type(name);
 
-  cy.get(".Modal")
-    .button("Save")
-    .click();
+  cy.get(".Modal").button("Save").click();
 
   cy.findByText("Not now").click();
 
@@ -98,16 +92,11 @@ function saveQuestion(name) {
 }
 
 function getCellText() {
-  return cy
-    .get(".cellData")
-    .eq(-1)
-    .invoke("text");
+  return cy.get(".cellData").eq(-1).invoke("text");
 }
 
 function refresh() {
-  cy.icon("refresh")
-    .first()
-    .click();
+  cy.icon("refresh").first().click();
   cy.wait("@cardQuery");
 }
 

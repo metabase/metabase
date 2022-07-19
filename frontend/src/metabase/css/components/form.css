@@ -1,5 +1,6 @@
 :root {
-  --form-field-border-color: color-mod(var(--color-border) blackness(10%));
+  --form-field-border-color: var(--color-border-dark);
+  --input-border-radius: 8px;
 }
 ::-webkit-input-placeholder {
   color: var(--color-text-light);
@@ -40,7 +41,7 @@
 .Form-input,
 .Form-input-border {
   border: 1px solid var(--form-field-border-color);
-  border-radius: 4px;
+  border-radius: var(--input-border-radius);
   outline: none;
 }
 
@@ -55,7 +56,7 @@
 }
 .Form-file-input::before {
   background: transparent;
-  border: 1px solid color-mod(var(--color-border) blackness(5%));
+  border: 1px solid color-mod(var(--color-border-dark) blackness(5%));
   border-radius: 6px;
   box-sizing: border-box;
   color: var(--color-text-dark);

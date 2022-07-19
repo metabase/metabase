@@ -70,7 +70,7 @@ class SettingsSlackForm extends Component {
   setFormData() {
     // this gives us an opportunity to load up our formData with any existing values for elements
     const formData = {};
-    this.props.elements.forEach(function(element) {
+    this.props.elements.forEach(function (element) {
       formData[element.key] =
         element.value == null ? element.defaultValue : element.value;
     });
@@ -85,14 +85,14 @@ class SettingsSlackForm extends Component {
     let valid = true;
     const validationErrors = {};
 
-    elements.forEach(function(element) {
+    elements.forEach(function (element) {
       // test for required elements
       if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
         valid = false;
       }
 
       if (element.validations) {
-        element.validations.forEach(function(validation) {
+        element.validations.forEach(function (validation) {
           validationErrors[element.key] = this.validateElement(
             validation,
             formData[element.key],
@@ -182,13 +182,8 @@ class SettingsSlackForm extends Component {
 
   render() {
     const { elements } = this.props;
-    const {
-      formData,
-      formErrors,
-      submitting,
-      valid,
-      validationErrors,
-    } = this.state;
+    const { formData, formErrors, submitting, valid, validationErrors } =
+      this.state;
 
     const settings = elements.map((element, index) => {
       // merge together data from a couple places to provide a complete view of the Element state

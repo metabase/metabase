@@ -5,19 +5,13 @@ import {
   visitQuestionAdhoc,
   getBinningButtonForDimension,
   summarize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const {
-  ORDERS_ID,
-  ORDERS,
-  PEOPLE_ID,
-  PEOPLE,
-  PRODUCTS_ID,
-  PRODUCTS,
-} = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
+  SAMPLE_DATABASE;
 
 const ordersJoinPeopleQuery = {
   type: "query",
@@ -195,9 +189,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Created At: Month");
 
       // Check all binning options from the footer
-      cy.findAllByTestId("select-button-content")
-        .contains("Month")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Month").click();
       getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
     });
   });
@@ -280,10 +272,7 @@ function chooseInitialBinningOption({ table, column, mode = null } = {}) {
     cy.findByText("Pick a column to group by").click();
     cy.findByText(column).click();
   } else {
-    cy.findByTestId("sidebar-right")
-      .contains(column)
-      .first()
-      .click();
+    cy.findByTestId("sidebar-right").contains(column).first().click();
   }
 }
 

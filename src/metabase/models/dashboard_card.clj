@@ -6,6 +6,9 @@
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
             [metabase.models.interface :as mi]
             [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -38,7 +41,8 @@
 (u/strict-extend (class DashboardCard)
   models/IModel
   (merge models/IModelDefaults
-         {:properties  (constantly {:timestamped? true})
+         {:properties  (constantly {:timestamped? true
+                                    :entity_id    true})
           :types       (constantly {:parameter_mappings     :parameters-list
                                     :visualization_settings :visualization-settings})
           :pre-insert  pre-insert
@@ -47,7 +51,14 @@
   (merge mi/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
           :can-read?         (partial mi/current-user-has-full-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)}))
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :card)
+                                      (comp serdes.hash/identity-hash
+                                            #(db/select-one 'Dashboard :id %)
+                                            :dashboard_id)
+                                      :visualization_settings])})
 
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
@@ -57,7 +68,6 @@
   [{:keys [dashboard_id]}]
   {:pre [(integer? dashboard_id)]}
   (db/select-one 'Dashboard, :id dashboard_id))
-
 
 (defn ^:hydrate series
   "Return the `Cards` associated as additional series on this DashboardCard."
@@ -195,3 +205,36 @@
       (db/delete! PulseCard :dashboard_card_id (:id dashboard-card))
       (db/delete! DashboardCard :id (:id dashboard-card)))
     (events/publish-event! :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))
+
+;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
+(defmethod serdes.base/extract-query "DashboardCard" [_ {:keys [user]}]
+  ;; TODO This join over the subset of collections this user can see is shared by a few things - factor it out?
+  (serdes.base/raw-reducible-query
+    "DashboardCard"
+    {:select     [:dc.*]
+     :from       [[:report_dashboardcard :dc]]
+     :left-join  [[:report_dashboard :dash] [:= :dash.id :dc.dashboard_id]
+                  [:collection :coll]       [:= :coll.id :dash.collection_id]]
+     :where      (if user
+                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
+                   [:is :coll.personal_owner_id nil])}))
+
+(defmethod serdes.base/serdes-dependencies "DashboardCard" [{:keys [card_id dashboard_id]}]
+  [[{:model "Dashboard" :id dashboard_id}]
+   [{:model "Card"      :id card_id}]])
+
+(defmethod serdes.base/serdes-generate-path "DashboardCard" [_ dashcard]
+  [(serdes.base/infer-self-path "Dashboard" (db/select-one 'Dashboard :id (:dashboard_id dashcard)))
+   (serdes.base/infer-self-path "DashboardCard" dashcard)])
+
+(defmethod serdes.base/extract-one "DashboardCard"
+  [_model-name _opts dashcard]
+  (-> (serdes.base/extract-one-basics "DashboardCard" dashcard)
+      (update :card_id      serdes.util/export-fk 'Card)
+      (update :dashboard_id serdes.util/export-fk 'Dashboard)))
+
+(defmethod serdes.base/load-xform "DashboardCard"
+  [dashcard]
+  (-> (serdes.base/load-xform-basics dashcard)
+      (update :card_id      serdes.util/import-fk 'Card)
+      (update :dashboard_id serdes.util/import-fk 'Dashboard)))

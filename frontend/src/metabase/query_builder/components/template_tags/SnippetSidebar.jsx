@@ -285,12 +285,8 @@ export default _.compose(
 
 class ArchivedSnippetsInner extends React.Component {
   render() {
-    const {
-      onBack,
-      snippets,
-      snippetCollections,
-      archivedSnippetCollections,
-    } = this.props;
+    const { onBack, snippets, snippetCollections, archivedSnippetCollections } =
+      this.props;
     const collectionsById = _.indexBy(
       snippetCollections.concat(archivedSnippetCollections),
       c => canonicalCollectionId(c.id),

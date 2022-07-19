@@ -1,86 +1,90 @@
 #!/usr/bin/env node
 
-const fs = require("fs-promise");
+const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { spawn } = require("child_process");
 
 const fetch = require("isomorphic-fetch");
 
-const DEFAULT_DB_KEY = "/test_db_fixture.db";
-
 let testDbId = 0;
-const getDbFile = () =>
+const generateTempDbPath = () =>
   path.join(os.tmpdir(), `metabase-test-${process.pid}-${testDbId++}.db`);
 
 let port = 4000;
 const getPort = () => port++;
 
 const BackendResource = createSharedResource("BackendResource", {
-  getKey({ dbKey = DEFAULT_DB_KEY }) {
-    return dbKey || {};
-  },
-  create({ dbKey = DEFAULT_DB_KEY }) {
-    const dbFile = getDbFile();
+  create({ dbKey }) {
+    const dbFile = generateTempDbPath();
     const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
-    const e2eHost = process.env["E2E_HOST"];
-    if (e2eHost) {
-      return {
-        dbKey: absoluteDbKey,
-        host: e2eHost,
-        process: { kill: () => {} },
-      };
-    } else {
-      const port = getPort();
-      return {
-        dbKey: absoluteDbKey,
-        dbFile: dbFile,
-        host: `http://localhost:${port}`,
-        port: port,
-      };
-    }
+    const port = getPort();
+
+    return {
+      dbKey: absoluteDbKey,
+      dbFile: dbFile,
+      host: `http://localhost:${port}`,
+      port: port,
+    };
   },
   async start(server) {
     if (!server.process) {
       if (server.dbKey !== server.dbFile) {
-        await fs.copy(`${server.dbKey}.mv.db`, `${server.dbFile}.mv.db`);
+        fs.copyFileSync(`${server.dbKey}.mv.db`, `${server.dbFile}.mv.db`);
       }
+
+      const javaFlags = [
+        "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
+        "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
+        "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
+        "-Duser.timezone=US/Pacific",
+        `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
+      ];
+
+      const metabaseConfig = {
+        MB_DB_TYPE: "h2",
+        MB_DB_FILE: server.dbFile,
+        MB_JETTY_HOST: "0.0.0.0",
+        MB_JETTY_PORT: server.port,
+        MB_ENABLE_TEST_ENDPOINTS: "true",
+        MB_PREMIUM_EMBEDDING_TOKEN:
+          (process.env["MB_EDITION"] === "ee" &&
+            process.env["ENTERPRISE_TOKEN"]) ||
+          undefined,
+      };
+
+      /**
+       * This ENV is used for Cloud instances only, and is subject to change.
+       * As such, it is not documented anywhere in the code base!
+       *
+       * WARNING:
+       * Changing values here will break the related E2E test.
+       */
+      const userDefaults = {
+        MB_USER_DEFAULTS: JSON.stringify({
+          token: "123456",
+          user: {
+            first_name: "Testy",
+            last_name: "McTestface",
+            email: "testy@metabase.test",
+            site_name: "Epic Team",
+          },
+        }),
+      };
+
+      const snowplowConfig = {
+        MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
+        MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
+      };
 
       server.process = spawn(
         "java",
-        [
-          "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
-          "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
-          // "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit
-          "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
-          "-Duser.timezone=US/Pacific",
-          `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
-          "-jar",
-          "target/uberjar/metabase.jar",
-        ],
+        [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
         {
           env: {
-            MB_DB_TYPE: "h2",
-            MB_DB_FILE: server.dbFile,
-            MB_JETTY_HOST: "0.0.0.0",
-            MB_JETTY_PORT: server.port,
-            MB_ENABLE_TEST_ENDPOINTS: "true",
-            MB_PREMIUM_EMBEDDING_TOKEN:
-              (process.env["MB_EDITION"] === "ee" &&
-                process.env["ENTERPRISE_TOKEN"]) ||
-              undefined,
-            MB_FIELD_FILTER_OPERATORS_ENABLED: "true",
-            MB_USER_DEFAULTS: JSON.stringify({
-              token: "123456",
-              user: {
-                first_name: "Testy",
-                last_name: "McTestface",
-                email: "testy@metabase.test",
-                site_name: "Epic Team",
-              },
-            }),
-            MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
-            MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
+            ...metabaseConfig,
+            ...userDefaults,
+            ...snowplowConfig,
             PATH: process.env.PATH,
           },
           stdio:
@@ -121,7 +125,7 @@ const BackendResource = createSharedResource("BackendResource", {
     }
     try {
       if (server.dbFile) {
-        await fs.unlink(`${server.dbFile}.mv.db`);
+        fs.unlinkSync(`${server.dbFile}.mv.db`);
       }
     } catch (e) {}
   },
@@ -139,13 +143,7 @@ async function isReady(host) {
 
 function createSharedResource(
   resourceName,
-  {
-    defaultOptions,
-    getKey = options => JSON.stringify(options),
-    create = options => ({}),
-    start = resource => {},
-    stop = resource => {},
-  },
+  { defaultOptions, create, start, stop },
 ) {
   const entriesByKey = new Map();
   const entriesByResource = new Map();
@@ -163,7 +161,8 @@ function createSharedResource(
 
   return {
     get(options = defaultOptions) {
-      const key = getKey(options);
+      const dbKey = options;
+      const key = dbKey || {};
       let entry = entriesByKey.get(key);
       if (!entry) {
         entry = {
@@ -195,4 +194,4 @@ function delay(duration) {
   return new Promise((resolve, reject) => setTimeout(resolve, duration));
 }
 
-module.exports = { DEFAULT_DB_KEY, BackendResource, isReady };
+module.exports = BackendResource;
