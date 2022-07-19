@@ -332,9 +332,13 @@
                                 (comp (filter params/Param?)
                                       (map :k))
                                 (params.parse/parse text))]
-    (and (every? #(or (:default %) (= (:type %) :dimension) (fully-parametrized-snippet? %))
+    (and (every? #(or (= (:type %) :dimension)
+                      (:default %)
+                      (fully-parametrized-snippet? %))
                  (map template-tags obligatory-params))
-         (every? #(or (:default %) (not (:required %))) (vals template-tags)))))
+         (every? #(or (not (:required %))
+                      (:default %))
+                 (vals template-tags)))))
 
 (defn- fully-parametrized-query? [row]
   (let [native-query (-> row :dataset_query json/parse-string mbql.normalize/normalize :native)]
