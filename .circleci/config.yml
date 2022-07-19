@@ -498,6 +498,7 @@ jobs:
           name: 'If $CIRCLE_JOB is unset then bust the cache (see #24128 for details)'
           command: |
             if [ -z "$CIRCLE_JOB" ]; then
+              echo '$CIRCLE_JOB is unset. Using cache-busting prefix.'
               echo '<< pipeline.id >>' > .CACHE-PREFIX
             fi
       - run:
