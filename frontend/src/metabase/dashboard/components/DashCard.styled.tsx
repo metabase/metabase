@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 
 export interface DashCardRootProps {
   isNightMode: boolean;
+  isUsuallySlow: boolean;
 }
 
 export const DashCardRoot = styled.div<DashCardRootProps>`
@@ -14,5 +15,11 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
     css`
       border-color: ${color("bg-night")};
       background-color: ${color("bg-night")};
+    `}
+
+  ${({ isUsuallySlow }) =>
+    isUsuallySlow &&
+    css`
+      border-color: ${color("accent4")};
     `}
 `;
