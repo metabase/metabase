@@ -9,10 +9,12 @@
   [database-or-id]
   (contains? @api/*current-user-permissions-set* (perms/database-block-perms-path database-or-id)))
 
-(defn- current-user-has-native-query-data-perm-despite-having-block-perm-for-database?
+(defn- current-user-has-native-query-read-perm-despite-having-block-perm-for-database?
   [database-or-id]
   (and (current-user-has-block-permissions-for-database? database-or-id)
-       (contains? @api/*current-user-permissions-set* (perms/adhoc-native-query-path database-or-id))))
+       ;; You might think this would actually be perms/adhoc-native-query-path but that's the read-write permissions
+       ;; that #21695 was complaining about, they just wanted read perms not read-write perms
+       (contains? @api/*current-user-permissions-set* (perms/all-schemas-path database-or-id))))
 
 (defn check-block-permissions
   "Assert that block permissions are not in effect for Database for a query that's only allowed to run because of
@@ -34,7 +36,7 @@
 
     ;; (#21695) - We still want the ability to look at the native queries
     ;; if we have the affirmative perm in addition to the block perm. But not editing.
-    (current-user-has-native-query-data-perm-despite-having-block-perm-for-database? database-id)
+    (current-user-has-native-query-read-perm-despite-having-block-perm-for-database? database-id)
     ::block-permission-for-db-overriden-by-native-query-data-perm
 
     :else
