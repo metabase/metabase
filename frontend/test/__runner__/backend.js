@@ -118,21 +118,7 @@ async function isReady(host) {
   return false;
 }
 
-function createSharedResource(resourceName, { start, stop }) {
-  const entriesByKey = new Map();
-  const entriesByResource = new Map();
-
-  function destroy(entry) {
-    if (entriesByKey.has(entry.key)) {
-      entriesByKey.delete(entry.key);
-      entriesByResource.delete(entry.resource);
-      const p = stop(entry.resource).then(null, err =>
-        console.log("Error stopping resource", resourceName, entry.key, err),
-      );
-      return p;
-    }
-  }
-
+function createSharedResource({ start, stop }) {
   return {
     createServer() {
       const generateTempDbPath = () =>
@@ -149,15 +135,11 @@ function createSharedResource(resourceName, { start, stop }) {
 
       return server;
     },
-    async start(resource) {
-      const entry = entriesByResource.get(resource);
-      return start(entry.resource);
+    async start(server) {
+      return start(server);
     },
-    async stop(resource) {
-      const entry = entriesByResource.get(resource);
-      if (entry && --entry.references <= 0) {
-        await destroy(entry);
-      }
+    async stop(server) {
+      return stop(server);
     },
   };
 }
