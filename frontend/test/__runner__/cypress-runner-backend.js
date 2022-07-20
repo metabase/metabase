@@ -12,10 +12,8 @@ const CypressBackend = {
     const generateTempDbPath = () =>
       path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
 
-    const dbFile = generateTempDbPath();
-
     const server = {
-      dbFile: dbFile,
+      dbFile: generateTempDbPath(),
       host: `http://localhost:${port}`,
       port,
     };
