@@ -185,7 +185,7 @@ export const updateQuestion = (
       dispatch(updateUrl(null, { dirty: true }));
     }
 
-    if (currentQuestion.isNative() && newQuestion.isNative()) {
+    if (currentQuestion.isNative() || newQuestion.isNative()) {
       const isVisible = getIsShowingTemplateTagsEditor(getState());
       const nextState = getNextTemplateTagEditorState({
         currentQuestion,
@@ -194,7 +194,7 @@ export const updateQuestion = (
         isVisible,
       });
       if (nextState) {
-        setIsShowingTemplateTagsEditor(nextState === "visible");
+        dispatch(setIsShowingTemplateTagsEditor(nextState === "visible"));
       }
     }
 
