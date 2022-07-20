@@ -27,7 +27,7 @@
   [parameter]
   (let [tyype  (:type parameter)
         values (or (:value parameter) (:default parameter))]
-    (try (shared.params/formatted-value tyype (public-settings/site-locale) values)
+    (try (shared.params/formatted-value tyype values (public-settings/site-locale))
          (catch Throwable _
            (shared.params/formatted-list (u/one-or-many values))))))
 
