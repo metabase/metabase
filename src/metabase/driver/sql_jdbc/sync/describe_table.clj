@@ -124,14 +124,24 @@
                                                rf
                                                init
                                                (when @has-fields-without-type-info?
-                                                 (fallback-fields-metadata-from-select-query driver conn schema table-name)))))]
+                                                 (fallback-fields-metadata-from-select-query driver conn schema table-name)))))
+            ;; Workaround for the redshift driver problem with respect to #21215.
+            ;; They reported that it was fixed for 2.1.0.5 but not for our specific case.
+            redshift-fallback             (reify clojure.lang.IReduceInit
+                                            (reduce [_ rf init]
+                                              (reduce
+                                               rf
+                                               init
+                                               (fallback-fields-metadata-from-select-query driver conn schema table-name))))]
         ;; VERY IMPORTANT! DO NOT REWRITE THIS TO BE LAZY! IT ONLY WORKS BECAUSE AS NORMAL-FIELDS GETS REDUCED,
         ;; HAS-FIELDS-WITHOUT-TYPE-INFO? WILL GET SET TO TRUE IF APPLICABLE AND THEN FALLBACK-FIELDS WILL RUN WHEN
         ;; IT'S TIME TO START EVALUATING THAT.
         (reduce
-         ((comp cat (m/distinct-by :name)) rf)
-         init
-         [jdbc-metadata fallback-metadata])))))
+          ((comp cat (m/distinct-by :name)) rf)
+          init
+          (if (= driver :redshift)
+            [redshift-fallback]
+            [jdbc-metadata fallback-metadata]))))))
 
 (defn describe-table-fields
   "Returns a set of column metadata for `table` using JDBC Connection `conn`."
