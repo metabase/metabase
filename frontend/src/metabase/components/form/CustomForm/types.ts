@@ -13,6 +13,10 @@ export interface BaseFormProps {
   formName?: string;
   formObject: FormObject;
 
+  formFields: FormFieldDefinition[];
+  formFieldsByName: Record<FieldName, FormFieldDefinition>;
+  disablePristineSubmit?: boolean;
+
   fields: Record<string, FormField>;
   values: FieldValues;
   errors: Record<FieldName, string>;
