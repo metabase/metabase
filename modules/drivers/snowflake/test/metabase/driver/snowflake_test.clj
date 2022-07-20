@@ -130,12 +130,15 @@
            (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
           "can-connect? should throw for Snowflake databases that don't exist (#9511)")
       (let [pk-user (tx/db-test-env-var-or-throw :snowflake :pk-user)
-            pk-key  (tx/db-test-env-var-or-throw :snowflake :pk-private-key)]
+            pk-key  (str/replace (tx/db-test-env-var-or-throw :snowflake :pk-private-key) #"\s+" "\n")]
         (is (= true
-               (can-connect? (-> (:details (mt/db))
-                                 (dissoc :password)
-                                 (assoc :user pk-user
-                                        :private-key-value pk-key))))
+               (try
+                 (can-connect? (-> (:details (mt/db))
+                                   (dissoc :password)
+                                   (assoc :user pk-user
+                                          :private-key-value pk-key)))
+                 (catch IllegalArgumentException e
+                   (throw (ex-info "connection failed" {:u pk-user :k pk-key} e)))))
             "can-connect? should return true when authenticating with private key")))))
 
 (deftest report-timezone-test
