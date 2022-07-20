@@ -2,20 +2,14 @@ import styled from "@emotion/styled";
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
-import OperatorSelectorComponent from "metabase/query_builder/components/filters/OperatorSelector";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import NumericInput from "metabase/core/components/NumericInput";
-
-export const OperatorSelector = styled(OperatorSelectorComponent)`
-  margin-bottom: ${space(1)};
-`;
 
 export const ArgumentSelector = styled(FieldValuesWidget)`
   min-height: 55px;
 `;
 
 export const ValuesPickerContainer = styled.div`
-  grid-column: 2;
   ul.input {
     margin-bottom: 0;
     :focus-within {

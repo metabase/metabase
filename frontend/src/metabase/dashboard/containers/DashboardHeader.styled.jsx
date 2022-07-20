@@ -5,8 +5,8 @@ import Button from "metabase/core/components/Button";
 
 export const DashboardHeaderActionDivider = styled.div`
   height: 1.25rem;
-  padding-left: 0.75rem;
-  margin-left: 0.75rem;
+  padding-left: 0.5rem;
+  margin-left: 0.5rem;
   width: 0px;
   border-left: 1px solid ${color("border-dark")};
 `;

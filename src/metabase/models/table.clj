@@ -255,7 +255,7 @@
     (db/select-one-field :id Table :name table-name :db_id db-id :schema schema-name)))
 
 (defmethod serdes.base/extract-one "Table"
-  [_ _ {:keys [db_id] :as table}]
+  [_model-name _opts {:keys [db_id] :as table}]
   (-> (serdes.base/extract-one-basics "Table" table)
       (assoc :db_id (db/select-one-field :name 'Database :id db_id))))
 

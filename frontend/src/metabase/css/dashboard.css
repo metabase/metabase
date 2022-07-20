@@ -109,10 +109,6 @@
   right: 0;
 }
 
-.DashCard .Card.Card--slow {
-  border-color: var(--color-accent4);
-}
-
 .Dash--editing .DashCard .Card {
   transition: border 0.3s, background-color 0.3s;
 }

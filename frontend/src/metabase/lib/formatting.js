@@ -23,6 +23,7 @@ import {
   isTime,
   isURL,
 } from "metabase/lib/schema_metadata";
+import { color } from "metabase/lib/colors";
 import { parseTime, parseTimestamp } from "metabase/lib/time";
 import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
@@ -917,19 +918,19 @@ export function slugify(name) {
 export function assignUserColors(
   userIds,
   currentUserId,
-  colorClasses = [
-    "bg-brand",
-    "bg-purple",
-    "bg-error",
-    "bg-green",
-    "bg-gold",
-    "bg-medium",
+  colors = [
+    color("brand"),
+    color("accent2"),
+    color("error"),
+    color("accent1"),
+    color("accent4"),
+    color("bg-medium"),
   ],
 ) {
   const assignments = {};
 
-  const currentUserColor = colorClasses[0];
-  const otherUserColors = colorClasses.slice(1);
+  const currentUserColor = colors[0];
+  const otherUserColors = colors.slice(1);
   let otherUserColorIndex = 0;
 
   for (const userId of userIds) {

@@ -480,17 +480,6 @@
   `(do-with-auto-retries ~num-retries
      (fn [] ~@body)))
 
-(defn key-by
-  "Convert a sequential `coll` to a map of `(f item)` -> `item`.
-  This is similar to `group-by`, but the resultant map's values are single items from `coll` rather than sequences of
-  items. (Because only a single item is kept for each value of `f`, items producing duplicate values will be
-  discarded).
-
-     (key-by :id [{:id 1, :name :a} {:id 2, :name :b}]) -> {1 {:id 1, :name :a}, 2 {:id 2, :name :b}}"
-  {:style/indent 1}
-  [f coll]
-  (into {} (map (juxt f identity)) coll))
-
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
   Otherwise returns `nil`.

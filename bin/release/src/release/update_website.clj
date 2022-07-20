@@ -20,8 +20,10 @@
       (u/sh {:dir dir} "git" "checkout" website-branch))
     (u/step "Install npm dependencies"
       (u/sh {:dir dir} "npm" "ci"))
-    (u/step "Run docs script"
+    (u/step "Fetch release branch docs"
       (u/sh {:dir dir} "./script/docs" tag "--latest"))
+    (u/step "Fetch master docs"
+      (u/sh {:dir dir} "./script/docs" "master" "--set-version" "master"))
     (u/step "Commit updated docs"
       (u/sh {:dir dir} "git" "add" ".")
       (u/sh* {:dir dir} "git" "commit" "-m" tag))

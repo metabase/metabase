@@ -26,6 +26,8 @@ export const ModalHeader = styled.div`
 `;
 
 export const ModalBody = styled.div`
+  border-top: 1px solid ${color("border")};
+  margin-top: 1.5rem;
   overflow-y: auto;
   flex: 1;
 `;

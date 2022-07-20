@@ -228,7 +228,7 @@
    (serdes.base/infer-self-path "DashboardCard" dashcard)])
 
 (defmethod serdes.base/extract-one "DashboardCard"
-  [_ _ dashcard]
+  [_model-name _opts dashcard]
   (-> (serdes.base/extract-one-basics "DashboardCard" dashcard)
       (update :card_id      serdes.util/export-fk 'Card)
       (update :dashboard_id serdes.util/export-fk 'Dashboard)))

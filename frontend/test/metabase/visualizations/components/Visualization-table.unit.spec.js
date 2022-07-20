@@ -39,6 +39,10 @@ describe("Table", () => {
     };
     const { getByText } = renderWithProviders(
       <Visualization rawSeries={series(rows, settings)} />,
+      {
+        withSettings: true,
+        withEmbedSettings: true,
+      },
     );
     jest.runAllTimers();
     const bgColors = rows.map(

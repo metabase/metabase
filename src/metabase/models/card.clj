@@ -209,7 +209,9 @@
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
                                  (describe-database query-db-id)))
-                          {:status-code 400})))))))
+                          {:status-code           400
+                           :query-database        query-db-id
+                           :field-filter-database field-db-id})))))))
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
@@ -340,7 +342,7 @@
                    [:is :coll.personal_owner_id nil])}))
 
 (defmethod serdes.base/extract-one "Card"
-  [_ _ card]
+  [_model-name _opts card]
   ;; Cards have :table_id, :database_id, :collection_id, :creator_id that need conversion.
   ;; :table_id and :database_id are extracted as just :table_id [database_name schema table_name].
   ;; :collection_id is extracted as its entity_id or identity-hash.

@@ -110,7 +110,7 @@ const BulkFilterModal = ({
   return (
     <ModalRoot>
       <ModalHeader>
-        <ModalTitle>{t`Filter by`}</ModalTitle>
+        <ModalTitle>{getTitle(query, sections.length === 1)}</ModalTitle>
         {showSearch ? (
           <FieldSearch value={searchQuery} onChange={setSearchQuery} />
         ) : (
@@ -256,15 +256,13 @@ const getQuery = (question: Question) => {
   }
 };
 
-const getTitle = (question: Question, query: StructuredQuery) => {
+const getTitle = (query: StructuredQuery, singleTable: boolean) => {
   const table = query.table();
 
-  if (question.isSaved()) {
-    return t`Filter ${question.displayName()}`;
-  } else if (table) {
-    return t`Filter ${table.displayName()}`;
+  if (singleTable) {
+    return t`Filter by ${table.displayName()}`;
   } else {
-    return t`Filter`;
+    return t`Filter by`;
   }
 };
 

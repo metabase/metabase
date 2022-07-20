@@ -8,20 +8,26 @@ export function filter({ mode } = {}) {
   initiateAction("Filter", mode);
 }
 
-export function filterField(fieldName, { operator, value, placeholder } = {}) {
+export function filterField(
+  fieldName,
+  { operator, value, placeholder, order } = {},
+) {
   if (operator) {
-    changeOperator(getFilterField(fieldName), operator);
+    changeOperator(getFilterField(fieldName, order), operator);
   }
 
   if (value) {
-    changeValue(getFilterField(fieldName), value, placeholder);
+    changeValue(getFilterField(fieldName, order), value, placeholder);
   }
 
-  return getFilterField(fieldName);
+  return getFilterField(fieldName, order);
 }
 
-export function filterFieldPopover(fieldName, { value, placeholder } = {}) {
-  getFilterField(fieldName).within(() => {
+export function filterFieldPopover(
+  fieldName,
+  { value, placeholder, order } = {},
+) {
+  getFilterField(fieldName, order).within(() => {
     cy.findByTestId("select-button").click();
   });
 
@@ -31,8 +37,8 @@ export function filterFieldPopover(fieldName, { value, placeholder } = {}) {
   return popover();
 }
 
-function getFilterField(fieldName) {
-  return cy.findByTestId(`filter-field-${fieldName}`);
+function getFilterField(fieldName, order = 0) {
+  return cy.findAllByTestId(`filter-field-${fieldName}`).eq(order);
 }
 
 function changeOperator(subject, operator) {

@@ -100,11 +100,23 @@ And paste those URLS in the relevant input fields in **Admin settings** > **Sett
 
 ## Hosting fonts on GitHub
 
-If you host a font on GitHub, the font should be in a public repository, and you'll need to link to the raw font file. The URL should end with `?raw=true`, like in this fake link:
+If you host a font on GitHub, the font should be in a public repository, and you'll need to link to the raw font file(s) served from the raw.githubusercontent.com domain.
+
+For example, let's say you want to use the Inter typeface. The font is hosted at:
+
+[https://github.com/rsms/inter/blob/master/docs/font-files/Inter-Regular.woff2](https://github.com/rsms/inter/blob/master/docs/font-files/Inter-Regular.woff2)
+
+Then the link you'll need is:
+
+[https://raw.githubusercontent.com/rsms/inter/master/docs/font-files/Inter-Regular.woff2](https://raw.githubusercontent.com/rsms/inter/master/docs/font-files/Inter-Regular.woff2)
+
+Which follows the pattern:
 
 ```
-https://github.com/username/repo/blob/main/fontfile.woff2?raw=true
+raw.githubusercontent.com/${user}/${repo}/${branch}/${path}
 ```
+
+Note that in the raw link, there is no `/blob/` directory in the URL.
 
 ## Supporting multiple languages
 

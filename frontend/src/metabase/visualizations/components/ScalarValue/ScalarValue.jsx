@@ -2,7 +2,7 @@
  * Shared component for Scalar and SmartScalar to make sure our number presentation stays in sync
  */
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useMemo } from "react";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
@@ -14,31 +14,42 @@ import {
   ScalarTitleRoot,
 } from "./ScalarValue.styled";
 
+import { findSize, getMaxFontSize } from "./utils";
+
+const HORIZONTAL_PADDING = 32;
+
 export const ScalarWrapper = ({ children }) => (
   <ScalarRoot>{children}</ScalarRoot>
 );
 
 const ScalarValue = ({
   value,
-  isDashboard,
-  gridSize,
-  minGridSize,
   width,
-  height,
+  gridSize,
   totalNumGridCols,
-}) => (
-  <ScalarValueWrapper
-    className="ScalarValue"
-    isDashboard={isDashboard}
-    gridSize={gridSize}
-    minGridSize={minGridSize}
-    width={width}
-    height={height}
-    totalNumGridCols={totalNumGridCols}
-  >
-    {value}
-  </ScalarValueWrapper>
-);
+  fontFamily,
+}) => {
+  const fontSize = useMemo(
+    () =>
+      findSize({
+        text: value,
+        targetWidth: width - HORIZONTAL_PADDING,
+        fontFamily: fontFamily ?? "Lato",
+        fontWeight: 900,
+        unit: "rem",
+        step: 0.2,
+        min: 2.2,
+        max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
+      }),
+    [fontFamily, gridSize, totalNumGridCols, value, width],
+  );
+
+  return (
+    <ScalarValueWrapper className="ScalarValue" fontSize={fontSize}>
+      {value}
+    </ScalarValueWrapper>
+  );
+};
 
 const ICON_WIDTH = 24;
 

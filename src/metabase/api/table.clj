@@ -313,8 +313,8 @@
    database."
   [card-id database-id metadata]
   (let [add-field-dimension-options #(assoc-field-dimension-options (driver.u/database->driver database-id) %)
-        underlying (u/key-by :id (when-let [ids (seq (keep :id metadata))]
-                                   (db/select Field :id [:in ids])))
+        underlying (m/index-by :id (when-let [ids (seq (keep :id metadata))]
+                                     (db/select Field :id [:in ids])))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
                      (update :base_type keyword)

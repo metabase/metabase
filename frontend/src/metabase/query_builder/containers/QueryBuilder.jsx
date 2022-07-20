@@ -16,7 +16,7 @@ import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 
-import { closeNavbar } from "metabase/redux/app";
+import { closeNavbar, getIsNavbarOpen } from "metabase/redux/app";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -164,6 +164,7 @@ const mapStateToProps = (state, props) => {
     isPreviewing: getIsPreviewing(state),
     isPreviewable: getIsPreviewable(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
+    isNavBarOpen: getIsNavbarOpen(state),
     isVisualized: getIsVisualized(state),
     isLiveResizable: getIsLiveResizable(state),
     isTimeseries: getIsTimeseries(state),

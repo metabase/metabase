@@ -11,14 +11,15 @@ import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Warnings from "metabase/query_builder/components/Warnings";
 import Checkbox from "metabase/core/components/CheckBox";
 
+import { BulkFilterSelect } from "../BulkFilterSelect";
+import { InlineValuePicker } from "../InlineValuePicker";
+
 import { MAX_INLINE_CATEGORIES } from "./constants";
 import {
   PickerContainer,
   PickerGrid,
   Loading,
 } from "./InlineCategoryPicker.styled";
-
-import { BulkFilterSelect } from "../BulkFilterSelect";
 
 const mapStateToProps = (state: any, props: any) => {
   const fieldId = props.dimension?.field?.()?.id;
@@ -43,6 +44,7 @@ const mapDispatchToProps = {
 interface InlineCategoryPickerProps {
   query: StructuredQuery;
   filter?: Filter;
+  tableName?: string;
   newFilter: Filter;
   dimension: Dimension;
   fieldValues: any[];
@@ -81,10 +83,17 @@ export function InlineCategoryPickerComponent({
       });
   }, [dimension, safeFetchFieldValues, shouldFetchFieldValues]);
 
+  const hasCheckboxOperator =
+    !filter || ["=", "!="].includes(filter?.operatorName());
+
+  const hasValidOptions = fieldValues.flat().find(isValidOption);
+
   const showInlinePicker =
-    fieldValues.length > 0 &&
+    hasValidOptions &&
     fieldValues.length <= MAX_INLINE_CATEGORIES &&
-    (!filter || filter?.operatorName() === "=");
+    hasCheckboxOperator;
+
+  const showPopoverPicker = !showInlinePicker && hasCheckboxOperator;
 
   if (hasError) {
     return (
@@ -110,13 +119,23 @@ export function InlineCategoryPickerComponent({
     );
   }
 
+  if (showPopoverPicker) {
+    return (
+      <BulkFilterSelect
+        query={query}
+        filter={filter}
+        dimension={dimension}
+        handleChange={onChange}
+        handleClear={onClear}
+      />
+    );
+  }
+
   return (
-    <BulkFilterSelect
-      query={query}
-      filter={filter}
-      dimension={dimension}
+    <InlineValuePicker
+      filter={filter ?? newFilter}
+      field={dimension.field()}
       handleChange={onChange}
-      handleClear={onClear}
     />
   );
 }

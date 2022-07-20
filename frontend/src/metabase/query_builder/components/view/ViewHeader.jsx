@@ -48,6 +48,7 @@ import {
   AdHocLeftSideRoot,
   HeaderDivider,
   ViewHeaderActionPanel,
+  ViewHeaderIconButtonContainer,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -64,6 +65,7 @@ const viewTitleHeaderPropTypes = {
   isRunning: PropTypes.bool,
   isResultDirty: PropTypes.bool,
   isNativeEditorOpen: PropTypes.bool,
+  isNavBarOpen: PropTypes.bool,
   isShowingFilterSidebar: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
@@ -91,7 +93,7 @@ const viewTitleHeaderPropTypes = {
 };
 
 export function ViewTitleHeader(props) {
-  const { question, className, style } = props;
+  const { question, className, style, isNavBarOpen } = props;
 
   const [
     areFiltersExpanded,
@@ -127,6 +129,7 @@ export function ViewTitleHeader(props) {
         className={className}
         style={style}
         data-testid="qb-header"
+        isNavBarOpen={isNavBarOpen}
       >
         {isSaved ? (
           <SavedQuestionLeftSide {...props} />
@@ -435,14 +438,13 @@ function ViewTitleHeaderRightSide(props) {
           primary
           icon="add"
           onClick={() => onOpenModal(MODAL_TYPES.INSERT_ROW)}
-          ml={1}
         >
           {t`New row`}
         </Button>
       )}
       {QuestionFilterWidget.shouldRender(props) && (
         <QuestionFilterWidget
-          className="hide sm-show ml1"
+          className="hide sm-show"
           isShowingFilterSidebar={isShowingFilterSidebar}
           onAddFilter={onAddFilter}
           onOpenModal={onOpenModal}
@@ -452,7 +454,6 @@ function ViewTitleHeaderRightSide(props) {
       {QuestionSummarizeWidget.shouldRender(props) && (
         <QuestionSummarizeWidget
           className="hide sm-show"
-          ml={1}
           isShowingSummarySidebar={isShowingSummarySidebar}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
@@ -460,43 +461,48 @@ function ViewTitleHeaderRightSide(props) {
         />
       )}
       {QuestionNotebookButton.shouldRender(props) && (
-        <QuestionNotebookButton
-          ml={2}
-          question={question}
-          isShowingNotebook={isShowingNotebook}
-          setQueryBuilderMode={setQueryBuilderMode}
-          data-metabase-event={
-            isShowingNotebook
-              ? `Notebook Mode;Go to View Mode`
-              : `View Mode; Go to Notebook Mode`
-          }
-        />
+        <ViewHeaderIconButtonContainer>
+          <QuestionNotebookButton
+            iconSize={16}
+            question={question}
+            isShowingNotebook={isShowingNotebook}
+            setQueryBuilderMode={setQueryBuilderMode}
+            data-metabase-event={
+              isShowingNotebook
+                ? `Notebook Mode;Go to View Mode`
+                : `View Mode; Go to Notebook Mode`
+            }
+          />
+        </ViewHeaderIconButtonContainer>
       )}
       {NativeQueryButton.shouldRender(props) && (
-        <NativeQueryButton
-          size={16}
-          question={question}
-          data-metabase-event="Notebook Mode; Convert to SQL Click"
-        />
+        <ViewHeaderIconButtonContainer>
+          <NativeQueryButton
+            size={16}
+            question={question}
+            data-metabase-event="Notebook Mode; Convert to SQL Click"
+          />
+        </ViewHeaderIconButtonContainer>
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
-      {hasRunButton && (
-        <RunButtonWithTooltip
-          className={cx("text-brand-hover text-dark", {
-            hide: isShowingNotebook,
-            "text-white-hover": isResultDirty,
-          })}
-          medium
-          borderless
-          ml={1}
-          compact
-          result={result}
-          isRunning={isRunning}
-          isDirty={isResultDirty}
-          isPreviewing={isPreviewing}
-          onRun={() => runQuestionQuery({ ignoreCache: true })}
-          onCancel={cancelQuery}
-        />
+      {hasRunButton && !isShowingNotebook && (
+        <ViewHeaderIconButtonContainer>
+          <RunButtonWithTooltip
+            className={cx("text-brand-hover text-dark", {
+              "text-white-hover": isResultDirty,
+            })}
+            iconSize={16}
+            onlyIcon
+            medium
+            compact
+            result={result}
+            isRunning={isRunning}
+            isDirty={isResultDirty}
+            isPreviewing={isPreviewing}
+            onRun={() => runQuestionQuery({ ignoreCache: true })}
+            onCancel={cancelQuery}
+          />
+        </ViewHeaderIconButtonContainer>
       )}
       {isSaved && (
         <QuestionActions

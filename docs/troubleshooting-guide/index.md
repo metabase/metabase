@@ -24,8 +24,8 @@ Problems, their causes, how to detect them, and how to fix them.
 
 ### Permissions
 
-- [Fixing permissions issues][permissions].
-- [Managing data sandboxing][sandbox].
+- [My permissions aren't working][permissions].
+- [My data sandboxes aren't working][sandbox].
 
 ### Databases
 
@@ -37,6 +37,7 @@ Problems, their causes, how to detect them, and how to fix them.
 ### Questions and dashboards
 
 - [I can't save my question or dashboard][proxies].
+- [I can't view or edit my question or dashboard][view-edit].
 - [My dashboard is slow or failing to load][slow-dashboard].
 - [My SQL question doesn't work][sql].
 - [The dates and times in my questions and charts are wrong][incorrect-times].
@@ -123,3 +124,4 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [sync-fingerprint-scan]: ./sync-fingerprint-scan.html
 [timeout]: ./timeout.html
 [upgrade]: ../operations-guide/upgrading-metabase.html
+[view-edit]: ./cant-view-or-edit.html
