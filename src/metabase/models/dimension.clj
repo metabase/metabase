@@ -28,7 +28,7 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 (defmethod serdes.base/extract-one "Dimension"
-  [_ _ dim]
+  [_model-name _opts dim]
   ;; The field IDs are converted to {:field [db schema table field]} portable values.
   (-> (serdes.base/extract-one-basics "Dimension" dim)
       (update :field_id serdes.util/export-field-fk)

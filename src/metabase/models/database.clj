@@ -282,7 +282,7 @@
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 
 (defmethod serdes.base/extract-one "Database"
-  [_ {secrets :database/secrets :or {secrets :exclude}} entity]
+  [_model-name {secrets :database/secrets :or {secrets :exclude}} entity]
   ;; TODO Support alternative encryption of secret database details.
   ;; There's one optional foreign key: creator_id. Resolve it as an email.
   (cond-> (serdes.base/extract-one-basics "Database" entity)

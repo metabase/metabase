@@ -10,6 +10,14 @@
       (subs s 0 max-label-length)
       s))
 
+(defn- leaf-file-name
+  ([id]       (str id ".yaml"))
+  ;; + is a legal, unescaped character on all common filesystems,
+  ;; but doesn't appear in `identity-hash` or NanoID!
+  ([id label] (if (nil? label)
+                (leaf-file-name id)
+                (str id "+" (truncate-label label) ".yaml"))))
+
 (defn hierarchy->file
   "Given a :serdes/meta abstract path, return a [[File]] corresponding to it."
   ^File [root-dir hierarchy]
@@ -18,12 +26,8 @@
                                                  [model id]))
         ;; The last part of the hierarchy is used for the basename; this is the only part with the label.
         {:keys [id model label]} (last hierarchy)
-        basename                 (if (nil? label)
-                                   (str id)
-                                   ;; + is a legal, unescaped character on all common filesystems,
-                                   ;; but doesn't appear in `identity-hash` or NanoID!
-                                   (str id "+" (truncate-label label)))]
-    (apply io/file root-dir (concat prefix [model (str basename ".yaml")]))))
+        leaf-name                (leaf-file-name id label)]
+    (apply io/file root-dir (concat prefix [model leaf-name]))))
 
 (defn path-split
   "Given a root directory and a file underneath it, return a sequence of path parts to get there.

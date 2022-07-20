@@ -6,7 +6,6 @@
   --color-brand-light: #ddecfa;
   --color-accent1: #88bf4d;
   --color-accent2: #a989c5;
-  --color-accent4: #f9d45c;
   --color-accent7: #7172ad;
   --color-admin-navbar: #7172ad;
   --color-white: #ffffff;
@@ -115,12 +114,6 @@
   background-color: var(--color-bg-white);
 }
 
-/* favorite */
-.text-gold,
-.text-gold-hover:hover {
-  color: var(--color-accent4);
-}
-
 .text-purple,
 .text-purple-hover:hover {
   color: var(--color-accent7);
@@ -149,10 +142,6 @@
 }
 .text-slate-extra-light {
   background-color: var(--color-bg-light);
-}
-
-.bg-gold {
-  background-color: var(--color-accent4);
 }
 
 .bg-purple,
@@ -293,13 +282,6 @@
 }
 .text-dashboard {
   color: var(--color-brand);
-}
-
-.bg-pulse {
-  background-color: var(--color-accent4);
-}
-.text-pulse {
-  color: var(--color-accent4);
 }
 
 .bg-question {
