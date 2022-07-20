@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
+            [medley.core :as m]
             [metabase.config :as config]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
@@ -77,8 +78,8 @@
 
 (defn- upgrade-field-literals-one-level [{:keys [source-metadata], :as inner-query}]
   (let [source-aliases    (into #{} (keep :source_alias) source-metadata)
-        field-name->field (merge (u/key-by :name source-metadata)
-                                 (u/key-by (comp str/lower-case :name) source-metadata))]
+        field-name->field (merge (m/index-by :name source-metadata)
+                                 (m/index-by (comp str/lower-case :name) source-metadata))]
     (mbql.u/replace inner-query
       ;; don't upgrade anything inside `source-query` or `source-metadata`.
       (_ :guard (constantly (some (set &parents) [:source-query :source-metadata])))

@@ -389,7 +389,7 @@
       (is (= #{"Child 1"}
              (#'qp.add-implicit-joins/join-dependencies child-1-child))))
     (testing "Sort by dependency order"
-      (let [alias->join (u/key-by :alias [parent child-1 child-2 child-1-child])]
+      (let [alias->join (m/index-by :alias [parent child-1 child-2 child-1-child])]
         (doseq [[original expected] {["Parent" "Child 1" "Child 2"]                 ["Parent" "Child 1" "Child 2"]
                                      ["Child 1" "Parent" "Child 2"]                 ["Parent" "Child 1" "Child 2"]
                                      ["Child 1" "Child 2" "Parent"]                 ["Parent" "Child 1" "Child 2"]

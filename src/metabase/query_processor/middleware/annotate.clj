@@ -518,7 +518,7 @@
   "Merge information about fields from `source-metadata` into the returned `cols`."
   [source-metadata cols dataset?]
   (let [index           (fn [col] (or (:id col) (:name col "")))
-        index->metadata (u/key-by index source-metadata)]
+        index->metadata (m/index-by index source-metadata)]
     (for [col cols]
       (if-let [source-metadata-for-field (-> col index index->metadata)]
         (merge-source-metadata-col source-metadata-for-field

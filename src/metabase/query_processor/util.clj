@@ -4,8 +4,8 @@
             [buddy.core.hash :as buddy-hash]
             [cheshire.core :as json]
             [clojure.string :as str]
+            [medley.core :as m]
             [metabase.driver :as driver]
-            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -126,7 +126,7 @@
   the metadata from a run from the query, and `pre-existing` should be the metadata from the database we wish to
   ensure survives."
   [fresh pre-existing]
-  (let [by-key (u/key-by (comp field-ref->key :field_ref) pre-existing)]
+  (let [by-key (m/index-by (comp field-ref->key :field_ref) pre-existing)]
     (for [{:keys [field_ref] :as col} fresh]
       (if-let [existing (get by-key (field-ref->key field_ref))]
         (merge col (select-keys existing preserved-keys))

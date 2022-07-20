@@ -5,6 +5,7 @@
             [flatland.ordered.map :as ordered-map]
             [honeysql.core :as hsql]
             [honeysql.helpers :as hh]
+            [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.db :as mdb]
             [metabase.models :refer [Database]]
@@ -22,7 +23,8 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [medley.core :as m]))
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
@@ -145,7 +147,7 @@
   missing from `entity-columns` but found in `all-search-columns`."
   [model :- SearchableModel]
   (let [entity-columns                (search-config/columns-for-model model)
-        column-alias->honeysql-clause (u/key-by ->column-alias entity-columns)
+        column-alias->honeysql-clause (m/index-by ->column-alias entity-columns)
         cols-or-nils                  (canonical-columns model column-alias->honeysql-clause)]
     cols-or-nils))
 
