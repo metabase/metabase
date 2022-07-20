@@ -23,8 +23,7 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]
-            [medley.core :as m]))
+            [toucan.db :as db]))
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
