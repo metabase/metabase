@@ -125,8 +125,7 @@
 
 (deftest can-connect-test
   (mt/test-driver :snowflake
-    (letfn [(can-connect? [details]
-              (driver/can-connect? :snowflake details))]
+    (let [can-connect? (partial driver/can-connect? :snowflake)]
       (is (= true
              (can-connect? (:details (mt/db))))
           "can-connect? should return true for normal Snowflake DB details")
@@ -137,10 +136,11 @@
       (let [pk-user (tx/db-test-env-var-or-throw :snowflake :pk-user)
             pk-key  (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))]
         (is (= true
-               (can-connect? (-> (:details (mt/db))
-                                 (dissoc :password)
-                                 (assoc :user pk-user
-                                        :private-key-value pk-key))))
+               (-> (:details (mt/db))
+                   (dissoc :password)
+                   (assoc :user pk-user
+                          :private-key-value pk-key)
+                   can-connect?))
             "can-connect? should return true when authenticating with private key")))))
 
 (deftest report-timezone-test
