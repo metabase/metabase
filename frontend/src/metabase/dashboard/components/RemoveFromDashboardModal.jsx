@@ -25,9 +25,16 @@ export default class RemoveFromDashboardModal extends Component {
   }
 
   render() {
-    const { onClose } = this.props;
+    const { onClose, dashcard } = this.props;
     return (
-      <ModalContent title={t`Remove this card?`} onClose={onClose}>
+      <ModalContent
+        title={
+          dashcard.card.display === "text"
+            ? t`Remove this text box?`
+            : t`Remove this question?`
+        }
+        onClose={onClose}
+      >
         <div className="flex-align-right">
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button danger ml={2} onClick={() => this.onRemove()}>
