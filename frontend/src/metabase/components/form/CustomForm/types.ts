@@ -10,7 +10,7 @@ import {
 
 export interface BaseFormProps {
   formKey?: string;
-  formName: string;
+  formName?: string;
   formObject: FormObject;
 
   fields: Record<string, FormField>;
@@ -18,13 +18,13 @@ export interface BaseFormProps {
   errors: Record<FieldName, string>;
 
   active?: boolean;
-  asyncValidating: boolean;
+  asyncValidating?: boolean;
   dirty: boolean;
   error?: string;
   invalid: boolean;
   overwriteOnInitialValuesChange?: boolean;
   pristine: boolean;
-  readonly: boolean;
+  readonly?: boolean;
   submitFailed: boolean;
   submitting: boolean;
   valid: boolean;
