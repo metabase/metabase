@@ -118,6 +118,11 @@
                 :dest-column-name "id"}}
              (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (Table (mt/id :venues))))))))
 
+(defn- format-env-key [env-key]
+  (let [[_ header body footer]
+        (re-find #"(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
+    (str header (str/replace body #"\s+" "\n") footer)))
+
 (deftest can-connect-test
   (mt/test-driver :snowflake
     (letfn [(can-connect? [details]
@@ -130,15 +135,12 @@
            (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
           "can-connect? should throw for Snowflake databases that don't exist (#9511)")
       (let [pk-user (tx/db-test-env-var-or-throw :snowflake :pk-user)
-            pk-key  (str/replace (tx/db-test-env-var-or-throw :snowflake :pk-private-key) #"\s+" "\n")]
+            pk-key  (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))]
         (is (= true
-               (try
-                 (can-connect? (-> (:details (mt/db))
-                                   (dissoc :password)
-                                   (assoc :user pk-user
-                                          :private-key-value pk-key)))
-                 (catch IllegalArgumentException e
-                   (throw (ex-info "connection failed" {:u pk-user :k pk-key} e)))))
+               (can-connect? (-> (:details (mt/db))
+                                 (dissoc :password)
+                                 (assoc :user pk-user
+                                        :private-key-value pk-key))))
             "can-connect? should return true when authenticating with private key")))))
 
 (deftest report-timezone-test
