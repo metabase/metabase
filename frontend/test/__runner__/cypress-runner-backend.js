@@ -7,145 +7,141 @@ const { spawn } = require("child_process");
 
 const fetch = require("isomorphic-fetch");
 
-const CypressBackend = e2eBackend();
+const CypressBackend = {
+  createServer() {
+    const generateTempDbPath = () =>
+      path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
 
-function e2eBackend() {
-  return {
-    createServer() {
-      const generateTempDbPath = () =>
-        path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
+    const port = 4000;
+    const dbFile = generateTempDbPath();
 
-      const port = 4000;
-      const dbFile = generateTempDbPath();
+    const server = {
+      dbFile: dbFile,
+      host: `http://localhost:${port}`,
+      port: port,
+    };
 
-      const server = {
-        dbFile: dbFile,
-        host: `http://localhost:${port}`,
-        port: port,
+    return server;
+  },
+  async start(server) {
+    if (!server.process) {
+      const javaFlags = [
+        "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
+        "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
+        "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
+        "-Duser.timezone=US/Pacific",
+        `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
+      ];
+
+      const metabaseConfig = {
+        MB_DB_TYPE: "h2",
+        MB_DB_FILE: server.dbFile,
+        MB_JETTY_HOST: "0.0.0.0",
+        MB_JETTY_PORT: server.port,
+        MB_ENABLE_TEST_ENDPOINTS: "true",
+        MB_PREMIUM_EMBEDDING_TOKEN:
+          (process.env["MB_EDITION"] === "ee" &&
+            process.env["ENTERPRISE_TOKEN"]) ||
+          undefined,
       };
 
-      return server;
-    },
-    async start(server) {
-      if (!server.process) {
-        const javaFlags = [
-          "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
-          "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
-          "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
-          "-Duser.timezone=US/Pacific",
-          `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
-        ];
-
-        const metabaseConfig = {
-          MB_DB_TYPE: "h2",
-          MB_DB_FILE: server.dbFile,
-          MB_JETTY_HOST: "0.0.0.0",
-          MB_JETTY_PORT: server.port,
-          MB_ENABLE_TEST_ENDPOINTS: "true",
-          MB_PREMIUM_EMBEDDING_TOKEN:
-            (process.env["MB_EDITION"] === "ee" &&
-              process.env["ENTERPRISE_TOKEN"]) ||
-            undefined,
-        };
-
-        /**
-         * This ENV is used for Cloud instances only, and is subject to change.
-         * As such, it is not documented anywhere in the code base!
-         *
-         * WARNING:
-         * Changing values here will break the related E2E test.
-         */
-        const userDefaults = {
-          MB_USER_DEFAULTS: JSON.stringify({
-            token: "123456",
-            user: {
-              first_name: "Testy",
-              last_name: "McTestface",
-              email: "testy@metabase.test",
-              site_name: "Epic Team",
-            },
-          }),
-        };
-
-        const snowplowConfig = {
-          MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
-          MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
-        };
-
-        server.process = spawn(
-          "java",
-          [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
-          {
-            env: {
-              ...metabaseConfig,
-              ...userDefaults,
-              ...snowplowConfig,
-              PATH: process.env.PATH,
-            },
-            stdio:
-              process.env["DISABLE_LOGGING"] ||
-              process.env["DISABLE_LOGGING_BACKEND"]
-                ? "ignore"
-                : "inherit",
+      /**
+       * This ENV is used for Cloud instances only, and is subject to change.
+       * As such, it is not documented anywhere in the code base!
+       *
+       * WARNING:
+       * Changing values here will break the related E2E test.
+       */
+      const userDefaults = {
+        MB_USER_DEFAULTS: JSON.stringify({
+          token: "123456",
+          user: {
+            first_name: "Testy",
+            last_name: "McTestface",
+            email: "testy@metabase.test",
+            site_name: "Epic Team",
           },
-        );
-      }
+        }),
+      };
 
-      if (!(await isReady(server.host))) {
-        process.stdout.write(
-          "Waiting for backend (host=" +
-            server.host +
-            " dbFile=" +
-            server.dbFile +
-            ")",
-        );
-        while (!(await isReady(server.host))) {
-          if (!process.env["CI"]) {
-            // disable for CI since it break's CircleCI's no_output_timeout
-            process.stdout.write(".");
-          }
-          await delay(500);
-        }
-        process.stdout.write("\n");
-      }
+      const snowplowConfig = {
+        MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
+        MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
+      };
 
-      console.log(
-        "Backend ready (host=" + server.host + " dbFile=" + server.dbFile + ")",
+      server.process = spawn(
+        "java",
+        [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
+        {
+          env: {
+            ...metabaseConfig,
+            ...userDefaults,
+            ...snowplowConfig,
+            PATH: process.env.PATH,
+          },
+          stdio:
+            process.env["DISABLE_LOGGING"] ||
+            process.env["DISABLE_LOGGING_BACKEND"]
+              ? "ignore"
+              : "inherit",
+        },
       );
+    }
 
-      // Copied here from `frontend/src/metabase/lib/promise.js` to decouple Cypress from Typescript
-      function delay(duration) {
-        return new Promise((resolve, reject) => setTimeout(resolve, duration));
+    if (!(await isReady(server.host))) {
+      process.stdout.write(
+        "Waiting for backend (host=" +
+          server.host +
+          " dbFile=" +
+          server.dbFile +
+          ")",
+      );
+      while (!(await isReady(server.host))) {
+        if (!process.env["CI"]) {
+          // disable for CI since it break's CircleCI's no_output_timeout
+          process.stdout.write(".");
+        }
+        await delay(500);
       }
+      process.stdout.write("\n");
+    }
 
-      async function isReady(host) {
-        try {
-          const response = await fetch(`${host}/api/health`);
-          if (response.status === 200) {
-            return true;
-          }
-        } catch (e) {}
-        return false;
-      }
-    },
-    async stop(server) {
-      if (server.process) {
-        server.process.kill("SIGKILL");
-        console.log(
-          "Stopped backend (host=" +
-            server.host +
-            " dbFile=" +
-            server.dbFile +
-            ")",
-        );
-      }
+    console.log(
+      "Backend ready (host=" + server.host + " dbFile=" + server.dbFile + ")",
+    );
+
+    // Copied here from `frontend/src/metabase/lib/promise.js` to decouple Cypress from Typescript
+    function delay(duration) {
+      return new Promise((resolve, reject) => setTimeout(resolve, duration));
+    }
+
+    async function isReady(host) {
       try {
-        if (server.dbFile) {
-          fs.unlinkSync(`${server.dbFile}.mv.db`);
+        const response = await fetch(`${host}/api/health`);
+        if (response.status === 200) {
+          return true;
         }
       } catch (e) {}
-    },
-  };
-}
+      return false;
+    }
+  },
+  async stop(server) {
+    if (server.process) {
+      server.process.kill("SIGKILL");
+      console.log(
+        "Stopped backend (host=" +
+          server.host +
+          " dbFile=" +
+          server.dbFile +
+          ")",
+      );
+    }
+    try {
+      if (server.dbFile) {
+        fs.unlinkSync(`${server.dbFile}.mv.db`);
+      }
+    } catch (e) {}
+  },
+};
 
 module.exports = CypressBackend;
