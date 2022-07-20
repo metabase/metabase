@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import ActionButton from "metabase/components/ActionButton";
 
-import { FormLegacyContext, LegacyContextTypes } from "./types";
+import { CustomFormLegacyContext, LegacyContextTypes } from "./types";
 
 export interface CustomFormSubmitProps {
   children: React.ReactNode;
@@ -23,7 +23,7 @@ function CustomFormSubmit({
   disablePristineSubmit,
   children,
   ...props
-}: CustomFormSubmitProps & FormLegacyContext) {
+}: CustomFormSubmitProps & CustomFormLegacyContext) {
   const title = children || submitTitle || t`Submit`;
   const canSubmit = !(
     submitting ||
@@ -52,7 +52,7 @@ function CustomFormSubmit({
 
 const CustomFormSubmitLegacyContext = (
   props: CustomFormSubmitProps,
-  context: FormLegacyContext,
+  context: CustomFormLegacyContext,
 ) => <CustomFormSubmit {...props} {...context} />;
 
 CustomFormSubmitLegacyContext.contextTypes = _.pick(

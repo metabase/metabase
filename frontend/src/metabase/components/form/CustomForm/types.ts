@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import {
+  BaseFieldDefinition,
   FieldName,
   DefaultFieldValue,
   FieldValues,
@@ -55,10 +56,13 @@ export interface OptionalFormViewProps {
   style?: React.CSSProperties;
 }
 
-export interface FormLegacyContext
+export interface CustomFormLegacyContext
   extends OptionalFormViewProps,
     Pick<
       BaseFormProps,
+      | "formFields"
+      | "formFieldsByName"
+      | "disablePristineSubmit"
       | "handleSubmit"
       | "fields"
       | "values"
@@ -67,10 +71,11 @@ export interface FormLegacyContext
       | "pristine"
       | "error"
       | "onChangeField"
-    > {
-  formFields: FormFieldDefinition[];
-  formFieldsByName: Record<FieldName, FormFieldDefinition>;
-  disablePristineSubmit?: boolean;
+    > {}
+
+export interface FormContainerLegacyContext {
+  registerFormField: (fieldDef: BaseFieldDefinition) => void;
+  unregisterFormField: (fieldDef: BaseFieldDefinition) => void;
 }
 
 export const LegacyContextTypes = {
