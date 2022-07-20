@@ -158,10 +158,11 @@
   ([text tag->param]
    (substitute_tags text tag->param "en"))
   ([text tag->param locale]
-   (let [tag->param #?(:clj tag->param
-                       :cljs (js->clj tag->param))
-         tag->normalized-param (reduce-kv (fn [acc tag param]
-                                            (assoc acc tag (normalize-parameter param)))
-                                          {}
-                                          tag->param)]
-     (str/replace text template-tag-regex (partial replacement tag->normalized-param locale)))))
+   (when text
+     (let [tag->param #?(:clj tag->param
+                         :cljs (js->clj tag->param))
+           tag->normalized-param (reduce-kv (fn [acc tag param]
+                                              (assoc acc tag (normalize-parameter param)))
+                                            {}
+                                            tag->param)]
+       (str/replace text template-tag-regex (partial replacement tag->normalized-param locale))))))

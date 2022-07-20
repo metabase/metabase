@@ -116,6 +116,11 @@
 
   (t/testing "No substitution is done when no parameter is provided, or the parameter is invalid"
     (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
+      ;; Nil input
+      nil
+      {}
+      nil
+
       ;; No parameters
       "{{foo}}"
       {}
