@@ -596,3 +596,11 @@
               (db/update! Pulse (:id pulse) :dashboard_id (:id dashboard))
               (is (= nil
                      (search-for-pulses pulse))))))))))
+
+(deftest non-native-card-dataset-query-test
+  (testing "You shouldn't see non-native Cards in the search results that match the keys of the dataset_query"
+    ;; https://github.com/metabase/metabase/issues/24132
+    (mt/with-temp Card [card {:name "Round Table" :query_type "query" :dataset_query {:query "select * from round_table"}}]
+      (do-test-users [user [:rasta]]
+         (is (= []
+                (search-request-data user :q "database")))))))
