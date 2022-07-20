@@ -8,17 +8,16 @@ const { spawn } = require("child_process");
 const fetch = require("isomorphic-fetch");
 
 const CypressBackend = {
-  createServer() {
+  createServer(port = 4000) {
     const generateTempDbPath = () =>
       path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
 
-    const port = 4000;
     const dbFile = generateTempDbPath();
 
     const server = {
       dbFile: dbFile,
       host: `http://localhost:${port}`,
-      port: port,
+      port,
     };
 
     return server;
