@@ -101,7 +101,7 @@
   (let [dashboard-id      (u/the-id dashboard)
         dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
         ordered-dashcards (sort dashcard-comparator dashcards)
-        parameters        (-> (params/parameters pulse dashboard) merge-default-values)]
+        parameters        (merge-default-values (params/parameters pulse dashboard))]
     (for [dashcard ordered-dashcards]
       (if-let [card-id (:card_id dashcard)]
         (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id parameters)

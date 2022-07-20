@@ -15,22 +15,23 @@
                   [metabase.mbql.normalize :as mbql.normalize]
                   [metabase.shared.util.i18n :refer [trs]])]))
 
+;; Without this comment, the namespace-checker linter incorrectly detects moment as unused
 #?(:cljs (comment moment/keep-me))
 
 (defmulti formatted-value
   "Formats a value appropriately for inclusion in a text card, based on its type. Does not do any escaping.
   For datetime parameters, the logic here should mirror the logic (as best as possible) in
   frontend/src/metabase/parameters/utils/date-formatting.ts"
-  (fn [tyype _locale _value] (keyword tyype)))
+  (fn [tyype _value _locale] (keyword tyype)))
 
 (defmethod formatted-value :date/single
-  [_ locale value]
+  [_ value locale]
   #?(:cljs (let [m (.locale (moment value) locale)]
              (.format m "MMMM D, YYYY"))
      :clj  (u.date/format "MMMM d, yyyy" (u.date/parse value) locale)))
 
 (defmethod formatted-value :date/month-year
-  [_ locale value]
+  [_ value locale]
   #?(:cljs (let [m (.locale (moment value "YYYY-MM") locale)]
              (if (.isValid m) (.format m "MMMM, YYYY") ""))
      :clj  (u.date/format "MMMM, yyyy" (u.date/parse value) locale)))
@@ -46,23 +47,23 @@
       "Q" (b/value :iso/quarter-of-year 1) ", " (b/value :year 4))))
 
 (defmethod formatted-value :date/quarter-year
-  [_ locale value]
+  [_ value locale]
   #?(:cljs (let [m (.locale (moment value "[Q]Q-YYYY") locale)]
              (if (.isValid m) (.format m "[Q]Q, YYYY") ""))
      :clj (.format (.withLocale ^DateTimeFormatter quarter-formatter-out (i18n.impl/locale locale))
                    (.parse ^DateTimeFormatter quarter-formatter-in value))))
 
 (defmethod formatted-value :date/range
-  [_ locale value]
+  [_ value locale]
   (let [[start end] (str/split value #"~")]
     (if (and start end)
-      (str (formatted-value :date/single locale start)
+      (str (formatted-value :date/single start locale)
            " - "
-           (formatted-value :date/single locale end))
+           (formatted-value :date/single end locale))
       "")))
 
 (defmethod formatted-value :date/relative
-  [_ locale value]
+  [_ value locale]
   (case value
     "today"      (trs "Today")
     "yesterday"  (trs "Yesterday")
@@ -76,16 +77,16 @@
     "thismonth"  (trs "This Month")
     "thisyear"   (trs "This Year")
     ;; Always fallback to default formatting, just in case
-    (formatted-value :default locale value)))
+    (formatted-value :default locale locale)))
 
 (defmethod formatted-value :date/all-options
-  [_ locale value]
+  [_ value locale]
   ;; Test value against a series of regexes (similar to those in metabase/parameters/utils/mbql.js) to determine
   ;; the appropriate formatting, since it is not encoded in the parameter type.
   ;; TODO: this is a partial implementation that only handles simple dates
   (condp (fn [re value] (->> (re-find re value) second)) value
-    #"^~?([0-9-T:]+)~?$"       :>> (partial formatted-value :date/single locale)
-    #"^([0-9-T:]+~[0-9-T:]+)$" :>> (partial formatted-value :date/range locale)
+    #"^~?([0-9-T:]+)~?$"       :>> #(formatted-value :date/single % locale)
+    #"^([0-9-T:]+~[0-9-T:]+)$" :>> #(formatted-value :date/range % locale)
     (str value)))
 
 (defn formatted-list
@@ -97,7 +98,7 @@
     (str (str/join ", " (butlast values)) (trs " and ") (last values))))
 
 (defmethod formatted-value :default
-  [_ _ value]
+  [_ value _]
   (cond
     (sequential? value)
     (formatted-list value)
@@ -119,12 +120,12 @@
         value    (:value param)
         tyype    (:type param)]
     (if value
-      (try (-> (formatted-value tyype locale value)
+      (try (-> (formatted-value tyype value locale)
                escape-chars)
            (catch #?(:clj Throwable :cljs js/Error) _
              ;; If we got an exception (most likely during date parsing/formatting), fallback to the default
              ;; implementation of formatted-value
-             (formatted-value :default locale value)))
+             (formatted-value :default value locale)))
       ;; If this parameter has no value, return the original {{tag}} so that no substitution is done.
       (first match))))
 
