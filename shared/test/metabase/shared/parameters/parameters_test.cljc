@@ -116,6 +116,11 @@
 
   (t/testing "No substitution is done when no parameter is provided, or the parameter is invalid"
     (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
+      ;; Nil input
+      nil
+      {}
+      nil
+
       ;; No parameters
       "{{foo}}"
       {}
@@ -141,26 +146,42 @@
       {"foo" {:value "today"}}
       "today"))
 
-  #?(:cljs
-     (t/testing "Date/time values are formatted correctly when called in CLJS (TODO: update this test when Clojure
-                implementation is added)"
-       (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
-         "{{foo}}"
-         {"foo" {:type :date/single :value "2022-07-09"}}
-         "July 9\\, 2022"
+ (t/testing "Date values are formatted correctly"
+   (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
+     "{{foo}}"
+     {"foo" {:type :date/single :value "2022-07-09"}}
+     "July 9\\, 2022"
 
-         "{{foo}}"
-         {"foo" {:type :date/range :value "2022-07-06~2022-07-09"}}
-         "July 6\\, 2022 \\- July 9\\, 2022"
+     "{{foo}}"
+     {"foo" {:type :date/range :value "2022-07-06~2022-07-09"}}
+     "July 6\\, 2022 \\- July 9\\, 2022"
 
-         "{{foo}}"
-         {"foo" {:type :date/month-year :value "2022-07"}}
-         "July\\, 2022"
+     "{{foo}}"
+     {"foo" {:type :date/month-year :value "2022-07"}}
+     "July\\, 2022"
 
-         "{{foo}}"
-         {"foo" {:type :date/all-options :value "~2022-07-09"}}
-         "July 9\\, 2022"
+     "{{foo}}"
+     {"foo" {:type :date/quarter-year :value "Q2-2022"}}
+     "Q2\\, 2022"
 
-         "{{foo}}"
-         {"foo" {:type :date/all-options :value "2022-07-06~2022-07-09"}}
-         "July 6\\, 2022 \\- July 9\\, 2022"))))
+     "{{foo}}"
+     {"foo" {:type :date/all-options :value "~2022-07-09"}}
+     "July 9\\, 2022"
+
+     "{{foo}}"
+     {"foo" {:type :date/all-options :value "2022-07-06~2022-07-09"}}
+     "July 6\\, 2022 \\- July 9\\, 2022")
+
+   (t/testing "Date values are formatted using the locale passed in as an argument"
+     (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param "es"))
+       "{{foo}}"
+       {"foo" {:type :date/single :value "2022-07-09"}}
+       "julio 9\\, 2022"
+
+       "{{foo}}"
+       {"foo" {:type :date/range :value "2022-01-06~2022-04-09"}}
+       "enero 6\\, 2022 \\- abril 9\\, 2022"
+
+       "{{foo}}"
+       {"foo" {:type :date/month-year :value "2019-08"}}
+       "agosto\\, 2019"))))

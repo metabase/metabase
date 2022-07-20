@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.annotate-test
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.models :refer [Card Field]]
             [metabase.query-processor :as qp]
@@ -640,7 +641,7 @@
       ;; these tests look at the metadata for just one column so it's easier to spot the differences.
       (letfn [(ean-metadata [result]
                 (as-> (:cols result) result
-                  (u/key-by :name result)
+                  (m/index-by :name result)
                   (get result "EAN")
                   (select-keys result [:name :display_name :base_type :semantic_type :id :field_ref])))]
         (testing "Make sure metadata is correct for the 'EAN' column with"

@@ -1272,12 +1272,10 @@ class StructuredQueryInner extends AtomicQuery {
     const table = this.table();
 
     if (table) {
-      const dimensionIsFKReference = dimension =>
-        dimension.field && dimension.field() && dimension.field().isFK();
+      const dimensionIsFKReference = dimension => dimension.field?.().isFK();
 
       const filteredNonFKDimensions = this.dimensions().filter(dimensionFilter);
 
-      // .filter(d => !dimensionIsFKReference(d));
       for (const dimension of filteredNonFKDimensions) {
         dimensionOptions.count++;
         dimensionOptions.dimensions.push(dimension);

@@ -62,8 +62,13 @@ To remove a subscription from a dashboard, select the subscription you'd like to
 
 Some plans allow you to [customize filter values for each subscription](../enterprise-guide/dashboard-subscriptions.md), so you can set up subscriptions with different filter values applied for different subscribers.
 
+## Viewing existing dashboard subscriptions
+
+{% include plans-blockquote.html feature="Audit logs" %}
+
+To view a list of all alerts and dashboard subscriptions that people have set up in your Metabase, click on the **gear** icon in the upper right and select **Admin settings** > **Audit** > **Subscriptions & Alerts**. See [Audit logs](../enterprise-guide/audit.md).
+
 ## Related reading
 
 - [Setting up email](https://www.metabase.com/docs/latest/administration-guide/02-setting-up-email.html)
 - [Setting up Slack](https://www.metabase.com/docs/latest/administration-guide/09-setting-up-slack.html)
-

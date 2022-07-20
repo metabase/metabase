@@ -157,6 +157,8 @@ export function getFilterClauseDescription(tableMetadata, filter, options) {
     ) : (
       name
     );
+  } else if (filter[0] === "between" && filter[1][0] === "+") {
+    return getFieldName(tableMetadata, filter[1][1], options);
   } else {
     return getFieldName(tableMetadata, filter[1], options);
   }

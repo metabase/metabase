@@ -5,7 +5,8 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
                                      Dimension Field Metric NativeQuerySnippet PermissionsGroup
-                                     PermissionsGroupMembership Pulse PulseCard PulseChannel Table User]]
+                                     PermissionsGroupMembership Pulse PulseCard PulseChannel Table
+                                     Timeline TimelineEvent User]]
             [reifyhealth.specmonstah.core :as rs]
             [reifyhealth.specmonstah.spec-gen :as rsg]
             [talltale.core :as tt]
@@ -156,6 +157,12 @@
 
 (s/def ::pulse-channel (s/keys :req-un [::id ::channel_type ::details ::schedule_type]))
 
+(s/def ::icon           (s/and ::name #(< (count %) 100)))
+(s/def ::time_matters   boolean?)
+(s/def ::timezone       (set (java.time.ZoneId/getAvailableZoneIds)))
+(s/def ::timeline       (s/keys :req-un [::id ::name ::description ::icon]))
+(s/def ::timeline-event (s/keys :req-un [::id ::name ::description ::icon ::timestamp ::timezone ::time_matters]))
+
 ;; (gen/generate (s/gen ::collection))
 
 ;; * schema
@@ -240,6 +247,16 @@
                                   :spec      ::pulse-channel
                                   :insert!   {:model PulseChannel}
                                   :relations {:pulse_id [:pulse :id]}}
+   :timeline                     {:prefix    :timeline
+                                  :spec      ::timeline
+                                  :insert!   {:model Timeline}
+                                  :relations {:collection_id [:collection :id]
+                                              :creator_id    [:core-user  :id]}}
+   :timeline-event               {:prefix    :tl-event
+                                  :spec      ::timeline-event
+                                  :insert!   {:model TimelineEvent}
+                                  :relations {:timeline_id [:timeline  :id]
+                                              :creator_id  [:core-user :id]}}
 
    ;; :revision {}
    ;; :segment {}

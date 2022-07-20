@@ -3,6 +3,7 @@
   (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [java-time :as t]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.mbql.schema :as mbql.s]
@@ -864,7 +865,7 @@
       (letfn [(ean-metadata [result]
                 (as-> result result
                   (get-in result [:data :results_metadata :columns])
-                  (u/key-by :name result)
+                  (m/index-by :name result)
                   (get result "EAN")
                   (select-keys result [:name :display_name :base_type :id :field_ref])))]
         (testing "Make sure metadata is correct for the 'EAN' column with"
