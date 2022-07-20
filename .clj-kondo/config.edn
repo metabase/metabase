@@ -85,6 +85,8 @@
                                       {:namespaces ["metabase\\.driver.*"]}
                                       metabase.driver.sql-jdbc.sync.interface/syncable-schemas
                                       {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.util/key-by
+                                      {:namespaces ["metabase(?:-enterprise)?.*"]}
                                       schema.core/either
                                       {:namespaces ["metabase.*"]}
                                       schema.core/both

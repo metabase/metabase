@@ -83,11 +83,9 @@
       (actions.test-util/with-actions-test-data-and-actions-enabled
         (is (= 75
                (categories-row-count)))
-        (is (schema= {:message  (s/constrained
-                                 s/Str
-                                 (case driver/*driver*
-                                   :h2       #(str/starts-with? % "Data conversion error converting \"created_row\"")
-                                   :postgres #(str/starts-with? % "ERROR: invalid input syntax for type integer: \"created_row\"")))
+        (is (schema= {:message  (case driver/*driver*
+                                  :h2       #"^Data conversion error converting \"created_row\""
+                                  :postgres #"^ERROR: invalid input syntax for (?:type )?integer: \"created_row\"")
                       s/Keyword s/Any}
                      ;; bad data -- ID is a string instead of an Integer.
                      (mt/user-http-request :crowberto :post 400
@@ -353,11 +351,9 @@
                                                      :postgres #(str/starts-with? % "ERROR: null value in column \"name\"")))}
                                           "first error")
                                    (s/one {:index (s/eq 3)
-                                           :error (s/constrained
-                                                   s/Str
-                                                   (case driver/*driver*
-                                                     :h2       #(str/starts-with? % "Data conversion error converting \"STRING\"")
-                                                     :postgres #(str/starts-with? % "ERROR: invalid input syntax for type integer: \"STRING\"")))}
+                                           :error (case driver/*driver*
+                                                    :h2       #"^Data conversion error converting \"STRING\""
+                                                    :postgres #"^ERROR: invalid input syntax for (?:type )?integer: \"STRING\"")}
                                           "second error")]}
                          (mt/user-http-request :crowberto :post 400
                                                (format "action/bulk/create/%d" (mt/id :categories))
@@ -380,8 +376,8 @@
         (is (= {:success true}
                (mt/user-http-request :crowberto :post 200
                                      (format "action/bulk/delete/%d" (mt/id :categories))
-                                     [{"ID" 74}
-                                      {"ID" 75}])))
+                                     [{(format-field-name :id) 74}
+                                      {(format-field-name :id) 75}])))
         (is (= 73
                (categories-row-count)))))))
 
@@ -389,43 +385,144 @@
   (testing "POST /api/action/bulk/delete/:table-id"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (actions.test-util/with-actions-test-data-and-actions-enabled
-        (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-          (actions.test-util/with-actions-test-data-and-actions-enabled
-            (testing "error in some of the rows"
-              (is (= 75
-                     (categories-row-count)))
-              (testing "Should report indices of bad rows"
-                (is (= {:errors
-                        [{:index 1,
-                          :error "Error filtering against :type/BigInteger Field: unable to parse String \"foo\" to a :type/BigInteger"}
-                         {:index 3,
-                          :error "Sorry, this would delete 0 rows, but you can only act on 1"}]}
-                       (mt/user-http-request :crowberto :post 400
-                                             (format "action/bulk/delete/%d" (mt/id :categories))
-                                             [{"ID" 74}
-                                              {"ID" "foo"}
-                                              {"ID" 75}
-                                              {"ID" 107}]))))
-              (testing "Should report inconsistent keys"
-                (is (partial= {:message "Some rows have different sets of columns: #{\"NONID\"}, #{\"ID\"}"}
-                              (mt/user-http-request :crowberto :post 400
-                                                    (format "action/bulk/delete/%d" (mt/id :categories))
-                                                    [{"ID" 74}
-                                                     {"NONID" 75}]))))
-              (testing "Should report non-pk keys"
-                (is (partial= {:message "Rows have the wrong columns: expected #{\"ID\"}, but got #{\"NONID\"}"}
-                              (mt/user-http-request :crowberto :post 400
-                                                    (format "action/bulk/delete/%d" (mt/id :categories))
-                                                    [{"NONID" 75}]))))
-              (testing "Should report repeat rows"
-                (is (partial= {:message "Rows need to be unique: repeated rows {\"ID\" 74} × 3, {\"ID\" 75} × 2"}
-                              (mt/user-http-request :crowberto :post 400
-                                                    (format "action/bulk/delete/%d" (mt/id :categories))
-                                                    [{"ID" 73}
-                                                     {"ID" 74}
-                                                     {"ID" 74}
-                                                     {"ID" 74}
-                                                     {"ID" 75}
-                                                     {"ID" 75}]))))
-              (is (= 75
-                     (categories-row-count))))))))))
+        (testing "error in some of the rows"
+          (is (= 75
+                 (categories-row-count)))
+          (testing "Should report indices of bad rows"
+            (is (schema= {:errors
+                          [(s/one
+                            {:index (s/eq 1)
+                             :error #"Error filtering against :type/(?:Big)?Integer Field: unable to parse String \"foo\" to a :type/(?:Big)?Integer"}
+                            "first error")
+                           (s/one
+                            {:index (s/eq 3)
+                             :error #"Sorry, this would delete 0 rows, but you can only act on 1"}
+                            "second error")]}
+                         (mt/user-http-request :crowberto :post 400
+                                               (format "action/bulk/delete/%d" (mt/id :categories))
+                                               [{(format-field-name :id) 74}
+                                                {(format-field-name :id) "foo"}
+                                                {(format-field-name :id) 75}
+                                                {(format-field-name :id) 107}]))))
+          (testing "Should report inconsistent keys"
+            (is (partial= {:message (format "Some rows have different sets of columns: %s, %s"
+                                            (pr-str #{(name (format-field-name :nonid))})
+                                            (pr-str #{(name (format-field-name :id))}))}
+                          (mt/user-http-request :crowberto :post 400
+                                                (format "action/bulk/delete/%d" (mt/id :categories))
+                                                [{(format-field-name :id) 74}
+                                                 {(format-field-name :nonid) 75}]))))
+          (testing "Should report non-pk keys"
+            (is (partial= {:message (format "Rows have the wrong columns: expected %s, but got %s"
+                                            (pr-str #{(name (format-field-name :id))})
+                                            (pr-str #{(name (format-field-name :nonid))}))}
+                          (mt/user-http-request :crowberto :post 400
+                                                (format "action/bulk/delete/%d" (mt/id :categories))
+                                                [{(format-field-name :nonid) 75}])))
+            (testing "Even if all PK columns are specified"
+              (is (partial= {:message (format "Rows have the wrong columns: expected %s, but got %s"
+                                              (pr-str #{(name (format-field-name :id))})
+                                              (pr-str #{(name (format-field-name :id))
+                                                        (name (format-field-name :nonid))}))}
+                            (mt/user-http-request :crowberto :post 400
+                                                  (format "action/bulk/delete/%d" (mt/id :categories))
+                                                  [{(format-field-name :id)    75
+                                                    (format-field-name :nonid) 75}])))))
+          (testing "Should report repeat rows"
+            (is (partial= {:message (format "Rows need to be unique: repeated rows {%s 74} × 3, {%s 75} × 2"
+                                            (pr-str (name (format-field-name :id)))
+                                            (pr-str (name (format-field-name :id))))}
+                          (mt/user-http-request :crowberto :post 400
+                                                (format "action/bulk/delete/%d" (mt/id :categories))
+                                                [{(format-field-name :id) 73}
+                                                 {(format-field-name :id) 74}
+                                                 {(format-field-name :id) 74}
+                                                 {(format-field-name :id) 74}
+                                                 {(format-field-name :id) 75}
+                                                 {(format-field-name :id) 75}]))))
+          (is (= 75
+                 (categories-row-count))))))))
+
+(defn- first-three-categories []
+  (mt/rows (mt/run-mbql-query categories {:filter [:< $id 4], :order-by [[:asc $id]]})))
+
+(deftest bulk-update-happy-path-test
+  (testing "POST /api/action/bulk/update/:table-id"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.test-util/with-actions-test-data-and-actions-enabled
+        (is (= [[1 "African"]
+                [2 "American"]
+                [3 "Artisan"]]
+               (first-three-categories)))
+        (is (= {:rows-updated 2}
+               (mt/user-http-request :crowberto :post 200
+                                     (format "action/bulk/update/%d" (mt/id :categories))
+                                     (let [id   (format-field-name :id)
+                                           name (format-field-name :name)]
+                                       [{id 1, name "Seed Bowl"}
+                                        {id 2, name "Millet Treat"}]))))
+        (testing "rows should be updated in the DB"
+          (is (= [[1 "Seed Bowl"]
+                  [2 "Millet Treat"]
+                  [3 "Artisan"]]
+                 (first-three-categories))))))))
+
+(deftest bulk-update-failure-test
+  (testing "POST /api/action/bulk/update/:table-id"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.test-util/with-actions-test-data-and-actions-enabled
+        (let [id                 (format-field-name :id)
+              name               (format-field-name :name)
+              update-categories! (fn [rows]
+                                   (mt/user-http-request :crowberto :post 400
+                                                         (format "action/bulk/update/%d" (mt/id :categories))
+                                                         rows))]
+          (testing "Initial values"
+            (is (= [[1 "African"]
+                    [2 "American"]
+                    [3 "Artisan"]]
+                   (first-three-categories))))
+          (testing "Should report the index of input rows with errors in the data warehouse"
+            (let [error-message-regex (case driver/*driver*
+                                        :h2       #"^NULL not allowed for column \"NAME\""
+                                        :postgres #"^ERROR: null value in column \"name\" (?:of relation \"categories\" )?violates not-null constraint")]
+              (is (schema= {:errors   [(s/one
+                                        {:index (s/eq 0)
+                                         :error error-message-regex}
+                                        "first error")
+                                       (s/one
+                                        {:index (s/eq 2)
+                                         :error error-message-regex}
+                                        "second error")]
+                            s/Keyword s/Any}
+                           (update-categories! [{id 1, name nil}
+                                                {id 2, name "Millet Treat"}
+                                                {id 3, name nil}])))))
+          ;; TODO -- maybe this should come back with the row index as well. Maybe it's a little less important for the
+          ;; Clojure-side validation because an error like this is presumably the result of the frontend passing in bad
+          ;; maps since it should be enforcing this in the FE client as well. Row indexes are more important for errors
+          ;; that happen in the DW since they often can't be enforced in the frontend client OR in the backend without
+          ;; actually hitting the DW
+          (testing "Should validate that every row has required PK columns"
+            (is (partial= {:message (format "Row is missing required primary key column. Required %s; got %s"
+                                            (pr-str #{(clojure.core/name (format-field-name :id))})
+                                            (pr-str #{(clojure.core/name (format-field-name :name))}))}
+                          (update-categories! [{id 1, name "Seed Bowl"}
+                                               {name "Millet Treat"}]))))
+          (testing "Should validate that the fields in the row maps are valid for the Table"
+            (is (schema= {:errors [(s/one
+                                    {:index (s/eq 0)
+                                     :error (case driver/*driver*
+                                              :h2       #"^Column \"FAKE\" not found"
+                                              :postgres #"ERROR: column \"fake\" of relation \"categories\" does not exist")}
+                                    "first error")]}
+                         (update-categories! [{id 1, (format-field-name :fake) "FAKE"}]))))
+          (testing "Should throw error if row does not contain any non-PK columns"
+            (is (partial= {:message (format "Invalid update row map: no non-PK columns. Got #{%s}, all of which are PKs."
+                                            (pr-str (clojure.core/name (format-field-name :id))))}
+                          (update-categories! [{id 1}]))))
+          (testing "Rows should be unchanged"
+            (is (= [[1 "African"]
+                    [2 "American"]
+                    [3 "Artisan"]]
+                   (first-three-categories)))))))))

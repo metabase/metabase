@@ -2,7 +2,6 @@
   "Code related to the new writeback Actions."
   (:require
    [clojure.spec.alpha :as s]
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -105,6 +104,30 @@
                               (pr-str driver))
                     {:status-code 400}))))
 
+(def ^:dynamic *misc-value-cache*
+  "A cache that lives for the duration of the top-level Action invoked by [[perform-action!]]. You can use this to store
+  miscellaneous values such as things that need to be fetched from the application database to avoid duplicate calls
+  in bulk actions that repeatedly call code that would only be called once by single-row Actions. Bound to an atom
+  containing a map by [[perform-action!]]."
+  nil)
+
+(defn cached-value
+  "Get a cached value from the [[*misc-value-cache*]] using a `unique-key` if it already exists. If it does not exist,
+  calculate the value using `value-thunk`, cache it, then return it.
+
+  `unique-key` must be unique app-wide. Something like
+
+    [::cast-values table-id]
+
+  is a good key."
+  [unique-key value-thunk]
+  (or (when *misc-value-cache*
+        (get @*misc-value-cache* unique-key))
+      (let [value (value-thunk)]
+        (when *misc-value-cache*
+          (swap! *misc-value-cache* assoc unique-key value))
+        value)))
+
 (defn perform-action!
   "Perform an `action`. Invoke this function for performing actions, e.g. in API endpoints;
   implement [[perform-action!*]] to add support for a new driver/action combo. The shape of `arg-map` depends on the
@@ -131,8 +154,9 @@
                                   (u/qualified-name driver)
                                   (format "%d %s" (:id db) (pr-str (:name db))))
                         {:status-code 400, :database-id (:id db)})))
-      ;; bind Database-local Settings for this Database
-      (binding [setting/*database-local-values* db-settings]
+      ;; bind Database-local Settings for this Database and the misc value cache
+      (binding [setting/*database-local-values* db-settings
+                *misc-value-cache*              (atom {})]
         ;; make sure Actions are enabled for this Database
         (when-not (database-enable-actions)
           (throw (ex-info (i18n/tru "Actions are not enabled for Database {0}." database-id)
@@ -286,16 +310,25 @@
 
 ;;;; Bulk actions
 
+;;; All bulk Actions require at least
+;;;
+;;;    {:database <id>, :table-id <id>, :rows [{<key> <value>} ...]}
+
 (s/def :actions.args.crud.bulk.common/table-id
   :actions.args/id)
 
+(s/def :actions.args.crud.bulk/rows
+  (s/cat :rows (s/+ (s/map-of string? any?))))
+
 (s/def :actions.args.crud.bulk/common
-  (s/keys :req-un [:actions.args.crud.bulk.common/table-id]))
+  (s/merge
+   :actions.args/common
+   (s/keys :req-un [:actions.args.crud.bulk.common/table-id
+                    :actions.args.crud.bulk/rows])))
 
-;;;; `:bulk/create`
-
-;;; For `bulk/create` the request body is to `POST /api/action/:action-namespace/:action-name/:table-id` is just a
-;;; vector of rows but the API endpoint itself calls [[perform-action!]] with
+;;; The request bodies for the bulk CRUD actions are all the same. The body of a request to `POST
+;;; /api/action/:action-namespace/:action-name/:table-id` is just a vector of rows but the API endpoint itself calls
+;;; [[perform-action!]] with
 ;;;
 ;;;    {:database <database-id>, :table-id <table-id>, :arg <request-body>}
 ;;;
@@ -303,34 +336,30 @@
 ;;;
 ;;;     {:database <database-id>, :table-id <table-id>, :rows <request-body>}
 
+;;;; `:bulk/create`, `:bulk/delete`, `:bulk/update` -- these all have the exact same shapes
+
+(defn- normalize-bulk-crud-action-arg-map
+  [{:keys [database table-id], rows :arg, :as _arg-map}]
+  {:database database, :table-id table-id, :rows (map #(update-keys % u/qualified-name) rows)})
+
 (defmethod normalize-action-arg-map :bulk/create
-  [_action {:keys [database table-id], rows :arg, :as _arg-map}]
-  {:database database, :table-id table-id, :rows rows})
-
-(s/def :actions.args.crud.bulk.create/rows
-  (s/cat :rows (s/+ (s/map-of keyword? any?))))
-
-(s/def :actions.args.crud.bulk/create
-  (s/merge
-   :actions.args/common
-   :actions.args.crud.bulk/common
-   (s/keys :req-un [:actions.args.crud.bulk.create/rows])))
+  [_action arg-map]
+  (normalize-bulk-crud-action-arg-map arg-map))
 
 (defmethod action-arg-map-spec :bulk/create
   [_action]
-  :actions.args.crud.bulk/create)
+  :actions.args.crud.bulk/common)
+
+(defmethod normalize-action-arg-map :bulk/update
+  [_action arg-map]
+  (normalize-bulk-crud-action-arg-map arg-map))
+
+(defmethod action-arg-map-spec :bulk/update
+  [_action]
+  :actions.args.crud.bulk/common)
 
 ;;;; `:bulk/delete`
 
-;;; For `bulk/delete` the request body is to `POST /api/action/:action-namespace/:action-name/:table-id` is just a
-;;; vector of rows but the API endpoint itself calls [[perform-action!]] with
-;;;
-;;;    {:database <database-id>, :table-id <table-id>, :arg <request-body>}
-;;;
-;;; and we transform this to
-;;;
-;;;     {:database <database-id>, :table-id <table-id>, :pk-value-maps <request-body>}
-;;;
 ;;; Request-body should look like:
 ;;;
 ;;;    ;; single pk, two rows
@@ -341,18 +370,9 @@
 ;;;    [{"PK1": 1, "PK2": "john"}]
 
 (defmethod normalize-action-arg-map :bulk/delete
-  [_action {:keys [database table-id], pk-value-maps :arg, :as _arg-map}]
-  {:database database, :table-id table-id, :pk-value-maps (map #(m/map-keys name %) pk-value-maps)})
-
-(s/def :actions.args.crud.bulk.delete/pk-value-maps
-  (s/coll-of (s/map-of string? any?)))
-
-(s/def :actions.args.crud.bulk/delete
-  (s/merge
-    :actions.args/common
-    :actions.args.crud.bulk/common
-    (s/keys :req-un [:actions.args.crud.bulk.delete/pk-value-maps])))
+  [_action arg-map]
+  (normalize-bulk-crud-action-arg-map arg-map))
 
 (defmethod action-arg-map-spec :bulk/delete
   [_action]
-  :actions.args.crud.bulk/delete)
+  :actions.args.crud.bulk/common)
