@@ -33,10 +33,9 @@ module.exports = (on, config) => {
   require("cypress-grep/src/plugin")(config);
 
   /********************************************************************
-   **                          WEBPACK                               **
+   **                        PREPROCESSOR                            **
    ********************************************************************/
 
-  // on("file:preprocessor", webpack(webpackPluginOptions));
   on("file:preprocessor", createBundler());
 
   /********************************************************************
