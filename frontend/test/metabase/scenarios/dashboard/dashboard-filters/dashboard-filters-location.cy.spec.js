@@ -8,47 +8,45 @@ import {
   visitDashboard,
 } from "__support__/e2e/helpers";
 
-import { DASHBOARD_NUMBER_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
-import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { DASHBOARD_LOCATION_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
+import { addWidgetStringFilter } from "../../native-filters/helpers/e2e-field-filter-helpers";
 
-Object.entries(DASHBOARD_NUMBER_FILTERS).forEach(
+Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(
   ([filter, { value, representativeResult }]) => {
-    describe("scenarios > dashboard > filters > number", () => {
+    describe("scenarios > dashboard > filters > location", () => {
       beforeEach(() => {
-        cy.intercept("GET", "/api/table/*/query_metadata").as("metadata");
-
         restore();
         cy.signInAsAdmin();
 
         visitDashboard(1);
 
         editDashboard();
-        setFilter("Number", filter);
+        setFilter("Location", filter);
 
         cy.findByText("Select…").click();
-        popover().contains("Tax").click();
+        popover().contains("City").click();
       });
 
       it(`should work for "${filter}" when set through the filter widget`, () => {
         saveDashboard();
 
         filterWidget().click();
-        addWidgetNumberFilter(value);
+        addWidgetStringFilter(value);
 
         cy.get(".Card").within(() => {
-          cy.findByText(representativeResult);
+          cy.contains(representativeResult);
         });
       });
 
       it(`should work for "${filter}" when set as the default filter`, () => {
         cy.findByText("Default value").next().click();
 
-        addWidgetNumberFilter(value);
+        addWidgetStringFilter(value);
 
         saveDashboard();
 
         cy.get(".Card").within(() => {
-          cy.findByText(representativeResult);
+          cy.contains(representativeResult);
         });
       });
     });

@@ -9,16 +9,16 @@ import {
   visitDashboard,
 } from "__support__/e2e/helpers";
 
-import { DASHBOARD_SQL_NUMBER_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
-import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { DASHBOARD_SQL_DATE_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
+import * as DateFilter from "../../native-filters/helpers/e2e-date-filter-helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS } = SAMPLE_DATABASE;
+const { PEOPLE } = SAMPLE_DATABASE;
 
-Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
+Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
   ([filter, { value, representativeResult, sqlFilter }]) => {
-    describe("scenarios > dashboard > filters > SQL > text/category", () => {
+    describe("scenarios > dashboard > filters > SQL > date", () => {
       beforeEach(() => {
         restore();
         cy.signInAsAdmin();
@@ -34,7 +34,7 @@ Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
         );
 
         editDashboard();
-        setFilter("Number", filter);
+        setFilter("Time", filter);
 
         cy.findByText("Select…").click();
         popover().contains("Filter").click();
@@ -44,7 +44,11 @@ Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
         saveDashboard();
 
         filterWidget().click();
-        addWidgetNumberFilter(value);
+
+        dateFilterSelector({
+          filterType: filter,
+          filterValue: value,
+        });
 
         cy.get(".Card").within(() => {
           cy.contains(representativeResult);
@@ -54,7 +58,10 @@ Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
       it(`should work for "${filter}" when set as the default filter`, () => {
         cy.findByText("Default value").next().click();
 
-        addWidgetNumberFilter(value);
+        dateFilterSelector({
+          filterType: filter,
+          filterValue: value,
+        });
 
         saveDashboard();
 
@@ -68,20 +75,53 @@ Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
 
 function getQuestionDetails(filter) {
   return {
-    name: "SQL with number filter",
+    name: "SQL with Field Filter",
     native: {
       query:
-        "select PRODUCTS.TITLE, PRODUCTS.RATING from PRODUCTS where {{filter}} limit 10",
+        "select PEOPLE.NAME, PEOPLE.CREATED_AT from people where {{filter}} limit 10",
       "template-tags": {
         filter: {
-          id: "1c46dd00-3f32-9328-f663-71f98c5d7953",
+          id: "7136f057-cfa6-e6fb-40c1-02046a1df9fb",
           name: "filter",
           "display-name": "Filter",
           type: "dimension",
-          dimension: ["field", PRODUCTS.RATING, null],
+          dimension: ["field", PEOPLE.CREATED_AT, null],
           "widget-type": filter,
         },
       },
     },
   };
+}
+
+function dateFilterSelector({ filterType, filterValue } = {}) {
+  switch (filterType) {
+    case "Month and Year":
+      DateFilter.setMonthAndYear(filterValue);
+      break;
+
+    case "Quarter and Year":
+      DateFilter.setQuarterAndYear(filterValue);
+      break;
+
+    case "Single Date":
+      DateFilter.setSingleDate(filterValue);
+      cy.findByText("Update filter").click();
+      break;
+
+    case "Date Range":
+      DateFilter.setDateRange(filterValue);
+      cy.findByText("Update filter").click();
+      break;
+
+    case "Relative Date":
+      DateFilter.setRelativeDate(filterValue);
+      break;
+
+    case "All Options":
+      DateFilter.setAdHocFilter(filterValue);
+      break;
+
+    default:
+      throw new Error("Wrong filter type!");
+  }
 }

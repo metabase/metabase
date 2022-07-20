@@ -9,7 +9,7 @@ import {
   visitDashboard,
 } from "__support__/e2e/helpers";
 
-import { setMonthAndYear } from "../../native-filters/helpers/e2e-date-filter-helpers";
+import { setMonthAndYear } from "../../../native-filters/helpers/e2e-date-filter-helpers";
 
 describe("issue 17139", () => {
   beforeEach(() => {

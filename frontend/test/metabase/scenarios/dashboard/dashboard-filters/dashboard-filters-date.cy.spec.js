@@ -9,7 +9,7 @@ import {
 } from "__support__/e2e/helpers";
 
 import { DASHBOARD_DATE_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
-import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
+import * as DateFilter from "../../native-filters/helpers/e2e-date-filter-helpers";
 
 Object.entries(DASHBOARD_DATE_FILTERS).forEach(
   ([filter, { value, representativeResult }]) => {

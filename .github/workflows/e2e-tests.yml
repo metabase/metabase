@@ -65,7 +65,6 @@ jobs:
           - "collections"
           - "custom-column"
           - "dashboard"
-          - "dashboard-filters"
           - "downloads"
           - "embedding"
           - "filters"

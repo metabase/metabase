@@ -8,46 +8,47 @@ import {
   visitDashboard,
 } from "__support__/e2e/helpers";
 
-import { DASHBOARD_TEXT_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
-import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { DASHBOARD_NUMBER_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
+import { addWidgetNumberFilter } from "../../native-filters/helpers/e2e-field-filter-helpers";
 
-Object.entries(DASHBOARD_TEXT_FILTERS).forEach(
+Object.entries(DASHBOARD_NUMBER_FILTERS).forEach(
   ([filter, { value, representativeResult }]) => {
-    describe("scenarios > dashboard > filters > text/category", () => {
+    describe("scenarios > dashboard > filters > number", () => {
       beforeEach(() => {
+        cy.intercept("GET", "/api/table/*/query_metadata").as("metadata");
+
         restore();
         cy.signInAsAdmin();
 
         visitDashboard(1);
 
         editDashboard();
-        setFilter("Text or Category", filter);
+        setFilter("Number", filter);
 
         cy.findByText("Select…").click();
-        popover().contains("Source").click();
+        popover().contains("Tax").click();
       });
 
       it(`should work for "${filter}" when set through the filter widget`, () => {
         saveDashboard();
 
         filterWidget().click();
-
-        applyFilterByType(filter, value);
+        addWidgetNumberFilter(value);
 
         cy.get(".Card").within(() => {
-          cy.contains(representativeResult);
+          cy.findByText(representativeResult);
         });
       });
 
       it(`should work for "${filter}" when set as the default filter`, () => {
         cy.findByText("Default value").next().click();
 
-        applyFilterByType(filter, value);
+        addWidgetNumberFilter(value);
 
         saveDashboard();
 
         cy.get(".Card").within(() => {
-          cy.contains(representativeResult);
+          cy.findByText(representativeResult);
         });
       });
     });

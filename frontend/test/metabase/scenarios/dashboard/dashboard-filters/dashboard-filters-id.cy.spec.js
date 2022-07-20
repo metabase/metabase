@@ -5,25 +5,27 @@ import {
   editDashboard,
   saveDashboard,
   setFilter,
-  visitQuestion,
+  checkFilterLabelAndValue,
   visitDashboard,
 } from "__support__/e2e/helpers";
 
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { addWidgetStringFilter } from "../../native-filters/helpers/e2e-field-filter-helpers";
 
-import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
-
-const { ORDERS } = SAMPLE_DATABASE;
-
-describe("scenarios > dashboard > filters > SQL > ID", () => {
+describe("scenarios > dashboard > filters > ID", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
 
+    visitDashboard(1);
+
+    editDashboard();
+    setFilter("ID");
+
+    cy.findByText("Select…").click();
+  });
   describe("should work for the primary key", () => {
     beforeEach(() => {
-      prepareDashboardWithFilterConnectedTo(ORDERS.ID);
+      popover().contains("ID").first().click();
     });
 
     it("when set through the filter widget", () => {
@@ -51,7 +53,7 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
 
   describe("should work for the foreign key", () => {
     beforeEach(() => {
-      prepareDashboardWithFilterConnectedTo(ORDERS.USER_ID);
+      popover().contains("User ID").click();
     });
 
     it("when set through the filter widget", () => {
@@ -63,6 +65,8 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
       cy.get(".Card").within(() => {
         cy.findByText("47.68");
       });
+
+      checkFilterLabelAndValue("ID", "Arnold Adams - 4");
     });
 
     it("when set as the default filter", () => {
@@ -74,40 +78,38 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
       cy.get(".Card").within(() => {
         cy.findByText("47.68");
       });
+
+      checkFilterLabelAndValue("ID", "Arnold Adams - 4");
+    });
+  });
+
+  describe("should work on the implicit join", () => {
+    beforeEach(() => {
+      popover().within(() => {
+        cy.findAllByText("ID").last().click();
+      });
+    });
+
+    it("when set through the filter widget", () => {
+      saveDashboard();
+
+      filterWidget().click();
+      addWidgetStringFilter("10");
+
+      cy.get(".Card").within(() => {
+        cy.findByText("6.75");
+      });
+    });
+
+    it("when set as the default filter", () => {
+      cy.findByText("Default value").next().click();
+      addWidgetStringFilter("10");
+
+      saveDashboard();
+
+      cy.get(".Card").within(() => {
+        cy.findByText("6.75");
+      });
     });
   });
 });
-
-function prepareDashboardWithFilterConnectedTo(rowId) {
-  const questionDetails = {
-    name: "SQL with ID filter",
-    native: {
-      query: "select * from ORDERS where {{filter}}",
-      "template-tags": {
-        filter: {
-          id: "3ff86eea-2559-5ab7-af10-e532a54661c5",
-          name: "filter",
-          "display-name": "Filter",
-          type: "dimension",
-          dimension: ["field", rowId, null],
-          "widget-type": "id",
-          default: null,
-        },
-      },
-    },
-  };
-
-  cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-    ({ body: { card_id, dashboard_id } }) => {
-      visitQuestion(card_id);
-
-      visitDashboard(dashboard_id);
-    },
-  );
-
-  editDashboard();
-  setFilter("ID");
-
-  cy.findByText("Select…").click();
-  popover().contains("Filter").click();
-}

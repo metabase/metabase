@@ -1,5 +1,5 @@
 import { restore, filterWidget, visitDashboard } from "__support__/e2e/helpers";
-import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
+import { setAdHocFilter } from "../../../native-filters/helpers/e2e-date-filter-helpers";
 
 describe("issue 17551", () => {
   beforeEach(() => {
