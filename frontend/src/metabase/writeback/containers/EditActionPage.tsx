@@ -10,7 +10,7 @@ import { State } from "metabase-types/store/state";
 import { connect } from "react-redux";
 
 import { Container, Content } from "./ActionPage.styled";
-import { getTemplateTagParameter } from "metabase/parameters/utils/cards";
+import { getHttpActionTemplateTagParameter } from "../utils";
 
 type Props = {
   action: WritebackAction;
@@ -44,7 +44,7 @@ const EditActionPage: React.FC<Props> = ({ action, updateAction }: Props) => {
       const tags = Object.values(templateTags);
       const parameters = tags
         .filter(tag => tag.type != null)
-        .map(getTemplateTagParameter)
+        .map(getHttpActionTemplateTagParameter)
         .map(param => [param.name, param]);
       const entity = {
         name,

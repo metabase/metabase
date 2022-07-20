@@ -55,18 +55,19 @@ export default ({ question, clicked }) => {
       action,
       parameters,
     );
+    const emitterId = clickBehavior.emitter_id || clickBehavior.id;
 
     if (missingParameters.length > 0) {
       behavior = {
         action: () =>
           openActionParametersModal({
-            emitterId: clickBehavior.emitter_id,
+            emitterId: emitterId,
             props: {
               missingParameters,
               onSubmit: filledMissingParameters =>
                 executeRowAction({
                   dashboard: extraData.dashboard,
-                  emitterId: clickBehavior.emitter_id || clickBehavior.id,
+                  emitterId: emitterId,
                   parameters: {
                     ...parameters,
                     ...filledMissingParameters,
@@ -80,7 +81,7 @@ export default ({ question, clicked }) => {
         action: () =>
           executeRowAction({
             dashboard: extraData.dashboard,
-            emitterId: clickBehavior.emitter_id || clickBehavior.id,
+            emitterId: emitterId,
             parameters,
           }),
       };

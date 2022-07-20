@@ -10,14 +10,9 @@ import {
   createHttpAction,
   CreateHttpActionPayload,
 } from "metabase/query_builder/actions";
-import {
-  getTemplateTagParameterTarget,
-  getTemplateTagType,
-} from "metabase/parameters/utils/cards";
-import { TemplateTag } from "metabase-types/types/Query";
-import { ParameterWithTarget } from "metabase/parameters/types";
 
 import { Container, Content } from "./ActionPage.styled";
+import { getHttpActionTemplateTagParameter } from "../utils";
 
 type Props = {
   createHttpAction: (payload: CreateHttpActionPayload) => void;
@@ -47,7 +42,7 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
       const tags = Object.values(templateTags);
       const parameters = tags
         .filter(tag => tag.type != null)
-        .map(getTemplateTagParameter)
+        .map(getHttpActionTemplateTagParameter)
         .map(param => [param.name, param]);
       const entity = {
         name,
@@ -117,14 +112,3 @@ const mapDispatchToProps = (dispatch: any) => ({
 });
 
 export default connect(null, mapDispatchToProps)(CreateActionPage);
-
-function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
-  return {
-    id: tag.id,
-    type: tag["widget-type"] || getTemplateTagType(tag),
-    target: getTemplateTagParameterTarget(tag),
-    name: tag.name,
-    slug: tag.name,
-    default: tag.default,
-  };
-}

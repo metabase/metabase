@@ -59,51 +59,50 @@ export type CreateHttpActionPayload = {
   parameter_mappings: Record<ParameterId, ParameterTarget>;
 };
 
-export const createHttpAction = (payload: CreateHttpActionPayload) => async (
-  dispatch: Dispatch,
-  getState: GetState,
-) => {
-  const {
-    name,
-    description,
-    template,
-    error_handle = null,
-    response_handle = null,
-    parameters,
-    parameter_mappings,
-  } = payload;
-  const data = {
-    method: template.method || "GET",
-    url: template.url,
-    body: JSON.stringify(template.body || {}),
-    headers: JSON.stringify(template.headers || {}),
-    parameters: template.parameters || {},
-    parameter_mappings: template.parameter_mappings || {},
+export const createHttpAction =
+  (payload: CreateHttpActionPayload) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    const {
+      name,
+      description,
+      template,
+      error_handle = null,
+      response_handle = null,
+      parameters,
+      parameter_mappings,
+    } = payload;
+    const data = {
+      method: template.method || "GET",
+      url: template.url,
+      body: template.body || JSON.stringify({}),
+      headers: JSON.stringify(template.headers || {}),
+      parameters: template.parameters || {},
+      parameter_mappings: template.parameter_mappings || {},
+    };
+    const newAction = {
+      name,
+      type: "http",
+      description,
+      template: data,
+      error_handle,
+      response_handle,
+      parameters,
+      parameter_mappings,
+    };
+    const response = await dispatch(Actions.actions.create(newAction));
+    const action = Actions.HACK_getObjectFromAction(response);
+    if (action.id) {
+      dispatch(
+        addUndo({
+          message: t`Action saved!`,
+        }),
+      );
+      dispatch(push(`/action/${action.id}`));
+    } else {
+      dispatch(
+        addUndo({
+          message: t`Could not save action`,
+        }),
+      );
+    }
   };
-  const newAction = {
-    name,
-    type: "http",
-    description,
-    template: data,
-    error_handle,
-    response_handle,
-    parameters,
-    parameter_mappings,
-  };
-  const response = await dispatch(Actions.actions.create(newAction));
-  const action = Actions.HACK_getObjectFromAction(response);
-  if (action.id) {
-    dispatch(
-      addUndo({
-        message: t`Action saved!`,
-      }),
-    );
-    dispatch(push(`/action/${action.id}`));
-  } else {
-    dispatch(
-      addUndo({
-        message: t`Could not save action`,
-      }),
-    );
-  }
-};

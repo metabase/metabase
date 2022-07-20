@@ -1,6 +1,9 @@
 import { TYPE } from "metabase/lib/types";
 
-import { getTemplateTagParameterTarget } from "metabase/parameters/utils/cards";
+import {
+  getTemplateTagParameterTarget,
+  getTemplateTagType,
+} from "metabase/parameters/utils/cards";
 
 import Database from "metabase-lib/lib/metadata/Database";
 import Field from "metabase-lib/lib/metadata/Field";
@@ -11,6 +14,7 @@ import { DashCard } from "metabase-types/types/Dashboard";
 import { ParameterId, ParameterTarget } from "metabase-types/types/Parameter";
 
 import { WritebackAction, HttpAction, RowAction } from "./types";
+import { ParameterWithTarget } from "metabase/parameters/types";
 
 const DB_WRITEBACK_FEATURE = "actions";
 const DB_WRITEBACK_SETTING = "database-enable-actions";
@@ -136,3 +140,16 @@ export const getActionEmitterParameterMappings = (action: WritebackAction) => {
     ? getQueryActionParameterMappings(action)
     : getHttpActionParameterMappings(action);
 };
+
+export function getHttpActionTemplateTagParameter(
+  tag: TemplateTag,
+): ParameterWithTarget {
+  return {
+    id: tag.id,
+    type: tag["widget-type"] || getTemplateTagType(tag),
+    target: getTemplateTagParameterTarget(tag),
+    name: tag.name,
+    slug: tag.name,
+    default: tag.default,
+  };
+}
