@@ -89,11 +89,7 @@ const CypressBackend = {
 
     if (!(await isReady(server.host))) {
       process.stdout.write(
-        "Waiting for backend (host=" +
-          server.host +
-          " dbFile=" +
-          server.dbFile +
-          ")",
+        `Waiting for backend (host=${server.host}, dbFile=${server.dbFile})`,
       );
       while (!(await isReady(server.host))) {
         if (!process.env["CI"]) {
@@ -105,9 +101,7 @@ const CypressBackend = {
       process.stdout.write("\n");
     }
 
-    console.log(
-      "Backend ready (host=" + server.host + " dbFile=" + server.dbFile + ")",
-    );
+    console.log(`Backend ready host=${server.host}, dbFile=${server.dbFile}`);
 
     // Copied here from `frontend/src/metabase/lib/promise.js` to decouple Cypress from Typescript
     function delay(duration) {
@@ -128,11 +122,7 @@ const CypressBackend = {
     if (server.process) {
       server.process.kill("SIGKILL");
       console.log(
-        "Stopped backend (host=" +
-          server.host +
-          " dbFile=" +
-          server.dbFile +
-          ")",
+        `Stopped backend (host=${server.host}, dbFile=${server.dbFile})`,
       );
     }
     try {
