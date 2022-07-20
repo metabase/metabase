@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
+import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import Modal from "metabase/components/Modal";
@@ -17,12 +18,14 @@ class SnippetModal extends React.Component {
       closeModal,
       snippet,
       snippetCollections,
+      saveSnippet,
     } = this.props;
 
     return (
       <Modal onClose={closeModal}>
         <Snippets.ModalForm
           snippet={snippet}
+          onSubmit={saveSnippet}
           form={
             snippetCollections.length <= 1
               ? Snippets.forms.withoutVisibleCollectionPicker
@@ -65,4 +68,7 @@ class SnippetModal extends React.Component {
   }
 }
 
-export default SnippetCollections.loadList()(SnippetModal);
+export default _.compose(
+  SnippetCollections.loadList(),
+  connect(null, { saveSnippet: Snippets.actions.save }),
+)(SnippetModal);

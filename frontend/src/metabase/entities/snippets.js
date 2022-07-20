@@ -39,6 +39,17 @@ const Snippets = createEntity({
     getFetched: (state, props) =>
       getFetched(state, props) || getObject(state, props),
   }),
+  actions: {
+    save: snippet => async dispatch => {
+      if (snippet.id) {
+        return dispatch(Snippets.actions.update(snippet));
+      } else {
+        const result = await dispatch(Snippets.actions.create(snippet));
+        await dispatch(Snippets.actions.fetchList({ reload: true }));
+        return result;
+      }
+    },
+  },
   forms: {
     withoutVisibleCollectionPicker: {
       fields: [
