@@ -69,4 +69,7 @@ module.exports = {
     require("@tailwindcss/typography"),
     require("@tailwindcss/aspect-ratio"),
   ],
+  corePlugins: {
+    display: false,
+  },
 };

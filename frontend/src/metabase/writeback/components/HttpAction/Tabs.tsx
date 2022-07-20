@@ -1,6 +1,8 @@
 import React from "react";
 import cx from "classnames";
 
+import { Container, Button } from "./Tabs.styled";
+
 type Tab = {
   name: string;
   label: string | React.ReactNode;
@@ -14,10 +16,11 @@ type Props = {
 
 const Tabs: React.FC<Props> = ({ tabs, currentTab, setCurrentTab }: Props) => {
   return (
-    <div className="flex space-x-2 prose">
+    <Container className="flex space-x-2 prose">
       {tabs.map(({ name, label }) => (
-        <button
+        <Button
           key={name}
+          active={currentTab === name}
           className={cx(
             currentTab === name
               ? "text-accent0"
@@ -27,9 +30,9 @@ const Tabs: React.FC<Props> = ({ tabs, currentTab, setCurrentTab }: Props) => {
           onClick={() => setCurrentTab(name)}
         >
           {label}
-        </button>
+        </Button>
       ))}
-    </div>
+    </Container>
   );
 };
 

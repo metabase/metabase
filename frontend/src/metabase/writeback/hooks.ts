@@ -25,6 +25,12 @@ export type CreateActionHook = {
   data: Data;
   onDataChange: (data: Data) => void;
 
+  responseHandler: string;
+  onResponseHandlerChange: (responseHandler: string) => void;
+
+  errorHandler: string;
+  onErrorHandlerChange: (errorHandler: string) => void;
+
   isDirty: boolean;
   isValid: boolean;
 
@@ -63,6 +69,22 @@ const getData = (action: Partial<WritebackAction>): unknown => {
   }
 };
 
+const getResponseHandler = (action: Partial<WritebackAction>): string => {
+  if (action.type === "http") {
+    return action.response_handle || "";
+  } else {
+    throw new Error("Action type is not supported");
+  }
+};
+
+const getErrorHandler = (action: Partial<WritebackAction>): string => {
+  if (action.type === "http") {
+    return action.error_handle || "";
+  } else {
+    throw new Error("Action type is not supported");
+  }
+};
+
 export const useWritebackAction = (
   action: Partial<WritebackAction> & { type: ActionType },
 ): CreateActionHook => {
@@ -71,11 +93,16 @@ export const useWritebackAction = (
   const [description, setDescription] = React.useState<string>(
     getDescription(action),
   );
+  const [responseHandler, setResponseHandler] = React.useState<string>(
+    getResponseHandler(action),
+  );
+  const [errorHandler, setErrorHandler] = React.useState<string>(
+    getErrorHandler(action),
+  );
   const [data, setData] = React.useState<Data>(getData(action));
   const [isDirty, setIsDirty] = React.useState<boolean>(false);
 
-  const json = React.useMemo(() => JSON.stringify(data), [data]);
-  const [templateTags, setTemplateTags] = useTemplateTags(json);
+  const [templateTags, setTemplateTags] = useTemplateTags(data);
 
   const isValid = React.useMemo(() => {
     if (!name) {
@@ -118,20 +145,38 @@ export const useWritebackAction = (
     isDirty,
     isValid,
     templateTags,
-    setTemplateTags,
+    setTemplateTags: newTags => {
+      if (!isEqual(templateTags, newTags)) {
+        setTemplateTags(newTags);
+        setIsDirty(true);
+      }
+    },
+    responseHandler,
+    onResponseHandlerChange: newHandler => {
+      if (responseHandler !== newHandler) {
+        setResponseHandler(newHandler);
+        setIsDirty(true);
+      }
+    },
+    errorHandler,
+    onErrorHandlerChange: newHandler => {
+      if (errorHandler !== newHandler) {
+        setErrorHandler(newHandler);
+        setIsDirty(true);
+      }
+    },
   };
 };
 
 type SetTemplateTags = (tags: TemplateTags) => void;
 
 // Adapted from NativeQuery._getUpdatedTemplateTags()
-export const useTemplateTags = (
-  queryText: string,
-): [TemplateTags, SetTemplateTags] => {
+export const useTemplateTags = (data: any): [TemplateTags, SetTemplateTags] => {
   const [templateTags, setTemplateTags] = React.useState<TemplateTags | null>(
     null,
   );
   const tags = React.useMemo(() => {
+    const queryText = JSON.stringify(data);
     if (queryText) {
       const tags = recognizeTemplateTags(queryText);
       const existingTags = Object.keys(templateTags || {});
@@ -185,7 +230,7 @@ export const useTemplateTags = (
       }
     }
     return INITIAL_TAGS;
-  }, [queryText, templateTags]);
+  }, [data, templateTags]);
 
   React.useEffect(() => setTemplateTags(tags), [tags]);
 

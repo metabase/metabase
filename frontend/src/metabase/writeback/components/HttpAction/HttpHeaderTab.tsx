@@ -4,6 +4,17 @@ import { t } from "ttag";
 import { assoc, dissoc } from "icepick";
 import Icon from "metabase/components/Icon";
 
+import {
+  Input,
+  Grid,
+  LeftHeader,
+  RightHeader,
+  ValueColumn,
+  DeleteButton,
+  AddButton,
+  Title,
+} from "./HttpHeaderTab.styled";
+
 export type Headers = {
   key: string;
   value: string;
@@ -19,18 +30,18 @@ const HttpHeaderTab: React.FC<Props> = ({ headers, setHeaders }: Props) => {
     setHeaders([...headers, { key: "", value: "" }]);
   };
   return (
-    <div className="grid grid-cols-2">
-      <div className="py-2 pl-6 text-sm font-semibold">{t`Name`}</div>
-      <div className="flex align-center justify-between h-full text-sm font-semibold">
-        <div>{t`Value`}</div>
+    <Grid className="grid grid-cols-2">
+      <LeftHeader className="py-2 pl-6 text-sm font-semibold">{t`Name`}</LeftHeader>
+      <RightHeader className="flex justify-between h-full text-sm font-semibold align-center">
+        <Title>{t`Value`}</Title>
 
-        <button
+        <AddButton
           className="h-full px1 bg-content hover:bg-brand hover:bg-opacity-25 hover:text-brand"
           onClick={add}
         >
           <Icon name="add" />
-        </button>
-      </div>
+        </AddButton>
+      </RightHeader>
       {headers.map(({ key, value }, index) => {
         const setKey = (key: string) =>
           setHeaders(assoc(headers, index, { key, value }));
@@ -40,32 +51,32 @@ const HttpHeaderTab: React.FC<Props> = ({ headers, setHeaders }: Props) => {
           setHeaders(assoc(headers, index, false).filter(Boolean));
         return (
           <>
-            <Input
+            <Header
               className="pl-6"
               key={`${index}-key`}
               placeholder={t`Header Name`}
               value={key}
               setValue={setKey}
             />
-            <div className="flex align-center justify-between">
-              <Input
+            <ValueColumn className="flex justify-between align-center">
+              <Header
                 className="pl-0 pr-6"
                 key={`${index}-value`}
                 placeholder={t`Value`}
                 value={value}
                 setValue={setValue}
               />
-              <button
+              <DeleteButton
                 className="h-full px1 bg-content hover:bg-brand hover:bg-opacity-25 hover:text-brand"
                 onClick={remove}
               >
                 <Icon name="trash" />
-              </button>
-            </div>
+              </DeleteButton>
+            </ValueColumn>
           </>
         );
       })}
-    </div>
+    </Grid>
   );
 };
 
@@ -76,14 +87,14 @@ type InputProps = {
   setValue: (value: string) => void;
 };
 
-const Input: React.FC<InputProps> = ({
+const Header: React.FC<InputProps> = ({
   className,
   value,
   setValue,
   placeholder,
 }: InputProps) => {
   return (
-    <input
+    <Input
       className={cx(
         "w-full px1 py-1  text-gray-500 bg-opacity-25 border-transparent placeholder-text-light bg-border focus:ring-transparent focus:border-transparent sm:text-sm",
         className,

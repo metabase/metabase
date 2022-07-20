@@ -3,6 +3,15 @@ import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import React from "react";
 
+import {
+  Button,
+  Label,
+  Content,
+  Select,
+  Option,
+  ButtonContent,
+} from "./Selector.styled";
+
 type Props = {
   className?: string;
   value: string;
@@ -34,36 +43,41 @@ const Selector: React.FC<Props> = ({
         onClose={() => setVisible(false)}
         placement="bottom-start"
       >
-        <button
+        <Button
+          borderless
           className="flex align-center"
           onClick={() => setVisible(!visible)}
         >
-          <h2>{label}</h2>
-          <Icon name="chevrondown" size="12px" className="ml-1" />
-        </button>
+          <ButtonContent>
+            <Label>{label}</Label>
+            <Icon name="chevrondown" size="12px" className="ml-1" />
+          </ButtonContent>
+        </Button>
       </TippyPopover>
     </div>
   );
 };
 
 const Contents: React.FC<Props> = ({ value, setValue, options }: Props) => (
-  <div className="px-0 py-0 bg-white border rounded-md shadow-md border-border">
-    <div className="flex flex-column" aria-label="Tabs">
+  <Content className="px-0 py-0 bg-white border rounded-md shadow-md border-border">
+    <Select className="flex flex-column" aria-label="Tabs">
       {options.map(({ value: optionValue, label }) => (
-        <button
+        <Option
           key={optionValue}
+          borderless
           className={cx(
             value === optionValue ? "text-brand" : "",
             "px-4 py-2 font-bold text-left text-medium text-sm bg-opacity-25 hover:bg-accent0-light hover:bg-opacity-25",
           )}
+          active={optionValue === value}
           aria-current={optionValue === value ? "page" : undefined}
           onClick={() => setValue(optionValue)}
         >
           {label}
-        </button>
+        </Option>
       ))}
-    </div>
-  </div>
+    </Select>
+  </Content>
 );
 
 export default Selector;

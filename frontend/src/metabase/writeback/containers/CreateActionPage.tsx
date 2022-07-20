@@ -17,6 +17,8 @@ import {
 import { TemplateTag } from "metabase-types/types/Query";
 import { ParameterWithTarget } from "metabase/parameters/types";
 
+import { Container, Content } from "./ActionPage.styled";
+
 type Props = {
   createHttpAction: (payload: CreateHttpActionPayload) => void;
 };
@@ -34,6 +36,10 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
     isValid,
     templateTags,
     setTemplateTags,
+    responseHandler,
+    onResponseHandlerChange,
+    errorHandler,
+    onErrorHandlerChange,
   } = useWritebackAction({ type });
 
   const onCommit = React.useCallback(() => {
@@ -51,12 +57,23 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
           ...data.template,
           parameters: Object.fromEntries(parameters),
         },
+        response_handle: responseHandler || null,
+        error_handle: errorHandler || null,
       };
       createHttpAction(entity);
     } else {
       throw new Error("Action type is not supported");
     }
-  }, [type, name, description, data, templateTags, createHttpAction]);
+  }, [
+    type,
+    name,
+    description,
+    data,
+    templateTags,
+    createHttpAction,
+    responseHandler,
+    errorHandler,
+  ]);
 
   let content = null;
   if (type === "http") {
@@ -71,12 +88,16 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
         onTemplateTagsChange={setTemplateTags}
         description={description}
         onDescriptionChange={onDescriptionChange}
+        responseHandler={responseHandler}
+        onResponseHandlerChange={onResponseHandlerChange}
+        errorHandler={errorHandler}
+        onErrorHandlerChange={onErrorHandlerChange}
       />
     );
   }
 
   return (
-    <div className="flex h-full flex-column">
+    <Container>
       <Header
         name={name}
         onNameChange={onNameChange}
@@ -85,8 +106,8 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
         canSave={isDirty && isValid}
         onCommit={onCommit}
       />
-      <div className="flex-grow bg-white">{content}</div>
-    </div>
+      <Content>{content}</Content>
+    </Container>
   );
 };
 

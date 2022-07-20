@@ -1,6 +1,8 @@
 import React from "react";
 import cx from "classnames";
 
+import { Container, UrlContainer, TextArea, Select } from "./UrlInput.styled";
+
 type Props = {
   protocol: string;
   setProtocol: (protocol: string) => void;
@@ -16,12 +18,9 @@ const UrlInput: React.FC<Props> = ({
 }: Props) => {
   return (
     <div>
-      <label htmlFor="url" className="block sr-only">
-        URL
-      </label>
-      <div className="flex items-start">
-        <div className="flex-grow">
-          <textarea
+      <Container className="flex items-start">
+        <UrlContainer className="flex-grow">
+          <TextArea
             name="url"
             id="url"
             rows={2}
@@ -37,12 +36,9 @@ const UrlInput: React.FC<Props> = ({
               }
             }}
           />
-        </div>
-        <div className="">
-          <label htmlFor="protocol" className="sr-only">
-            Protocol
-          </label>
-          <select
+        </UrlContainer>
+        <div>
+          <Select
             id="protocol"
             name="protocol"
             className="h-full py-0 pl-2 font-semibold text-gray-500 bg-transparent border-transparent focus:ring-transparent focus:border-transparent pr-7 sm:text-sm"
@@ -51,9 +47,9 @@ const UrlInput: React.FC<Props> = ({
           >
             <option value="http">HTTP</option>
             <option value="https">HTTPS</option>
-          </select>
+          </Select>
         </div>
-      </div>
+      </Container>
     </div>
   );
 };

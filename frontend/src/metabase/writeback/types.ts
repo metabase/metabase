@@ -39,6 +39,8 @@ export interface HttpAction {
   template: HttpActionTemplate;
   parameters: Record<ParameterId, Parameter>;
   parameter_mappings: Record<ParameterId, ParameterTarget>;
+  response_handle: string | null;
+  error_handle: string | null;
 }
 
 export type HttpActionResponseHandle = any;

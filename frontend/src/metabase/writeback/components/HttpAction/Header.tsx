@@ -3,9 +3,16 @@ import React from "react";
 import cx from "classnames";
 import { t } from "ttag";
 
-import EditableText from "metabase/core/components/EditableText";
 import { ActionType } from "metabase/writeback/types";
 import Selector from "./Selector";
+
+import {
+  Container,
+  LeftHeader,
+  EditableText,
+  Option,
+  RightHeader,
+} from "./Header.styled";
 
 type Props = {
   name: string;
@@ -33,8 +40,8 @@ const Header: React.FC<Props> = ({
   ];
 
   return (
-    <div className="flex align-center justify-between w-full py-3 pl-8 pr-4 bg-white">
-      <div className="flex align-center space-x-4">
+    <Container className="flex justify-between w-full py-3 pl-8 pr-4 bg-white align-center">
+      <LeftHeader className="flex space-x-4 align-center">
         <EditableText
           className="text-sm font-bold"
           initialValue={name}
@@ -48,12 +55,12 @@ const Header: React.FC<Props> = ({
             setValue={value => setType(value as ActionType)}
           />
         ) : (
-          <h2 className="text-light">
+          <Option className="text-light">
             {OPTS.find(({ value }) => value === type)?.label}
-          </h2>
+          </Option>
         )}
-      </div>
-      <button
+      </LeftHeader>
+      <RightHeader
         className={cx(
           "font-semibold",
           canSave ? "text-brand hover:text-opacity-50" : "text-medium",
@@ -62,8 +69,8 @@ const Header: React.FC<Props> = ({
         onClick={canSave ? onCommit : undefined}
       >
         {t`Save`}
-      </button>
-    </div>
+      </RightHeader>
+    </Container>
   );
 };
 

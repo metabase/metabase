@@ -597,13 +597,15 @@ function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
           return (
             <>
               {actions
-                .filter(action => action.type === "query")
+                .filter(
+                  action => action.type === "query" || action.type === "http",
+                )
                 .map(action => (
                   <ActionOption
                     key={action.id}
-                  name={action.card?.name || action.name}
-                  description={action.card?.description || action.description}
-                  isSelected={clickBehavior.action === action.id}
+                    name={action.card?.name || action.name}
+                    description={action.card?.description || action.description}
+                    isSelected={clickBehavior.action === action.id}
                     onClick={() =>
                       updateSettings({
                         type: clickBehavior.type,
@@ -618,7 +620,7 @@ function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
                   object={
                     selectedAction.type === "query"
                       ? selectedAction.card
-                      : selectedAction.template
+                      : selectedAction
                   }
                   dashcard={dashcard}
                   clickBehavior={clickBehavior}

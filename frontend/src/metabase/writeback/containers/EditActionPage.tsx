@@ -9,6 +9,9 @@ import Actions from "metabase/entities/actions";
 import { State } from "metabase-types/store/state";
 import { connect } from "react-redux";
 
+import { Container, Content } from "./ActionPage.styled";
+import { getTemplateTagParameter } from "metabase/parameters/utils/cards";
+
 type Props = {
   action: WritebackAction;
   updateAction: (
@@ -30,16 +33,45 @@ const EditActionPage: React.FC<Props> = ({ action, updateAction }: Props) => {
     isValid,
     templateTags,
     setTemplateTags,
+    responseHandler,
+    onResponseHandlerChange,
+    errorHandler,
+    onErrorHandlerChange,
   } = useWritebackAction(action);
 
-  console.log({ action });
-
-  const onCommit = () => {
-    console.log("Eddit on commit");
-    const update = (action as any).update;
-    updateAction(action, { name, description, ...data });
-  };
-
+  const onCommit = React.useCallback(() => {
+    if (type === "http") {
+      const tags = Object.values(templateTags);
+      const parameters = tags
+        .filter(tag => tag.type != null)
+        .map(getTemplateTagParameter)
+        .map(param => [param.name, param]);
+      const entity = {
+        name,
+        description,
+        ...data,
+        template: {
+          ...data.template,
+          parameters: Object.fromEntries(parameters),
+        },
+        response_handle: responseHandler || null,
+        error_handle: errorHandler || null,
+      };
+      updateAction(action, entity);
+    } else {
+      throw new Error("Action type is not supported");
+    }
+  }, [
+    action,
+    type,
+    name,
+    description,
+    data,
+    templateTags,
+    updateAction,
+    responseHandler,
+    errorHandler,
+  ]);
   let content = null;
   if (type === "http") {
     const { template = {} } = data;
@@ -53,12 +85,16 @@ const EditActionPage: React.FC<Props> = ({ action, updateAction }: Props) => {
         onTemplateTagsChange={setTemplateTags}
         description={description}
         onDescriptionChange={onDescriptionChange}
+        responseHandler={responseHandler}
+        onResponseHandlerChange={onResponseHandlerChange}
+        errorHandler={errorHandler}
+        onErrorHandlerChange={onErrorHandlerChange}
       />
     );
   }
 
   return (
-    <div className="flex flex-column h-full">
+    <Container>
       <Header
         name={name}
         onNameChange={onNameChange}
@@ -66,8 +102,8 @@ const EditActionPage: React.FC<Props> = ({ action, updateAction }: Props) => {
         canSave={isDirty && isValid}
         onCommit={onCommit}
       />
-      <div className="flex-grow bg-white">{content}</div>
-    </div>
+      <Content>{content}</Content>
+    </Container>
   );
 };
 
