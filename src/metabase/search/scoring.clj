@@ -270,20 +270,22 @@
    (weights-and-scores result))
 
 (defn score-and-result
-  "Returns a map with the `:score` and `:result`.
-   If there is no text match with the search string, the total score is zero."
+  "Returns a map with the `:score` and `:result`."
   ([raw-search-string result]
    (let [text-match (text-score-with-match raw-search-string result)
          text-score {:score  (:score text-match)
                      :weight 10
-                     :name   "text score"}]
-     (if (pos? (:score text-match))
-       (let [scores (conj (score-result result) text-score)]
-         {:score  (/ (reduce + (map (fn [{:keys [weight score]}] (* weight score)) scores))
-                     (reduce + (map :weight scores)))
-          :result (serialize result text-match scores)})
-       {:score  0
-        :result (serialize result text-match [text-score])}))))
+                     :name   "text score"}
+         scores (conj (score-result result) text-score)]
+     ;; Searches with a blank search string mean "show me everything, ranked";
+     ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
+     ;; If the search string is non-blank, results with no text match have a score of zero.
+     (if (or (str/blank? raw-search-string)
+             (pos? (:score text-match)))
+       {:score  (/ (reduce + (map (fn [{:keys [weight score]}] (* weight score)) scores))
+                   (reduce + (map :weight scores)))
+        :result (serialize result text-match scores)}
+       {:score 0}))))
 
 (defn top-results
   "Given a reducible collection (i.e., from `jdbc/reducible-query`) and a transforming function for it, applies the

@@ -280,15 +280,6 @@
                 (map :result)
                 (map :name))))))
 
-(deftest no-text-match-scoring-test
-  (testing "Results without a text match should have zero score"
-   (let [search-string "dashboard"
-         result        {:name                "my dash"
-                        :model               "dashboard"
-                        :bookmark            true
-                        :collection_position 1}]
-     (is (zero? (:score (scoring/score-and-result search-string result)))))))
-
 (deftest score-and-result-test
   (testing "If all scores are 0, does not divide by zero"
     (with-redefs [scoring/score-result
