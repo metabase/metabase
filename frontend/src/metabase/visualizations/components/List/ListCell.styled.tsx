@@ -24,6 +24,7 @@ export const CellContent = styled.span<{ isClickable: boolean }>`
 
   img {
     border-radius: 99px;
+    height: 36px !important;
   }
 
   ${props =>
