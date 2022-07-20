@@ -49,4 +49,5 @@ Consider the page state at `percyHealthCheck` step as the one that will be captu
 
 - You don't need to export `PERCY_TOKEN` for running tests. If a token is exported Percy will send snapshots from your local machine to their servers so that you will be able to see your local run in their interface.
 - When the application code uses `Date.now()`, you can [freeze](https://docs.percy.io/docs/freezing-dynamic-data#freezing-datetime-in-cypress) date/time in Cypress.
-- [Stub](https://github.com/metabase/metabase/pull/17380/files#diff-4e8ebaf75969143a5eee6bfb8adcd4b72d4330d18d77319e3434d11cf6c75e40R15) `Math.random` when to deal with randomization.
+- [Stub](https://github.com/metabase/metabase/pull/17380/files#diff-4e8ebaf75969143a5eee6bfb8adcd4b72d4330d18d77319e3434d11cf6c75e40R15) `Math.random` when you deal with randomization.
+- When testing a page that renders any dates coming from the server, in order to avoid unwanted visual changes, add `data-server-date` attribute to all DOM nodes that render dates. The custom `createPercySnapshot` command replaces content with a constant placeholder before capturing a snapshot.
