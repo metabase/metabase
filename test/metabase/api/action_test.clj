@@ -485,7 +485,7 @@
           (testing "Should report the index of input rows with errors in the data warehouse"
             (let [error-message-regex (case driver/*driver*
                                         :h2       #"^NULL not allowed for column \"NAME\""
-                                        :postgres #"^ERROR: null value in column \"name\" of relation \"categories\" violates not-null constraint")]
+                                        :postgres #"^ERROR: null value in column \"name\" (?:of relation \"categories\" )?violates not-null constraint")]
               (is (schema= {:errors   [(s/one
                                         {:index (s/eq 0)
                                          :error error-message-regex}
