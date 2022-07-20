@@ -48,7 +48,7 @@ import {
   BulkSelectionControlContainer,
   RowActionsContainer,
   RowActionButtonContainer,
-  LIST_ITEM_VERTICAL_GAP,
+  LIST_ITEM_BORDER_DIVIDER_WIDTH,
 } from "./List.styled";
 
 function getBoundingClientRectSafe(ref: React.RefObject<HTMLBaseElement>) {
@@ -110,7 +110,7 @@ function List({
     const { height: footerHeight = 0 } = getBoundingClientRectSafe(footerRef);
     const { height: rowHeight = 0 } = getBoundingClientRectSafe(firstRowRef);
     const rowHeightWithMargin =
-      rowHeight + parseInt(LIST_ITEM_VERTICAL_GAP, 10);
+      rowHeight + parseInt(LIST_ITEM_BORDER_DIVIDER_WIDTH, 10);
     const currentPageSize = Math.floor(
       (height - footerHeight) / rowHeightWithMargin,
     );

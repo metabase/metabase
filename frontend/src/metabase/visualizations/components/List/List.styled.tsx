@@ -1,17 +1,18 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import { color } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 
 import TableFooter from "../TableSimple/TableFooter";
 import { CellRoot } from "./ListCell.styled";
 
-export const LIST_ITEM_VERTICAL_GAP = "16px";
+export const LIST_ITEM_BORDER_DIVIDER_WIDTH = "1";
 
 export const Root = styled.div<{ isQueryBuilder?: boolean }>`
   display: flex;
   flex-direction: column;
   position: relative;
+  margin: 0.3rem;
 
   ${props =>
     props.isQueryBuilder &&
@@ -47,11 +48,6 @@ export const ListItemContainer = styled.div<{ disabled?: boolean }>`
   align-items: center;
   justify-content: space-between;
   height: 4rem;
-  border-radius: 8px;
-  box-shadow: 2px 3px 5px ${color("shadow")};
-  border: 1px solid transparent;
-
-  padding: 0 0.5rem;
 
   background-color: ${color("bg-white")};
 
@@ -59,12 +55,14 @@ export const ListItemContainer = styled.div<{ disabled?: boolean }>`
 
   transition: all 0.1s ease-in-out;
 
+  padding: 1.1875rem 1rem;
+
   ${props =>
     !props.disabled &&
     css`
       &:hover {
         cursor: pointer;
-        border-color: ${color("border")};
+        background-color: ${alpha(color("brand"), 0.05)};
       }
     `}
 
@@ -86,15 +84,29 @@ export const ListItemContent = styled.div`
   align-items: center;
 `;
 
+const LIST_ITEM_BORDER_RADIUS = "6px";
+
 // Adding horizontal margin so list item shadows don't get cut in dashboard cards
 // Because of overflow: hidden style. We need overflow-y: hidden to limit the number of visible rows
 // And it's impossible to combine overflow-x: visible with overflow-y: hidden
 // https://stackoverflow.com/questions/6421966/css-overflow-x-visible-and-overflow-y-hidden-causing-scrollbar-issue
 export const ContentContainer = styled.div`
-  margin: 0 0.3rem;
+  box-shadow: 0px 1px 10px ${color("shadow")};
+  border: 1px solid ${color("border")};
+  border-radius: ${LIST_ITEM_BORDER_RADIUS};
 
-  ${ListItemContainer}:not(:first-of-type) {
-    margin-top: ${LIST_ITEM_VERTICAL_GAP};
+  ${ListItemContainer}:first-of-type {
+    border-top-left-radius: ${LIST_ITEM_BORDER_RADIUS};
+    border-top-right-radius: ${LIST_ITEM_BORDER_RADIUS};
+  }
+
+  ${ListItemContainer}:last-of-type {
+    border-bottom-left-radius: ${LIST_ITEM_BORDER_RADIUS};
+    border-bottom-right-radius: ${LIST_ITEM_BORDER_RADIUS};
+  }
+
+  ${ListItemContainer}:not(:last-of-type) {
+    border-bottom: 1px solid ${color("border")};
   }
 `;
 
