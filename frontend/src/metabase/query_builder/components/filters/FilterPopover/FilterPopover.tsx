@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
 
-import DimensionList from "../DimensionList";
+import DimensionList from "../../DimensionList";
 import Icon from "metabase/components/Icon";
 
 import FilterPopoverHeader from "./FilterPopoverHeader";
@@ -21,9 +21,9 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { isStartingFrom } from "metabase/lib/query_time";
 import { Button } from "./FilterPopover.styled";
-import DatePicker from "./pickers/DatePicker/DatePicker";
-import TimePicker from "./pickers/TimePicker";
-import { DateShortcutOptions } from "./pickers/DatePicker/DatePickerShortcutOptions";
+import DatePicker from "../pickers/DatePicker/DatePicker";
+import TimePicker from "../pickers/TimePicker";
+import { DateShortcutOptions } from "../pickers/DatePicker/DatePickerShortcutOptions";
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
@@ -151,9 +151,9 @@ export default class FilterPopover extends Component<Props, State> {
     this.setState({ choosingField: false });
   };
 
-  handleFilterChange = (mbql: any[]) => {
+  handleFilterChange = (mbql: any[] = []) => {
     const filter = this.state.filter || new Filter([], null, this.props.query);
-    const newFilter = filter.set(mbql);
+    const newFilter = new Filter(mbql, null, this.props.query);
     this.setFilter(newFilter);
   };
 
