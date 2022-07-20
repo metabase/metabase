@@ -44,7 +44,7 @@
   (let [parentage        (into [] (for [[model id] (partition 2 (drop-last 2 path-parts))]
                                     {:model model :id id}))
         [model basename] (take-last 2 path-parts)
-        [_ id label]     (or (re-matches #"^([A-Za-z0-9_-]+)(?:\+(.*))?\.yaml$" basename)
+        [_ id label]     (or (re-matches #"^([A-Za-z0-9_\.:-]+)(?:\+(.*))?\.yaml$" basename)
                              (re-matches #"^(.+)\.yaml$" basename))]
     (conj parentage (cond-> {:model model :id id}
                       label (assoc :label label)))))
