@@ -36,11 +36,6 @@ export interface BaseFormProps {
   onChangeField: (fieldName: FieldName, value: DefaultFieldValue) => void;
   onSubmitSuccess: () => void;
   resetForm: () => void;
-  submitPassback: () => void;
-  touch: () => void;
-  touchAll: () => void;
-  untouch: () => void;
-  untouchAll: () => void;
 }
 
 type RenderSubmitProps = {
