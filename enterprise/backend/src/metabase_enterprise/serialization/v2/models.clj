@@ -12,4 +12,6 @@
    "Metric"
    "NativeQuerySnippet"
    "Setting"
-   "Table"])
+   "Table"
+   "Timeline"
+   "TimelineEvent"])
