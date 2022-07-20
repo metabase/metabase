@@ -60,12 +60,14 @@
 (api/defendpoint PUT "/:emitter-id"
   "Endpoint to update an emitter."
   [emitter-id :as {emitter :body}]
+  (api/check-404 (Emitter emitter-id))
   (db/update! Emitter emitter-id emitter)
   api/generic-204-no-content)
 
 (api/defendpoint DELETE "/:emitter-id"
   "Endpoint to delete an emitter."
   [emitter-id]
+  (api/check-404 (Emitter emitter-id))
   (db/delete! Emitter :id emitter-id)
   api/generic-204-no-content)
 
@@ -74,52 +76,6 @@
                   :value    s/Any
                   s/Keyword s/Any}}
       (su/with-api-error-message "map of parameter name or ID -> map of parameter `:value` and `:type` of the value")))
-
-(comment
-  ;; Assuming things look like this
-;; GET native query action
-:parameters
-;;[
-;;    {
-;;        "id": "2fddf797-838e-81eb-4828-53f947932486",
-;;        "type": "number/=",
-;;        "target": [
-;;            "variable",
-;;            [
-;;                "template-tag",
-;;                "product_id"
-;;            ]
-;;        ],
-;;        "name": "Product",
-;;        "slug": "product_id"
-;;    }
-;;]
-
-;; PUT dashboards/:id
-:emitters
-:parameter_mappings
-;;{
-;;    "2fddf797-838e-81eb-4828-53f947932486": [
-;;        "variable",
-;;        [
-;;            "template-tag",
-;;            "product_id"
-;;        ]
-;;    ]
-;;}
-
-
-;; on execution
-:parameters
-;;{
-;;    "2fddf797-838e-81eb-4828-53f947932486": {
-;;        "value": 1,
-;;        "type": "number/="
-;;    }
-;;}
-
-
-  )
 
 (defn- execute-http-emitter!
   [emitter parameters]

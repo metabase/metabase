@@ -388,7 +388,9 @@
   potemkin/defprotocol+              clojure.core/defprotocol
   potemkin/defrecord+                clojure.core/defrecord
   potemkin/deftype+                  clojure.core/deftype
-  toucan.db/with-call-counting       clojure.core/fn}
+  toucan.db/with-call-counting       clojure.core/fn
+  metabase.actions.test-util/with-query-action clojure.core/fn
+  metabase.actions.test-util/with-emitter clojure.core/let}
 
  :hooks
  {:analyze-call
