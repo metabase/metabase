@@ -103,12 +103,6 @@
     (is (thrown? ClassCastException
                  (u/qualified-name false)))))
 
-(deftest ^:parallel key-by-test
-  (is (= {1 {:id 1, :name "Rasta"}
-          2 {:id 2, :name "Lucky"}}
-         (u/key-by :id [{:id 1, :name "Rasta"}
-                        {:id 2, :name "Lucky"}]))))
-
 (deftest ^:parallel remove-diacritical-marks-test
   (doseq [[s expected] {"üuuü" "uuuu"
                         "åéîü" "aeiu"
