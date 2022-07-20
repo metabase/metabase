@@ -110,8 +110,8 @@ const CypressBackend = {
 
     async function isReady(host) {
       try {
-        const response = await fetch(`${host}/api/health`);
-        if (response.status === 200) {
+        const { status } = await fetch(`${host}/api/health`);
+        if (status === 200) {
           return true;
         }
       } catch (e) {}
