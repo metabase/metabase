@@ -250,7 +250,51 @@
                                                                       [:expression "x" {::add/desired-alias "x"
                                                                                         ::add/position      1}]]}}
                          :limit        1})
-                      (nest-expressions query)))))))
+                      (nest-expressions query))))))
+  (testing "Ignores source-query from joins (#20809)"
+    (let [query {:source-table 2,
+                 :expressions  {"CC" [:+ 1 1]},
+                 :fields       [[:field 33 {:join-alias "Question 4918",}]
+                                [:field "count" {:join-alias "Question 4918"}]]
+                 :joins        [{:alias           "Question 4918",
+                                 :strategy        :left-join,
+                                 :fields          [[:field 33 {:join-alias "Question 4918"}]
+                                          [:field
+                                           "count"
+                                           {:join-alias "Question 4918"}]]
+                                 :condition       [:=
+                                             [:field 5 nil]
+                                                   [:field 33 {:join-alias "Question 4918",}]],
+                                 :source-card-id  4918,
+                                 :source-query    {:source-table 4,
+                                                   ;; nested query has filter values with join-alias that should not
+                                                   ;; be selected
+                                                   :filter       [:=
+                                                                  [:field 26 {:join-alias "PRODUCTS__via__PRODUCT_ID"}]
+                                                                  [:value "Doohickey" {}]],
+                                                   :aggregation  [[:aggregation-options
+                                                                  [:count]
+                                                                   {:name "count"}]],
+                                                   :breakout     [[:field 33 nil]],
+                                                   :limit        2,
+                                                   :order-by     [[:asc
+                                                               [:field 33 nil]]],
+                                                   ;; nested query has an implicit join with conditions that should
+                                                   ;; not be selected
+                                                   :joins        [{:alias        "PRODUCTS__via__PRODUCT_ID",
+                                                                   :strategy     :left-join,
+                                                                   :condition    [:=
+                                                                                  [:field 33 nil]
+                                                                                  [:field
+                                                                                   30
+                                                                                   {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                                                                   :source-table 1,
+                                                                   :fk-field-id  33}]},
+                                 :source-metadata [{:field_ref [:field 33 nil]}
+                                                   {:field_ref [:aggregation 0]}]}]}]
+      (is (= [[:field 33 {:join-alias "Question 4918"}]
+              [:field "count" {:join-alias "Question 4918"}]]
+             (#'nest-query/joined-fields query))))))
 
 (deftest nest-expressions-with-joins-test
   (testing "If there are any `:joins`, those need to be nested into the `:source-query` as well."
