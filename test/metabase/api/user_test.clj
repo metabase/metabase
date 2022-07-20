@@ -653,10 +653,10 @@
         (letfn [(change-user-via-api! [m]
                   (-> (mt/user-http-request :crowberto :put 400 (str "user/" user-id) m)))]
           (testing "`:first_name` changes are rejected"
-            (is (= {:errors {:name "Editing names is not allowed for SSO users."}}
+            (is (= {:errors {:first_name "Editing first name is not allowed for SSO users."}}
                    (change-user-via-api! {:first_name "NOT-SSO"}))))
           (testing "`:last_name` changes are rejected"
-            (is (= {:errors {:name "Editing names is not allowed for SSO users."}}
+            (is (= {:errors {:last_name "Editing last name is not allowed for SSO users."}}
                    (change-user-via-api! {:last_name "USER"}))))
           (testing "New names that are the same as existing names succeed because there is no change."
             (is (= {:first_name "SSO"
