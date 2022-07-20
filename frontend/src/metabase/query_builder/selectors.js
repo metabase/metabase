@@ -58,7 +58,6 @@ const SIDEBARS = [
   "isShowingTimelineSidebar",
 
   "isShowingSummarySidebar",
-  "isShowingFilterSidebar",
 
   "isShowingDataReference",
   "isShowingTemplateTagsEditor",

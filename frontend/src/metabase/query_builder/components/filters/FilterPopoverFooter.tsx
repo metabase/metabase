@@ -14,7 +14,6 @@ type Props = {
   onFilterChange: (filter: any[]) => void;
   onCommit?: (() => void) | null;
 
-  isSidebar?: boolean;
   minWidth?: number;
   maxWidth?: number;
   isNew?: boolean;
@@ -23,16 +22,12 @@ type Props = {
 export default function FilterPopoverFooter({
   filter,
   isNew,
-  isSidebar,
   onFilterChange,
   onCommit,
   className,
   primaryColor,
 }: Props) {
-  const containerClassName = cx(className, "flex align-center", {
-    PopoverFooter: !isSidebar,
-  });
-
+  const containerClassName = cx(className, "flex align-center PopoverFooter");
   return (
     <div className={containerClassName}>
       <FilterOptions

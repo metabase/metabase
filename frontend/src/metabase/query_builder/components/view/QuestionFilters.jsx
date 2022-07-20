@@ -9,7 +9,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 import ViewPill from "./ViewPill";
-import ViewButton from "./ViewButton";
+
 import {
   HeaderButton,
   FilterHeaderContainer,
@@ -162,28 +162,6 @@ export function QuestionFilterWidget({ onOpenModal, className }) {
     >
       {t`Filter`}
     </HeaderButton>
-  );
-}
-
-export function MobileQuestionFilterWidget({
-  isShowingFilterSidebar,
-  onAddFilter,
-  onCloseFilter,
-  ...props
-}) {
-  return (
-    <ViewButton
-      large
-      primary
-      color={color("filter")}
-      labelBreakpoint="sm"
-      icon="filter"
-      onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}
-      active={isShowingFilterSidebar}
-      {...props}
-    >
-      &nbsp;
-    </ViewButton>
   );
 }
 
