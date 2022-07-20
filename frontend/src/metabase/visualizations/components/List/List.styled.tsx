@@ -84,6 +84,13 @@ export const ListItemContent = styled.div`
   align-items: center;
 `;
 
+export const InfoContentContainer = styled.div`
+  ${CellRoot}:last-of-type {
+    margin-top: 2px;
+    font-size: 0.75rem;
+  }
+`;
+
 const LIST_ITEM_BORDER_RADIUS = "6px";
 
 // Adding horizontal margin so list item shadows don't get cut in dashboard cards

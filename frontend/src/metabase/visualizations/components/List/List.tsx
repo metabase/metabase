@@ -46,6 +46,7 @@ import {
   ListItemContainer,
   ListItemContent,
   BulkSelectionControlContainer,
+  InfoContentContainer,
   RowActionsContainer,
   RowActionButtonContainer,
   LIST_ITEM_BORDER_DIVIDER_WIDTH,
@@ -304,10 +305,10 @@ function List({
           <ListItemContent>
             {canSelectForBulkAction && renderBulkSelectionControl(rowIndex)}
             {renderListItemCell(rowIndex, firstColumnIndex, "left")}
-            <div>
+            <InfoContentContainer>
               {renderListItemCell(rowIndex, secondColumnIndex, "left")}
               {renderListItemCell(rowIndex, thirdColumnIndex, "left")}
-            </div>
+            </InfoContentContainer>
           </ListItemContent>
         );
       }
