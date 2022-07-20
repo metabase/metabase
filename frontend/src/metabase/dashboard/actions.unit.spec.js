@@ -176,13 +176,19 @@ describe("dashboard actions", () => {
 
     beforeEach(() => {
       DashboardApi.parameterSearch.mockReset();
-      DashboardApi.parameterSearch.mockResolvedValue([1, 2, 3]);
+      DashboardApi.parameterSearch.mockResolvedValue({
+        has_more_values: false,
+        values: [1, 2, 3],
+      });
       DashboardApi.parameterValues.mockReset();
-      DashboardApi.parameterValues.mockResolvedValue([4, 5, 6]);
+      DashboardApi.parameterValues.mockResolvedValue({
+        has_more_values: true,
+        values: [4, 5, 6],
+      });
       parameterValuesSearchCache = {};
     });
 
-    it("should fetch parameter values using the given query string", async () => {
+    it("should fetch parameter values using the given query string and always set has_more_values to true", async () => {
       const action = await fetchDashboardParameterValuesWithCache({
         dashboardId,
         parameter,
@@ -199,6 +205,7 @@ describe("dashboard actions", () => {
         payload: {
           cacheKey:
             "dashboardId: 1, parameterId: a, query: foo, filteringParameterValues: []",
+          has_more_values: true,
           results: [[1], [2], [3]],
         },
         type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
@@ -222,6 +229,7 @@ describe("dashboard actions", () => {
           cacheKey:
             "dashboardId: 1, parameterId: a, query: null, filteringParameterValues: []",
           results: [[4], [5], [6]],
+          has_more_values: true,
         },
         type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
       });
@@ -246,6 +254,7 @@ describe("dashboard actions", () => {
           cacheKey:
             'dashboardId: 1, parameterId: a, query: bar, filteringParameterValues: [["b","bbb"]]',
           results: [[1], [2], [3]],
+          has_more_values: true,
         },
         type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
       });
@@ -269,6 +278,7 @@ describe("dashboard actions", () => {
           cacheKey:
             'dashboardId: 1, parameterId: a, query: null, filteringParameterValues: [["b","bbb"]]',
           results: [[4], [5], [6]],
+          has_more_values: true,
         },
         type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
       });
