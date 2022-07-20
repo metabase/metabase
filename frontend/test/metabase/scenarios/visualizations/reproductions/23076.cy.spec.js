@@ -29,7 +29,7 @@ const questionDetails = {
   },
 };
 
-describe.skip("issue 23076", () => {
+describe("issue 23076", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
