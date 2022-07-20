@@ -142,6 +142,9 @@ describe("user > settings", () => {
     cy.button("Update").click();
     cy.wait("@updateUserSettings");
 
+    // Assert that the page reloaded with the new language
+    cy.findByLabelText("Nama depan").should("exist");
+
     // We need some UI element other than a string
     cy.icon("gear").should("exist");
   });
