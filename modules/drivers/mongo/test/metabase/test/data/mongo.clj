@@ -26,7 +26,6 @@
   {:ssl true
    :ssl-use-client-auth true
    :client-ssl-key-value (-> "ssl/mongo/metabase.key" io/resource slurp)
-   :client-ssl-key-password-value "passw"
    :client-ssl-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
    :ssl-cert (-> "ssl/mongo/metaca.crt" io/resource slurp)})
 
