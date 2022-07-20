@@ -15,6 +15,7 @@ import {
 import Question from "./lib/Question";
 import NativeQuery from "./lib/queries/NativeQuery";
 import StructuredQuery from "./lib/queries/StructuredQuery";
+import Query from "./lib/queries/Query";
 
 type NativeSavedCard = SavedCard<NativeDatasetQuery>;
 type NativeUnsavedCard = UnsavedCard<NativeDatasetQuery>;
@@ -74,7 +75,7 @@ export function getCleanStructuredQuestion(
 ) {
   let question = getAdHocQuestion(card);
   if (question.query() instanceof StructuredQuery) {
-    question = question.setQuery({});
+    question = question.setQuery(new Query());
   }
   return question;
 }
