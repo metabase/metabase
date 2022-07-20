@@ -1,17 +1,11 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import React, { useState } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-
 import userEvent from "@testing-library/user-event";
 
 import { ORDERS } from "__support__/sample_database_fixture";
-
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 import DatePicker from "./DatePicker";
-import { DATE_SHORTCUT_OPTIONS } from "./DatePickerShortcutOptions";
-import { act } from "react-dom/test-utils";
 
 const ordersQuery = ORDERS.query();
 
@@ -23,14 +17,14 @@ const DatePickerStateWrapper = ({
   onChange = jest.fn(),
 }: {
   filter: Filter;
-  onCommit: () => void;
-  onChange: () => void;
+  onCommit?: (arg: any) => void;
+  onChange?: (arg: any) => void;
 }) => {
   const [filterValue, setFilterValue] = useState(filter);
   return (
     <DatePicker
       filter={filterValue}
-      onFilterChange={arg => {
+      onFilterChange={(arg: any) => {
         setFilterValue(arg);
         onChange(arg);
       }}
@@ -208,7 +202,7 @@ describe("DatePicker", () => {
     });
 
     describe("Date Shortcuts", () => {
-      const shortcuts = [
+      const shortcuts: [string, any[]][] = [
         [
           "Today",
           [
@@ -241,7 +235,7 @@ describe("DatePicker", () => {
         ],
       ];
 
-      shortcuts.forEach(([label, expectedFilter]) => {
+      shortcuts.forEach(([label, expectedFilter]: [string, any[]]) => {
         it(`applies the correct filter for the ${label} shortcut`, async () => {
           const commitSpy = jest.fn();
           const filter = new Filter(
