@@ -282,7 +282,6 @@ class FieldValuesWidgetInner extends Component {
 
     const isLoading = loadingState === "LOADING";
     const usesListField =
-    const usesListField =
       !disableList &&
       hasList({
         fields,
