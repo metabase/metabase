@@ -2,6 +2,7 @@
   "Utility functions for dealing with parameters for Dashboards and Cards."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.db.util :as mdb.u]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
@@ -95,13 +96,13 @@
   cases where more than one name Field exists for a Table, this just adds the first one it finds."
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
-    (u/key-by :table_id (-> (db/select Field:params-columns-only
-                              :table_id      [:in table-ids]
-                              :semantic_type (mdb.u/isa :type/Name))
-                            ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
-                            ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
-                            ;; `list` instead of `auto-list`.)
-                            (hydrate :has_field_values)))))
+    (m/index-by :table_id (-> (db/select Field:params-columns-only
+                                :table_id      [:in table-ids]
+                                :semantic_type (mdb.u/isa :type/Name))
+                              ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
+                              ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
+                              ;; `list` instead of `auto-list`.)
+                              (hydrate :has_field_values)))))
 
 (defn add-name-field
   "For all `fields` that are `:type/PK` Fields, look for a `:type/Name` Field belonging to the same Table. For each
@@ -152,9 +153,9 @@
   parameter widgets."
   [field-ids :- (s/maybe #{su/IntGreaterThanZero})]
   (when (seq field-ids)
-    (u/key-by :id (-> (db/select Field:params-columns-only :id [:in field-ids])
-                      (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
-                      remove-dimensions-nonpublic-columns))))
+    (m/index-by :id (-> (db/select Field:params-columns-only :id [:in field-ids])
+                        (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
+                        remove-dimensions-nonpublic-columns))))
 
 (defmulti ^:private ^{:hydrate :param_fields} param-fields
   "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card or

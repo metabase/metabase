@@ -85,7 +85,7 @@
   Make sure cards are returned in the same order as `card-ids`; `[in card-ids]` won't preserve the order."
   [card-ids :- [su/IntGreaterThanZero]]
   (when (seq card-ids)
-    (let [card-id->card (u/key-by :id (db/select Card, :id [:in (set card-ids)], :archived false))]
+    (let [card-id->card (m/index-by :id (db/select Card, :id [:in (set card-ids)], :archived false))]
       (filter identity (map card-id->card card-ids)))))
 
 ;; Return the 10 Cards most recently viewed by the current user, sorted by how recently they were viewed.

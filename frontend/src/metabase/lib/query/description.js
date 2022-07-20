@@ -154,6 +154,8 @@ export function getFilterClauseDescription(tableMetadata, filter, options) {
     const segment = _.findWhere(tableMetadata.segments, { id: filter[1] });
     const name = segment ? segment.name : "[Unknown Segment]";
     return options.jsx ? <FilterClause>{name}</FilterClause> : name;
+  } else if (filter[0] === "between" && filter[1][0] === "+") {
+    return getFieldName(tableMetadata, filter[1][1], options);
   } else {
     return getFieldName(tableMetadata, filter[1], options);
   }

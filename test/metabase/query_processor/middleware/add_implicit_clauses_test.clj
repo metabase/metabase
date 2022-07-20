@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses-test
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor :as qp]
@@ -15,7 +16,7 @@
   (testing "check we fetch Fields in the right order"
     (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:position -1}
       (let [ids       (map second (#'qp.add-implicit-clauses/sorted-implicit-fields-for-table (mt/id :venues)))
-            id->field (u/key-by :id (db/select [Field :id :position :name :semantic_type] :id [:in ids]))]
+            id->field (m/index-by :id (db/select [Field :id :position :name :semantic_type] :id [:in ids]))]
         (is (= [ ;; sorted first because it has lowest positon
                 {:position -1, :name "PRICE", :semantic_type :type/Category}
                 ;; PK
