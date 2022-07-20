@@ -93,7 +93,7 @@ const CypressBackend = {
       );
       while (!(await isReady(server.host))) {
         if (!process.env["CI"]) {
-          // disable for CI since it break's CircleCI's no_output_timeout
+          // disable for CI since it breaks CircleCI's no_output_timeout
           process.stdout.write(".");
         }
         await delay(500);
