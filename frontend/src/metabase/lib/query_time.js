@@ -1,5 +1,5 @@
 import _ from "underscore";
-import moment from "moment";
+import moment from "moment-timezone";
 import { assoc } from "icepick";
 import inflection from "inflection";
 import { t, ngettext, msgid } from "ttag";
@@ -274,7 +274,6 @@ export function absolute(date) {
   if (typeof date === "string") {
     return moment(date);
   } else if (Array.isArray(date) && date[0] === "relative-datetime") {
-    console.log("🚀", moment().localeData()._week);
     return moment().add(date[1], date[2]);
   } else {
     console.warn("Unknown datetime format", date);

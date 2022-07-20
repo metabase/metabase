@@ -75,7 +75,6 @@ function setLocalization(translationsObject) {
 
   updateMomentLocale(locale);
   updateMomentStartOfWeek(locale);
-  console.log("🚀", moment().localeData()._week);
 }
 
 function updateMomentLocale(locale) {
