@@ -11,6 +11,7 @@
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.dataset-definitions :as defs]
+            [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql.ddl :as ddl]
             [metabase.util :as u]
@@ -127,7 +128,15 @@
       (is (thrown?
            net.snowflake.client.jdbc.SnowflakeSQLException
            (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
-          "can-connect? should throw for Snowflake databases that don't exist (#9511)"))))
+          "can-connect? should throw for Snowflake databases that don't exist (#9511)")
+      (let [pk-user (tx/db-test-env-var-or-throw :snowflake :pk-user)
+            pk-key  (tx/db-test-env-var-or-throw :snowflake :pk-private-key)]
+        (is (= true
+               (can-connect? (-> (:details (mt/db))
+                                 (dissoc :password)
+                                 (assoc :user pk-user
+                                        :private-key-value pk-key))))
+            "can-connect? should return true when authenticating with private key")))))
 
 (deftest report-timezone-test
   (mt/test-driver :snowflake

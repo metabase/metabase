@@ -18,6 +18,8 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.driver.sync :as driver.s]
+            [metabase.driver.util :as driver.u]
+            [metabase.models.secret :as secret]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
@@ -52,6 +54,12 @@
   []
   (inc (driver.common/start-of-week->int)))
 
+(defn- resolve-private-key [details]
+  (let [property "private-key"
+        private-key-string (secret/get-secret-string details property)]
+    (cond-> (dissoc details (vals (secret/get-sub-props property)))
+      private-key-string (assoc :privatekey (driver.u/parse-rsa-key private-key-string)))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options], :as details}]
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
@@ -81,6 +89,7 @@
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
                    (update :schema upcase-not-nil)
+                   resolve-private-key
                    (dissoc :host :port :timezone)))
         (sql-jdbc.common/handle-additional-options details))))
 
