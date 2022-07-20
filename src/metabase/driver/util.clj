@@ -482,7 +482,7 @@
   (when-let [m (re-find #"^-----BEGIN (?:(\p{Alnum}+) )?PRIVATE KEY-----\n" key-string)]
     (m 1)))
 
-(defn- parse-rsa-key
+(defn parse-rsa-key
   "Parses an RSA private key from the PEM string `key-string`."
   ^PrivateKey [key-string]
   (let [algorithm (or (key-type key-string) "RSA")
