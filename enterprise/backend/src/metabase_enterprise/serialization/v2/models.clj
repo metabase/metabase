@@ -11,6 +11,8 @@
    "Field"
    "Metric"
    "NativeQuerySnippet"
+   "Pulse"
+   "PulseCard"
    "Segment"
    "Setting"
    "Table"

@@ -243,7 +243,8 @@
                                   :spec      ::pulse-card
                                   :insert!   {:model PulseCard}
                                   :relations {:pulse_id [:pulse :id]
-                                              :card_id  [:card :id]}}
+                                              :card_id  [:card :id]
+                                              :dashboard_card_id [:dashboard-card :id]}}
    :pulse-channel                {:prefix    :pulse-channel
                                   :spec      ::pulse-channel
                                   :insert!   {:model PulseChannel}
