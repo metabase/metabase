@@ -13,10 +13,11 @@ export const Tabs = styled.nav`
   }
 `;
 
-export const Tab = styled(ButtonBase)`
+export const Tab = styled(ButtonBase)<{ active: boolean }>`
   font-weight: bold;
-  color: ${color("brand")};
+  color: ${props => (props.active ? color("brand") : color("text-medium"))};
   background-opacity: 0.25;
+  padding: ${space(0)} ${space(1)};
 
   &:hover {
     background-color: ${color("accent0-light")};

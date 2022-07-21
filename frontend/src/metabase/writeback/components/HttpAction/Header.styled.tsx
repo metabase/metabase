@@ -10,6 +10,7 @@ export const Container = styled.div`
   justify-content: space-between;
   width: 100%;
   background-color: ${color("white")};
+  padding: ${space(1)} ${space(3)};
 `;
 
 export const LeftHeader = styled.div`
@@ -23,19 +24,20 @@ export const LeftHeader = styled.div`
   }
 `;
 
-export const RightHeader = styled(ButtonBase)`
-  font-weight: bold;
-  color: ${color("brand")};
+export const RightHeader = styled(ButtonBase)<{ enabled: boolean }>`
+  font-weight: 600;
+  color: ${props => (props.enabled ? color("brand") : color("text-medium"))};
   background-opacity: 0.25;
+  padding: 0;
 
   &:hover {
-    background-color: ${color("accent0-light")};
-    background-opacity: 0.25;
+    color: ${color("accent0-light")};
   }
 `;
 
 export const EditableText = styled(EditableTextBase)`
   font-weight: bold;
+  font-size: 0.85em;
 `;
 
 export const Option = styled.div`

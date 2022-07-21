@@ -10,6 +10,7 @@ export const Label = styled.div``;
 export const Button = styled(ButtonBase)`
   display: flex;
   align-items: center;
+  padding: ${space(0)} ${space(1)};
 `;
 
 export const ButtonContent = styled.div`

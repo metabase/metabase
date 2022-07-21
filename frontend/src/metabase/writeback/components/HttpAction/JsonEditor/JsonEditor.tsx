@@ -9,7 +9,11 @@ type Props = {
 
 const JsonEditor: React.FC<Props> = ({ value, onChange }: Props) => {
   return (
-    <Editor value={value} onChange={event => onChange(event.target.value)} />
+    <Editor
+      value={value}
+      onChange={event => onChange(event.target.value)}
+      placeholder={`{"foo": "{{bar}}"}`}
+    />
   );
 };
 

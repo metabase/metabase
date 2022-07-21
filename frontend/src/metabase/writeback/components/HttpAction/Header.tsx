@@ -40,13 +40,9 @@ const Header: React.FC<Props> = ({
   ];
 
   return (
-    <Container className="flex justify-between w-full py-3 pl-8 pr-4 bg-white align-center">
-      <LeftHeader className="flex space-x-4 align-center">
-        <EditableText
-          className="text-sm font-bold"
-          initialValue={name}
-          onChange={onNameChange}
-        />
+    <Container>
+      <LeftHeader>
+        <EditableText initialValue={name} onChange={onNameChange} />
         {setType ? (
           <Selector
             className="text-light"
@@ -61,10 +57,8 @@ const Header: React.FC<Props> = ({
         )}
       </LeftHeader>
       <RightHeader
-        className={cx(
-          "font-semibold",
-          canSave ? "text-brand hover:text-opacity-50" : "text-medium",
-        )}
+        borderless
+        enabled={canSave}
         disabled={!canSave}
         onClick={canSave ? onCommit : undefined}
       >

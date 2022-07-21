@@ -59,9 +59,11 @@ const HttpAction: React.FC<Props> = ({
 }) => {
   const { protocol, url, method, initialHeaders, body } = React.useMemo(() => {
     const [protocol, url] = (data.url || "https://").split("://", 2);
-    const initialHeaders: Headers = Object.entries(data.headers || {}).map(
-      ([key, value]) => ({ key, value: value as string }),
-    );
+    const initialHeaders: Headers = Object.entries(
+      (typeof data.headers === "string"
+        ? JSON.parse(data.headers)
+        : data.headers) || {},
+    ).map(([key, value]) => ({ key, value: value as string }));
     return {
       protocol,
       url,
@@ -168,12 +170,12 @@ const HttpActionInner: React.FC<InnerProps> = ({
   );
   const [contentType, setContentType] = React.useState("application/json");
   return (
-    <Grid className="grid w-full h-full grid-cols-2 md:flex-row">
-      <LeftColumn className="flex border-t border-r flex-column border-border bg-content">
-        <MethodContainer className="px-6 py-2 border-b border-b-border">
+    <Grid>
+      <LeftColumn>
+        <MethodContainer>
           <MethodSelector value={method} setValue={setMethod} />
         </MethodContainer>
-        <UrlContainer className="py-4 border-b border-border">
+        <UrlContainer>
           <UrlInput
             url={url}
             setUrl={setUrl}
@@ -181,22 +183,7 @@ const HttpActionInner: React.FC<InnerProps> = ({
             setProtocol={setProtocol}
           />
         </UrlContainer>
-        <BodyContainer className="flex flex-grow bg-white border-b flex-column border-border">
-          <LeftTabs className="pl-4 pr-4 border-b border-border">
-            <Tabs
-              tabs={PARAM_TABS}
-              currentTab={currentParamTab}
-              setCurrentTab={setCurrentParamTab}
-            />
-          </LeftTabs>
-          <Tab className="flex-grow">
-            <ParametersTab
-              templateTags={templateTags}
-              onTemplateTagsChange={onTemplateTagsChange}
-            />
-          </Tab>
-        </BodyContainer>
-        <Description className="py-4 pl-6 pr-4 bg-white">
+        <Description>
           <EditableText
             className="text-sm text-light"
             placeholder={t`Enter an action description...`}
@@ -204,9 +191,24 @@ const HttpActionInner: React.FC<InnerProps> = ({
             onChange={onDescriptionChange}
           />
         </Description>
+        <BodyContainer>
+          <LeftTabs>
+            <Tabs
+              tabs={PARAM_TABS}
+              currentTab={currentParamTab}
+              setCurrentTab={setCurrentParamTab}
+            />
+          </LeftTabs>
+          <Tab>
+            <ParametersTab
+              templateTags={templateTags}
+              onTemplateTagsChange={onTemplateTagsChange}
+            />
+          </Tab>
+        </BodyContainer>
       </LeftColumn>
-      <RightColumn className="flex border-t flex-column border-border">
-        <RightTabs className="flex justify-between py-1 pl-2 pr-4 border-b align-center border-b-border">
+      <RightColumn>
+        <RightTabs>
           <div>
             <Tabs
               tabs={CONFIG_TABS}

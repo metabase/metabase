@@ -43,11 +43,7 @@ const Selector: React.FC<Props> = ({
         onClose={() => setVisible(false)}
         placement="bottom-start"
       >
-        <Button
-          borderless
-          className="flex align-center"
-          onClick={() => setVisible(!visible)}
-        >
+        <Button borderless onClick={() => setVisible(!visible)}>
           <ButtonContent>
             <Label>{label}</Label>
             <Icon name="chevrondown" size="12px" className="ml-1" />

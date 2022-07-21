@@ -19,6 +19,7 @@ const Tabs: React.FC<Props> = ({ tabs, currentTab, setCurrentTab }: Props) => {
     <Container className="flex space-x-2 prose">
       {tabs.map(({ name, label }) => (
         <Button
+          borderless
           key={name}
           active={currentTab === name}
           className={cx(

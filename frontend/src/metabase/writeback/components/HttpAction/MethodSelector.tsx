@@ -17,6 +17,8 @@ const MethodSelector: React.FC<Props> = ({ value, setValue }: Props) => {
         {METHODS.map(method => (
           <Tab
             key={method}
+            borderless
+            active={value === method}
             className={cx(
               value === method ? "bg-accent0-light" : "",
               "px1 py-1 font-bold text-brand text-sm rounded-md bg-opacity-25 hover:bg-accent0-light hover:bg-opacity-25",
