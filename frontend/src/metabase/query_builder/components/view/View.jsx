@@ -467,7 +467,12 @@ class View extends React.Component {
     }
 
     if (card.dataset && queryBuilderMode === "dataset") {
-      return <DatasetEditor {...this.props} />;
+      return (
+        <>
+          <DatasetEditor {...this.props} />
+          <QueryModals {...this.props} />
+        </>
+      );
     }
 
     const isNotebookContainerOpen =
