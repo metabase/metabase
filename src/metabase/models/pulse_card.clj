@@ -9,6 +9,10 @@
 (models/defmodel PulseCard :pulse_card)
 
 (u/strict-extend (class PulseCard)
+  models/IModel
+  (merge models/IModelDefaults
+         {:properties (constantly {:entity_id true})})
+
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :pulse) (serdes.hash/hydrated-hash :card)])})
 
