@@ -1,10 +1,13 @@
 import styled from "@emotion/styled";
-import { space } from "metabase/styled-components/theme";
+import { space, breakpointMinLarge } from "metabase/styled-components/theme";
 import { color, alpha, darken, lighten } from "metabase/lib/colors";
 
 export const InlineOperatorContainer = styled.div`
   font-weight: bold;
-  font-size: 1rem;
+  font-size: 0.875rem;
+  ${breakpointMinLarge} {
+    font-size: 1rem;
+  }
   margin-bottom: 0.875rem;
   display: inline-flex;
   align-items: flex-start;
