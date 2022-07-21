@@ -44,8 +44,6 @@ import {
   RESET_ROW_ZOOM,
   onEditSummary,
   onCloseSummary,
-  onAddFilter,
-  onCloseFilter,
   onOpenChartSettings,
   onCloseChartSettings,
   onOpenChartType,
@@ -72,7 +70,6 @@ const DEFAULT_UI_CONTROLS = {
   isRunning: false,
   isQueryComplete: false,
   isShowingSummarySidebar: false,
-  isShowingFilterSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionInfoSidebar: false,
@@ -96,7 +93,6 @@ const DEFAULT_QUERY_STATUS = "idle";
 
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingSummarySidebar: false,
-  isShowingFilterSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingTimelineSidebar: false,
@@ -240,15 +236,6 @@ export const uiControls = handleActions(
       isShowingSummarySidebar: true,
     }),
     [onCloseSummary]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    }),
-    [onAddFilter]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      isShowingFilterSidebar: true,
-    }),
-    [onCloseFilter]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
