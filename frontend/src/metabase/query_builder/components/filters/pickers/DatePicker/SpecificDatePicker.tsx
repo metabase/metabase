@@ -15,7 +15,6 @@ import { getTimeComponent, setTimeComponent } from "metabase/lib/query_time";
 
 type Props = {
   className?: string;
-  isSidebar?: boolean;
   primaryColor?: string;
   calendar?: boolean;
   selectAll?: SelectAll;

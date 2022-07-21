@@ -226,7 +226,6 @@ export function getOperator(filter: Filter, operators = DATE_OPERATORS) {
 }
 
 type Props = {
-  isSidebar?: boolean;
   className?: string;
 
   filter: Filter;
@@ -253,7 +252,6 @@ const DatePicker: React.FC<Props> = props => {
     filter,
     dateShortcutOptions,
     onFilterChange,
-    isSidebar,
     disableOperatorSelection,
     disableChangingDimension,
     primaryColor,
@@ -324,7 +322,6 @@ const DatePicker: React.FC<Props> = props => {
             />
           )}
           <DatePickerFooter
-            isSidebar={isSidebar}
             filter={filter}
             primaryColor={primaryColor}
             onFilterChange={onFilterChange}
