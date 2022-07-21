@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import ButtonBase from "metabase/core/components/Button";
-import { color, alpha, lighten } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 export const Grid = styled.div`
   display: grid;
