@@ -67,6 +67,8 @@
                                               :human_readable_field_id ::rs/omit}}]]
          :metric                 [[30 {:refs {:table_id   (random-keyword "t" 100)
                                               :creator_id (random-keyword "u" 10)}}]]
+         :segment                [[30 {:refs {:table_id   (random-keyword "t" 100)
+                                              :creator_id (random-keyword "u" 10)}}]]
          :native-query-snippet   [[10 {:refs {:creator_id    (random-keyword "u" 10)
                                               :collection_id (random-keyword "coll" 10 100)}}]]
          :timeline               [[10 {:refs {:creator_id    (random-keyword "u" 10)
@@ -185,6 +187,16 @@
                          (update :created_at u.date/format)
                          (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Metric" filename))))))
+
+          (testing "for segments"
+            (is (= 30 (count (dir->file-set (io/file dump-dir "Segment")))))
+            (doseq [{:keys [entity_id name] :as segment} (get entities "Segment")
+                    :let [filename (#'u.yaml/leaf-file-name entity_id name)]]
+              (is (= (-> segment
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Segment" filename))))))
 
           (testing "for native query snippets"
             (is (= 10 (count (dir->file-set (io/file dump-dir "NativeQuerySnippet")))))
