@@ -22,7 +22,8 @@ import DatePickerHeader from "./DatePickerHeader";
 import ExcludeDatePicker from "./ExcludeDatePicker";
 import DatePickerShortcuts from "./DatePickerShortcuts";
 import { DateShortcutOptions } from "./DatePickerShortcutOptions";
-import { CurrentPicker, NextPicker, PastPicker } from "./RelativeDatePicker";
+import CurrentPicker from "./CurrentPicker";
+import { NextPicker, PastPicker } from "./RelativeDatePicker";
 import { AfterPicker, BeforePicker, BetweenPicker } from "./RangeDatePicker";
 import SingleDatePicker from "./SingleDatePicker";
 
