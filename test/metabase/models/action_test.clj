@@ -1,7 +1,7 @@
 (ns metabase.models.action-test
   (:require [clojure.test :refer :all]
             [metabase.actions.test-util :as actions.test-util]
-            [metabase.models :refer [Card Emitter]]
+            [metabase.models :refer [Emitter]]
             [metabase.test :as mt]
             [toucan.hydrate :refer [hydrate]]))
 

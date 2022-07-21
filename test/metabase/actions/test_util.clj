@@ -1,13 +1,11 @@
 (ns metabase.actions.test-util
   (:require
-   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.http-client :as client]
    [metabase.models :refer [Action Card CardEmitter Dashboard DashboardEmitter
-                            Database Emitter EmitterAction HTTPAction
-                            QueryAction]]
+                            Database Emitter EmitterAction QueryAction]]
    [metabase.models.action :as action]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
