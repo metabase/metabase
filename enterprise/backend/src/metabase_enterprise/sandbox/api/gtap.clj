@@ -13,7 +13,6 @@
 (api/defendpoint GET "/"
   "Fetch a list of all the GTAPs currently in use."
   []
-  ;; TODO - do we need to hydrate anything here?
   (db/select GroupTableAccessPolicy))
 
 (api/defendpoint GET "/:id"
@@ -21,10 +20,8 @@
   [id]
   (api/check-404 (GroupTableAccessPolicy id)))
 
-;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
-
-#_(def ^:private AttributeRemappings
-  (su/with-api-error-message (s/maybe {su/NonBlankString su/NonBlankString})
+(def ^:private AttributeRemappings
+  (su/with-api-error-message (s/maybe {s/Keyword s/Any})
     "value must be a valid attribute remappings map (attribute name -> remapped name)"))
 
 (api/defendpoint POST "/"
@@ -33,7 +30,7 @@
   {table_id             su/IntGreaterThanZero
    card_id              (s/maybe su/IntGreaterThanZero)
    group_id             su/IntGreaterThanZero
-   #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
+   attribute_remappings AttributeRemappings}
   (db/insert! GroupTableAccessPolicy
     {:table_id             table_id
      :card_id              card_id
@@ -44,9 +41,9 @@
   "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the
   paramter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
   one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints."
-  [id :as {{:keys [card_id #_attribute_remappings], :as body} :body}]
+  [id :as {{:keys [card_id attribute_remappings], :as body} :body}]
   {card_id              (s/maybe su/IntGreaterThanZero)
-   #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
+   attribute_remappings AttributeRemappings}
   (api/check-404 (GroupTableAccessPolicy id))
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
   ;; This allows existing values to be "cleared" by being set to nil

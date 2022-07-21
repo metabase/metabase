@@ -1,5 +1,5 @@
 (ns metabase-enterprise.sandbox.test-util
-  "Shared test utilities for multi-tenant tests."
+  "Shared test utilities for sandbox tests."
   (:require [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase.models.card :refer [Card]]
             [metabase.models.permissions :as perms]
@@ -115,6 +115,12 @@
   {:style/indent 1}
   [gtaps-and-attributes-map & body]
   `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) :rasta (fn [~'&group] ~@body)))
+
+(defmacro with-gtaps-for-user
+  "Like `with-gtaps` but with for a specific user."
+  {:style/indent 2}
+  [test-user-name-or-user-id gtaps-and-attributes-map & body]
+  `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) ~test-user-name-or-user-id (fn [~'&group] ~@body)))
 
 (defn restricted-column-query
   "An MBQL query against Venues that only returns a subset of the columns."

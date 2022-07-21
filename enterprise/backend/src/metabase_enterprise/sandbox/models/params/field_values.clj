@@ -1,7 +1,11 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
   (:require [metabase-enterprise.sandbox.api.table :as table]
+            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+            [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
             [metabase.api.common :as api]
-            [metabase.models.field :as field :refer [Field]]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models :refer [Field User PermissionsGroupMembership]]
+            [metabase.models.field :as field]
             [metabase.models.field-values :as field-values]
             [metabase.models.params.field-values :as params.field-values]
             [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -9,12 +13,54 @@
 
 (comment api/keep-me)
 
-(defn- field-is-sandboxed?
+(defn field-is-sandboxed?
+  "Check if a field is sandboxed."
   [{:keys [table], :as field}]
   ;; slight optimization: for the `field-id->field-values` version we can batched hydrate `:table` to avoid having to
   ;; make a bunch of calls to fetch Table. For `get-or-create-field-values` we don't hydrate `:table` so we can fall
   ;; back to fetching it manually with `field/table`
   (table/only-segmented-perms? (or table (field/table field))))
+
+(defn- table-id->gtap
+  "Find the GTAP for current user that apply to table `table-id`."
+  [table-id]
+  (let [group-ids (db/select-field :group_id PermissionsGroupMembership :user_id api/*current-user-id*)
+        gtaps     (db/select GroupTableAccessPolicy
+                             :group_id [:in group-ids]
+                             :table_id table-id)]
+    (when gtaps
+      (row-level-restrictions/assert-one-gtap-per-table gtaps)
+      ;; there shold be only one gtap per table and we only need one table here
+      ;; see docs in [[metabase.models.permissions]] for more info
+      (first gtaps))))
+
+(defn- field-id->gtap-attributes-for-current-user
+  "Returns the gtap attributes for current user that applied to `field-id`.
+
+  The gtap-attributes has 2 part:
+  - card-id - for GTAP that use a saved question
+  - a map:
+    - with key is the user-attribute applied to `field-id`
+    - value is the user-attribute of current user corresponding to the key
+
+  For example we have an GTAP rules
+  {:card_id 1
+   :attribute_remappings {\"State\" [:dimension [:field 3 nil]]}}
+
+  And users with login-attributes {\"State\" \"CA\"}
+
+  ;; (field-id->gtap-attributes-for-current-user 3)
+  ;; -> [1
+  ;;     {\"State\" \"CA\"}]"
+  [field-id]
+  (when-let [gtap (table-id->gtap (db/select-one-field :table_id Field :id field-id))]
+    (let [login-attributes (or (:login_attributes @api/*current-user*)
+                               (db/select-one-field :login_attributes User :id api/*current-user-id*))
+          attribute_remappings (:attribute_remappings gtap)]
+      [(:card_id gtap)
+       (into {} (for [[k v] attribute_remappings
+                      :when (= (mbql.u/match-one v [:dimension [:field id _]] field-id) field-id)]
+                  {k (get login-attributes k)}))])))
 
 (defenterprise get-or-create-field-values-for-current-user!*
   "Fetch cached FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These
@@ -30,10 +76,9 @@
   :feature :sandboxes
   [field-id constraints]
   (if (field-is-sandboxed? (db/select-one Field :id field-id))
-    (str (hash [api/*current-user-id*
-                @api/*current-user-permissions-set*
-                field-id
-                constraints]))
+    (str (hash (concat [field-id
+                        constraints]
+                       (field-id->gtap-attributes-for-current-user field-id))))
     (field-values/default-hash-key-for-linked-filters field-id constraints)))
 
 (defenterprise hash-key-for-sandbox
@@ -41,6 +86,5 @@
   :feature :sandboxes
   [field-id]
   (when (field-is-sandboxed? (db/select-one Field :id field-id))
-    (str (hash [field-id
-                api/*current-user-id*
-                @api/*current-user-permissions-set*]))))
+    (str (hash (concat [field-id]
+                       (field-id->gtap-attributes-for-current-user field-id))))))
