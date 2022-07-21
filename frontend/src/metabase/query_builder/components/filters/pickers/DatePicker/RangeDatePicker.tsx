@@ -16,7 +16,6 @@ import SingleDatePicker, { SingleDatePickerProps } from "./SingleDatePicker";
 import SpecificDatePicker from "./SpecificDatePicker";
 
 type BetweenPickerProps = {
-  isSidebar?: boolean;
   className?: string;
   primaryColor?: string;
   filter: Filter;
@@ -27,7 +26,6 @@ type BetweenPickerProps = {
 
 export const BetweenPicker = ({
   className,
-  isSidebar,
   filter: [op, field, startValue, endValue],
   onFilterChange,
   hideTimeSelectors,
@@ -43,7 +41,7 @@ export const BetweenPicker = ({
   }
   return (
     <div className={className}>
-      <TimeContainer isSidebar={isSidebar}>
+      <TimeContainer>
         <div>
           <SpecificDatePicker
             value={startValue}

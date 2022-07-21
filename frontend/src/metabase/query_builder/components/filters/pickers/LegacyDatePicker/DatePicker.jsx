@@ -287,7 +287,6 @@ export default class DatePicker extends Component {
     className: PropTypes.string,
     hideEmptinessOperators: PropTypes.bool,
     hideTimeSelectors: PropTypes.bool,
-    isSidebar: PropTypes.bool,
     operators: PropTypes.array,
     disableOperatorSelection: PropTypes.bool,
   };
@@ -323,13 +322,8 @@ export default class DatePicker extends Component {
   }
 
   render() {
-    const {
-      className,
-      filter,
-      onFilterChange,
-      isSidebar,
-      disableOperatorSelection,
-    } = this.props;
+    const { className, filter, onFilterChange, disableOperatorSelection } =
+      this.props;
 
     const { operators } = this.state;
 
@@ -339,9 +333,8 @@ export default class DatePicker extends Component {
     return (
       <div
         // apply flex to align the operator selector and the "Widget" if necessary
-        className={cx(className, {
+        className={cx(className, "PopoverBody--marginBottom", {
           "flex align-center": Widget && Widget.horizontalLayout,
-          "PopoverBody--marginBottom": !isSidebar,
         })}
         style={{ minWidth: 300 }}
       >
