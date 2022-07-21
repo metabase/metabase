@@ -133,8 +133,6 @@ export default class SelectPicker extends Component {
                   style={{ padding: "0.15em" }}
                 >
                   <SelectPickerButton
-                    style={{ height: "95px" }}
-                    className="full rounded text-centered text-bold"
                     isSelected={values[0] === option.key}
                     onClick={() => this.selectValue(option.key, true)}
                   >
