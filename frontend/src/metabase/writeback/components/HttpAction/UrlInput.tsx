@@ -1,5 +1,4 @@
 import React from "react";
-import cx from "classnames";
 
 import { Container, UrlContainer, TextArea, Select } from "./UrlInput.styled";
 
