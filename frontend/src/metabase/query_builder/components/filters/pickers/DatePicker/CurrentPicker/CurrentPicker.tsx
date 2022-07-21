@@ -1,7 +1,6 @@
 import React from "react";
-import { t } from "ttag";
-import moment from "moment";
 
+import { periodPopoverText } from "./periodPopoverText";
 import { formatBucketing } from "metabase/lib/query_time";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { DATE_PERIODS } from "../RelativeDatePicker";
@@ -17,31 +16,6 @@ type CurrentPickerProps = {
   filter: Filter;
   primaryColor?: string;
   onCommit: (filter?: any[]) => void;
-};
-
-const periodPopoverText = (period: string) => {
-  const now = moment();
-  let start: string, end: string;
-  switch (period) {
-    case "day":
-      return t`Right now, this is ${now.format("ddd, MMM D")}`;
-    case "week":
-      start = now.startOf("week").format("ddd, MMM D");
-      end = now.endOf("week").format("ddd, MMM D");
-      return t`Right now, this is ${start} - ${end}`;
-    case "month":
-      start = now.startOf("month").format("ddd, MMM D");
-      end = now.endOf("month").format("ddd, MMM D");
-      return t`Right now, this is ${start} - ${end}`;
-    case "quarter":
-      start = now.startOf("quarter").format("ddd, MMM D");
-      end = now.endOf("quarter").format("ddd, MMM D");
-      return t`Right now, this is ${start} - ${end}`;
-    case "year":
-      start = now.startOf("year").format("MMM D, YYYY");
-      end = now.endOf("year").format("MMM D, YYYY");
-      return t`Right now, this is ${start} - ${end}`;
-  }
 };
 
 export default function CurrentPicker(props: CurrentPickerProps) {
