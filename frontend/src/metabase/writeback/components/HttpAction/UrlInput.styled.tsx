@@ -1,6 +1,11 @@
 import styled from "@emotion/styled";
-import { color, alpha, lighten } from "metabase/lib/colors";
+
+import SelectButton from "metabase/core/components/SelectButton";
+
+import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
+
+import CompactSelect from "./CompactSelect";
 
 export const Container = styled.div`
   display: flex;
@@ -40,19 +45,11 @@ export const TextArea = styled.textarea`
   }
 `;
 
-export const Select = styled.select`
-  color: ${color("text-medium")};
-  height: 100%;
-  padding: 0 calc(${space(1)} + ${space(2)}) 0 ${space(3)};
-  font-weight: 600;
-  font-size: 0.85rem;
-
+export const Select = styled(CompactSelect)`
   background-color: transparent;
-  border-color: transparent;
 
-  border: none;
-  overflow: auto;
-  outline: none;
-
-  box-shadow: none;
+  ${SelectButton.Root} {
+    padding: 0;
+    background-color: transparent;
+  }
 `;
