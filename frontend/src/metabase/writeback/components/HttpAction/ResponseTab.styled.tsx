@@ -41,6 +41,7 @@ export const TextArea = styled.textarea`
 
   &:focus {
     color: ${color("text-dark")};
+    border: 1px solid ${color("brand")};
   }
 
   &::placeholder {
