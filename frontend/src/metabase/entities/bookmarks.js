@@ -1,4 +1,4 @@
-import { assoc, dissoc } from "icepick";
+import { assoc, updateIn, dissoc } from "icepick";
 import _ from "underscore";
 import { createSelector } from "reselect";
 import { createEntity } from "metabase/lib/entities";
@@ -47,13 +47,24 @@ const Bookmarks = createEntity({
   },
   reducer: (state = {}, { type, payload, error }) => {
     if (type === Questions.actionTypes.UPDATE && payload?.object?.archived) {
-      const key = "card-" + payload?.object?.id;
+      const key = `card-${payload.object.id}`;
       return dissoc(state, key);
     }
 
     if (type === Dashboards.actionTypes.UPDATE && payload?.object?.archived) {
-      const key = "dashboard-" + payload?.object?.id;
+      const key = `dashboard-${payload.object.id}`;
       return dissoc(state, key);
+    }
+
+    if (type === Collections.actionTypes.UPDATE && payload?.object) {
+      const { id, authority_level } = payload.object;
+      const key = `collection-${id}`;
+
+      if (payload.object.archived) {
+        return dissoc(state, key);
+      } else {
+        return updateIn(state, [key], item => ({ ...item, authority_level }));
+      }
     }
 
     if (type === Bookmarks.actionTypes.REORDER) {
