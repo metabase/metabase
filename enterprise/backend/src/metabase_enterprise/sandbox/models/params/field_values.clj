@@ -34,12 +34,12 @@
       ;; see docs in [[metabase.models.permissions]] for more info
       (first gtaps))))
 
-(defn- field-id->gtap-attributes-for-current-user
-  "Returns the gtap attributes for current user that applied to `field-id`.
+(defn- field->gtap-attributes-for-current-user
+  "Returns the gtap attributes for current user that applied to `field`.
 
-  The gtap-attributes has 2 part:
-  - card-id - for GTAP that use a saved question
-  - a map:
+  The gtap-attributes is a list with 2 elements:
+  1. card-id - for GTAP that use a saved question
+  2. a map:
     - with key is the user-attribute applied to `field-id`
     - value is the user-attribute of current user corresponding to the key
 
@@ -49,17 +49,16 @@
 
   And users with login-attributes {\"State\" \"CA\"}
 
-  ;; (field-id->gtap-attributes-for-current-user 3)
-  ;; -> [1
-  ;;     {\"State\" \"CA\"}]"
-  [field-id]
-  (when-let [gtap (table-id->gtap (db/select-one-field :table_id Field :id field-id))]
+  ;; (field-id->gtap-attributes-for-current-user (Field 3))
+  ;; -> [1, {\"State\" \"CA\"}]"
+  [{:keys [table_id id] :as _field}]
+  (when-let [gtap (table-id->gtap table_id)]
     (let [login-attributes (or (:login_attributes @api/*current-user*)
                                (db/select-one-field :login_attributes User :id api/*current-user-id*))
           attribute_remappings (:attribute_remappings gtap)]
       [(:card_id gtap)
        (into {} (for [[k v] attribute_remappings
-                      :when (= (mbql.u/match-one v [:dimension [:field id _]] field-id) field-id)]
+                      :when (= (mbql.u/match-one v [:dimension [:field id _]] id) id)]
                   {k (get login-attributes k)}))])))
 
 (defenterprise get-or-create-field-values-for-current-user!*
@@ -75,16 +74,18 @@
   "Returns a hash-key for linked-filter FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
   :feature :sandboxes
   [field-id constraints]
-  (if (field-is-sandboxed? (db/select-one Field :id field-id))
-    (str (hash (concat [field-id
-                        constraints]
-                       (field-id->gtap-attributes-for-current-user field-id))))
-    (field-values/default-hash-key-for-linked-filters field-id constraints)))
+  (let [field (db/select-one Field :id field-id)]
+    (if (field-is-sandboxed? field)
+      (str (hash (concat [field-id
+                          constraints]
+                         (field->gtap-attributes-for-current-user field))))
+      (field-values/default-hash-key-for-linked-filters field-id constraints))))
 
 (defenterprise hash-key-for-sandbox
   "Returns a hash-key for linked-filter FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
   :feature :sandboxes
   [field-id]
-  (when (field-is-sandboxed? (db/select-one Field :id field-id))
-    (str (hash (concat [field-id]
-                       (field-id->gtap-attributes-for-current-user field-id))))))
+  (let [field (db/select-one Field :id field-id)]
+    (when (field-is-sandboxed? field)
+      (str (hash (concat [field-id]
+                         (field->gtap-attributes-for-current-user field)))))))
