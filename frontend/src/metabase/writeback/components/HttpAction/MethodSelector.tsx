@@ -1,9 +1,13 @@
-import cx from "classnames";
 import React from "react";
 
-import { Tabs, Tab } from "./MethodSelector.styled";
+import Radio from "metabase/core/components/Radio";
 
-const METHODS = ["GET", "POST", "PUT", "DELETE"];
+import { Container } from "./MethodSelector.styled";
+
+const METHODS = ["GET", "POST", "PUT", "DELETE"].map(method => ({
+  name: method,
+  value: method,
+}));
 
 type Props = {
   value: string;
@@ -12,25 +16,9 @@ type Props = {
 
 const MethodSelector: React.FC<Props> = ({ value, setValue }: Props) => {
   return (
-    <div>
-      <Tabs className="flex space-x-2" aria-label="Tabs">
-        {METHODS.map(method => (
-          <Tab
-            key={method}
-            borderless
-            active={value === method}
-            className={cx(
-              value === method ? "bg-accent0-light" : "",
-              "px1 py-1 font-bold text-brand text-sm rounded-md bg-opacity-25 hover:bg-accent0-light hover:bg-opacity-25",
-            )}
-            aria-current={method === value ? "page" : undefined}
-            onClick={() => setValue(method)}
-          >
-            {method}
-          </Tab>
-        ))}
-      </Tabs>
-    </div>
+    <Container>
+      <Radio value={value} options={METHODS} onOptionClick={setValue} />
+    </Container>
   );
 };
 
