@@ -2,11 +2,11 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { alpha, color } from "metabase/lib/colors";
 
-export interface ClickActionTokenProps {
+export interface ClickActionButtonProps {
   type: "sort" | "formatting" | "horizontal" | "token" | "token-filter";
 }
 
-export const ClickActionToken = styled.div<ClickActionTokenProps>`
+export const ClickActionButton = styled.div<ClickActionButtonProps>`
   ${({ type }) =>
     type === "token-filter" &&
     css`

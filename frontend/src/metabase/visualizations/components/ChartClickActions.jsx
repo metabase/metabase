@@ -16,7 +16,7 @@ import { performAction } from "metabase/visualizations/lib/action";
 import cx from "classnames";
 import _ from "underscore";
 import { Link } from "react-router";
-import { ClickActionToken } from "./ChartClickActions.styled";
+import { ClickActionButton } from "./ChartClickActions.styled";
 
 // These icons used to be displayed for each row section of actions.
 // We're now just using them as a way to select different sections of actions to style them uniquely.
@@ -289,7 +289,7 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
           full: action.buttonType === "horizontal",
         })}
       >
-        <ClickActionToken
+        <ClickActionButton
           as={Link}
           className={className}
           to={action.url()}
@@ -303,7 +303,7 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
           }
         >
           {action.title}
-        </ClickActionToken>
+        </ClickActionButton>
       </div>
     );
   } else if (
@@ -312,8 +312,9 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
   ) {
     return (
       <Tooltip tooltip={action.tooltip}>
-        <ClickActionToken
+        <ClickActionButton
           className={cx(className, "flex flex-row align-center")}
+          type={action.buttonType}
           onClick={() => handleClickAction(action)}
         >
           {action.icon && (
@@ -326,15 +327,16 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
               name={action.icon}
             />
           )}
-        </ClickActionToken>
+        </ClickActionButton>
       </Tooltip>
     );
   } else {
     return (
-      <ClickActionToken
+      <ClickActionButton
         className={cx(className, {
           mb1: action.buttonType === "horizontal" && !isLastItem,
         })}
+        type={action.buttonType}
         onClick={() => handleClickAction(action)}
       >
         {action.icon && (
@@ -345,7 +347,7 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
           />
         )}
         {action.title && action.title}
-      </ClickActionToken>
+      </ClickActionButton>
     );
   }
 };
