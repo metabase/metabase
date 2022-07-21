@@ -19,9 +19,10 @@ const ParametersTab: React.FC<Props> = ({
   databases,
   onTemplateTagsChange,
 }: Props) => {
-  const tags = React.useMemo(() => Object.values(templateTags || {}), [
-    templateTags,
-  ]);
+  const tags = React.useMemo(
+    () => Object.values(templateTags || {}),
+    [templateTags],
+  );
   const onChange = (templateTag: any) => {
     const { name } = templateTag;
     const newTag =
