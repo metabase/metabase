@@ -32,31 +32,48 @@ function mockCollectionTreeEndpoint() {
   });
 }
 
-function mockCollectionEndpoint() {
-  xhrMock.get("/api/database/-1337/schema/Everything%20else", {
+function mockRootCollectionEndpoint(hasAccess) {
+  xhrMock.get("/api/collection/root", (req, res) => {
+    if (hasAccess) {
+      return res
+        .status(200)
+        .body(createMockCollection({ id: "root", name: "Our analytics" }));
+    }
+
+    return res.status(200).body("You don't have access to this collection");
+  });
+}
+
+function mockCollectionEndpoint(requestedCollectionName) {
+  const encodedName = encodeURIComponent(requestedCollectionName);
+  xhrMock.get(`/api/database/-1337/schema/${encodedName}`, {
     body: [
       createMockTable({
         id: "card__1",
         display_name: "B",
-        schema: "Everything else",
+        schema: requestedCollectionName,
       }),
       createMockTable({
         id: "card__2",
         display_name: "a",
-        schema: "Everything else",
+        schema: requestedCollectionName,
       }),
       createMockTable({
         id: "card__3",
         display_name: "A",
-        schema: "Everything else",
+        schema: requestedCollectionName,
       }),
     ],
   });
 }
 
-async function setup() {
+async function setup({
+  canAccessRoot = true,
+  requestedCollectionName = "Everything else",
+} = {}) {
   mockCollectionTreeEndpoint();
-  mockCollectionEndpoint();
+  mockCollectionEndpoint(requestedCollectionName);
+  mockRootCollectionEndpoint(canAccessRoot);
   renderWithProviders(
     <SavedQuestionPicker onSelect={jest.fn()} onBack={jest.fn()} />,
   );
