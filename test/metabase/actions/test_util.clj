@@ -204,7 +204,7 @@
   {:style/indent 1
    :arglists '([bindings {:keys [action-id], :as _action}] & body)}
   [[bindings action] & body]
-  `(do-with-emitter ~'Dashboard ~action (fn [~bindings] ~@body)))
+  `(do-with-emitter Dashboard ~action (fn [~bindings] ~@body)))
 
 (defmacro with-card-emitter
   "Execute `body` with a newly created CardEmitter created for an Action with `:action-id`. Intended for use with the
@@ -217,7 +217,7 @@
   {:style/indent 1
    :arglists '([bindings {:keys [action-id], :as _action}] & body)}
   [[bindings action] & body]
-  `(do-with-emitter ~'Card ~action (fn [~bindings] ~@body)))
+  `(do-with-emitter Card ~action (fn [~bindings] ~@body)))
 
 (defn do-with-actions-enabled
   "Impl for [[with-actions-enabled]]."
