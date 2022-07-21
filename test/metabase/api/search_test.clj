@@ -600,9 +600,9 @@
 (deftest card-dataset-query-test
   (testing "The dataset_query field should only be searched if the card's query is native SQL"
     ;; https://github.com/metabase/metabase/issues/24132
-    (mt/with-temp* [Card [query-card {:name          "Venues Count"
-                                      :query_type    "query"
-                                      :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+    (mt/with-temp* [Card [mbql-card   {:name          "Venues Count"
+                                       :query_type    "query"
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
                     Card [native-card {:name          "Another SQL query"
                                        :query_type    "native"
                                        :dataset_query {:query "SELECT COUNT(1) AS aggregation FROM venues"}}]]
