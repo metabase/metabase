@@ -350,6 +350,10 @@
 
  :lint-as
  {metabase-enterprise.serialization.test-util/with-random-dump-dir      clojure.core/let
+  metabase.actions.test-util/with-query-action                          clojure.core/fn
+  metabase.actions.test-util/with-http-action                           clojure.core/fn
+  metabase.actions.test-util/with-card-emitter                          clojure.core/let
+  metabase.actions.test-util/with-dashboard-emitter                     clojure.core/let
   metabase.api.common/let-404                                           clojure.core/let
   metabase.db.data-migrations/defmigration                              clojure.core/def
   metabase.db.liquibase/with-liquibase                                  clojure.core/let
@@ -388,9 +392,7 @@
   potemkin/defprotocol+              clojure.core/defprotocol
   potemkin/defrecord+                clojure.core/defrecord
   potemkin/deftype+                  clojure.core/deftype
-  toucan.db/with-call-counting       clojure.core/fn
-  metabase.actions.test-util/with-query-action clojure.core/fn
-  metabase.actions.test-util/with-emitter clojure.core/let}
+  toucan.db/with-call-counting       clojure.core/fn}
 
  :hooks
  {:analyze-call

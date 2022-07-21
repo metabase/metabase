@@ -1,13 +1,18 @@
 (ns metabase.actions.test-util
   (:require
+   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models :refer [Card CardEmitter Dashboard DashboardEmitter
-                            Database Emitter EmitterAction QueryAction]]
+   [metabase.http-client :as client]
+   [metabase.models :refer [Action Card CardEmitter Dashboard DashboardEmitter
+                            Database Emitter EmitterAction HTTPAction
+                            QueryAction]]
+   [metabase.models.action :as action]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.interface :as tx]
+   [metabase.test.initialize :as initialize]
    [toucan.db :as db]))
 
 (def ^:dynamic ^:private *actions-test-data-tables*
@@ -120,6 +125,8 @@
                                                                                         :display-name "ID"
                                                                                         :type         :number
                                                                                         :required     true}}}}
+                                       :name          "Query Example"
+                                       :parameters    [{:id "id" :type "number"}]
                                        :is_write      true}]]
     (let [action-id (db/select-one-field :action_id QueryAction :card_id card-id)]
       (f {:query-action-card-id card-id
@@ -135,16 +142,43 @@
   [[bindings] & body]
   `(do-with-query-action (fn [~bindings] ~@body)))
 
+(defn do-with-http-action
+  "Impl for [[with-http-action]]."
+  [f]
+  (initialize/initialize-if-needed! :web-server)
+  (mt/with-model-cleanup [Action]
+    (let [action-id (action/insert! {:type :http
+                                     :name "Echo Example"
+                                     :template {:url (client/build-url "testing/echo[[?fail={{fail}}]]" {})
+                                                :method :post
+                                                :body "{\"the_parameter\": {{id}}}"
+                                                :headers "{\"x-test\": \"{{id}}\"}"
+                                                :parameters [{:id "id" :type "number"}
+                                                             {:id "fail" :type "text"}]}
+                                     :response_handle ".body"})]
+      (f {:action-id action-id}))))
+
+(defmacro with-http-action
+  "Execute `body` with a newly created QueryAction. `bindings` is a map with key `:action-id`.
+
+    (with-http-action [{:keys [action-id], :as context}]
+      (do-something))"
+  {:style/indent 1}
+  [[bindings] & body]
+  `(do-with-http-action (fn [~bindings] ~@body)))
+
 (defn do-with-emitter
   "Impl for [[with-emitter]]."
   [card-or-dashboard-model {:keys [action-id], :as context} f]
   (let [parent-model (db/resolve-model card-or-dashboard-model)]
     (mt/with-temp* [parent-model [{emitter-parent-id :id}]
-                    Emitter [{emitter-id :id} {:parameter_mappings {"my_id" [:variable [:template-tag "id"]]}}]]
+                    Emitter [{emitter-id :id} {:parameter_mappings {"my_id" [:variable [:template-tag "id"]]
+                                                                    "my_fail" [:variable [:template-tag "fail"]]}}]]
       (testing "Sanity check: emitter-id should be non-nil"
         (is (integer? emitter-id)))
       (testing "Sanity check: make sure parameter mappings were defined the way we'd expect"
-        (is (= {:my_id [:variable [:template-tag "id"]]}
+        (is (= {:my_id [:variable [:template-tag "id"]]
+                :my_fail [:variable [:template-tag "fail"]]}
                (db/select-one-field :parameter_mappings Emitter :id emitter-id))))
       ;; these are tied to the Card or Dashboad and Emitter above and will get cascade deleted. We can't use `with-temp*` for them
       ;; because it doesn't seem to work with tables with compound PKs
@@ -152,27 +186,40 @@
                                  :action_id action-id})
       (condp = (type parent-model)
         (type Card)
-        (db/insert! CardEmitter {:card_id   emitter-parent-id
-                                 :action_id action-id})
+        (db/insert! CardEmitter {:card_id    emitter-parent-id
+                                 :emitter_id emitter-id})
         (type Dashboard)
         (db/insert! DashboardEmitter {:dashboard_id emitter-parent-id
-                                      :action_id    action-id}))
+                                      :emitter_id   emitter-id}))
       (f (assoc context
                 :emitter-id        emitter-id
                 :emitter-parent-id emitter-parent-id)))))
 
-(defmacro with-emitter
-  "Execute `body` with a newly created CardEmitter or DashboardEmitter created for an Action with `:action-id`. Intended for use with the
+(defmacro with-dashboard-emitter
+  "Execute `body` with a newly created DashboardEmitter created for an Action with `:action-id`. Intended for use with the
   `context` returned by with [[with-query-action]]. `bindings` is bound to a map with the keys `:emitter-id` and
-  `:emitter-parent-id` pointing to the card or dashboard id.
+  `:emitter-parent-id` pointing to the dashboard-id.
 
     (with-query-action [{:keys [action-id query-action-card-id], :as context}]
-      (with-emitter Card [{:keys [emitter-id emitter-parent-id]} context]
+      (with-dashboard-emitter [{:keys [emitter-id emitter-parent-id]} context]
         (do-something)))"
   {:style/indent 1
-   :arglists '(card-or-dashboard-model [bindings {:keys [action-id], :as _action}] & body)}
-  [card-or-dashboard-model [bindings action] & body]
-  `(do-with-emitter ~card-or-dashboard-model ~action (fn [~bindings] ~@body)))
+   :arglists '([bindings {:keys [action-id], :as _action}] & body)}
+  [[bindings action] & body]
+  `(do-with-emitter ~'Dashboard ~action (fn [~bindings] ~@body)))
+
+(defmacro with-card-emitter
+  "Execute `body` with a newly created CardEmitter created for an Action with `:action-id`. Intended for use with the
+  `context` returned by with [[with-query-action]]. `bindings` is bound to a map with the keys `:emitter-id` and
+  `:emitter-parent-id` pointing to the card-id.
+
+    (with-query-action [{:keys [action-id query-action-card-id], :as context}]
+      (with-card-emitter [{:keys [emitter-id emitter-parent-id]} context]
+        (do-something)))"
+  {:style/indent 1
+   :arglists '([bindings {:keys [action-id], :as _action}] & body)}
+  [[bindings action] & body]
+  `(do-with-emitter ~'Card ~action (fn [~bindings] ~@body)))
 
 (defn do-with-actions-enabled
   "Impl for [[with-actions-enabled]]."

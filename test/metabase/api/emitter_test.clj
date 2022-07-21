@@ -1,5 +1,6 @@
 (ns metabase.api.emitter-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.models :refer [Card Dashboard Emitter]]
@@ -36,7 +37,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
       (actions.test-util/with-actions-test-data-and-actions-enabled
         (actions.test-util/with-query-action [action]
-          (actions.test-util/with-emitter 'Card [{:keys [emitter-id]} action]
+          (actions.test-util/with-card-emitter [{:keys [emitter-id]} action]
             (testing "Should be able to update an emitter"
               (mt/user-http-request :crowberto :put 204 (format "emitter/%d" emitter-id)
                                     {:options {:a 1}})
@@ -51,7 +52,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
       (actions.test-util/with-actions-test-data-and-actions-enabled
         (actions.test-util/with-query-action [action]
-          (actions.test-util/with-emitter 'Card [{:keys [emitter-id]} action]
+          (actions.test-util/with-card-emitter [{:keys [emitter-id]} action]
             (testing "Should be able to delete an emitter"
               (is (nil? (mt/user-http-request :crowberto :delete 204 (format "emitter/%d" emitter-id)))))
             (testing "Should 404 if bad emitter-id"
@@ -59,11 +60,11 @@
                      (mt/user-http-request :crowberto :delete 404 (format "emitter/%d" Integer/MAX_VALUE)
                                            {}))))))))))
 
-(deftest execute-custom-action-test
+(deftest execute-query-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (actions.test-util/with-query-action [action]
-        (actions.test-util/with-emitter 'Card [{:keys [emitter-id]} action]
+        (actions.test-util/with-card-emitter [{:keys [emitter-id]} action]
           (let [emitter-path  (format "emitter/%d/execute" emitter-id)]
             (testing "Should be able to execute an emitter"
               (is (= {:rows-affected 1}
@@ -74,7 +75,7 @@
                    (mt/first-row
                      (mt/run-mbql-query categories {:filter [:= $id 1]}))))
             (testing "Should affect 0 rows if id is out of range"
-             (is (= {:rows-affected 0}
+              (is (= {:rows-affected 0}
                      (mt/user-http-request :crowberto :post 200 emitter-path
                                            {:parameters {"my_id" {:type  :number/=
                                                                   :value Integer/MAX_VALUE}}}))))
@@ -87,6 +88,31 @@
                             (mt/user-http-request :crowberto :post 500 emitter-path
                                                   {:parameters {}}))))
             (testing "Sending an invalid number should fail gracefully"
-              (is (partial= {:message "Error executing QueryEmitter: Error building query parameter map: Error determining value for parameter \"id\": Unparseable number: \"BAD\"",}
+
+              (is (partial= {:message "Error executing QueryEmitter: Error building query parameter map: Error determining value for parameter \"id\": Unparseable number: \"BAD\""}
                             (mt/user-http-request :crowberto :post 500 emitter-path
                                                   {:parameters {"my_id" {:type :number/= :value "BAD"}}}))))))))))
+
+(deftest execute-http-action-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (actions.test-util/with-actions-test-data-and-actions-enabled
+      (actions.test-util/with-http-action [context]
+        (actions.test-util/with-card-emitter [{:keys [emitter-id]} context]
+          (let [emitter-path (format "emitter/%d/execute" emitter-id)]
+            (testing "Should be able to execute an emitter"
+              (is (= {:the_parameter 1}
+                     (mt/user-http-request :crowberto :post 200 emitter-path
+                                           {:parameters {"my_id" {:type :number/= :value 1}}}))))
+            (testing "Should handle errors"
+              (is (= {:remote-status 400}
+                     (mt/user-http-request :crowberto :post 400 emitter-path
+                                           {:parameters {"my_id" {:type :number/= :value 1}
+                                                         "my_fail" {:type :text :value "true"}}}))))
+            (testing "Missing parameter should fail gracefully"
+              (is (partial= {:message "Problem building request: Cannot call the service: missing required parameters: #{\"id\"}"}
+                            (mt/user-http-request :crowberto :post 500 emitter-path
+                                                  {:parameters {}}))))
+            (testing "Sending an invalid number should fail gracefully"
+              (is (str/starts-with? (:message (mt/user-http-request :crowberto :post 500 emitter-path
+                                                  {:parameters {"my_id" {:type :number/= :value "BAD"}}}))
+                                    "Problem building request:")))))))))

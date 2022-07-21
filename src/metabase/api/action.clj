@@ -59,15 +59,13 @@
   (db/delete! HTTPAction :action_id action-id)
   api/generic-204-no-content)
 
-;; TODO -- 99% sure these are busted. See https://github.com/metabase/metabase/issues/23935
-
 (api/defendpoint POST "/"
   "Create a new HTTP action."
   [:as {action :body}]
   (when (not= "http" (:type action))
     (throw (ex-info (trs "Action type is not supported") {:status-code 400 :action action})))
-  (let [http-action (db/insert! HTTPAction action)]
-    (if-let [action-id (:action_id http-action)]
+  (let [action-id (action/insert! action)]
+    (if action-id
       (first (action/select-actions :id action-id))
       ;; db/insert! does not return a value when used with h2
       ;; so we return the most recently updated http action.
