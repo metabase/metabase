@@ -13,11 +13,11 @@ export const Container = styled.div`
 `;
 
 export const Button = styled(ButtonBase)<{ active: boolean }>`
-  color: ${props => (props.active ? color("accent0") : color("text-light"))};
+  color: ${props => (props.active ? color("brand") : color("text-light"))};
   padding: ${space(1)} ${space(2)};
   font-weight: bold;
 
   &:hover {
-    color: ${props => (props.active ? color("accent0") : color("text-medium"))};
+    color: ${props => (props.active ? color("brand") : color("text-medium"))};
   }
 `;
