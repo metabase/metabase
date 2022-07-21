@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import ButtonBase from "metabase/core/components/Button";
-import { color, alpha, lighten } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const Container = styled.div`
@@ -15,6 +15,9 @@ export const Container = styled.div`
 export const Button = styled(ButtonBase)<{ active: boolean }>`
   color: ${props => (props.active ? color("brand") : color("text-light"))};
   padding: ${space(1)} ${space(2)};
+
+  font-size: 0.875rem;
+  line-height: 1.25rem;
   font-weight: bold;
 
   &:hover {
