@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/helpers";
+import { restore, popover } from "__support__/e2e/helpers";
 
 const questionDetails = {
   name: "11435",
@@ -28,7 +28,13 @@ describe("issue 11435", () => {
     cy.signInAsAdmin();
   });
 
-  it("should use time formatting settings tooltips in native questions (metabase#11435)", () => {
+  it("should use time formatting settings in tooltips for native questions (metabase#11435)", () => {
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    clickLineDot({ index: 1 });
+    popover().findByTextEnsureVisible("March 11, 2019, 8:45:17.010 PM");
   });
 });
+
+const clickLineDot = ({ index } = {}) => {
+  cy.get(".Visualization .dot").eq(index).click({ force: true });
+};
