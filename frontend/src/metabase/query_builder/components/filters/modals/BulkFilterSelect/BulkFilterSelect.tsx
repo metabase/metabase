@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from "react";
+import { t } from "ttag";
 
 import StructuredQuery, {
   SegmentOption,
@@ -35,14 +36,28 @@ export const BulkFilterSelect = ({
   customTrigger,
   handleChange,
   handleClear,
-}: BulkFilterSelectProps): JSX.Element => {
+}: BulkFilterSelectProps) => {
   const name = useMemo(() => {
-    return filter?.displayName({ includeDimension: false });
+    return filter?.displayName({
+      includeDimension: false,
+      includeOperator: false,
+    });
   }, [filter]);
 
   const newFilter = useMemo(() => {
     return getNewFilter(query, dimension);
   }, [query, dimension]);
+
+  const hideArgumentSelector = [
+    "is-null",
+    "not-null",
+    "is-empty",
+    "not-empty",
+  ].includes(filter?.operatorName());
+
+  if (hideArgumentSelector) {
+    return null;
+  }
 
   return (
     <TippyPopoverWithTrigger
@@ -50,15 +65,18 @@ export const BulkFilterSelect = ({
       renderTrigger={
         customTrigger
           ? customTrigger
-          : ({ onClick }) => (
+          : ({ onClick, visible }) => (
               <SelectFilterButton
-                hasValue={filter != null}
+                hasValue={!!filter?.isValid()}
                 highlighted
                 aria-label={dimension.displayName()}
                 onClick={onClick}
                 onClear={handleClear}
+                isActive={visible}
               >
-                {name}
+                {filter?.isValid()
+                  ? name
+                  : t`Filter by ${dimension.displayName()}`}
               </SelectFilterButton>
             )
       }
@@ -69,9 +87,11 @@ export const BulkFilterSelect = ({
           isNew={filter == null}
           showCustom={false}
           showFieldPicker={false}
+          showOperatorSelector={false}
           dateShortcutOptions={dateShortcutOptions}
           onChangeFilter={handleChange}
           onClose={closePopover}
+          checkedColor="brand"
           commitOnBlur
         />
       )}
@@ -145,6 +165,7 @@ export const SegmentFilterSelect = ({
         highlighted: true,
         onClear: onClearSegments,
       }}
+      placeholder={t`Filter segments`}
       buttonText={
         activeSegmentOptions.length > 1
           ? `${activeSegmentOptions.length} segments`

@@ -11,6 +11,10 @@ import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import { state as sampleDatabaseReduxState } from "__support__/sample_database_fixture";
 import { getStore } from "./entities-store";
+import {
+  createMockSettingsState,
+  createMockEmbedState,
+} from "metabase-types/store/mocks";
 
 function getUser(user = {}) {
   return {
@@ -48,6 +52,8 @@ export function renderWithProviders(
     withSampleDatabase,
     withRouter = false,
     withDND = false,
+    withSettings = false,
+    withEmbedSettings = false,
     ...options
   } = {},
 ) {
@@ -59,6 +65,8 @@ export function renderWithProviders(
     {
       form,
       currentUser: () => getUser(currentUser),
+      settings: withSettings ? () => createMockSettingsState() : undefined,
+      embed: withEmbedSettings ? () => createMockEmbedState() : undefined,
       ...reducers,
     },
     initialReduxState,

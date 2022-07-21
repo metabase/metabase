@@ -10,6 +10,7 @@ type Props = {
   className?: string;
 
   showFieldPicker?: boolean;
+  forceShowOperatorSelector?: boolean;
   filter: Filter;
   onFilterChange: (filter: any[]) => void;
   onBack: () => void;
@@ -19,6 +20,7 @@ type Props = {
 export default function FilterPopoverHeader({
   className,
   showFieldPicker,
+  forceShowOperatorSelector,
   filter,
   onFilterChange,
   onBack,
@@ -32,7 +34,7 @@ export default function FilterPopoverHeader({
   const field = dimension.field();
   const operator = filter.operatorName();
 
-  const showOperatorSelector = !field.isBoolean();
+  const showOperatorSelector = forceShowOperatorSelector ?? !field.isBoolean();
   const showHeader = showFieldPicker || showOperatorSelector;
   const showOperatorSelectorOnOwnRow = isSidebar || !showFieldPicker;
 

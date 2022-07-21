@@ -29,7 +29,7 @@ export default function EmbeddingOption({ setting }: EmbeddingOptionProps) {
         <Description>{setting.embedDescription}</Description>
         <div>
           <MoreDetails className="link">
-            More details
+            {t`More details`}
             <StyledIcon name="triangle_right" size={7} />
           </MoreDetails>
         </div>

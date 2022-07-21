@@ -12,7 +12,7 @@ export const TabListContent = styled.div`
   overflow-x: hidden;
   display: flex;
   align-items: flex-start;
-  gap: 2.5rem;
+  gap: 1.5rem;
   scroll-behavior: smooth;
 `;
 

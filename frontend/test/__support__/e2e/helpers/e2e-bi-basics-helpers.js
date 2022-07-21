@@ -1,9 +1,63 @@
+import { popover } from "__support__/e2e/helpers";
+
 export function summarize({ mode } = {}) {
   initiateAction("Summarize", mode);
 }
 
 export function filter({ mode } = {}) {
   initiateAction("Filter", mode);
+}
+
+export function filterField(
+  fieldName,
+  { operator, value, placeholder, order } = {},
+) {
+  if (operator) {
+    changeOperator(getFilterField(fieldName, order), operator);
+  }
+
+  if (value) {
+    changeValue(getFilterField(fieldName, order), value, placeholder);
+  }
+
+  return getFilterField(fieldName, order);
+}
+
+export function filterFieldPopover(
+  fieldName,
+  { value, placeholder, order } = {},
+) {
+  getFilterField(fieldName, order).within(() => {
+    cy.findByTestId("select-button").click();
+  });
+
+  if (value) {
+    changeValue(popover(), value, placeholder);
+  }
+  return popover();
+}
+
+function getFilterField(fieldName, order = 0) {
+  return cy.findAllByTestId(`filter-field-${fieldName}`).eq(order);
+}
+
+function changeOperator(subject, operator) {
+  subject.findByTestId("operator-select").click();
+
+  cy.findByTestId("operator-options")
+    .findAllByText(new RegExp(operator, "i"))
+    .first()
+    .click();
+}
+
+function changeValue(subject, newValue, placeholder) {
+  subject.within(() => {
+    const input = placeholder
+      ? cy.findByPlaceholderText(new RegExp(placeholder, "i"))
+      : cy.get("input").first();
+
+    input.clear().type(newValue);
+  });
 }
 
 /**

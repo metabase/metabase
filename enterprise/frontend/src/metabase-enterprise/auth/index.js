@@ -2,19 +2,23 @@ import React from "react";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { t, jt } from "ttag";
 import { updateIn } from "icepick";
+import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import MetabaseSettings from "metabase/lib/settings";
 import {
+  PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_IS_PASSWORD_USER,
-  PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
 import { UtilApi } from "metabase/services";
+import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 
 import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
+import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
 
 import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
 import SettingsSAMLForm from "./components/SettingsSAMLForm";
@@ -62,6 +66,12 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
         !settings["ldap-enabled"] &&
         !settings["saml-enabled"] &&
         !settings["jwt-enabled"],
+    },
+    {
+      key: "session-timeout",
+      display_name: t`Session timeout`,
+      description: t`Time before inactive users are logged out.`,
+      widget: SessionTimeoutSetting,
     },
   ]),
 );
@@ -306,3 +316,5 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     ],
   },
 }));
+
+PLUGIN_REDUX_MIDDLEWARES.push(createSessionMiddleware([LOGIN, LOGIN_GOOGLE]));

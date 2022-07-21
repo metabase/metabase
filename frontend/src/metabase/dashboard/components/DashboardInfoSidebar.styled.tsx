@@ -8,7 +8,7 @@ export const DashboardInfoSidebarRoot = styled.div`
   padding: 0 2rem 0.5rem;
   background: ${color("white")};
   border-left: 1px solid ${color("border")};
-  height: 100%;
+  align-self: stretch
   overflow-y: auto;
 `;
 

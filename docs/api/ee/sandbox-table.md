@@ -1,6 +1,7 @@
 ---
 title: "Sandbox table"
-summary: "API endpoints for Sandbox table."
+summary: |
+  API endpoints for Sandbox table.
 ---
 
 # Sandbox table

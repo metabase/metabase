@@ -20,7 +20,6 @@ import { getDashboardActions } from "metabase/dashboard/components/DashboardActi
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
-  DashboardHeaderInfoButton,
 } from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
@@ -33,8 +32,6 @@ import {
 
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
-
-import cx from "classnames";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -209,12 +206,11 @@ class DashboardHeader extends Component {
       buttons.push(
         <Tooltip tooltip={addQuestionButtonHint}>
           <DashboardHeaderButton
+            icon="add"
             isActive={showAddQuestionSidebar}
             onClick={onToggleAddQuestionSidebar}
             data-metabase-event="Dashboard;Add Card Sidebar"
-          >
-            <Icon name="add" />
-          </DashboardHeaderButton>
+          />
         </Tooltip>,
       );
 
@@ -257,17 +253,12 @@ class DashboardHeader extends Component {
           >
             <div>
               <Tooltip tooltip={t`Add a filter`}>
-                <a
+                <DashboardHeaderButton
                   key="parameters"
-                  className={cx("text-brand-hover", {
-                    "text-brand": isAddParameterPopoverOpen,
-                  })}
                   onClick={showAddParameterPopover}
                 >
-                  <DashboardHeaderButton>
-                    <Icon name="filter" />
-                  </DashboardHeaderButton>
-                </a>
+                  <Icon name="filter" />
+                </DashboardHeaderButton>
               </Tooltip>
             </div>
           </TippyPopover>
@@ -285,16 +276,13 @@ class DashboardHeader extends Component {
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
         <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
-          <a
-            data-metabase-event="Dashboard;Edit"
+          <DashboardHeaderButton
             key="edit"
+            data-metabase-event="Dashboard;Edit"
+            icon="pencil"
             className="text-brand-hover cursor-pointer"
             onClick={() => this.handleEdit(dashboard)}
-          >
-            <DashboardHeaderButton>
-              <Icon name="pencil" />
-            </DashboardHeaderButton>
-          </a>
+          />
         </Tooltip>,
       );
     }
@@ -344,19 +332,17 @@ class DashboardHeader extends Component {
             onDeleteBookmark={deleteBookmark}
             isBookmarked={isBookmarked}
           />,
-          <DashboardHeaderInfoButton
-            key="dashboard-info-button"
-            icon="info"
-            iconSize={18}
-            onlyIcon
-            borderless
-            isShowingDashboardInfoSidebar={isShowingDashboardInfoSidebar}
-            onClick={() =>
-              isShowingDashboardInfoSidebar
-                ? closeSidebar()
-                : setSidebar({ name: SIDEBAR_NAME.info })
-            }
-          />,
+          <Tooltip key="dashboard-info-button" tooltip={t`More info`}>
+            <DashboardHeaderButton
+              icon="info"
+              isActive={isShowingDashboardInfoSidebar}
+              onClick={() =>
+                isShowingDashboardInfoSidebar
+                  ? closeSidebar()
+                  : setSidebar({ name: SIDEBAR_NAME.info })
+              }
+            />
+          </Tooltip>,
           <EntityMenu
             key="dashboard-action-menu-button"
             items={extraButtons}
@@ -367,7 +353,7 @@ class DashboardHeader extends Component {
       );
     }
 
-    return [buttons];
+    return buttons;
   }
 
   render() {

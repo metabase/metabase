@@ -2,6 +2,10 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { metadata } from "__support__/sample_database_fixture";
+
+import Question from "metabase-lib/lib/Question";
+
 import SavedQuestionHeaderButton from "./SavedQuestionHeaderButton";
 
 describe("SavedQuestionHeaderButton", () => {
@@ -11,10 +15,14 @@ describe("SavedQuestionHeaderButton", () => {
 
   beforeEach(() => {
     onSave = jest.fn();
-    question = {
-      displayName: () => "foo",
-      getModerationReviews: () => [],
-    };
+    question = new Question(
+      {
+        name: "foo",
+        moderation_reviews: [],
+        can_write: true,
+      },
+      metadata,
+    );
 
     const { container } = render(
       <SavedQuestionHeaderButton question={question} onSave={onSave} />,
@@ -43,13 +51,13 @@ describe("SavedQuestionHeaderButton", () => {
 
   describe("when the question has a latest moderation review", () => {
     beforeEach(() => {
-      question = {
-        displayName: () => "foo",
-        getModerationReviews: () => [
+      question = new Question({
+        name: "foo",
+        moderation_reviews: [
           { status: null },
           { most_recent: true, status: "verified" },
         ],
-      };
+      });
 
       const { container } = render(
         <SavedQuestionHeaderButton question={question} onSave={onSave} />,

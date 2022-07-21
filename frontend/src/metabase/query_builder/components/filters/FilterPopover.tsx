@@ -44,11 +44,13 @@ type Props = {
 
   noCommitButton?: boolean;
   showFieldPicker?: boolean;
+  showOperatorSelector?: boolean;
   dateShortcutOptions?: DateShortcutOptions;
   showCustom?: boolean;
   isNew?: boolean;
   isSidebar?: boolean;
   isTopLevel?: boolean;
+  checkedColor?: string;
 };
 
 type State = {
@@ -162,11 +164,13 @@ export default class FilterPopover extends Component<Props, State> {
       style,
       query,
       showFieldPicker,
+      showOperatorSelector,
       fieldPickerTitle,
       isSidebar,
       isTopLevel,
       showCustom,
       dateShortcutOptions,
+      checkedColor,
     } = this.props;
     const { filter, editingFilter, choosingField } = this.state;
 
@@ -302,6 +306,7 @@ export default class FilterPopover extends Component<Props, State> {
                     onFilterChange={this.handleFilterChange}
                     onBack={onBack}
                     showFieldPicker={showFieldPicker}
+                    forceShowOperatorSelector={showOperatorSelector}
                   />
                   <FilterPopoverPicker
                     className={isSidebar ? "p1" : "px1 pt1 pb1"}
@@ -309,9 +314,9 @@ export default class FilterPopover extends Component<Props, State> {
                     filter={filter}
                     onFilterChange={this.handleFilterChange}
                     onCommit={this.handleCommit}
-                    minWidth={isSidebar ? null : MIN_WIDTH}
                     maxWidth={isSidebar ? null : MAX_WIDTH}
                     primaryColor={primaryColor}
+                    checkedColor={checkedColor}
                   />
                 </>
               )}

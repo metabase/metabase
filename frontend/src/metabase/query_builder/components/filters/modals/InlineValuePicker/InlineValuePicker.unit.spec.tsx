@@ -1,11 +1,10 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Provider } from "react-redux";
+import { renderWithProviders } from "__support__/ui";
 
-import { getStore } from "__support__/entities-store";
 import { metadata } from "__support__/sample_database_fixture";
 
 import Field from "metabase-lib/lib/metadata/Field";
@@ -77,10 +76,9 @@ const card = {
 
 const question = new Question(card, metadata);
 const query = question.query();
-const store = getStore();
 
 describe("InlineValuePicker", () => {
-  it("renders an inline value picker with operator and values fields", () => {
+  it("renders an inline value picker with values fields", () => {
     const testFilter = new Filter(
       ["=", ["field", pkField.id, null], undefined],
       null,
@@ -88,18 +86,15 @@ describe("InlineValuePicker", () => {
     );
     const changeSpy = jest.fn();
 
-    render(
-      <Provider store={store}>
-        <InlineValuePicker
-          filter={testFilter}
-          field={pkField}
-          handleChange={changeSpy}
-        />
-      </Provider>,
+    renderWithProviders(
+      <InlineValuePicker
+        filter={testFilter}
+        field={pkField}
+        handleChange={changeSpy}
+      />,
     );
 
     screen.getByTestId("value-picker");
-    screen.getByTestId("select-button");
     screen.getByPlaceholderText("Enter an ID");
   });
 
@@ -111,16 +106,13 @@ describe("InlineValuePicker", () => {
     );
     const changeSpy = jest.fn();
 
-    render(
-      <Provider store={store}>
-        <InlineValuePicker
-          filter={testFilter}
-          field={pkField}
-          handleChange={changeSpy}
-        />
-      </Provider>,
+    renderWithProviders(
+      <InlineValuePicker
+        filter={testFilter}
+        field={pkField}
+        handleChange={changeSpy}
+      />,
     );
-    screen.getByText("Is");
     screen.getByText("777");
     screen.getByText("888");
   });
@@ -133,42 +125,16 @@ describe("InlineValuePicker", () => {
     );
     const changeSpy = jest.fn();
 
-    render(
-      <Provider store={store}>
-        <InlineValuePicker
-          filter={testFilter}
-          field={textField}
-          handleChange={changeSpy}
-        />
-      </Provider>,
+    renderWithProviders(
+      <InlineValuePicker
+        filter={testFilter}
+        field={textField}
+        handleChange={changeSpy}
+      />,
     );
-    screen.getByText("Is not");
+
     screen.getByText("fooBarBaz");
     screen.getByText("BazBarFoo");
-  });
-
-  it("changes the filter operator", () => {
-    const testFilter = new Filter(
-      ["=", ["field", pkField.id, null], undefined],
-      null,
-      query,
-    );
-    const changeSpy = jest.fn();
-
-    render(
-      <Provider store={store}>
-        <InlineValuePicker
-          filter={testFilter}
-          field={pkField}
-          handleChange={changeSpy}
-        />
-      </Provider>,
-    );
-
-    screen.getByTestId("select-button").click();
-    screen.getByText("Is not").click();
-    expect(changeSpy).toHaveBeenCalled();
-    expect(changeSpy.mock.calls[0][0].operatorName()).toEqual("!=");
   });
 
   it("adds additional filter values", () => {
@@ -179,14 +145,12 @@ describe("InlineValuePicker", () => {
     );
     const changeSpy = jest.fn();
 
-    render(
-      <Provider store={store}>
-        <InlineValuePicker
-          filter={testFilter}
-          field={pkField}
-          handleChange={changeSpy}
-        />
-      </Provider>,
+    renderWithProviders(
+      <InlineValuePicker
+        filter={testFilter}
+        field={pkField}
+        handleChange={changeSpy}
+      />,
     );
 
     const textInput = screen.getByPlaceholderText("Enter an ID");
@@ -207,14 +171,12 @@ describe("InlineValuePicker", () => {
     );
     const changeSpy = jest.fn();
 
-    render(
-      <Provider store={store}>
-        <InlineValuePicker
-          filter={testFilter}
-          field={pkField}
-          handleChange={changeSpy}
-        />
-      </Provider>,
+    renderWithProviders(
+      <InlineValuePicker
+        filter={testFilter}
+        field={pkField}
+        handleChange={changeSpy}
+      />,
     );
 
     // click remove on the first data item, which is 777
@@ -232,14 +194,12 @@ describe("InlineValuePicker", () => {
     );
     const changeSpy = jest.fn(newFilter => (testFilter = newFilter));
 
-    render(
-      <Provider store={store}>
-        <InlineValuePicker
-          filter={testFilter}
-          field={textField}
-          handleChange={changeSpy}
-        />
-      </Provider>,
+    renderWithProviders(
+      <InlineValuePicker
+        filter={testFilter}
+        field={textField}
+        handleChange={changeSpy}
+      />,
     );
 
     const textInput = screen.getByPlaceholderText("Enter some text");
@@ -258,14 +218,12 @@ describe("InlineValuePicker", () => {
     );
     const changeSpy = jest.fn();
 
-    render(
-      <Provider store={store}>
-        <InlineValuePicker
-          filter={testFilter}
-          field={textField}
-          handleChange={changeSpy}
-        />
-      </Provider>,
+    renderWithProviders(
+      <InlineValuePicker
+        filter={testFilter}
+        field={textField}
+        handleChange={changeSpy}
+      />,
     );
 
     const textInput = screen.getByPlaceholderText("Enter some text");
@@ -284,19 +242,16 @@ describe("InlineValuePicker", () => {
     );
     const changeSpy = jest.fn();
 
-    render(
-      <Provider store={store}>
-        <InlineValuePicker
-          filter={testFilter}
-          field={pkField}
-          handleChange={changeSpy}
-        />
-      </Provider>,
+    renderWithProviders(
+      <InlineValuePicker
+        filter={testFilter}
+        field={pkField}
+        handleChange={changeSpy}
+      />,
     );
 
-    screen.getByText("Between");
-    screen.getByPlaceholderText("min");
-    screen.getByPlaceholderText("max");
+    screen.getByPlaceholderText("Min");
+    screen.getByPlaceholderText("Max");
   });
 
   const noValueOperators = ["is-null", "not-null", "is-empty", "not-empty"];
@@ -310,14 +265,12 @@ describe("InlineValuePicker", () => {
       );
       const changeSpy = jest.fn();
 
-      render(
-        <Provider store={store}>
-          <InlineValuePicker
-            filter={testFilter}
-            field={textField}
-            handleChange={changeSpy}
-          />
-        </Provider>,
+      renderWithProviders(
+        <InlineValuePicker
+          filter={testFilter}
+          field={textField}
+          handleChange={changeSpy}
+        />,
       );
 
       expect(

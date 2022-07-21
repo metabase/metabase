@@ -1,6 +1,7 @@
 ---
 title: "Content management review"
-summary: "API endpoints for Content management review."
+summary: |
+  API endpoints for Content management review.
 ---
 
 # Content management review

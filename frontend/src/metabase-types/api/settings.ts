@@ -47,8 +47,8 @@ export interface Settings {
   "show-homepage-data": boolean;
   "show-homepage-xrays": boolean;
   "show-homepage-pin-message": boolean;
-  "show-lighthouse-illustration": boolean;
-  "show-metabot": boolean;
+  "show-lighthouse-illustration": boolean | null;
+  "show-metabot": boolean | null;
   "slack-token": string | undefined;
   "slack-token-valid?": boolean;
   "slack-app-token": string | undefined;

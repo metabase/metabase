@@ -1,47 +1,13 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
   (:require [metabase-enterprise.sandbox.api.table :as table]
             [metabase.api.common :as api]
-            [metabase.models.field :as field]
-            [metabase.models.field-values :as field-values :refer [FieldValues]]
+            [metabase.models.field :as field :refer [Field]]
+            [metabase.models.field-values :as field-values]
             [metabase.models.params.field-values :as params.field-values]
             [metabase.public-settings.premium-features :refer [defenterprise]]
             [toucan.db :as db]))
 
 (comment api/keep-me)
-
-(defn- create-sandboxed-field-values
-  [field hash-key]
-  (when-let [{:keys [values has_more_values]} (field-values/distinct-values field)]
-    (let [;; If the full FieldValues of this field has human-readable-values, fix it with the sandboxed values
-          human-readable-values (field-values/fixup-human-readable-values
-                                  (db/select-one FieldValues
-                                                 :field_id (:id field)
-                                                 :type :full)
-                                  values)]
-      (db/insert! FieldValues
-                  :field_id (:id field)
-                  :type :sandbox
-                  :hash_key hash-key
-                  :has_more_values has_more_values
-                  :human_readable_values human-readable-values
-                  :values values))))
-
-(defn- get-or-create-sandboxed-field-values!
-  "Returns a sandboxed FieldValues for a field if exists, otherwise try to create one."
-  [field user-id user-permissions-set]
-  (let [hash-key (field-values/hash-key-for-sandbox (:id field) user-id user-permissions-set)
-        fv       (or (FieldValues :field_id (:id field)
-                                  :type :sandbox
-                                  :hash_key hash-key)
-                     (create-sandboxed-field-values field hash-key))]
-    (cond
-      (nil? fv) nil
-
-      ;; If it's expired, delete then try to re-create it
-      (field-values/advanced-field-values-expired? fv) (do
-                                                        (db/delete! FieldValues :id (:id fv))
-                                                        (recur field user-id user-permissions-set))
-      :else fv)))
 
 (defn- field-is-sandboxed?
   [{:keys [table], :as field}]
@@ -56,5 +22,25 @@
   :feature :sandboxes
   [field]
   (if (field-is-sandboxed? field)
-    (get-or-create-sandboxed-field-values! field api/*current-user-id* @api/*current-user-permissions-set*)
+    (params.field-values/get-or-create-advanced-field-values! :sandbox field)
     (params.field-values/default-get-or-create-field-values-for-current-user! field)))
+
+(defenterprise hash-key-for-linked-filters
+  "Returns a hash-key for linked-filter FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
+  :feature :sandboxes
+  [field-id constraints]
+  (if (field-is-sandboxed? (db/select-one Field :id field-id))
+    (str (hash [api/*current-user-id*
+                @api/*current-user-permissions-set*
+                field-id
+                constraints]))
+    (field-values/default-hash-key-for-linked-filters field-id constraints)))
+
+(defenterprise hash-key-for-sandbox
+  "Returns a hash-key for linked-filter FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
+  :feature :sandboxes
+  [field-id]
+  (when (field-is-sandboxed? (db/select-one Field :id field-id))
+    (str (hash [field-id
+                api/*current-user-id*
+                @api/*current-user-permissions-set*]))))

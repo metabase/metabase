@@ -127,6 +127,7 @@ export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBar
   display: flex;
   align-items: center;
   color: ${color("text-dark")};
+  margin-right: -1rem;
 
   ${breakpointMinSmall} {
     margin-left: auto;
@@ -149,18 +150,12 @@ export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBar
     padding-right: 1rem;
     border-top: 1px solid ${color("border")};
   }
-
-  ${Button.Root} {
-    padding: 0.5rem 0.75rem;
-    &:hover {
-      color: ${color("brand")};
-    }
-  }
 `;
 
 export const HeaderButtonSection = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
+  gap: 0.5rem;
 
   ${breakpointMaxMedium} {
     ${props =>

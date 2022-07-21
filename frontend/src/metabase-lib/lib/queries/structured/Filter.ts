@@ -30,6 +30,7 @@ import _ from "underscore";
 
 export interface FilterDisplayNameOpts {
   includeDimension?: boolean;
+  includeOperator?: boolean;
 }
 
 export default class Filter extends MBQLClause {
@@ -62,7 +63,10 @@ export default class Filter extends MBQLClause {
   /**
    * Returns the display name for the filter
    */
-  displayName({ includeDimension = true }: FilterDisplayNameOpts = {}) {
+  displayName({
+    includeDimension = true,
+    includeOperator = true,
+  }: FilterDisplayNameOpts = {}) {
     if (this.isSegment()) {
       const segment = this.segment();
       return segment ? segment.displayName() : t`Unknown Segment`;
@@ -72,7 +76,10 @@ export default class Filter extends MBQLClause {
       const dimensionName =
         dimension && includeDimension && dimension.displayName();
       const operatorName =
-        operator && !isStartingFrom(this) && operator.moreVerboseName;
+        operator &&
+        includeOperator &&
+        !isStartingFrom(this) &&
+        operator.moreVerboseName;
       const argumentNames = this.formattedArguments().join(" ");
       return `${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
     } else if (this.isCustom()) {

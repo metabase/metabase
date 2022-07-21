@@ -31,6 +31,8 @@
                              :p.refresh_begin :p.refresh_end
                              :p.table_name :p.creator_id
                              :p.card_id [:c.name :card_name]
+                             [:c.archived :card_archived]
+                             [:c.dataset :card_dataset]
                              [:db.name :database_name]
                              [:col.id :collection_id] [:col.name :collection_name]
                              [:col.authority_level :collection_authority_level]]

@@ -98,7 +98,7 @@
            (#'field-values/distinct-values {}))))
 
   (testing "(#2332) check that if field values are long we only store a subset of it"
-    (with-redefs [metadata-queries/field-distinct-values (constantly ["AAAA" (str/join (repeat (+ 100 field-values/total-max-length) "A"))])]
+    (with-redefs [metadata-queries/field-distinct-values (constantly ["AAAA" (str/join (repeat (+ 100 field-values/*total-max-length*) "A"))])]
       (testing "The total length of stored values must less than our max-length-limit"
         (is (= {:values          ["AAAA"]
                 :has_more_values true}

@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import Icon, { IconWrapper } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
+import { EntityMenuIconButton } from "./EntityMenuTrigger.styled";
 
 const EntityMenuTrigger = ({
   icon,
@@ -17,9 +17,7 @@ const EntityMenuTrigger = ({
       {trigger}
     </span>
   ) : (
-    <IconWrapper onClick={onClick} {...triggerProps}>
-      <Icon size={18} name={icon} m={1} />
-    </IconWrapper>
+    <EntityMenuIconButton onClick={onClick} icon={icon} {...triggerProps} />
   );
   return tooltip ? (
     <Tooltip tooltip={tooltip} isEnabled={!open}>

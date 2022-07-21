@@ -52,6 +52,7 @@ export const AppBarRightContainer = styled.div`
   align-items: center;
   gap: 1rem;
   max-width: 32.5rem;
+  justify-content: end;
 `;
 
 export interface AppBarInfoContainerProps {

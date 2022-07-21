@@ -32,7 +32,7 @@ function CustomFormFooter({
           {cancelTitle}
         </Button>
       )}
-      <CustomFormMessage className="mt1 flex-full" />
+      <CustomFormMessage className="mt1" />
       {footerExtraButtons}
     </CustomFormFooterStyled>
   );

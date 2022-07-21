@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 export const ButtonRoot = styled.button`
+  transition: all 200ms linear;
   flex-shrink: 0;
 `;
 

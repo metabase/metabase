@@ -62,7 +62,11 @@
 (defn- format-frontmatter-description
   "Formats description for YAML frontmatter."
   [desc]
-  (str "|\n  " (handle-quotes desc)))
+  (str "|\n  " (->> desc
+                    handle-quotes
+                    str/split-lines
+                    (map str/trim)
+                    (str/join " "))))
 
 (defn- get-description
   "Used to grab namespace description, if it exists."

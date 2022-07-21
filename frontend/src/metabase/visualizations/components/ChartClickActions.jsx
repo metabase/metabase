@@ -146,8 +146,12 @@ class ChartClickActions extends Component {
     }
 
     const groupedClickActions = _.groupBy(clickActions, "section");
-    if (groupedClickActions["sum"] && groupedClickActions["sum"].length === 1) {
+
+    if (groupedClickActions?.["sum"]?.length === 1) {
       // if there's only one "sum" click action, merge it into "summarize" and change its button type and icon
+      if (!groupedClickActions?.["summarize"]) {
+        groupedClickActions["summarize"] = [];
+      }
       groupedClickActions["summarize"].push({
         ...groupedClickActions["sum"][0],
         buttonType: "horizontal",
@@ -156,8 +160,8 @@ class ChartClickActions extends Component {
       delete groupedClickActions["sum"];
     }
     const hasOnlyOneSortAction = groupedClickActions["sort"]?.length === 1;
-    if (clicked.column?.source === "native" && hasOnlyOneSortAction) {
-      // restyle the Formatting action for SQL columns
+    if (hasOnlyOneSortAction) {
+      // restyle the Formatting action when there is only one option
       groupedClickActions["sort"][0] = {
         ...groupedClickActions["sort"][0],
         buttonType: "horizontal",

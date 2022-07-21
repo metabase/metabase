@@ -4,22 +4,24 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.helpers :as hh]
-            [metabase.api.common
+            [java-time :as t]
+            [metabase.api.common :as api
              :refer
-             [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
+             [*current-user* *current-user-id* *current-user-permissions-set*
+              *is-group-manager?* *is-superuser?*]]
             [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.session :refer [Session]]
-            [metabase.models.setting :refer [*user-local-values*]]
+            [metabase.models.setting :as setting :refer [*user-local-values* defsetting]]
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [deferred-trs tru]]
+            [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru tru]]
             [ring.util.response :as response]
             [schema.core :as s]
             [toucan.db :as db])
@@ -40,6 +42,7 @@
 
 (def ^:private ^String metabase-session-cookie          "metabase.SESSION")
 (def ^:private ^String metabase-embedded-session-cookie "metabase.EMBEDDED_SESSION")
+(def ^:private ^String metabase-session-timeout-cookie  "metabase.TIMEOUT")
 (def ^:private ^String anti-csrf-token-header           "x-metabase-anti-csrf-token")
 
 (defn- clear-cookie [response cookie-name]
@@ -56,7 +59,9 @@
 (defn clear-session-cookie
   "Add a header to `response` to clear the current Metabase session cookie."
   [response]
-  (reduce clear-cookie (wrap-body-if-needed response) [metabase-session-cookie metabase-embedded-session-cookie]))
+  (reduce clear-cookie (wrap-body-if-needed response) [metabase-session-cookie
+                                                       metabase-embedded-session-cookie
+                                                       metabase-session-timeout-cookie]))
 
 (defn- use-permanent-cookies?
   "Check if we should use permanent cookies for a given request, which are not cleared when a browser sesion ends."
@@ -67,32 +72,40 @@
     ;; Otherwise check whether the user selected "remember me" during login
     (get-in request [:body :remember])))
 
-(defmulti set-session-cookie
+(defmulti set-session-cookies
   "Add an appropriate cookie to persist a newly created Session to `response`."
-  {:arglists '([request response session])}
-  (fn [_ _ {session-type :type}] (keyword session-type)))
+  {:arglists '([request response session request-time])}
+  (fn [_ _ {session-type :type} _] (keyword session-type)))
 
-(defmethod set-session-cookie :default
-  [_ _ session]
+(defmethod set-session-cookies :default
+  [_ _ session _]
   (throw (ex-info (str (tru "Invalid session. Expected an instance of Session."))
            {:session session})))
 
-(s/defmethod set-session-cookie :normal
-  [request response {session-uuid :id} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}]
+(declare session-timeout-seconds)
+
+(s/defmethod set-session-cookies :normal
+  [request
+   response
+   {session-uuid :id} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}
+   request-time]
   (let [response       (wrap-body-if-needed response)
+        timeout        (session-timeout-seconds)
         is-https?      (request.u/https? request)
         cookie-options (merge
                         {:same-site config/mb-session-cookie-samesite
-                         :http-only true
                          ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
                          ;; up breaking things
-                         :path      "/" #_ (site-path)}
-                        ;; If permanent cookies should be used, set the `Max-Age` directive; cookies with no
-                        ;; `Max-Age` and no `Expires` directives are session cookies, and are deleted when the
-                        ;; browser is closed.
-                        ;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#define_the_lifetime_of_a_cookie
-                        (when (use-permanent-cookies? request)
+                         :path      "/" #_(site-path)}
+                        (cond
+                          (some? timeout)
+                          {:expires (t/format :rfc-1123-date-time (t/plus request-time (t/seconds timeout)))}
+                          ;; If permanent cookies should be used, set the `Max-Age` directive; cookies with no
+                          ;; `Max-Age` and no `Expires` directives are session cookies, and are deleted when the
+                          ;; browser is closed.
+                          ;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#define_the_lifetime_of_a_cookie
                           ;; max-session age-is in minutes; Max-Age= directive should be in seconds
+                          (use-permanent-cookies? request)
                           {:max-age (* 60 (config/config-int :max-session-age))})
                         ;; If the authentication request request was made over HTTPS (hopefully always except for
                         ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
@@ -103,15 +116,24 @@
        (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
             " "
             "https://www.chromestatus.com/feature/5633521622188032")))
-    (response/set-cookie response metabase-session-cookie (str session-uuid) cookie-options)))
+    (-> response
+        (wrap-body-if-needed)
+        (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options)
+        (response/set-cookie metabase-session-cookie (str session-uuid) (assoc cookie-options :http-only true)))))
 
-(s/defmethod set-session-cookie :full-app-embed
-  [request response {session-uuid :id, anti-csrf-token :anti_csrf_token} :- {:id       (s/cond-pre UUID u/uuid-regex)
-                                                                             s/Keyword s/Any}]
+(s/defmethod set-session-cookies :full-app-embed
+  [request
+   response
+   {session-uuid    :id
+    anti-csrf-token :anti_csrf_token} :- {:id       (s/cond-pre UUID u/uuid-regex)
+                                          s/Keyword s/Any}
+   request-time]
   (let [response       (wrap-body-if-needed response)
+        timeout (session-timeout-seconds)
         cookie-options (merge
-                        {:http-only true
-                         :path      "/"}
+                        {:path "/"}
+                        (when (some? timeout)
+                          {:expires (t/format :rfc-1123-date-time (t/plus request-time (t/seconds timeout)))})
                         (when (request.u/https? request)
                           ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
                           ;; security is provided via anti-CSRF token. Note that most browsers will only accept
@@ -120,9 +142,9 @@
                           {:same-site :none
                            :secure    true}))]
     (-> response
-        (response/set-cookie metabase-embedded-session-cookie (str session-uuid) cookie-options)
-        (assoc-in [:headers anti-csrf-token-header] anti-csrf-token))))
-
+        (assoc-in [:headers anti-csrf-token-header] anti-csrf-token)
+        (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options)
+        (response/set-cookie metabase-embedded-session-cookie (str session-uuid) (assoc cookie-options :http-only true)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                wrap-session-id                                                 |
@@ -141,13 +163,13 @@
   [_ {:keys [cookies headers], :as request}]
   (when-let [session (get-in cookies [metabase-embedded-session-cookie :value])]
     (when-let [anti-csrf-token (get headers anti-csrf-token-header)]
-      (assoc request :metabase-session-id session, :anti-csrf-token anti-csrf-token))))
+      (assoc request :metabase-session-id session, :anti-csrf-token anti-csrf-token :metabase-session-type :full-app-embed))))
 
 (defmethod wrap-session-id-with-strategy :normal-cookie
   [_ {:keys [cookies], :as request}]
   (when-let [session (get-in cookies [metabase-session-cookie :value])]
     (when (seq session)
-      (assoc request :metabase-session-id session))))
+      (assoc request :metabase-session-id session :metabase-session-type :normal))))
 
 (defmethod wrap-session-id-with-strategy :header
   [_ {:keys [headers], :as request}]
@@ -164,7 +186,7 @@
 
 (defn wrap-session-id
   "Middleware that sets the `:metabase-session-id` keyword on the request if a session id can be found.
-   We first check the request :cookies for `metabase.SESSION`, then if no cookie is found we look in the http headers
+  We first check the request :cookies for `metabase.SESSION`, then if no cookie is found we look in the http headers
   for `X-METABASE-SESSION`. If neither is found then then no keyword is bound to the request."
   [handler]
   (fn [request respond raise]
@@ -305,3 +327,54 @@
   `(do-with-current-user
     (with-current-user-fetch-user-for-id ~current-user-id)
     (fn [] ~@body)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              reset-cookie-timeout                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defsetting session-timeout
+  ;; Should be in the form {:amount 60 :unit "minutes"} where the unit is one of "seconds", "minutes" or "hours".
+  ;; The amount is nillable.
+  (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
+  :type       :json
+  :default    nil)
+
+(defn session-timeout->seconds
+  "Convert a session timeout setting to seconds."
+  [{:keys [unit amount]}]
+  (when amount
+    (-> (case unit
+          "seconds" amount
+          "minutes" (* amount 60)
+          "hours"  (* amount 3600))
+        (max 60)))) ; Ensure a minimum of 60 seconds so a user can't lock themselves out
+
+(defn session-timeout-seconds
+  "Returns the number of seconds before a session times out. An alternative to calling `(session-timeout) directly`"
+  []
+  (session-timeout->seconds (session-timeout)))
+
+(defn reset-session-timeout-on-response
+  "Implementation for `reset-cookie-timeout` respond handler."
+  [request response request-time]
+  (if (and
+       ;; Only reset the timeout if the request includes a session cookie.
+       (:metabase-session-type request)
+       ;; Do not reset the timeout if it is being updated in the response, e.g. if it is being deleted
+       (not (contains? (:cookies response) metabase-session-timeout-cookie)))
+    (set-session-cookies request response {:id   (:metabase-session-id request)
+                                           :type (:metabase-session-type request)} request-time)
+    response))
+
+(defn reset-session-timeout
+  "Middleware that resets the expiry date on session cookies according to the session-timeout setting.
+   Will not change anything if the session-timeout setting is nil, or the timeout cookie has already expired."
+  [handler]
+  (fn [request respond raise]
+    (let [;; The expiry time for the cookie is relative to the time the request is received, rather than the time of the response.
+          request-time (t/zoned-date-time (t/zone-id "GMT"))]
+      (handler request
+               (fn [response]
+                 (respond (reset-session-timeout-on-response request response request-time)))
+               raise))))

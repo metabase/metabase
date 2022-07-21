@@ -1,5 +1,11 @@
 import cx from "classnames";
-import React, { ButtonHTMLAttributes, forwardRef, ReactNode, Ref } from "react";
+import React, {
+  ButtonHTMLAttributes,
+  forwardRef,
+  ReactNode,
+  Ref,
+  ElementType,
+} from "react";
 import styled from "@emotion/styled";
 import { color, space } from "styled-system";
 import _ from "underscore";
@@ -28,6 +34,7 @@ const BUTTON_VARIANTS = [
 ] as const;
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
+  as?: ElementType;
   className?: string;
 
   icon?: string;
@@ -59,6 +66,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const BaseButton = forwardRef(function BaseButton(
   {
+    as,
     className,
     icon,
     iconRight,
@@ -77,6 +85,7 @@ const BaseButton = forwardRef(function BaseButton(
 
   return (
     <ButtonRoot
+      as={as}
       {..._.omit(props, ...BUTTON_VARIANTS)}
       className={cx("Button", className, variantClasses, {
         p1: !children,

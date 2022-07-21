@@ -1,6 +1,7 @@
 ---
 title: "Sandbox user"
-summary: "Endpoint(s)for setting user attributes."
+summary: |
+  Endpoint(s)for setting user attributes.
 ---
 
 # Sandbox user

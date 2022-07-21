@@ -90,25 +90,33 @@ const Collections = createEntity({
     getInitialCollectionId: createSelector(
       [
         state => state.entities.collections,
+        getUserPersonalCollectionId,
 
         // these are listed in order of priority
         byCollectionIdProp,
         byCollectionIdNavParam,
         byCollectionUrlId,
         byCollectionQueryParameter,
-
-        // defaults
-        () => ROOT_COLLECTION.id,
-        getUserPersonalCollectionId,
       ],
-      (collections, ...collectionIds) => {
-        for (const collectionId of collectionIds) {
+      (collections, personalId, ...collectionIds) => {
+        const allCollectionIds = [
+          ...collectionIds,
+          ROOT_COLLECTION.id,
+          personalId,
+        ];
+
+        for (const collectionId of allCollectionIds) {
           const collection = collections[collectionId];
           if (collection && collection.can_write) {
             return canonicalCollectionId(collectionId);
           }
         }
-        return canonicalCollectionId(ROOT_COLLECTION.id);
+
+        const rootCollection = collections[ROOT_COLLECTION.id];
+
+        return rootCollection?.can_write
+          ? canonicalCollectionId(ROOT_COLLECTION.id)
+          : canonicalCollectionId(personalId);
       },
     ),
   },

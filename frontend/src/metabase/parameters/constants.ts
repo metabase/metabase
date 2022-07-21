@@ -172,11 +172,11 @@ type FilterMap = {
 };
 
 export const DATE_MBQL_FILTER_MAPPING: FilterMap = {
-  today: {
+  thisday: {
     name: t`Today`,
     mapping: ["=", null, ["relative-datetime", "current"]],
   },
-  yesterday: {
+  past1days: {
     name: t`Yesterday`,
     mapping: ["=", null, ["relative-datetime", -1, "day"]],
   },
@@ -188,15 +188,15 @@ export const DATE_MBQL_FILTER_MAPPING: FilterMap = {
     name: t`Past 30 Days`,
     mapping: ["time-interval", null, -30, "day"],
   },
-  lastweek: {
+  past1weeks: {
     name: t`Last Week`,
     mapping: ["time-interval", null, "last", "week"],
   },
-  lastmonth: {
+  past1months: {
     name: t`Last Month`,
     mapping: ["time-interval", null, "last", "month"],
   },
-  lastyear: {
+  past1years: {
     name: t`Last Year`,
     mapping: ["time-interval", null, "last", "year"],
   },

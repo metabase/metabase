@@ -1,6 +1,7 @@
 ---
 title: "Dashboard"
-summary: "/api/dashboard endpoints."
+summary: |
+  /api/dashboard endpoints.
 ---
 
 # Dashboard
@@ -180,7 +181,7 @@ Create a new Dashboard.
 
 *  **`description`** value may be nil, or if non-nil, value must be a string.
 
-*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with String :id key
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys
 
 *  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
@@ -322,7 +323,7 @@ Update a Dashboard.
 
 ### PARAMS:
 
-*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with String :id key
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys
 
 *  **`points_of_interest`** value may be nil, or if non-nil, value must be a string.
 
