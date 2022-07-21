@@ -31,6 +31,7 @@ import { isAdHocModelQuestionCard } from "metabase/lib/data-modeling/utils";
 import Dimension from "metabase-lib/lib/Dimension";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { zoomInRow } from "metabase/query_builder/actions";
+import { getQueryBuilderMode } from "metabase/query_builder/selectors";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import MiniBar from "../MiniBar";
@@ -71,6 +72,10 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
 
 const mapDispatchToProps = dispatch => ({
   onZoomRow: objectId => dispatch(zoomInRow({ objectId })),
+});
+
+const mapStateToProps = state => ({
+  queryBuilderMode: getQueryBuilderMode(state),
 });
 
 class TableInteractive extends Component {
@@ -173,8 +178,9 @@ class TableInteractive extends Component {
 
   _showDetailShortcut = (query, isPivoted) => {
     const hasAggregation = !!query?.aggregations?.()?.length;
+    const isNotebookPreview = this.props.queryBuilderMode === "notebook";
     this.setState({
-      showDetailShortcut: !(isPivoted || hasAggregation),
+      showDetailShortcut: !(isPivoted || hasAggregation || isNotebookPreview),
     });
   };
 
@@ -1114,7 +1120,7 @@ export default _.compose(
   ExplicitSize({
     refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
   }),
-  connect(null, mapDispatchToProps),
+  connect(mapStateToProps, mapDispatchToProps),
   memoizeClass(
     "_getCellClickedObjectCached",
     "_getHeaderClickedObjectCached",
