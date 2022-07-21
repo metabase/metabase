@@ -2,8 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import {
   space,
-  breakpointMaxSmall,
-  breakpointMinLarge,
+  breakpointMinHeightMedium,
 } from "metabase/styled-components/theme";
 
 export const ListRoot = styled.div`
@@ -12,7 +11,7 @@ export const ListRoot = styled.div`
 
 export const ListRow = styled.div`
   padding: 1.5rem 2rem;
-  ${breakpointMinLarge} {
+  ${breakpointMinHeightMedium} {
     padding: 2.5rem 2rem;
   }
   border-bottom: 1px solid ${color("border")};

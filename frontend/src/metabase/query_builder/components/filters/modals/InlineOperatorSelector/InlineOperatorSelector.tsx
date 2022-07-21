@@ -38,7 +38,11 @@ export function InlineOperatorSelector({
   return (
     <InlineOperatorContainer>
       {!!iconName && (
-        <Icon name={iconName} size={20} style={{ marginRight: 8 }} />
+        <Icon
+          className="field-icon"
+          name={iconName}
+          style={{ marginRight: 8 }}
+        />
       )}
       <div>
         <FieldTitle>{fieldName}</FieldTitle>
