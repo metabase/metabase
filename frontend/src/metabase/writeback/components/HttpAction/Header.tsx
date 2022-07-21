@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import cx from "classnames";
 import { t } from "ttag";
 
 import { ActionType } from "metabase/writeback/types";
-import Selector from "./Selector";
+
+import CompactSelect from "./CompactSelect";
 
 import {
   Container,
@@ -34,9 +34,9 @@ const Header: React.FC<Props> = ({
   onCommit,
 }) => {
   const OPTS = [
-    { value: "http", label: "HTTP" },
+    { value: "http", name: "HTTP" },
     // Not supported yet
-    // { value: "query", label: t`Query` },
+    { value: "query", name: t`Query`, disabled: true },
   ];
 
   return (
@@ -44,15 +44,15 @@ const Header: React.FC<Props> = ({
       <LeftHeader>
         <EditableText initialValue={name} onChange={onNameChange} />
         {setType ? (
-          <Selector
+          <CompactSelect
             className="text-light"
             options={OPTS}
             value={type}
-            setValue={value => setType(value as ActionType)}
+            onChange={(value: ActionType) => setType(value)}
           />
         ) : (
           <Option className="text-light">
-            {OPTS.find(({ value }) => value === type)?.label}
+            {OPTS.find(({ value }) => value === type)?.name}
           </Option>
         )}
       </LeftHeader>
