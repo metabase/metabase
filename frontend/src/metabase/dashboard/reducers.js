@@ -1,5 +1,6 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
 import { handleActions, combineReducers } from "metabase/lib/redux";
+import Dashboards from "metabase/entities/dashboards";
 
 import {
   INITIALIZE,
@@ -133,6 +134,14 @@ const dashboards = handleActions(
           state,
           [payload.id, "enable_embedding"],
           payload.enable_embedding,
+        ),
+    },
+    [Dashboards.actionTypes.UPDATE]: {
+      next: (state, { payload }) =>
+        assocIn(
+          state,
+          [payload.dashboard.id, "collection_id"],
+          payload.dashboard.collection_id,
         ),
     },
   },
