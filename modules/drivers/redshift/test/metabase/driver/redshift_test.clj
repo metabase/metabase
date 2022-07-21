@@ -196,8 +196,8 @@
                 "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));%n"
                 "CREATE OR REPLACE VIEW %2$s AS SELECT * FROM %1$s WITH NO SCHEMA BINDING;"
                 "CREATE OR REPLACE VIEW %3$s AS "
-                "SELECT CASE WHEN true = false THEN 11387.133 END AS numeric_col, "
-                "CASE WHEN true = false THEN 'blah blah blah' END AS weird_varchar FROM %1$s WITH NO SCHEMA BINDING;")
+                "SELECT CASE WHEN true = false THEN 11387.133 END AS numeric_col_2, "
+                "CASE WHEN true = false THEN 'blah blah blah' END AS weird_varchar_2 FROM %1$s WITH NO SCHEMA BINDING;")
            qual-tbl-nm
            qual-view-nm
            qual-view-nm-2)
@@ -212,13 +212,13 @@
           (let [table-id   (db/select-one-id Table :db_id (u/the-id database), :name view-nm)
                 table-id-2 (db/select-one-id Table :db_id (u/the-id database), :name view-nm-2)]
             ;; and its columns' :base_type should have been identified correctly
-            (is (= [{:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}
-                    {:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}]
+            (is (= [{:name "numeric_col",   :database_type "numeric",         :base_type :type/Decimal}
+                    {:name "weird_varchar", :database_type "varchar", :base_type :type/Text}]
                    (map
                     (partial into {})
                     (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))
-            (is (= [{:name "numeric_col",   :database_type "numeric",           :base_type :type/Decimal}
-                    {:name "weird_varchar", :database_type "character varying", :base_type :type/Text}]
+            (is (= [{:name "numeric_col_2",   :database_type "numeric",           :base_type :type/Decimal}
+                    {:name "weird_varchar_2", :database_type "varchar", :base_type :type/Text}]
                    (map
                      (partial into {})
                      (db/select [Field :name :database_type :base_type] :table_id table-id-2 {:order-by [:name]}))))))))))
