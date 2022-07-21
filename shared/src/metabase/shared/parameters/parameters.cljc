@@ -63,22 +63,43 @@
            (formatted-value :date/single end locale))
       "")))
 
+(defn- time-intervals
+  [interval plural?]
+  (get
+   {["minutes" false]  (trs "Minute")
+    ["minutes" true]   (trs "Minutes")
+    ["hours" false]    (trs "Hour")
+    ["hours" true]     (trs "Hours")
+    ["days" false]     (trs "Day")
+    ["days" true]      (trs "Days")
+    ["weeks" false]    (trs "Week")
+    ["weeks" true]     (trs "Weeks")
+    ["months" false]   (trs "Month")
+    ["months" true]    (trs "Months")
+    ["quarters" false] (trs "Quarter")
+    ["quarters" true]  (trs "Quarters")
+    ["years" false]    (trs "Year")
+    ["years" true]     (trs "Years")}
+   [interval plural?]))
+
 (defmethod formatted-value :date/relative
-  [_ value locale]
-  (case value
-    "today"      (trs "Today")
-    "yesterday"  (trs "Yesterday")
-    "past7days"  (trs "Past 7 Days")
-    "past30days" (trs "Past 30 Days")
-    "lastweek"   (trs "Last Week")
-    "lastmonth"  (trs "Last Month")
-    "lastyear"   (trs "Last Year")
-    "thisday"    (trs "Today")
-    "thisweek"   (trs "This Week")
-    "thismonth"  (trs "This Month")
-    "thisyear"   (trs "This Year")
-    ;; Always fallback to default formatting, just in case
-    (formatted-value :default locale locale)))
+  [_ value _]
+  (condp (fn [re value] (->> (re-find re value) next)) value
+    #"^today$"                             (trs "Today")
+    #"^thisday$"                           (trs "Today")
+    #"^thisweek$"                          (trs "This Week")
+    #"^thismonth$"                         (trs "This Month")
+    #"^thisquarter$"                       (trs "This Quarter")
+    #"^thisyear$"                          (trs "This Year")
+    #"^past1days$"                         (trs "Yesterday")
+    #"^next1days$"                         (trs "Tomorrow")
+    #"^(past|next)([0-9]+)([a-z]+)~?$" :>> (fn [[prefix n interval]]
+                                             (let [prefix   (case prefix
+                                                              "past" (trs "Previous")
+                                                              "next" (trs "Next"))
+                                                   n        (when (not= n "1") n)
+                                                   interval (time-intervals interval (boolean n))]
+                                               (str prefix " " n " " interval)))))
 
 (defmethod formatted-value :date/all-options
   [_ value locale]
@@ -86,9 +107,10 @@
   ;; the appropriate formatting, since it is not encoded in the parameter type.
   ;; TODO: this is a partial implementation that only handles simple dates
   (condp (fn [re value] (->> (re-find re value) second)) value
+    #"^(this[a-z]+)$"          :>> #(formatted-value :date/relative % locale)
     #"^~?([0-9-T:]+)~?$"       :>> #(formatted-value :date/single % locale)
     #"^([0-9-T:]+~[0-9-T:]+)$" :>> #(formatted-value :date/range % locale)
-    (str value)))
+    (formatted-value :date/relative value locale)))
 
 (defn formatted-list
   "Given a seq of parameter values, returns them as a single comma-separated string. Does not do additional formatting
