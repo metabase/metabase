@@ -13,6 +13,7 @@
    "NativeQuerySnippet"
    "Pulse"
    "PulseCard"
+   "PulseChannel"
    "Segment"
    "Setting"
    "Table"

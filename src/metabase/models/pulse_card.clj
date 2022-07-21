@@ -50,9 +50,6 @@
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes.base/serdes-entity-id "PulseCard" [_ {:keys [position]}]
-  (str position))
-
 (defmethod serdes.base/serdes-generate-path "PulseCard"
   [_ {:keys [pulse_id] :as card}]
   [(serdes.base/infer-self-path "Pulse" (db/select-one 'Pulse :id pulse_id))
@@ -63,22 +60,13 @@
   (cond-> (serdes.base/extract-one-basics "PulseCard" card)
     true                      (update :card_id            serdes.util/export-fk 'Card)
     true                      (update :pulse_id           serdes.util/export-fk 'Pulse)
-    (:dashboard_card_id card) (update :dashboard_card_id  serdes.util/export-fk 'DashboardCard)
-    ))
+    (:dashboard_card_id card) (update :dashboard_card_id  serdes.util/export-fk 'DashboardCard)))
 
 (defmethod serdes.base/load-xform "PulseCard" [card]
   (cond-> (serdes.base/load-xform-basics card)
     true                      (update :card_id            serdes.util/import-fk 'Card)
     true                      (update :pulse_id           serdes.util/import-fk 'Pulse)
     (:dashboard_card_id card) (update :dashboard_card_id  serdes.util/import-fk 'DashboardCard)))
-
-;; TODO Using position as the ID for Pulses is not ideal - better to add an entity_id.
-(defmethod serdes.base/load-find-local "PulseCard"
-  [path]
-  (let [pulse-eid   (-> path first :id)
-        pulse       (serdes.base/lookup-by-id 'Pulse pulse-eid)
-        position    (-> path last :id)]
-    (db/select-one-field :id PulseCard :position position :pulse_id (:id pulse))))
 
 ;; Depends on the Pulse, Card and (optional) dashboard card.
 (defmethod serdes.base/serdes-dependencies "PulseCard" [{:keys [card_id dashboard_card_id pulse_id]}]
@@ -87,4 +75,3 @@
     (if dashboard_card_id
       (conj base [{:model "DashboardCard" :id dashboard_card_id}])
       base)))
-;; START HERE: Add entity_id columns to PulseCard, PulseChannel.

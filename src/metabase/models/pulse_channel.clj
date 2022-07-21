@@ -4,7 +4,9 @@
             [medley.core :as m]
             [metabase.models.interface :as mi]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -348,3 +350,24 @@
 (add-encoder PulseChannelInstance (fn [pulse-channel json-generator]
                                     (encode-map (m/dissoc-in pulse-channel [:details :emails])
                                                 json-generator)))
+
+; ----------------------------------------------------- Serialization -------------------------------------------------
+
+(defmethod serdes.base/serdes-generate-path "PulseChannel"
+  [_ {:keys [pulse_id] :as channel}]
+  [(serdes.base/infer-self-path "Pulse" (db/select-one 'Pulse :id pulse_id))
+   (serdes.base/infer-self-path "PulseChannel" channel)])
+
+(defmethod serdes.base/extract-one "PulseChannel"
+  [_model-name _opts channel]
+  (-> (serdes.base/extract-one-basics "PulseChannel" channel)
+    (update :pulse_id           serdes.util/export-fk 'Pulse)))
+
+(defmethod serdes.base/load-xform "PulseChannel" [channel]
+  (-> channel
+      serdes.base/load-xform-basics
+      (update :pulse_id serdes.util/import-fk 'Pulse)))
+
+;; Depends on the Pulse.
+(defmethod serdes.base/serdes-dependencies "PulseChannel" [{:keys [pulse_id]}]
+  [[{:model "Pulse" :id pulse_id}]])

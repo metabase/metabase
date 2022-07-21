@@ -526,42 +526,45 @@
 
 (deftest pulse-cards-test
   (ts/with-empty-h2-app-db
-    (ts/with-temp-dpc [User          [{ann-id       :id}        {:first_name "Ann"
-                                                                 :last_name  "Wilson"
-                                                                 :email      "ann@heart.band"}]
-                       Dashboard     [{dash-id      :id}        {:name "A Dashboard"}]
-                       Database      [{db-id        :id}        {:name "My Database"}]
-                       Table         [{table-id     :id}        {:name "Schemaless Table" :db_id db-id}]
-                       Card          [{card1-id     :id
-                                       card1-eid    :entity_id} {:name          "Some Question"
-                                                                 :database_id   db-id
-                                                                 :table_id      table-id
-                                                                 :creator_id    ann-id
-                                                                 :dataset_query "{\"json\": \"string values\"}"}]
-                       DashboardCard [{dashcard-id  :id
-                                       dashcard-eid :entity_id} {:card_id       card1-id
-                                                                 :dashboard_id  dash-id}]
-                       Pulse         [{pulse-id     :id
-                                       pulse-eid    :entity_id} {:name       "Legacy Pulse"
-                                                                 :creator_id ann-id}]
-                       Pulse         [{sub-id       :id
-                                       sub-eid      :entity_id} {:name       "Dashboard sub"
-                                                                 :creator_id ann-id
-                                                                 :dashboard_id dash-id}]
-                       PulseCard     [{pc1-pulse-id :id}        {:pulse_id          pulse-id
-                                                                 :card_id           card1-id
-                                                                 :position          1}]
-                       PulseCard     [{pc2-pulse-id :id}        {:pulse_id          pulse-id
-                                                                 :card_id           card1-id
-                                                                 :position          2}]
-                       PulseCard     [{pc1-sub-id   :id}        {:pulse_id          sub-id
-                                                                 :card_id           card1-id
-                                                                 :position          1
-                                                                 :dashboard_card_id dashcard-id}]]
+    (ts/with-temp-dpc [User          [{ann-id        :id}        {:first_name "Ann"
+                                                                  :last_name  "Wilson"
+                                                                  :email      "ann@heart.band"}]
+                       Dashboard     [{dash-id       :id}        {:name "A Dashboard"}]
+                       Database      [{db-id         :id}        {:name "My Database"}]
+                       Table         [{table-id      :id}        {:name "Schemaless Table" :db_id db-id}]
+                       Card          [{card1-id      :id
+                                       card1-eid     :entity_id} {:name          "Some Question"
+                                                                  :database_id   db-id
+                                                                  :table_id      table-id
+                                                                  :creator_id    ann-id
+                                                                  :dataset_query "{\"json\": \"string values\"}"}]
+                       DashboardCard [{dashcard-id   :id
+                                       dashcard-eid  :entity_id} {:card_id       card1-id
+                                                                  :dashboard_id  dash-id}]
+                       Pulse         [{pulse-id      :id
+                                       pulse-eid     :entity_id} {:name       "Legacy Pulse"
+                                                                  :creator_id ann-id}]
+                       Pulse         [{sub-id        :id
+                                       sub-eid       :entity_id} {:name       "Dashboard sub"
+                                                                  :creator_id ann-id
+                                                                  :dashboard_id dash-id}]
+                       PulseCard     [{pc1-pulse-id  :id
+                                       pc1-pulse-eid :entity_id} {:pulse_id          pulse-id
+                                                                  :card_id           card1-id
+                                                                  :position          1}]
+                       PulseCard     [{pc2-pulse-id  :id
+                                       pc2-pulse-eid :entity_id} {:pulse_id          pulse-id
+                                                                  :card_id           card1-id
+                                                                  :position          2}]
+                       PulseCard     [{pc1-sub-id    :id
+                                       pc1-sub-eid   :entity_id} {:pulse_id          sub-id
+                                                                  :card_id           card1-id
+                                                                  :position          1
+                                                                  :dashboard_card_id dashcard-id}]]
       (testing "legacy pulse cards"
         (let [ser (serdes.base/extract-one "PulseCard" {} (select-one "PulseCard" [:= :id pc1-pulse-id]))]
           (is (schema= {:serdes/meta                        (s/eq [{:model "Pulse" :id pulse-eid}
-                                                                   {:model "PulseCard" :id "1"}])
+                                                                   {:model "PulseCard" :id pc1-pulse-eid}])
                         :card_id                            (s/eq card1-eid)
                         (s/optional-key :dashboard_card_id) (s/eq nil)
                         s/Keyword                           s/Any}
@@ -575,7 +578,7 @@
 
         (let [ser (serdes.base/extract-one "PulseCard" {} (select-one "PulseCard" [:= :id pc2-pulse-id]))]
           (is (schema= {:serdes/meta                        (s/eq [{:model "Pulse" :id pulse-eid}
-                                                                   {:model "PulseCard" :id "2"}])
+                                                                   {:model "PulseCard" :id pc2-pulse-eid}])
                         :card_id                            (s/eq card1-eid)
                         (s/optional-key :dashboard_card_id) (s/eq nil)
                         s/Keyword                           s/Any}
@@ -590,7 +593,7 @@
       (testing "dashboard sub cards"
         (let [ser (serdes.base/extract-one "PulseCard" {} (select-one "PulseCard" [:= :id pc1-sub-id]))]
           (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id sub-eid}
-                                                               {:model "PulseCard" :id "1"}])
+                                                               {:model "PulseCard" :id pc1-sub-eid}])
                         :card_id                        (s/eq card1-eid)
                         :dashboard_card_id              (s/eq dashcard-eid)
                         s/Keyword                       s/Any}

@@ -82,7 +82,9 @@
                                               :pulse_id      (random-keyword "pulse" 10)}}]
                                   [60 {:refs {:card_id       (random-keyword "c" 100)
                                               :pulse_id      (random-keyword "pulse" 10 20)
-                                              :dashboard_card_id (random-keyword "dc" 300)}}]]})
+                                              :dashboard_card_id (random-keyword "dc" 300)}}]]
+         :pulse-channel          [[15 {:refs {:pulse_id      (random-keyword "pulse" 10)}}]
+                                  [15 {:refs {:pulse_id      (random-keyword "pulse" 10 20)}}]]})
       (let [extraction (into [] (extract/extract-metabase {}))
             entities   (reduce (fn [m entity]
                                  (update m (-> entity :serdes/meta last :model)
@@ -218,17 +220,28 @@
                      (yaml/from-file (io/file dump-dir "Pulse" filename))))))
 
           (testing "for pulse cards"
-            ;; Actual counting is not practical, the :position field is not unique so they collide sometimes.
-            ;; It doesn't hurt the rest of the test.
-            (is (pos? (reduce + (for [pulse (get entities "Pulse")]
-                                  (->> (io/file dump-dir "Pulse" (:entity_id pulse) "PulseCard")
-                                       dir->file-set
-                                       count)))))
-            (doseq [{:keys [pulse_id position] :as pulse} (get entities "PulseCard")
-                    :let [filename (#'u.yaml/leaf-file-name (str position))]]
-              (is (= (-> pulse
+            (is (= 120 (reduce + (for [pulse (get entities "Pulse")]
+                                   (->> (io/file dump-dir "Pulse" (:entity_id pulse) "PulseCard")
+                                        dir->file-set
+                                        count)))))
+            (doseq [{:keys [entity_id pulse_id] :as card} (get entities "PulseCard")
+                    :let [filename (#'u.yaml/leaf-file-name entity_id)]]
+              (is (= (-> card
                          (dissoc :serdes/meta))
                      (yaml/from-file (io/file dump-dir "Pulse" pulse_id "PulseCard" filename))))))
+
+          (testing "for pulse channels"
+            (is (= 30 (reduce + (for [pulse (get entities "Pulse")]
+                                  (->> (io/file dump-dir "Pulse" (:entity_id pulse) "PulseChannel")
+                                       dir->file-set
+                                       count)))))
+            (doseq [{:keys [entity_id pulse_id] :as channel} (get entities "PulseChannel")
+                    :let [filename (#'u.yaml/leaf-file-name entity_id)]]
+              (is (= (-> channel
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Pulse" pulse_id "PulseChannel" filename))))))
 
           (testing "for native query snippets"
             (is (= 10 (count (dir->file-set (io/file dump-dir "NativeQuerySnippet")))))
