@@ -80,6 +80,7 @@ describe("scenarios > question > new", () => {
 
       it("should allow to search and select tables", () => {
         cy.findAllByText("Orders")
+          .eq(1)
           .closest("li")
           .findByText("Table in")
           .parent()
