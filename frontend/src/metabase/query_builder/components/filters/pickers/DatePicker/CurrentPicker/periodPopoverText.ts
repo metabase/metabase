@@ -1,7 +1,7 @@
 import { t } from "ttag";
-import moment from "moment";
+import moment, { unitOfTime } from "moment-timezone";
 
-const buildStartAndEndDates = (period: string, format: string) => {
+const buildStartAndEndDates = (period: unitOfTime.StartOf, format: string) => {
   const now = moment();
   const start = now.startOf(period).format(format);
   const end = now.endOf(period).format(format);
@@ -16,7 +16,10 @@ export const periodPopoverText = (period: string) => {
     return t`Right now, this is ${moment().format(format)}`;
   }
 
-  const [start, end] = buildStartAndEndDates(period, format);
+  const [start, end] = buildStartAndEndDates(
+    period as unitOfTime.StartOf,
+    format,
+  );
 
   return t`Right now, this is ${start} - ${end}`;
 };
