@@ -1,13 +1,12 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { Link } from "react-router";
 import { alpha, color } from "metabase/lib/colors";
 
-export interface ClickActionLinkProps {
+export interface ClickActionTokenProps {
   type: "sort" | "formatting" | "horizontal" | "token" | "token-filter";
 }
 
-export const ClickActionLink = styled(Link)<ClickActionLinkProps>`
+export const ClickActionToken = styled.div<ClickActionTokenProps>`
   ${({ type }) =>
     type === "token-filter" &&
     css`
