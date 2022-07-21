@@ -117,7 +117,7 @@
   `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) :rasta (fn [~'&group] ~@body)))
 
 (defmacro with-gtaps-for-user
-  "Like `with-gtaps` but with for a specific user."
+  "Like `with-gtaps` but for a specific user."
   {:style/indent 2}
   [test-user-name-or-user-id gtaps-and-attributes-map & body]
   `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) ~test-user-name-or-user-id (fn [~'&group] ~@body)))
