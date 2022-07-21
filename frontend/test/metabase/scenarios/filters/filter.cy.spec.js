@@ -673,7 +673,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Tax").should("not.exist");
   });
 
-  it("should work on twice summarized questions (metabase#15620)", () => {
+  it.skip("should work on twice summarized questions and preserve both summaries (metabase#15620)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -697,7 +697,11 @@ describe("scenarios > question > filter", () => {
       cy.findByText("Gizmo").click();
     });
     cy.findByTestId("apply-filters").click();
-    cy.get(".dot");
+
+    cy.findByLabelText("notebook icon").click();
+    cy.findByText("Category is Gizmo").should("exist"); // filter
+    cy.findByText("Created At: Month").should("exist"); // summary 1
+    cy.findByText("Average of Count").should("exist"); // summary 2
   });
 
   it("user shouldn't need to scroll to add filter (metabase#14307)", () => {
