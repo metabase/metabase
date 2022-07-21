@@ -184,7 +184,8 @@
    models/IModelDefaults
    {:hydration-keys (constantly [:pulse_channel])
     :types          (constantly {:details :json, :channel_type :keyword, :schedule_type :keyword, :schedule_frame :keyword})
-    :properties     (constantly {:timestamped? true})
+    :properties     (constantly {:timestamped? true
+                                 :entity_id    true})
     :pre-delete     pre-delete
     :pre-insert     validate-email-domains
     :pre-update     validate-email-domains})
