@@ -14,8 +14,8 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
     purple &&
     css`
       color: ${color("white")};
-      background-color: ${color("accent7")};
-      border: 1px solid ${color("accent7")};
+      background-color: ${color("filter")};
+      border: 1px solid ${color("filter")};
 
       &:hover {
         color: ${color("white")};
