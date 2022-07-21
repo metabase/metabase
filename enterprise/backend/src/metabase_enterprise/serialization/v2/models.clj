@@ -11,6 +11,7 @@
    "Field"
    "Metric"
    "NativeQuerySnippet"
+   "Segment"
    "Setting"
    "Table"
    "Timeline"

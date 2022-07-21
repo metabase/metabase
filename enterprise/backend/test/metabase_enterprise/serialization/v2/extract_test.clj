@@ -3,7 +3,7 @@
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field Metric
-                                     NativeQuerySnippet Table Timeline TimelineEvent User]]
+                                     NativeQuerySnippet Segment Table Timeline TimelineEvent User]]
             [metabase.models.serialization.base :as serdes.base]
             [schema.core :as s])
   (:import [java.time LocalDateTime OffsetDateTime]))
@@ -336,7 +336,7 @@
             (testing "and has no deps"
               (is (empty? (serdes.base/serdes-dependencies ser))))))))))
 
- (deftest timelines-and-events-test
+(deftest timelines-and-events-test
   (ts/with-empty-h2-app-db
     (ts/with-temp-dpc [User               [{ann-id       :id}        {:first_name "Ann"
                                                                       :last_name  "Wilson"
@@ -406,3 +406,30 @@
             (testing "depend on the Timeline"
               (is (= #{[{:model "Timeline" :id line-eid}]}
                      (set (serdes.base/serdes-dependencies ser))))))))))
+
+(deftest segments-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User       [{ann-id       :id}        {:first_name "Ann"
+                                                              :last_name  "Wilson"
+                                                              :email      "ann@heart.band"}]
+                       Database   [{db-id        :id}        {:name "My Database"}]
+                       Table      [{no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}]
+                       Segment    [{s1-id        :id
+                                    s1-eid       :entity_id} {:name       "My Segment"
+                                                              :creator_id ann-id
+                                                              :table_id   no-schema-id}]]
+      (testing "segment"
+        (let [ser (serdes.base/extract-one "Segment" {} (select-one "Segment" [:= :id s1-id]))]
+          (is (schema= {:serdes/meta                 (s/eq [{:model "Segment" :id s1-eid :label "My Segment"}])
+                        :table_id                    (s/eq ["My Database" nil "Schemaless Table"])
+                        :creator_id                  (s/eq "ann@heart.band")
+                        :created_at                  LocalDateTime
+                        (s/optional-key :updated_at) LocalDateTime
+                        s/Keyword                    s/Any}
+                       ser))
+          (is (not (contains? ser :id)))
+
+          (testing "depend on the Table"
+            (is (= #{[{:model "Database"   :id "My Database"}
+                      {:model "Table"      :id "Schemaless Table"}]}
+                   (set (serdes.base/serdes-dependencies ser))))))))))

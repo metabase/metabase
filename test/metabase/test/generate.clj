@@ -5,7 +5,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
                                      Dimension Field Metric NativeQuerySnippet PermissionsGroup
-                                     PermissionsGroupMembership Pulse PulseCard PulseChannel Table
+                                     PermissionsGroupMembership Pulse PulseCard PulseChannel Segment Table
                                      Timeline TimelineEvent User]]
             [reifyhealth.specmonstah.core :as rs]
             [reifyhealth.specmonstah.spec-gen :as rsg]
@@ -144,6 +144,7 @@
 (s/def ::field (s/keys :req-un [::id ::name ::base_type ::database_type ::position ::description]))
 
 (s/def ::metric (s/keys :req-un [::id ::name ::definition ::description]))
+(s/def ::segment (s/keys :req-un [::id ::name ::definition ::description]))
 (s/def ::table  (s/keys :req-un [::id ::active ::name ::description]))
 (s/def ::native-query-snippet (s/keys :req-un [::id ::name ::description ::content]))
 (s/def ::dashboard (s/keys :req-un [::id ::name ::description ::parameters]))
@@ -257,9 +258,12 @@
                                   :insert!   {:model TimelineEvent}
                                   :relations {:timeline_id [:timeline  :id]
                                               :creator_id  [:core-user :id]}}
-
+   :segment                      {:prefix    :seg
+                                  :spec      ::segment
+                                  :insert!   {:model Segment}
+                                  :relations {:creator_id [:core-user :id]
+                                              :table_id   [:table :id]}}
    ;; :revision {}
-   ;; :segment {}
    ;; :task-history {}
    })
 
