@@ -1,5 +1,5 @@
 import _ from "underscore";
-import moment from "moment";
+import moment from "moment-timezone";
 import { assoc } from "icepick";
 import inflection from "inflection";
 import { t, ngettext, msgid } from "ttag";
