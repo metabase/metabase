@@ -360,13 +360,35 @@
 
 (defmethod serdes.base/extract-one "PulseChannel"
   [_model-name _opts channel]
-  (-> (serdes.base/extract-one-basics "PulseChannel" channel)
-    (update :pulse_id           serdes.util/export-fk 'Pulse)))
+  (let [recipients (mapv :email (db/query {:select [:user.email]
+                                           :from [[:pulse_channel_recipient :pcr]]
+                                           :join [[:core_user :user] [:= :user.id :pcr.user_id]]
+                                           :where [:= :pcr.pulse_channel_id (:id channel)]}))]
+    (-> (serdes.base/extract-one-basics "PulseChannel" channel)
+        (update :pulse_id   serdes.util/export-fk 'Pulse)
+        (assoc  :recipients recipients))))
 
 (defmethod serdes.base/load-xform "PulseChannel" [channel]
   (-> channel
       serdes.base/load-xform-basics
       (update :pulse_id serdes.util/import-fk 'Pulse)))
+
+(defn- import-recipients [channel-id emails]
+  (let [incoming-users (db/select-ids 'User :email [:in emails])
+        current-users  (set (db/select-field :user_id PulseChannelRecipient :pulse_channel_id channel-id))
+        combined       (set/union incoming-users current-users)]
+    (when-not (empty? combined)
+      (update-recipients! channel-id combined))))
+
+;; Customized load-insert! and load-update! to handle the embedded recipients field - it's really a separate table.
+(defmethod serdes.base/load-insert! "PulseChannel" [_ ingested]
+  (let [id (db/simple-insert! PulseChannel (dissoc ingested :recipients))]
+    (import-recipients id (:recipients ingested))))
+
+(defmethod serdes.base/load-update! "PulseChannel" [_ ingested local]
+  (db/update! PulseChannel {:where [:= :id (:id local)] :set (dissoc ingested :recipients)})
+  (import-recipients (:id local) (:recipients ingested))
+  (:id local))
 
 ;; Depends on the Pulse.
 (defmethod serdes.base/serdes-dependencies "PulseChannel" [{:keys [pulse_id]}]
