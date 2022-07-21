@@ -3,15 +3,8 @@ import {
   showDashboardCardActions,
   popover,
   visitDashboard,
+  addTextBox,
 } from "__support__/e2e/helpers";
-
-function addTextBox(string) {
-  cy.icon("pencil").click();
-  cy.icon("string").click();
-  cy.findByPlaceholderText("Write here, and use Markdown if you'd like").type(
-    string,
-  );
-}
 
 describe("scenarios > dashboard > text-box", () => {
   beforeEach(() => {

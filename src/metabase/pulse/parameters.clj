@@ -1,7 +1,9 @@
 (ns metabase.pulse.parameters
   "Utilities for processing parameters for inclusion in dashboard subscriptions."
   (:require [clojure.string :as str]
+            [metabase.public-settings :as public-settings]
             [metabase.public-settings.premium-features :refer [defenterprise]]
+            [metabase.shared.parameters.parameters :as shared.params]
             [metabase.util :as u]
             [metabase.util.urls :as urls]
             [ring.util.codec :as codec]))
@@ -21,10 +23,13 @@
    (the-parameters subscription dashboard)))
 
 (defn value-string
-  "Returns the value of a dashboard filter as a comma-separated string"
+  "Returns the value(s) of a dashboard filter, formatted appropriately."
   [parameter]
-  (let [values (u/one-or-many (or (:value parameter) (:default parameter)))]
-    (str/join ", " values)))
+  (let [tyype  (:type parameter)
+        values (or (:value parameter) (:default parameter))]
+    (try (shared.params/formatted-value tyype values (public-settings/site-locale))
+         (catch Throwable _
+           (shared.params/formatted-list (u/one-or-many values))))))
 
 (defn dashboard-url
   "Given a dashboard's ID and parameters, returns a URL for the dashboard with filters included"
