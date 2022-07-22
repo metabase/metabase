@@ -28,7 +28,6 @@ import QueryModals from "../QueryModals";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
-import FilterSidebar from "./sidebars/FilterSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
@@ -147,7 +146,6 @@ class View extends React.Component {
       timelines,
       isResultDirty,
       isShowingSummarySidebar,
-      isShowingFilterSidebar,
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
       runQuestionQuery,
@@ -160,7 +158,6 @@ class View extends React.Component {
       deselectTimelineEvents,
       onOpenModal,
       onCloseSummary,
-      onCloseFilter,
       onCloseTimelines,
       onSave,
     } = this.props;
@@ -176,10 +173,6 @@ class View extends React.Component {
           runQuestionQuery={runQuestionQuery}
         />
       );
-    }
-
-    if (isShowingFilterSidebar) {
-      return <FilterSidebar question={question} onClose={onCloseFilter} />;
     }
 
     if (isShowingTimelineSidebar) {
@@ -467,7 +460,12 @@ class View extends React.Component {
     }
 
     if (card.dataset && queryBuilderMode === "dataset") {
-      return <DatasetEditor {...this.props} />;
+      return (
+        <>
+          <DatasetEditor {...this.props} />
+          <QueryModals {...this.props} />
+        </>
+      );
     }
 
     const isNotebookContainerOpen =

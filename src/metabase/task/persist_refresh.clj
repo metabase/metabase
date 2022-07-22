@@ -120,8 +120,7 @@
   "Seam for tests to pass in specific deletables to drop."
   [refresher deletables]
   (when (seq deletables)
-    (let [db-id->db    (u/key-by :id (db/select Database :id
-                                                [:in (map :database_id deletables)]))
+    (let [db-id->db    (m/index-by :id (db/select Database :id [:in (map :database_id deletables)]))
           unpersist-fn (fn []
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
@@ -379,7 +378,7 @@
   (some->> refresh-job-key
            task/job-info
            :triggers
-           (u/key-by (comp #(get % "db-id") qc/from-job-data :data))))
+           (m/index-by (comp #(get % "db-id") qc/from-job-data :data))))
 
 (defn job-info-for-individual-refresh
   "Return a set of PersistedInfo ids of all jobs scheduled for individual refreshes."

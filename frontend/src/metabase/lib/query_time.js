@@ -1,5 +1,5 @@
 import _ from "underscore";
-import moment from "moment";
+import moment from "moment-timezone";
 import { assoc } from "icepick";
 import inflection from "inflection";
 import { t, ngettext, msgid } from "ttag";
@@ -10,7 +10,6 @@ import { parseTimestamp } from "metabase/lib/time";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 export const DATETIME_UNITS = [
-  // "default",
   "minute",
   "hour",
   "day",
@@ -18,11 +17,9 @@ export const DATETIME_UNITS = [
   "month",
   "quarter",
   "year",
-  // "minute-of-hour",
   "hour-of-day",
   "day-of-week",
   "day-of-month",
-  // "day-of-year",
   "week-of-year",
   "month-of-year",
   "quarter-of-year",

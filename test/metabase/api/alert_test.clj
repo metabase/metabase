@@ -280,6 +280,7 @@
 (def ^:private daily-email-channel
   {:enabled       true
    :channel_type  "email"
+   :entity_id     true
    :schedule_type "daily"
    :schedule_hour 12
    :schedule_day  nil

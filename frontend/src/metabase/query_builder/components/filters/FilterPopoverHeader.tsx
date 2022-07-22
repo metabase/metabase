@@ -14,7 +14,6 @@ type Props = {
   filter: Filter;
   onFilterChange: (filter: any[]) => void;
   onBack: () => void;
-  isSidebar?: boolean;
 };
 
 export default function FilterPopoverHeader({
@@ -24,7 +23,6 @@ export default function FilterPopoverHeader({
   filter,
   onFilterChange,
   onBack,
-  isSidebar,
 }: Props) {
   const dimension = filter.dimension();
   if (!dimension) {
@@ -36,7 +34,7 @@ export default function FilterPopoverHeader({
 
   const showOperatorSelector = forceShowOperatorSelector ?? !field.isBoolean();
   const showHeader = showFieldPicker || showOperatorSelector;
-  const showOperatorSelectorOnOwnRow = isSidebar || !showFieldPicker;
+  const showOperatorSelectorOnOwnRow = !showFieldPicker;
 
   const setOperator = (operatorName: string) => {
     if (filter.operatorName() !== operatorName) {
@@ -46,10 +44,8 @@ export default function FilterPopoverHeader({
 
   return showHeader ? (
     <div
-      className={cx(className, "text-medium", {
+      className={cx(className, "text-medium p1 mb1 border-bottom", {
         "flex align-center": !showOperatorSelectorOnOwnRow,
-        "px1 pt1": isSidebar,
-        "p1 mb1 border-bottom": !isSidebar,
       })}
     >
       {showFieldPicker && (

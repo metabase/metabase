@@ -42,7 +42,7 @@ describe("visual tests > visualizations > scatter", () => {
     });
 
     ensureDcChartVisibility();
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("with log axes", () => {
@@ -70,7 +70,7 @@ describe("visual tests > visualizations > scatter", () => {
     });
 
     ensureDcChartVisibility();
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("with negative values and various bubble sizes", () => {
@@ -97,6 +97,6 @@ union all select 5, -20, 70`,
     });
 
     ensureDcChartVisibility();
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });

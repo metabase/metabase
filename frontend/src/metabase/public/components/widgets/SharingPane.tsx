@@ -12,9 +12,11 @@ import cx from "classnames";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   Description,
+  EmbedWidgetHeader,
   Header,
   IconContainer,
-  OptionHeader,
+  PublicEmbedHeader,
+  PublicLinkHeader,
 } from "./SharingPane.styled";
 
 type Resource = {
@@ -110,7 +112,7 @@ export default function SharingPane({
           </IconContainer>
         }
       >
-        <OptionHeader className="text-brand">{t`Public link`}</OptionHeader>
+        <PublicLinkHeader>{t`Public link`}</PublicLinkHeader>
         <Description className="mb1">{t`Share this ${resourceType} with people who don't have a Metabase account using the URL below:`}</Description>
         <CopyWidget value={publicLink} />
         {extensions && extensions.length > 0 && (
@@ -143,7 +145,7 @@ export default function SharingPane({
           <ResponsiveImage imageUrl="app/assets/img/simple_embed.png" />
         }
       >
-        <OptionHeader className="text-green">{t`Public embed`}</OptionHeader>
+        <PublicEmbedHeader>{t`Public embed`}</PublicEmbedHeader>
         <Description className="mb1">{t`Embed this ${resourceType} in blog posts or web pages by copying and pasting this snippet:`}</Description>
         <CopyWidget value={iframeSource} />
       </SharingOption>
@@ -162,7 +164,7 @@ export default function SharingPane({
           }
         }}
       >
-        <OptionHeader className="text-purple">{t`Embed this ${resourceType} in an application`}</OptionHeader>
+        <EmbedWidgetHeader>{t`Embed this ${resourceType} in an application`}</EmbedWidgetHeader>
         <Description>{t`By integrating with your application server code, you can provide a secure stats ${resourceType} limited to a specific user, customer, organization, etc.`}</Description>
         {embeddingHelperText && (
           <Description enableMouseEvents>{embeddingHelperText}</Description>

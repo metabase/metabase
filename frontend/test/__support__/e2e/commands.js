@@ -31,3 +31,5 @@ import "./commands/visibility/findByTextEnsureVisible";
 import "./commands/visibility/isRenderedWithinViewport";
 
 import "./commands/overwrites/log";
+
+import "./commands/percy/createPercySnapshot";

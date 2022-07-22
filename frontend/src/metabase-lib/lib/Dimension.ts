@@ -967,7 +967,7 @@ export class FieldDimension extends Dimension {
     const field = this.field();
 
     // Add FK dimensions if this field is an FK
-    if (field.target && field.target.table && field.target.table.fields) {
+    if (field.target?.table?.fields) {
       const fkDimensions = field.target.table.fields.map(
         field =>
           new FieldDimension(

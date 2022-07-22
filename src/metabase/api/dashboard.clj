@@ -579,11 +579,13 @@
 
     ;; show me categories
     (chain-filter 62 \"ee876336\" {})
-    ;; -> (\"African\" \"American\" \"Artisan\" ...)
+    ;; -> {:values          (\"African\" \"American\" \"Artisan\" ...)
+           :has_more_values false}
 
     ;; show me categories that have expensive restaurants
     (chain-filter 62 \"ee876336\" {\"6f10a41f\" 4})
-    ;; -> (\"Japanese\" \"Steakhouse\")"
+    ;; -> {:values          (\"Japanese\" \"Steakhouse\")
+           :has_more_values false}"
   ([dashboard param-key constraint-param-key->value]
    (chain-filter dashboard param-key constraint-param-key->value nil))
 
@@ -605,14 +607,17 @@
        ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
        ;; separate query for each Field (for parameters that are mapped to more than one Field)
       (try
-        (let [results (distinct (mapcat (if (seq query)
-                                          #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                          #(chain-filter/chain-filter % constraints :limit result-limit))
-                                        field-ids))]
+        (let [results (map (if (seq query)
+                               #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                                #(chain-filter/chain-filter % constraints :limit result-limit))
+                           field-ids)
+              values (distinct (mapcat :values results))
+              has_more_values (boolean (some true? (map :has_more_values results)))]
           ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
-          (if (sequential? (first results))
-            (sort-by second results)
-            (sort results)))
+          {:values          (if (sequential? (first values))
+                              (sort-by second values)
+                              (sort values))
+           :has_more_values has_more_values})
         (catch clojure.lang.ExceptionInfo e
           (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
             (api/throw-403 e)

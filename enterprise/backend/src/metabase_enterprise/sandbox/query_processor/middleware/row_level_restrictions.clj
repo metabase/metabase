@@ -4,6 +4,7 @@
   for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
   (:require [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
             [metabase.api.common :as api :refer [*current-user* *current-user-id* *current-user-permissions-set*]]
             [metabase.db.connection :as mdb.connection]
@@ -87,7 +88,7 @@
   (when-let [gtaps (some->> (query->all-table-ids query)
                             ((comp seq filter) table-should-have-segmented-permissions?)
                             tables->gtaps)]
-    (u/key-by :table_id gtaps)))
+    (m/index-by :table_id gtaps)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -178,7 +179,7 @@
 (s/defn ^:private reconcile-metadata :- (su/non-empty [su/Map])
   "Combine the metadata in `source-query-metadata` with the `table-metadata` from the Table being sandboxed."
   [source-query-metadata :- (su/non-empty [su/Map]) table-metadata]
-  (let [col-name->table-metadata (u/key-by :name table-metadata)]
+  (let [col-name->table-metadata (m/index-by :name table-metadata)]
     (vec
      (for [col   source-query-metadata
            :let  [table-col (get col-name->table-metadata (:name col))]
@@ -340,7 +341,7 @@
   final results metadata coming back matches what we'd get if the query was not running with a GTAP."
   [original-metadata metadata]
   (letfn [(merge-cols [cols]
-            (let [col-name->expected-col (u/key-by :name original-metadata)]
+            (let [col-name->expected-col (m/index-by :name original-metadata)]
               (for [col cols]
                 (merge
                  col

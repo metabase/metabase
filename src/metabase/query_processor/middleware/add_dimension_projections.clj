@@ -60,9 +60,9 @@
   [fields :- [mbql.s/Field]]
   (when-let [field-ids (not-empty (set (mbql.u/match fields [:field (id :guard integer?) _] id)))]
     (letfn [(thunk []
-              (u/key-by :field_id (db/select [Dimension :id :field_id :name :human_readable_field_id]
-                                    :field_id [:in field-ids]
-                                    :type     "external")))]
+              (m/index-by :field_id (db/select [Dimension :id :field_id :name :human_readable_field_id]
+                                      :field_id [:in field-ids]
+                                      :type     "external")))]
       (if (qp.store/initialized?)
         (qp.store/cached [::fetch-dimensions field-ids]
           (thunk))

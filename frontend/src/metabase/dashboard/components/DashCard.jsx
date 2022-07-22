@@ -245,6 +245,7 @@ export default class DashCard extends Component {
           rawSeries={series}
           showTitle={!this.props.isDataApp}
           isFullscreen={isFullscreen}
+          isNightMode={isNightMode}
           isDashboard
           dispatch={this.props.dispatch}
           dashboard={dashboard}

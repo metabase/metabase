@@ -12254,6 +12254,38 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v44.00-041
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to PulseCard, PulseChannel
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse_card
+
+  - changeSet:
+      id: v44.00-042
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to PulseCard, PulseChannel
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse_channel
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

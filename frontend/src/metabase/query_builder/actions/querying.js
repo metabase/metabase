@@ -147,13 +147,6 @@ export const runQuestionQuery = ({
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
 
-    // TODO Move this out from Redux action asap
-    // HACK: prevent SQL editor from losing focus
-    try {
-      // eslint-disable-next-line no-undef
-      ace.edit("id_sql").focus();
-    } catch (e) {}
-
     dispatch.action(RUN_QUERY, { cancelQueryDeferred });
   };
 };

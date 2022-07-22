@@ -11,7 +11,6 @@ type Props = {
   onFilterChange: (filter: any[]) => void;
   onCommit: (filter: any[]) => void;
 
-  isSidebar?: boolean;
   minWidth?: number | null;
   maxWidth?: number | null;
   primaryColor?: string;
@@ -39,7 +38,6 @@ export default class FilterPopoverPicker extends React.Component<Props> {
       filter,
       onFilterChange,
       onCommit,
-      isSidebar,
       minWidth,
       maxWidth,
       primaryColor,
@@ -64,7 +62,6 @@ export default class FilterPopoverPicker extends React.Component<Props> {
         onFilterChange={onFilterChange}
         minWidth={minWidth}
         maxWidth={maxWidth}
-        isSidebar={isSidebar}
       />
     ) : field?.isBoolean() ? (
       <BooleanPicker
@@ -81,7 +78,6 @@ export default class FilterPopoverPicker extends React.Component<Props> {
         onCommit={onCommit}
         minWidth={minWidth}
         maxWidth={maxWidth}
-        isSidebar={isSidebar}
         checkedColor={checkedColor}
       />
     );

@@ -16,6 +16,7 @@ export const DashboardHeaderButton = styled(Button)`
   height: 2rem;
   width: 2rem;
   color: ${props => (props.isActive ? color("brand") : color("text-dark"))};
+  font-size: 1rem;
 
   &:hover {
     color: ${color("brand")};

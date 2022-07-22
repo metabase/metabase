@@ -5,7 +5,8 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
                                      Dimension Field Metric NativeQuerySnippet PermissionsGroup
-                                     PermissionsGroupMembership Pulse PulseCard PulseChannel Table User]]
+                                     PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
+                                     Segment Table Timeline TimelineEvent User]]
             [reifyhealth.specmonstah.core :as rs]
             [reifyhealth.specmonstah.spec-gen :as rsg]
             [talltale.core :as tt]
@@ -143,6 +144,7 @@
 (s/def ::field (s/keys :req-un [::id ::name ::base_type ::database_type ::position ::description]))
 
 (s/def ::metric (s/keys :req-un [::id ::name ::definition ::description]))
+(s/def ::segment (s/keys :req-un [::id ::name ::definition ::description]))
 (s/def ::table  (s/keys :req-un [::id ::active ::name ::description]))
 (s/def ::native-query-snippet (s/keys :req-un [::id ::name ::description ::content]))
 (s/def ::dashboard (s/keys :req-un [::id ::name ::description ::parameters]))
@@ -155,6 +157,13 @@
 (s/def ::schedule_type ::not-empty-string)
 
 (s/def ::pulse-channel (s/keys :req-un [::id ::channel_type ::details ::schedule_type]))
+(s/def ::pulse-channel-recipient (s/keys :req-un [::id]))
+
+(s/def ::icon           (s/and ::name #(< (count %) 100)))
+(s/def ::time_matters   boolean?)
+(s/def ::timezone       (set (java.time.ZoneId/getAvailableZoneIds)))
+(s/def ::timeline       (s/keys :req-un [::id ::name ::description ::icon]))
+(s/def ::timeline-event (s/keys :req-un [::id ::name ::description ::icon ::timestamp ::timezone ::time_matters]))
 
 ;; (gen/generate (s/gen ::collection))
 
@@ -235,14 +244,33 @@
                                   :spec      ::pulse-card
                                   :insert!   {:model PulseCard}
                                   :relations {:pulse_id [:pulse :id]
-                                              :card_id  [:card :id]}}
+                                              :card_id  [:card :id]
+                                              :dashboard_card_id [:dashboard-card :id]}}
    :pulse-channel                {:prefix    :pulse-channel
                                   :spec      ::pulse-channel
                                   :insert!   {:model PulseChannel}
                                   :relations {:pulse_id [:pulse :id]}}
-
+   :pulse-channel-recipient      {:prefix    :pcr
+                                  :spec      ::pulse-channel-recipient
+                                  :insert!   {:model PulseChannelRecipient}
+                                  :relations {:pulse_channel_id [:pulse-channel :id]
+                                              :user_id          [:core-user     :id]}}
+   :timeline                     {:prefix    :timeline
+                                  :spec      ::timeline
+                                  :insert!   {:model Timeline}
+                                  :relations {:collection_id [:collection :id]
+                                              :creator_id    [:core-user  :id]}}
+   :timeline-event               {:prefix    :tl-event
+                                  :spec      ::timeline-event
+                                  :insert!   {:model TimelineEvent}
+                                  :relations {:timeline_id [:timeline  :id]
+                                              :creator_id  [:core-user :id]}}
+   :segment                      {:prefix    :seg
+                                  :spec      ::segment
+                                  :insert!   {:model Segment}
+                                  :relations {:creator_id [:core-user :id]
+                                              :table_id   [:table :id]}}
    ;; :revision {}
-   ;; :segment {}
    ;; :task-history {}
    })
 

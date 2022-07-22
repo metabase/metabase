@@ -780,6 +780,7 @@ workflows:
           # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
           # that overrides the MB_MYSQL_TEST_* values with them
           # the MYSQL_RDS_SSL_INSTANCE vars are secret and/or changeable, so they are defined in the CircleCI settings
+          timeout: 30m
           extra-env: >-
             MB_MYSQL_SSL_TEST_HOST=$MYSQL_RDS_SSL_INSTANCE_HOST
             MB_MYSQL_SSL_TEST_SSL=true

@@ -3,7 +3,12 @@ import { render, screen } from "@testing-library/react";
 import "mutationobserver-shim";
 
 import { ORDERS, PRODUCTS, PEOPLE } from "__support__/sample_database_fixture";
-import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
+import {
+  FieldValuesWidget,
+  searchField,
+  isSearchable,
+  getValuesMode,
+} from "metabase/components/FieldValuesWidget";
 
 const mock = (object, properties) =>
   Object.assign(Object.create(object), properties);
@@ -184,6 +189,145 @@ describe("FieldValuesWidget", () => {
         fields: [mock(PRODUCTS.PRICE, { has_field_values: "none" })],
       });
       expect(screen.queryByTestId("input-prefix")).toBeNull();
+    });
+  });
+
+  describe("searchField", () => {
+    describe("`disablePKRemappingForSearch` is true and field is a PK", () => {
+      const disablePKRemappingForSearch = true;
+      const stringPKField = mock(PRODUCTS.ID, {
+        base_type: "type/Text",
+      });
+      const numberPKField = mock(PRODUCTS.ID, {
+        base_type: "type/Number",
+      });
+
+      it("should return same field when the field is searchable (the field is a string AND a PK)", () => {
+        expect(searchField(stringPKField, disablePKRemappingForSearch)).toBe(
+          stringPKField,
+        );
+      });
+
+      it("should return null when field is not searchable (the field is NOT a string PK)", () => {
+        expect(
+          searchField(numberPKField, disablePKRemappingForSearch),
+        ).toBeNull();
+      });
+    });
+
+    describe("when the field is remapped to a searchable field", () => {
+      const stringField = mock(PRODUCTS.TITLE, {});
+      const remappedField = mock(PRODUCTS.CATEGORY, {
+        remappedField: () => stringField,
+      });
+
+      it("should return the remapped field", () => {
+        expect(searchField(remappedField)).toBe(stringField);
+      });
+    });
+
+    describe("when the field is remapped to a non-searchable field", () => {
+      it("should ignore it and return the original field, assuming it is searchable", () => {
+        const numberField = mock(ORDERS.TOTAL, {});
+        const remappedField = mock(PRODUCTS.CATEGORY, {
+          remappedField: () => numberField,
+        });
+        const nonsearchableRemappedField = mock(PRODUCTS.ID, {
+          remappedField: () => numberField,
+        });
+
+        expect(searchField(remappedField)).toBe(remappedField);
+        expect(searchField(nonsearchableRemappedField)).toBeNull();
+      });
+    });
+
+    it("should return the field if it is searchable", () => {
+      const searchableField = mock(PRODUCTS.TITLE, {});
+      expect(searchField(searchableField)).toBe(searchableField);
+    });
+
+    it("should return null if the field is not searchable", () => {
+      const nonsearchableField = mock(PRODUCTS.ID, {});
+      expect(searchField(nonsearchableField)).toBeNull();
+    });
+  });
+
+  describe("isSearchable", () => {
+    const listField = mock(PRODUCTS.CATEGORY, { has_field_values: "list" });
+    const searchField = mock(PRODUCTS.CATEGORY, { has_field_values: "search" });
+    const noneField = mock(PRODUCTS.CATEGORY, { has_field_values: "none" });
+    const nonexhaustiveListField = mock(PRODUCTS.CATEGORY, {
+      has_field_values: "list",
+      has_more_values: true,
+    });
+
+    const idField = mock(PRODUCTS.ID, {});
+
+    describe("when the `valuesMode` is already set to 'search'", () => {
+      it("should return return true unless fully disabled", () => {
+        expect(
+          isSearchable({ valuesMode: "search", disableSearch: true }),
+        ).toBe(false);
+        expect(isSearchable({ valuesMode: "search" })).toBe(true);
+      });
+    });
+
+    it("should be false when the list of fields includes one that is not searchable", () => {
+      const fields = [searchField, idField];
+      expect(isSearchable({ fields })).toBe(false);
+    });
+
+    describe("when all fields are searchable", () => {
+      it("should be false if there are any fields that are set to show no values", () => {
+        const fields = [searchField, noneField];
+        expect(isSearchable({ fields })).toBe(false);
+      });
+
+      it("should be false if there are no fields that require search", () => {
+        const fields = [listField];
+        expect(isSearchable({ fields })).toBe(false);
+      });
+
+      it("should be true if there is at least one field that requires search", () => {
+        const fields = [searchField, listField];
+        expect(isSearchable({ fields })).toBe(true);
+      });
+
+      it("should be true if there is at least one field that shows a list but said list is not exhaustive", () => {
+        const fields = [nonexhaustiveListField, listField];
+        expect(isSearchable({ fields })).toBe(true);
+      });
+    });
+  });
+
+  describe("getValuesMode", () => {
+    describe("when passed no fields", () => {
+      it("should return 'none'", () => {
+        expect(getValuesMode([])).toBe("none");
+      });
+    });
+
+    describe("when passed fields that are searchable", () => {
+      it("it should return 'search'", () => {
+        const fields = [
+          mock(PRODUCTS.CATEGORY, { has_field_values: "search" }),
+        ];
+        expect(getValuesMode(fields)).toBe("search");
+      });
+    });
+
+    describe("when passed fields that are not searchable but listable", () => {
+      it("it should return 'list'", () => {
+        const fields = [mock(PRODUCTS.CATEGORY, { has_field_values: "list" })];
+        expect(getValuesMode(fields)).toBe("list");
+      });
+    });
+
+    describe("when passed fields that are not searchable and not listable", () => {
+      it("it should return 'none'", () => {
+        const fields = [mock(PRODUCTS.CATEGORY, { has_field_values: "none" })];
+        expect(getValuesMode(fields)).toBe("none");
+      });
     });
   });
 });

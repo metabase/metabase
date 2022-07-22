@@ -21,6 +21,7 @@
             [metabase.query-processor.dashboard :as qp.dashboard]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.server.middleware.session :as mw.session]
+            [metabase.shared.parameters.parameters :as shared.params]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.retry :as retry]
@@ -45,6 +46,22 @@
        {:value default-value})
      (dissoc parameter :default))))
 
+(defn- process-virtual-dashcard
+  "Given a dashcard and the parameters on a dashboard, returns the dashcard with any parameter values appropriately
+  substituted into connected variables in the text."
+  [dashcard parameters]
+  (let [text               (-> dashcard :visualization_settings :text)
+        parameter-mappings (:parameter_mappings dashcard)
+        tag-names          (shared.params/tag_names text)
+        param-id->param    (into {} (map (juxt :id identity) parameters))
+        tag-name->param-id (into {} (map (juxt (comp second :target) :parameter_id) parameter-mappings))
+        tag->param         (reduce (fn [m tag-name]
+                                     (when-let [param-id (get tag-name->param-id tag-name)]
+                                       (assoc m tag-name (get param-id->param param-id))))
+                                   {}
+                                   tag-names)]
+    (update-in dashcard [:visualization_settings :text] shared.params/substitute_tags tag->param (public-settings/site-locale))))
+
 (defn- execute-dashboard-subscription-card
   [owner-id dashboard dashcard card-or-id parameters]
   (try
@@ -57,7 +74,7 @@
                      :dashcard-id   (u/the-id dashcard)
                      :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
                      :export-format :api
-                     :parameters    (merge-default-values parameters)
+                     :parameters    parameters
                      :middleware    {:process-viz-settings? true
                                      :js-int-to-string?     false}
                      :run           (fn [query info]
@@ -83,12 +100,15 @@
   [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as _options}]
   (let [dashboard-id      (u/the-id dashboard)
         dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
-        ordered-dashcards (sort dashcard-comparator dashcards)]
+        ordered-dashcards (sort dashcard-comparator dashcards)
+        parameters        (merge-default-values (params/parameters pulse dashboard))]
     (for [dashcard ordered-dashcards]
       (if-let [card-id (:card_id dashcard)]
-        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id (params/parameters pulse dashboard))
-        ;; For virtual cards, return the viz settings map directly
-        (-> dashcard :visualization_settings)))))
+        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id parameters)
+        ;; For virtual cards, return just the viz settings map, with any parameter values substituted appropriately
+        (-> dashcard
+            (process-virtual-dashcard parameters)
+            :visualization_settings)))))
 
 (defn- database-id [card]
   (or (:database_id card)

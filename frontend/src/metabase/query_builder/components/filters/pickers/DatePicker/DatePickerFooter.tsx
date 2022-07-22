@@ -18,7 +18,6 @@ import {
 } from "metabase/lib/query_time";
 
 type Props = {
-  isSidebar?: boolean;
   primaryColor?: string;
   hideTimeSelectors?: boolean;
 
@@ -39,7 +38,6 @@ const getIntervalString = (filter: Filter) => {
 
 const DatePickerFooter: React.FC<Props> = ({
   filter,
-  isSidebar,
   primaryColor,
   onFilterChange,
   hideTimeSelectors,
@@ -109,7 +107,7 @@ const DatePickerFooter: React.FC<Props> = ({
   }
 
   return (
-    <Container isSidebar={isSidebar}>
+    <Container>
       {content || <div />}
       {children}
     </Container>
