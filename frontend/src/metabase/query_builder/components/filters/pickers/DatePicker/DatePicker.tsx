@@ -281,7 +281,7 @@ const DatePicker: React.FC<Props> = props => {
   };
 
   return (
-    <div className={cx(className)}>
+    <div className={cx(className)} data-testid="date-picker">
       {!operator || showShortcuts ? (
         <DatePickerShortcuts
           className="p2"
