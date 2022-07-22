@@ -3,7 +3,7 @@
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field Metric
-                                     NativeQuerySnippet Segment Table Timeline TimelineEvent User]]
+                                     NativeQuerySnippet Pulse PulseCard Segment Table Timeline TimelineEvent User]]
             [metabase.models.serialization.base :as serdes.base]
             [schema.core :as s])
   (:import [java.time LocalDateTime OffsetDateTime]))
@@ -432,4 +432,176 @@
           (testing "depend on the Table"
             (is (= #{[{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}]}
+                   (set (serdes.base/serdes-dependencies ser))))))))))
+
+(deftest pulses-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User       [{ann-id       :id}        {:first_name "Ann"
+                                                              :last_name  "Wilson"
+                                                              :email      "ann@heart.band"}]
+                       Collection [{coll-id      :id
+                                    coll-eid     :entity_id} {:name "Some Collection"}]
+                       Dashboard  [{dash-id      :id
+                                    dash-eid     :entity_id} {:name "A Dashboard"}]
+                       Pulse      [{p-none-id    :id
+                                    p-none-eid   :entity_id} {:name       "Pulse w/o collection or dashboard"
+                                                              :creator_id ann-id}]
+                       Pulse      [{p-coll-id    :id
+                                    p-coll-eid   :entity_id} {:name          "Pulse with only collection"
+                                                              :creator_id    ann-id
+                                                              :collection_id coll-id}]
+                       Pulse      [{p-dash-id    :id
+                                    p-dash-eid   :entity_id} {:name         "Pulse with only dashboard"
+                                                              :creator_id   ann-id
+                                                              :dashboard_id dash-id}]
+                       Pulse      [{p-both-id    :id
+                                    p-both-eid   :entity_id} {:name          "Pulse with both collection and dashboard"
+                                                              :creator_id    ann-id
+                                                              :collection_id coll-id
+                                                              :dashboard_id  dash-id}]]
+      (testing "pulse with neither collection nor dashboard"
+        (let [ser (serdes.base/extract-one "Pulse" {} (select-one "Pulse" [:= :id p-none-id]))]
+          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id p-none-eid}])
+                        :creator_id                     (s/eq "ann@heart.band")
+                        :created_at                     LocalDateTime
+                        (s/optional-key :updated_at)    LocalDateTime
+                        (s/optional-key :dashboard_id)  (s/eq nil)
+                        (s/optional-key :collection_id) (s/eq nil)
+                        s/Keyword                       s/Any}
+                       ser))
+          (is (not (contains? ser :id)))
+
+          (testing "has no deps"
+            (is (= #{}
+                   (set (serdes.base/serdes-dependencies ser)))))))
+
+      (testing "pulse with just collection"
+        (let [ser (serdes.base/extract-one "Pulse" {} (select-one "Pulse" [:= :id p-coll-id]))]
+          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id p-coll-eid}])
+                        :creator_id                     (s/eq "ann@heart.band")
+                        :created_at                     LocalDateTime
+                        (s/optional-key :updated_at)    LocalDateTime
+                        (s/optional-key :dashboard_id)  (s/eq nil)
+                        :collection_id                  (s/eq coll-eid)
+                        s/Keyword                       s/Any}
+                       ser))
+          (is (not (contains? ser :id)))
+
+          (testing "depends on the collection"
+            (is (= #{[{:model "Collection" :id coll-eid}]}
+                   (set (serdes.base/serdes-dependencies ser)))))))
+
+      (testing "pulse with just dashboard"
+        (let [ser (serdes.base/extract-one "Pulse" {} (select-one "Pulse" [:= :id p-dash-id]))]
+          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id p-dash-eid}])
+                        :creator_id                     (s/eq "ann@heart.band")
+                        :created_at                     LocalDateTime
+                        (s/optional-key :updated_at)    LocalDateTime
+                        :dashboard_id                   (s/eq dash-eid)
+                        (s/optional-key :collection_id) (s/eq nil)
+                        s/Keyword                       s/Any}
+                       ser))
+          (is (not (contains? ser :id)))
+
+          (testing "depends on the dashboard"
+            (is (= #{[{:model "Dashboard" :id dash-eid}]}
+                   (set (serdes.base/serdes-dependencies ser)))))))
+
+      (testing "pulse with both collection and dashboard"
+        (let [ser (serdes.base/extract-one "Pulse" {} (select-one "Pulse" [:= :id p-both-id]))]
+          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id p-both-eid}])
+                        :creator_id                     (s/eq "ann@heart.band")
+                        :created_at                     LocalDateTime
+                        (s/optional-key :updated_at)    LocalDateTime
+                        :dashboard_id                   (s/eq dash-eid)
+                        :collection_id                  (s/eq coll-eid)
+                        s/Keyword                       s/Any}
+                       ser))
+          (is (not (contains? ser :id)))
+
+          (testing "depends on the collection and dashboard"
+            (is (= #{[{:model "Collection" :id coll-eid}]
+                     [{:model "Dashboard"  :id dash-eid}]}
+                   (set (serdes.base/serdes-dependencies ser))))))))))
+
+(deftest pulse-cards-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User          [{ann-id        :id}        {:first_name "Ann"
+                                                                  :last_name  "Wilson"
+                                                                  :email      "ann@heart.band"}]
+                       Dashboard     [{dash-id       :id}        {:name "A Dashboard"}]
+                       Database      [{db-id         :id}        {:name "My Database"}]
+                       Table         [{table-id      :id}        {:name "Schemaless Table" :db_id db-id}]
+                       Card          [{card1-id      :id
+                                       card1-eid     :entity_id} {:name          "Some Question"
+                                                                  :database_id   db-id
+                                                                  :table_id      table-id
+                                                                  :creator_id    ann-id
+                                                                  :dataset_query "{\"json\": \"string values\"}"}]
+                       DashboardCard [{dashcard-id   :id
+                                       dashcard-eid  :entity_id} {:card_id       card1-id
+                                                                  :dashboard_id  dash-id}]
+                       Pulse         [{pulse-id      :id
+                                       pulse-eid     :entity_id} {:name       "Legacy Pulse"
+                                                                  :creator_id ann-id}]
+                       Pulse         [{sub-id        :id
+                                       sub-eid       :entity_id} {:name       "Dashboard sub"
+                                                                  :creator_id ann-id
+                                                                  :dashboard_id dash-id}]
+                       PulseCard     [{pc1-pulse-id  :id
+                                       pc1-pulse-eid :entity_id} {:pulse_id          pulse-id
+                                                                  :card_id           card1-id
+                                                                  :position          1}]
+                       PulseCard     [{pc2-pulse-id  :id
+                                       pc2-pulse-eid :entity_id} {:pulse_id          pulse-id
+                                                                  :card_id           card1-id
+                                                                  :position          2}]
+                       PulseCard     [{pc1-sub-id    :id
+                                       pc1-sub-eid   :entity_id} {:pulse_id          sub-id
+                                                                  :card_id           card1-id
+                                                                  :position          1
+                                                                  :dashboard_card_id dashcard-id}]]
+      (testing "legacy pulse cards"
+        (let [ser (serdes.base/extract-one "PulseCard" {} (select-one "PulseCard" [:= :id pc1-pulse-id]))]
+          (is (schema= {:serdes/meta                        (s/eq [{:model "Pulse" :id pulse-eid}
+                                                                   {:model "PulseCard" :id pc1-pulse-eid}])
+                        :card_id                            (s/eq card1-eid)
+                        (s/optional-key :dashboard_card_id) (s/eq nil)
+                        s/Keyword                           s/Any}
+                       ser))
+          (is (not (contains? ser :id)))
+
+          (testing "depends on the pulse and card"
+            (is (= #{[{:model "Pulse" :id pulse-eid}]
+                     [{:model "Card"  :id card1-eid}]}
+                   (set (serdes.base/serdes-dependencies ser))))))
+
+        (let [ser (serdes.base/extract-one "PulseCard" {} (select-one "PulseCard" [:= :id pc2-pulse-id]))]
+          (is (schema= {:serdes/meta                        (s/eq [{:model "Pulse" :id pulse-eid}
+                                                                   {:model "PulseCard" :id pc2-pulse-eid}])
+                        :card_id                            (s/eq card1-eid)
+                        (s/optional-key :dashboard_card_id) (s/eq nil)
+                        s/Keyword                           s/Any}
+                       ser))
+          (is (not (contains? ser :id)))
+
+          (testing "depends on the pulse and card"
+            (is (= #{[{:model "Pulse" :id pulse-eid}]
+                     [{:model "Card"  :id card1-eid}]}
+                   (set (serdes.base/serdes-dependencies ser)))))))
+
+      (testing "dashboard sub cards"
+        (let [ser (serdes.base/extract-one "PulseCard" {} (select-one "PulseCard" [:= :id pc1-sub-id]))]
+          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id sub-eid}
+                                                               {:model "PulseCard" :id pc1-sub-eid}])
+                        :card_id                        (s/eq card1-eid)
+                        :dashboard_card_id              (s/eq dashcard-eid)
+                        s/Keyword                       s/Any}
+                       ser))
+          (is (not (contains? ser :id)))
+
+          (testing "depends on the pulse, card and dashcard"
+            (is (= #{[{:model "Pulse" :id sub-eid}]
+                     [{:model "Card"  :id card1-eid}]
+                     [{:model "DashboardCard" :id dashcard-eid}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))
