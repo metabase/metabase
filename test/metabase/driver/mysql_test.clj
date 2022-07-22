@@ -446,15 +446,15 @@
   (let [boop-identifier (:form (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {}))]
     (testing "Transforming MBQL query with JSON in it to mysql query works"
       (let [boop-field {:nfc_path [:bleh :meh] :database_type "integer"}]
-        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"meh\""]
+        (is (= ["CAST(JSON_EXTRACT(boop.bleh, ?) AS integer)" "$.\"meh\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "integer"}]
-        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"meh\".\"foobar\".\"1234\""]
+        (is (= ["CAST(JSON_EXTRACT(boop.bleh, ?) AS integer)" "$.\"meh\".\"foobar\".\"1234\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier weird-field))))))
     (testing "Doesn't complain when field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
-        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"boop\".\"foobar\".\"1234\""]
+        (is (= ["CAST(JSON_EXTRACT(boop.bleh, ?) AS boolean)" "$.\"boop\".\"foobar\".\"1234\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
 
 (deftest json-alias-test

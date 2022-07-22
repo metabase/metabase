@@ -239,14 +239,15 @@
 (defmethod sql.qp/json-query :mysql
   [_ unwrapped-identifier stored-field]
   (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
-    (let [nfc-path             (:nfc_path stored-field)
+    (let [field-type           (:database_type stored-field)
+          nfc-path             (:nfc_path stored-field)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
           jsonpath-query       (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))]
       (reify
         hformat/ToSql
         (to-sql [_]
           (hformat/to-params-default jsonpath-query "nfc_path")
-          (format "JSON_EXTRACT(%s, ?)" (hformat/to-sql parent-identifier)))))))
+          (format "CAST(JSON_EXTRACT(%s, ?) AS %s)" (hformat/to-sql parent-identifier) field-type))))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as clause]]
