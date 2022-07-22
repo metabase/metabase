@@ -143,15 +143,6 @@
   background-color: var(--color-accent2);
 }
 
-.bg-green,
-.bg-green-hover:hover {
-  background-color: var(--color-accent1);
-}
-.bg-green-saturated,
-.bg-green-saturated-hover:hover {
-  background-color: var(--color-accent1);
-}
-
 /* alt */
 .bg-alt,
 .bg-alt-hover:hover {
