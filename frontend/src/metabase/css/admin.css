@@ -238,7 +238,6 @@
 .TableEditor-field-semantic-type,
 .TableEditor-field-target {
   margin-top: 3px;
-  /*color: var(--color-accent1);*/
 }
 
 .TableEditor-field-semantic-type .ColumnarSelector-row:hover,
