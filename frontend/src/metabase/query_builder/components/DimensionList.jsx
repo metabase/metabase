@@ -10,6 +10,7 @@ import Tooltip from "metabase/components/Tooltip";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { DimensionPicker } from "./DimensionPicker";
+import { FieldListGroupingTrigger } from "./DimensionList.styled";
 
 const SUBMENU_TETHER_OPTIONS = {
   attachment: "top left",
@@ -162,13 +163,13 @@ export default class DimensionList extends Component {
     const name = subDimension ? subDimension.subTriggerDisplayName() : null;
 
     return (
-      <div
+      <FieldListGroupingTrigger
         className="FieldList-grouping-trigger text-white-hover flex align-center p1 cursor-pointer"
         data-testid="dimension-list-item-binning"
       >
         {name && <h4>{name}</h4>}
         {!multiSelect && <Icon name="chevronright" className="ml1" size={16} />}
-      </div>
+      </FieldListGroupingTrigger>
     );
   }
 

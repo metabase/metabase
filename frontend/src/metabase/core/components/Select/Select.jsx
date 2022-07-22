@@ -59,6 +59,7 @@ class Select extends Component {
     optionDisabledFn: PropTypes.func,
     optionIconFn: PropTypes.func,
     optionClassNameFn: PropTypes.func,
+    optionStylesFn: PropTypes.func,
   };
 
   static defaultProps = {
@@ -257,6 +258,7 @@ class Select extends Component {
           itemIsClickable={this.itemIsClickable}
           renderItemName={this.props.optionNameFn}
           getItemClassName={this.props.optionClassNameFn}
+          getItemStyles={this.props.optionStylesFn}
           renderItemDescription={this.props.optionDescriptionFn}
           renderItemIcon={this.renderItemIcon}
           onChange={this.handleChange}

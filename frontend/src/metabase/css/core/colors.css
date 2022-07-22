@@ -6,7 +6,6 @@
   --color-brand-light: #ddecfa;
   --color-accent1: #88bf4d;
   --color-accent2: #a989c5;
-  --color-accent7: #7172ad;
   --color-admin-navbar: #7172ad;
   --color-white: #ffffff;
   --color-black: #2e353b;
@@ -114,11 +113,6 @@
   background-color: var(--color-bg-white);
 }
 
-.text-purple,
-.text-purple-hover:hover {
-  color: var(--color-accent7);
-}
-
 .text-green,
 .text-green-hover:hover {
   color: var(--color-accent1);
@@ -147,10 +141,6 @@
 .bg-purple,
 .bg-purple-hover:hover {
   background-color: var(--color-accent2);
-}
-
-.bg-purple-light {
-  background-color: color-mod(var(--color-accent7) alpha(-85%));
 }
 
 .bg-green,

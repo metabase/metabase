@@ -5,8 +5,8 @@ import { has24HourModeSetting } from "metabase/lib/time";
 import NumericInput from "metabase/components/NumericInput";
 import Icon from "metabase/components/Icon";
 
-import cx from "classnames";
 import moment from "moment";
+import { AmPmLabel } from "./HoursMinutesInput.styled";
 
 const HoursMinutesInput = ({
   hours,
@@ -48,24 +48,18 @@ const HoursMinutesInput = ({
     />
     {!is24HourMode && (
       <div className="flex align-center pl1">
-        <span
-          className={cx("text-purple-hover mr1", {
-            "text-purple text-heavy": hours < 12,
-            "cursor-pointer": hours >= 12,
-          })}
+        <AmPmLabel
+          isSelected={hours < 12}
           onClick={hours >= 12 ? () => onChangeHours(hours - 12) : null}
         >
           {moment.localeData().meridiem(0)}
-        </span>
-        <span
-          className={cx("text-purple-hover mr1", {
-            "text-purple text-heavy": hours >= 12,
-            "cursor-pointer": hours < 12,
-          })}
+        </AmPmLabel>
+        <AmPmLabel
+          isSelected={hours >= 12}
           onClick={hours < 12 ? () => onChangeHours(hours + 12) : null}
         >
           {moment.localeData().meridiem(12)}
-        </span>
+        </AmPmLabel>
       </div>
     )}
     {onClear && (

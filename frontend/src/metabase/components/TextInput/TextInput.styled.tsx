@@ -15,7 +15,7 @@ const BORDER_RADIUS = {
 
 const BORDER_COLOR = {
   default: () => color("brand"),
-  admin: () => color("accent7"),
+  admin: () => color("filter"),
   transparent: () => "transparent",
 };
 

@@ -138,7 +138,7 @@ const getSchemeColor = (colorScheme: RadioColorScheme): string => {
     case "default":
       return color("brand");
     case "accent7":
-      return color("accent7");
+      return color("filter");
   }
 };
 
