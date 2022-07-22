@@ -52,7 +52,7 @@ export default function CurrentPicker(props: CurrentPickerProps) {
     filter: [operator, field, _intervals, unit],
   } = props;
   return (
-    <div className={className}>
+    <div className={className} data-testid="current-date-picker">
       {DATE_PERIODS.map((periods, index) => (
         <CurrentContainer key={periods.length} first={index === 0}>
           {periods.map(period => (
