@@ -220,10 +220,6 @@
   color: white !important;
 }
 
-.TableEditor-field-type {
-  /*color: var(--color-accent2);*/
-}
-
 .TableEditor-field-type .ColumnarSelector-row:hover {
   background-color: var(--color-brand) !important;
   color: white !important;
