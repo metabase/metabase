@@ -138,11 +138,6 @@
   background-color: var(--color-bg-light);
 }
 
-.bg-purple,
-.bg-purple-hover:hover {
-  background-color: var(--color-accent2);
-}
-
 .bg-green,
 .bg-green-hover:hover {
   background-color: var(--color-accent1);
@@ -258,13 +253,6 @@
 }
 .text-data {
   color: var(--color-accent1);
-}
-
-.bg-segment {
-  background-color: var(--color-accent2);
-}
-.text-segment {
-  color: var(--color-accent2);
 }
 
 .bg-dashboard {
