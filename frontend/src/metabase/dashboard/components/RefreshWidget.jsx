@@ -76,7 +76,6 @@ export default class RefreshWidget extends Component {
                 <CountdownIcon
                   width={18}
                   height={18}
-                  className="text-green"
                   percent={Math.min(0.95, (period - elapsed) / period)}
                 />
               </DashboardHeaderButton>
