@@ -2,8 +2,8 @@
 import React from "react";
 import cx from "classnames";
 
-import OperatorSelector from "../filters/OperatorSelector";
-import SidebarHeader from "../SidebarHeader";
+import OperatorSelector from "../OperatorSelector";
+import SidebarHeader from "../../SidebarHeader";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 type Props = {
