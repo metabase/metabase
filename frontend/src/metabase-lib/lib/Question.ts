@@ -345,7 +345,7 @@ class QuestionInner {
     }
 
     const display = this.display();
-    const isScalar = ["scalar", "progress", "gauge"].includes(display);
+    const isScalar = SCALAR_DISPLAY_TYPES.includes(display);
     const isOneByOne = rows.length === 1 && cols.length === 1;
     const newDisplay =
       !isScalar && isOneByOne // if we have a 1x1 data result then this should always be viewed as a scalar
@@ -1372,3 +1372,5 @@ export default class Question extends memoizeClass<QuestionInner>(
     return new Question(card, metadata, parameterValues);
   }
 }
+
+export const SCALAR_DISPLAY_TYPES = ["scalar", "progress", "gauge"];

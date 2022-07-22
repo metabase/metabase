@@ -5,13 +5,20 @@ import {
   SAMPLE_DATABASE,
   ORDERS,
   PRODUCTS,
+  PEOPLE,
   createMetadata,
 } from "__support__/sample_database_fixture";
 
-import Question from "metabase-lib/lib/Question";
+import Question, { SCALAR_DISPLAY_TYPES } from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+import {
+  ALERT_TYPE_PROGRESS_BAR_GOAL,
+  ALERT_TYPE_ROWS,
+  ALERT_TYPE_TIMESERIES_GOAL,
+} from "metabase-lib/lib/Alert";
 
 import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 
@@ -98,6 +105,136 @@ const orders_count_by_id_card = {
       "source-table": ORDERS.id,
       aggregation: [["count"]],
       breakout: [["field", ORDERS.ID.id, null]],
+    },
+  },
+};
+
+const people_count_by_state_card = {
+  id: 2,
+  name: "# people by state",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": PEOPLE.id,
+      breakout: [["field", PEOPLE.STATE.id, null]],
+      aggregation: [["count"]],
+    },
+  },
+};
+
+const orders_count_and_sum_by_day_of_week_card = {
+  id: 2,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT.id,
+          {
+            "temporal-unit": "day-of-week",
+          },
+        ],
+      ],
+      aggregation: [["count"], ["sum", ORDERS.TOTAL.id]],
+    },
+  },
+};
+
+const orders_count_and_sum_by_product_category_card = {
+  id: 2,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+      breakout: [["field", PRODUCTS.CATEGORY.id, null]],
+      aggregation: [["count"], ["sum", ORDERS.TOTAL.id]],
+    },
+  },
+};
+
+const orders_count_and_sum_by_product_rating_card = {
+  id: 2,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+      breakout: [["field", PRODUCTS.RATING.id, null]],
+      aggregation: [["count"], ["sum", ORDERS.TOTAL.id]],
+    },
+  },
+};
+
+const orders_count_by_product_id_and_order_created_at_card = {
+  id: 2,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+      breakout: [
+        ["field", PRODUCTS.ID.id, null],
+        ["field", ORDERS.CREATED_AT.id, null],
+      ],
+      aggregation: [["count"]],
+    },
+  },
+};
+
+const orders_count_by_people_lat_long_card = {
+  id: 2,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+      breakout: [
+        ["field", PEOPLE.LATITUDE.id, null],
+        ["field", PEOPLE.LONGITUDE.id, null],
+      ],
+
+      aggregation: [["count"]],
+    },
+  },
+};
+
+const orders_count_by_product_category_and_people_source_card = {
+  id: 2,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+      breakout: [
+        ["field", PRODUCTS.CATEGORY.id, null],
+        ["field", PEOPLE.SOURCE.id, null],
+      ],
+      aggregation: [["count"]],
     },
   },
 };
@@ -271,6 +408,7 @@ describe("Question", () => {
         expect(scalarQuestion.display()).toBe("scalar");
       });
     });
+
     describe("setDefaultDisplay", () => {
       it("sets display to 'scalar' for order count", () => {
         const question = new Question(
@@ -299,6 +437,76 @@ describe("Question", () => {
           .setDefaultDisplay();
 
         expect(question.display()).toBe("scalar");
+      });
+
+      it("should set the display to map with default settings properties when breakout field is a state", () => {
+        const question = new Question(
+          people_count_by_state_card,
+          metadata,
+        ).setDefaultDisplay();
+
+        expect(question.display()).toBe("map");
+        expect(question.settings()).toEqual({
+          "map.type": "region",
+          "map.region": "us_states",
+        });
+      });
+
+      it("should set the display to bar when there is more than one aggregation and the breakout is a temporal unit like 'day of week'", () => {
+        const question = new Question(
+          orders_count_and_sum_by_day_of_week_card,
+          metadata,
+        ).setDefaultDisplay();
+
+        expect(question.display()).toBe("bar");
+      });
+
+      it("should set the display to bar when there is more than one aggregation and the breakout is a category", () => {
+        const question = new Question(
+          orders_count_and_sum_by_product_category_card,
+          metadata,
+        ).setDefaultDisplay();
+
+        expect(question.display()).toBe("bar");
+      });
+
+      it("should set the display to bar when there is more than one aggregation and the breakout has a binning strategy", () => {
+        const question = new Question(
+          orders_count_and_sum_by_product_rating_card,
+          metadata,
+        ).setDefaultDisplay();
+
+        expect(question.display()).toBe("bar");
+      });
+
+      it("should set the display to line when there is one agg and two breakouts where one is a date", () => {
+        const question = new Question(
+          orders_count_by_product_id_and_order_created_at_card,
+          metadata,
+        ).setDefaultDisplay();
+
+        expect(question.display()).toBe("line");
+      });
+
+      it("should set the display to map when there are two coordinate breakouts", () => {
+        const question = new Question(
+          orders_count_by_people_lat_long_card,
+          metadata,
+        ).setDefaultDisplay();
+
+        expect(question.display()).toBe("map");
+        expect(question.settings()).toEqual({
+          "map.type": "grid",
+        });
+      });
+
+      it("should set the display to bar when all breakout fields are categories", () => {
+        const question = new Question(
+          orders_count_by_product_category_and_people_source_card,
+          metadata,
+        ).setDefaultDisplay();
+
+        expect(question.display()).toBe("bar");
       });
     });
 
@@ -691,6 +899,25 @@ describe("Question", () => {
             },
           });
         });
+
+        it("when query is a NativeQuery and a dataset ", () => {
+          const question = new Question(
+            {
+              ...native_orders_count_card,
+              dataset: true,
+            },
+            metadata,
+          ).drillPK(ORDERS.ID, 1);
+
+          expect(question.card().dataset_query).toEqual({
+            database: question.databaseId(),
+            query: {
+              filter: ["=", ["field", ORDERS.ID.id, null], 1],
+              "source-table": 1,
+            },
+            type: "query",
+          });
+        });
       });
     });
   });
@@ -700,12 +927,81 @@ describe("Question", () => {
       it("New questions are automatically dirty", () => {
         const question = new Question(orders_raw_card, metadata);
         const newQuestion = question.withoutNameAndId();
-        expect(newQuestion.isDirtyComparedTo(question)).toBe(true);
+        expect(newQuestion.isDirtyComparedTo()).toBe(true);
       });
+
       it("Changing vis settings makes something dirty", () => {
         const question = new Question(orders_count_card, metadata);
         const underlyingDataQuestion = question.toUnderlyingRecords();
         expect(underlyingDataQuestion.isDirtyComparedTo(question)).toBe(true);
+      });
+
+      it("should be true when the question is new, runnable, and there is no original question", () => {
+        const question = new Question(orders_raw_card, metadata);
+        const newQuestion = question.withoutNameAndId();
+        expect(newQuestion.isDirtyComparedTo(null)).toBe(true);
+      });
+    });
+
+    describe("isDirtyComparedToWithoutParameters", () => {
+      it("should compare questions without parameters or dashboard properties", () => {
+        const originalQuestion = new Question(card, metadata);
+        const question = originalQuestion
+          .setParameters([{}, {}])
+          .setDashboardProps({
+            dashboardId: 1,
+            dashcardId: 123,
+          });
+
+        const newQuestion = question.withoutNameAndId();
+        expect(newQuestion.isDirtyComparedToWithoutParameters(question)).toBe(
+          false,
+        );
+      });
+    });
+
+    describe("Question.prototype.isEqual", () => {
+      it("should be true when the cards are identical", () => {
+        const question = new Question(card, metadata);
+        const other = new Question(card, metadata);
+        expect(question.isEqual(other)).toBe(true);
+      });
+
+      it("should be true when the cards are identical with ids", () => {
+        const question = new Question({ ...card, id: 1 }, metadata);
+        const other = new Question({ ...card, id: 1 }, metadata);
+        expect(question.isEqual(other)).toBe(true);
+      });
+
+      it("should be false when the given question is falsy", () => {
+        const question = new Question(card, metadata);
+        expect(question.isEqual(null)).toBe(false);
+      });
+
+      it("should be false when the IDs do not match", () => {
+        const question = new Question({ ...card, id: 1 }, metadata);
+        const other = new Question({ ...card, id: 2 }, metadata);
+        expect(question.isEqual(other)).toBe(false);
+      });
+
+      it("should omit result_metadata from the comparison when configured to ignore it", () => {
+        const question = new Question(
+          { ...card, result_metadata: ["foo"] },
+          metadata,
+        );
+        const other = new Question({ ...card, result_metadata: [] }, metadata);
+        expect(question.isEqual(other, { compareResultsMetadata: false })).toBe(
+          true,
+        );
+        expect(question.isEqual(other, { compareResultsMetadata: true })).toBe(
+          false,
+        );
+      });
+
+      it("should be false when the parameters on the card do not match", () => {
+        const question = new Question(card, metadata);
+        const other = new Question({ ...card, parameters: ["foo"] }, metadata);
+        expect(question.isEqual(other)).toBe(false);
       });
     });
   });
@@ -1461,6 +1757,346 @@ describe("Question", () => {
       const newQuestion = question.omitTransientCardIds();
 
       expect(newQuestion).toBe(question);
+    });
+  });
+
+  describe("Question.prototype.atomicQueries", () => {
+    it("should return an array of atomic queries", () => {
+      const question = new Question(card, metadata);
+      const atomicQueries = question.atomicQueries();
+      expect(atomicQueries).toEqual([expect.any(AtomicQuery)]);
+    });
+  });
+
+  describe("Question.prototype.setCacheTTL", () => {
+    it("should set the cache_ttl property on the underlying card object", () => {
+      const question = new Question(card, metadata);
+      expect(question.setCacheTTL(123).card().cache_ttl).toBe(123);
+    });
+  });
+
+  describe("Question.prototype.setPersisted", () => {
+    it("should set the persisted property on the underlying card object", () => {
+      const question = new Question(card, metadata);
+      expect(question.setPersisted(true).card().persisted).toBe(true);
+    });
+  });
+
+  describe("Question.prototype.switchTableScalar", () => {
+    describe("when the question is a scalar", () => {
+      describe("when the given data is one dimensional", () => {
+        it("should not change the set display value on the underlying card", () => {
+          SCALAR_DISPLAY_TYPES.forEach(displayType => {
+            const question = new Question(card, metadata).setDisplay(
+              displayType,
+            );
+            const newQuestion = question.switchTableScalar({
+              rows: [1],
+              cols: [{}],
+            });
+            expect(newQuestion.card().display).toBe(displayType);
+          });
+        });
+      });
+
+      describe("when the given data is NOT one dimensional", () => {
+        it("should change the set display value on the underlying card to 'table'", () => {
+          SCALAR_DISPLAY_TYPES.forEach(displayType => {
+            const question = new Question(card, metadata).setDisplay(
+              displayType,
+            );
+            const newQuestion = question.switchTableScalar({
+              rows: [1],
+              cols: [{}, {}],
+            });
+            expect(newQuestion.card().display).toBe("table");
+          });
+        });
+      });
+    });
+
+    describe("when the question is not a scalar", () => {
+      describe("when the given data is one dimensional", () => {
+        it("should change the set display value on the underlying card to 'scalar'", () => {
+          const question = new Question(card, metadata).setDisplay("foo");
+          const newQuestion = question.switchTableScalar({
+            rows: [1],
+            cols: [{}],
+          });
+          expect(newQuestion.card().display).toBe("scalar");
+        });
+      });
+
+      describe("when the given data is NOT one dimensional", () => {
+        it("should change the set display value on the underlying card to 'table'", () => {
+          const question = new Question(card, metadata).setDisplay("foo");
+          const newQuestion = question.switchTableScalar({
+            rows: [1],
+            cols: [{}, {}],
+          });
+          expect(newQuestion.card().display).toBe("foo");
+        });
+      });
+    });
+  });
+
+  describe("Question.prototype.settings", () => {
+    it("should return the visualization settings object", () => {
+      const question = new Question(card, metadata).setSettings({
+        foo: "bar",
+      });
+      expect(question.settings()).toEqual({
+        foo: "bar",
+      });
+    });
+
+    it("should default to an empty object when no visualization_settings object exists on the underlying card", () => {
+      const question = new Question(card, metadata).setSettings(undefined);
+      expect(question.settings()).toEqual({});
+    });
+  });
+
+  describe("Question.prototype.setting", () => {
+    it("should return the value of the given setting", () => {
+      const question = new Question(card, metadata).setSettings({
+        foo: "bar",
+      });
+      expect(question.setting("foo")).toBe("bar");
+    });
+
+    it("should return the given default value when the setting is undefined", () => {
+      const question = new Question(card, metadata).setSettings({
+        foo: "bar",
+      });
+      expect(question.setting("abc", 123)).toBe(123);
+    });
+
+    it("should return undefined when the property does not exist and there is no given default", () => {
+      const question = new Question(card, metadata).setSettings({
+        foo: "bar",
+      });
+      expect(question.setting("abc")).toBeUndefined();
+    });
+  });
+
+  describe("Question.prototype.updateSettings", () => {
+    it("should update specific properties on the visualization settings object", () => {
+      const question = new Question(card, metadata).setSettings({
+        foo: "bar",
+      });
+      const newQuestion = question.updateSettings({
+        foo: "baz",
+      });
+      expect(newQuestion.settings()).toEqual({
+        foo: "baz",
+      });
+    });
+  });
+
+  describe("Question.prototype.type", () => {
+    it("should return the type of the query", () => {
+      const question = new Question(card, metadata);
+      expect(question.type()).toBe("query");
+
+      const nativeQuestion = new Question(native_orders_count_card, metadata);
+      expect(nativeQuestion.type()).toBe("native");
+    });
+
+    it("should return undefined when the `type` property is missing on the query object", () => {
+      const question = new Question({ dataset_query: {} }, metadata);
+      expect(question.type()).toBeUndefined();
+    });
+  });
+
+  describe("Question.prototype.creationType", () => {
+    it("should return the creation type property on the underlying card", () => {
+      const question = new Question({ ...card, creationType: "foo" }, metadata);
+      expect(question.creationType()).toBe("foo");
+    });
+  });
+
+  describe("Question.prototype.canAutoRun", () => {
+    it("should return the `auto_run_queries` property found on the database associated with the card's query", () => {
+      const original = SAMPLE_DATABASE.auto_run_queries;
+      SAMPLE_DATABASE.auto_run_queries = true;
+      const question = new Question(card, metadata);
+      expect(question.canAutoRun()).toBe(SAMPLE_DATABASE.auto_run_queries);
+      SAMPLE_DATABASE.auto_run_queries = original;
+    });
+  });
+
+  describe("Question.prototype.alertType", () => {
+    describe("when the display is 'progress'", () => {
+      it("should return ALERT_TYPE_PROGRESS_BAR_GOAL", () => {
+        const question = new Question(card, metadata).setDisplay("progress");
+        expect(question.alertType()).toBe(ALERT_TYPE_PROGRESS_BAR_GOAL);
+      });
+    });
+
+    describe("when the display is 'line', 'bar', or 'area'", () => {
+      describe("when goals are enabled and there is a single y axis", () => {
+        it("should return ALERT_TYPE_TIMESERIES_GOAL", () => {
+          const lineAreaBar = ["line", "area", "bar"];
+          lineAreaBar.forEach(display => {
+            const question = new Question(card, metadata)
+              .setDisplay(display)
+              .setSettings({
+                "graph.show_goal": true,
+                "graph.metrics": [{}],
+              });
+            expect(question.alertType()).toBe(ALERT_TYPE_TIMESERIES_GOAL);
+          });
+        });
+      });
+
+      it("should return ALERT_TYPE_ROWS", () => {
+        const lineAreaBar = ["line", "area", "bar"];
+        lineAreaBar.forEach(display => {
+          const question = new Question(card, metadata)
+            .setDisplay(display)
+            .setSettings({
+              "graph.show_goal": false,
+              "graph.metrics": [{}],
+            });
+          expect(question.alertType()).toBe(ALERT_TYPE_ROWS);
+        });
+      });
+    });
+
+    it("should default to returning ALERT_TYPE_ROWS", () => {
+      const question = new Question(card, metadata).setDisplay("foo");
+      expect(question.alertType()).toBe(ALERT_TYPE_ROWS);
+    });
+  });
+
+  describe("Question.prototype.composeDataset", () => {
+    it("should do nothing but return question instance when the question is not a dataset", () => {
+      const question = new Question({ ...card, dataset: false }, metadata);
+      expect(question.composeDataset()).toBe(question);
+    });
+
+    it("should return a new nested datatet", () => {
+      const question = new Question({ ...card, dataset: true }, metadata);
+      const newQuestion = question.composeDataset();
+      expect(newQuestion.card().dataset_query).toEqual({
+        database: question.databaseId(),
+        type: "query",
+        query: {
+          "source-table": `card__${question.id()}`,
+        },
+      });
+    });
+  });
+
+  describe("Question.prototype.syncColumnsAndSettings", () => {
+    describe("when question has a native query", () => {
+      it("should not alter question viz settings", () => {
+        const question = new Question(native_orders_count_card, metadata);
+        const previous = question;
+        const queryResults = { error: "some error" };
+
+        expect(
+          question.syncColumnsAndSettings(previous, queryResults).settings(),
+        ).toEqual({});
+      });
+
+      describe("when question is using default settings and has no defined column settings", () => {
+        it("should not alter question viz settings", () => {
+          const question = new Question(native_orders_count_card, metadata);
+          const previous = question;
+          const queryResults = {
+            data: {
+              cols: [],
+            },
+          };
+
+          expect(
+            question.syncColumnsAndSettings(previous, queryResults).settings(),
+          ).toEqual({});
+        });
+      });
+
+      describe("when no columns have been added or removed", () => {
+        it("should not alter question viz settings", () => {
+          const nativeCard = {
+            ...native_orders_count_card,
+            visualization_settings: {
+              "table.columns": [
+                {
+                  fieldRef: ["field", PRODUCTS.CATEGORY.id, null],
+                },
+              ],
+            },
+          };
+          const question = new Question(nativeCard, metadata);
+          const previous = question;
+          const queryResults = {
+            data: {
+              cols: [
+                {
+                  field_ref: ["field", PRODUCTS.CATEGORY.id, null],
+                },
+              ],
+            },
+          };
+
+          expect(
+            question.syncColumnsAndSettings(previous, queryResults).settings(),
+          ).toEqual(nativeCard.visualization_settings);
+        });
+      });
+    });
+
+    describe("when columns have been changed", () => {
+      it("should update the question's viz settings to include new column", () => {
+        const nativeCard = {
+          ...native_orders_count_card,
+          visualization_settings: {
+            "table.columns": [
+              {
+                fieldRef: ["field", PRODUCTS.RATING.id, null],
+                name: "rating",
+              },
+              {
+                fieldRef: ["field", PRODUCTS.CATEGORY.id, null],
+                name: "category",
+              },
+            ],
+          },
+        };
+        const question = new Question(nativeCard, metadata);
+        const previous = question;
+        const queryResults = {
+          data: {
+            cols: [
+              {
+                field_ref: ["field", PRODUCTS.CATEGORY.id, null],
+                name: "category",
+              },
+              {
+                field_ref: ["field", PRODUCTS.ID.id, null],
+                name: "id",
+              },
+            ],
+          },
+        };
+
+        expect(
+          question.syncColumnsAndSettings(previous, queryResults).settings(),
+        ).toEqual({
+          "table.columns": [
+            {
+              fieldRef: ["field", 21, null],
+              name: "category",
+            },
+            {
+              enabled: true,
+              fieldRef: ["field", 24, null],
+              name: "id",
+            },
+          ],
+        });
+      });
     });
   });
 });
