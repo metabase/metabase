@@ -237,9 +237,6 @@
 .bg-data {
   background-color: var(--color-accent1);
 }
-.text-data {
-  color: var(--color-accent1);
-}
 
 .bg-segment {
   background-color: var(--color-accent2);
