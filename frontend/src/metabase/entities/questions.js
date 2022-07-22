@@ -86,8 +86,8 @@ const Questions = createEntity({
       const latestReview = payload.moderation_reviews?.find(x => x.most_recent);
 
       if (latestReview) {
-        return updateIn(state, [id], q => ({
-          ...q,
+        return updateIn(state, [id], question => ({
+          ...question,
           moderated_status: latestReview.status,
         }));
       }
