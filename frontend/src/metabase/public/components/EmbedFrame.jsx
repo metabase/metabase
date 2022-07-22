@@ -43,12 +43,13 @@ class EmbedFrame extends Component {
     } = this.props;
     const { innerScroll } = this.state;
 
-    const showFooter = !MetabaseSettings.hideEmbedBranding() || actionButtons;
-
-    const { bordered, titled, theme, hide_parameters } = {
+    const { bordered, titled, theme, hide_parameters, hide_download_button } = {
       ...DEFAULT_OPTIONS,
       ...parseHashOptions(location.hash),
     };
+    const showFooter =
+      !MetabaseSettings.hideEmbedBranding() ||
+      (!hide_download_button && actionButtons);
 
     const name = titled ? this.props.name : null;
 
@@ -65,13 +66,17 @@ class EmbedFrame extends Component {
             "scroll-y": innerScroll,
           })}
         >
-          {name || (parameters && parameters.length > 0) ? (
-            <div className="EmbedFrame-header flex align-center p1 sm-p2 lg-p3">
+          {name || parameters?.length > 0 ? (
+            <div className="EmbedFrame-header flex flex-column p1 sm-p2 lg-p3">
               {name && (
-                <TitleAndDescription title={name} description={description} />
+                <TitleAndDescription
+                  title={name}
+                  description={description}
+                  className="my2"
+                />
               )}
-              {parameters && parameters.length > 0 ? (
-                <div className="flex ml-auto">
+              {parameters?.length > 0 ? (
+                <div className="flex">
                   <SyncedParametersList
                     className="mt1"
                     dashboard={this.props.dashboard}

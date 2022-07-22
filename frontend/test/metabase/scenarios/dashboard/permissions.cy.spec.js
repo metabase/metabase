@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { assoc } from "icepick";
-import { restore, visitDashboard } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("scenarios > dashboard > permissions", () => {

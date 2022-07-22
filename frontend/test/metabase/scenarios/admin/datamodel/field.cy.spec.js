@@ -4,7 +4,7 @@ import {
   visitAlias,
   popover,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -120,14 +120,10 @@ describe.skip("scenarios > admin > datamodel > field", () => {
 
       // change to custom mapping
       cy.findByText("Use original value").click();
-      popover()
-        .findByText("Custom mapping")
-        .click();
+      popover().findByText("Custom mapping").click();
 
       // update text for nulls from "null" to "nothin"
-      cy.get("input[value=null]")
-        .clear()
-        .type("nothin");
+      cy.get("input[value=null]").clear().type("nothin");
       cy.findByText("Save").click();
       cy.findByText("Saved!");
 

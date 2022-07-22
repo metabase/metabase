@@ -1,7 +1,6 @@
-/* eslint-disable react/prop-types */
 import _ from "underscore";
 
-import { openUrl } from "metabase/redux/app";
+import { open } from "metabase/lib/dom";
 
 export function performAction(action, { dispatch, onChangeCardAndRun }) {
   let didPerform = false;
@@ -14,8 +13,9 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
   }
   if (action.url) {
     const url = action.url();
+    const ignoreSiteUrl = action.ignoreSiteUrl;
     if (url) {
-      dispatch(openUrl(url));
+      open(url, { ignoreSiteUrl });
       didPerform = true;
     }
   }

@@ -22,10 +22,10 @@ class UserActivationModalInner extends React.Component {
     if (user.is_active) {
       return (
         <ModalContent
-          title={t`Deactivate ${user.getName()}?`}
+          title={t`Deactivate ${user.common_name}?`}
           onClose={onClose}
         >
-          <Text>{t`${user.getName()} won't be able to log in anymore.`}</Text>
+          <Text>{t`${user.common_name} won't be able to log in anymore.`}</Text>
           <Button
             ml="auto"
             danger
@@ -38,7 +38,7 @@ class UserActivationModalInner extends React.Component {
     } else {
       return (
         <ModalContent
-          title={t`Reactivate ${user.getName()}?`}
+          title={t`Reactivate ${user.common_name}?`}
           onClose={onClose}
         >
           <Text>

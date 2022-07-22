@@ -167,21 +167,21 @@
         (is (= 1010
                mongo-port))))))
 
-(defn- connection-options-builder ^MongoClientOptions$Builder [& args]
-  (apply #'mongo.util/connection-options-builder args))
+(defn- connection-options-builder ^MongoClientOptions$Builder [details]
+  (#'mongo.util/connection-options-builder details))
 
 (deftest additional-connection-options-test
   (testing "test that people can specify additional connection options like `?readPreference=nearest`"
     (is (= (ReadPreference/nearest)
-           (.getReadPreference (-> (connection-options-builder :additional-options "readPreference=nearest")
+           (.getReadPreference (-> (connection-options-builder {:additional-options "readPreference=nearest"})
                                    .build))))
 
     (is (= (ReadPreference/secondaryPreferred)
-           (.getReadPreference (-> (connection-options-builder :additional-options "readPreference=secondaryPreferred")
+           (.getReadPreference (-> (connection-options-builder {:additional-options "readPreference=secondaryPreferred"})
                                    .build))))
 
     (testing "make sure we can specify multiple options"
-      (let [opts (-> (connection-options-builder :additional-options "readPreference=secondary&replicaSet=test")
+      (let [opts (-> (connection-options-builder {:additional-options "readPreference=secondary&replicaSet=test"})
                      .build)]
         (is (= "test"
                (.getRequiredReplicaSetName opts)))
@@ -193,7 +193,7 @@
       (is (thrown-with-msg?
            IllegalArgumentException
            #"No match for read preference of ternary"
-           (-> (connection-options-builder :additional-options "readPreference=ternary")
+           (-> (connection-options-builder {:additional-options "readPreference=ternary"})
                .build))))))
 
 (deftest test-ssh-connection

@@ -6,7 +6,7 @@ import {
   sidebar,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const allowedDomain = "metabase.test";
 const deniedDomain = "metabase.example";
@@ -65,10 +65,7 @@ describeEE("scenarios > sharing > approved domains (EE)", () => {
 });
 
 function addEmailRecipient(email) {
-  cy.findByRole("textbox")
-    .click()
-    .type(`${email}`)
-    .blur();
+  cy.findByRole("textbox").click().type(`${email}`).blur();
 }
 
 function setAllowedDomains() {

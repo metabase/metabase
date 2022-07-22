@@ -69,7 +69,11 @@
 (defn- year-range [start end]
   (comparison-range start end :year))
 
-(defn- quarter-range
+(defn- relative-quarter-range
+  [start end]
+  (comparison-range start end :quarter))
+
+(defn- absolute-quarter-range
   [quarter year]
   (let [year-quarter (t/year-quarter year (case quarter
                                             "Q1" 1
@@ -80,20 +84,22 @@
      :end   (.atEndOfQuarter year-quarter)}))
 
 (def ^:private operations-by-date-unit
-  {"second" {:unit-range second-range
-             :to-period  t/seconds}
-   "minute" {:unit-range minute-range
-             :to-period  t/minutes}
-   "hour"   {:unit-range hour-range
-             :to-period  t/hours}
-   "day"    {:unit-range day-range
-             :to-period  t/days}
-   "week"   {:unit-range week-range
-             :to-period  t/weeks}
-   "month"  {:unit-range month-range
-             :to-period  t/months}
-   "year"   {:unit-range year-range
-             :to-period  t/years}})
+  {"second"  {:unit-range second-range
+              :to-period  t/seconds}
+   "minute"  {:unit-range minute-range
+              :to-period  t/minutes}
+   "hour"    {:unit-range hour-range
+              :to-period  t/hours}
+   "day"     {:unit-range day-range
+              :to-period  t/days}
+   "week"    {:unit-range week-range
+              :to-period  t/weeks}
+   "month"   {:unit-range month-range
+              :to-period  t/months}
+   "quarter" {:unit-range relative-quarter-range
+              :to-period  (comp t/months (partial * 3))}
+   "year"    {:unit-range year-range
+              :to-period  t/years}})
 
 (defn- maybe-reduce-resolution [unit dt]
   (if
@@ -269,9 +275,9 @@
    ;; quarter year
    {:parser (regex->parser #"(Q[1-4]{1})-([0-9]{4})" [:quarter :year])
     :range  (fn [{:keys [quarter year]} _]
-              (quarter-range quarter (Integer/parseInt year)))
+              (absolute-quarter-range quarter (Integer/parseInt year)))
     :filter (fn [{:keys [quarter year]} field-clause]
-              (range->filter (quarter-range quarter (Integer/parseInt year))
+              (range->filter (absolute-quarter-range quarter (Integer/parseInt year))
                              field-clause))}
    ;; single day
    {:parser (regex->parser #"([0-9-T:]+)" [:date])

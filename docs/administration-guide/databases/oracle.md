@@ -1,3 +1,7 @@
+---
+title: Working with Oracle in Metabase
+---
+
 # Working with Oracle in Metabase
 
 ## Downloading the Oracle JDBC Driver JAR

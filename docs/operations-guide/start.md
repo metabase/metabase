@@ -1,4 +1,8 @@
-# Operations Guide
+---
+title: Operations guide
+---
+
+# Operations guide
 
 This guide contains detailed information about how to install and configure Metabase for production use. If you'd prefer we take care of the details of running Metabase for you, check out our [paid plans](https://www.metabase.com/pricing/).
 

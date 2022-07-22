@@ -8,7 +8,10 @@ export type ParameterType = string;
 export type VariableTarget = ["template-tag", string];
 export type ParameterVariableTarget = ["variable", VariableTarget];
 export type DimensionTarget = LocalFieldReference | ForeignFieldReference;
-export type ParameterDimensionTarget = ["dimension", DimensionTarget];
+export type ParameterDimensionTarget = [
+  "dimension",
+  DimensionTarget | VariableTarget,
+];
 
 export type ParameterValueOrArray = string | Array<any>;
 

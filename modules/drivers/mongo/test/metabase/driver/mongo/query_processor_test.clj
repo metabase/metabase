@@ -1,6 +1,7 @@
 (ns metabase.driver.mongo.query-processor-test
   (:require [clojure.set :as set]
             [clojure.test :refer :all]
+            [java-time :as t]
             [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.models :refer [Field Table]]
             [metabase.query-processor :as qp]
@@ -272,3 +273,40 @@
                    (mt/mbql-query checkins
                      {:filter   [:time-interval $date -4 :month]
                       :breakout [[:datetime-field $date :day]]}))))))))))
+
+(deftest temporal-arithmetic-test
+  (testing "Mixed integer and date arithmetic works with Mongo 5+"
+    (with-redefs [mongo.qp/get-mongo-version (constantly "5.2.13")]
+      (mt/with-clock #t "2022-06-21T15:36:00+02:00[Europe/Berlin]"
+        (is (= {:$expr
+                {"$lt"
+                 [{"$dateAdd"
+                   {:startDate {"$add" [{"$dateAdd" {:startDate "$date-field"
+                                                     :unit :year
+                                                     :amount 1}}
+                                        3600000]}
+                    :unit :month
+                    :amount -1}}
+                  {"$subtract"
+                   [{"$dateSubtract" {:startDate {:$dateFromString {:dateString "2008-05-31"}}
+                                      :unit :week
+                                      :amount -1}}
+                    86400000]}]}}
+               (mongo.qp/compile-filter [:<
+                                         [:+
+                                          [:interval 1 :year]
+                                          [:field "date-field"]
+                                          3600000
+                                          [:interval -1 :month]]
+                                         [:-
+                                          [:absolute-datetime (t/local-date "2008-05-31")]
+                                          [:interval -1 :week]
+                                          86400000]]))))))
+  (testing "Date arithmetic fails with Mongo 4-"
+    (with-redefs [mongo.qp/get-mongo-version (constantly "4")]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo  #"Date arithmetic not supported in versions before 5"
+                            (mongo.qp/compile-filter [:<
+                                                      [:+
+                                                       [:interval 1 :year]
+                                                       [:field "date-field"]]
+                                                      [:absolute-datetime (t/local-date "2008-05-31")]]))))))

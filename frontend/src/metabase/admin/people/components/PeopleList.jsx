@@ -22,12 +22,12 @@ import {
   deleteMembership,
   updateMembership,
 } from "../people";
-import { getGroupsWithoutMetabot, getMembershipsByUser } from "../selectors";
+import { getMembershipsByUser } from "../selectors";
 
 const mapStateToProps = state => ({
   currentUser: getUser(state),
   isAdmin: getUserIsAdmin(state),
-  groups: getGroupsWithoutMetabot(state),
+  groups: Group.selectors.getList(state),
   membershipsByUser: getMembershipsByUser(state),
 });
 

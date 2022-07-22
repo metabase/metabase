@@ -425,27 +425,35 @@
   (let [mbql-query (chain-filter-mbql-query field-id constraints options)]
     (log/debugf "Chain filter MBQL query:\n%s" (u/pprint-to-str 'magenta mbql-query))
     (try
-      (qp/process-query
-       mbql-query
-       {:rff (constantly (if original-field-id
-                           ;; if original-field-id is specified (for Field->Field remapping) just return each row,
-                           ;; which will be [original-value remapped-value], as-is. reducing function is conj, so rff,
-                           ;; which is of the form
-                           ;;
-                           ;;     (f metadata) -> rf
-                           ;;
-                           ;; will be (constantly conj).
-                           conj
-                           ;; if we're just returning values for a single field with no remapping (or if the mapping
-                           ;; is human-readable values, which is done in Clojure-land), then just return the first
-                           ;; value in each row. e.g.
-                           ;;
-                           ;;    [v] -> v
-                           ;;
-                           ;; Thus rff is
-                           ;;
-                           ;;    (f metadata) -> ((map first) conj)
-                           ((map first) conj)))})
+      (let [query-limit (get-in mbql-query [:query :limit])
+            values      (qp/process-query
+                         mbql-query
+                         {:rff (constantly (if original-field-id
+                                             ;; if original-field-id is specified (for Field->Field remapping) just return each row,
+                                             ;; which will be [original-value remapped-value], as-is. reducing function is conj, so rff,
+                                             ;; which is of the form
+                                             ;;
+                                             ;;     (f metadata) -> rf
+                                             ;;
+                                             ;; will be (constantly conj).
+                                             conj
+                                             ;; if we're just returning values for a single field with no remapping (or if the mapping
+                                             ;; is human-readable values, which is done in Clojure-land), then just return the first
+                                             ;; value in each row. e.g.
+                                             ;;
+                                             ;;    [v] -> v
+                                             ;;
+                                             ;; Thus rff is
+                                             ;;
+                                             ;;    (f metadata) -> ((map first) conj)
+                                             ((map first) conj)))})]
+        {:values          values
+         ;; It's unlikely that we don't have a query-limit, but better safe than sorry and default it true
+         ;; so that calling chain-filter-search on the same field will search from DB.
+         :has_more_values (if (nil? query-limit)
+                            true
+                            (= (count values) query-limit))})
+
       (catch Throwable e
         (throw (ex-info (tru "Error executing chain filter query")
                         {:field-id    field-id
@@ -461,6 +469,7 @@
   [field-id :- su/IntGreaterThanZero]
   (when-let [{orig :values, remapped :human_readable_values} (db/select-one [FieldValues :values :human_readable_values]
                                                                {:where [:and
+                                                                        [:= :type "full"]
                                                                         [:= :field_id field-id]
                                                                         [:not= :human_readable_values nil]
                                                                         [:not= :human_readable_values "{}"]]})]
@@ -483,8 +492,8 @@
    v->human-readable :- HumanReadableRemappingMap
    constraints       :- (s/maybe ConstraintsMap)
    options           :- (s/maybe Options)]
-  (let [values (unremapped-chain-filter field-id constraints options)]
-    (add-human-readable-values values v->human-readable)))
+  (let [result (unremapped-chain-filter field-id constraints options)]
+    (update result :values add-human-readable-values v->human-readable)))
 
 (s/defn ^:private field-to-field-remapped-chain-filter
   "Chain filter, but for Field->Field remappings (e.g. 'remap' `venue.category_id` -> `category.name`; search by
@@ -530,22 +539,21 @@
 
 (defn- use-cached-field-values?
   "Whether we should use cached `FieldValues` instead of running a query via the QP."
-  [field-id constraints]
+  [field-id]
   (and
-   field-id
-   ;; only use cached Field values if there are no additional constraints (i.e. if this is just a simple "fetch all
-   ;; values" call)
-   (empty? constraints)
-   ;; check whether the Field *should* have Field values. Not whether it actually does.
-   (field-values/field-should-have-field-values? field-id)
-   ;; If the Field *should* values, make sure the Field actually *does* have Field Values as well (but not a
-   ;; human-readable remap, which is handled by [[human-readable-values-remapped-chain-filter]].
-   (db/exists? FieldValues :field_id field-id, :values [:not= nil], :human_readable_values nil)))
+    field-id
+    (field-values/field-should-have-field-values? field-id)))
 
-(defn- cached-field-values [field-id {:keys [limit]}]
-  (let [{:keys [values]} (params.field-values/get-or-create-field-values-for-current-user! (Field field-id))]
-    (cond->> (map first values)
-      limit (take limit))))
+(defn- cached-field-values [field-id constraints {:keys [limit]}]
+  ;; TODO: why don't we remap the human readable values here?
+  (let [{:keys [values has_more_values]} (if (empty? constraints)
+                                           (params.field-values/get-or-create-field-values-for-current-user! (Field field-id))
+                                           (params.field-values/get-or-create-linked-filter-field-values! (Field field-id) constraints))]
+    {:values          (cond->> (map first values)
+                        limit (take limit))
+     :has_more_values (or (when limit
+                            (< limit (count values)))
+                          has_more_values)}))
 
 (s/defn chain-filter
   "Fetch a sequence of possible values of Field with `field-id` by restricting the possible values to rows that match
@@ -554,7 +562,8 @@
 
     ;; fetch possible values of venue price (between 1 and 4 inclusive) where category name is 'BBQ'
     (chain-filter %venues.price {%categories.name \"BBQ\"})
-    ;; -> [1 2 3] (there are no BBQ places with price = 4)
+    ;; -> {:values          [1 2 3] (there are no BBQ places with price = 4)
+           :has_more_values false}
 
   `options` are key-value options. Currently only one option is supported, `:limit`:
 
@@ -569,8 +578,8 @@
   (let [{:as options} options]
     (if-let [v->human-readable (human-readable-remapping-map field-id)]
       (human-readable-values-remapped-chain-filter field-id v->human-readable constraints options)
-      (if (use-cached-field-values? field-id constraints)
-        (cached-field-values field-id options)
+      (if (use-cached-field-values? field-id)
+        (cached-field-values field-id constraints options)
         (if-let [remapped-field-id (remapped-field-id field-id)]
           (field-to-field-remapped-chain-filter field-id remapped-field-id constraints options)
           (unremapped-chain-filter field-id constraints options))))))
@@ -624,23 +633,37 @@
   (or (when-let [unremapped-values (not-empty (matching-unremapped-values query v->human-readable))]
         (let [query-constraint  {field-id (set unremapped-values)}
               constraints       (merge constraints query-constraint)
-              values            (unremapped-chain-filter field-id constraints options)]
-          (add-human-readable-values values v->human-readable)))
-      []))
+              result            (unremapped-chain-filter field-id constraints options)]
+          (update result :values add-human-readable-values v->human-readable)))
+      {:values          []
+       :has_more_values false}))
 
 (defn- search-cached-field-values? [field-id constraints]
-  (and (use-cached-field-values? field-id constraints)
-       (isa? (db/select-one-field :base_type Field :id field-id) :type/Text)))
+  (and (use-cached-field-values? field-id)
+       (isa? (db/select-one-field :base_type Field :id field-id) :type/Text)
+       (db/exists? FieldValues (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
+                                  ;; if we are doing a search, make sure we only use field values
+                                  ;; when we're certain the fieldvalues we stored are all the possible values.
+                                  ;; otherwise, we should search directly from DB
+                                  {:has_more_values false}
+                                  (if-not (empty? constraints)
+                                    {:type     "linked-filter"
+                                     :hash_key (params.field-values/hash-key-for-advanced-field-values :linked-filter field-id constraints)}
+                                    (if-let [hash-key (params.field-values/hash-key-for-advanced-field-values :sandbox field-id nil)]
+                                      {:type    "sandbox"
+                                       :hash_key hash-key}
+                                      {:type "full"}))))))
 
 (defn- cached-field-values-search
-  [field-id query {:keys [limit]}]
-  (let [values (cached-field-values field-id nil)
-        query  (str/lower-case query)]
-    (cond->> (filter (fn [s]
-                       (when s
-                         (str/includes? (str/lower-case s) query)))
-                     values)
-      limit (take limit))))
+  [field-id query constraints {:keys [limit]}]
+  (let [{:keys [values has_more_values]} (cached-field-values field-id constraints nil)
+        query                            (str/lower-case query)]
+    {:values (cond->> (filter (fn [s]
+                                (when s
+                                  (str/includes? (str/lower-case s) query)))
+                              values)
+               limit (take limit))
+     :has_more_values has_more_values}))
 
 (s/defn ^:private field-to-field-remapped-chain-filter-search
   "Chain filter search, but for Field->Field remappings e.g. 'remap' `venue.category_id` -> `category.name`; search by
@@ -667,7 +690,7 @@
       (if-let [v->human-readable (human-readable-remapping-map field-id)]
         (human-readable-values-remapped-chain-filter-search field-id v->human-readable constraints query options)
         (if (search-cached-field-values? field-id constraints)
-          (cached-field-values-search field-id query options)
+          (cached-field-values-search field-id query constraints options)
           (if-let [remapped-field-id (remapped-field-id field-id)]
             (field-to-field-remapped-chain-filter-search field-id remapped-field-id constraints query options)
             (unremapped-chain-filter-search field-id constraints query options)))))))

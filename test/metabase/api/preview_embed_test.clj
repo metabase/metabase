@@ -307,10 +307,12 @@
       (embed-test/with-temp-dashcard [dashcard {:dash {:enable_embedding true
                                                        :parameters       [{:id   "_SECOND_DATE_SEEN_"
                                                                            :slug "2nd_date_seen"
-                                                                           :name "Second Date Seen"}
+                                                                           :name "Second Date Seen"
+                                                                           :type "date"}
                                                                           {:id   "_NUM_BIRDS_"
                                                                            :slug "num_birds"
-                                                                           :name "Number of Birds"}]}}]
+                                                                           :name "Number of Birds"
+                                                                           :type "number"}]}}]
         (is (schema= {:status   (s/eq "completed")
                       s/Keyword s/Any}
                      (mt/user-http-request :crowberto :get 202 (str (dashcard-url dashcard
@@ -470,13 +472,14 @@
                                                                           :parameters       [{:name      "Name"
                                                                                               :slug      "name"
                                                                                               :id        "_name_"
-                                                                                              :type      :string/=
+                                                                                              :type      "string/="
                                                                                               :sectionId "string"}]}]
 
                             DashboardCard [{dashcard-id :id, :as dashcard} {:card_id            card-id
                                                                             :dashboard_id       dashboard-id
                                                                             :parameter_mappings [{:parameter_id "_name_"
                                                                                                   :card_id      card-id
+                                                                                                  :type         "string/="
                                                                                                   :target       [:dimension [:template-tag "NAME"]]}]}]]
               (let [url (dashcard-url dashcard {:_embedding_params {:name "enabled"}})]
                 (is (= [[1]]

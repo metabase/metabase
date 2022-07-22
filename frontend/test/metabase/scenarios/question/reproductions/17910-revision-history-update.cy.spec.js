@@ -1,4 +1,10 @@
-import { restore, openOrdersTable, modal } from "__support__/e2e/cypress";
+import {
+  restore,
+  openOrdersTable,
+  modal,
+  questionInfoButton,
+  rightSidebar,
+} from "__support__/e2e/helpers";
 
 describe("issue 17910", () => {
   beforeEach(() => {
@@ -17,15 +23,17 @@ describe("issue 17910", () => {
     modal().within(() => {
       cy.findByText("Not now").click();
     });
-    cy.findByTestId("saved-question-header-button").click();
-    cy.findByText("Add a description").click();
-    modal().within(() => {
-      cy.findByLabelText("Description").type("A description");
-      cy.findByText("Save").click();
+
+    questionInfoButton().click();
+
+    rightSidebar().within(() => {
+      cy.findAllByPlaceholderText("Add description")
+        .type("A description")
+        .blur();
+      cy.findByText("History");
+      cy.findByTestId("saved-question-history-list")
+        .children()
+        .should("have.length", 2);
     });
-    cy.findByText("History").click();
-    cy.findByTestId("saved-question-history-list")
-      .children()
-      .should("have.length", 2);
   });
 });

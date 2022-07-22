@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -77,7 +77,7 @@ const dashboardFilter = {
           if (test === "nosql") {
             cy.updatePermissionsGraph({
               [COLLECTION_GROUP]: {
-                "1": { data: { schemas: "all", native: "none" } },
+                1: { data: { schemas: "all", native: "none" } },
               },
             });
           }

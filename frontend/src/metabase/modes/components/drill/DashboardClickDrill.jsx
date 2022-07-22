@@ -14,6 +14,7 @@ import {
   formatSourceForTarget,
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
+import * as Urls from "metabase/lib/urls";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
@@ -53,6 +54,7 @@ export default ({ question, clicked }) => {
   } else if (type === "link") {
     if (linkType === "url") {
       behavior = {
+        ignoreSiteUrl: true,
         url: () =>
           renderLinkURLForClick(clickBehavior.linkTemplate || "", data),
       };
@@ -81,8 +83,8 @@ export default ({ question, clicked }) => {
 
         const path =
           clickBehavior.use_public_link && targetDashboard.public_uuid
-            ? `/public/dashboard/${targetDashboard.public_uuid}`
-            : `/dashboard/${targetId}`;
+            ? Urls.publicDashboard(targetDashboard.public_uuid)
+            : Urls.dashboard({ id: targetId });
         const url = `${path}?${querystring.stringify(queryParams)}`;
 
         behavior = { url: () => url };
@@ -111,9 +113,11 @@ export default ({ question, clicked }) => {
 
       let url = null;
       if (clickBehavior.use_public_link && targetQuestion.publicUUID()) {
-        url = `/public/question/${targetQuestion.publicUUID()}?${querystring.stringify(
-          queryParams,
-        )}`;
+        url = Urls.publicQuestion(
+          targetQuestion.publicUUID(),
+          null,
+          querystring.stringify(queryParams),
+        );
       } else {
         url = targetQuestion.isStructured()
           ? targetQuestion.getUrlWithParameters(parameters, queryParams)

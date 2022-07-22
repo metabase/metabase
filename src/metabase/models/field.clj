@@ -9,6 +9,9 @@
             [metabase.models.humanization :as humanization]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
@@ -193,7 +196,10 @@
   (merge mi/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
           :can-read?         (partial mi/current-user-has-partial-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)}))
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
@@ -215,11 +221,14 @@
   instance. This only returns a single instance for each Field! Duplicates are discarded!
 
     (select-field-id->instance [(Field 1) (Field 2)] FieldValues)
-    ;; -> {1 #FieldValues{...}, 2 #FieldValues{...}}"
-  [fields model]
+    ;; -> {1 #FieldValues{...}, 2 #FieldValues{...}}
+
+  (select-field-id->instance [(Field 1) (Field 2)] FieldValues :type :full)
+    -> returns Fieldvalues of type :full for fields: [(Field 1) (Field 2)] "
+  [fields model & conditions]
   (let [field-ids (set (map :id fields))]
-    (u/key-by :field_id (when (seq field-ids)
-                          (db/select model :field_id [:in field-ids])))))
+    (m/index-by :field_id (when (seq field-ids)
+                            (apply db/select model :field_id [:in field-ids] conditions)))))
 
 (defn nfc-field->parent-identifier
   "Take a nested field column field corresponding to something like an inner key within a JSON column,
@@ -244,7 +253,11 @@
   "Efficiently hydrate the `FieldValues` for a collection of `fields`."
   {:batched-hydrate :values}
   [fields]
-  (let [id->field-values (select-field-id->instance fields FieldValues)]
+  ;; In 44 we added a new concept of Advanced FieldValues, so FieldValues are no longer have an one-to-one relationship
+  ;; with Field. See the doc in [[metabase.models.field-values]] for more.
+  ;; Adding an explicity filter by :type =:full for FieldValues here bc I believe this hydration does not concern
+  ;; the new Advanced FieldValues.
+  (let [id->field-values (select-field-id->instance fields FieldValues :type :full)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -253,7 +266,8 @@
   {:batched-hydrate :normal_values}
   [fields]
   (let [id->field-values (select-field-id->instance (filter field-values/field-should-have-field-values? fields)
-                                                    [FieldValues :id :human_readable_values :values :field_id])]
+                                                    [FieldValues :id :human_readable_values :values :field_id]
+                                                    :type :full)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -319,8 +333,8 @@
                                     :when (and (isa? (:semantic_type field) :type/FK)
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
-        id->target-field (u/key-by :id (when (seq target-field-ids)
-                                         (readable-fields-only (db/select Field :id [:in target-field-ids]))))]
+        id->target-field (m/index-by :id (when (seq target-field-ids)
+                                           (readable-fields-only (db/select Field :id [:in target-field-ids]))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
@@ -366,3 +380,49 @@
   {:arglists '([field])}
   [{:keys [table_id]}]
   (db/select-one 'Table, :id table_id))
+
+;;; ------------------------------------------------- Serialization -------------------------------------------------
+
+;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
+;; a trio of strings with schema maybe nil.
+(defmethod serdes.base/serdes-generate-path "Field" [_ {table_id :table_id field :name}]
+  (let [table (when (number? table_id)
+                   (db/select-one 'Table :id table_id))
+        db    (when table
+                (db/select-one-field :name 'Database :id (:db_id table)))
+        [db schema table] (if (number? table_id)
+                            [db (:schema table) (:name table)]
+                            ;; If table_id is not a number, it's already been exported as a [db schema table] triple.
+                            table_id)]
+    (filterv some? [{:model "Database" :id db}
+                    (when schema {:model "Schema" :id schema})
+                    {:model "Table"    :id table}
+                    {:model "Field"    :id field}])))
+
+(defmethod serdes.base/serdes-entity-id "Field" [_ {:keys [name]}]
+  name)
+
+(defmethod serdes.base/serdes-dependencies "Field" [field]
+  ;; Take the path, but drop the Field section to get the parent Table's path instead.
+  [(pop (serdes.base/serdes-path field))])
+
+(defmethod serdes.base/extract-one "Field"
+  [_model-name _opts field]
+  (-> (serdes.base/extract-one-basics "Field" field)
+      (update :table_id serdes.util/export-table-fk)))
+
+(defmethod serdes.base/load-xform "Field"
+  [field]
+  (-> (serdes.base/load-xform-basics field)
+      (update :table_id serdes.util/import-table-fk)))
+
+(defmethod serdes.base/load-find-local "Field"
+  [path]
+  (let [db-name            (-> path first :id)
+        schema-name        (when (= 3 (count path))
+                             (-> path second :id))
+        [{table-name :id}
+         {field-name :id}] (take-last 2 path)
+        db-id              (db/select-one-field :id 'Database :name db-name)
+        table-id           (db/select-one-field :id 'Table :name table-name :db_id db-id :schema schema-name)]
+    (db/select-one-field :id Field :name field-name :table_id table-id)))

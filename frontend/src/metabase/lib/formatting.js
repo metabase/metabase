@@ -23,6 +23,7 @@ import {
   isTime,
   isURL,
 } from "metabase/lib/schema_metadata";
+import { color } from "metabase/lib/colors";
 import { parseTime, parseTimestamp } from "metabase/lib/time";
 import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
@@ -178,6 +179,15 @@ export function formatNumber(number, options = {}) {
       const separators = options["number_separators"];
       if (separators && separators !== DEFAULT_NUMBER_SEPARATORS) {
         formatted = replaceNumberSeparators(formatted, separators);
+      }
+
+      // fixes issue where certain symbols, such as
+      // czech Kč, and Bitcoin ₿, are not displayed
+      if (options["currency_style"] === "symbol") {
+        formatted = formatted.replace(
+          options["currency"],
+          getCurrencySymbol(options["currency"]),
+        );
       }
 
       return formatted;
@@ -510,7 +520,8 @@ export function formatTimeWithUnit(value, unit, options = {}) {
 }
 
 // https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27
-const EMAIL_ALLOW_LIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
+const EMAIL_ALLOW_LIST_REGEX =
+  /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
 
 export function formatEmail(
   value,
@@ -744,9 +755,6 @@ export function formatValueRaw(value, options = {}) {
 
   if (value === NULL_NUMERIC_VALUE) {
     return NULL_DISPLAY_VALUE;
-  } else if (value === null && isBoolean(column)) {
-    // Custom expressions returning the False literal return null
-    return JSON.stringify(false);
   } else if (value == null) {
     return null;
   } else if (
@@ -910,19 +918,19 @@ export function slugify(name) {
 export function assignUserColors(
   userIds,
   currentUserId,
-  colorClasses = [
-    "bg-brand",
-    "bg-purple",
-    "bg-error",
-    "bg-green",
-    "bg-gold",
-    "bg-medium",
+  colors = [
+    color("brand"),
+    color("accent2"),
+    color("error"),
+    color("accent1"),
+    color("accent4"),
+    color("bg-medium"),
   ],
 ) {
   const assignments = {};
 
-  const currentUserColor = colorClasses[0];
-  const otherUserColors = colorClasses.slice(1);
+  const currentUserColor = colors[0];
+  const otherUserColors = colors.slice(1);
   let otherUserColorIndex = 0;
 
   for (const userId of userIds) {

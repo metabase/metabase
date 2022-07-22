@@ -9,7 +9,7 @@ import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
 import {
   AddEditSlackSidebar,
   AddEditEmailSidebar,
-} from "metabase/sharing/components/AddEditSidebar";
+} from "metabase/sharing/components/AddEditSidebar/AddEditSidebar";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
@@ -122,7 +122,7 @@ class SharingSidebarInner extends React.Component {
     saveEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
     updateEditingPulse: PropTypes.func.isRequired,
-    pulses: PropTypes.array.isRequired,
+    pulses: PropTypes.array,
     onCancel: PropTypes.func.isRequired,
     setPulseArchived: PropTypes.func.isRequired,
     users: PropTypes.array,
@@ -251,14 +251,8 @@ class SharingSidebarInner extends React.Component {
 
   render() {
     const { editingMode } = this.state;
-    const {
-      pulse,
-      pulses,
-      formInput,
-      testPulse,
-      users,
-      dashboard,
-    } = this.props;
+    const { pulse, pulses, formInput, testPulse, users, dashboard } =
+      this.props;
 
     const isLoading = !pulses || !users || !pulse || !formInput?.channels;
 

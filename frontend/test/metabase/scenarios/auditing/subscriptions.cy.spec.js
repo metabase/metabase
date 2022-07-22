@@ -4,7 +4,7 @@ import {
   modal,
   popover,
 } from "__support__/e2e/helpers/e2e-ui-elements-helpers";
-import { describeEE } from "__support__/e2e/cypress";
+import { describeEE } from "__support__/e2e/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -177,18 +177,13 @@ function testRemovingAuditItem() {
 }
 
 function testEditingRecipients({ editModalHeader }) {
-  cy.get("tbody > tr > td")
-    .eq(1)
-    .as("recipients")
-    .click();
+  cy.get("tbody > tr > td").eq(1).as("recipients").click();
 
   modal().within(() => {
     cy.findByText(editModalHeader);
     cy.findByText("Bobby Tables");
 
-    cy.icon("close")
-      .eq(1)
-      .click(); // Remove Bobby Tables
+    cy.icon("close").eq(1).click(); // Remove Bobby Tables
 
     cy.get("input").click();
   });

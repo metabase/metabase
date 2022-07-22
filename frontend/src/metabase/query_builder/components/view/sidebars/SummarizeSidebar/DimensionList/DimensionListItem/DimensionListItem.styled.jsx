@@ -77,7 +77,7 @@ export const DimensionListItemTitle = styled.div`
 const selectedStyle = css`
   ${DimensionListItemContent},
   ${DimensionListItemIcon} {
-    background-color: ${color("accent1")};
+    background-color: ${color("summarize")};
     color: ${color("white")};
   }
 
@@ -101,7 +101,7 @@ const unselectedStyle = css`
     ${DimensionListItemIcon},
     ${DimensionListItemContent},
     ${DimensionListItemAddButton} {
-      color: ${color("accent1")};
+      color: ${color("summarize")};
       background-color: ${color("bg-light")};
     }
 

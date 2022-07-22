@@ -1,3 +1,7 @@
+---
+title: Snowflake
+---
+
 # Snowflake
 
 ## Schemas

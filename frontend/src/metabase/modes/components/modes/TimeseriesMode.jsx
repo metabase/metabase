@@ -13,7 +13,7 @@ import PivotByLocationDrill from "../drill/PivotByLocationDrill";
 
 import TimeseriesGroupingWidget from "metabase/modes/components/TimeseriesGroupingWidget";
 
-export const TimeseriesModeFooter = props => {
+const TimeseriesModeFooter = props => {
   return (
     <div className="flex layout-centered">
       <span className="mr1">{t`View`}</span>

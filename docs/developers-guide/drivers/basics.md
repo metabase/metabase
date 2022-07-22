@@ -1,3 +1,7 @@
+---
+title: Database driver basics
+---
+
 # Database driver basics
 
 A Metabase driver:

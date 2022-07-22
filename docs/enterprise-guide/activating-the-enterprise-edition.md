@@ -1,14 +1,18 @@
-## Activating your Metabase commercial license
+---
+title: Activating your Metabase commercial license
+---
+
+# Activating your Metabase commercial license
 
 The paid Pro and Enterprise editions of Metabase are distinct from the free Open Source edition, so to use your paid features you’ll need to first get a license. And if you want to self-host, you'll need a different JAR or Docker image that you can use to activate the advanced features with your license token.
 
-### Where to get a license
+## Where to get a license
 
 You can get a license by signing up for a free trial of the [Pro or Enterprise edition plans](https://www.metabase.com/pricing), both of which can be self-hosted or hosted on Metabase Cloud.
 
 If you sign up for a Metabase Cloud option, you're already good to go.
 
-### How to activate your token when self-hosting
+## How to activate your token when self-hosting
 
 If you chose to host Metabase yourself, you'll get an email containing a unique license token. But to use it, you'll need to install the right JAR file.
 
@@ -19,7 +23,7 @@ You can either:
 
 Run Metabase as you would normally, then go to __Settings__ > __Admin settings__, and click __License and Billing__ in the lefthand sidebar. Paste in your license token under __License__ and click __Activate__.
 
-### **Validating your token**
+## **Validating your token**
 
 Your Metabase needs to be able to access the internet (specifically `https://store.metabase.com/api/[token-id]/v2/status`) in order to validate the token and maintain access to the advanced features.
 

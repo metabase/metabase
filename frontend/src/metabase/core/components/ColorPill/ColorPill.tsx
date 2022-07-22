@@ -1,37 +1,54 @@
-import React, { forwardRef, HTMLAttributes, Ref } from "react";
+import React, {
+  forwardRef,
+  MouseEvent,
+  HTMLAttributes,
+  Ref,
+  useCallback,
+} from "react";
 import { ColorPillContent, ColorPillRoot } from "./ColorPill.styled";
 
-export interface ColorPillProps extends HTMLAttributes<HTMLDivElement> {
+export type ColorPillAttributes = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "onSelect"
+>;
+
+export interface ColorPillProps extends ColorPillAttributes {
   color: string;
-  isBordered?: boolean;
+  isAuto?: boolean;
   isSelected?: boolean;
-  isGenerated?: boolean;
+  onSelect?: (newColor: string) => void;
 }
 
 const ColorPill = forwardRef(function ColorPill(
   {
     color,
-    isBordered,
-    isSelected,
-    isGenerated,
+    isAuto = false,
+    isSelected = true,
     "aria-label": ariaLabel = color,
+    onClick,
+    onSelect,
     ...props
   }: ColorPillProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const handleClick = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      onClick?.(event);
+      onSelect?.(color);
+    },
+    [color, onClick, onSelect],
+  );
+
   return (
     <ColorPillRoot
       {...props}
       ref={ref}
-      isBordered={isBordered}
+      isAuto={isAuto}
       isSelected={isSelected}
-      isGenerated={isGenerated}
       aria-label={ariaLabel}
+      onClick={handleClick}
     >
-      <ColorPillContent
-        isBordered={isBordered}
-        style={{ backgroundColor: color }}
-      />
+      <ColorPillContent style={{ backgroundColor: color }} />
     </ColorPillRoot>
   );
 });

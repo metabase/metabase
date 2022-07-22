@@ -1,5 +1,6 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
 import { handleActions, combineReducers } from "metabase/lib/redux";
+import Dashboards from "metabase/entities/dashboards";
 
 import {
   INITIALIZE,
@@ -30,7 +31,7 @@ import {
   HIDE_ADD_PARAMETER_POPOVER,
   SET_SIDEBAR,
   CLOSE_SIDEBAR,
-  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
   SAVE_DASHBOARD_AND_CARDS,
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
@@ -133,6 +134,14 @@ const dashboards = handleActions(
           state,
           [payload.id, "enable_embedding"],
           payload.enable_embedding,
+        ),
+    },
+    [Dashboards.actionTypes.UPDATE]: {
+      next: (state, { payload }) =>
+        assocIn(
+          state,
+          [payload.dashboard.id, "collection_id"],
+          payload.dashboard.collection_id,
         ),
     },
   },
@@ -284,9 +293,14 @@ const parameterValuesSearchCache = handleActions(
     [SAVE_DASHBOARD_AND_CARDS]: {
       next: () => ({}),
     },
-    [FETCH_DASHBOARD_PARAMETER_FIELD_VALUES]: {
+    [FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE]: {
       next: (state, { payload }) =>
-        payload ? assoc(state, payload.cacheKey, payload.results) : state,
+        payload
+          ? assoc(state, payload.cacheKey, {
+              results: payload.results,
+              has_more_values: payload.has_more_values,
+            })
+          : state,
     },
     [RESET]: { next: state => ({}) },
   },
@@ -379,8 +393,7 @@ const sidebar = handleActions(
       next: () => DEFAULT_SIDEBAR,
     },
     [SET_EDITING_DASHBOARD]: {
-      next: (state, { payload: isEditing }) =>
-        isEditing ? state : DEFAULT_SIDEBAR,
+      next: () => DEFAULT_SIDEBAR,
     },
     [REMOVE_PARAMETER]: {
       next: () => DEFAULT_SIDEBAR,

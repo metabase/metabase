@@ -1,3 +1,7 @@
+---
+title: Working with Google BigQuery in Metabase
+---
+
 # Working with Google BigQuery in Metabase
 
 This page provides information on how to create and manage a connection to a Google [BigQuery](https://cloud.google.com/bigquery) dataset, including one that uses [files stored in Google Drive](https://cloud.google.com/bigquery/external-data-drive) as a data source, like Google Sheets (GSheets).

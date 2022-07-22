@@ -5,8 +5,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
 import {
-  getMappingsByParameter as _getMappingsByParameter,
-  getDashboardParametersWithFieldMetadata,
+  getDashboardUiParameters,
   getFilteringParameterValuesMap,
   getParameterValuesSearchKey,
 } from "metabase/parameters/utils/dashboards";
@@ -53,6 +52,11 @@ export const getIsSharing = createSelector(
 export const getShowAddQuestionSidebar = createSelector(
   [getSidebar],
   sidebar => sidebar.name === SIDEBAR_NAME.addQuestion,
+);
+
+export const getIsShowDashboardInfoSidebar = createSelector(
+  [getSidebar],
+  sidebar => sidebar.name === SIDEBAR_NAME.info,
 );
 
 export const getDashboard = createSelector(
@@ -128,29 +132,28 @@ export const getParameterTarget = createSelector(
       return null;
     }
     const mapping = _.findWhere(dashcard.parameter_mappings, {
-      card_id: card.id,
       parameter_id: parameter.id,
+      ...(card & card.id && { card_id: card.id }),
     });
     return mapping && mapping.target;
   },
 );
 
-export const getMappingsByParameter = createSelector(
-  [getMetadata, getDashboardComplete],
-  _getMappingsByParameter,
-);
-
-/** Returns the dashboard's parameters objects, with field_id added, if appropriate */
 export const getParameters = createSelector(
-  [getMetadata, getDashboard, getMappingsByParameter],
-  getDashboardParametersWithFieldMetadata,
+  [getDashboardComplete, getMetadata],
+  (dashboard, metadata) => {
+    if (!dashboard || !metadata) {
+      return [];
+    }
+    return getDashboardUiParameters(dashboard, metadata);
+  },
 );
 
 export const makeGetParameterMappingOptions = () => {
   const getParameterMappingOptions = createSelector(
-    [getMetadata, getEditingParameter, getCard],
-    (metadata, parameter, card) => {
-      return _getParameterMappingOptions(metadata, parameter, card);
+    [getMetadata, getEditingParameter, getCard, getDashCard],
+    (metadata, parameter, card, dashcard) => {
+      return _getParameterMappingOptions(metadata, parameter, card, dashcard);
     },
   );
   return getParameterMappingOptions;

@@ -16,6 +16,6 @@ describe("HomeLayout", () => {
 });
 
 const getProps = (opts?: Partial<HomeLayoutProps>): HomeLayoutProps => ({
-  showScene: false,
+  showIllustration: false,
   ...opts,
 });

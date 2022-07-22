@@ -1,4 +1,4 @@
-import { restore, modal, popover } from "__support__/e2e/cypress";
+import { restore, modal, popover } from "__support__/e2e/helpers";
 
 const modelName = "Orders Model";
 
@@ -18,9 +18,7 @@ describe("issue 19737", () => {
     cy.findByText("Moved model");
 
     cy.findByText("New").click();
-    cy.findByText("Question")
-      .should("be.visible")
-      .click();
+    cy.findByText("Question").should("be.visible").click();
 
     popover().within(() => {
       cy.findByText("Models").click();
@@ -40,9 +38,7 @@ describe("issue 19737", () => {
     cy.icon("close:visible").click();
 
     cy.findByText("New").click();
-    cy.findByText("Question")
-      .should("be.visible")
-      .click();
+    cy.findByText("Question").should("be.visible").click();
 
     // Open question picker (this is crucial) so the collection list are loaded.
     popover().within(() => {
@@ -62,9 +58,7 @@ describe("issue 19737", () => {
     cy.findByText("Moved model");
 
     cy.findByText("New").click();
-    cy.findByText("Question")
-      .should("be.visible")
-      .click();
+    cy.findByText("Question").should("be.visible").click();
 
     popover().within(() => {
       cy.findByText("Models").click();
@@ -76,9 +70,7 @@ describe("issue 19737", () => {
 
 function moveModel(modelName, collectionName) {
   openEllipsisMenuFor(modelName);
-  popover()
-    .contains("Move")
-    .click();
+  popover().contains("Move").click();
 
   modal().within(() => {
     cy.findByText(collectionName).click();
@@ -87,8 +79,5 @@ function moveModel(modelName, collectionName) {
 }
 
 function openEllipsisMenuFor(item) {
-  cy.findByText(item)
-    .closest("tr")
-    .find(".Icon-ellipsis")
-    .click();
+  cy.findByText(item).closest("tr").find(".Icon-ellipsis").click();
 }

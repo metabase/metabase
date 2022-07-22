@@ -75,21 +75,38 @@
                                       (.readFully in result))
                                     result))))))))))
 
-(deftest ssl-root-cert-base
+(defn- decode-ssl-db-property [content mime-type property]
+  (let [value-key (keyword (str property "-value"))
+        options-key (keyword (str property "-options"))]
+    (:value (secret/db-details-prop->secret-map
+                  {:ssl true
+                   :ssl-mode "verify-ca"
+                   value-key (format "data:%s;base64,%s" mime-type (u/encode-base64 content))
+                   options-key "uploaded"
+                   :port 5432,
+                   :advanced-options false
+                   :dbname "the-bean-base"
+                   :host "localhost"
+                   :tunnel-enabled false
+                   :engine :postgres
+                   :user "human-bean"}
+                  property))))
+
+(deftest ssl-cert-base
   (testing "db-details-prop->secret-map"
-    (testing "decodes root cert value properly (#20319)"
-      (is (= "<Certificate text goes here>"
-             (:value (secret/db-details-prop->secret-map
-                      {:ssl true
-                       :ssl-mode "verify-ca"
-                       :ssl-root-cert-value (str "data:application/x-x509-ca-cert;base64,"
-                                                 (u/encode-base64 "<Certificate text goes here>"))
-                       :ssl-root-cert-options "uploaded"
-                       :port 5432,
-                       :advanced-options false
-                       :dbname "the-bean-base"
-                       :host "localhost"
-                       :tunnel-enabled false
-                       :engine :postgres
-                       :user "human-bean"}
-                      "ssl-root-cert")))))))
+    (let [content "<Certificate text goes here>"
+          mime-types ["application/x-x509-ca-cert" "application/octet-stream"]]
+      (testing "decodes root cert value properly (#20319, #22626)"
+        (doseq [property ["ssl-root-cert" "ssl-client-cert"]
+                mime-type mime-types]
+          (testing (format "property %s with mime-type %s" property mime-type)
+            (is (= content
+                   (decode-ssl-db-property content mime-type property))))))
+      (testing "decodes client key value properly (#22626)"
+        (doseq [property ["ssl-key"]
+                mime-type mime-types]
+          (testing (format "property %s with mime-type %s" property mime-type)
+            (let [decoded (decode-ssl-db-property content mime-type property)]
+              (is (instance? (Class/forName "[B") decoded))
+              (is (= content
+                     (String. decoded "UTF-8"))))))))))

@@ -349,7 +349,10 @@ export const adjustBooleans = tree =>
     return node;
   });
 
-const pipe = (...fns) => x => fns.reduce((v, f) => f(v), x);
+const pipe =
+  (...fns) =>
+  x =>
+    fns.reduce((v, f) => f(v), x);
 
 export const parse = pipe(
   recursiveParse,

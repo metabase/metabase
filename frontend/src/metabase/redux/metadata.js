@@ -46,7 +46,8 @@ export const fetchRealDatabases = (reload = false) => {
   return Databases.actions.fetchList({ include: "tables" }, { reload });
 };
 
-export const FETCH_DATABASE_METADATA = Databases.actions.fetchDatabaseMetadata.toString();
+export const FETCH_DATABASE_METADATA =
+  Databases.actions.fetchDatabaseMetadata.toString();
 export const fetchDatabaseMetadata = (dbId, reload = false) => {
   deprecated("metabase/redux/metadata fetchDatabaseMetadata");
   return Databases.actions.fetchDatabaseMetadata({ id: dbId }, { reload });
@@ -133,13 +134,15 @@ export const updateField = field => {
   return Fields.actions.update(slimField);
 };
 
-export const DELETE_FIELD_DIMENSION = Fields.actions.deleteFieldDimension.toString();
+export const DELETE_FIELD_DIMENSION =
+  Fields.actions.deleteFieldDimension.toString();
 export const deleteFieldDimension = fieldId => {
   deprecated("metabase/redux/metadata deleteFieldDimension");
   return Fields.actions.deleteFieldDimension({ id: fieldId });
 };
 
-export const UPDATE_FIELD_DIMENSION = Fields.actions.updateFieldDimension.toString();
+export const UPDATE_FIELD_DIMENSION =
+  Fields.actions.updateFieldDimension.toString();
 export const updateFieldDimension = (fieldId, dimension) => {
   deprecated("metabase/redux/metadata updateFieldDimension");
   return Fields.actions.updateFieldDimension({ id: fieldId }, dimension);
@@ -309,32 +312,33 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
 export const loadMetadataForQuery = (query, extraDependencies) =>
   loadMetadataForQueries([query], extraDependencies);
 
-export const loadMetadataForQueries = (
-  queries,
-  extraDependencies = [],
-) => dispatch => {
-  const dependencies = _.chain(queries)
-    .map(q => q.dependentMetadata())
-    .push(...extraDependencies)
-    .flatten()
-    .uniq(false, dep => dep.type + dep.id)
-    .map(({ type, id, foreignTables }) => {
-      if (type === "table") {
-        return (foreignTables
-          ? Tables.actions.fetchMetadataAndForeignTables
-          : Tables.actions.fetchMetadata)({ id });
-      } else if (type === "field") {
-        return Fields.actions.fetch({ id });
-      } else if (type === "schema") {
-        return Schemas.actions.fetchList({ dbId: id });
-      } else {
-        console.warn(`loadMetadataForQueries: type ${type} not implemented`);
-      }
-    })
-    .filter(Boolean)
-    .value();
+export const loadMetadataForQueries =
+  (queries, extraDependencies = []) =>
+  dispatch => {
+    const dependencies = _.chain(queries)
+      .map(q => q.dependentMetadata())
+      .push(...extraDependencies)
+      .flatten()
+      .uniq(false, dep => dep.type + dep.id)
+      .map(({ type, id, foreignTables }) => {
+        if (type === "table") {
+          return (
+            foreignTables
+              ? Tables.actions.fetchMetadataAndForeignTables
+              : Tables.actions.fetchMetadata
+          )({ id });
+        } else if (type === "field") {
+          return Fields.actions.fetch({ id });
+        } else if (type === "schema") {
+          return Schemas.actions.fetchList({ dbId: id });
+        } else {
+          console.warn(`loadMetadataForQueries: type ${type} not implemented`);
+        }
+      })
+      .filter(Boolean)
+      .value();
 
-  return Promise.all(dependencies.map(dispatch)).catch(e =>
-    console.error("Failed loading metadata for query", e),
-  );
-};
+    return Promise.all(dependencies.map(dispatch)).catch(e =>
+      console.error("Failed loading metadata for query", e),
+    );
+  };

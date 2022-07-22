@@ -254,6 +254,7 @@
 (defn- default-alert [card]
   {:id                  true
    :name                nil
+   :entity_id           true
    :creator_id          true
    :creator             (user-details :rasta)
    :created_at          true
@@ -281,6 +282,7 @@
 (def ^:private daily-email-channel
   {:enabled       true
    :channel_type  "email"
+   :entity_id     true
    :schedule_type "daily"
    :schedule_hour 12
    :schedule_day  nil

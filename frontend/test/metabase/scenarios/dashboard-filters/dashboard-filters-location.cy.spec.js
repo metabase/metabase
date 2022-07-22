@@ -6,7 +6,7 @@ import {
   saveDashboard,
   setFilter,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { DASHBOARD_LOCATION_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
@@ -24,9 +24,7 @@ Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(
         setFilter("Location", filter);
 
         cy.findByText("Select…").click();
-        popover()
-          .contains("City")
-          .click();
+        popover().contains("City").click();
       });
 
       it(`should work for "${filter}" when set through the filter widget`, () => {
@@ -41,9 +39,7 @@ Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(
       });
 
       it(`should work for "${filter}" when set as the default filter`, () => {
-        cy.findByText("Default value")
-          .next()
-          .click();
+        cy.findByText("Default value").next().click();
 
         addWidgetStringFilter(value);
 

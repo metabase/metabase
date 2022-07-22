@@ -1,14 +1,12 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { BookmarksType, Collection, User } from "metabase-types/api";
 
-import Link from "metabase/core/components/Link";
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-
-import ProfileLink from "metabase/nav/components/ProfileLink";
 
 import {
   getCollectionIcon,
@@ -27,7 +25,6 @@ import {
   CollectionsMoreIcon,
   CollectionMenuList,
   HomePageLink,
-  ProfileLinkContainer,
   SidebarContentRoot,
   SidebarHeading,
   SidebarSection,
@@ -47,7 +44,7 @@ type Props = {
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   collections: CollectionTreeItem[];
-  selectedItem: SelectedItem;
+  selectedItems: SelectedItem[];
   handleCloseNavbar: () => void;
   handleLogout: () => void;
   handleCreateNewCollection: () => void;
@@ -67,21 +64,22 @@ const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
 function MainNavbarView({
   isAdmin,
-  isOpen,
   currentUser,
   bookmarks,
   collections,
   hasOwnDatabase,
-  selectedItem,
+  selectedItems,
   hasDataAccess,
   reorderBookmarks,
   handleCreateNewCollection,
   handleCloseNavbar,
-  handleLogout,
 }: Props) {
-  const isNonEntityLinkSelected = selectedItem.type === "non-entity";
-  const isCollectionSelected =
-    selectedItem.type === "collection" && selectedItem.id !== "users";
+  const {
+    card: cardItem,
+    collection: collectionItem,
+    dashboard: dashboardItem,
+    "non-entity": nonEntityItem,
+  } = _.indexBy(selectedItems, item => item.type);
 
   const onItemSelect = useCallback(() => {
     if (isSmallScreen()) {
@@ -95,7 +93,7 @@ function MainNavbarView({
         <SidebarSection>
           <ul>
             <HomePageLink
-              isSelected={isNonEntityLinkSelected && selectedItem.url === "/"}
+              isSelected={nonEntityItem?.url === "/"}
               icon="home"
               onClick={onItemSelect}
               url="/"
@@ -109,9 +107,7 @@ function MainNavbarView({
           <SidebarSection>
             <BookmarkList
               bookmarks={bookmarks}
-              selectedItem={
-                selectedItem.type !== "non-entity" ? selectedItem : undefined
-              }
+              selectedItem={cardItem ?? dashboardItem ?? collectionItem}
               onSelect={onItemSelect}
               reorderBookmarks={reorderBookmarks}
             />
@@ -125,7 +121,7 @@ function MainNavbarView({
           />
           <Tree
             data={collections}
-            selectedId={isCollectionSelected ? selectedItem.id : undefined}
+            selectedId={collectionItem?.id}
             onSelect={onItemSelect}
             TreeNode={SidebarCollectionLink}
             role="tree"
@@ -140,10 +136,7 @@ function MainNavbarView({
               <BrowseLink
                 icon="database"
                 url={BROWSE_URL}
-                isSelected={
-                  isNonEntityLinkSelected &&
-                  selectedItem.url.startsWith(BROWSE_URL)
-                }
+                isSelected={nonEntityItem?.url?.startsWith(BROWSE_URL)}
                 onClick={onItemSelect}
                 data-metabase-event="NavBar;Data Browse"
               >
@@ -153,10 +146,9 @@ function MainNavbarView({
                 <AddYourOwnDataLink
                   icon="add"
                   url={ADD_YOUR_OWN_DATA_URL}
-                  isSelected={
-                    isNonEntityLinkSelected &&
-                    selectedItem.url.startsWith(ADD_YOUR_OWN_DATA_URL)
-                  }
+                  isSelected={nonEntityItem?.url?.startsWith(
+                    ADD_YOUR_OWN_DATA_URL,
+                  )}
                   onClick={onItemSelect}
                   data-metabase-event="NavBar;Add your own data"
                 >
@@ -167,15 +159,6 @@ function MainNavbarView({
           )}
         </ul>
       </div>
-      {!IFRAMED && (
-        <ProfileLinkContainer isOpen={isOpen}>
-          <ProfileLink
-            user={currentUser}
-            handleCloseNavbar={onItemSelect}
-            handleLogout={handleLogout}
-          />
-        </ProfileLinkContainer>
-      )}
     </SidebarContentRoot>
   );
 }

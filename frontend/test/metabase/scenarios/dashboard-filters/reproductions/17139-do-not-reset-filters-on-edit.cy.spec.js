@@ -7,7 +7,7 @@ import {
   saveDashboard,
   checkFilterLabelAndValue,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { setMonthAndYear } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
@@ -27,18 +27,13 @@ describe("issue 17139", () => {
     });
 
     cy.findByText("Select…").click();
-    popover()
-      .contains("Created At")
-      .first()
-      .click();
+    popover().contains("Created At").first().click();
 
     saveDashboard();
   });
 
   it("should not reset previously defined filters when exiting 'edit' mode without making any changes (metabase#5332, metabase#17139)", () => {
-    filterWidget()
-      .contains("Month and Year")
-      .click();
+    filterWidget().contains("Month and Year").click();
 
     setMonthAndYear({ month: "November", year: "2016" });
 

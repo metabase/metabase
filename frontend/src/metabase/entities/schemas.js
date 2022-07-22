@@ -27,7 +27,7 @@ export default createEntity({
       }
       const schemaNames = await listDatabaseSchemas({ dbId });
       return schemaNames.map(schemaName => ({
-        // NOTE: needs unqiue IDs for entities to work correctly
+        // NOTE: needs unique IDs for entities to work correctly
         id: generateSchemaId(dbId, schemaName),
         name: schemaName,
         database: { id: dbId },
@@ -76,11 +76,12 @@ export default createEntity({
       const schemaId = getCollectionVirtualSchemaId(question.collection);
 
       const virtualQuestionId = getQuestionVirtualTableId(question);
-      const previousSchemaContainingTheQuestion = getPreviousSchemaContainingTheQuestion(
-        state,
-        schemaId,
-        virtualQuestionId,
-      );
+      const previousSchemaContainingTheQuestion =
+        getPreviousSchemaContainingTheQuestion(
+          state,
+          schemaId,
+          virtualQuestionId,
+        );
 
       if (previousSchemaContainingTheQuestion) {
         state = removeVirtualQuestionFromSchema(
@@ -95,6 +96,10 @@ export default createEntity({
       }
 
       return updateIn(state, [schemaId, "tables"], tables => {
+        if (!tables) {
+          return tables;
+        }
+
         if (question.archived) {
           return tables.filter(id => id !== virtualQuestionId);
         }

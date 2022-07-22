@@ -35,9 +35,7 @@ class TableInner extends Base {
   }
 
   newQuestion() {
-    return this.question()
-      .setDefaultQuery()
-      .setDefaultDisplay();
+    return this.question().setDefaultQuery().setDefaultDisplay();
   }
 
   question() {

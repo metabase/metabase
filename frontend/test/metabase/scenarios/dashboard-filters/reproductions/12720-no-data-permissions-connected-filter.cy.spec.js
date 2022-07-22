@@ -1,4 +1,4 @@
-import { restore, visitDashboard } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS } = SAMPLE_DATABASE;
@@ -106,8 +106,6 @@ function clickThrough(title) {
   visitDashboard(1);
   cy.wait("@cardQuery");
   cy.wait("@sqlQuery");
-  cy.get(".LegendItem")
-    .contains(title)
-    .click();
+  cy.get(".LegendItem").contains(title).click();
   cy.findByText(/^January 17, 2020/);
 }

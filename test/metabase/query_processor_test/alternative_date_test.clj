@@ -215,6 +215,16 @@
                  (mt/rows (mt/dataset string-times
                             (qp/process-query
                               (assoc (mt/mbql-query times)
+                                     :middleware {:format-rows? false}))))))))
+      (testing "bigquery adds UTC"
+        (mt/test-drivers #{:bigquery-cloud-sdk}
+          (is (= [[1 "foo" #t "2004-10-19T10:23:54Z[UTC]" #t "2004-10-19T00:00Z[UTC]" #t "10:23:54"]
+                  [2 "bar" #t "2008-10-19T10:23:54Z[UTC]" #t "2008-10-19T00:00Z[UTC]" #t "10:23:54"]
+                  [3 "baz" #t "2012-10-19T10:23:54Z[UTC]" #t "2012-10-19T00:00Z[UTC]" #t "10:23:54"]]
+                 ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
+                 (mt/rows (mt/dataset string-times
+                            (qp/process-query
+                              (assoc (mt/mbql-query times)
                                      :middleware {:format-rows? false})))))))))
     (testing "are queryable as dates"
       (testing "a datetime field"

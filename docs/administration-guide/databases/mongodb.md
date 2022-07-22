@@ -1,3 +1,7 @@
+---
+title: Working with MongoDB in Metabase
+---
+
 # Working with MongoDB in Metabase
 
 This article covers:

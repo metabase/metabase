@@ -19,6 +19,10 @@ const VALIDATIONS = {
     validate: value => MetabaseUtils.isEmail(value),
     message: t`That's not a valid email address`,
   },
+  email_list: {
+    validate: value => value.every(MetabaseUtils.isEmail),
+    message: t`That's not a valid email address`,
+  },
   integer: {
     validate: value => !isNaN(parseInt(value)),
     message: t`That's not a valid integer`,
@@ -108,14 +112,14 @@ class SettingsBatchForm extends Component {
 
     // Validate form only if LDAP is enabled
     if (!enabledKey || formData[enabledKey]) {
-      elements.forEach(function(element) {
+      elements.forEach(function (element) {
         // test for required elements
         if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
           valid = false;
         }
 
         if (element.validations) {
-          element.validations.forEach(function(validation) {
+          element.validations.forEach(function (validation) {
             validationErrors[element.key] = this.validateElement(
               validation,
               formData[element.key],

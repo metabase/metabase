@@ -33,8 +33,8 @@ import TableBrowser from "metabase/browse/containers/TableBrowser";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 
-import CollectionEdit from "metabase/collections/containers/CollectionEdit";
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
+import MoveCollectionModal from "metabase/collections/containers/MoveCollectionModal";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import UserCollectionList from "metabase/containers/UserCollectionList";
@@ -77,14 +77,12 @@ import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
 import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
-import DashboardHistoryModal from "metabase/dashboard/components/DashboardHistoryModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
-import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import HomePage from "metabase/home/homepage/containers/HomePage";
-import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
+import CollectionLanding from "metabase/collections/components/CollectionLanding";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
@@ -217,7 +215,7 @@ export const getRoutes = store => (
         </Route>
 
         <Route path="collection/:slug" component={CollectionLanding}>
-          <ModalRoute path="edit" modal={CollectionEdit} />
+          <ModalRoute path="move" modal={MoveCollectionModal} />
           <ModalRoute path="archive" modal={ArchiveCollectionModal} />
           <ModalRoute path="new_collection" modal={CollectionCreate} />
           <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
@@ -232,10 +230,8 @@ export const getRoutes = store => (
           title={t`Dashboard`}
           component={DashboardApp}
         >
-          <ModalRoute path="history" modal={DashboardHistoryModal} />
           <ModalRoute path="move" modal={DashboardMoveModal} />
           <ModalRoute path="copy" modal={DashboardCopyModal} />
-          <ModalRoute path="details" modal={DashboardDetailsModal} />
           <ModalRoute path="archive" modal={ArchiveDashboardModal} />
         </Route>
 
@@ -364,7 +360,7 @@ export const getRoutes = store => (
     <Route
       path="/_internal"
       getChildRoutes={(partialNextState, callback) =>
-        require.ensure([], function(require) {
+        require.ensure([], function (require) {
           callback(null, [require("metabase/internal/routes").default]);
         })
       }

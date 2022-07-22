@@ -7,6 +7,7 @@ export type CollectionAuthorityLevel = "official" | null;
 export interface Collection {
   id: CollectionId;
   name: string;
+  description: string | null;
   can_write: boolean;
   archived: boolean;
   children?: Collection[];

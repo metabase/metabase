@@ -3,6 +3,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST]]
             [honeysql.helpers :as hh]
+            [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.driver.ddl.interface :as ddl.i]
@@ -31,6 +32,8 @@
                              :p.refresh_begin :p.refresh_end
                              :p.table_name :p.creator_id
                              :p.card_id [:c.name :card_name]
+                             [:c.archived :card_archived]
+                             [:c.dataset :card_dataset]
                              [:db.name :database_name]
                              [:col.id :collection_id] [:col.name :collection_name]
                              [:col.authority_level :collection_authority_level]]
@@ -86,36 +89,28 @@
     (api/write-check (Database (:database_id persisted-info)))
     persisted-info))
 
-(def ^:private HoursInterval
-  "Schema representing valid interval hours for refreshing persisted models."
-  (su/with-api-error-message
-    (s/constrained s/Int #(<= 1 % 24)
-                   (deferred-tru "Integer greater than or equal to one and less than or equal to twenty-four"))
-    (deferred-tru "Value must be an integer representing hours greater than or equal to one and less than or equal to twenty-four")))
-
-(def ^:private AnchorTime
-  "Schema representing valid anchor time for refreshing persisted models."
+(def ^:private CronSchedule
+  "Schema representing valid cron schedule for refreshing persisted models."
   (su/with-api-error-message
     (s/constrained s/Str (fn [t]
-                           (let [[hours minutes] (map parse-long (str/split t #":"))]
-                             (and (<= 0 hours 23) (<= 0 minutes 59))))
-                   (deferred-tru "String representing a time in format HH:mm"))
-    (deferred-tru "Value must be a string representing a time in format HH:mm")))
+                           (let [parts (str/split t #" ")]
+                             (= 7 (count parts))))
+                   (deferred-tru "String representing a cron schedule"))
+    (deferred-tru "Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>")))
 
-(api/defendpoint POST "/set-interval"
-  "Set the interval (in hours) to refresh persisted models.
-   Anchor can be provided to set the time to begin the interval (local to reporting-timezone or system).
-   Shape should be JSON like {hours: 4, anchor: 16:45}."
-  [:as {{:keys [hours anchor], :as _body} :body}]
-  {hours (s/maybe HoursInterval)
-   anchor (s/maybe AnchorTime)}
+(api/defendpoint POST "/set-refresh-schedule"
+  "Set the cron schedule to refresh persisted models.
+   Shape should be JSON like {cron: \"0 30 1/8 * * ? *\"}."
+  [:as {{:keys [cron], :as _body} :body}]
+  {cron CronSchedule}
   (validation/check-has-application-permission :setting)
-  (when hours
-    (public-settings/persisted-model-refresh-interval-hours! hours))
-  (if (and hours (< hours 6))
-    (public-settings/persisted-model-refresh-anchor-time! "00:00")
-    (when anchor
-      (public-settings/persisted-model-refresh-anchor-time! anchor)))
+  (when cron
+    (when-not (and (string? cron)
+                   (org.quartz.CronExpression/isValidExpression cron)
+                   (str/ends-with? cron "*"))
+      (throw (ex-info (tru "Must be a valid cron string not specifying a year")
+                      {:status-code 400})))
+    (public-settings/persisted-model-refresh-cron-schedule! cron))
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
 
@@ -134,7 +129,7 @@
   - remove `:persist-models-enabled` from relevant [[Database]] options
   - schedule a task to [[metabase.driver.ddl.interface/unpersist]] each table"
   []
-  (let [id->db      (u/key-by :id (Database))
+  (let [id->db      (m/index-by :id (Database))
         enabled-dbs (filter (comp :persist-models-enabled :options) (vals id->db))]
     (log/info (tru "Disabling model persistence"))
     (doseq [db enabled-dbs]

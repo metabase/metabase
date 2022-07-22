@@ -1,3 +1,7 @@
+---
+title: Backing up Metabase application data
+---
+
 # Backing up Metabase application data
 
 Avoid losing your application data (all of your questions, dashboards, collections and so on) by backing up your data.

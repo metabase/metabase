@@ -1,9 +1,12 @@
+---
+title: Adding and managing databases
+---
+
 # Adding and managing databases
 
 - [Adding a database connection](#adding-a-database-connection)
 - [Databases](#databases)
 - [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
-- [Errors when connecting to your database](#errors-when-connecting-to-your-database)
 - [Database connection options](#database-connection-options)
 - [Re-scanning a single table or field](#re-scanning-a-single-table-or-field)
 - [Deleting databases](#deleting-databases)
@@ -11,7 +14,7 @@
 
 ## Adding a database connection
 
-At the bottom of the navigation sidebar, click on the **gears** icon and select **Admin settings**.
+At the top right of the screen, click on the **gear** icon > **Admin settings**.
 
 Once in the Admin section, select the **Databases** tab from the navigation bar at the top of the screen. You’ll see a list of your connected databases (if any). To connect a database to Metabase, click **Add database** and follow the connection instructions for your database.
 
@@ -27,7 +30,7 @@ Metabase supports many different databases and data sources, with different leve
 
 ### Officially supported databases
 
-The following databases have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing/) will get official support. 
+The following databases have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing/) will get official support.
 
 - [BigQuery](databases/bigquery.md) (Google Cloud Platform)
 - Druid
@@ -41,7 +44,7 @@ The following databases have official drivers maintained by the Metabase team. C
 - Redshift (Amazon Web Services)
 - [Snowflake](databases/snowflake.md)
 - SparkSQL
-- SQL Server
+- [SQL Server](databases/sql-server.md)
 - SQLite
 - [Vertica](databases/vertica.md)
 
@@ -50,10 +53,6 @@ The following databases have official drivers maintained by the Metabase team. C
 For provider-specific connection details, like connecting to a PostgreSQL data warehouse on RDS:
 
 - [AWS's Relational Database Service (RDS)](databases/aws-rds.md)
-
-## Errors when connecting to your database
-
-Check our [troubleshooting guide](../troubleshooting-guide/datawarehouse.md).
 
 ## Database connection options
 

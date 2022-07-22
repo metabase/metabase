@@ -3,7 +3,7 @@ import { t, jt } from "ttag";
 import cx from "classnames";
 import { inflect } from "inflection";
 
-import { ForeignKey } from "metabase-types/api/foreignKey";
+import { ForeignKey } from "metabase-types/api";
 
 import IconBorder from "metabase/components/IconBorder";
 import LoadingSpinner from "metabase/components/LoadingSpinner";

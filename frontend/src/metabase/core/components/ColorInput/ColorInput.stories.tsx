@@ -9,13 +9,13 @@ export default {
 };
 
 const Template: ComponentStory<typeof ColorInput> = args => {
-  const [{ color }, updateArgs] = useArgs();
+  const [{ value }, updateArgs] = useArgs();
 
-  const handleChange = (color?: string) => {
-    updateArgs({ color });
+  const handleChange = (value?: string) => {
+    updateArgs({ value });
   };
 
-  return <ColorInput {...args} color={color} onChange={handleChange} />;
+  return <ColorInput {...args} value={value} onChange={handleChange} />;
 };
 
 export const Default = Template.bind({});

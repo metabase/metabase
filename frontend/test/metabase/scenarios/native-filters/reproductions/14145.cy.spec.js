@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -43,10 +43,7 @@ describe.skip("issue 14145", () => {
     // Change the source from "Sample Database" to the other database
     cy.findByText(/Open Editor/i).click();
 
-    cy.get(".GuiBuilder-data")
-      .as("source")
-      .contains("Sample Database")
-      .click();
+    cy.get(".GuiBuilder-data").as("source").contains("Sample Database").click();
     cy.findByText("Sample2").click();
 
     // First assert on the UI
@@ -59,9 +56,8 @@ describe.skip("issue 14145", () => {
     cy.get(".NativeQueryEditor .Icon-play").click();
 
     cy.wait("@dataset").then(xhr => {
-      const { dimension } = xhr.response.body.json_query.native[
-        "template-tags"
-      ].FILTER;
+      const { dimension } =
+        xhr.response.body.json_query.native["template-tags"].FILTER;
 
       expect(dimension).not.to.contain(PRODUCTS.CATEGORY);
     });

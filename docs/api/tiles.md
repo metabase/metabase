@@ -1,3 +1,8 @@
+---
+title: "Tiles"
+summary: "`/api/tiles` endpoints."
+---
+
 # Tiles
 
 `/api/tiles` endpoints.

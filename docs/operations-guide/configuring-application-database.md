@@ -1,9 +1,13 @@
-# Configuring the Metabase Application Database
+---
+title: Configuring the Metabase application database
+---
+
+# Configuring the Metabase application database
 
 The application database is where Metabase stores information about users, saved questions, dashboards, and any other
 data needed to run the application. The default settings use an embedded H2 database, but this is configurable.
 
-##### Notes
+## Notes
 
 - Using Metabase with an H2 application database is not recommended for production deployments. For production
   deployments, we highly recommend using Postgres, MySQL, or MariaDB instead. If you decide to continue to use H2,
@@ -13,7 +17,7 @@ data needed to run the application. The default settings use an embedded H2 data
 - Metabase provides limited support for migrating from H2 to Postgres or MySQL if you decide to upgrade to a more
   production-ready database. See [Migrating from H2 to MySQL or Postgres](migrating-from-h2.md) for more details.
 
-#### [H2](https://www.h2database.com/) (default)
+## [H2](https://www.h2database.com/) (default)
 
 **For production installations of Metabase we recommend that users [replace the H2 database with a more robust option](./migrating-from-h2.md) such as Postgres.** This offers a greater degree of performance and reliability when Metabase is running with many users.
 
@@ -36,7 +40,7 @@ If for any reason you want to use an H2 database file in a separate location fro
 
 Note that H2 automatically appends `.mv.db` or `.h2.db` to the path you specify; do not include those in you path! In other words, `MB_DB_FILE` should be something like `/path/to/metabase.db`, rather than something like `/path/to/metabase.db.mv.db` (even though this is the file that actually gets created).
 
-#### [Postgres](https://www.postgresql.org/)
+## [Postgres](https://www.postgresql.org/)
 
 You can change the application database to use Postgres using a few simple environment variables. For example:
 
@@ -67,7 +71,7 @@ or both separately from the rest of the JDBC connection string (useful if the pa
     java -jar metabase.jar
 
 
-#### Upgrading from a Metabase version pre-0.38
+## Upgrading from a Metabase version pre-0.38
 
 If you’re upgrading from a previous version of Metabase, note that for Metabase 0.38 we've removed the use of the PostgreSQL `NonValidatingFactory` for SSL validation. It’s possible that you could experience a failure either at startup (if you're using a PostgreSQL application database) or when querying a PostgreSQL data warehouse.
 
@@ -110,7 +114,7 @@ For more options to further tune the SSL connection parameters,
 see the [PostgreSQL SSL client documentation](https://jdbc.postgresql.org/documentation/head/ssl-client.html).
 
 
-#### [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/)
+## [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/)
 
 If you prefer to use MySQL or MariaDB we've got you covered. The minimum recommended version is MySQL 5.7.7 or MariaDB
 10.2.2, and the `utf8mb4` character set is required. You can change the application database to use MySQL using

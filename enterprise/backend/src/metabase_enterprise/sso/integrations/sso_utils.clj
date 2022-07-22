@@ -15,8 +15,8 @@
            java.util.UUID))
 
 (def ^:private UserAttributes
-  {:first_name       su/NonBlankString
-   :last_name        su/NonBlankString
+  {:first_name       (s/maybe su/NonBlankString)
+   :last_name        (s/maybe su/NonBlankString)
    :email            su/Email
    ;; TODO - we should avoid hardcoding this to make it easier to add new integrations. Maybe look at something like
    ;; the keys of `(methods sso/sso-get)`
@@ -35,14 +35,18 @@
       (messages/send-user-joined-admin-notification-email! <>, :google-auth? true))))
 
 (defn fetch-and-update-login-attributes!
-  "Update the login attributes for the user at `email`. This call is a no-op if the login attributes are the same"
-  [email new-user-attributes]
-  (when-let [{:keys [id login_attributes] :as user} (db/select-one User :%lower.email (u/lower-case-en email))]
-    (if (= login_attributes new-user-attributes)
-      user
-      (do
-        (db/update! User id :login_attributes new-user-attributes)
-        (User id)))))
+  "Update `:first_name`, `:last_name`, and `:login_attributes` for the user at `email`.
+  This call is a no-op if the mentioned key values are equal."
+  [{:keys [email] :as user-from-sso}]
+  (when-let [{:keys [id] :as user} (db/select-one User :%lower.email (u/lower-case-en email))]
+    (let [user-keys (keys user-from-sso)
+          ;; remove keys with `nil` values
+          user-data (into {} (filter second user-from-sso))]
+      (if (= (select-keys user user-keys) user-data)
+        user
+        (do
+          (db/update! User id user-data)
+          (User id))))))
 
 (defn check-sso-redirect
   "Check if open redirect is being exploited in SSO, blurts out a 400 if so"

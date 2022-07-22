@@ -2,11 +2,11 @@
   "Utility functions for dealing with parameters for Dashboards and Cards."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.db.util :as mdb.u]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models.params.field-values :as params.field-values]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -17,6 +17,20 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn assert-valid-parameters
+  "Receive a Paremeterized Object and check if its parameters is valid."
+  [{:keys [parameters]}]
+  (when (s/check (s/maybe [su/Parameter]) parameters)
+    (throw (ex-info (tru ":parameters must be a sequence of maps with :id and :type keys")
+                    {:parameters parameters}))))
+
+(defn assert-valid-parameter-mappings
+  "Receive a Paremeterized Object and check if its parameters is valid."
+  [{:keys [parameter_mappings]}]
+  (when (s/check (s/maybe [su/ParameterMapping]) parameter_mappings)
+    (throw (ex-info (tru ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys")
+                    {:parameter_mappings parameter_mappings}))))
 
 (s/defn unwrap-field-clause :- mbql.s/field
   "Unwrap something that contains a `:field` clause, such as a template tag, Also handles unwrapped integers for
@@ -40,27 +54,6 @@
 
     :else
     field-id-or-form))
-
-(def ^:dynamic *ignore-current-user-perms-and-return-all-field-values*
-  "Whether to ignore permissions for the current User and return *all* FieldValues for the Fields being parameterized by
-  Cards and Dashboards. This determines how `:param_values` gets hydrated for Card and Dashboard. Normally, this is
-  `false`, but the public and embed versions of the API endpoints can bind this to `true` to bypass normal perms
-  checks (since there is no current User) and get *all* values."
-  false)
-
-(defn- field-ids->param-field-values-ignoring-current-user
-  [param-field-ids]
-  (u/key-by :field_id (db/select ['FieldValues :values :human_readable_values :field_id]
-                        :field_id [:in param-field-ids])))
-
-(defn- field-ids->param-field-values
-  "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference. This map is
-  returned by various endpoints as `:param_values`."
-  [param-field-ids]
-  (when (seq param-field-ids)
-    ((if *ignore-current-user-perms-and-return-all-field-values*
-       field-ids->param-field-values-ignoring-current-user
-       params.field-values/field-id->field-values-for-current-user) param-field-ids)))
 
 (defn- template-tag->field-form
   "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
@@ -103,13 +96,13 @@
   cases where more than one name Field exists for a Table, this just adds the first one it finds."
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
-    (u/key-by :table_id (-> (db/select Field:params-columns-only
-                              :table_id      [:in table-ids]
-                              :semantic_type (mdb.u/isa :type/Name))
-                            ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
-                            ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
-                            ;; `list` instead of `auto-list`.)
-                            (hydrate :has_field_values)))))
+    (m/index-by :table_id (-> (db/select Field:params-columns-only
+                                :table_id      [:in table-ids]
+                                :semantic_type (mdb.u/isa :type/Name))
+                              ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
+                              ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
+                              ;; `list` instead of `auto-list`.)
+                              (hydrate :has_field_values)))))
 
 (defn add-name-field
   "For all `fields` that are `:type/PK` Fields, look for a `:type/Name` Field belonging to the same Table. For each
@@ -160,14 +153,9 @@
   parameter widgets."
   [field-ids :- (s/maybe #{su/IntGreaterThanZero})]
   (when (seq field-ids)
-    (u/key-by :id (-> (db/select Field:params-columns-only :id [:in field-ids])
-                      (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
-                      remove-dimensions-nonpublic-columns))))
-
-(defmulti ^:private ^{:hydrate :param_values} param-values
-  "Add a `:param_values` map (Field ID -> FieldValues) containing FieldValues for the Fields referenced by the
-  parameters of a Card or a Dashboard. Implementations are in respective sections below."
-  name)
+    (m/index-by :id (-> (db/select Field:params-columns-only :id [:in field-ids])
+                        (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
+                        remove-dimensions-nonpublic-columns))))
 
 (defmulti ^:private ^{:hydrate :param_fields} param-fields
   "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card or
@@ -212,18 +200,8 @@
             id))
      (dashboard->card-param-field-ids dashboard))))
 
-(defn- dashboard->param-field-values
-  "Return a map of Field ID to FieldValues (if any) for any Fields referenced by Cards in `dashboard`,
-   or `nil` if none are referenced or none of them have FieldValues."
-  [dashboard]
-  (field-ids->param-field-values (dashboard->param-field-ids dashboard)))
-
-(defmethod param-values "Dashboard" [dashboard]
-  (dashboard->param-field-values dashboard))
-
 (defmethod param-fields "Dashboard" [dashboard]
   (-> dashboard dashboard->param-field-ids param-field-ids->fields))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 CARD-SPECIFIC                                                  |
@@ -245,9 +223,6 @@
   (set (mbql.u/match (seq (card->template-tag-field-clauses card))
          [:field (id :guard integer?) _]
          id)))
-
-(defmethod param-values "Card" [card]
-  (-> card card->template-tag-field-ids field-ids->param-field-values))
 
 (defmethod param-fields "Card" [card]
   (-> card card->template-tag-field-ids param-field-ids->fields))

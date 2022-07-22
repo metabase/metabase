@@ -16,7 +16,7 @@ const SlackAppsLink = ({ manifest }: SlackAppsLinkProps): JSX.Element => {
       className="Button Button--primary"
       href={`https://api.slack.com${link}`}
     >
-      <LinkText>{t`Open Slack Apps`}</LinkText>
+      <LinkText>{t`Create Slack App`}</LinkText>
       <LinkIcon name="external" />
     </LinkRoot>
   );

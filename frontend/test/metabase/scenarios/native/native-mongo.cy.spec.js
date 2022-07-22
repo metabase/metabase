@@ -1,4 +1,4 @@
-import { restore, modal } from "__support__/e2e/cypress";
+import { restore, modal } from "__support__/e2e/helpers";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
@@ -35,14 +35,9 @@ describe("scenarios > question > native > mongo", () => {
     cy.findByTextEnsureVisible("Save question");
 
     modal().within(() => {
-      cy.findByLabelText("Name")
-        .clear()
-        .should("be.empty")
-        .type("mongo count");
+      cy.findByLabelText("Name").clear().should("be.empty").type("mongo count");
 
-      cy.button("Save")
-        .should("not.be.disabled")
-        .click();
+      cy.button("Save").should("not.be.disabled").click();
     });
 
     cy.wait("@createQuestion");

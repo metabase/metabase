@@ -548,7 +548,7 @@
   s StringExpressionArg, pattern s/Str)
 
 (defclause ^{:requires-features #{:expressions}} +
-  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
+  x NumericExpressionArgOrInterval, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
 
 (defclause ^{:requires-features #{:expressions}} -
   x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
@@ -913,9 +913,13 @@
 ;;
 ;; Field filters and raw values usually have their value specified by `:parameters` (see [[Parameters]] below).
 
+(def template-tag-types
+  "List of valid template tag types."
+  [:snippet :card :dimension :number :text :date])
+
 (def TemplateTagType
   "Schema for valid values of template tag `:type`."
-  (s/enum :snippet :card :dimension :number :text :date))
+  (apply s/enum template-tag-types))
 
 (def ^:private TemplateTag:Common
   "Things required by all template tag types."
@@ -1370,7 +1374,9 @@
 ;; examples:
 ;;
 ;;    {:target [:dimension [:template-tag "my_tag"]]}
+;;    {:target [:dimension [:template-tag {:id "my_tag_id"}]]}
 ;;    {:target [:variable [:template-tag "another_tag"]]}
+;;    {:target [:variable [:template-tag {:id "another_tag_id"}]]}
 ;;    {:target [:dimension [:field 100 nil]]}
 ;;    {:target [:field 100 nil]}
 ;;
@@ -1384,10 +1390,12 @@
 ;; supposed to work, but we have test #18747 that attempts to set it. I'm not convinced this should actually be
 ;; allowed.
 
-;; this is the reference like [:template-tag "whatever"], not the [[TemplateTag]] schema for when it's declared in
+;; this is the reference like [:template-tag <whatever>], not the [[TemplateTag]] schema for when it's declared in
 ;; `:template-tags`
 (defclause template-tag
-  tag-name helpers/NonBlankString)
+  tag-name
+  (s/cond-pre helpers/NonBlankString
+              {:id helpers/NonBlankString}))
 
 (defclause dimension
   target (s/cond-pre Field template-tag))

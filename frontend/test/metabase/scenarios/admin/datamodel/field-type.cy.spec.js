@@ -1,4 +1,4 @@
-import { restore, visitAlias, popover } from "__support__/e2e/cypress";
+import { restore, visitAlias, popover } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -83,9 +83,7 @@ function setFieldType({ oldValue, newValue } = {}) {
   getFieldType(oldValue).click();
 
   popover().within(() => {
-    cy.findByText(oldValue)
-      .closest(".ReactVirtualized__Grid")
-      .scrollTo(0, 0); // HACK: scroll to the top of the list. Ideally we should probably disable AccordionList virtualization
+    cy.findByText(oldValue).closest(".ReactVirtualized__Grid").scrollTo(0, 0); // HACK: scroll to the top of the list. Ideally we should probably disable AccordionList virtualization
     searchFieldType(newValue);
     cy.findByText(newValue).click();
   });
@@ -115,7 +113,5 @@ function getFKTargetField(targetField) {
 function setFKTargetField(field) {
   cy.findByText("Select a target").click();
 
-  popover()
-    .contains(field)
-    .click();
+  popover().contains(field).click();
 }

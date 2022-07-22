@@ -21,7 +21,6 @@ export interface QueryBuilderUIControls {
   isRunning: boolean;
   isQueryComplete: boolean;
   isShowingSummarySidebar: boolean;
-  isShowingFilterSidebar: boolean;
   isShowingChartTypeSidebar: boolean;
   isShowingChartSettingsSidebar: boolean;
   isShowingQuestionDetailsSidebar: boolean;

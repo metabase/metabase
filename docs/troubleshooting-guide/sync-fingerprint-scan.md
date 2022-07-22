@@ -1,4 +1,8 @@
-# Synchronizing with the database
+---
+title: Troubleshooting syncs and scans
+---
+
+# Troubleshooting syncs and scans
 
 <div class='doc-toc' markdown=1>
 - [Metabase can't sync, fingerprint, or scan](#cant-sync-fingerprint-scan)
@@ -13,7 +17,7 @@ Metabase needs to know what's in your database in order to show tables and field
 
 2. Metabase *fingerprints* the column the first time it synchronizes. Fingerprinting fetches the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. Metabase only fingerprints each column once, unless the administrator explicitly tells it to fingerprint the column again, or in the rare event that a new release of Metabase changes the fingerprinting logic.
 
-3. A *scan* is similar to fingerprinting, but is done every 24 hours (unless it's configured to run less often or disabled).  Scanning looks at the first 5000 distinct records ordered ascending, when a field is set to "A list of all values" in the Data Model, which is used to display options in dropdowns. If the textual result of scanning a column is more than 10 kilobytes long, for example, we display a search box instead of a dropdown.
+3. A *scan* is similar to fingerprinting. Metabase will scan a database by default every 24 hours (though you can configure Metabase to run a scan less frequently, or disable scanning entirely). When you set a field to "A list of all values" in the [Data Model](../administration-guide/03-metadata-editing.md), which is used to display options in dropdown menus, scanning looks at the first 1,000 distinct records (ordered ascending). For each field scanned, Metabase stores only the first 100 kilobytes of text. If more values exist, Metabase displays the stored values in the dropdown menus, and only triggers a database search query to look for more values when people type in the search box for that filter widget.
 
 <h2 id="cant-sync-fingerprint-scan">Metabase can't sync, fingerprint, or scan</h2>
 

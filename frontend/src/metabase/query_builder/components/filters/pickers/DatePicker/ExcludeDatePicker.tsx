@@ -112,7 +112,7 @@ export default function ExcludeDatePicker({
 
   if (!temporalUnit || operator === "is-null" || operator === "not-null") {
     return (
-      <div className={className}>
+      <div className={className} data-testid="exclude-date-picker">
         {EXCLUDE_OPERATORS.map(({ displayName, init }) => (
           <OptionButton
             key={displayName}
@@ -128,19 +128,19 @@ export default function ExcludeDatePicker({
           <>
             <Separator />
             <OptionButton
-              selected={operator === "is-null"}
+              selected={operator === "not-null"}
               primaryColor={primaryColor}
               onClick={() => {
-                onCommit(["is-null", getDateTimeField(filter[1])]);
+                onCommit(["not-null", getDateTimeField(filter[1])]);
               }}
             >
               {t`Is empty`}
             </OptionButton>
             <OptionButton
-              selected={operator === "not-null"}
+              selected={operator === "is-null"}
               primaryColor={primaryColor}
               onClick={() => {
-                onCommit(["not-null", getDateTimeField(filter[1])]);
+                onCommit(["is-null", getDateTimeField(filter[1])]);
               }}
             >
               {t`Is not empty`}

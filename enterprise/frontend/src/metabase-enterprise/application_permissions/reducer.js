@@ -48,10 +48,8 @@ export const saveApplicationPermissions = createThunkAction(
   () => async (_dispatch, getState) => {
     MetabaseAnalytics.trackStructEvent("General Permissions", "save");
 
-    const {
-      applicationPermissions,
-      applicationPermissionsRevision,
-    } = getState().plugins.applicationPermissionsPlugin;
+    const { applicationPermissions, applicationPermissionsRevision } =
+      getState().plugins.applicationPermissionsPlugin;
 
     const result = await ApplicationPermissionsApi.updateGraph({
       groups: applicationPermissions,

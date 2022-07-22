@@ -4,7 +4,7 @@ import {
   setFilter,
   popover,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -40,8 +40,6 @@ describe("issue 17212", () => {
     cy.findByText("No valid fields").should("not.exist");
 
     cy.findByText("Select…").click();
-    popover()
-      .contains("ID")
-      .click();
+    popover().contains("ID").click();
   });
 });

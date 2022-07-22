@@ -11,8 +11,14 @@
 
 (deftest tru-test
   (mt/with-mock-i18n-bundles {"es" {"must be {0} characters or less" "deben tener {0} caracteres o menos"}}
-    (doseq [[message f] {"tru"          (fn [] (i18n/tru "must be {0} characters or less" 140))
-                         "deferred-tru" (fn [] (str (i18n/deferred-tru "must be {0} characters or less" 140)))}]
+    (doseq [[message f] {"tru"
+                         (fn [] (i18n/tru "must be {0} characters or less" 140))
+                         "tru with str"
+                         (fn [] (i18n/tru (str "must be " "{0} characters or less") 140))
+                         "deferred-tru"
+                         (fn [] (str (i18n/deferred-tru "must be {0} characters or less" 140)))
+                         "deferred-tru with str"
+                         (fn [] (str (i18n/deferred-tru (str "must be " "{0} characters or less") 140)))}]
       (testing message
         (testing "Should fall back to English if user locale & system locale are unset"
           (mt/with-temporary-setting-values [site-locale nil]
@@ -36,8 +42,14 @@
 
 (deftest trs-test
   (mt/with-mock-i18n-bundles {"es" {"must be {0} characters or less" "deben tener {0} caracteres o menos"}}
-    (doseq [[message f] {"trs"          (fn [] (i18n/trs "must be {0} characters or less" 140))
-                         "deferred-trs" (fn [] (str (i18n/deferred-trs "must be {0} characters or less" 140)))}]
+    (doseq [[message f] {"trs"
+                         (fn [] (i18n/trs "must be {0} characters or less" 140))
+                         "trs with str"
+                         (fn [] (i18n/trs (str "must be " "{0} characters or less") 140))
+                         "deferred-trs"
+                         (fn [] (str (i18n/deferred-trs "must be {0} characters or less" 140)))
+                         "deferred-trs with str"
+                         (fn [] (str (i18n/deferred-trs (str "must be " "{0} characters or less") 140)))}]
       (testing message
         (testing "Should fall back to English if user locale & system locale are unset"
           (mt/with-temporary-setting-values [site-locale nil]
@@ -97,4 +109,13 @@
         (is (thrown-with-msg?
              AssertionError
              #"missing some \{\} placeholders\. Expected \{0\}, \{1\}"
-             (#'i18n/validate-number-of-args "{1}" [0 1])))))))
+             (#'i18n/validate-number-of-args "{1}" [0 1]))))))
+
+  (testing "The number of args is still validated if the first argument is a `str` form"
+      (is (thrown?
+           clojure.lang.Compiler$CompilerException
+           (walk/macroexpand-all `(i18n/trs (~'str "{0}" "{1}") 0))))
+      (is (thrown-with-msg?
+           AssertionError
+           #"expects 2 args, got 1"
+           (#'i18n/validate-number-of-args '(str "{0}" "{1}") [0])))))

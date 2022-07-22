@@ -3,7 +3,7 @@ import {
   popover,
   visualize,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -38,12 +38,8 @@ describe("issue 18512", () => {
       cy.findByText("18512#2").click();
     });
 
-    popover()
-      .findByText("Products → Created At")
-      .click();
-    popover()
-      .findByText("Products → Created At")
-      .click();
+    popover().findByText("Products → Created At").click();
+    popover().findByText("Products → Created At").click();
 
     visualize(response => {
       expect(response.body.error).to.not.exist;

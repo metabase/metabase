@@ -90,28 +90,31 @@ const Tables = createEntity({
         entityQuery => Tables.getQueryKey(entityQuery),
       ),
       withNormalize(TableSchema),
-    )(({ id }, options = {}) => (dispatch, getState) =>
-      MetabaseApi.table_query_metadata({
-        tableId: id,
-        ...options.params,
-      }),
+    )(
+      ({ id }, options = {}) =>
+        (dispatch, getState) =>
+          MetabaseApi.table_query_metadata({
+            tableId: id,
+            ...options.params,
+          }),
     ),
 
     // like fetchMetadata but also loads tables linked by foreign key
     fetchMetadataAndForeignTables: createThunkAction(
       FETCH_TABLE_METADATA,
-      ({ id }, options = {}) => async (dispatch, getState) => {
-        await dispatch(Tables.actions.fetchMetadata({ id }, options));
-        // fetch foreign key linked table's metadata as well
-        const table = Tables.selectors[
-          options.selectorName || "getObjectUnfiltered"
-        ](getState(), { entityId: id });
-        await Promise.all(
-          getTableForeignKeyTableIds(table).map(id =>
-            dispatch(Tables.actions.fetchMetadata({ id }, options)),
-          ),
-        );
-      },
+      ({ id }, options = {}) =>
+        async (dispatch, getState) => {
+          await dispatch(Tables.actions.fetchMetadata({ id }, options));
+          // fetch foreign key linked table's metadata as well
+          const table = Tables.selectors[
+            options.selectorName || "getObjectUnfiltered"
+          ](getState(), { entityId: id });
+          await Promise.all(
+            getTableForeignKeyTableIds(table).map(id =>
+              dispatch(Tables.actions.fetchMetadata({ id }, options)),
+            ),
+          );
+        },
     ),
 
     fetchForeignKeys: compose(
@@ -127,10 +130,10 @@ const Tables = createEntity({
       return { id: entityObject.id, fks: fks };
     }),
 
-    setFieldOrder: compose(
-      withAction(UPDATE_TABLE_FIELD_ORDER),
-    )(({ id }, fieldOrder) => (dispatch, getState) =>
-      updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
+    setFieldOrder: compose(withAction(UPDATE_TABLE_FIELD_ORDER))(
+      ({ id }, fieldOrder) =>
+        (dispatch, getState) =>
+          updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
     ),
   },
 

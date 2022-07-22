@@ -262,8 +262,10 @@ export class AlertScheduleText extends Component {
       return verbose ? "hourly" : "Hourly";
     } else if (scheduleType === "daily") {
       const hourOfDay = schedule.schedule_hour;
-      const hour = _.find(HOUR_OPTIONS, opt => opt.value === hourOfDay % 12)
-        .name;
+      const hour = _.find(
+        HOUR_OPTIONS,
+        opt => opt.value === hourOfDay % 12,
+      ).name;
       const amPm = _.find(
         AM_PM_OPTIONS,
         opt => opt.value === (hourOfDay >= 12 ? 1 : 0),
@@ -276,8 +278,10 @@ export class AlertScheduleText extends Component {
         DAY_OF_WEEK_OPTIONS,
         o => o.value === schedule.schedule_day,
       ).name;
-      const hour = _.find(HOUR_OPTIONS, opt => opt.value === hourOfDay % 12)
-        .name;
+      const hour = _.find(
+        HOUR_OPTIONS,
+        opt => opt.value === hourOfDay % 12,
+      ).name;
       const amPm = _.find(
         AM_PM_OPTIONS,
         opt => opt.value === (hourOfDay >= 12 ? 1 : 0),
@@ -316,7 +320,7 @@ export class AlertCreatorTitle extends Component {
     const isAdmin = user.is_superuser;
     const isCurrentUser = alert.creator.id === user.id;
     const creator =
-      alert.creator.id === user.id ? t`You` : alert.creator.first_name;
+      alert.creator.id === user.id ? t`You` : alert.creator.common_name;
     const text =
       !isCurrentUser && !isAdmin
         ? t`You're receiving ${creator}'s alerts`

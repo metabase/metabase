@@ -171,7 +171,8 @@ const removeAlertsForQuestionReducer = (state, { payload: questionId }) => {
 const alerts = handleActions(
   {
     ...fetchAllAlertsRequest.getReducers(),
-    [FETCH_ALERTS_FOR_QUESTION_CLEAR_OLD_ALERTS]: removeAlertsForQuestionReducer,
+    [FETCH_ALERTS_FOR_QUESTION_CLEAR_OLD_ALERTS]:
+      removeAlertsForQuestionReducer,
     ...fetchAlertsForQuestionRequest.getReducers(),
     ...createAlertRequest.getReducers(),
     ...updateAlertRequest.getReducers(),

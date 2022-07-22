@@ -28,9 +28,7 @@ export function fieldRefForColumn(column) {
   // NOTE: matching existing behavior of returning the unwrapped base dimension until we understand the implications of changing this
   return (
     column.field_ref &&
-    Dimension.parseMBQL(column.field_ref)
-      .baseDimension()
-      .mbql()
+    Dimension.parseMBQL(column.field_ref).baseDimension().mbql()
   );
 }
 

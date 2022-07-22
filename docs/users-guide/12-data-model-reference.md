@@ -1,3 +1,7 @@
+---
+title: Data reference
+---
+
 ## Data reference
 
 Sometimes when you're writing a SQL query, you might forget the exact names of different tables or columns, or which table contains what. That’s where the _data reference_ comes in handy. You can open the data reference panel from the SQL editor by clicking on the book icon in the top right corner of the editor when it's open.

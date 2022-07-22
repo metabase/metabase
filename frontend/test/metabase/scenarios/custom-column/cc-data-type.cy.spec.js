@@ -4,7 +4,7 @@ import {
   popover,
   enterCustomColumnDetails,
   filter,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -28,9 +28,7 @@ describe("scenarios > question > custom column > data type", () => {
 
     filter({ mode: "notebook" });
 
-    popover()
-      .findByText("CategoryTitle")
-      .click();
+    popover().findByText("CategoryTitle").click();
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
     cy.findByPlaceholderText("Enter some text");
@@ -43,9 +41,7 @@ describe("scenarios > question > custom column > data type", () => {
     cy.button("Done").click();
 
     filter({ mode: "notebook" });
-    popover()
-      .findByText("DoB")
-      .click();
+    popover().findByText("DoB").click();
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
 
@@ -64,9 +60,7 @@ describe("scenarios > question > custom column > data type", () => {
     cy.button("Done").click();
 
     filter({ mode: "notebook" });
-    popover()
-      .findByText("MiscDate")
-      .click();
+    popover().findByText("MiscDate").click();
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
 
@@ -85,9 +79,7 @@ describe("scenarios > question > custom column > data type", () => {
     cy.button("Done").click();
 
     filter({ mode: "notebook" });
-    popover()
-      .findByText("MiscDate")
-      .click();
+    popover().findByText("MiscDate").click();
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
 

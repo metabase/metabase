@@ -1,24 +1,28 @@
-## Custom Maps
+---
+title: Custom maps
+---
+
+# Custom maps
 
 By default, Metabase uses OpenStreetMaps for map visualizations, but there are a few customization options.
 
-### Finding Map Settings
+## Finding Map Settings
 
 To find the map settings:
 
-1. Click the **gear** icon at the bottom of the navigation sidebar and select **Admin settings**.
+1. At the top right of the screen, click  **gear** icon  >  **Admin settings**.
 2. Select `Maps` from the navigation on the left.
 
 ![Map Settings](images/MapSettings.png)
 
-### Map Tile Server
+## Map Tile Server
 
 As mentioned above, Metabase uses the OpenStreetMaps tile server. However, if your organization requires a different
 look or level of detail in your map visualizations, you can change the map tile server by adding the map tile server
 path to the first field on the page. The path must either be a URL that starts with "http://" or "https://" or a
 relative path to a local file in the JVM's classpath.
 
-### Custom Region Maps
+## Custom Region Maps
 
 If you need a map that focuses on a specific region, you may want to upload a custom GeoJSON map.
 

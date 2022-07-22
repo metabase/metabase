@@ -21,7 +21,7 @@ import {
   SearchInput,
 } from "./QuestionPicker.styled";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { SelectList } from "metabase/components/select-list";
+import SelectList from "metabase/components/SelectList";
 
 const { isRegularCollection } = PLUGIN_COLLECTIONS;
 

@@ -1,8 +1,7 @@
 import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 
-import {
-  ValidationError,
+import ValidationError, {
   VALIDATION_ERROR_TYPES,
 } from "metabase-lib/lib/ValidationError";
 

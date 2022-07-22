@@ -32,6 +32,7 @@ import _ from "underscore";
 import { getIn } from "icepick";
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 import Utils from "metabase/lib/utils";
+import { DashCardRoot } from "./DashCard.styled";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
@@ -59,6 +60,7 @@ export default class DashCard extends Component {
     fetchCardData: PropTypes.func.isRequired,
     navigateToNewCardFromDashboard: PropTypes.func.isRequired,
     headerIcon: PropTypes.shape(iconPropTypes),
+    isNightMode: PropTypes.bool,
   };
 
   constructor(props) {
@@ -105,6 +107,7 @@ export default class DashCard extends Component {
       clickBehaviorSidebarDashcard,
       isEditingParameter,
       isFullscreen,
+      isMobile,
       onAddSeries,
       onRemove,
       navigateToNewCardFromDashboard,
@@ -113,6 +116,7 @@ export default class DashCard extends Component {
       parameterValues,
       mode,
       headerIcon,
+      isNightMode,
     } = this.props;
 
     const mainCard = {
@@ -183,18 +187,15 @@ export default class DashCard extends Component {
     const gridSize = { width: dashcard.sizeX, height: dashcard.sizeY };
 
     return (
-      <div
-        className={cx(
-          "Card bordered rounded flex flex-column hover-parent hover--visibility",
-          {
-            "Card--slow": isSlow === "usually-slow",
-          },
-        )}
+      <DashCardRoot
+        className="Card rounded flex flex-column hover-parent hover--visibility"
         style={
           hideBackground
             ? { border: 0, background: "transparent", boxShadow: "none" }
             : null
         }
+        isNightMode={isNightMode}
+        isUsuallySlow={isSlow === "usually-slow"}
       >
         {isEditingDashboardLayout ? (
           <DashboardCardActionsPanel onMouseDown={this.preventDragging}>
@@ -230,12 +231,17 @@ export default class DashCard extends Component {
           rawSeries={series}
           showTitle
           isFullscreen={isFullscreen}
+          isNightMode={isNightMode}
           isDashboard
           dispatch={this.props.dispatch}
           dashboard={dashboard}
+          dashcard={dashcard}
+          parameterValues={parameterValues}
           parameterValuesBySlug={parameterValuesBySlug}
           isEditing={isEditing}
           isPreviewing={this.state.isPreviewingCard}
+          isEditingParameter={isEditingParameter}
+          isMobile={isMobile}
           gridSize={gridSize}
           totalNumGridCols={this.props.totalNumGridCols}
           actionButtons={
@@ -255,13 +261,16 @@ export default class DashCard extends Component {
             this.props.onUpdateVisualizationSettings
           }
           replacementContent={
-            (clickBehaviorSidebarDashcard != null || isEditingParameter) &&
+            clickBehaviorSidebarDashcard != null &&
             isVirtualDashCard(dashcard) ? (
               <div className="flex full-height align-center justify-center">
                 <h4 className="text-medium">{t`Text card`}</h4>
               </div>
             ) : isEditingParameter ? (
-              <DashCardParameterMapper dashcard={dashcard} />
+              <DashCardParameterMapper
+                dashcard={dashcard}
+                isMobile={isMobile}
+              />
             ) : clickBehaviorSidebarDashcard != null ? (
               <ClickBehaviorSidebarOverlay
                 dashcard={dashcard}
@@ -291,7 +300,7 @@ export default class DashCard extends Component {
           }
           onChangeLocation={this.props.onChangeLocation}
         />
-      </div>
+      </DashCardRoot>
     );
   }
 }

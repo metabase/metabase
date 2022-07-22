@@ -17,10 +17,7 @@ export const CONFIRM_DELETE_MEMBERSHIP =
   "metabase-enterprise/group_managers/CONFIRM_DELETE_MEMBERSHIP";
 export const confirmDeleteMembership = createThunkAction(
   CONFIRM_DELETE_MEMBERSHIP,
-  (membershipId, currentUserMemberships, view) => async (
-    dispatch,
-    getState,
-  ) => {
+  (membershipId, currentUserMemberships, view) => async (dispatch, getState) => {
     await dispatch(deleteMembership(membershipId));
     await dispatch(refreshCurrentUser());
 

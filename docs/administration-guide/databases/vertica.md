@@ -1,3 +1,7 @@
+---
+title: Working with Vertica in Metabase
+---
+
 # Working with Vertica in Metabase
 
 Starting in v0.20.0, Metabase provides a driver for connecting to Vertica databases. Under the hood, Metabase uses Vertica's JDBC driver;

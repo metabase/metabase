@@ -1,3 +1,7 @@
+---
+title: Exploring in Metabase
+---
+
 # Exploring in Metabase
 
 ## See what your teammates have made

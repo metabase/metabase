@@ -5,7 +5,7 @@ import {
   changeBinningForDimension,
   summarize,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const questionDetails = {
   name: "SQL Binning",
@@ -178,9 +178,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.get("circle");
 
       // Open a popover with bucket options from the time series footer
-      cy.findAllByTestId("select-button-content")
-        .contains("Month")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Month").click();
       cy.findByText("Quarter").click();
 
       cy.findByText("Count by CREATED_AT: Quarter");
@@ -209,13 +207,9 @@ describe("scenarios > binning > from a saved sql question", () => {
 });
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  cy.get(".x-axis-label")
-    .invoke("text")
-    .should("eq", xLabel);
+  cy.get(".x-axis-label").invoke("text").should("eq", xLabel);
 
-  cy.get(".y-axis-label")
-    .invoke("text")
-    .should("eq", yLabel);
+  cy.get(".y-axis-label").invoke("text").should("eq", yLabel);
 }
 
 function waitAndAssertOnRequest(requestAlias) {

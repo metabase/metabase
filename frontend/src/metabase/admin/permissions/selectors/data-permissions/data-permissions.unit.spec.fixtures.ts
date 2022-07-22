@@ -8,12 +8,9 @@ export const normalizedMetadata = {
       name: "Imaginary Multi-Schema Dataset",
       tables: [
         // In schema_1
-        5,
-        6,
+        5, 6,
         // In schema_2
-        7,
-        8,
-        9,
+        7, 8, 9,
       ],
       id: 2,
     },

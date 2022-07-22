@@ -1,3 +1,7 @@
+---
+title: Changing Metabase password complexity
+---
+
 # Changing Metabase password complexity
 
 Metabase offers a couple controls for administrators who prefer to increase the password requirements on their user accounts.

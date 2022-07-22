@@ -1,4 +1,4 @@
-import { restore, filterWidget, visitDashboard } from "__support__/e2e/cypress";
+import { restore, filterWidget, visitDashboard } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -67,15 +67,11 @@ describe("issue 13960", () => {
     cy.url().should("not.include", "?category=Doohickey");
 
     // Set filter value to the `ID`
-    filterWidget()
-      .contains(/ID/i)
-      .click();
+    filterWidget().contains(/ID/i).click();
 
     cy.findByPlaceholderText("Enter an ID").type("1");
 
-    cy.button("Add filter")
-      .should("not.be.disabled")
-      .click();
+    cy.button("Add filter").should("not.be.disabled").click();
 
     cy.location("search").should("eq", "?category=&id=1");
 

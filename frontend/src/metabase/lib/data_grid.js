@@ -161,7 +161,6 @@ export function multiLevelPivot(data, settings) {
   );
   const formattedRowTree = addSubtotals(
     formattedRowTreeWithoutSubtotals,
-    leftIndexFormatters,
     showSubtotalsByColumn,
   );
   if (formattedRowTreeWithoutSubtotals.length > 1) {
@@ -360,7 +359,7 @@ function addValueColumnNodes(nodes, valueColumns) {
 
 // This inserts nodes into the left header tree for subtotals.
 // We also mark nodes with `hasSubtotal` to display collapsing UI
-function addSubtotals(rowColumnTree, formatters, showSubtotalsByColumn) {
+function addSubtotals(rowColumnTree, showSubtotalsByColumn) {
   // For top-level items we want to show subtotal even if they have only one child
   // Except the case when top-level items have flat structure
   // (meaning all of the items have just one child)
@@ -370,7 +369,7 @@ function addSubtotals(rowColumnTree, formatters, showSubtotalsByColumn) {
   const notFlat = rowColumnTree.some(item => item.children.length > 1);
 
   return rowColumnTree.flatMap(item =>
-    addSubtotal(item, formatters, showSubtotalsByColumn, {
+    addSubtotal(item, showSubtotalsByColumn, {
       shouldShowSubtotal: notFlat || item.children.length > 1,
     }),
   );
@@ -378,7 +377,6 @@ function addSubtotals(rowColumnTree, formatters, showSubtotalsByColumn) {
 
 function addSubtotal(
   item,
-  [formatter, ...formatters],
   [isSubtotalEnabled, ...showSubtotalsByColumn],
   { shouldShowSubtotal = false } = {},
 ) {
@@ -386,7 +384,7 @@ function addSubtotal(
   const subtotal = hasSubtotal
     ? [
         {
-          value: t`Totals for ${formatter(item.value)}`,
+          value: t`Totals for ${item.value}`,
           rawValue: item.rawValue,
           span: 1,
           isSubtotal: true,
@@ -403,7 +401,7 @@ function addSubtotal(
     children: item.children.flatMap(child =>
       // add subtotals until the last level
       child.children.length > 0
-        ? addSubtotal(child, formatters, showSubtotalsByColumn, {
+        ? addSubtotal(child, showSubtotalsByColumn, {
             shouldShowSubtotal: child.children.length > 1,
           })
         : child,
@@ -544,7 +542,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
   }
 
   // provide some column metadata to maintain consistency
-  const cols = pivotValues.map(function(value, idx) {
+  const cols = pivotValues.map(function (value, idx) {
     if (idx === 0) {
       // first column is always the coldef of the normal column
       return data.cols[normalCol];

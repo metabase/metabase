@@ -1,4 +1,4 @@
-import { restore, visitDashboard } from "__support__/e2e/cypress";
+import { popover, restore, visitDashboard } from "__support__/e2e/helpers";
 
 describe("scenarios > home > homepage", () => {
   beforeEach(() => {
@@ -104,7 +104,7 @@ describe("scenarios > home > homepage", () => {
 
       cy.visit("/collection/root");
       cy.wait("@getCollectionItems");
-      getQuestionRow("Orders, Count").within(() => cy.icon("pin").click());
+      pinItem("Orders, Count");
       cy.wait("@getCollectionItems");
       cy.wait("@getQuestionQuery");
 
@@ -116,8 +116,12 @@ describe("scenarios > home > homepage", () => {
   });
 });
 
-const getQuestionRow = name => {
-  return cy.findByText(name).closest("tr");
+const pinItem = name => {
+  cy.findByText(name)
+    .closest("tr")
+    .within(() => cy.icon("ellipsis").click());
+
+  popover().within(() => cy.icon("pin").click());
 };
 
 const getXrayCandidates = () => [

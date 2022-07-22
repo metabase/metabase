@@ -4,7 +4,7 @@ import {
   openReviewsTable,
   popover,
   summarize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -20,10 +20,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     cy.visit("/admin/datamodel/database/1");
     // edit "Product ID" column in "Orders" table
     cy.findByText("Orders").click();
-    cy.findByDisplayValue("Product ID")
-      .parent()
-      .find(".Icon-gear")
-      .click();
+    cy.findByDisplayValue("Product ID").parent().find(".Icon-gear").click();
 
     // remap its original value to use foreign key
     cy.findByText("Use original value").click();
@@ -54,10 +51,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     cy.visit("/admin/datamodel/database/1");
     // edit "Rating" values in "Reviews" table
     cy.findByText("Reviews").click();
-    cy.findByDisplayValue("Rating")
-      .parent()
-      .find(".Icon-gear")
-      .click();
+    cy.findByDisplayValue("Rating").parent().find(".Icon-gear").click();
 
     // apply custom remapping for "Rating" values 1-5
     cy.findByText("Use original value").click();
@@ -67,10 +61,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     );
 
     Object.entries(customMap).forEach(([key, value]) => {
-      cy.findByDisplayValue(key)
-        .click()
-        .clear()
-        .type(value);
+      cy.findByDisplayValue(key).click().clear().type(value);
     });
     cy.findByText("Save").click();
 
@@ -120,9 +111,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     summarize({ mode: "notebook" });
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    cy.get(".List-section-header")
-      .contains("Created At")
-      .click();
+    cy.get(".List-section-header").contains("Created At").click();
     cy.get(".List-section--expanded .List-item-title")
       .contains("Created At")
       .should("have.length", 1);
@@ -134,19 +123,13 @@ describe("scenarios > admin > datamodel > metadata", () => {
     );
 
     openOptionsForSection("Filtering on this field");
-    popover()
-      .findByText("Search box")
-      .click();
+    popover().findByText("Search box").click();
 
     openOptionsForSection("Display values");
-    popover()
-      .findByText("Custom mapping")
-      .should("not.exist");
+    popover().findByText("Custom mapping").should("not.exist");
 
     openOptionsForSection("Filtering on this field");
-    popover()
-      .findByText("A list of all values")
-      .click();
+    popover().findByText("A list of all values").click();
 
     openOptionsForSection("Display values");
     popover().findByText("Custom mapping");

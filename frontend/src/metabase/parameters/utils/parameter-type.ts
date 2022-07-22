@@ -28,6 +28,11 @@ export function isDateParameter(parameter: Parameter | string) {
   return type === "date";
 }
 
+export function isNumberParameter(parameter: Parameter) {
+  const type = getParameterType(parameter);
+  return type === "number";
+}
+
 export function isFieldFilterParameter(
   parameter: Parameter,
 ): parameter is FieldFilterUiParameter {

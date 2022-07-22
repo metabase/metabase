@@ -1,4 +1,4 @@
-import { restore, filterWidget, visitDashboard } from "__support__/e2e/cypress";
+import { restore, filterWidget, visitDashboard } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -81,27 +81,21 @@ describe("issue 15279", () => {
     cy.intercept("GET", "/api/dashboard/*/params/*/values").as("values");
 
     // Check that list filter works
-    filterWidget()
-      .contains("List")
-      .click();
+    filterWidget().contains("List").click();
 
     cy.wait("@values");
     cy.findByTextEnsureVisible("Add filter");
 
-    cy.findByPlaceholderText("Enter some text")
-      .type("Organic")
-      .blur();
+    cy.findByPlaceholderText("Enter some text").type("Organic").blur();
     cy.button("Add filter").click();
 
     // Check that the search filter works
-    filterWidget()
-      .contains("Search")
-      .click();
+    filterWidget().contains("Search").click();
     cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
     cy.button("Add filter").click();
 
     // The corrupted filter is now present in the UI, but it doesn't work (as expected)
     // People can now easily remove it
-    cy.findByPlaceholderText("Enter a value...");
+    cy.findByText("Select…");
   });
 });

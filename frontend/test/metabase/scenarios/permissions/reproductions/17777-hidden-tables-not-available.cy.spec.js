@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -29,9 +29,7 @@ describe.skip("issue 17777", () => {
       cy.findByText("People");
     });
 
-    cy.findAllByText("No self-service")
-      .first()
-      .click();
+    cy.findAllByText("No self-service").first().click();
 
     popover().contains("Unrestricted");
   });

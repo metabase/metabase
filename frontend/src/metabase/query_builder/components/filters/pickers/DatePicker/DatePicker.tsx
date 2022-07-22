@@ -21,7 +21,9 @@ import DatePickerFooter from "./DatePickerFooter";
 import DatePickerHeader from "./DatePickerHeader";
 import ExcludeDatePicker from "./ExcludeDatePicker";
 import DatePickerShortcuts from "./DatePickerShortcuts";
-import { CurrentPicker, NextPicker, PastPicker } from "./RelativeDatePicker";
+import { DateShortcutOptions } from "./DatePickerShortcutOptions";
+import CurrentPicker from "./CurrentPicker";
+import { NextPicker, PastPicker } from "./RelativeDatePicker";
 import { AfterPicker, BeforePicker, BetweenPicker } from "./RangeDatePicker";
 import SingleDatePicker from "./SingleDatePicker";
 
@@ -225,10 +227,10 @@ export function getOperator(filter: Filter, operators = DATE_OPERATORS) {
 }
 
 type Props = {
-  isSidebar?: boolean;
   className?: string;
 
   filter: Filter;
+  dateShortcutOptions?: DateShortcutOptions;
   operators?: DateOperator[];
 
   hideTimeSelectors?: boolean;
@@ -249,8 +251,8 @@ const DatePicker: React.FC<Props> = props => {
   const {
     className,
     filter,
+    dateShortcutOptions,
     onFilterChange,
-    isSidebar,
     disableOperatorSelection,
     disableChangingDimension,
     primaryColor,
@@ -279,11 +281,12 @@ const DatePicker: React.FC<Props> = props => {
   };
 
   return (
-    <div className={cx(className)}>
+    <div className={cx(className)} data-testid="date-picker">
       {!operator || showShortcuts ? (
         <DatePickerShortcuts
           className="p2"
           primaryColor={primaryColor}
+          dateShortcutOptions={dateShortcutOptions}
           onFilterChange={filter => {
             setShowShortcuts(false);
             onFilterChange(filter);
@@ -320,7 +323,6 @@ const DatePicker: React.FC<Props> = props => {
             />
           )}
           <DatePickerFooter
-            isSidebar={isSidebar}
             filter={filter}
             primaryColor={primaryColor}
             onFilterChange={onFilterChange}

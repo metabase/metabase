@@ -1,4 +1,4 @@
-import { restore, popover, visualize, filter } from "__support__/e2e/cypress";
+import { restore, popover, visualize, filter } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -30,9 +30,7 @@ describe("issue 14843", () => {
 
     filter({ mode: "notebook" });
 
-    popover()
-      .findByText(CC_NAME)
-      .click();
+    popover().findByText(CC_NAME).click();
 
     cy.findByText("Equal to").click();
     cy.findByText("Not equal to").click();

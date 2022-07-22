@@ -12,6 +12,7 @@ import {
   SavedQuestionListRoot,
   SavedQuestionListItem,
   SavedQuestionListEmptyState,
+  LoadingWrapper,
 } from "./SavedQuestionList.styled";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
@@ -43,45 +44,50 @@ function SavedQuestionList({
     </SavedQuestionListEmptyState>
   );
 
-  const isVirtualCollection = collection.id === PERSONAL_COLLECTIONS.id;
+  const isVirtualCollection = collection?.id === PERSONAL_COLLECTIONS.id;
   const schemaId = getCollectionVirtualSchemaId(collection, { isDatasets });
 
   return (
     <SavedQuestionListRoot>
-      {!isVirtualCollection && (
-        <Schemas.Loader id={schemaId}>
-          {({ schema }) => {
-            const tables =
-              databaseId != null
-                ? schema.tables.filter(table => table.db_id === databaseId)
-                : schema.tables;
-            return (
-              <React.Fragment>
-                {_.sortBy(tables, "display_name").map(t => (
-                  <SavedQuestionListItem
-                    id={t.id}
-                    isSelected={selectedId === t.id}
-                    key={t.id}
-                    size="small"
-                    name={t.display_name}
-                    icon={{
-                      name: isDatasets ? "model" : "table2",
-                      size: 16,
-                    }}
-                    onSelect={() => onSelect(t)}
-                    rightIcon={PLUGIN_MODERATION.getStatusIcon(
-                      t.moderated_status,
-                    )}
-                  />
-                ))}
-
-                {tables.length === 0 ? emptyState : null}
-              </React.Fragment>
-            );
-          }}
-        </Schemas.Loader>
-      )}
-      {isVirtualCollection && emptyState}
+      <LoadingWrapper loading={!collection}>
+        {!isVirtualCollection && (
+          <Schemas.Loader id={schemaId}>
+            {({ schema }) => {
+              const tables =
+                databaseId != null
+                  ? schema.tables.filter(table => table.db_id === databaseId)
+                  : schema.tables;
+              return (
+                <React.Fragment>
+                  {tables
+                    .sort((a, b) =>
+                      a.display_name.localeCompare(b.display_name),
+                    )
+                    .map(t => (
+                      <SavedQuestionListItem
+                        id={t.id}
+                        isSelected={selectedId === t.id}
+                        key={t.id}
+                        size="small"
+                        name={t.display_name}
+                        icon={{
+                          name: isDatasets ? "model" : "table2",
+                          size: 16,
+                        }}
+                        onSelect={() => onSelect(t)}
+                        rightIcon={PLUGIN_MODERATION.getStatusIcon(
+                          t.moderated_status,
+                        )}
+                      />
+                    ))}
+                  {tables.length === 0 ? emptyState : null}
+                </React.Fragment>
+              );
+            }}
+          </Schemas.Loader>
+        )}
+        {isVirtualCollection && emptyState}
+      </LoadingWrapper>
     </SavedQuestionListRoot>
   );
 }

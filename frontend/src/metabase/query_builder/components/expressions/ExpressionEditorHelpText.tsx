@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -42,7 +42,7 @@ const HelpText = ({ helpText, width, target }: HelpTextProps) => {
           <div onMouseDown={e => e.preventDefault()}>
             <p
               className="p2 m0 text-monospace text-bold"
-              style={{ background: colors["bg-yellow"] }}
+              style={{ background: color("bg-yellow") }}
             >
               {helpText.structure}
             </p>

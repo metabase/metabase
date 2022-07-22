@@ -1,6 +1,10 @@
+---
+title: Using or migrating from an H2 application database
+---
+
 # Using or migrating from an H2 application database
 
-You have installed Metabase, but:
+You've installed Metabase, but:
 
 - You're trying to migrate the application database from H2 to another database and something has gone wrong,
 - You're trying to downgrade rather than upgrade,

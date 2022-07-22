@@ -1,6 +1,12 @@
-**The overall goal of a code review is to serve as a safety net for other people on our team and help them write better code, not to judge them or their code. When in doubt, assume that they have good intentions and BE NICE.**
+---
+title: "Code reviews"
+---
 
-## Goals:
+# Code reviews
+
+The overall goal of a code review is to serve as a safety net for other people on our team and help them write better code, not to judge them or their code. When in doubt, assume that they have good intentions and BE NICE.
+
+## Goals
 
 * Catch bugs 
 * Catch non-obvious consequences of an approach - will this PR make future code harder to secure or more buggy.
@@ -9,7 +15,7 @@
 * Point out places where a good approach or style was used. Code reviews are not a hatefest. Unless a PR is completely horrific there should be an equal number of good and bad points brought up.
 
 
-## Mindset giving a Code Review:
+## Mindset giving a code review
 
 Your primary goal as a reviewer is to serve as a safety net and keep bad code from being merged. The definition of “bad” is highly subjective, context dependent and will change with product time and maturity. 
 
@@ -19,7 +25,7 @@ If you see places where you don’t agree with an approach, speak up. However, a
 
 Look for tricks, techniques, or idioms you can steal. Your teammates are smart folks. Chances are they have tricks that you can learn from. Make a point of letting them know.
 
-## Mindset getting a Code Review:
+## Mindset getting a code review
 
 The reviewer is doing you a Solid. They are there to help you do the best work you can. The best of the best have coaches, editors and mentors. Your code reviewers should help you in the same way. In situations where they are more experienced, this can be direct mentoring. In situations where they are more junior, they have a fresh pair of eyes that might get you to question deeply held assumptions. 
 
@@ -28,7 +34,8 @@ When a reviewer disagrees with an approach you took, seek to understand why. The
 If someone slaps a strong :-1: on your PR, be especially patient. Dig into why they think the PR is flawed. Approach the conversation with an intent of making the PR better, not defending your approach. You get no points for being a better debater, but you do get points for shipping better code and a better product, no matter where the inspiration or ideas came from.  
 
 
-## Process:
+## Process
+
 * Every PR of significant complexity needs to be :+1:’d by at least one other engineer on the team (or @salsakran) to merge
 * Add people you think should review your PR to the PR’s assignees. The reviewer can remove themselves once they have reviewed it, or decided they aren’t an appropriate reviewer
 * Code that impacts other engineer’s work should be reviewed by those engineers
@@ -42,7 +49,8 @@ If someone slaps a strong :-1: on your PR, be especially patient. Dig into why t
 
 Note that these :+1:, :+0:, and :-1:’s should be explicitly stated in a comment, and not a reaction on the main description of the PR on github. A change from :-1: to :+1: should also be stated explicitly on a comment.
 
-## Timing:
+## Timing
+
 * PRs for high priority issues should be code reviewed as soon as they are available. 
 * PRs for issues in a milestone can wait a few days.
 * If there are no :+1:'s on a PR, it is the responsibility of the PR creator to follow up with others and get their code reviewed. To re-iterate, a PR needs to be :+1:’d to be merged, and if it has not been reviewed, it is on the opener of the PR to round up a reviewer. 

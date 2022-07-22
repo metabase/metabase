@@ -1,3 +1,7 @@
+---
+title: Running Metabase on Docker
+---
+
 # Running Metabase on Docker
 
 <div class='doc-toc' markdown=1>

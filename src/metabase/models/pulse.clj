@@ -26,6 +26,9 @@
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
@@ -124,7 +127,8 @@
   (merge
    models/IModelDefaults
    {:hydration-keys (constantly [:pulse])
-    :properties     (constantly {:timestamped? true})
+    :properties     (constantly {:timestamped? true
+                                 :entity_id    true})
     :pre-insert     pre-insert
     :pre-update     pre-update
     :types          (constantly {:parameters :json})})
@@ -133,7 +137,10 @@
    mi/IObjectPermissionsDefaults
    {:can-read?         (partial mi/current-user-has-full-permissions? :read)
     :can-write?        can-write?
-    :perms-objects-set perms-objects-set}))
+    :perms-objects-set perms-objects-set})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
 
 (def ^:private ^:dynamic *automatically-archive-when-last-channel-is-deleted*
   "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
@@ -556,3 +563,22 @@
   ;; fetch the fully updated pulse and return it (and fire off an event)
   (->> (retrieve-alert (u/the-id alert))
        (events/publish-event! :pulse-update)))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defmethod serdes.base/extract-one "Pulse"
+  [_model-name _opts pulse]
+  (cond-> (serdes.base/extract-one-basics "Pulse" pulse)
+    (:collection_id pulse) (update :collection_id serdes.util/export-fk 'Collection)
+    (:dashboard_id  pulse) (update :dashboard_id  serdes.util/export-fk 'Dashboard)
+    true                   (update :creator_id serdes.util/export-fk-keyed 'User :email)))
+
+(defmethod serdes.base/load-xform "Pulse" [pulse]
+  (cond-> (serdes.base/load-xform-basics pulse)
+      true                   (update :creator_id    serdes.util/import-fk-keyed 'User :email)
+      (:collection_id pulse) (update :collection_id serdes.util/import-fk 'Collection)
+      (:dashboard_id  pulse) (update :dashboard_id  serdes.util/import-fk 'Dashboard)))
+
+(defmethod serdes.base/serdes-dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
+  (filterv some? [(when collection_id [{:model "Collection" :id collection_id}])
+                  (when dashboard_id  [{:model "Dashboard"  :id dashboard_id}])]))

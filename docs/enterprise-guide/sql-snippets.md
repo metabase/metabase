@@ -1,3 +1,7 @@
+---
+title: SQL snippet folders and permissions
+---
+
 # SQL snippet folders and permissions
 
 {% include plans-blockquote.html feature="SQL snippet controls" %}

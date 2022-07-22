@@ -6,7 +6,7 @@ import Question from "metabase-lib/lib/Question";
 import { isPK } from "metabase/lib/schema_metadata";
 import { Table } from "metabase-types/types/Table";
 
-import { ForeignKey } from "metabase-types/api/foreignKey";
+import { ForeignKey } from "metabase-types/api";
 import { DatasetData } from "metabase-types/types/Dataset";
 import { ObjectId, OnVisualizationClickType } from "./types";
 
@@ -35,6 +35,7 @@ import {
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { State } from "metabase-types/store";
 
 import {
   getObjectName,
@@ -52,7 +53,7 @@ import {
   ErrorWrapper,
 } from "./ObjectDetail.styled";
 
-const mapStateToProps = (state: unknown, { data }: ObjectDetailProps) => {
+const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
   let zoomedRowID = getZoomedObjectId(state);
   const isZooming = zoomedRowID != null;
 
@@ -203,7 +204,7 @@ export function ObjectDetailFn({
   );
 
   const onKeyDown = (event: KeyboardEvent) => {
-    const capturedKeys: { [key: string]: () => void } = {
+    const capturedKeys: Record<string, () => void> = {
       ArrowUp: viewPreviousObjectDetail,
       ArrowDown: viewNextObjectDetail,
       Escape: closeObjectDetail,

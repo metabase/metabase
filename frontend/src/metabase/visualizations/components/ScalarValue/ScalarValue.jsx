@@ -2,14 +2,21 @@
  * Shared component for Scalar and SmartScalar to make sure our number presentation stays in sync
  */
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useMemo } from "react";
 import cx from "classnames";
 
-import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
+import Ellipsified from "metabase/core/components/Ellipsified";
+import {
+  ScalarRoot,
+  ScalarValueWrapper,
+  ScalarTitleRoot,
+} from "./ScalarValue.styled";
 
-import { ScalarRoot, ScalarValueWrapper } from "./ScalarValue.styled";
+import { findSize, getMaxFontSize } from "./utils";
+
+const HORIZONTAL_PADDING = 32;
 
 export const ScalarWrapper = ({ children }) => (
   <ScalarRoot>{children}</ScalarRoot>
@@ -17,30 +24,37 @@ export const ScalarWrapper = ({ children }) => (
 
 const ScalarValue = ({
   value,
-  isDashboard,
-  gridSize,
-  minGridSize,
   width,
-  height,
+  gridSize,
   totalNumGridCols,
-}) => (
-  <ScalarValueWrapper
-    className="ScalarValue"
-    isDashboard={isDashboard}
-    gridSize={gridSize}
-    minGridSize={minGridSize}
-    width={width}
-    height={height}
-    totalNumGridCols={totalNumGridCols}
-  >
-    {value}
-  </ScalarValueWrapper>
-);
+  fontFamily,
+}) => {
+  const fontSize = useMemo(
+    () =>
+      findSize({
+        text: value,
+        targetWidth: width - HORIZONTAL_PADDING,
+        fontFamily: fontFamily ?? "Lato",
+        fontWeight: 900,
+        unit: "rem",
+        step: 0.2,
+        min: 2.2,
+        max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
+      }),
+    [fontFamily, gridSize, totalNumGridCols, value, width],
+  );
+
+  return (
+    <ScalarValueWrapper className="ScalarValue" fontSize={fontSize}>
+      {value}
+    </ScalarValueWrapper>
+  );
+};
 
 const ICON_WIDTH = 24;
 
 export const ScalarTitle = ({ title, description, onClick }) => (
-  <div className="flex align-center full justify-center px2">
+  <ScalarTitleRoot>
     {/*
       This is a hacky spacer so that the h3 is centered correctly.
       It needs match the width of the tooltip icon on the other side.
@@ -51,13 +65,15 @@ export const ScalarTitle = ({ title, description, onClick }) => (
     <h3
       onClick={onClick}
       className={cx(
-        "Scalar-title overflow-hidden fullscreen-normal-text fullscreen-night-text text-brand-hover",
+        "Scalar-title overflow-hidden text-centered fullscreen-normal-text fullscreen-night-text text-brand-hover",
         {
           "cursor-pointer": !!onClick,
         },
       )}
     >
-      <Ellipsified tooltip={title}>{title}</Ellipsified>
+      <Ellipsified tooltip={title} lines={2} placement="bottom">
+        {title}
+      </Ellipsified>
     </h3>
     {description && description.length > 0 && (
       <div
@@ -69,7 +85,7 @@ export const ScalarTitle = ({ title, description, onClick }) => (
         </Tooltip>
       </div>
     )}
-  </div>
+  </ScalarTitleRoot>
 );
 
 export default ScalarValue;

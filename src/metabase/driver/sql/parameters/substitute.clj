@@ -8,6 +8,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
 
+(declare substitute)
+
 (defn- substitute-field-filter [[sql args missing] in-optional? k {:keys [_field value], :as v}]
   (if (and (= params/no-value value) in-optional?)
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
@@ -22,9 +24,15 @@
         (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
     [(str sql replacement-snippet) (concat args prepared-statement-args) missing]))
 
-(defn- substitute-native-query-snippet [[sql args missing] v]
-   (let [{:keys [replacement-snippet]} (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
-     [(str sql replacement-snippet) args missing]))
+(defn- substitute-native-query-snippet [[sql args missing] {:keys [parsed-query param->value id] :as _v}]
+  (let [;; substitute template-tags inside snippet
+        [content snippet-args] (substitute parsed-query param->value)
+        snippet                (params/map->ReferencedQuerySnippet {:content    content
+                                                                    :params     snippet-args
+                                                                    :snippet-id id})
+        {:keys [replacement-snippet prepared-statement-args]}
+        (sql.params.substitution/->replacement-snippet-info driver/*driver* snippet)]
+    [(str sql replacement-snippet) (concat args prepared-statement-args) missing]))
 
 (defn- substitute-param [param->value [sql args missing] in-optional? {:keys [k]}]
   (if-not (contains? param->value k)
@@ -37,7 +45,7 @@
         (params/ReferencedCardQuery? v)
         (substitute-card-query [sql args missing] v)
 
-        (params/ReferencedQuerySnippet? v)
+        (params/ParsedQuerySnippet? v)
         (substitute-native-query-snippet [sql args missing] v)
 
         (= params/no-value v)

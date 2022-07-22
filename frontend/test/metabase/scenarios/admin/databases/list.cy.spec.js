@@ -1,4 +1,4 @@
-import { restore, describeEE, describeOSS } from "__support__/e2e/cypress";
+import { restore, describeEE, isOSS } from "__support__/e2e/helpers";
 
 describe("scenarios > admin > databases > list", () => {
   beforeEach(() => {
@@ -6,8 +6,10 @@ describe("scenarios > admin > databases > list", () => {
     cy.signInAsAdmin();
   });
 
-  describeOSS("OSS", () => {
+  describe("OSS", { tags: "@OSS" }, () => {
     it("should not display error messages upon a failed `GET` (metabase#20471)", () => {
+      cy.onlyOn(isOSS);
+
       const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
       cy.intercept(

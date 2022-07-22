@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Run clj-kondo
-      run: docker run -v $PWD:/work --rm cljkondo/clj-kondo clj-kondo --config /work/.clj-kondo/config.edn --config-dir /work/.clj-kondo --lint /work/src:/work/enterprise/backend/src:/work/shared/src
+      run: docker run -v $PWD:/work --rm cljkondo/clj-kondo:2022.04.25 clj-kondo --config /work/.clj-kondo/config.edn --config-dir /work/.clj-kondo --lint /work/src:/work/enterprise/backend/src:/work/shared/src
 
   be-linter-eastwood:
     runs-on: ubuntu-20.04
@@ -44,14 +44,14 @@ jobs:
   be-tests:
     runs-on: ubuntu-20.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         edition: [oss, ee]
         java-version: [11, 17]
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment

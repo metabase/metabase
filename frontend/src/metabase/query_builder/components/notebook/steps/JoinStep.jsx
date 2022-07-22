@@ -9,6 +9,7 @@ import { DataSourceSelector } from "metabase/query_builder/components/DataSelect
 import FieldList from "metabase/query_builder/components/FieldList";
 import Join from "metabase-lib/lib/queries/structured/Join";
 import { isDateTimeField } from "metabase/lib/query/field_ref";
+import Select from "metabase/core/components/Select";
 
 import { NotebookCellItem, NotebookCellAdd } from "../NotebookCell";
 import {
@@ -37,6 +38,7 @@ import {
   Row,
   PrimaryJoinCell,
   SecondaryJoinCell,
+  JoinOperatorButton,
 } from "./JoinStep.styled";
 
 const stepShape = {
@@ -64,6 +66,15 @@ const joinStepPropTypes = {
   isLastOpened: PropTypes.bool,
   updateQuery: PropTypes.func.isRequired,
 };
+
+const JOIN_OPERATOR_OPTIONS = [
+  { name: "=", value: "=" },
+  { name: ">", value: ">" },
+  { name: "<", value: "<" },
+  { name: "≥", value: ">=" },
+  { name: "≤", value: "<=" },
+  { name: "≠", value: "!=" },
+];
 
 export default function JoinStep({
   color,
@@ -191,10 +202,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   }
 
   function addNewDimensionsPair(index) {
-    join
-      .addEmptyDimensionsPair()
-      .parent()
-      .update(updateQuery);
+    join.addEmptyDimensionsPair().parent().update(updateQuery);
 
     // Need to wait, so a new dimensions pair renders
     // and a corresponding ref is created, so we can reference it here
@@ -238,6 +246,10 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
             {displayConditions.map((condition, index) => {
               const isFirst = index === 0;
               const isLast = index === displayConditions.length - 1;
+              const [operator] = condition;
+              const operatorSymbol = JOIN_OPERATOR_OPTIONS.find(
+                o => o.value === operator,
+              )?.name;
 
               function removeParentDimension() {
                 join
@@ -254,10 +266,11 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
               }
 
               function removeDimensionPair() {
-                join
-                  .removeCondition(index)
-                  .parent()
-                  .update(updateQuery);
+                join.removeCondition(index).parent().update(updateQuery);
+              }
+
+              function updateOperator({ target: { value } }) {
+                join.setOperator(index, value).parent().update(updateQuery);
               }
 
               return (
@@ -281,7 +294,20 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                       }
                       data-testid="parent-dimension"
                     />
-                    <JoinConditionLabel>=</JoinConditionLabel>
+                    <JoinConditionLabel>
+                      <Select
+                        hiddenIcons
+                        width={80}
+                        value={operator}
+                        onChange={updateOperator}
+                        options={JOIN_OPERATOR_OPTIONS}
+                        triggerElement={
+                          <JoinOperatorButton primary>
+                            {operatorSymbol}
+                          </JoinOperatorButton>
+                        }
+                      />
+                    </JoinConditionLabel>
                   </Row>
                   <Row>
                     <JoinDimensionPicker
@@ -443,10 +469,7 @@ function JoinTypePicker({ join, color, updateQuery }) {
   const strategyOption = join.strategyOption();
 
   function onChange(strategy) {
-    join
-      .setStrategy(strategy)
-      .parent()
-      .update(updateQuery);
+    join.setStrategy(strategy).parent().update(updateQuery);
   }
 
   return (
@@ -646,17 +669,11 @@ const JoinFieldsPicker = ({ join, updateQuery, ...props }) => {
   const selected = new Set(selectedDimensions.map(d => d.key()));
 
   function onSelectAll() {
-    join
-      .setFields("all")
-      .parent()
-      .update(updateQuery);
+    join.setFields("all").parent().update(updateQuery);
   }
 
   function onSelectNone() {
-    join
-      .setFields("none")
-      .parent()
-      .update(updateQuery);
+    join.setFields("none").parent().update(updateQuery);
   }
 
   function onToggleDimension(dimension) {

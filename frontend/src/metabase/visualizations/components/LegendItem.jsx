@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 
 import Icon, { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 
 import cx from "classnames";
 

@@ -1,5 +1,5 @@
 // Migrated from frontend/test/metabase/user/UserSettings.integ.spec.js
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const { first_name, last_name, email, password } = USERS.normal;
@@ -31,14 +31,32 @@ const CURRENT_USER = {
 const requestsCount = alias =>
   cy.state("requests").filter(a => a.alias === alias);
 describe("user > settings", () => {
+  const fullName = `${first_name} ${last_name}`;
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
   });
 
+  it("should be able to remove first name and last name (metabase#22754)", () => {
+    cy.visit("/account/profile");
+    cy.findByText(fullName);
+    cy.findByLabelText("First name").clear();
+    cy.findByLabelText("Last name").clear();
+    cy.button("Update").click();
+
+    cy.reload();
+
+    cy.findByLabelText("First name").should("be.empty");
+    cy.findByLabelText("Last name").should("be.empty");
+  });
+
   it("should show user details with disabled submit button", () => {
     cy.visit("/account/profile");
-    cy.findByText("Account settings");
+    cy.findByTestId("account-header").within(() => {
+      cy.findByText(fullName);
+      cy.findByText(email);
+    });
     cy.findByDisplayValue(first_name);
     cy.findByDisplayValue(last_name);
     cy.findByDisplayValue(email);
@@ -46,13 +64,9 @@ describe("user > settings", () => {
   });
 
   it("should update the user without fetching memberships", () => {
-    cy.server();
-    cy.route("GET", "/api/permissions/membership").as("membership");
+    cy.intercept("GET", "/api/permissions/membership").as("membership");
     cy.visit("/account/profile");
-    cy.findByDisplayValue(first_name)
-      .click()
-      .clear()
-      .type("John");
+    cy.findByDisplayValue(first_name).click().clear().type("John");
     cy.findByText("Update").click();
     cy.findByDisplayValue("John");
 
@@ -64,8 +78,7 @@ describe("user > settings", () => {
   });
 
   it("should have a change password tab", () => {
-    cy.server();
-    cy.route("GET", "/api/user/current").as("getUser");
+    cy.intercept("GET", "/api/user/current").as("getUser");
 
     cy.visit("/account/profile");
     cy.wait("@getUser");
@@ -93,6 +106,31 @@ describe("user > settings", () => {
     cy.findByText("Sign in to Metabase");
   });
 
+  it("should validate form values (metabase#23259)", () => {
+    cy.signInAsNormalUser();
+    cy.visit("/account/password");
+
+    // Validate common passwords
+    cy.findByLabelText("Create a password")
+      .as("passwordInput")
+      .type("qwerty123")
+      .blur();
+
+    cy.contains("password is too common");
+    cy.get("@passwordInput").clear();
+
+    // Validate invalid current password
+    cy.findByLabelText("Current password")
+      .as("currentPassword")
+      .type("invalid");
+
+    cy.get("@passwordInput").type("new_password1");
+    cy.findByLabelText("Confirm your password").type("new_password1");
+
+    cy.button("Save").click();
+    cy.contains("Invalid password");
+  });
+
   it("should be able to change a language (metabase#22192)", () => {
     cy.intercept("PUT", "/api/user/*").as("updateUserSettings");
 
@@ -103,6 +141,9 @@ describe("user > settings", () => {
 
     cy.button("Update").click();
     cy.wait("@updateUserSettings");
+
+    // Assert that the page reloaded with the new language
+    cy.findByLabelText("Nama depan").should("exist");
 
     // We need some UI element other than a string
     cy.icon("gear").should("exist");
@@ -128,8 +169,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via ldap", () => {
     beforeEach(() => {
-      cy.server();
-      cy.route(
+      cy.intercept(
         "GET",
         "/api/user/current",
         Object.assign({}, CURRENT_USER, {
@@ -148,8 +188,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via google", () => {
     beforeEach(() => {
-      cy.server();
-      cy.route(
+      cy.intercept(
         "GET",
         "/api/user/current",
         Object.assign({}, CURRENT_USER, {
@@ -163,6 +202,62 @@ describe("user > settings", () => {
 
     it("should hide change password tab", () => {
       cy.findByText("Password").should("not.exist");
+    });
+
+    it("should hide first name, last name, and email input (metabase#23298)", () => {
+      cy.findByLabelText("First name").should("not.exist");
+      cy.findByLabelText("Last name").should("not.exist");
+      cy.findByLabelText("Email").should("not.exist");
+    });
+  });
+
+  describe("when user is authenticated via JWT", () => {
+    beforeEach(() => {
+      cy.intercept(
+        "GET",
+        "/api/user/current",
+        Object.assign({}, CURRENT_USER, {
+          sso_source: "jwt",
+        }),
+      ).as("getUser");
+
+      cy.visit("/account/profile");
+      cy.wait("@getUser");
+    });
+
+    it("should hide change password tab", () => {
+      cy.findByText("Password").should("not.exist");
+    });
+
+    it("should hide first name, last name, and email input (metabase#23298)", () => {
+      cy.findByLabelText("First name").should("not.exist");
+      cy.findByLabelText("Last name").should("not.exist");
+      cy.findByLabelText("Email").should("not.exist");
+    });
+  });
+
+  describe("when user is authenticated via SAML", () => {
+    beforeEach(() => {
+      cy.intercept(
+        "GET",
+        "/api/user/current",
+        Object.assign({}, CURRENT_USER, {
+          sso_source: "saml",
+        }),
+      ).as("getUser");
+
+      cy.visit("/account/profile");
+      cy.wait("@getUser");
+    });
+
+    it("should hide change password tab", () => {
+      cy.findByText("Password").should("not.exist");
+    });
+
+    it("should hide first name, last name, and email input (metabase#23298)", () => {
+      cy.findByLabelText("First name").should("not.exist");
+      cy.findByLabelText("Last name").should("not.exist");
+      cy.findByLabelText("Email").should("not.exist");
     });
   });
 });

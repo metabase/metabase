@@ -19,3 +19,7 @@ export interface State {
   settings: SettingsState;
   setup: SetupState;
 }
+
+export type Dispatch<T = unknown> = (action: T) => void;
+
+export type GetState = () => State;

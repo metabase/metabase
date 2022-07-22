@@ -2,6 +2,7 @@ import {
   getParameterIconName,
   buildHiddenParametersSlugSet,
   getVisibleParameters,
+  getParameterWidgetTitle,
 } from "./ui";
 
 describe("parameters/utils/ui", () => {
@@ -62,6 +63,27 @@ describe("parameters/utils/ui", () => {
           slug: "qux",
         },
       ]);
+    });
+  });
+
+  describe("getParameterWidgetTitle", () => {
+    it("should return a title for the given parameter", () => {
+      expect(getParameterWidgetTitle({ type: "string/starts-with" })).toEqual(
+        "Starts with…",
+      );
+
+      expect(getParameterWidgetTitle({ type: "number/between" })).toEqual(
+        "Between…",
+      );
+    });
+
+    it("should not return a title for equal operator parameters", () => {
+      expect(getParameterWidgetTitle({ type: "string/=" })).toBeUndefined();
+      expect(getParameterWidgetTitle({ type: "number/=" })).toBeUndefined();
+    });
+
+    it("should default to undefined for parameters without operators", () => {
+      expect(getParameterWidgetTitle({ type: "category" })).toBeUndefined();
     });
   });
 });

@@ -4,6 +4,9 @@
   (:require [medley.core :as m]
             [metabase.models.interface :as mi]
             [metabase.models.revision :as revision]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -31,7 +34,8 @@
   (merge
    models/IModelDefaults
    {:types          (constantly {:definition :metric-segment-definition})
-    :properties     (constantly {:timestamped? true})
+    :properties     (constantly {:timestamped? true
+                                 :entity_id    true})
     :hydration-keys (constantly [:segment])
     :pre-update     pre-update})
   mi/IObjectPermissions
@@ -42,7 +46,10 @@
     ;; for the time being you need to be a superuser in order to create or update Segments because the UI for
     ;; doing so is only exposed in the admin panel
     :can-write?        mi/superuser?
-    :can-create?       mi/superuser?}))
+    :can-create?       mi/superuser?})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -73,6 +80,27 @@
    {:serialize-instance serialize-segment
     :diff-map           diff-segments}))
 
+;;; ------------------------------------------------ Serialization ---------------------------------------------------
+
+(defmethod serdes.base/serdes-generate-path "Segment"
+  [_ segment]
+  [(assoc (serdes.base/infer-self-path "Segment" segment)
+          :label (:name segment))])
+
+(defmethod serdes.base/extract-one "Segment"
+  [_model-name _opts segment]
+  (-> (serdes.base/extract-one-basics "Segment" segment)
+      (update :table_id   serdes.util/export-table-fk)
+      (update :creator_id serdes.util/export-fk-keyed 'User :email)))
+
+(defmethod serdes.base/load-xform "Segment" [segment]
+  (-> segment
+      serdes.base/load-xform-basics
+      (update :table_id   serdes.util/import-table-fk)
+      (update :creator_id serdes.util/import-fk-keyed 'User :email)))
+
+(defmethod serdes.base/serdes-dependencies "Segment" [{:keys [table_id]}]
+  [(serdes.util/table->path table_id)])
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 

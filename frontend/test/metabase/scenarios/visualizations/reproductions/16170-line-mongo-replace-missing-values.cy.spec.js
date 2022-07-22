@@ -1,4 +1,4 @@
-import { restore, withDatabase, popover } from "__support__/e2e/cypress";
+import { restore, withDatabase, popover } from "__support__/e2e/helpers";
 
 const externalDatabaseId = 2;
 
@@ -31,9 +31,7 @@ describe("issue 16170", () => {
 
       assertOnTheYAxis();
 
-      cy.get(".dot")
-        .eq(-2)
-        .trigger("mousemove", { force: true });
+      cy.get(".dot").eq(-2).trigger("mousemove", { force: true });
 
       popover().within(() => {
         testPairedTooltipValues("Created At", "2018");
@@ -50,22 +48,15 @@ function replaceMissingValuesWith(value) {
       cy.findByTestId("select-button").click();
     });
 
-  popover()
-    .contains(value)
-    .click();
+  popover().contains(value).click();
 }
 
 function assertOnTheYAxis() {
   cy.get(".y-axis-label").findByText("Count");
 
-  cy.get(".axis.y .tick")
-    .should("have.length.gt", 10)
-    .and("contain", "6,000");
+  cy.get(".axis.y .tick").should("have.length.gt", 10).and("contain", "6,000");
 }
 
 function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1)
-    .closest("td")
-    .siblings("td")
-    .findByText(val2);
+  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }

@@ -38,17 +38,19 @@
 
 (api/defendpoint POST "/"
   "Create a new `NativeQuerySnippet`."
-  [:as {{:keys [content description name collection_id]} :body}]
+  [:as {{:keys [content description name collection_id template_tags]} :body}]
   {content       s/Str
    description   (s/maybe s/Str)
    name          native-query-snippet/NativeQuerySnippetName
-   collection_id (s/maybe su/IntGreaterThanZero)}
+   collection_id (s/maybe su/IntGreaterThanZero)
+   template_tags (s/maybe su/TemplateTags)}
   (check-snippet-name-is-unique name)
   (let [snippet {:content       content
                  :creator_id    api/*current-user-id*
                  :description   description
                  :name          name
-                 :collection_id collection_id}]
+                 :collection_id collection_id
+                 :template_tags (or template_tags {})}]
     (api/create-check NativeQuerySnippet snippet)
     (api/check-500 (db/insert! NativeQuerySnippet snippet))))
 
@@ -59,7 +61,7 @@
   (let [snippet     (NativeQuerySnippet id)
         body-fields (u/select-keys-when body
                       :present #{:description :collection_id}
-                      :non-nil #{:archived :content :name})
+                      :non-nil #{:archived :content :name :template_tags})
         [changes]   (data/diff body-fields snippet)]
     (when (seq changes)
       (api/update-check snippet changes)
@@ -70,12 +72,13 @@
 
 (api/defendpoint PUT "/:id"
   "Update an existing `NativeQuerySnippet`."
-  [id :as {{:keys [archived content description name collection_id] :as body} :body}]
+  [id :as {{:keys [archived content description name collection_id template_tags] :as body} :body}]
   {archived      (s/maybe s/Bool)
    content       (s/maybe s/Str)
    description   (s/maybe s/Str)
    name          (s/maybe native-query-snippet/NativeQuerySnippetName)
-   collection_id (s/maybe su/IntGreaterThanZero)}
+   collection_id (s/maybe su/IntGreaterThanZero)
+   template_tags (s/maybe su/TemplateTags)}
   (check-perms-and-update-snippet! id body))
 
 (api/define-routes)

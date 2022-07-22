@@ -1,4 +1,4 @@
-import { restore, startNewQuestion, visualize } from "__support__/e2e/cypress";
+import { restore, startNewQuestion, visualize } from "__support__/e2e/helpers";
 
 const supportedDatabases = [
   {

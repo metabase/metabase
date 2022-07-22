@@ -1,4 +1,4 @@
-import { restore, visitEmbeddedPage } from "__support__/e2e/cypress";
+import { restore, visitEmbeddedPage } from "__support__/e2e/helpers";
 
 const defaultFilterValues = [undefined, "10"];
 
@@ -54,9 +54,8 @@ defaultFilterValues.forEach(value => {
           });
         });
 
-        cy.get(".cellData")
-          .should("contain", "COUNT(*)")
-          .and("contain", "5");
+        cy.findByTestId("column-header").should("contain", "COUNT(*)");
+        cy.findByTestId("cell-data").should("contain", "5");
       });
     });
   });

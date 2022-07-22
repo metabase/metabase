@@ -1,18 +1,20 @@
-## Using Azure AD as the Identity Provider with Metabase and SAML
+---
+title: Using Azure AD as the Identity Provider with Metabase and SAML
+---
+
+# Using Azure AD as the Identity Provider with Metabase and SAML
 
 {% include plans-blockquote.html feature="SAML authentication" %}
-
-## Steps
 
 - [Enable SAML in Metabase](#enable-saml-in-metabase)
 - [Add an Enterprise Application in Azure AD](#add-an-enterprise-application-in-azure-ad)
 - [Configure the Enterprise Application with Metabase SSO information](#configure-the-enterprise-application-with-metabase-sso-information)
 
-### Enable SAML in Metabase
+## Enable SAML in Metabase
 
 First, follow our guide to [enable SAML authentication](authenticating-with-saml.html).
 
-### Add an Enterprise Application in Azure AD
+## Add an Enterprise Application in Azure AD
 
 Go to the Azure Active Directory (AD) where your users live and click on **Enterprise Applications**. Once there, click on **+ New Application** in the bar on the top of the page.
 
@@ -43,7 +45,7 @@ You'll need these URLs to complete the SSO setup in Metabase.
 
 To finish the Azure side of the configuration, click on the **Users and groups** button on the Manage tab and add the users or groups that should have access to Metabase.
 
-### Configure the Enterprise Application with Metabase SSO information
+## Configure the Enterprise Application with Metabase SSO information
 
 Log in to Metabase as an administrator and go to **Admin** -> **Settings** -> **Authentication** -> **SAML**.
 

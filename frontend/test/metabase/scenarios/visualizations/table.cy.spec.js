@@ -7,7 +7,7 @@ import {
   enterCustomColumnDetails,
   visualize,
   summarize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
@@ -141,24 +141,18 @@ describe("scenarios > visualizations > table", () => {
         },
       ],
     ].forEach(([column, test]) => {
-      cy.get(".cellData")
-        .contains(column)
-        .trigger("mouseenter");
+      cy.get(".cellData").contains(column).trigger("mouseenter");
 
       popover().within(() => {
         test();
       });
 
-      cy.get(".cellData")
-        .contains(column)
-        .trigger("mouseleave");
+      cy.get(".cellData").contains(column).trigger("mouseleave");
     });
 
     summarize();
 
-    cy.findAllByTestId("dimension-list-item-name")
-      .contains(ccName)
-      .click();
+    cy.findAllByTestId("dimension-list-item-name").contains(ccName).click();
 
     cy.wait("@dataset");
 
@@ -189,9 +183,7 @@ describe("scenarios > visualizations > table", () => {
     openNativeEditor().type("select * from products");
     cy.get(".NativeQueryEditor .Icon-play").click();
 
-    cy.get(".cellData")
-      .contains("CATEGORY")
-      .trigger("mouseenter");
+    cy.get(".cellData").contains("CATEGORY").trigger("mouseenter");
     popover().within(() => {
       cy.contains("No special type");
       cy.findByText("No description");

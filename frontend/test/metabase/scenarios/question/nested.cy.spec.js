@@ -8,7 +8,7 @@ import {
   getDimensionByName,
   summarize,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -401,16 +401,11 @@ describe("scenarios > question > nested", () => {
           .findByText("Count")
           .click();
         cy.findByText("Average of ...").click();
-        popover()
-          .findByText("COUNT(*)")
-          .click();
+        popover().findByText("COUNT(*)").click();
         cy.wait("@dataset");
       }
 
-      cy.findByText("Group by")
-        .parent()
-        .findByText("COUNT(*)")
-        .click();
+      cy.findByText("Group by").parent().findByText("COUNT(*)").click();
 
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
@@ -494,9 +489,7 @@ describe("scenarios > question > nested", () => {
         },
       });
       cy.findByText("New").click();
-      cy.findByText("Question")
-        .should("be.visible")
-        .click();
+      cy.findByText("Question").should("be.visible").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("15725").click();
       cy.findByText("Pick the metric you want to see").click();
@@ -504,9 +497,7 @@ describe("scenarios > question > nested", () => {
     });
 
     it("Count of rows AND Sum of VAL by CAT (metabase#15725-1)", () => {
-      cy.icon("add")
-        .last()
-        .click();
+      cy.icon("add").last().click();
       cy.findByText(/^Sum of/).click();
       cy.findByText("VAL").click();
       cy.findByText("Sum of VAL");
@@ -531,9 +522,7 @@ describe("scenarios > question > nested", () => {
       summarize();
       cy.findByTestId("add-aggregation-button").click();
       cy.findByText(/^Sum of/).click();
-      popover()
-        .findByText("VAL")
-        .click();
+      popover().findByText("VAL").click();
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });

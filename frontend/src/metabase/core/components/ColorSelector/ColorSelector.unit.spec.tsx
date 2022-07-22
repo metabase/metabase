@@ -9,7 +9,7 @@ describe("ColorSelector", () => {
 
     render(
       <ColorSelector
-        color="white"
+        value="white"
         colors={["blue", "green"]}
         onChange={onChange}
       />,

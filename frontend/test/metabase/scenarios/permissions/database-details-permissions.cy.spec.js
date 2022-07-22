@@ -4,7 +4,7 @@ import {
   describeEE,
   assertPermissionForItem,
   modifyPermission,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DETAILS_PERMISSION_INDEX = 4;
@@ -43,9 +43,7 @@ describeEE(
 
       cy.visit("/");
       cy.icon("gear").click();
-      cy.findByText("Admin settings")
-        .should("be.visible")
-        .click();
+      cy.findByText("Admin settings").should("be.visible").click();
 
       cy.location("pathname").should("eq", "/admin/databases");
 

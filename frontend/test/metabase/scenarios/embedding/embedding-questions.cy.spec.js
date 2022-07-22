@@ -3,7 +3,7 @@ import {
   visitQuestion,
   popover,
   visitIframe,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 import {
@@ -91,9 +91,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.get(".y.axis .tick").should("contain", "60");
 
     // Check the tooltip for the last point on the line
-    cy.get(".dot")
-      .last()
-      .realHover();
+    cy.get(".dot").last().realHover();
 
     popover().within(() => {
       testPairedTooltipValues("Created At", "Aug, 2016");
@@ -194,18 +192,11 @@ describe("scenarios > embedding > questions ", () => {
 });
 
 function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1)
-    .closest("td")
-    .siblings("td")
-    .findByText(val2);
+  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  cy.get(".x-axis-label")
-    .invoke("text")
-    .should("eq", xLabel);
+  cy.get(".x-axis-label").invoke("text").should("eq", xLabel);
 
-  cy.get(".y-axis-label")
-    .invoke("text")
-    .should("eq", yLabel);
+  cy.get(".y-axis-label").invoke("text").should("eq", yLabel);
 }

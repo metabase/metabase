@@ -4,10 +4,9 @@ import {
   popover,
   describeEE,
   setupMetabaseCloud,
-  describeOSS,
   isOSS,
   isEE,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS } = SAMPLE_DATABASE;
@@ -18,15 +17,19 @@ describe("scenarios > admin > settings", () => {
     cy.signInAsAdmin();
   });
 
-  it("should prompt admin to migrate to the hosted instance", () => {
-    cy.onlyOn(isOSS);
-    cy.visit("/admin/settings/setup");
-    cy.findByText("Have your server maintained for you.");
-    cy.findByText("Migrate to Metabase Cloud.");
-    cy.findAllByRole("link", { name: "Learn more" })
-      .should("have.attr", "href")
-      .and("include", "/migrate/");
-  });
+  it(
+    "should prompt admin to migrate to the hosted instance",
+    { tags: "@OSS" },
+    () => {
+      cy.onlyOn(isOSS);
+      cy.visit("/admin/settings/setup");
+      cy.findByText("Have your server maintained for you.");
+      cy.findByText("Migrate to Metabase Cloud.");
+      cy.findAllByRole("link", { name: "Learn more" })
+        .should("have.attr", "href")
+        .and("include", "/migrate/");
+    },
+  );
 
   it("should surface an error when validation for any field fails (metabase#4506)", () => {
     const BASE_URL = Cypress.config().baseUrl;
@@ -127,15 +130,10 @@ describe("scenarios > admin > settings", () => {
       .parent()
       .findByTestId("select-button")
       .click();
-    popover()
-      .contains("https://")
-      .click({ force: true });
+    popover().contains("https://").click({ force: true });
 
     cy.wait("@httpsCheck");
-    cy.contains("Redirect to HTTPS")
-      .parent()
-      .parent()
-      .contains("Disabled");
+    cy.contains("Redirect to HTTPS").parent().parent().contains("Disabled");
 
     restore(); // avoid leaving https site url
   });
@@ -154,9 +152,7 @@ describe("scenarios > admin > settings", () => {
       .parent()
       .findByTestId("select-button")
       .click();
-    popover()
-      .contains("https://")
-      .click({ force: true });
+    popover().contains("https://").click({ force: true });
 
     cy.wait("@httpsCheck");
     cy.contains("It looks like HTTPS is not properly configured");
@@ -246,18 +242,20 @@ describe("scenarios > admin > settings", () => {
     cy.findByText(/Site URL/i);
   });
 
-  it("should display the order of the settings items consistently between OSS/EE versions (metabase#15441)", () => {
-    const lastItem = isEE ? "Appearance" : "Caching";
+  it(
+    "should display the order of the settings items consistently between OSS/EE versions (metabase#15441)",
+    { tags: "@OSS" },
+    () => {
+      const lastItem = isEE ? "Appearance" : "Caching";
 
-    cy.visit("/admin/settings/setup");
-    cy.get(".AdminList .AdminList-item")
-      .as("settingsOptions")
-      .first()
-      .contains("Setup");
-    cy.get("@settingsOptions")
-      .last()
-      .contains(lastItem);
-  });
+      cy.visit("/admin/settings/setup");
+      cy.get(".AdminList .AdminList-item")
+        .as("settingsOptions")
+        .first()
+        .contains("Setup");
+      cy.get("@settingsOptions").last().contains(lastItem);
+    },
+  );
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
   it.skip("should hide self-hosted settings when running Metabase Cloud", () => {
@@ -294,8 +292,9 @@ describe("scenarios > admin > settings", () => {
   });
 });
 
-describeOSS("scenarios > admin > settings (OSS)", () => {
+describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    cy.onlyOn(isOSS);
     restore();
     cy.signInAsAdmin();
   });

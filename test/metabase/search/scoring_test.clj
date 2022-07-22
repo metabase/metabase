@@ -53,10 +53,10 @@
              (score ["rasta"]
                     (result-row "Rasta")))))
     (testing "misses"
-      (is (nil?
+      (is (zero?
            (score ["rasta"]
                   (result-row "just a straight-up imposter"))))
-      (is (nil?
+      (is (zero?
            (score ["rasta" "the" "toucan"]
                   (result-row "")))))))
 
@@ -83,10 +83,10 @@
              (score ["rasta" "the" "toucan"]
                     (result-row "Rasta may be my favorite of the toucans")))))
     (testing "misses"
-      (is (nil?
+      (is (zero?
            (score ["rasta"]
                   (result-row "just a straight-up imposter"))))
-      (is (nil?
+      (is (zero?
            (score ["rasta" "the" "toucan"]
                   (result-row "")))))))
 
@@ -101,16 +101,16 @@
              (score ["rasta" "the" "toucan"]
                     (result-row "Rasta the Toucan")))))
     (testing "misses"
-      (is (nil?
+      (is (zero?
            (score ["rasta"]
                   (result-row "just a straight-up imposter"))))
-      (is (nil?
+      (is (zero?
            (score ["rasta" "the" "toucan"]
                   (result-row "")))))))
 
 (deftest exact-match-scorer-test
   (let [score (scorer->score #'scoring/exact-match-scorer)]
-    (is (nil?
+    (is (zero?
          (score ["rasta" "the" "toucan"]
                 (result-row "Crowberto el tucan"))))
     (is (= 1/3

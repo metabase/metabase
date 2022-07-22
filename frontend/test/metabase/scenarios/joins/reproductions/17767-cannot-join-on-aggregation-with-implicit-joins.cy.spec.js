@@ -1,4 +1,4 @@
-import { restore, popover, visualize } from "__support__/e2e/cypress";
+import { restore, popover, visualize } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -28,14 +28,10 @@ describe("issue 17767", () => {
     cy.findByText("Join data").click();
 
     // Join "Previous results" with
-    popover()
-      .contains("Reviews")
-      .click();
+    popover().contains("Reviews").click();
 
     // On
-    popover()
-      .contains("ID")
-      .click();
+    popover().contains("ID").click();
     // =
     popover()
       .contains(/Products? ID/)

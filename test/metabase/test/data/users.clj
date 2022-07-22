@@ -167,7 +167,7 @@
           (apply client-fn username args))))))
 
 (s/defn ^:deprecated user->client :- (s/pred fn?)
-  "Returns a `metabase.http-client/client` partially bound with the credentials for User with `username`.
+  "Returns a [[metabase.http-client/client]] partially bound with the credentials for User with `username`.
    In addition, it forces lazy creation of the User if needed.
 
      ((user->client) :get 200 \"meta/table\")

@@ -11,7 +11,11 @@
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.email :as email]
+            [metabase.models.collection :as collection]
+            [metabase.models.permissions :as perms]
+            [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.pulse.markdown :as markdown]
             [metabase.pulse.parameters :as params]
             [metabase.pulse.render :as render]
@@ -23,6 +27,7 @@
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.streaming.interface :as qp.si]
             [metabase.query-processor.streaming.xlsx :as qp.xlsx]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [deferred-trs trs tru]]
@@ -120,8 +125,8 @@
         message-body (stencil/render-file "metabase/email/new_user_invite"
                                           (merge (common-context)
                                                  {:emailType     "new_user_invite"
-                                                  :invitedName   (:first_name invited)
-                                                  :invitorName   (:first_name invitor)
+                                                  :invitedName   (or (:first_name invited) (:email invited))
+                                                  :invitorName   (or (:first_name invitor) (:email invitor))
                                                   :invitorEmail  (:email invitor)
                                                   :company       company
                                                   :joinUrl       join-url
@@ -158,7 +163,7 @@
      :message      (stencil/render-file "metabase/email/user_joined_notification"
                                         (merge (common-context)
                                                {:logoHeader        true
-                                                :joinedUserName    (:first_name new-user)
+                                                :joinedUserName    (or (:first_name new-user) (:email new-user))
                                                 :joinedViaSSO      google-auth?
                                                 :joinedUserEmail   (:email new-user)
                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?
@@ -245,6 +250,74 @@
      :recipients   [email]
      :message-type :html
      :message      message-body)))
+
+(defn- admin-or-ee-monitoring-details-emails
+  "Find emails for users that have an interest in monitoring the database.
+   If oss that means admin users.
+   If ee that also means users with monitoring and details permissions."
+  [database-id]
+  (let [monitoring (perms/application-perms-path :monitoring)
+        db-details (perms/feature-perms-path :details :yes database-id)
+        user-ids (when (premium-features/enable-advanced-permissions?)
+                   (->> {:select   [:pgm.user_id]
+                         :from     [[:permissions_group_membership :pgm]]
+                         :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
+                         :where    [:and
+                                    [:exists {:select [1]
+                                              :from [[:permissions :p]]
+                                              :where [:and
+                                                      [:= :p.group_id :pg.id]
+                                                      [:= :p.object monitoring]]}]
+                                    [:exists {:select [1]
+                                              :from [[:permissions :p]]
+                                              :where [:and
+                                                      [:= :p.group_id :pg.id]
+                                                      [:= :p.object db-details]]}]]
+                         :group-by [:pgm.user_id]}
+                        db/query
+                        (mapv :user_id)))]
+    (into
+      []
+      (distinct)
+      (concat
+        (all-admin-recipients)
+        (when (seq user-ids)
+          (db/select-field :email User {:where [:and
+                                                [:= :is_active true]
+                                                [:in :id user-ids]]}))))))
+
+(defn send-persistent-model-error-email!
+  "Format and send an email informing the user about errors in the persistent model refresh task."
+  [database-id persisted-infos trigger]
+  {:pre [(seq persisted-infos)]}
+  (let [database (:database (first persisted-infos))
+        emails (admin-or-ee-monitoring-details-emails database-id)
+        timezone (some-> database qp.timezone/results-timezone-id t/zone-id)
+        context {:database-name (:name database)
+                 :errors
+                 (for [[idx persisted-info] (m/indexed persisted-infos)
+                       :let [card (:card persisted-info)
+                             collection (or (:collection card)
+                                            (collection/root-collection-with-ui-details nil))]]
+                   {:is-not-first (not= 0 idx)
+                    :error (:error persisted-info)
+                    :card-id (:id card)
+                    :card-name (:name card)
+                    :collection-name (:name collection)
+                    ;; February 1, 2022, 3:10 PM
+                    :last-run-at (t/format "MMMM d, yyyy, h:mm a z" (t/zoned-date-time (:refresh_begin persisted-info) timezone))
+                    :last-run-trigger trigger
+                    :card-url (urls/card-url (:id card))
+                    :collection-url (urls/collection-url (:id collection))
+                    :caching-log-details-url (urls/tools-caching-details-url (:id persisted-info))})}
+        message-body (stencil/render-file "metabase/email/persisted-model-error"
+                                          (merge (common-context) context))]
+    (when (seq emails)
+      (email/send-message!
+        :subject      (trs "[{0}] Model cache refresh failed for {1}" (app-name-trs) (:name database))
+        :recipients   (vec emails)
+        :message-type :html
+        :message      message-body))))
 
 (defn send-follow-up-email!
   "Format and send an email to the system admin following up on the installation."

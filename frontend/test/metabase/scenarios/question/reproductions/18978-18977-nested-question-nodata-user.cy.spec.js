@@ -6,7 +6,7 @@ import {
   sidebar,
   visitQuestion,
   POPOVER_ELEMENT,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("11914, 18978, 18977", () => {
   beforeEach(() => {
@@ -77,46 +77,31 @@ function setVisualizationTo(vizName) {
 
   sidebar().within(() => {
     cy.icon(vizName).click();
-    cy.findByText("X-axis")
-      .parent()
-      .findByText("Select a field")
-      .click();
+    cy.findByText("X-axis").parent().findByText("Select a field").click();
   });
   selectFromDropdown("Created At");
 
   sidebar().within(() => {
-    cy.findByText("Y-axis")
-      .parent()
-      .findByText("Select a field")
-      .click();
+    cy.findByText("Y-axis").parent().findByText("Select a field").click();
   });
   selectFromDropdown("Quantity");
 
-  sidebar()
-    .findByText("Done")
-    .click();
+  sidebar().findByText("Done").click();
 }
 
 function addGoalLine() {
   cy.findByTestId("viz-settings-button").click();
   sidebar().within(() => {
     cy.findByText("Display").click();
-    cy.findByText("Goal line")
-      .parent()
-      .find("input")
-      .click();
+    cy.findByText("Goal line").parent().find("input").click();
     cy.findByText("Done").click();
   });
-  cy.get(".Visualization")
-    .get(".goal")
-    .should("be.visible");
+  cy.get(".Visualization").get(".goal").should("be.visible");
 }
 
 function assertIsNotAdHoc(questionId) {
   cy.url().should("include", `/question/${questionId}`);
-  cy.findByTestId("qb-header")
-    .findByText("Save")
-    .should("not.exist");
+  cy.findByTestId("qb-header").findByText("Save").should("not.exist");
 }
 
 function assertNoRefreshButton() {
@@ -130,7 +115,5 @@ function assertNoOpenPopover() {
 }
 
 function selectFromDropdown(option) {
-  popover()
-    .findByText(option)
-    .click();
+  popover().findByText(option).click();
 }

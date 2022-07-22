@@ -1,3 +1,7 @@
+---
+title: Charts with multiple series
+---
+
 # Charts with multiple series
 
 Data in isolation is rarely all that useful. One of the best ways to add context and clarity when communicating with data is to show data side-by-side with other data. Here are just a few examples of data that is better together than apart.

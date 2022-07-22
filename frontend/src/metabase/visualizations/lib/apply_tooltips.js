@@ -330,24 +330,24 @@ export function setupTooltips(
     });
   };
 
-  chart.on("renderlet.tooltips", function(chart) {
+  chart.on("renderlet.tooltips", function (chart) {
     // remove built-in tooltips
     chart.selectAll("title").remove();
 
     if (onHoverChange) {
       chart
         .selectAll(".bar, .dot, .area, .line, .bubble")
-        .on("mousemove", function(d) {
+        .on("mousemove", function (d) {
           const hovered = getClickHoverHelper(this, d);
           onHoverChange(hovered);
         })
-        .on("mouseleave", function() {
+        .on("mouseleave", function () {
           onHoverChange(null);
         });
     }
 
     if (onVisualizationClick) {
-      const onClick = function(d) {
+      const onClick = function (d) {
         const clicked = getClickHoverHelper(this, d);
         if (clicked) {
           onVisualizationClick(clicked);

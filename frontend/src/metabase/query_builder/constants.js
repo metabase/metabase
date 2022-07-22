@@ -1,6 +1,5 @@
 export const MODAL_TYPES = {
   SAVE: "save",
-  EDIT: "edit",
   ADD_TO_DASHBOARD: "add-to-dashboard",
   MOVE: "move",
   CLONE: "clone",

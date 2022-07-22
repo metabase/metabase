@@ -1,3 +1,7 @@
+---
+title: Frontend
+---
+
 # Frontend
 
 ## Entity Loaders

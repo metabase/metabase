@@ -4,11 +4,10 @@ import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
-import Warnings from "metabase/query_builder/components/Warnings";
 
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
-import { SectionContainer } from "./ChartSettings.styled";
+import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSettingsWidget from "./ChartSettingsWidget";
@@ -29,8 +28,9 @@ const DEFAULT_TAB_PRIORITY = [t`Display`];
 
 const withTransientSettingState = ComposedComponent =>
   class extends React.Component {
-    static displayName = `withTransientSettingState[${ComposedComponent.displayName ||
-      ComposedComponent.name}]`;
+    static displayName = `withTransientSettingState[${
+      ComposedComponent.displayName || ComposedComponent.name
+    }]`;
 
     constructor(props) {
       super(props);
@@ -313,8 +313,8 @@ class ChartSettings extends Component {
             </div>
             <div className="Grid-cell flex flex-column pt2">
               <div className="mx4 flex flex-column">
-                <Warnings
-                  className="mx2 align-self-end text-gold"
+                <SectionWarnings
+                  className="mx2 align-self-end"
                   warnings={this.state.warnings}
                   size={20}
                 />

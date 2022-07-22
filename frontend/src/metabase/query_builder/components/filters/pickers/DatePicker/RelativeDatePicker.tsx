@@ -5,7 +5,6 @@ import moment from "moment";
 import { assoc } from "icepick";
 
 import {
-  formatBucketing,
   formatStartingFrom,
   getRelativeDatetimeInterval,
   getStartingFrom,
@@ -18,9 +17,6 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import {
-  CurrentButton,
-  CurrentContainer,
-  CurrentPopover,
   GridContainer,
   GridText,
   MoreButton,
@@ -42,75 +38,15 @@ export const NextPicker = (props: Props) => (
   />
 );
 
-const periodPopoverText = (period: string) => {
-  const now = moment();
-  let start: string, end: string;
-  switch (period) {
-    case "day":
-      return t`Right now, this is ${now.format("ddd, MMM D")}`;
-    case "week":
-      start = now.startOf("week").format("ddd, MMM D");
-      end = now.endOf("week").format("ddd, MMM D");
-      return t`Right now, this is ${start} - ${end}`;
-    case "month":
-      start = now.startOf("month").format("ddd, MMM D");
-      end = now.endOf("month").format("ddd, MMM D");
-      return t`Right now, this is ${start} - ${end}`;
-    case "quarter":
-      start = now.startOf("quarter").format("ddd, MMM D");
-      end = now.endOf("quarter").format("ddd, MMM D");
-      return t`Right now, this is ${start} - ${end}`;
-    case "year":
-      start = now.startOf("year").format("MMM D, YYYY");
-      end = now.endOf("year").format("MMM D, YYYY");
-      return t`Right now, this is ${start} - ${end}`;
-  }
+const CURRENT_INTERVAL_NAME = {
+  day: t`today`,
+  week: t`this week`,
+  month: t`this month`,
+  year: t`this year`,
+  quarter: t`this quarter`,
+  minute: t`this minute`,
+  hour: t`this hour`,
 };
-
-type CurrentPickerProps = {
-  className?: string;
-  filter: Filter;
-  primaryColor?: string;
-  onCommit: (filter?: any[]) => void;
-};
-
-export function CurrentPicker(props: CurrentPickerProps) {
-  const {
-    className,
-    primaryColor,
-    onCommit,
-    filter: [operator, field, _intervals, unit],
-  } = props;
-  return (
-    <div className={className}>
-      {DATE_PERIODS.map((periods, index) => (
-        <CurrentContainer key={periods.length} first={index === 0}>
-          {periods.map(period => (
-            <TippyPopover
-              key={period}
-              placement="bottom"
-              delay={[500, null]}
-              content={
-                <CurrentPopover>{periodPopoverText(period)}</CurrentPopover>
-              }
-            >
-              <CurrentButton
-                key={period}
-                primaryColor={primaryColor}
-                selected={operator && unit === period.toLowerCase()}
-                onClick={() => {
-                  onCommit([operator, field, "current", period]);
-                }}
-              >
-                {formatBucketing(period, 1)}
-              </CurrentButton>
-            </TippyPopover>
-          ))}
-        </CurrentContainer>
-      ))}
-    </div>
-  );
-}
 
 export const DATE_PERIODS = [
   ["day", "week", "month"],
@@ -122,18 +58,27 @@ const TIME_PERIODS = ["minute", "hour"];
 // define ALL_PERIODS in increasing order of duration
 const ALL_PERIODS = TIME_PERIODS.concat(DATE_PERIODS.flat());
 
+const isSmallerUnit = (unit: string, unitToCompare: string) => {
+  return ALL_PERIODS.indexOf(unit) < ALL_PERIODS.indexOf(unitToCompare);
+};
+
+const getStartingFromUnits = (
+  filterUnit: string,
+  selectedStartingFromUnit: string,
+) => {
+  const largerUnits = ALL_PERIODS.filter(
+    period => !isSmallerUnit(period, filterUnit),
+  );
+
+  if (!largerUnits.includes(selectedStartingFromUnit)) {
+    largerUnits.unshift(selectedStartingFromUnit);
+  }
+
+  return largerUnits;
+};
+
 const getCurrentString = (filter: Filter) =>
   t`Include ${getCurrentIntervalName(filter)}`;
-
-const CURRENT_INTERVAL_NAME = {
-  day: t`today`,
-  week: t`this week`,
-  month: t`this month`,
-  year: t`this year`,
-  quarter: t`this quarter`,
-  minute: t`this minute`,
-  hour: t`this hour`,
-};
 
 function getCurrentIntervalName(filter: Filter) {
   if (filter[0] === "time-interval") {
@@ -176,7 +121,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
   const [optionsVisible, setOptionsVisible] = React.useState(false);
 
   const optionsContent = (
-    <OptionsContainer>
+    <OptionsContainer data-testid="relative-datetime-options-container">
       <OptionButton
         icon="arrow_left_to_line"
         primaryColor={primaryColor}
@@ -210,7 +155,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
     <GridContainer
       className={className}
       numColumns={numColumns}
-      data-testid="relative-datetime-filter"
+      data-testid="relative-date-picker"
     >
       {startingFrom ? (
         <GridText>{intervals < 0 ? t`Past` : t`Next`}</GridText>
@@ -290,7 +235,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
             }
             intervals={Math.abs(startingFrom[0])}
             formatter={formatter}
-            periods={ALL_PERIODS}
+            periods={getStartingFromUnits(unit, startingFrom[1])}
             testId="starting-from-unit"
           />
           <MoreButton

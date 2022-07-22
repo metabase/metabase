@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 describe("visual tests > onboarding > URLs", () => {
   beforeEach(() => {
@@ -23,7 +23,7 @@ describe("visual tests > onboarding > URLs", () => {
     cy.findByText("Reviews");
     cy.findByText("First collection");
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("root collection", () => {
@@ -36,8 +36,9 @@ describe("visual tests > onboarding > URLs", () => {
 
     cy.findByText("First collection");
     cy.findByText("Your personal collection");
+    cy.findByText("Orders");
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("browse", () => {
@@ -47,7 +48,7 @@ describe("visual tests > onboarding > URLs", () => {
     cy.wait("@database");
     cy.findByText("Sample Database");
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("browse/1 (Sample Database)", () => {
@@ -58,6 +59,6 @@ describe("visual tests > onboarding > URLs", () => {
     cy.findByText("Sample Database");
     cy.findByText("Reviews");
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });

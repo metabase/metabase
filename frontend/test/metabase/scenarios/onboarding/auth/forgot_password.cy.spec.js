@@ -1,4 +1,4 @@
-import { getInbox, restore, setupSMTP } from "__support__/e2e/cypress";
+import { getInbox, restore, setupSMTP } from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
@@ -35,6 +35,7 @@ describe("scenarios > auth > password", () => {
 });
 
 const getResetLink = html => {
-  const [, href] = html.match(/href="([^"]+)"/);
+  const [, anchor] = html.match(/<a (.*)>/);
+  const [, href] = anchor.match(/href="([^"]+)"/);
   return href;
 };

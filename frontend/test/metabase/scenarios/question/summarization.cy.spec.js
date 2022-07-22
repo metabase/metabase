@@ -5,7 +5,7 @@ import {
   getRemoveDimensionButton,
   summarize,
   visitQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("scenarios > question > summarize sidebar", () => {
   beforeEach(() => {

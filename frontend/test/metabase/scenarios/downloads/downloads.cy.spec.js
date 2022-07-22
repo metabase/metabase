@@ -3,7 +3,7 @@ import {
   downloadAndAssert,
   startNewQuestion,
   visualize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const testCases = ["csv", "xlsx"];
 

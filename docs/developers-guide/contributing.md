@@ -1,3 +1,7 @@
+---
+title: Contributing
+---
+
 # Contributing
 
 In general, we like to have an open issue for every pull request as a place to discuss the nature of any bug or proposed improvement. Each pull request should address a single issue, and contain both the fix as well as a description of the pull request and tests that validate that the PR fixes the issue in question.

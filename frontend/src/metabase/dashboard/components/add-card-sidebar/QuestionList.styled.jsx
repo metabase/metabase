@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { SelectList } from "metabase/components/select-list";
+import SelectList from "metabase/components/SelectList";
 
 export const EmptyStateContainer = styled.div`
   margin: 4rem 0;

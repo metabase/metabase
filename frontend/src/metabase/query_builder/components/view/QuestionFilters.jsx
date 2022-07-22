@@ -9,16 +9,14 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 import ViewPill from "./ViewPill";
-import ViewButton from "./ViewButton";
+
 import {
   HeaderButton,
   FilterHeaderContainer,
   FilterHeaderButton,
-  IconHeaderButton,
 } from "./ViewHeader.styled";
 
 import { color } from "metabase/lib/colors";
-import ButtonGroup from "metabase/core/components/ButtonGroup";
 
 const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
 
@@ -113,14 +111,14 @@ export function FilterHeaderToggle({
   );
 }
 
-export function FilterHeader({ className, question, expanded }) {
+export function FilterHeader({ question, expanded }) {
   const query = question.query();
   const filters = query.topLevelFilters();
   if (filters.length === 0 || !expanded) {
     return null;
   }
   return (
-    <FilterHeaderContainer className={className} data-testid="qb-filters-panel">
+    <FilterHeaderContainer data-testid="qb-filters-panel">
       <div className="flex flex-wrap align-center">
         {filters.map((filter, index) => (
           <PopoverWithTrigger
@@ -151,56 +149,19 @@ export function FilterHeader({ className, question, expanded }) {
   );
 }
 
-export function QuestionFilterWidget({
-  className,
-  isShowingFilterSidebar,
-  onAddFilter,
-  onOpenModal,
-  onCloseFilter,
-}) {
+export function QuestionFilterWidget({ onOpenModal, className }) {
   return (
-    <ButtonGroup className={className}>
-      <HeaderButton
-        large
-        labelBreakpoint="sm"
-        color={color("filter")}
-        active={isShowingFilterSidebar}
-        onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}
-        data-metabase-event="View Mode; Open Filter Widget"
-      >
-        {t`Filter`}
-      </HeaderButton>
-      <IconHeaderButton
-        large
-        labelBreakpoint="sm"
-        color={color("filter")}
-        icon="ellipsis"
-        aria-label={t`Show more filters`}
-        onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
-      />
-    </ButtonGroup>
-  );
-}
-
-export function MobileQuestionFilterWidget({
-  isShowingFilterSidebar,
-  onAddFilter,
-  onCloseFilter,
-  ...props
-}) {
-  return (
-    <ViewButton
+    <HeaderButton
       large
-      primary
-      color={color("filter")}
       labelBreakpoint="sm"
-      icon="filter"
-      onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}
-      active={isShowingFilterSidebar}
-      {...props}
+      className={className}
+      color={color("filter")}
+      onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
+      aria-label={t`Show more filters`}
+      data-metabase-event="View Mode; Open Filter Modal"
     >
-      &nbsp;
-    </ViewButton>
+      {t`Filter`}
+    </HeaderButton>
   );
 }
 

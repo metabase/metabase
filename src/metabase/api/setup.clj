@@ -1,6 +1,7 @@
 (ns metabase.api.setup
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST]]
+            [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
@@ -107,7 +108,7 @@
 
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
-  returns a session ID. This endpoint also can also be used to add a database, create and invite a second admin, and/or
+  returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or
   set specific settings from the setup flow."
   [:as {{:keys                                          [token]
          {:keys [name engine details
@@ -121,8 +122,8 @@
   {token              SetupToken
    site_name          su/NonBlankString
    site_locale        (s/maybe su/ValidLocale)
-   first_name         su/NonBlankString
-   last_name          su/NonBlankString
+   first_name         (s/maybe su/NonBlankString)
+   last_name          (s/maybe su/NonBlankString)
    email              su/Email
    invited_first_name (s/maybe su/NonBlankString)
    invited_last_name  (s/maybe su/NonBlankString)
@@ -165,7 +166,7 @@
                                             user-id
                                             {:database engine, :database-id (u/the-id database), :source :setup}))
       ;; return response with session ID and set the cookie as well
-      (mw.session/set-session-cookie request {:id session-id} session))))
+      (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."

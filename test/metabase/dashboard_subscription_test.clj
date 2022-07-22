@@ -304,10 +304,10 @@
        (fn [_ _]
          (testing "Markdown cards are included in email subscriptions"
            (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true
-                                              "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\?state=CA&amp;state=NY&amp;quarter_and_year=Q1-2021\\\"" true}
+                                              "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\?state=CA&amp;state=NY&amp;state=NJ&amp;quarter_and_year=Q1-2021\\\"" true}
                                              png-attachment]})
                   (mt/summarize-multipart-email #"Aviary KPIs"
-                                                #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\?state=CA&amp;state=NY&amp;quarter_and_year=Q1-2021\"")))))
+                                                #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\?state=CA&amp;state=NY&amp;state=NJ&amp;quarter_and_year=Q1-2021\"")))))
 
       :slack
       (fn [{:keys [card-id dashboard-id]} [pulse-results]]
@@ -317,8 +317,8 @@
                   :attachments
                   [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
                              {:type "section",
-                              :fields [{:type "mrkdwn", :text "*State*\nCA, NY"}
-                                       {:type "mrkdwn", :text "*Quarter and Year*\nQ1-2021"}]}
+                              :fields [{:type "mrkdwn", :text "*State*\nCA, NY and NJ"}
+                                       {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
                              {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
                    {:title           card-name
                     :rendered-info   {:attachments false, :content true, :render/text true},
@@ -331,7 +331,7 @@
                               :elements [{:type "mrkdwn"
                                           :text (str "<https://metabase.com/testmb/dashboard/"
                                                      dashboard-id
-                                                     "?state=CA&state=NY&quarter_and_year=Q1-2021|*Sent from Metabase Test*>")}]}]}]}
+                                                     "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test*>")}]}]}]}
                  (thunk->boolean pulse-results)))))}}))
 
 (deftest mrkdwn-length-limit-test
@@ -375,12 +375,12 @@
                                                                   :parameters [{:name    "Category"
                                                                                 :slug    "category"
                                                                                 :id      "_MBQL_CATEGORY_"
-                                                                                :type    :category
+                                                                                :type    "category"
                                                                                 :default ["Doohickey"]}
                                                                                {:name    "SQL Category"
                                                                                 :slug    "sql_category"
                                                                                 :id      "_SQL_CATEGORY_"
-                                                                                :type    :category
+                                                                                :type    "category"
                                                                                 :default ["Gizmo"]}]}]
         (testing "MBQL query"
           (mt/with-temp* [Card [{mbql-card-id :id} {:name          "Orders"
@@ -424,3 +424,18 @@
               (is (= [[1  "Rustic Paper Wallet"   "Gizmo"]
                       [10 "Mediocre Wooden Table" "Gizmo"]]
                      (mt/rows results))))))))))
+
+(deftest substitute-parameters-in-virtual-cards
+  (testing "Parameters in virtual (text) cards should have parameter values substituted appropriately"
+    (mt/with-temp* [Dashboard [{dashboard-id :id :as dashboard} {:name "Params in Text Card Test"
+                                                                 :parameters [{:name    "Category"
+                                                                               :slug    "category"
+                                                                               :id      "TEST_ID"
+                                                                               :type    "category"
+                                                                               :default ["Doohickey" "Gizmo"]}]}]
+                    DashboardCard [_ {:parameter_mappings [{:parameter_id "TEST_ID"
+                                                            :target       [:text-tag "foo"]}]
+                                      :dashboard_id       dashboard-id
+                                      :visualization_settings {:text "{{foo}}"}}]]
+      (is (= [{:text "Doohickey and Gizmo"}]
+             (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))

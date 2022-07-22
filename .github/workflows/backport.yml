@@ -23,6 +23,11 @@ jobs:
               echo User ${{ github.event.comment.user.login }} is not a member of Metabase organization
               exit 1
           fi
+      - uses: tibdex/github-app-token@v1
+        id: generate-token
+        with:
+          app_id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
       - uses: actions/github-script@v4
         id: branch_info
         with:
@@ -80,8 +85,8 @@ jobs:
         with:
           fetch-depth: 0
       - run: |
-          git config --global user.email "metabase-github-automation@metabase.com"
-          git config --global user.name "$GITHUB_ACTOR"
+          git config --global user.email "metabase-bot@metabase.com"
+          git config --global user.name "Metabase bot"
 
           git fetch --all
 
@@ -120,7 +125,7 @@ jobs:
           BACKPORT_BRANCH: ${{ fromJson(steps.branch_info.outputs.result).backportBranch }}
           START_SHA: ${{ fromJson(steps.branch_info.outputs.result).startSha }}
           END_SHA: ${{ fromJson(steps.branch_info.outputs.result).endSha }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
 
   notify_when_failed:
     runs-on: ubuntu-20.04
@@ -128,7 +133,7 @@ jobs:
     needs: create_pull_request
     if: ${{ failure() }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/notify-pull-request
         with:
           include-log: true

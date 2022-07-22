@@ -1,3 +1,7 @@
+---
+title: Troubleshooting BigQuery and Google Drive connections in Metabase
+---
+
 # Troubleshooting BigQuery and Google Drive connections in Metabase
 
 [This page](../administration-guide/databases/bigquery) explains how to connect a BigQuery data source, including one that uses a file stored in Google Drive, like a Google Sheet (GSheets). 

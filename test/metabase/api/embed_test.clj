@@ -14,6 +14,7 @@
             [metabase.api.public-test :as public-test]
             [metabase.http-client :as client]
             [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+            [metabase.models.params.chain-filter-test :as chain-filer-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor-test :as qp.test]
@@ -138,11 +139,10 @@
    :visualization_settings {}
    :dataset_query          {:type "query"}
    :parameters             []
-   :param_values           nil
    :param_fields           nil})
 
 (def successful-dashboard-info
-  {:description nil, :parameters [], :ordered_cards [], :param_values nil, :param_fields nil})
+  {:description nil, :parameters [], :ordered_cards [], :param_fields nil})
 
 (def ^:private yesterday (time/minus (time/now) (time/days 1)))
 
@@ -582,12 +582,13 @@
 
 ;; should be able to fetch values for a Field referenced by a public Card
 (deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
-  (is (= {:values   [["20th Century Cafe"]
-                     ["25°"]
-                     ["33 Taps"]
-                     ["800 Degrees Neapolitan Pizzeria"]
-                     ["BCD Tofu House"]]
-          :field_id (mt/id :venues :name)}
+  (is (= {:values          [["20th Century Cafe"]
+                            ["25°"]
+                            ["33 Taps"]
+                            ["800 Degrees Neapolitan Pizzeria"]
+                            ["BCD Tofu House"]]
+          :field_id        (mt/id :venues :name)
+          :has_more_values false}
          (with-embedding-enabled-and-temp-card-referencing :venues :name [card]
            (-> (client/client :get 200 (field-values-url card (mt/id :venues :name)))
                (update :values (partial take 5)))))))
@@ -635,12 +636,13 @@
 
 ;; should be able to use it when everything is g2g
 (deftest should-be-able-to-use-it-when-everything-is-g2g
-  (is (= {:values   [["20th Century Cafe"]
-                     ["25°"]
-                     ["33 Taps"]
-                     ["800 Degrees Neapolitan Pizzeria"]
-                     ["BCD Tofu House"]]
-          :field_id (mt/id :venues :name)}
+  (is (= {:values          [["20th Century Cafe"]
+                            ["25°"]
+                            ["33 Taps"]
+                            ["800 Degrees Neapolitan Pizzeria"]
+                            ["BCD Tofu House"]]
+          :field_id        (mt/id :venues :name)
+          :has_more_values false}
          (with-embedding-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
            (-> (client/client :get 200 (field-values-url dashboard (mt/id :venues :name)))
                (update :values (partial take 5)))))))
@@ -811,26 +813,32 @@
       :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
     (testing "Should work if the param we're fetching values for is enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= [2 3 4 5 6]
-               (take 5 (client/client :get 200 (values-url))))))
+        (is (= {:values          [2 3 4 5 6]
+                :has_more_values false}
+               (chain-filer-test/take-n-values 5 (client/client :get 200 (values-url))))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-        (is (= ["Fast Food" "Food Truck" "Seafood"]
-               (take 3 (client/client :get 200 (search-url)))))))
+        (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                :has_more_values false}
+               (chain-filer-test/take-n-values 3 (client/client :get 200 (search-url)))))))
 
     (testing "If an ENABLED constraint param is present in the JWT, that's ok"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= [40 67]
+        (is (= {:values          [40 67]
+                :has_more_values false}
                (client/client :get 200 (values-url {"price" 4})))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-        (is (= []
+        (is (= {:values          []
+                :has_more_values false}
                (client/client :get 200 (search-url {"price" 4}))))))
 
     (testing "If an ENABLED param is present in query params but *not* the JWT, that's ok"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= [40 67]
+        (is (= {:values          [40 67]
+                :has_more_values false}
                (client/client :get 200 (str (values-url) "?_PRICE_=4")))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-        (is (= []
+        (is (= {:values          []
+                :has_more_values false}
                (client/client :get 200 (str (search-url) "?_PRICE_=4"))))))
 
     (testing "If ENABLED param is present in both JWT and the URL, the request should fail"
@@ -849,11 +857,13 @@
           :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
         (testing "Should work if the param we're fetching values for is enabled"
           (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-            (is (= [2 3 4 5 6]
-                   (take 5 (mt/user-http-request :rasta :get 200 (values-url))))))
+            (is (= {:values          [2 3 4 5 6]
+                    :has_more_values false}
+                   (chain-filer-test/take-n-values 5 (mt/user-http-request :rasta :get 200 (values-url))))))
           (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-            (is (= ["Fast Food" "Food Truck" "Seafood"]
-                   (take 3 (mt/user-http-request :rasta :get 200 (search-url)))))))))))
+            (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                    :has_more_values false}
+                   (chain-filer-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (search-url)))))))))))
 
 (deftest chain-filter-locked-params-test
   (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
@@ -877,10 +887,12 @@
 
       (testing "if `:locked` param is supplied, request should succeed"
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-          (is (= [40 67]
+          (is (= {:values          [40 67]
+                  :has_more_values false}
                  (client/client :get 200 (values-url {"price" 4})))))
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-          (is (= []
+          (is (= {:values          []
+                  :has_more_values false}
                  (client/client :get 200 (search-url {"price" 4}))))))
 
       (testing "if `:locked` parameter is present in URL params, request should fail"
@@ -1127,7 +1139,7 @@
                                                                           :parameters       [{:name      "Name"
                                                                                               :slug      "name"
                                                                                               :id        "_name_"
-                                                                                              :type      :string/=
+                                                                                              :type      "string/="
                                                                                               :sectionId "string"}]}]
 
                             DashboardCard [{dashcard-id :id, :as dashcard} {:card_id            card-id

@@ -2,8 +2,8 @@ export type UserId = number;
 
 export interface BaseUser {
   id: UserId;
-  first_name: string;
-  last_name: string;
+  first_name: string | null;
+  last_name: string | null;
   common_name: string;
   email: string;
   locale: string | null;

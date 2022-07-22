@@ -13,6 +13,9 @@
             [metabase.models.permissions :as perms]
             [metabase.models.query :as query]
             [metabase.models.revision :as revision]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.moderation :as moderation]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
@@ -206,15 +209,23 @@
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
                                  (describe-database query-db-id)))
-                          {:status-code 400})))))))
+                          {:status-code           400
+                           :query-database        query-db-id
+                           :field-filter-database field-db-id})))))))
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
-  (u/prog1 card
-    ;; make sure this Card doesn't have circular source query references
-    (check-for-circular-source-query-references card)
-    (check-field-filter-fields-are-from-correct-database card)
-    (collection/check-collection-namespace Card (:collection_id card))))
+  (let [defaults {:parameters         []
+                  :parameter_mappings []}
+        card     (merge defaults card)]
+   (u/prog1 card
+     ;; make sure this Card doesn't have circular source query references
+     (check-for-circular-source-query-references card)
+     (check-field-filter-fields-are-from-correct-database card)
+     ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters
+     (params/assert-valid-parameters card)
+     (params/assert-valid-parameter-mappings card)
+     (collection/check-collection-namespace Card (:collection_id card)))))
 
 (defn- post-insert [card]
   ;; if this Card has any native template tag parameters we need to update FieldValues for any Fields that are
@@ -231,7 +242,8 @@
   For the OSS edition, there is no implementation for this function -- it is a no-op. For Metabase Enterprise Edition,
   the implementation of this function is
   [[metabase-enterprise.sandbox.models.group-table-access-policy/update-card-check-gtaps]] and is installed by that
-  namespace."} pre-update-check-sandbox-constraints
+  namespace."}
+  pre-update-check-sandbox-constraints
   (atom identity))
 
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
@@ -261,6 +273,8 @@
     (check-field-filter-fields-are-from-correct-database changes)
     ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
     (collection/check-collection-namespace Card (:collection_id changes))
+    (params/assert-valid-parameters changes)
+    (params/assert-valid-parameter-mappings changes)
     ;; additional checks (Enterprise Edition only)
     (@pre-update-check-sandbox-constraints changes)))
 
@@ -289,8 +303,11 @@
                                        :embedding_params       :json
                                        :query_type             :keyword
                                        :result_metadata        ::result-metadata
-                                       :visualization_settings :visualization-settings})
-          :properties     (constantly {:timestamped? true})
+                                       :visualization_settings :visualization-settings
+                                       :parameters             :parameters-list
+                                       :parameter_mappings     :parameters-list})
+          :properties     (constantly {:timestamped? true
+                                       :entity_id    true})
           ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
           ;; functions those fns call assume normalized queries
           :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
@@ -308,4 +325,45 @@
          :serialize-instance serialize-instance)
 
   dependency/IDependent
-  {:dependencies card-dependencies})
+  {:dependencies card-dependencies}
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+(defmethod serdes.base/extract-query "Card" [_ {:keys [user]}]
+  (serdes.base/raw-reducible-query
+    "Card"
+    {:select     [:card.*]
+     :from       [[:report_card :card]]
+     :left-join  [[:collection :coll] [:= :coll.id :card.collection_id]]
+     :where      (if user
+                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
+                   [:is :coll.personal_owner_id nil])}))
+
+(defmethod serdes.base/extract-one "Card"
+  [_model-name _opts card]
+  ;; Cards have :table_id, :database_id, :collection_id, :creator_id that need conversion.
+  ;; :table_id and :database_id are extracted as just :table_id [database_name schema table_name].
+  ;; :collection_id is extracted as its entity_id or identity-hash.
+  ;; :creator_id as the user's email.
+  (-> (serdes.base/extract-one-basics "Card" card)
+      (update :database_id   serdes.util/export-fk-keyed 'Database :name)
+      (update :table_id      serdes.util/export-table-fk)
+      (update :collection_id serdes.util/export-fk 'Collection)
+      (update :creator_id    serdes.util/export-fk-keyed 'User :email)))
+
+(defmethod serdes.base/load-xform "Card"
+  [card]
+  (-> card
+      serdes.base/load-xform-basics
+      (update :database_id   serdes.util/import-fk-keyed 'Database :name)
+      (update :table_id      serdes.util/import-table-fk)
+      (update :creator_id    serdes.util/import-fk-keyed 'User :email)
+      (update :collection_id serdes.util/import-fk 'Collection)))
+
+(defmethod serdes.base/serdes-dependencies "Card"
+  [{:keys [collection_id table_id]}]
+  ;; The Table implicitly depends on the Database.
+  [(serdes.util/table->path table_id)
+   [{:model "Collection" :id collection_id}]])

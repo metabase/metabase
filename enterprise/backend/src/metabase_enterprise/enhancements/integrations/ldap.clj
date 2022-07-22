@@ -7,7 +7,7 @@
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings.premium-features :as premium-features :refer [defenterprise-schema]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs]]
+            [metabase.util.i18n :refer [deferred-tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
@@ -42,15 +42,13 @@
             (let [syncable-attributes (syncable-user-attributes attributes)
                   old-first-name (:first_name user)
                   old-last-name (:last_name user)
-                  new-first-name (default-impl/updated-name-part first-name old-first-name)
-                  new-last-name (default-impl/updated-name-part last-name old-last-name)
                   user-changes (merge
                                 (when-not (= syncable-attributes (:login_attributes user))
                                           {:login_attributes syncable-attributes})
-                                (when-not (= new-first-name old-first-name)
-                                          {:first_name new-first-name})
-                                (when-not (= new-last-name old-last-name)
-                                          {:last_name new-last-name}))]
+                                (when (not= first-name old-first-name)
+                                          {:first_name first-name})
+                                (when (not= last-name old-last-name)
+                                          {:last_name last-name}))]
               (if (seq user-changes)
                 (do
                   (db/update! User (:id user) user-changes)
@@ -77,8 +75,8 @@
   [{:keys [first-name last-name email groups attributes], :as user-info} :- EEUserInfo
    {:keys [sync-groups?], :as settings}                                  :- i/LDAPSettings]
   (let [user (or (attribute-synced-user user-info)
-                 (-> (user/create-new-ldap-auth-user! {:first_name       (or first-name (trs "Unknown"))
-                                                       :last_name        (or last-name (trs "Unknown"))
+                 (-> (user/create-new-ldap-auth-user! {:first_name       first-name
+                                                       :last_name        last-name
                                                        :email            email
                                                        :login_attributes attributes})
                      (assoc :is_active true)))]

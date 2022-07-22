@@ -6,15 +6,12 @@
 
 (models/defmodel ApplicationPermissionsRevision :application_permissions_revision)
 
-(defn- pre-insert [revision]
-  (assoc revision :created_at :%now))
-
 (u/strict-extend (class ApplicationPermissionsRevision)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:before :json
                                    :after  :json})
-          :pre-insert pre-insert
+          :properties (constantly {:created-at-timestamped? true})
           :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a ApplicationPermissionsRevision!"))))}))
 
 (defn latest-id

@@ -2,7 +2,7 @@ import {
   restore,
   popover,
   openNavigationSidebar,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("issue 19742", () => {
   beforeEach(() => {
@@ -40,13 +40,9 @@ describe("issue 19742", () => {
 });
 
 function selectFromDropdown(optionName) {
-  popover()
-    .findByText(optionName)
-    .click();
+  popover().findByText(optionName).click();
 }
 
 function hideTable(tableName) {
-  cy.findByText(tableName)
-    .find(".Icon-eye_crossed_out")
-    .click({ force: true });
+  cy.findByText(tableName).find(".Icon-eye_crossed_out").click({ force: true });
 }

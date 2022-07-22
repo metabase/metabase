@@ -854,3 +854,22 @@
            (let [t         [:absolute-datetime #t "2022-04-22T18:27:00-08:00"]
                  hsql-form (sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk t 3 :month)]
              (sql.qp/format-honeysql :bigquery-cloud-sdk hsql-form))))))
+
+(deftest custom-expression-with-space-in-having
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/dataset avian-singles
+      (testing "Custom expressions with spaces are matched properly (#22310)"
+        (let [name-with-spaces "sum id diff"
+              sql-query (-> (mt/mbql-query messages
+                              {:filter [:> [:field name-with-spaces {:base-type :type/Float}] 5]
+                               :source-query {:source-table $$messages
+                                              :aggregation [[:aggregation-options
+                                                             [:sum [:- $sender_id $receiver_id]]
+                                                             {:name name-with-spaces
+                                                              :display-name name-with-spaces}]]
+                                              :breakout [$text]}
+                               :limit 1})
+                            qp/compile
+                            :query)]
+          (is (not (str/includes? sql-query name-with-spaces))
+              (format "Query `%s' should not contain `%s'" sql-query name-with-spaces)))))))

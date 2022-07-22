@@ -10,7 +10,6 @@ import {
 import Button from "metabase/core/components/Button";
 
 export const SqlIconButton = styled(Button)`
-  margin-left: ${space(2)};
   padding: ${space(1)};
   border: none;
   background-color: transparent;

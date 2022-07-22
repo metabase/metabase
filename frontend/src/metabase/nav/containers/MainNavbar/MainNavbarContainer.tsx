@@ -9,7 +9,14 @@ import { IconProps } from "metabase/components/Icon";
 import Modal from "metabase/components/Modal";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { Bookmark, BookmarksType, Collection, User } from "metabase-types/api";
+import Question from "metabase-lib/lib/Question";
+import {
+  Bookmark,
+  BookmarksType,
+  Collection,
+  Dashboard,
+  User,
+} from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
@@ -25,10 +32,13 @@ import {
   getHasOwnDatabase,
   getHasDataAccess,
 } from "metabase/new_query/selectors";
+import { getQuestion } from "metabase/query_builder/selectors";
+import { getDashboard } from "metabase/dashboard/selectors";
 
 import {
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
+  coerceCollectionId,
 } from "metabase/collections/utils";
 import * as Urls from "metabase/lib/urls";
 
@@ -52,6 +62,8 @@ function mapStateToProps(state: State) {
     hasDataAccess: getHasDataAccess(state),
     hasOwnDatabase: getHasOwnDatabase(state),
     bookmarks: getOrderedBookmarks(state),
+    question: getQuestion(state),
+    dashboard: getDashboard(state),
   };
 }
 
@@ -75,6 +87,8 @@ type Props = {
   bookmarks: BookmarksType;
   collections: Collection[];
   rootCollection: Collection;
+  question?: Question;
+  dashboard?: Dashboard;
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   allFetched: boolean;
@@ -99,6 +113,8 @@ function MainNavbarContainer({
   hasOwnDatabase,
   collections = [],
   rootCollection,
+  question,
+  dashboard,
   hasDataAccess,
   allFetched,
   location,
@@ -129,29 +145,51 @@ function MainNavbarContainer({
     };
   }, [isOpen, openNavbar, closeNavbar]);
 
-  const selectedItem = useMemo<SelectedItem>(() => {
+  const selectedItems = useMemo<SelectedItem[]>(() => {
     const { pathname } = location;
     const { slug } = params;
-    if (pathname.startsWith("/collection")) {
-      const id = pathname.startsWith("/collection/users")
-        ? "users"
-        : Urls.extractCollectionId(slug);
-      return { type: "collection", id };
+    const isCollectionPath = pathname.startsWith("/collection");
+    const isUsersCollectionPath = pathname.startsWith("/collection/users");
+    const isQuestionPath = pathname.startsWith("/question");
+    const isModelPath = pathname.startsWith("/model");
+    const isDashboardPath = pathname.startsWith("/dashboard");
+
+    if (isCollectionPath) {
+      return [
+        {
+          id: isUsersCollectionPath ? "users" : Urls.extractCollectionId(slug),
+          type: "collection",
+        },
+      ];
     }
-    if (pathname.startsWith("/dashboard")) {
-      return { type: "dashboard", id: Urls.extractEntityId(slug) };
+    if (isDashboardPath && dashboard) {
+      return [
+        {
+          id: dashboard.id,
+          type: "dashboard",
+        },
+        {
+          id: coerceCollectionId(dashboard.collection_id),
+          type: "collection",
+        },
+      ];
     }
-    if (pathname.startsWith("/question") || pathname.startsWith("/model")) {
-      return { type: "card", id: Urls.extractEntityId(slug) };
+    if ((isQuestionPath || isModelPath) && question) {
+      return [
+        {
+          id: question.id(),
+          type: "card",
+        },
+        {
+          id: coerceCollectionId(question.collectionId()),
+          type: "collection",
+        },
+      ];
     }
-    return { type: "non-entity", url: pathname };
-  }, [location, params]);
+    return [{ url: pathname, type: "non-entity" }];
+  }, [location, params, question, dashboard]);
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
-    if (!rootCollection) {
-      return [];
-    }
-
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
       collections,
@@ -164,13 +202,18 @@ function MainNavbarContainer({
     preparedCollections.push(...userPersonalCollections);
     preparedCollections.push(...nonPersonalOrArchivedCollections);
 
-    const root: CollectionTreeItem = {
-      ...rootCollection,
-      icon: getCollectionIcon(rootCollection),
-      children: [],
-    };
+    const tree = buildCollectionTree(preparedCollections);
 
-    return [root, ...buildCollectionTree(preparedCollections)];
+    if (rootCollection) {
+      const root: CollectionTreeItem = {
+        ...rootCollection,
+        icon: getCollectionIcon(rootCollection),
+        children: [],
+      };
+      return [root, ...tree];
+    } else {
+      return tree;
+    }
   }, [rootCollection, collections, currentUser]);
 
   const reorderBookmarks = useCallback(
@@ -211,7 +254,7 @@ function MainNavbarContainer({
     <>
       <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
         <NavRoot isOpen={isOpen}>
-          {allFetched && rootCollection ? (
+          {allFetched ? (
             <MainNavbarView
               {...props}
               bookmarks={bookmarks}
@@ -220,7 +263,7 @@ function MainNavbarContainer({
               currentUser={currentUser}
               collections={collectionTree}
               hasOwnDatabase={hasOwnDatabase}
-              selectedItem={selectedItem}
+              selectedItems={selectedItems}
               hasDataAccess={hasDataAccess}
               reorderBookmarks={reorderBookmarks}
               handleCreateNewCollection={onCreateNewCollection}

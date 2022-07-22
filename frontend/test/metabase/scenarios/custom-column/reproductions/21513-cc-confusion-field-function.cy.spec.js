@@ -4,7 +4,7 @@ import {
   openProductsTable,
   summarize,
   enterCustomColumnDetails,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("issue 21513", () => {
   beforeEach(() => {
@@ -15,14 +15,10 @@ describe("issue 21513", () => {
   it("should handle cc with the same name as an aggregation function (metabase#21513)", () => {
     openProductsTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
-    popover()
-      .findByText("Count of rows")
-      .click();
+    popover().findByText("Count of rows").click();
 
     cy.findByText("Pick a column to group by").click();
-    popover()
-      .findByText("Category")
-      .click();
+    popover().findByText("Category").click();
 
     cy.findByText("Custom column").click();
     enterCustomColumnDetails({

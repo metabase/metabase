@@ -19,20 +19,14 @@ export { drillDownForDimensions } from "./drilldown";
 export function aggregate(question, aggregation) {
   const query = question.query();
   if (query instanceof StructuredQuery) {
-    return query
-      .aggregate(aggregation)
-      .question()
-      .setDefaultDisplay();
+    return query.aggregate(aggregation).question().setDefaultDisplay();
   }
 }
 
 export function breakout(question, breakout) {
   const query = question.query();
   if (query instanceof StructuredQuery) {
-    return query
-      .breakout(breakout)
-      .question()
-      .setDefaultDisplay();
+    return query.breakout(breakout).question().setDefaultDisplay();
   }
 }
 

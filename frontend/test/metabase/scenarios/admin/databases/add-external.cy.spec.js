@@ -1,4 +1,4 @@
-import { restore, typeAndBlurUsingLabel } from "__support__/e2e/cypress";
+import { restore, typeAndBlurUsingLabel } from "__support__/e2e/helpers";
 
 describe("admin > database > add > external databases", () => {
   beforeEach(() => {
@@ -10,10 +10,7 @@ describe("admin > database > add > external databases", () => {
 
   it("should add Postgres database and redirect to listing", () => {
     cy.visit("/admin/databases/create");
-    cy.contains("Database type")
-      .closest(".Form-field")
-      .find("a")
-      .click();
+    cy.contains("Database type").closest(".Form-field").find("a").click();
     cy.contains("PostgreSQL").click({ force: true });
     cy.findByText("Show advanced options").click();
     cy.contains("Additional JDBC connection string options");
@@ -25,9 +22,7 @@ describe("admin > database > add > external databases", () => {
     typeAndBlurUsingLabel("Username", "metabase");
     typeAndBlurUsingLabel("Password", "metasample123");
 
-    cy.findByText("Save")
-      .should("not.be.disabled")
-      .click();
+    cy.findByText("Save").should("not.be.disabled").click();
 
     cy.wait("@createDatabase");
 
@@ -45,10 +40,7 @@ describe("admin > database > add > external databases", () => {
 
   it("should add Mongo database and redirect to listing", () => {
     cy.visit("/admin/databases/create");
-    cy.contains("Database type")
-      .closest(".Form-field")
-      .find("a")
-      .click();
+    cy.contains("Database type").closest(".Form-field").find("a").click();
     cy.contains("MongoDB").click({ force: true });
     cy.findByText("Show advanced options").click();
     cy.contains("Additional connection string options");
@@ -61,9 +53,7 @@ describe("admin > database > add > external databases", () => {
     typeAndBlurUsingLabel("Password", "metasample123");
     typeAndBlurUsingLabel("Authentication database (optional)", "admin");
 
-    cy.findByText("Save")
-      .should("not.be.disabled")
-      .click();
+    cy.findByText("Save").should("not.be.disabled").click();
 
     cy.wait("@createDatabase");
 
@@ -81,10 +71,7 @@ describe("admin > database > add > external databases", () => {
 
   it("should add MySQL database and redirect to listing", () => {
     cy.visit("/admin/databases/create");
-    cy.contains("Database type")
-      .closest(".Form-field")
-      .find("a")
-      .click();
+    cy.contains("Database type").closest(".Form-field").find("a").click();
     cy.contains("MySQL").click({ force: true });
     cy.findByText("Show advanced options").click();
     cy.contains("Additional JDBC connection string options");
@@ -103,9 +90,7 @@ describe("admin > database > add > external databases", () => {
       "allowPublicKeyRetrieval=true",
     );
 
-    cy.findByText("Save")
-      .should("not.be.disabled")
-      .click();
+    cy.findByText("Save").should("not.be.disabled").click();
 
     cy.wait("@createDatabase");
 

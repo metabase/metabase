@@ -7,7 +7,7 @@ import {
   setFilter,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { DASHBOARD_SQL_NUMBER_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
@@ -37,9 +37,7 @@ Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
         setFilter("Number", filter);
 
         cy.findByText("Select…").click();
-        popover()
-          .contains("Filter")
-          .click();
+        popover().contains("Filter").click();
       });
 
       it(`should work for "${filter}" when set through the filter widget`, () => {
@@ -54,9 +52,7 @@ Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
       });
 
       it(`should work for "${filter}" when set as the default filter`, () => {
-        cy.findByText("Default value")
-          .next()
-          .click();
+        cy.findByText("Default value").next().click();
 
         addWidgetNumberFilter(value);
 

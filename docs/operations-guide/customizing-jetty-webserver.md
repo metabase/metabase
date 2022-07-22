@@ -1,3 +1,7 @@
+---
+title: Customizing the Metabase Jetty webserver
+---
+
 # Customizing the Metabase Jetty webserver
 
 In most cases there will be no reason to modify any of the settings around how Metabase runs its embedded Jetty webserver to host the application, but if you wish to run HTTPS directly with your Metabase server or if you need to run on another port, that's all configurable.

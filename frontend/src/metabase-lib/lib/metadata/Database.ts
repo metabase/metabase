@@ -25,6 +25,9 @@ class DatabaseInner extends Base {
   schemas: Schema[];
   metadata: Metadata;
 
+  // Only appears in  GET /api/database/:id
+  "can-manage"?: boolean;
+
   // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
   displayName() {
     return this.name;
@@ -109,9 +112,7 @@ class DatabaseInner extends Base {
 
   // QUESTIONS
   newQuestion() {
-    return this.question()
-      .setDefaultQuery()
-      .setDefaultDisplay();
+    return this.question().setDefaultQuery().setDefaultDisplay();
   }
 
   question(

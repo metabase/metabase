@@ -20,6 +20,8 @@ export const setupSMTP = () => {
     "email-smtp-password": "admin",
     "email-smtp-security": "none",
     "email-from-address": "mailer@metabase.test",
+    "email-from-name": "Metabase",
+    "email-reply-to": ["reply-to@metabase.test"],
   });
 
   // We must always clear Webmail's inbox before each test

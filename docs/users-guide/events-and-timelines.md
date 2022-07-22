@@ -1,3 +1,7 @@
+---
+title: Events and timelines
+---
+
 # Events and timelines
 
 A lot of discussions around data have a moment when someone asks a question related to a specific point in time: "Wait, what's the spike in March again?", or "When did the new widget launch?"

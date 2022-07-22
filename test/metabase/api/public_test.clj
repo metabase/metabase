@@ -9,6 +9,7 @@
             [metabase.api.public :as api.public]
             [metabase.http-client :as client]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Dimension Field FieldValues]]
+            [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.test :as mt]
@@ -106,7 +107,7 @@
 
       (with-temp-public-card [{uuid :public_uuid, card-id :id}]
         (testing "Happy path -- should be able to fetch the Card"
-          (is (= #{:dataset_query :description :display :id :name :visualization_settings :param_values :param_fields}
+          (is (= #{:dataset_query :description :display :id :name :visualization_settings :param_fields}
                  (set (keys (client/client :get 200 (str "public/card/" uuid)))))))
 
         (testing "Check that we cannot fetch a public Card if public sharing is disabled"
@@ -118,30 +119,6 @@
           (mt/with-temp-vals-in-db Card card-id {:archived true}
             (is (= "An error occurred."
                    (client/client :get 400 (str "public/card/" uuid))))))))))
-
-(deftest make-sure--param-values-get-returned-as-expected
-  (mt/with-temp Card [card {:dataset_query
-                            {:database (mt/id)
-                             :type     :native
-                             :native   {:query         (str "SELECT COUNT(*) "
-                                                            "FROM venues "
-                                                            "LEFT JOIN categories ON venues.category_id = categories.id "
-                                                            "WHERE {{category}}")
-                                        :collection    "CATEGORIES"
-                                        :template-tags {:category {:name         "category"
-                                                                   :display-name "Category"
-                                                                   :type         "dimension"
-                                                                   :dimension    ["field" (mt/id :categories :name) nil]
-                                                                   :widget-type  "category"
-                                                                   :required     true}}}}}]
-    (is (= {(mt/id :categories :name) {:values                75
-                                       :human_readable_values []
-                                       :field_id              (mt/id :categories :name)}}
-           (-> (:param_values (#'api.public/public-card :id (u/the-id card)))
-               (update-in [(mt/id :categories :name) :values] count)
-               (update (mt/id :categories :name) #(into {} %)))))))
-
-
 
 ;;; ------------------------- GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions) --------------------------
 
@@ -612,51 +589,6 @@
   (is (= [1 2 3 4]
          (db/select-one-field :values FieldValues :field_id (mt/id :venues :price)))))
 
-(defn- price-param-values []
-  {(mt/id :venues :price) {:values                [1 2 3 4]
-                           :human_readable_values []
-                           :field_id              (mt/id :venues :price)}})
-
-(defn- add-price-param-to-dashboard! [dashboard]
-  (db/update! Dashboard (u/the-id dashboard) :parameters [{:name "Price", :type "category", :slug "price", :id "_PRICE_"}]))
-
-(defn- add-dimension-param-mapping-to-dashcard! [dashcard card dimension]
-  (db/update! DashboardCard (u/the-id dashcard) :parameter_mappings [{:card_id (u/the-id card)
-                                                                      :target  ["dimension" dimension]}]))
-
-(defn- GET-param-values [dashboard]
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (:param_values (client/client :get 200 (str "public/dashboard/" (:public_uuid dashboard))))))
-
-(deftest check-that-param-info-comes-back-for-sql-cards
-  (with-temp-public-dashboard-and-card [dash card dashcard]
-    (db/update! Card (u/the-id card)
-      :dataset_query {:database (mt/id)
-                      :type     :native
-                      :native   {:template-tags {:price {:name         "price"
-                                                         :display-name "Price"
-                                                         :type         "dimension"
-                                                         :dimension    ["field" (mt/id :venues :price) nil]}}}})
-    (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card ["template-tag" "price"])
-    (is (= (price-param-values)
-           (GET-param-values dash)))))
-
-(deftest check-that-param-info-comes-back-for-mbql-cards--field-id-
-  (with-temp-public-dashboard-and-card [dash card dashcard]
-    (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card ["field" (mt/id :venues :price) nil])
-    (is (= (price-param-values)
-           (GET-param-values dash)))))
-
-(deftest check-that-param-info-comes-back-for-mbql-cards--fk---
-  (with-temp-public-dashboard-and-card [dash card dashcard]
-    (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card [:field (mt/id :venues :price) {:source-field (mt/id :checkins :venue_id)}])
-    (is (= (price-param-values)
-           (GET-param-values dash)))))
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        New FieldValues search endpoints                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -790,23 +722,25 @@
 
 (deftest we-should-be-able-to-get-values-for-a-field-referenced-by-a-card
   (mt/with-temp Card [card (mbql-card-referencing :venues :name)]
-    (is (= {:values   [["20th Century Cafe"]
-                       ["25°"]
-                       ["33 Taps"]
-                       ["800 Degrees Neapolitan Pizzeria"]
-                       ["BCD Tofu House"]]
-            :field_id (mt/id :venues :name)}
+    (is (= {:values          [["20th Century Cafe"]
+                              ["25°"]
+                              ["33 Taps"]
+                              ["800 Degrees Neapolitan Pizzeria"]
+                              ["BCD Tofu House"]]
+            :field_id        (mt/id :venues :name)
+            :has_more_values false}
            (mt/derecordize (-> (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))
                                (update :values (partial take 5))))))))
 
 (deftest sql-param-field-references-should-work-just-as-well-as-mbql-field-referenced
   (mt/with-temp Card [card (sql-card-referencing-venue-name)]
-    (is (= {:values   [["20th Century Cafe"]
-                       ["25°"]
-                       ["33 Taps"]
-                       ["800 Degrees Neapolitan Pizzeria"]
-                       ["BCD Tofu House"]]
-            :field_id (mt/id :venues :name)}
+    (is (= {:values          [["20th Century Cafe"]
+                              ["25°"]
+                              ["33 Taps"]
+                              ["800 Degrees Neapolitan Pizzeria"]
+                              ["BCD Tofu House"]]
+            :field_id        (mt/id :venues :name)
+            :has_more_values false}
            (mt/derecordize (-> (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))
                                (update :values (partial take 5))))))))
 
@@ -843,12 +777,13 @@
 
 
 (deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
-  (is (= {:values   [["20th Century Cafe"]
-                     ["25°"]
-                     ["33 Taps"]
-                     ["800 Degrees Neapolitan Pizzeria"]
-                     ["BCD Tofu House"]]
-          :field_id (mt/id :venues :name)}
+  (is (= {:values          [["20th Century Cafe"]
+                            ["25°"]
+                            ["33 Taps"]
+                            ["800 Degrees Neapolitan Pizzeria"]
+                            ["BCD Tofu House"]]
+          :field_id        (mt/id :venues :name)
+          :has_more_values false}
          (with-sharing-enabled-and-temp-card-referencing :venues :name [card]
            (-> (client/client :get 200 (field-values-url card (mt/id :venues :name)))
                (update :values (partial take 5)))))))
@@ -887,12 +822,13 @@
 
 (deftest should-be-able-to-use-it-when-everything-is-g2g
   (with-sharing-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
-    (is (= {:values   [["20th Century Cafe"]
-                       ["25°"]
-                       ["33 Taps"]
-                       ["800 Degrees Neapolitan Pizzeria"]
-                       ["BCD Tofu House"]]
-            :field_id (mt/id :venues :name)}
+    (is (= {:values          [["20th Century Cafe"]
+                              ["25°"]
+                              ["33 Taps"]
+                              ["800 Degrees Neapolitan Pizzeria"]
+                              ["BCD Tofu House"]]
+            :field_id        (mt/id :venues :name)
+            :has_more_values false}
            (-> (client/client :get 200 (field-values-url dashboard (mt/id :venues :name)))
                (update :values (partial take 5)))))))
 
@@ -1070,12 +1006,14 @@
                (db/update! Dashboard (u/the-id dashboard) :public_uuid uuid)))
         (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
           (let [url (format "public/dashboard/%s/params/%s/values" uuid (:category-id param-keys))]
-            (is (= [2 3 4 5 6]
-                   (take 5 (client/client :get 200 url))))))
+            (is (= {:values          [2 3 4 5 6]
+                    :has_more_values false}
+                   (chain-filter-test/take-n-values 5 (client/client :get 200 url))))))
         (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:query"
           (let [url (format "public/dashboard/%s/params/%s/search/food" uuid (:category-name param-keys))]
-            (is (= ["Fast Food" "Food Truck" "Seafood"]
-                   (take 3 (client/client :get 200 url))))))))))
+            (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                    :has_more_values false}
+                   (chain-filter-test/take-n-values 3 (client/client :get 200 url))))))))))
 
 (deftest chain-filter-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
@@ -1088,12 +1026,14 @@
                    (db/update! Dashboard (u/the-id dashboard) :public_uuid uuid)))
             (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
               (let [url (format "public/dashboard/%s/params/%s/values" uuid (:category-id param-keys))]
-                (is (= [2 3 4 5 6]
-                       (take 5 (mt/user-http-request :rasta :get 200 url))))))
+                (is (= {:values          [2 3 4 5 6]
+                        :has_more_values false}
+                       (chain-filter-test/take-n-values 5 (mt/user-http-request :rasta :get 200 url))))))
             (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:prefix"
               (let [url (format "public/dashboard/%s/params/%s/search/food" uuid (:category-name param-keys))]
-                (is (= ["Fast Food" "Food Truck" "Seafood"]
-                       (take 3 (mt/user-http-request :rasta :get 200 url))))))))))))
+                (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                        :has_more_values false}
+                       (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))))))
 
 ;; Pivot tables
 

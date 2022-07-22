@@ -3,7 +3,7 @@ import {
   modal,
   describeEE,
   modifyPermission,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -176,10 +176,7 @@ describeEE("scenarios > admin > permissions > application", () => {
         cy.findByText("Updates").should("not.exist");
 
         // General smoke test
-        cy.get("#setting-site-name")
-          .clear()
-          .type("new name")
-          .blur();
+        cy.get("#setting-site-name").clear().type("new name").blur();
 
         cy.findByText("Saved");
       });

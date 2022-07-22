@@ -1,4 +1,8 @@
-# The Data Model page: editing metadata
+---
+title: The Data Model page
+---
+
+# The Data Model page
 
 Metabase allows you to annotate the data in your database. Annotations can give Metabase a better understanding of what the data actually means, which allows Metabase to make more intelligent decisions when processing and displaying that data.
 
@@ -15,7 +19,7 @@ Or are you instead looking for docs on [models](../users-guide/models.md)?
 
 ## Accessing the Data Model page
 
-At the bottom of the navigation sidebar, click on **gear** icon, and select **Admin** > **Data Model**.
+At the top right of the screen, click on **gear** icon > **Admin** > **Data Model**.
 
 In the sidebar on the left, you can choose which database to configure. Next, select the table to view and edit its metadata.
 
@@ -84,7 +88,7 @@ For the **SQL editor**, **Do Not Include** settings only affect visibility in th
 
 ### Field type
 
-You can use the Data Model page to edit field types for fields in your database. Use the **Type** dropdown menu to select from this [list of options](../users-guide/field-types.md). 
+You can use the Data Model page to edit field types for fields in your database. Use the **Type** dropdown menu to select from this [list of options](../users-guide/field-types.md).
 
 In this same menu, you can also designate a column as the table's **primary key** or **foreign key**.
 

@@ -1,10 +1,13 @@
-# Working with MySQL in Metabase
+---
+title: MySQL
+---
 
-This page includes some helpful info for connecting Metabase to your MySQL database.
+# MySQL
 
-  - [Connecting to MySQL 8+ servers](#connecting-to-mysql-8-servers)
-  - [Unable to log in with correct credentials](#unable-to-log-in-with-correct-credentials)
-  - [Raising a MySQL Docker container of MySQL 8+](#raising-a-mysql-docker-container-of-mysql-8)
+- [Connecting to MySQL 8+ servers](#connecting-to-mysql-8-servers)
+- [Unable to log in with correct credentials](#unable-to-log-in-with-correct-credentials)
+- [Raising a MySQL Docker container of MySQL 8+](#raising-a-mysql-docker-container-of-mysql-8)
+- [Note on syncing records that include JSON](#note-on-syncing-records-that-include-json)
 
 ## Connecting to MySQL 8+ servers
 
@@ -35,11 +38,11 @@ Remember to drop the old user: `DROP USER 'metabase'@'localhost';`.
 
 If you are spinning up a new MySQL container, and:
 
- - you want Metabase to connect to the container without having to manually create the user or change the authentication mechanism,
- - or you're facing a `RSA public key is not available client side (option serverRsaPublicKeyFile not set)` error,
- 
+- you want Metabase to connect to the container without having to manually create the user or change the authentication mechanism,
+- or you're facing a `RSA public key is not available client side (option serverRsaPublicKeyFile not set)` error,
+
 Use the `['--default-authentication-plugin=mysql_native_password']` modifiers when you run the container, like so:
- 
+
 - a simple docker run: `docker run -p 3306:3306 -e MYSQL_ROOT_PASSWORD=xxxxxx mysql:8.xx.xx --default-authentication-plugin=mysql_native_password`
 
 - or in docker-compose:
@@ -49,7 +52,7 @@ mysql:
     image: mysql:8.xx.xx
     container_name: mysql
     hostname: mysql
-    ports: 
+    ports:
       - 3306:3306
     environment:
       - "MYSQL_ROOT_PASSWORD=xxxxxx"
@@ -61,3 +64,10 @@ mysql:
     command: ['--default-authentication-plugin=mysql_native_password']
 ```
 
+## Note on syncing records that include JSON
+
+1. **Metabase will infer the JSON "schema" based on the keys in the first five hundred rows of a table.** MySQL JSON fields lack schema, so Metabase can't rely on table metadata to define which keys a JSON field has. To work around the lack of schema, Metabase will get the first five hundred records and parse the JSON in those records to infer the JSON's "schema". The reason Metabase limits itself to five hundred records is so that syncing metadata doesn't put unnecessary strain on your database.
+
+The problem is that if the keys in the JSON vary record to record, the first five hundred rows may not capture all the keys used by JSON objects in that JSON field. To get Metabase to infer all the JSON keys, you'll need to add the additional keys to the JSON objects in the first five hundred rows.
+
+2. **This JSON support doesn't work with MariaDB**, due to implementation differences between MySQL and MariaDB.

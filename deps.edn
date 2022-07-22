@@ -67,7 +67,6 @@
                                                            org.flatland/ordered
                                                            org.yaml/snakeyaml]}
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
-  javax.xml.bind/jaxb-api                   {:mvn/version "2.4.0-b180830.0359"} ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
   joda-time/joda-time                       {:mvn/version "2.10.13"}
   kixi/stats                                {:mvn/version "0.4.4"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
@@ -75,8 +74,9 @@
                                              :exclusions  [org.apache.commons/commons-compress]}
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "2.0.1"}              ; EE SAML integration
+  metabase/saml20-clj                       {:mvn/version "2.0.2"}              ; EE SAML integration
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
+  nano-id/nano-id                           {:mvn/version "1.0.0"}              ; NanoID generator for generating entity_ids
   net.cgrand/macrovich                      {:mvn/version "0.2.1"}              ; utils for writing macros for both Clojure & ClojureScript
   net.i2p.crypto/eddsa                      {:mvn/version "0.3.0"}              ; ED25519 key support (optional dependency for org.apache.sshd/sshd-core)
   net.redhogs.cronparser/cron-parser-core   {:mvn/version "3.5"                 ; describe Cron schedule in human-readable language

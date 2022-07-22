@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/helpers";
 
 const questionDetails = {
   name: "18063",
@@ -19,13 +19,9 @@ describe("issue 18063", () => {
 
     // Select a Pin map
     cy.findByTestId("viz-settings-button").click();
-    cy.findAllByTestId("select-button")
-      .contains("Region map")
-      .click();
+    cy.findAllByTestId("select-button").contains("Region map").click();
 
-    popover()
-      .contains("Pin map")
-      .click();
+    popover().contains("Pin map").click();
 
     // Click anywhere to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
@@ -54,14 +50,9 @@ function selectFieldValue(field, value) {
       cy.findByText("Select a field").click();
     });
 
-  popover()
-    .contains(value)
-    .click();
+  popover().contains(value).click();
 }
 
 function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1)
-    .closest("td")
-    .siblings("td")
-    .findByText(val2);
+  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }

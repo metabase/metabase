@@ -6,7 +6,7 @@ import {
   editDashboard,
   visualize,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
@@ -155,9 +155,7 @@ function openVisualizationOptions() {
 
 function hideColumn(columnName) {
   cy.findByTestId("chartsettings-sidebar").within(() => {
-    cy.findByText(columnName)
-      .siblings(".Icon-close")
-      .click();
+    cy.findByText(columnName).siblings(".Icon-close").click();
   });
 }
 

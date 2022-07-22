@@ -1,4 +1,4 @@
-import { restore, visitIframe } from "__support__/e2e/cypress";
+import { restore, visitIframe } from "__support__/e2e/helpers";
 
 describe("locked parameters in embedded question (metabase#20634)", () => {
   beforeEach(() => {

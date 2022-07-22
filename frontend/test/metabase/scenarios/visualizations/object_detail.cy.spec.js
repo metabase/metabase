@@ -4,7 +4,7 @@ import {
   openOrdersTable,
   openPeopleTable,
   openProductsTable,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -130,12 +130,10 @@ describe("scenarios > question > object details", () => {
       .click();
     // Popover is blocking the city. If it renders, Cypress will not be able to click on "Searsboro" and the test will fail.
     // Unfortunately, asserting that the popover does not exist will give us a false positive result.
-    cy.findByTestId("object-detail")
-      .findByText("Searsboro")
-      .click();
+    cy.findByTestId("object-detail").findByText("Searsboro").click();
   });
 
-  it.skip("should work with non-numeric IDs (metabse#22768)", () => {
+  it("should work with non-numeric IDs (metabse#22768)", () => {
     cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
       semantic_type: null,
     });
@@ -154,26 +152,16 @@ describe("scenarios > question > object details", () => {
 });
 
 function drillPK({ id }) {
-  cy.get(".Table-ID")
-    .contains(id)
-    .first()
-    .click();
+  cy.get(".Table-ID").contains(id).first().click();
 }
 
 function drillFK({ id }) {
-  cy.get(".Table-FK")
-    .contains(id)
-    .first()
-    .click();
-  popover()
-    .findByText("View details")
-    .click();
+  cy.get(".Table-FK").contains(id).first().click();
+  popover().findByText("View details").click();
 }
 
 function assertDetailView({ id, entityName, byFK = false }) {
-  cy.get("h2")
-    .should("contain", entityName)
-    .should("contain", id);
+  cy.get("h2").should("contain", entityName).should("contain", id);
 
   const pattern = byFK
     ? new RegExp("/question#*")

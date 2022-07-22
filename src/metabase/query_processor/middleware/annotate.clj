@@ -494,6 +494,9 @@
 (s/defn ^:private merge-source-metadata-col :- (s/maybe su/Map)
   [source-metadata-col :- (s/maybe su/Map) col :- (s/maybe su/Map)]
   (merge
+    {} ;; ensure the type is not FieldInstance
+    (when-let [field-id (:id source-metadata-col)]
+      (dissoc (qp.store/field field-id) :database_type))
    source-metadata-col
    col
    ;; pass along the unit from the source query metadata if the top-level metadata has unit `:default`. This way the
@@ -515,7 +518,7 @@
   "Merge information about fields from `source-metadata` into the returned `cols`."
   [source-metadata cols dataset?]
   (let [index           (fn [col] (or (:id col) (:name col "")))
-        index->metadata (u/key-by index source-metadata)]
+        index->metadata (m/index-by index source-metadata)]
     (for [col cols]
       (if-let [source-metadata-for-field (-> col index index->metadata)]
         (merge-source-metadata-col source-metadata-for-field

@@ -1,4 +1,4 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import { restore, visitQuestionAdhoc } from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -20,7 +20,7 @@ describe("timelines", () => {
     cy.visit("/collection/root/timelines");
 
     cy.findByText("Our analytics events").should("be.visible");
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("should display timeline events in collections", () => {
@@ -28,7 +28,7 @@ describe("timelines", () => {
       cy.visit(`/collection/root/timelines/${timeline.id}`);
 
       cy.findByText("Timeline").should("be.visible");
-      cy.percySnapshot();
+      cy.createPercySnapshot();
     });
   });
 
@@ -65,7 +65,7 @@ describe("timelines", () => {
 
     cy.findByLabelText("star icon").realHover();
     cy.findByText("RC1");
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("should display timeline events with a native question", () => {
@@ -96,6 +96,6 @@ describe("timelines", () => {
 
     cy.findByLabelText("star icon").realHover();
     cy.findByText("RC1");
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });

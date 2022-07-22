@@ -1,3 +1,7 @@
+---
+title: Guide to writing a Metabase driver
+---
+
 # Guide to writing a Metabase driver
 
 So here's the scenario: you love Metabase. It's changed your life. But you have some data in a Visual Fox Pro '98 database and you need to make charts with it, and it might be a while before the core Metabase team writes a driver for Visual Fox Pro '98. No problem! Writing a driver can be fun.
@@ -32,4 +36,4 @@ Try to avoid skipping right to whichever page you think will give you the code y
 
 ## Driver development announcements
 
-Occasionally, we may make changes to Metabase that impact database drivers. We'll try to give everyone as much of a heads up as possible. For notifications regarding potential driver changes, subscribe to the [Metabase Community Authors mailing list](http://eepurl.com/gQcIO9). 
+Occasionally, we may make changes to Metabase that impact database drivers. We'll try to give everyone as much of a heads up as possible. For notifications regarding potential driver changes, subscribe to the [Metabase Community Authors mailing list](http://eepurl.com/gQcIO9).

@@ -75,12 +75,8 @@ export default class SaveQuestionModal extends Component {
   };
 
   render() {
-    const {
-      card,
-      originalCard,
-      initialCollectionId,
-      tableMetadata,
-    } = this.props;
+    const { card, originalCard, initialCollectionId, tableMetadata } =
+      this.props;
 
     const isStructured = Q_DEPRECATED.isStructured(card.dataset_query);
 
@@ -181,8 +177,9 @@ const SaveTypeInput = ({ field, originalCard }) => (
     {...field}
     options={[
       {
-        name: t`Replace original question, "${originalCard &&
-          originalCard.name}"`,
+        name: t`Replace original question, "${
+          originalCard && originalCard.name
+        }"`,
         value: "overwrite",
       },
       { name: t`Save as new question`, value: "create" },

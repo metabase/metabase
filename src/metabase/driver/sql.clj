@@ -11,7 +11,7 @@
             [potemkin :as p]
             [schema.core :as s]))
 
-(comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the liner don't remove the `:require`
+(comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
 (driver/register! :sql, :abstract? true)
 
@@ -41,9 +41,8 @@
 
 (s/defmethod driver/substitute-native-parameters :sql
   [_ {:keys [query] :as inner-query} :- {:query su/NonBlankString, s/Keyword s/Any}]
-  (let [[query params] (-> query
-                           params.parse/parse
-                           (sql.params.substitute/substitute (params.values/query->params-map inner-query)))]
+  (let [[query params]  (sql.params.substitute/substitute (params.parse/parse query)
+                                                          (params.values/query->params-map inner-query))]
     (assoc inner-query
            :query query
            :params params)))

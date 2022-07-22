@@ -22,7 +22,7 @@ import Gauge from "./visualizations/Gauge";
 import ObjectDetail from "./components/ObjectDetail";
 import PivotTable from "./visualizations/PivotTable";
 
-export default function() {
+export default function () {
   registerVisualization(Scalar);
   registerVisualization(SmartScalar);
   registerVisualization(Progress);

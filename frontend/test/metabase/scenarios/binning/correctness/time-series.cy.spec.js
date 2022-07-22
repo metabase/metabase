@@ -3,7 +3,7 @@ import {
   popover,
   getBinningButtonForDimension,
   summarize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { TIME_OPTIONS } from "./constants";
 
@@ -83,13 +83,9 @@ function getTitle(title) {
 function assertOnHeaderCells(bucketSize) {
   const headerRegex = new RegExp(`Created At: ${bucketSize}`, "i");
 
-  cy.get(".cellData")
-    .eq(0)
-    .contains(headerRegex);
+  cy.get(".cellData").eq(0).contains(headerRegex);
 
-  cy.get(".cellData")
-    .eq(1)
-    .contains("Count");
+  cy.get(".cellData").eq(1).contains("Count");
 }
 
 function assertOnTableValues(values) {

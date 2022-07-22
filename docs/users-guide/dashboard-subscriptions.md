@@ -1,12 +1,16 @@
-## Dashboard subscriptions
+---
+title: Dashboard subscriptions
+---
+
+# Dashboard subscriptions
 
 Dashboard subscriptions are a great way to keep you and your team up to date on the data that matters most. They allow you to send all of the questions on a dashboard via email or Slack. If your Metabase has email or Slack set up, all you need to do is create a dashboard, add subscribers to it, and tell Metabase how often you'd like the send out an update. You can set up as many subscriptions to a dashboard as you like, and if you make any changes to the dashboard, Metabase will update the subscriptions the next time they're delivered.
 
-### Enabling dashboard subscriptions
+## Enabling dashboard subscriptions
 
 To enable dashboard subscriptions, your administrators will need to have set up email or Slack for your Metabase. See [Setting up email](https://www.metabase.com/docs/latest/administration-guide/02-setting-up-email.html) or [Setting up Slack](https://www.metabase.com/docs/latest/administration-guide/09-setting-up-slack.html).
 
-### Setting up a dashboard subscription
+## Setting up a dashboard subscription
 
 To set up a subscription to a dashboard, click on the **sharing** icon (the one-way arrow) and select **Dashboard subscriptions**.
 
@@ -20,7 +24,7 @@ Let's say we want to email a dashboard. We'll click on the **Email it** option i
 
 ![Dashboard subscription email options](images/dashboard-subscriptions/email-options.png)
 
-### Email subscription options
+## Email subscription options
 
 For emails, we can:
 
@@ -32,13 +36,13 @@ For emails, we can:
 
 If you've added filters to your dashboard and set default values for those filters, Metabase will apply those default values to your subscriptions, filtering the results of all questions that are connected to those filters when the subscriptions are sent. To learn more, check out [dashboard filters](https://www.metabase.com/docs/latest/users-guide/08-dashboard-filters.html).
 
-### Email example
+## Email example
 
 ![Example dashboard subscription email](images/dashboard-subscriptions/example-email.png)
 
 You'll notice in the email that Metabase excludes any text cards on the dashboard, and that the charts look different - Metabase reformats the charts to make them more legible in email. Additionally, tables that exceed either 10 columns or 20 rows get the rest of their results, up to 2000 rows, included as an attachment.
 
-### Slack subscription options
+## Slack subscription options
 
 For Slack subscriptions, you can set up a subscription for a channel (like #general), or for a single person via their Slack username.
 
@@ -46,11 +50,11 @@ For Slack subscriptions, you can set up a subscription for a channel (like #gene
 
 You can specify how often Metabase sends a Slack message (hourly, daily, weekly, or monthly), and whether to send a message if the dashboard fails to return results.
 
-### Adding multiple subscriptions
+## Adding multiple subscriptions
 
 You can add multiple subscriptions to a single dashboard. To add a subscription, click on the **+** icon in the dashboard subscription panel.
 
-### Deleting a subscription
+## Deleting a subscription
 
 To remove a subscription from a dashboard, select the subscription you'd like to remove. At the bottom of the sidebar, select **Delete this subscription**. Follow the instructions on the modal that pops up to confirm you'd like to delete the subscription.
 
@@ -58,14 +62,13 @@ To remove a subscription from a dashboard, select the subscription you'd like to
 
 Some plans allow you to [customize filter values for each subscription](../enterprise-guide/dashboard-subscriptions.md), so you can set up subscriptions with different filter values applied for different subscribers.
 
-### Related reading
+## Viewing existing dashboard subscriptions
+
+{% include plans-blockquote.html feature="Audit logs" %}
+
+To view a list of all alerts and dashboard subscriptions that people have set up in your Metabase, click on the **gear** icon in the upper right and select **Admin settings** > **Audit** > **Subscriptions & Alerts**. See [Audit logs](../enterprise-guide/audit.md).
+
+## Related reading
 
 - [Setting up email](https://www.metabase.com/docs/latest/administration-guide/02-setting-up-email.html)
 - [Setting up Slack](https://www.metabase.com/docs/latest/administration-guide/09-setting-up-slack.html)
-
----
-
-## Next: data model reference
-
-Sometimes you’ll need help understanding what data is available to you and what it means. Metabase provides a way for your administrators and data experts to build a [data model reference](12-data-model-reference.md) to help you make sense of your data.
-

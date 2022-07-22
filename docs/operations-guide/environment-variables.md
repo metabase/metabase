@@ -1,3 +1,7 @@
+---
+title: Environment variables
+---
+
 # Environment variables
 
 Many settings in Metabase can be viewed and modified in the Admin Panel, or set via environment variables. The environment variables always take precedence. Note that the environment variables won't get written into the application database.
@@ -94,6 +98,31 @@ Type: string<br>
 Default: `"frontend_client/favicon.ico"`
 
 Path or URL to favicon file.
+
+### `MB_APPLICATION_FONT_FILES`
+
+Only available in [some plans](https://www.metabase.com/pricing)<br>
+Type: string<br>
+Default: `"{}"`
+
+Tell Metabase which font files to use for different styles. Example value:
+
+```
+[
+  {
+     "src": "https://example.com/resources/font-400",
+     "fontFormat": "ttf",
+     "fontWeight": 400,
+  },
+  {
+     "src": "https://example.com/resources/font-700",
+     "fontFormat": "woff",
+     "fontWeight": 700,
+  }
+]
+```
+
+See [fonts](../enterprise-guide/fonts.md).
 
 ### `MB_APPLICATION_LOGO_URL`
 
@@ -604,7 +633,7 @@ Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `""`
 
-Default page to show the user.
+Default page to show people when they log in.
 
 ### `MB_LDAP_ATTRIBUTE_EMAIL`
 

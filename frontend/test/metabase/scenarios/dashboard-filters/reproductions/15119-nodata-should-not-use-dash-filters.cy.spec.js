@@ -3,7 +3,7 @@ import {
   filterWidget,
   popover,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -58,9 +58,7 @@ describe("issue 15119", () => {
       },
     );
 
-    filterWidget()
-      .contains("Category")
-      .click();
+    filterWidget().contains("Category").click();
 
     popover().within(() => {
       cy.findByText("Gizmo").click();

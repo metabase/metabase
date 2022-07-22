@@ -1,4 +1,4 @@
-import { restore, visitDashboard } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -31,8 +31,9 @@ describe("issue 18454", () => {
 
   it("should show card descriptions (metabase#18454)", () => {
     cy.get(".DashCard").realHover();
-    cy.icon("info").trigger("mouseenter", { force: true });
-
+    cy.get(".DashCard").within(() => {
+      cy.icon("info").trigger("mouseenter", { force: true });
+    });
     cy.findByText(CARD_DESCRIPTION);
   });
 });

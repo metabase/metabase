@@ -23,9 +23,13 @@ export const Grid = styled.div`
   }
 `;
 
-export const SectionHeader = styled.div`
+export interface SectionHeaderProps {
+  hasTopMargin?: boolean;
+}
+
+export const SectionHeader = styled.div<SectionHeaderProps>`
+  margin-top: ${props => (props.hasTopMargin ? "1.5rem" : "")};
   padding-bottom: 1.15rem;
-  margin-top: 1.5rem;
 `;
 
 export const SectionSubHeader = styled.div`

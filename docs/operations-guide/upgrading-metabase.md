@@ -1,3 +1,7 @@
+---
+title: Upgrading Metabase
+---
+
 # Upgrading Metabase
 
 ## Step 1: Back up your application database
@@ -21,7 +25,7 @@ If you're running the JVM Jar file directly:
 
 1. [Back up your application database](backing-up-metabase-application-data.md).
 
-2. [Download the latest version](https://www.metabase.com/start/oss/jar.html).
+2. [Download the latest version](https://www.metabase.com/start/oss/jar).
 
 3. Use a terminal to access your existing Metabase process and kill it (usually CTRL-C).
 
@@ -43,7 +47,7 @@ E.g., if you're running Metabase on Debian as a service using Nginx
 
 1. [Back up your application database](backing-up-metabase-application-data.md).
 
-2. [Download the latest version](https://www.metabase.com/start/oss/jar.html).
+2. [Download the latest version](https://www.metabase.com/start/oss/jar).
 
 3. Stop the Metabase service. Aassuming you called your service `metabase.service`), you'll run:
 

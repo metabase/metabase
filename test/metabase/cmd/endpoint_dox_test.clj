@@ -3,7 +3,7 @@
             [metabase.cmd.endpoint-dox :as endpoint-dox]
             [metabase.config :as config]))
 
-(deftest capitalize-iniitialisms-test
+(deftest capitalize-initialisms-test
   (testing "Select initialisms and acronyms are in all caps."
     (is (= "The GeoJSON has too many semicolons."
            (endpoint-dox/capitalize-initialisms "The Geojson has too many semicolons." endpoint-dox/initialisms)))))
@@ -29,7 +29,7 @@
                   :doc
                   "## `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently."}]})
 
-(def page-markdown (str "# Activity\n\n  - [GET /api/activity/](#get-apiactivity)\n  - [GET /api/activity/recent_views](#get-apiactivityrecent_views)\n\n## `GET /api/activity/`\n\nGet recent activity.\n\n## `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently." (endpoint-dox/endpoint-footer (val (first endpoints)))))
+(def page-markdown (str "---\ntitle: \"Activity\"\nsummary: |\n  API endpoints for Activity.\n---\n\n# Activity\n\nAPI endpoints for Activity.\n\n  - [GET /api/activity/](#get-apiactivity)\n  - [GET /api/activity/recent_views](#get-apiactivityrecent_views)\n\n## `GET /api/activity/`\n\nGet recent activity.\n\n## `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently." (endpoint-dox/endpoint-footer (val (first endpoints)))))
 
 (deftest build-endpoint-link-test
   (testing "Links to endpoint pages are generated correctly."

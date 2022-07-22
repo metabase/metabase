@@ -14,7 +14,7 @@
           start-ms (System/currentTimeMillis)
           _        (slack/refresh-channels-and-usernames!)]
       (log/info (trs "Slack user/channel startup cache refreshed with {0} entries, took {1}ms."
-                     (count (slack/slack-cached-channels-and-usernames))
+                     (count (:channels (slack/slack-cached-channels-and-usernames)))
                      (- (System/currentTimeMillis) start-ms))))
     (log/info (trs "Slack is not configured, not refreshing slack user/channel cache."))))
 

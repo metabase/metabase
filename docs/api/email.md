@@ -1,3 +1,8 @@
+---
+title: "Email"
+summary: "/api/email endpoints."
+---
+
 # Email
 
 /api/email endpoints.

@@ -150,10 +150,7 @@ function renderEventTicks({
   const eventLines = brush.selectAll(".event-line").data(eventGroups);
   eventAxis.exit().remove();
 
-  eventAxis
-    .enter()
-    .append("g")
-    .attr("class", "event-axis");
+  eventAxis.enter().append("g").attr("class", "event-axis");
 
   const eventTicks = eventAxis.selectAll(".event-tick").data(eventGroups);
   eventTicks.exit().remove();
@@ -188,7 +185,7 @@ function renderEventTicks({
     .text(d => d.length);
 
   eventTicks
-    .on("mousemove", function(d) {
+    .on("mousemove", function (d) {
       const eventTick = d3.select(this);
       const eventIcon = eventTicks.filter(data => d === data);
       const eventLine = eventLines.filter(data => d === data);
@@ -197,7 +194,7 @@ function renderEventTicks({
       eventTick.classed("hover", true);
       eventLine.classed("hover", true);
     })
-    .on("mouseleave", function(d) {
+    .on("mouseleave", function (d) {
       const eventTick = d3.select(this);
       const eventLine = eventLines.filter(data => d === data);
 
@@ -205,7 +202,7 @@ function renderEventTicks({
       eventTick.classed("hover", isSelected(d, selectedEventIds));
       eventLine.classed("hover", isSelected(d, selectedEventIds));
     })
-    .on("click", function(d) {
+    .on("click", function (d) {
       if (isSelected(d, selectedEventIds)) {
         onDeselectTimelineEvents();
       } else {

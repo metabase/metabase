@@ -1,4 +1,8 @@
-# Administration Guide
+---
+title: Administration guide
+---
+
+# Administration guide
 
 Are you in charge of managing Metabase for your organization? Then you're in the right spot. You are the chosen one.
 
@@ -44,3 +48,4 @@ See [how to install Metabase](../operations-guide/installing-metabase.md).
 
 - [Sharing dashboards and questions with public links](12-public-links.md)
 - [Embedding Metabase in other Applications](13-embedding.md)
+- [Customizing embeds](../enterprise-guide/customize-embeds.md)

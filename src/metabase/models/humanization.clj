@@ -104,9 +104,9 @@
       (re-humanize-table-and-field-names! old-strategy))))
 
 (defsetting ^{:added "0.28.0"} humanization-strategy
-  (str (deferred-tru "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces.")
-       " "
-       (deferred-tru "We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’."))
+  (deferred-tru
+    (str "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them "
+         "with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’."))
   :type    :keyword
   :default :simple
   :setter  set-humanization-strategy!)

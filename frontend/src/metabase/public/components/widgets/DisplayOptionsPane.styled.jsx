@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { space } from "metabase/styled-components/theme";
 
 export const StyleContainer = styled.div`
   display: flex;
@@ -17,4 +18,14 @@ export const DisplayOption = styled.div`
 `;
 export const DisplayOptionTitle = styled.h3`
   margin-bottom: 1rem;
+`;
+
+export const ToggleContainer = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+export const ToggleLabel = styled.label`
+  margin-right: ${space(3)};
+  line-height: 1.5;
 `;

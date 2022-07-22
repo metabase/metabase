@@ -201,3 +201,58 @@
         (tt/with-temp NativeQuerySnippet [{snippet-id :id}]
           (is (= {:errors {:collection_id "Collection does not exist."}}
                  ((mt/user->client :rasta) :put 404 (snippet-url snippet-id) {:collection_id Integer/MAX_VALUE}))))))))
+
+(deftest snippet-with-template-tags-test
+  (mt/with-model-cleanup [NativeQuerySnippet]
+    (testing "create"
+      (let [{snippet-id :id} (mt/user-http-request :crowberto :post 200 (snippet-url)
+                                                   {:name          "A snippet with template-tags"
+                                                    :content       "from products where {{category}}"
+                                                    :template_tags {"category" {:default      nil
+                                                                                :dimension    ["field" 1 nil]
+                                                                                :id           "random-id-2"
+                                                                                :display-name "Category"
+                                                                                :name         "category"
+                                                                                :type         "dimension"
+                                                                                :widget-type  "string/="}}})]
+        (testing "get should return template_tags"
+          (is (= {:category
+                  {:default      nil
+                   :dimension    ["field" 1 nil]
+                   :id           "random-id-2"
+                   :display-name "Category"
+                   :name         "category"
+                   :type         "dimension"
+                   :widget-type  "string/="}}
+                 (:template_tags (mt/user-http-request :crowberto :get 200 (snippet-url snippet-id))))))
+
+        (testing "update should not allow arbitrary template tag type"
+          (mt/user-http-request :crowberto :put 400 (snippet-url snippet-id)
+                                               {:template_tags {"category" {:default      nil
+                                                                            :dimension    ["field" 1 nil]
+                                                                            :id           "random-id-2"
+                                                                            :display-name "Category"
+                                                                            :name         "category"
+                                                                            :type         "not-a-type"
+                                                                            :widget-type  "string/="}}}))
+        (testing "update should not allow mismatch template name"
+          (mt/user-http-request :crowberto :put 400 (snippet-url snippet-id)
+                                {:template_tags {"category" {:default      nil
+                                                             :dimension    ["field" 1 nil]
+                                                             :id           "random-id-2"
+                                                             :display-name "Category"
+                                                             :name         "not-a-template-tag"
+                                                             :type         "dimension"
+                                                             :widget-type  "string/="}}}))
+       (testing "update type sucessfully"
+         (is (= {:category {:default nil,
+                            :display-name "Category",
+                            :id "random-id-2"
+                            :name "category"
+                            :type "text"}}
+                (:template_tags (mt/user-http-request :crowberto :put 200 (snippet-url snippet-id)
+                                                      {:template_tags {"category" {:default      nil
+                                                                                   :id           "random-id-2"
+                                                                                   :display-name "Category"
+                                                                                   :name         "category"
+                                                                                   :type         "text"}}})))))))))

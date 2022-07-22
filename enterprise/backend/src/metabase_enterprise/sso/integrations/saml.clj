@@ -19,6 +19,7 @@
   (:require [buddy.core.codecs :as codecs]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [medley.core :as m]
             [metabase-enterprise.sso.api.interface :as sso.i]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
@@ -31,11 +32,10 @@
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
-            [ring.util.codec :as codec]
             [ring.util.response :as response]
             [saml20-clj.core :as saml]
             [schema.core :as s])
-  (:import java.util.UUID))
+  (:import [java.util Base64 UUID]))
 
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"
@@ -74,16 +74,16 @@
                               (sso-settings/saml-attribute-email))
                          " "
                          (tru "Please make sure your SAML IdP is properly configured."))
-             {:status-code 400, :user-attributes (keys user-attributes)})))
-  (when-let [user (or (sso-utils/fetch-and-update-login-attributes! email user-attributes)
-                      (sso-utils/create-new-sso-user! {:first_name       first-name
-                                                       :last_name        last-name
-                                                       :email            email
-                                                       :sso_source       "saml"
-                                                       :login_attributes user-attributes}))]
-    (sync-groups! user group-names)
-    (api.session/create-session! :sso user device-info)))
-
+                    {:status-code 400, :user-attributes (keys user-attributes)})))
+  (let [new-user {:first_name       first-name
+                  :last_name        last-name
+                  :email            email
+                  :sso_source       "saml"
+                  :login_attributes user-attributes}]
+    (when-let [user (or (sso-utils/fetch-and-update-login-attributes! new-user)
+                        (sso-utils/create-new-sso-user! new-user))]
+      (sync-groups! user group-names)
+      (api.session/create-session! :sso user device-info))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -118,7 +118,7 @@
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
             saml-request (saml/request
-                           {:request-id (str "id-" (java.util.UUID/randomUUID))
+                           {:request-id (str "id-" (UUID/randomUUID))
                             :sp-name    (sso-settings/saml-application-name)
                             :issuer     (sso-settings/saml-application-name)
                             :acs-url    (acs-url)
@@ -166,9 +166,10 @@
                       {:status-code 401})))
     attrs))
 
-(defn- base64-decode [s]
+(defn- base64-decode [^String s]
   (when (u/base64-string? s)
-    (codecs/bytes->str (codec/base64-decode s))))
+    (codecs/bytes->str
+      (.decode (Base64/getMimeDecoder) s))))
 
 (defmethod sso.i/sso-post :saml
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
@@ -180,12 +181,12 @@
                           (when-not (str/blank? s)
                             s)))]
     (sso-utils/check-sso-redirect continue-url)
-    (let [xml-string    (base64-decode (:SAMLResponse params))
+    (let [xml-string    (str/trim (base64-decode (:SAMLResponse params)))
           saml-response (xml-string->saml-response xml-string)
           attrs         (saml-response->attributes saml-response)
           email         (get attrs (sso-settings/saml-attribute-email))
-          first-name    (get attrs (sso-settings/saml-attribute-firstname) "Unknown")
-          last-name     (get attrs (sso-settings/saml-attribute-lastname) "Unknown")
+          first-name    (get attrs (sso-settings/saml-attribute-firstname))
+          last-name     (get attrs (sso-settings/saml-attribute-lastname))
           groups        (get attrs (sso-settings/saml-attribute-group))
           session       (fetch-or-create-user!
                           {:first-name      first-name
@@ -195,4 +196,4 @@
                            :user-attributes attrs
                            :device-info     (request.u/device-info request)})
           response      (response/redirect (or continue-url (public-settings/site-url)))]
-      (mw.session/set-session-cookie request response session))))
+      (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))

@@ -8,7 +8,7 @@ import L from "metabase/components/List.css";
 
 import Icon from "metabase/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import Button from "metabase/core/components/Button";
 
 const EditableReferenceHeader = ({

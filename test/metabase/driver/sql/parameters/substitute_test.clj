@@ -181,11 +181,33 @@
 ;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
 
 (deftest ^:parallel substitute-native-query-snippets-test
-  (testing "Native query snippet substitution"
+  (testing "Native query snippet substitution without param"
     (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
-      (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
-             (substitute query {"snippet:symbol_is_A" (params/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
+      (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" []]
+             (substitute query {"snippet:symbol_is_A" (params/map->ParsedQuerySnippet {:snippet-id   123
+                                                                                       :parsed-query ["symbol = 'A'"]
+                                                                                       :param->value {}})})))))
 
+  (testing "Native query snippet substitution with param"
+    (testing "snippet contains one raw param"
+     (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
+       (is (= ["SELECT * FROM test_scores WHERE symbol = ?" ["A"]]
+              (substitute query {"snippet:symbol_is_A" (params/map->ParsedQuerySnippet {:snippet-id   123
+                                                                                        :parsed-query ["symbol = " (param "symbol")]
+                                                                                        :param->value {"symbol" "A"}})})))))
+
+    (testing "snippet contains contains multiple params"
+      (let [query                ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]
+            snippet-param->value {"symbol" "A"
+                                  "name"   (params/map->FieldFilter
+                                             {:field (Field (mt/id :categories :name))
+                                              :value {:type  :string/=
+                                                      :value ["American"]}})}
+            parsed-query-snippet {:snippet-id   123
+                                  :parsed-query ["symbol = " (param "symbol") " and " (param "name")]
+                                  :param->value snippet-param->value}]
+        (is (= ["SELECT * FROM test_scores WHERE symbol = ? and \"PUBLIC\".\"CATEGORIES\".\"NAME\" = ?" ["A" "American"]]
+               (substitute query {"snippet:symbol_is_A" (params/map->ParsedQuerySnippet parsed-query-snippet)})))))))
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 

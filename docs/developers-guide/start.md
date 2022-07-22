@@ -1,3 +1,7 @@
+---
+title: "Developer's Guide"
+---
+
 # Developer's Guide
 
 This guide contains detailed information on how to work on Metabase codebase.

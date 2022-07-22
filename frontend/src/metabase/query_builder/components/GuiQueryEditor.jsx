@@ -148,12 +148,8 @@ export default class GuiQueryEditor extends React.Component {
   }
 
   renderAggregation() {
-    const {
-      query,
-      features,
-      setDatasetQuery,
-      supportMultipleAggregations,
-    } = this.props;
+    const { query, features, setDatasetQuery, supportMultipleAggregations } =
+      this.props;
 
     if (!features.aggregation) {
       return;

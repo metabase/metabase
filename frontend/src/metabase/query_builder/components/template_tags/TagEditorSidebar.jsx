@@ -50,6 +50,7 @@ export default class TagEditorSidebar extends React.Component {
       setParameterValue,
       onClose,
     } = this.props;
+
     // The tag editor sidebar excludes snippets since they have a separate sidebar.
     const tags = query.templateTagsWithoutSnippets();
     const database = query.database();

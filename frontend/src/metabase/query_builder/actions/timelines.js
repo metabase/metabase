@@ -14,14 +14,12 @@ export const selectTimelineEvents = createAction(SELECT_TIMELINE_EVENTS);
 export const DESELECT_TIMELINE_EVENTS = "metabase/qb/DESELECT_TIMELINE_EVENTS";
 export const deselectTimelineEvents = createAction(DESELECT_TIMELINE_EVENTS);
 
-export const showTimelinesForCollection = collectionId => (
-  dispatch,
-  getState,
-) => {
-  const fetchedTimelines = getFetchedTimelines(getState());
-  const collectionTimelines = collectionId
-    ? fetchedTimelines.filter(t => t.collection_id === collectionId)
-    : fetchedTimelines.filter(t => t.collection_id == null);
+export const showTimelinesForCollection =
+  collectionId => (dispatch, getState) => {
+    const fetchedTimelines = getFetchedTimelines(getState());
+    const collectionTimelines = collectionId
+      ? fetchedTimelines.filter(t => t.collection_id === collectionId)
+      : fetchedTimelines.filter(t => t.collection_id == null);
 
-  dispatch(showTimelines(collectionTimelines));
-};
+    dispatch(showTimelines(collectionTimelines));
+  };

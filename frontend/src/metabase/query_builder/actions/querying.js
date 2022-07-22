@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { createAction } from "redux-actions";
 
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { startTimer } from "metabase/lib/performance";
@@ -84,7 +85,7 @@ export const RUN_QUERY = "metabase/qb/RUN_QUERY";
 export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
-  overrideWithCard,
+  overrideWithCard = null,
 } = {}) => {
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
@@ -146,13 +147,6 @@ export const runQuestionQuery = ({
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
 
-    // TODO Move this out from Redux action asap
-    // HACK: prevent SQL editor from losing focus
-    try {
-      // eslint-disable-next-line no-undef
-      ace.edit("id_sql").focus();
-    } catch (e) {}
-
     dispatch.action(RUN_QUERY, { cancelQueryDeferred });
   };
 };
@@ -160,8 +154,9 @@ export const runQuestionQuery = ({
 const loadStartUIControls = createThunkAction(
   LOAD_START_UI_CONTROLS,
   () => (dispatch, getState) => {
+    const loadingMessage = PLUGIN_SELECTORS.getLoadingMessage(getState());
     const title = {
-      onceQueryIsRun: t`Doing Science...`,
+      onceQueryIsRun: loadingMessage,
       ifQueryTakesLong: t`Still Here...`,
     };
 

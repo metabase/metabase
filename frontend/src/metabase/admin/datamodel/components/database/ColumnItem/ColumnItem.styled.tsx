@@ -7,7 +7,7 @@ interface ColumnItemInputProps {
 }
 
 export const ColumnItemInput = styled(InputBlurChange)<ColumnItemInputProps>`
-  border-color: ${color("border")};
+  border-color: ${color("border-dark")};
 
   background-color: ${props =>
     color(props.variant === "primary" ? "white" : "bg-light")};

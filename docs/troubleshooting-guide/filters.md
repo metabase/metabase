@@ -1,3 +1,7 @@
+---
+title: My dashboard filters don't work
+---
+
 # My dashboard filters don't work
 
 You've tried to add a [filter widget][filter-widget-gloss] to your dashboard, but:

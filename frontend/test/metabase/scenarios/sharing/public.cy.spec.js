@@ -4,7 +4,8 @@ import {
   modal,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+  openQuestionActions,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -21,10 +22,7 @@ const USERS = {
   "anonymous user": () => cy.signOut(),
 };
 
-// [quarantine]: failing almost consistently in CI
-// Skipping the whole spec because it needs to be refactored.
-// If possible, re-use as much code as possible but let test run in isolation.
-describe.skip("scenarios > public", () => {
+describe("scenarios > public", () => {
   let questionId;
   before(() => {
     restore();
@@ -55,7 +53,6 @@ describe.skip("scenarios > public", () => {
 
   beforeEach(() => {
     cy.signInAsAdmin();
-    cy.server();
   });
 
   let questionPublicLink;
@@ -67,17 +64,17 @@ describe.skip("scenarios > public", () => {
     it("should allow users to create parameterized dashboards", () => {
       visitQuestion(questionId);
 
-      cy.findByTestId("saved-question-header-button").click();
-      cy.findByTestId("add-to-dashboard-button").click();
-      modal()
-        .contains("Create a new dashboard")
-        .click();
+      openQuestionActions();
+
+      popover().within(() => {
+        cy.findByText("Add to dashboard").click();
+      });
+
+      modal().contains("Create a new dashboard").click();
       modal()
         .get('input[name="name"]')
-        .type("parameterized dashboard");
-      modal()
-        .contains("Create")
-        .click();
+        .type("parameterized dashboard", { delay: 0 });
+      modal().contains("Create").click();
 
       cy.icon("filter").click();
 
@@ -87,9 +84,7 @@ describe.skip("scenarios > public", () => {
       });
 
       cy.contains("Select…").click();
-      popover()
-        .contains("Text")
-        .click();
+      popover().contains("Category").click();
 
       cy.contains("Done").click();
       cy.contains("Save").click();
@@ -111,7 +106,7 @@ describe.skip("scenarios > public", () => {
       cy.contains(COUNT_DOOHICKEY);
 
       cy.url()
-        .should("match", /\/dashboard\/\d+\?text=Doohickey$/)
+        .should("match", /\/dashboard\/\d+[-\w]+\?text=Doohickey$/)
         .then(url => {
           dashboardId = parseInt(url.match(/dashboard\/(\d+)/)[1]);
         });
@@ -126,8 +121,8 @@ describe.skip("scenarios > public", () => {
 
       cy.contains("Enable sharing")
         .parent()
-        .find("a")
-        .click();
+        .find("input[type=checkbox]")
+        .check();
 
       cy.contains("Public link")
         .parent()
@@ -147,8 +142,8 @@ describe.skip("scenarios > public", () => {
 
       cy.contains("Enable sharing")
         .parent()
-        .find("a")
-        .click();
+        .find("input[type=checkbox]")
+        .check();
 
       cy.contains("Public link")
         .parent()
@@ -157,6 +152,22 @@ describe.skip("scenarios > public", () => {
           expect($input[0].value).to.match(PUBLIC_URL_REGEX);
           dashboardPublicLink = $input[0].value.match(PUBLIC_URL_REGEX)[0];
         });
+    });
+
+    it("should show shared questions and dashboards in admin settings", () => {
+      cy.visit("/admin/settings/public-sharing");
+
+      cy.findByText("Enable Public Sharing").should("be.visible");
+
+      cy.findByText(
+        "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards.",
+      ).should("be.visible");
+
+      // shared questions
+      cy.findByText("sql param").should("be.visible");
+
+      // shared dashboard
+      cy.findByText("parameterized dashboard").should("be.visible");
     });
 
     Object.entries(USERS).map(([userType, setUser]) =>
@@ -178,11 +189,14 @@ describe.skip("scenarios > public", () => {
           cy.visit(dashboardPublicLink);
           cy.contains(COUNT_ALL);
 
-          cy.contains("Category").click();
+          cy.contains("Text").click();
           cy.contains("Doohickey").click();
           cy.contains("Add filter").click();
 
           cy.contains(COUNT_DOOHICKEY);
+
+          // Enter full-screen button
+          cy.icon("expand");
         });
       }),
     );
