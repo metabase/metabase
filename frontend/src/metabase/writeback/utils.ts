@@ -101,11 +101,9 @@ export function getActionTemplateTagType(tag: TemplateTag) {
   }
 }
 
-export const getQueryActionParameterMappings = (action: WritebackAction) => {
-  if (action.type === "http") {
-    return {};
-  }
-
+export const getQueryActionParameterMappings = (
+  action: WritebackAction & RowAction,
+) => {
   const templateTags = Object.values(
     action.card.dataset_query.native["template-tags"],
   );
