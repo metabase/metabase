@@ -133,7 +133,7 @@ export function BaseTableItem({
         <ItemCell data-testid={`${testId}-last-edited-by`}>
           <Ellipsified>{lastEditedBy}</Ellipsified>
         </ItemCell>
-        <ItemCell data-testid={`${testId}-last-edited-at`}>
+        <ItemCell data-testid={`${testId}-last-edited-at`} data-server-date>
           {lastEditInfo && (
             <Tooltip tooltip={<DateTime value={lastEditInfo.timestamp} />}>
               <TableItemSecondaryField>{lastEditedAt}</TableItemSecondaryField>
