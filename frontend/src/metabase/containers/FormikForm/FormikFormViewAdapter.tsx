@@ -43,7 +43,6 @@ function getMaybeNestedValue<Value = string>(
 }
 
 interface FormikFormViewAdapterOwnProps<Values> {
-  formInitialValues: Values;
   onValuesChange: (values: Values) => void;
 }
 
