@@ -51,6 +51,7 @@ import { isCurrency } from "metabase/lib/schema_metadata";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
+import { FieldNameInput } from "./FieldApp.styled";
 
 const mapStateToProps = (state, props) => {
   const databaseId = parseInt(props.params.databaseId);
@@ -432,9 +433,9 @@ export class FieldHeader extends React.Component {
   render() {
     return (
       <div>
-        <InputBlurChange
+        <FieldNameInput
           name="display_name"
-          className="h2 AdminInput bordered rounded border-dark block mb1"
+          className="h2 AdminInput"
           value={this.props.field.display_name}
           onBlurChange={this.onNameChange}
           placeholder={this.props.field.name}
