@@ -17,7 +17,7 @@ import {
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 import * as Urls from "metabase/lib/urls";
-import { getActionTemplateTagType } from "metabase/writeback/utils";
+import { getTemplateTagType } from "metabase/parameters/utils/cards";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
@@ -45,32 +45,29 @@ export default ({ question, clicked }) => {
   }
 
   if (type === "action") {
-    const action = extraData.actions[clickBehavior.action];
-    if (action.type === "http") {
-      return;
-    }
-
-    const parameters = getParametersForNativeAction(parameterMapping, {
+    const parameters = getActionParameters(parameterMapping, {
       data,
       extraData,
       clickBehavior,
     });
-    const missingParameters = getNotProvidedParametersForNativeAction(
+    const action = extraData.actions[clickBehavior.action];
+    const missingParameters = getNotProvidedActionParameters(
       action,
       parameters,
     );
+    const emitterId = clickBehavior.emitter_id || clickBehavior.id;
 
     if (missingParameters.length > 0) {
       behavior = {
         action: () =>
           openActionParametersModal({
-            emitterId: clickBehavior.emitter_id,
+            emitterId: emitterId,
             props: {
               missingParameters,
               onSubmit: filledMissingParameters =>
                 executeRowAction({
                   dashboard: extraData.dashboard,
-                  emitterId: clickBehavior.emitter_id,
+                  emitterId: emitterId,
                   parameters: {
                     ...parameters,
                     ...filledMissingParameters,
@@ -84,7 +81,7 @@ export default ({ question, clicked }) => {
         action: () =>
           executeRowAction({
             dashboard: extraData.dashboard,
-            emitterId: clickBehavior.emitter_id,
+            emitterId: emitterId,
             parameters,
           }),
       };
@@ -185,14 +182,17 @@ export default ({ question, clicked }) => {
   ];
 };
 
-function getParametersForNativeAction(
+function getActionParameters(
   parameterMapping = {},
   { data, extraData, clickBehavior },
 ) {
   const action = extraData.actions[clickBehavior.action];
-  const templateTags = Object.values(
-    action.card.dataset_query.native["template-tags"],
-  );
+
+  const isQueryAction = action.type === "query";
+  const tagsMap = isQueryAction
+    ? action.card.dataset_query.native["template-tags"]
+    : action.template.parameters;
+  const templateTags = Object.values(tagsMap);
 
   const parameters = {};
 
@@ -209,14 +209,16 @@ function getParametersForNativeAction(
 
     parameters[id] = {
       value,
-      type: getActionTemplateTagType(targetTemplateTag),
+      type: isQueryAction
+        ? getTemplateTagType(targetTemplateTag)
+        : targetTemplateTag.type,
     };
   });
 
   return parameters;
 }
 
-function getNotProvidedParametersForNativeAction(action, parameters) {
+function getNotProvidedActionParameters(action, parameters) {
   const mappedParameterIDs = Object.keys(parameters);
 
   const emptyParameterIDs = [];
@@ -227,9 +229,12 @@ function getNotProvidedParametersForNativeAction(action, parameters) {
     }
   });
 
-  const templateTags = Object.values(
-    action.card.dataset_query.native["template-tags"],
-  );
+  const tagsMap =
+    action.type === "query"
+      ? action.card.dataset_query.native["template-tags"]
+      : action.template.parameters;
+  const templateTags = Object.values(tagsMap);
+
   return templateTags.filter(tag => {
     if (!tag.required) {
       return false;

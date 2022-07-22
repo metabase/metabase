@@ -126,14 +126,24 @@ export const executeRowAction = ({
             message: t`Successfully executed the action`,
           }),
         );
+      } else {
+        dispatch(
+          addUndo({
+            toastColor: "success",
+            message: t`Success! The action returned: ${JSON.stringify(result)}`,
+          }),
+        );
       }
     } catch (err) {
       console.error(err);
+      const message =
+        (<any>err)?.data?.message ||
+        t`Something went wrong while executing the action`;
       dispatch(
         addUndo({
           icon: "warning",
           toastColor: "error",
-          message: t`Something went wrong while executing the action`,
+          message,
         }),
       );
     }
