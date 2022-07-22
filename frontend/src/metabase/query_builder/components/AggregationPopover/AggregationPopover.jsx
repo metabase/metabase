@@ -7,7 +7,6 @@ import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import AccordionList from "metabase/core/components/AccordionList";
 
 import FieldList from "../FieldList";
 import QueryDefinitionTooltip from "../QueryDefinitionTooltip";
@@ -17,7 +16,10 @@ import * as AGGREGATION from "metabase/lib/query/aggregation";
 
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 
-import { ExpressionPopoverRoot } from "./AggregationPopover.styled";
+import {
+  ExpressionPopoverRoot,
+  AggregationItemList,
+} from "./AggregationPopover.styled";
 
 const COMMON_SECTION_NAME = t`Common Metrics`;
 const BASIC_SECTION_NAME = t`Basic Metrics`;
@@ -354,8 +356,7 @@ export default class AggregationPopover extends Component {
       );
     } else {
       return (
-        <AccordionList
-          className="text-green"
+        <AggregationItemList
           width={this.props.width}
           maxHeight={this.props.maxHeight}
           alwaysExpanded={this.props.alwaysExpanded}
