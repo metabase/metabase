@@ -181,11 +181,13 @@
                           (* 24 60 60 1000)]}]})
 
 (defn- truncate-to-resolution [column resolution]
-  (mongo-let [parts {:$dateToParts {:date column}}]
-    {:$dateFromParts (into {} (for [part (concat (take-while (partial not= resolution)
-                                                             [:year :month :day :hour :minute :second :millisecond])
-                                                 [resolution])]
-                                [part (str (name parts) \. (name part))]))}))
+  (mongo-let [parts {:$dateToParts {:timezone (qp.timezone/results-timezone-id)
+                                    :date column}}]
+    {:$dateFromParts (into {:timezone (qp.timezone/results-timezone-id)}
+                           (for [part (concat (take-while (partial not= resolution)
+                                                          [:year :month :day :hour :minute :second :millisecond])
+                                              [resolution])]
+                             [part (str (name parts) \. (name part))]))}))
 
 (defn- with-rvalue-temporal-bucketing
   [field unit]
