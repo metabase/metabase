@@ -97,7 +97,7 @@ export function getActionTemplateTagType(tag: TemplateTag) {
   } else if (type === "number") {
     return "number/=";
   } else {
-    return "category";
+    return "string/=";
   }
 }
 
