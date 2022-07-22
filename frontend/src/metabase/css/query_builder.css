@@ -365,12 +365,6 @@
 
 /* VIEW SECTION */
 
-.View-section-aggregation,
-.View-section-aggregation-target,
-.View-section-breakout {
-  color: var(--color-accent1);
-}
-
 .View-section-aggregation.selected .QueryOption,
 .View-section-aggregation-target.selected .QueryOption,
 .View-section-breakout.selected .QueryOption {
