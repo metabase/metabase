@@ -38,6 +38,6 @@ describe("visual tests > visualizations > row", () => {
     });
 
     ensureDcChartVisibility();
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });

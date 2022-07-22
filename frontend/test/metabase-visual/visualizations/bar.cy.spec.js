@@ -33,7 +33,7 @@ describe("visual tests > visualizations > bar", () => {
     });
 
     ensureDcChartVisibility();
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("with an invalid SQL query and a long error message", () => {
@@ -57,6 +57,6 @@ describe("visual tests > visualizations > bar", () => {
       },
     });
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });
