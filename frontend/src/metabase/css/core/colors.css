@@ -113,16 +113,6 @@
   background-color: var(--color-bg-white);
 }
 
-.text-green,
-.text-green-hover:hover {
-  color: var(--color-accent1);
-}
-
-.text-green-saturated,
-.text-green-saturated-hover:hover {
-  color: var(--color-accent1);
-}
-
 .text-orange,
 .text-orange-hover:hover {
   color: var(--color-warning);
