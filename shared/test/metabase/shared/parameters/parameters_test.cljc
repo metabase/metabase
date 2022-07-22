@@ -93,7 +93,7 @@
 
       "{{foo}}"
       {"foo" {:type :date/relative :value "past7days"}}
-      "Past 7 Days"
+      "Previous 7 Days"
 
       "{{foo}}"
       {"foo" {:type :date/relative :value "thismonth"}}

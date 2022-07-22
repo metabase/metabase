@@ -94,12 +94,11 @@
     #"^past1days$"                         (trs "Yesterday")
     #"^next1days$"                         (trs "Tomorrow")
     #"^(past|next)([0-9]+)([a-z]+)~?$" :>> (fn [[prefix n interval]]
-                                             (let [prefix   (case prefix
-                                                              "past" (trs "Previous")
-                                                              "next" (trs "Next"))
-                                                   n        (when (not= n "1") n)
+                                             (let [n        (when (not= n "1") n)
                                                    interval (time-intervals interval (boolean n))]
-                                               (str prefix " " n " " interval)))))
+                                               (case prefix
+                                                 "past" (trs "Previous {0} {1}" n interval)
+                                                 "next" (trs "Next {0} {1}" n interval))))))
 
 (defmethod formatted-value :date/all-options
   [_ value locale]
@@ -118,7 +117,7 @@
   [values]
   (if (= (count values) 1)
     (str (first values))
-    (str (str/join ", " (butlast values)) (trs " and ") (last values))))
+    (trs "{0} and {1}" (str/join ", " (butlast values)) (last values))))
 
 (defmethod formatted-value :default
   [_ value _]
