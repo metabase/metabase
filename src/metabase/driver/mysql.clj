@@ -236,18 +236,33 @@
   [driver [_ arg]]
   (hsql/call :char_length (sql.qp/->honeysql driver arg)))
 
+(def ^:private database-type->mysql-cast-type-name
+  "MySQL supports the ordinary SQL standard database type names for actual type stuff but not for coercions, sometimes.
+  If it doesn't support the ordinary SQL standard type, then we coerce it to a different type that MySQL does support here"
+  {"integer"          "signed integer"
+   "text"             "char"
+   "double precision" "double"})
+
 (defmethod sql.qp/json-query :mysql
   [_ unwrapped-identifier stored-field]
   (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
     (let [field-type           (:database_type stored-field)
+          field-type           (get database-type->mysql-cast-type-name field-type field-type)
           nfc-path             (:nfc_path stored-field)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
-          jsonpath-query       (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))]
+          jsonpath-query       (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
+          default-cast         (format "CAST(JSON_EXTRACT(%s, ?) AS %s)" (hformat/to-sql parent-identifier) (str/upper-case field-type))
+          ;; Timestamps can't be gotten from strings by ordinary casting in MySQL, they need the JSON specific ISO8601 strs coerced to mysql
+          ;; "2012-04-23T18:44:43.511Z"
+          ;; timestamp-cast        (format "UNIX_TIMESTAMP(STR_TO_DATE(JSON_EXTRACT(%s, ?),'%Y-%m-%dT%T.%fZ'))" (hformat/to-sql parent-identifier))]
+          timestamp-cast        (format "JSON_EXTRACT(%s, ?)" (hformat/to-sql parent-identifier))]
       (reify
         hformat/ToSql
         (to-sql [_]
           (hformat/to-params-default jsonpath-query "nfc_path")
-          (format "CAST(JSON_EXTRACT(%s, ?) AS %s)" (hformat/to-sql parent-identifier) field-type))))))
+          (case field-type
+            "timestamp" timestamp-cast
+            default-cast))))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as clause]]
