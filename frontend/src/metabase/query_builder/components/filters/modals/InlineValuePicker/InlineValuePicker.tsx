@@ -82,6 +82,8 @@ function ValuesInput({
         className="input"
         fields={[field]}
         multi={!!filter?.operator()?.multi}
+        expand={false}
+        maxWidth="100%"
         showOptionsInPopover
         disableList
       />

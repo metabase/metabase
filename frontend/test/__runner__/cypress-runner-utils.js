@@ -1,4 +1,3 @@
-const fs = require("fs");
 const chalk = require("chalk");
 const { exec } = require("child_process");
 
@@ -13,17 +12,6 @@ function printYellow(message) {
 function printCyan(message) {
   console.log(chalk.cyan(message));
 }
-
-const readFile = fileName => {
-  return new Promise(function (resolve, reject) {
-    fs.readFile(fileName, "utf8", (err, data) => {
-      if (err) {
-        reject(err);
-      }
-      resolve(data);
-    });
-  });
-};
 
 function executeYarnCommand({ command, message } = {}) {
   return new Promise((resolve, reject) => {
@@ -46,6 +34,5 @@ module.exports = {
   printBold,
   printYellow,
   printCyan,
-  readFile,
   executeYarnCommand,
 };

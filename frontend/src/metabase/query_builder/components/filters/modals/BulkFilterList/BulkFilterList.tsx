@@ -18,7 +18,7 @@ import { BulkFilterItem } from "../BulkFilterItem";
 import { SegmentFilterSelect } from "../BulkFilterSelect";
 import { InlineOperatorSelector } from "../InlineOperatorSelector";
 import { ListRoot, ListRow, FilterContainer } from "./BulkFilterList.styled";
-import { sortDimensions } from "./utils";
+import { sortDimensions, isDimensionValid } from "./utils";
 
 export interface BulkFilterListProps {
   query: StructuredQuery;
@@ -43,7 +43,10 @@ const BulkFilterList = ({
 }: BulkFilterListProps): JSX.Element => {
   const [dimensions, segments] = useMemo(
     () => [
-      options.filter(isDimensionOption).sort(sortDimensions),
+      options
+        .filter(isDimensionOption)
+        .filter(isDimensionValid)
+        .sort(sortDimensions),
       options.filter(isSegmentOption),
     ],
     [options],

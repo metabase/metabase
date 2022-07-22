@@ -44,7 +44,7 @@ The following databases have official drivers maintained by the Metabase team. C
 - Redshift (Amazon Web Services)
 - [Snowflake](databases/snowflake.md)
 - SparkSQL
-- SQL Server
+- [SQL Server](databases/sql-server.md)
 - SQLite
 - [Vertica](databases/vertica.md)
 

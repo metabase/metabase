@@ -10,7 +10,6 @@ export const ArgumentSelector = styled(FieldValuesWidget)`
 `;
 
 export const ValuesPickerContainer = styled.div`
-  grid-column: 2;
   ul.input {
     margin-bottom: 0;
     :focus-within {

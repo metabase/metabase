@@ -190,10 +190,6 @@ function MainNavbarContainer({
   }, [location, params, question, dashboard]);
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
-    if (!rootCollection) {
-      return [];
-    }
-
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
       collections,
@@ -206,13 +202,18 @@ function MainNavbarContainer({
     preparedCollections.push(...userPersonalCollections);
     preparedCollections.push(...nonPersonalOrArchivedCollections);
 
-    const root: CollectionTreeItem = {
-      ...rootCollection,
-      icon: getCollectionIcon(rootCollection),
-      children: [],
-    };
+    const tree = buildCollectionTree(preparedCollections);
 
-    return [root, ...buildCollectionTree(preparedCollections)];
+    if (rootCollection) {
+      const root: CollectionTreeItem = {
+        ...rootCollection,
+        icon: getCollectionIcon(rootCollection),
+        children: [],
+      };
+      return [root, ...tree];
+    } else {
+      return tree;
+    }
   }, [rootCollection, collections, currentUser]);
 
   const reorderBookmarks = useCallback(
@@ -253,7 +254,7 @@ function MainNavbarContainer({
     <>
       <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
         <NavRoot isOpen={isOpen}>
-          {allFetched && rootCollection ? (
+          {allFetched ? (
             <MainNavbarView
               {...props}
               bookmarks={bookmarks}

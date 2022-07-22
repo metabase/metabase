@@ -20,6 +20,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
+import { getFont } from "metabase/styled-components/selectors";
 
 import Utils from "metabase/lib/utils";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
@@ -156,6 +157,17 @@ class Visualization extends React.PureComponent {
       computedSettings: computedSettings,
     });
   }
+
+  isLoading = series => {
+    return !(
+      series &&
+      series.length > 0 &&
+      _.every(
+        series,
+        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
+      )
+    );
+  };
 
   handleHoverChange = hovered => {
     if (hovered) {
@@ -300,6 +312,7 @@ class Visualization extends React.PureComponent {
     const {
       actionButtons,
       className,
+      dashcard,
       showTitle,
       isDashboard,
       width,
@@ -307,6 +320,7 @@ class Visualization extends React.PureComponent {
       headerIcon,
       errorIcon,
       isSlow,
+      isMobile,
       expectedDuration,
       replacementContent,
       onOpenChartSettings,
@@ -325,16 +339,9 @@ class Visualization extends React.PureComponent {
     }
 
     let error = this.props.error || this.state.error;
-    const loading = !(
-      series &&
-      series.length > 0 &&
-      _.every(
-        series,
-        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
-      )
-    );
     let noResults = false;
     let isPlaceholder = false;
+    const loading = this.isLoading(series);
 
     // don't try to load settings unless data is loaded
     let settings = this.props.settings || {};
@@ -438,7 +445,7 @@ class Visualization extends React.PureComponent {
       (showTitle &&
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
-      replacementContent;
+      (replacementContent && (dashcard.sizeY !== 1 || isMobile));
 
     return (
       <div
@@ -552,11 +559,15 @@ class Visualization extends React.PureComponent {
   }
 }
 
+const mapStateToProps = state => ({
+  fontFamily: getFont(state),
+});
+
 export default _.compose(
   ExplicitSize({
     selector: ".CardVisualization",
     refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
   }),
-  connect(),
+  connect(mapStateToProps),
   memoizeClass("_getQuestionForCardCached"),
 )(Visualization);

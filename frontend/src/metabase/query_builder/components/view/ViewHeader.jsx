@@ -65,7 +65,6 @@ const viewTitleHeaderPropTypes = {
   isResultDirty: PropTypes.bool,
   isNativeEditorOpen: PropTypes.bool,
   isNavBarOpen: PropTypes.bool,
-  isShowingFilterSidebar: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
@@ -78,8 +77,6 @@ const viewTitleHeaderPropTypes = {
   onOpenModal: PropTypes.func,
   onEditSummary: PropTypes.func,
   onCloseSummary: PropTypes.func,
-  onAddFilter: PropTypes.func,
-  onCloseFilter: PropTypes.func,
   onOpenQuestionDetails: PropTypes.func,
   onCloseQuestionDetails: PropTypes.func,
 
@@ -324,7 +321,6 @@ ViewTitleHeaderRightSide.propTypes = {
   isRunning: PropTypes.bool,
   isPreviewing: PropTypes.bool,
   isNativeEditorOpen: PropTypes.bool,
-  isShowingFilterSidebar: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
   isWritebackEnabled: PropTypes.bool,
   isDirty: PropTypes.bool,
@@ -333,8 +329,6 @@ ViewTitleHeaderRightSide.propTypes = {
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
   onOpenModal: PropTypes.func,
-  onAddFilter: PropTypes.func,
-  onCloseFilter: PropTypes.func,
   onEditSummary: PropTypes.func,
   onCloseSummary: PropTypes.func,
   setQueryBuilderMode: PropTypes.func,
@@ -364,7 +358,6 @@ function ViewTitleHeaderRightSide(props) {
     isRunning,
     isPreviewing,
     isNativeEditorOpen,
-    isShowingFilterSidebar,
     isShowingSummarySidebar,
     isWritebackEnabled,
     isDirty,
@@ -373,8 +366,6 @@ function ViewTitleHeaderRightSide(props) {
     runQuestionQuery,
     cancelQuery,
     onOpenModal,
-    onAddFilter,
-    onCloseFilter,
     onEditSummary,
     onCloseSummary,
     setQueryBuilderMode,
@@ -444,10 +435,7 @@ function ViewTitleHeaderRightSide(props) {
       {QuestionFilterWidget.shouldRender(props) && (
         <QuestionFilterWidget
           className="hide sm-show"
-          isShowingFilterSidebar={isShowingFilterSidebar}
-          onAddFilter={onAddFilter}
           onOpenModal={onOpenModal}
-          onCloseFilter={onCloseFilter}
         />
       )}
       {QuestionSummarizeWidget.shouldRender(props) && (

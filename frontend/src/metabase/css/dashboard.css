@@ -62,11 +62,6 @@
   stroke: none !important;
 }
 
-.Dashboard.Dashboard--night .DashCard .Card {
-  background-color: var(--night-mode-card);
-  border-color: var(--night-mode-card);
-}
-
 .Dashboard.Dashboard--night .enable-dots-onhover .dc-tooltip circle.dot:hover,
 .Dashboard.Dashboard--night .enable-dots .dc-tooltip circle.dot {
   fill: currentColor;
@@ -112,8 +107,6 @@
   left: 0;
   bottom: 0;
   right: 0;
-  background-color: white;
-  border: 1px solid var(--color-border);
 }
 
 .DashCard .Card.Card--slow {
@@ -158,7 +151,6 @@
 }
 
 .DashCard .Card {
-  border: none;
   border-radius: 8px;
   box-shadow: 0px 1px 3px var(--color-shadow);
 }
