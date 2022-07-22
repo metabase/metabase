@@ -27,7 +27,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [between](#between)
   - [case](#case)
   - [ceil](#ceil)
-  - [coalesce](#coalesce)
+  - [coalesce](./expressions/coalesce)
   - [concat](#concat)
   - [contains](#contains)
   - [endswith](#endswith)
@@ -230,7 +230,7 @@ Example: `ceil([Price])`. `ceil(2.99)` would return 3.
 
 Related: [floor](#floor), [round](#round).
 
-### coalesce
+### [coalesce](./expressions/coalesce)
 
 Looks at the values in each argument in order and returns the first non-null value for each row.
 
