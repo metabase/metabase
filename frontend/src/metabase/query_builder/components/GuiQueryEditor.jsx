@@ -173,7 +173,7 @@ export default class GuiQueryEditor extends React.Component {
       for (const [index, aggregation] of aggregations.entries()) {
         aggregationList.push(
           <AggregationWidget
-            className="View-section-aggregation QueryOption p1"
+            className="QueryOption p1"
             key={"agg" + index}
             aggregation={aggregation}
             query={query}
@@ -236,7 +236,7 @@ export default class GuiQueryEditor extends React.Component {
       breakoutList.push(
         <BreakoutWidget
           key={"breakout" + (breakout ? index : "-new")}
-          className="View-section-breakout QueryOption p1"
+          className="QueryOption p1"
           breakout={breakout}
           query={query}
           breakoutOptions={query.breakoutOptions(breakout)}
