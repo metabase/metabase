@@ -11,7 +11,11 @@ import Field from "metabase-lib/lib/metadata/Field";
 import { Database as IDatabase } from "metabase-types/types/Database";
 import { TemplateTag } from "metabase-types/types/Query";
 import { DashCard } from "metabase-types/types/Dashboard";
-import { ParameterId, ParameterTarget } from "metabase-types/types/Parameter";
+import {
+  Parameter,
+  ParameterId,
+  ParameterTarget,
+} from "metabase-types/types/Parameter";
 
 import { WritebackAction, HttpAction, RowAction } from "./types";
 import { ParameterWithTarget } from "metabase/parameters/types";
@@ -97,15 +101,21 @@ export function getActionTemplateTagType(tag: TemplateTag) {
   } else if (type === "number") {
     return "number/=";
   } else {
-    return "category";
+    return "string/=";
   }
 }
 
-export const getQueryActionParameterMappings = (action: WritebackAction) => {
-  if (action.type === "http") {
-    return {};
+export function getActionParameterType(parameter: Parameter) {
+  const { type } = parameter;
+  if (type === "category") {
+    return "string/=";
   }
+  return type;
+}
 
+export const getQueryActionParameterMappings = (
+  action: WritebackAction & RowAction,
+) => {
   const templateTags = Object.values(
     action.card.dataset_query.native["template-tags"],
   );

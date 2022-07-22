@@ -17,7 +17,10 @@ import {
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 import * as Urls from "metabase/lib/urls";
-import { getTemplateTagType } from "metabase/parameters/utils/cards";
+import {
+  getActionTemplateTagType,
+  getActionParameterType,
+} from "metabase/writeback/utils";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
@@ -210,8 +213,8 @@ function getActionParameters(
     parameters[id] = {
       value,
       type: isQueryAction
-        ? getTemplateTagType(targetTemplateTag)
-        : targetTemplateTag.type,
+        ? getActionTemplateTagType(targetTemplateTag)
+        : getActionParameterType(targetTemplateTag),
     };
   });
 
@@ -219,6 +222,12 @@ function getActionParameters(
 }
 
 function getNotProvidedActionParameters(action, parameters) {
+  return action.type === "query"
+    ? getNotProvidedQueryActionParameters(action, parameters)
+    : getNotProvidedHTTPActionParameters(action, parameters);
+}
+
+function getNotProvidedQueryActionParameters(action, parameters) {
   const mappedParameterIDs = Object.keys(parameters);
 
   const emptyParameterIDs = [];
@@ -229,10 +238,7 @@ function getNotProvidedActionParameters(action, parameters) {
     }
   });
 
-  const tagsMap =
-    action.type === "query"
-      ? action.card.dataset_query.native["template-tags"]
-      : action.template.parameters;
+  const tagsMap = action.card.dataset_query.native["template-tags"];
   const templateTags = Object.values(tagsMap);
 
   return templateTags.filter(tag => {
@@ -241,6 +247,25 @@ function getNotProvidedActionParameters(action, parameters) {
     }
     const isNotMapped = !mappedParameterIDs.includes(tag.id);
     const isMappedButNoValue = emptyParameterIDs.includes(tag.id);
+    return isNotMapped || isMappedButNoValue;
+  });
+}
+
+function getNotProvidedHTTPActionParameters(action, parameters) {
+  const mappedParameterIDs = Object.keys(parameters);
+
+  const emptyParameterIDs = [];
+  mappedParameterIDs.forEach(parameterId => {
+    const { value } = parameters[parameterId];
+    if (value === undefined) {
+      emptyParameterIDs.push(parameterId);
+    }
+  });
+
+  const allParameters = Object.values(action.parameters);
+  return allParameters.filter(parameter => {
+    const isNotMapped = !mappedParameterIDs.includes(parameter.id);
+    const isMappedButNoValue = emptyParameterIDs.includes(parameter.id);
     return isNotMapped || isMappedButNoValue;
   });
 }
