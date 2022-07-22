@@ -70,12 +70,12 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
   return rowIndexes;
 }
 
-const mapDispatchToProps = dispatch => ({
-  onZoomRow: objectId => dispatch(zoomInRow({ objectId })),
-});
-
 const mapStateToProps = state => ({
   queryBuilderMode: getQueryBuilderMode(state),
+});
+
+const mapDispatchToProps = dispatch => ({
+  onZoomRow: objectId => dispatch(zoomInRow({ objectId })),
 });
 
 class TableInteractive extends Component {
@@ -179,9 +179,18 @@ class TableInteractive extends Component {
   _showDetailShortcut = (query, isPivoted) => {
     const hasAggregation = !!query?.aggregations?.()?.length;
     const isNotebookPreview = this.props.queryBuilderMode === "notebook";
-    this.setState({
-      showDetailShortcut: !(isPivoted || hasAggregation || isNotebookPreview),
-    });
+    const newShowDetailState = !(
+      isPivoted ||
+      hasAggregation ||
+      isNotebookPreview
+    );
+
+    if (newShowDetailState !== this.state.showDetailShortcut) {
+      this.setState({
+        showDetailShortcut: newShowDetailState,
+      });
+      this.recomputeColumnSizes();
+    }
   };
 
   _getColumnSettings(props) {
