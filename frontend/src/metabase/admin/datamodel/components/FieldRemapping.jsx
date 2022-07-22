@@ -17,6 +17,7 @@ import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import Question from "metabase-lib/lib/Question";
 import {
   FieldMappingContainer,
+  FieldMappingRoot,
   FieldSelectButton,
   ForeignKeyList,
 } from "./FieldRemapping.styled";
@@ -427,7 +428,7 @@ export class ValueRemappings extends React.Component {
     const { editingRemappings } = this.state;
 
     return (
-      <div className="bordered rounded py2 px4 border-dark">
+      <FieldMappingRoot>
         <div className="flex align-center my1 pb2 border-bottom">
           <h3>{t`Original value`}</h3>
           <h3 className="ml-auto">{t`Mapped value`}</h3>
@@ -454,7 +455,7 @@ export class ValueRemappings extends React.Component {
             {t`Save`}
           </ButtonWithStatus>
         </div>
-      </div>
+      </FieldMappingRoot>
     );
   }
 }
