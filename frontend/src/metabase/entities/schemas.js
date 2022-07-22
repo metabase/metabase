@@ -96,6 +96,10 @@ export default createEntity({
       }
 
       return updateIn(state, [schemaId, "tables"], tables => {
+        if (!tables) {
+          return tables;
+        }
+
         if (question.archived) {
           return tables.filter(id => id !== virtualQuestionId);
         }
