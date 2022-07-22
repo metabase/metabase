@@ -28,6 +28,7 @@ const ListField = ({
   onChange,
   value,
   options,
+  isSelectedAllValues,
   optionRenderer,
   placeholder,
   isDashboardFilter,
@@ -86,6 +87,22 @@ const ListField = ({
   const shouldShowEmptyState =
     augmentedOptions.length > 0 && filteredOptions.length === 0;
 
+  const handleToggleAllOption = (selectedAllValues: boolean) => {
+    const newSelectedValues: Array<string> = [];
+
+    if (selectedAllValues) {
+      options.forEach(option => newSelectedValues.push(option[0]));
+      setSelectedValues(new Set(newSelectedValues));
+    } else {
+      setSelectedValues(new Set());
+    }
+    onChange?.(newSelectedValues);
+  };
+
+  const selectedAllValuesLabel = (): string => {
+    return isSelectedAllValues ? t`Select None` : t`Select All`;
+  };
+
   const handleToggleOption = (option: any) => {
     const newSelectedValues = selectedValues.has(option)
       ? Array.from(selectedValues).filter(value => value !== option)
@@ -126,6 +143,19 @@ const ListField = ({
       )}
 
       <OptionsList isDashboardFilter={isDashboardFilter}>
+        <OptionContainer>
+          <Checkbox
+            checkedColor={isDashboardFilter ? "brand" : "accent7"}
+            checked={isSelectedAllValues}
+            label={
+              <LabelWrapper>
+                {optionRenderer([selectedAllValuesLabel()])}
+              </LabelWrapper>
+            }
+            onChange={() => handleToggleAllOption(!isSelectedAllValues)}
+          />
+        </OptionContainer>
+
         {filteredOptions.map(option => (
           <OptionContainer key={option[0]}>
             <Checkbox

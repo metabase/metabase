@@ -289,6 +289,8 @@ class FieldValuesWidgetInner extends Component {
         options,
       }) &&
       valuesMode === "list";
+    const filteredValue = value.filter(v => v != null);
+    const isSelectedAllValues = filteredValue.length === options.length;
 
     return (
       <div
@@ -305,9 +307,10 @@ class FieldValuesWidgetInner extends Component {
             <ListField
               isDashboardFilter={parameter}
               placeholder={tokenFieldPlaceholder}
-              value={value.filter(v => v != null)}
+              value={filteredValue}
               onChange={onChange}
               options={options}
+              isSelectedAllValues={isSelectedAllValues}
               optionRenderer={option =>
                 renderValue(fields, formatOptions, option[0], {
                   autoLoad: false,
