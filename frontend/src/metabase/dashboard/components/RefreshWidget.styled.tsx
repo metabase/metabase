@@ -36,7 +36,7 @@ export const RefreshOptionItem = styled.li<RefreshOptionItemProps>`
   cursor: pointer;
 
   ${RefreshOptionIcon} {
-    visibility: ${props => (props.isEnabled ? "visible" : "hidden")};
+    visibility: ${props => (props.isSelected ? "visible" : "hidden")};
   }
 
   &:hover {
