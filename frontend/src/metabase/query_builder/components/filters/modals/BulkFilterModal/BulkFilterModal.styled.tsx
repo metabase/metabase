@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 import {
   space,
   breakpointMaxSmall,
-  breakpointMinLarge,
+  breakpointMinHeightMedium,
 } from "metabase/styled-components/theme";
 
 import TabList from "metabase/core/components/TabList";
@@ -27,7 +27,7 @@ export const ModalHeader = styled.div`
   display: flex;
   align-items: center;
   padding: 1rem 2rem 0 2rem;
-  ${breakpointMinLarge} {
+  ${breakpointMinHeightMedium} {
     padding: 2rem 2rem 0 2rem;
   }
 `;
@@ -35,7 +35,7 @@ export const ModalHeader = styled.div`
 export const ModalBody = styled.div`
   border-top: 1px solid ${color("border")};
   margin-top: 1rem;
-  ${breakpointMinLarge} {
+  ${breakpointMinHeightMedium} {
     margin-top: 1.5rem;
   }
   overflow-y: auto;
@@ -53,7 +53,7 @@ export const ModalTitle = styled(Ellipsified)`
   flex: 1 1 auto;
   color: ${color("text-dark")};
   font-size: 1rem;
-  ${breakpointMinLarge} {
+  ${breakpointMinHeightMedium} {
     font-size: 1.25rem;
   }
   line-height: 1.5rem;
@@ -61,6 +61,10 @@ export const ModalTitle = styled(Ellipsified)`
 `;
 
 export const ModalTabList = styled(TabList)`
+  font-size: 0.875rem;
+  ${breakpointMinHeightMedium} {
+    font-size: 1rem;
+  }
   margin: 1.5rem 2rem 0 2rem;
   flex-shrink: 0;
 `;
