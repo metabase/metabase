@@ -8,7 +8,6 @@ import _ from "underscore";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import FieldList from "../FieldList";
 import QueryDefinitionTooltip from "../QueryDefinitionTooltip";
 import ExpressionPopover from "../ExpressionPopover";
 
@@ -19,6 +18,7 @@ import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 import {
   ExpressionPopoverRoot,
   AggregationItemList,
+  AggregationFieldList,
 } from "./AggregationPopover.styled";
 
 const COMMON_SECTION_NAME = t`Common Metrics`;
@@ -341,8 +341,7 @@ export default class AggregationPopover extends Component {
               <h3 className="inline-block pl1">{selectedAggregation.name}</h3>
             </a>
           </div>
-          <FieldList
-            className="text-green"
+          <AggregationFieldList
             width={this.props.width}
             maxHeight={this.props.maxHeight - (this.state.headerHeight || 0)}
             query={query}
