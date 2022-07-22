@@ -14,6 +14,7 @@ import Collections, {
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import forms from "./questions/forms";
+import { updateIn } from "icepick";
 
 const Questions = createEntity({
   name: "questions",
@@ -82,13 +83,13 @@ const Questions = createEntity({
   reducer: (state = {}, { type, payload, error }) => {
     if (type === SOFT_RELOAD_CARD) {
       const { id } = payload;
-      const verified =
-        payload.moderation_reviews?.find(x => x.most_recent)?.status ===
-        "verified"
-          ? "verified"
-          : null;
-      if (state[id]) {
-        state[id].moderated_status = verified;
+      const latestReview = payload.moderation_reviews?.find(x => x.most_recent);
+
+      if (latestReview) {
+        return updateIn(state, [id], q => ({
+          ...q,
+          moderated_status: latestReview.status,
+        }));
       }
     }
     return state;
