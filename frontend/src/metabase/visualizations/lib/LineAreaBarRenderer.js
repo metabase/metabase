@@ -456,10 +456,10 @@ function configureScatterChart(chart, datas, index) {
   chart.keyAccessor(d => d.key[0]).valueAccessor(d => d.key[1]);
 
   if (chart.radiusValueAccessor) {
-    const hasBubbleRaduisValues = datas[index][0].length > BUBBLE_SIZE_INDEX;
+    const hasBubbleRadiusValues = datas[index][0].length > BUBBLE_SIZE_INDEX;
     const bubbleSizeMaxDomain = getBubbleSizeMaxDomain(datas, index);
 
-    if (hasBubbleRaduisValues) {
+    if (hasBubbleRadiusValues) {
       const BUBBLE_SCALE_FACTOR_MAX = 64;
       chart
         .radiusValueAccessor(d => d.key[2])
