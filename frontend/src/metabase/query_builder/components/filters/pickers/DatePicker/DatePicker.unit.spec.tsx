@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ORDERS } from "__support__/sample_database_fixture";
@@ -33,6 +33,11 @@ const DatePickerStateWrapper = ({
   );
 };
 
+const CREATED_AT_FIELD = ORDERS.CREATED_AT.reference();
+
+const createDateFilter = (operator: null | string = null, ...args: any[]) =>
+  new Filter([operator, CREATED_AT_FIELD, ...(args ?? [])], null, ordersQuery);
+
 describe("DatePicker", () => {
   beforeAll(() => {
     // this should keep these tests from behaving differently when run in the future
@@ -48,11 +53,7 @@ describe("DatePicker", () => {
 
   describe("Static States", () => {
     it("renders a date picker component", () => {
-      const filter = new Filter(
-        [null, ["field", ORDERS.CREATED_AT.id, null]],
-        null,
-        ordersQuery,
-      );
+      const filter = createDateFilter();
 
       render(
         <DatePicker
@@ -62,15 +63,11 @@ describe("DatePicker", () => {
         />,
       );
 
-      screen.getByTestId("date-picker");
+      expect(screen.getByTestId("date-picker")).toBeInTheDocument();
     });
 
     it("shows a date shortcut picker for an empty filter", () => {
-      const filter = new Filter(
-        [null, ["field", ORDERS.CREATED_AT.id, null]],
-        null,
-        ordersQuery,
-      );
+      const filter = createDateFilter();
 
       render(
         <DatePicker
@@ -80,7 +77,7 @@ describe("DatePicker", () => {
         />,
       );
 
-      screen.getByTestId("date-picker-shortcuts");
+      expect(screen.getByTestId("date-picker-shortcuts")).toBeInTheDocument();
     });
 
     describe("Specific Dates", () => {
@@ -88,11 +85,8 @@ describe("DatePicker", () => {
 
       singleDateOperators.forEach(operator => {
         it(`shows a single specific date picker for a ${operator} operator`, () => {
-          const filter = new Filter(
-            [operator, ["field", ORDERS.CREATED_AT.id, null], "2020-01-01"],
-            null,
-            ordersQuery,
-          );
+          const filter = createDateFilter(operator, "2020-01-01");
+
           render(
             <DatePicker
               filter={filter}
@@ -101,21 +95,15 @@ describe("DatePicker", () => {
             />,
           );
 
-          screen.getByTestId("specific-date-picker");
+          expect(
+            screen.getByTestId("specific-date-picker"),
+          ).toBeInTheDocument();
         });
       });
 
       it("shows a between date picker when the existing filter is 'between'", () => {
-        const filter = new Filter(
-          [
-            "between",
-            ["field", ORDERS.CREATED_AT.id, null],
-            "2020-01-01",
-            "2020-01-05",
-          ],
-          null,
-          ordersQuery,
-        );
+        const filter = createDateFilter("between", "2020-01-01", "2020-01-05");
+
         render(
           <DatePicker
             filter={filter}
@@ -124,7 +112,7 @@ describe("DatePicker", () => {
           />,
         );
 
-        screen.getByTestId("between-date-picker");
+        expect(screen.getByTestId("between-date-picker")).toBeInTheDocument();
       });
     });
 
@@ -135,16 +123,8 @@ describe("DatePicker", () => {
       relativeTimeValues.forEach(value => {
         relativeTimeUnits.forEach(unit => {
           it(`shows a relative picker for a ${value} ${unit} time interval`, () => {
-            const filter = new Filter(
-              [
-                "time-interval",
-                ["field", ORDERS.CREATED_AT.id, null],
-                value,
-                unit,
-              ],
-              null,
-              ordersQuery,
-            );
+            const filter = createDateFilter("time-interval", value, unit);
+
             render(
               <DatePicker
                 filter={filter}
@@ -153,23 +133,17 @@ describe("DatePicker", () => {
               />,
             );
 
-            screen.getByTestId("relative-date-picker");
+            expect(
+              screen.getByTestId("relative-date-picker"),
+            ).toBeInTheDocument();
           });
         });
       });
 
       relativeTimeUnits.forEach(unit => {
         it(`shows a current time picker for the current ${unit}`, () => {
-          const filter = new Filter(
-            [
-              "time-interval",
-              ["field", ORDERS.CREATED_AT.id, null],
-              "current",
-              unit,
-            ],
-            null,
-            ordersQuery,
-          );
+          const filter = createDateFilter("time-interval", "current", unit);
+
           render(
             <DatePicker
               filter={filter}
@@ -178,7 +152,7 @@ describe("DatePicker", () => {
             />,
           );
 
-          screen.getByTestId("current-date-picker");
+          expect(screen.getByTestId("current-date-picker")).toBeInTheDocument();
         });
       });
     });
@@ -186,14 +160,11 @@ describe("DatePicker", () => {
 
   describe("User Interaction", () => {
     const datePickerTypes = ["specific", "relative", "exclude"];
+
+    const filter = createDateFilter();
+
     datePickerTypes.forEach(type => {
       it(`shows a ${type} date picker when the user clicks ${type} on the shortcut screen`, async () => {
-        const filter = new Filter(
-          [null, ["field", ORDERS.CREATED_AT.id, null]],
-          null,
-          ordersQuery,
-        );
-
         render(<DatePickerStateWrapper filter={filter} />);
 
         userEvent.click(screen.getByText(new RegExp(type, "i")));
@@ -207,7 +178,7 @@ describe("DatePicker", () => {
           "Today",
           [
             "time-interval",
-            ["field", ORDERS.CREATED_AT.id, null],
+            CREATED_AT_FIELD,
             "current",
             "day",
             { include_current: true },
@@ -217,7 +188,7 @@ describe("DatePicker", () => {
           "Last 7 days",
           [
             "time-interval",
-            ["field", ORDERS.CREATED_AT.id, null],
+            CREATED_AT_FIELD,
             -7,
             "day",
             { include_current: false },
@@ -227,7 +198,7 @@ describe("DatePicker", () => {
           "Last 12 Months",
           [
             "time-interval",
-            ["field", ORDERS.CREATED_AT.id, null],
+            CREATED_AT_FIELD,
             -12,
             "month",
             { include_current: false },
@@ -238,11 +209,6 @@ describe("DatePicker", () => {
       shortcuts.forEach(([label, expectedFilter]: [string, any[]]) => {
         it(`applies the correct filter for the ${label} shortcut`, async () => {
           const commitSpy = jest.fn();
-          const filter = new Filter(
-            [null, ["field", ORDERS.CREATED_AT.id, null]],
-            null,
-            ordersQuery,
-          );
 
           render(
             <DatePickerStateWrapper filter={filter} onCommit={commitSpy} />,
@@ -264,11 +230,6 @@ describe("DatePicker", () => {
       singleDateOperators.forEach(([operator, description]) => {
         it(`can set a specific ${description} date filter`, async () => {
           const changeSpy = jest.fn();
-          const filter = new Filter(
-            [null, ["field", ORDERS.CREATED_AT.id, null]],
-            null,
-            ordersQuery,
-          );
 
           render(
             <DatePickerStateWrapper filter={filter} onChange={changeSpy} />,
@@ -279,24 +240,20 @@ describe("DatePicker", () => {
           const dateField = screen.getByText("21");
           userEvent.click(dateField);
 
-          const [newOperator, , newDate] =
-            changeSpy.mock.calls[changeSpy.mock.calls.length - 1][0];
-          expect(newOperator).toBe(operator);
-          expect(newDate).toBe("2020-05-21");
+          expect(changeSpy).toHaveBeenLastCalledWith([
+            operator,
+            CREATED_AT_FIELD,
+            "2020-05-21",
+          ]);
         });
       });
 
       it("can set a between date filter", async () => {
         const changeSpy = jest.fn();
-        const filter = new Filter(
-          [null, ["field", ORDERS.CREATED_AT.id, null]],
-          null,
-          ordersQuery,
-        );
 
         render(<DatePickerStateWrapper filter={filter} onChange={changeSpy} />);
 
-        userEvent.click(screen.getByText(/specific/i));
+        userEvent.click(await screen.findByText(/specific/i));
         userEvent.click(await screen.findByText(/between/i));
 
         const dateField1 = screen.getByText("17");
@@ -306,20 +263,15 @@ describe("DatePicker", () => {
         userEvent.click(dateField1); // begin range, clears end range
         userEvent.click(dateField2); // end range
 
-        const [operator, , startDate, endDate] =
-          changeSpy.mock.calls[changeSpy.mock.calls.length - 1][0];
-        expect(operator).toBe("between");
-        expect(startDate).toBe("2020-05-17");
-        expect(endDate).toBe("2020-05-19");
+        expect(changeSpy).toHaveBeenLastCalledWith([
+          "between",
+          CREATED_AT_FIELD,
+          "2020-05-17",
+          "2020-05-19",
+        ]);
       });
 
       it("can navigate between months on the calendar using arrows", async () => {
-        const filter = new Filter(
-          [null, ["field", ORDERS.CREATED_AT.id, null]],
-          null,
-          ordersQuery,
-        );
-
         render(<DatePickerStateWrapper filter={filter} />);
         userEvent.click(screen.getByText(/specific/i));
 
@@ -332,7 +284,14 @@ describe("DatePicker", () => {
     });
 
     describe("Relative Dates", () => {
-      const relativeTimeUnits = ["minutes"]; //, 'hours', 'weeks', 'months', 'quarters', 'years'];
+      const relativeTimeUnits = [
+        "minutes",
+        "hours",
+        "weeks",
+        "months",
+        "quarters",
+        "years",
+      ];
       const relativeTimeDirection = ["past", "next"];
       const relativeTimeValue = 4;
 
@@ -340,11 +299,6 @@ describe("DatePicker", () => {
         relativeTimeUnits.forEach(unit => {
           it(`can set a relative ${direction} ${unit} filter`, async () => {
             const changeSpy = jest.fn();
-            const filter = new Filter(
-              [null, ["field", ORDERS.CREATED_AT.id, null]],
-              null,
-              ordersQuery,
-            );
 
             render(
               <DatePickerStateWrapper filter={filter} onChange={changeSpy} />,
@@ -356,22 +310,19 @@ describe("DatePicker", () => {
               "relative-datetime-value",
             );
             userEvent.clear(valueInput);
-            fireEvent.change(valueInput, {
-              target: { value: relativeTimeValue },
-            });
+            userEvent.type(valueInput, String(relativeTimeValue));
 
             userEvent.click(
               await screen.findByTestId("relative-datetime-unit"),
             );
             userEvent.click(await screen.findByText(new RegExp(unit, "i")));
 
-            const [operator, , filterValue, filterUnit] =
-              changeSpy.mock.calls[changeSpy.mock.calls.length - 1][0];
-            expect(operator).toBe(`time-interval`);
-            expect(filterUnit + "s").toBe(unit);
-            expect(filterValue).toBe(
+            expect(changeSpy).toHaveBeenLastCalledWith([
+              "time-interval",
+              ["field", ORDERS.CREATED_AT.id, null],
               (direction === "past" ? -1 : 1) * relativeTimeValue,
-            );
+              unit.slice(0, -1), // without the 's'
+            ]);
           });
         });
       });
@@ -384,11 +335,6 @@ describe("DatePicker", () => {
       currentTimeUnits.forEach(unit => {
         it(`can set a current ${unit} filter`, async () => {
           const commitSpy = jest.fn();
-          const filter = new Filter(
-            [null, ["field", ORDERS.CREATED_AT.id, null]],
-            null,
-            ordersQuery,
-          );
 
           render(
             <DatePickerStateWrapper filter={filter} onCommit={commitSpy} />,
@@ -397,11 +343,12 @@ describe("DatePicker", () => {
           userEvent.click(screen.getByText(/current/i));
           userEvent.click(screen.getByText(new RegExp(unit, "i")));
 
-          const [operator, , filterValue, filterUnit] =
-            commitSpy.mock.calls[commitSpy.mock.calls.length - 1][0];
-          expect(operator).toBe(`time-interval`);
-          expect(filterValue).toBe("current");
-          expect(filterUnit).toBe(unit);
+          expect(commitSpy).toHaveBeenLastCalledWith([
+            "time-interval",
+            CREATED_AT_FIELD,
+            "current",
+            unit,
+          ]);
         });
       });
     });
