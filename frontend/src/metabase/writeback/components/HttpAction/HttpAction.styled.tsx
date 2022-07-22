@@ -17,6 +17,7 @@ export const Tab = styled.div`
 export const PersistentTab = styled.div<{ active: boolean }>`
   flex-grow: 1;
   display: ${props => (props.active ? "block" : "none")};
+  padding: 1rem;
 `;
 
 const BORDER = `1px solid ${color("border")}`;

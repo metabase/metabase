@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color, alpha, lighten } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const Grid = styled.div`
@@ -41,6 +41,7 @@ export const TextArea = styled.textarea`
 
   &:focus {
     color: ${color("text-dark")};
+    border: 1px solid ${color("brand")};
   }
 
   &::placeholder {

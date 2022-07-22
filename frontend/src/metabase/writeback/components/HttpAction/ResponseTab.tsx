@@ -33,7 +33,7 @@ const ResponseTab: React.FC<Props> = ({
       <TextArea
         value={responseHandler}
         onChange={event => onResponseHandlerChange(event.target.value)}
-        placeholder={"response.foo"}
+        placeholder={".body.result"}
       />
       <Spacer />
       <Info>
@@ -43,7 +43,7 @@ const ResponseTab: React.FC<Props> = ({
       <TextArea
         value={errorHandler}
         onChange={event => onErrorHandlerChange(event.target.value)}
-        placeholder={"response.error.message"}
+        placeholder={".body.error.message"}
       />
     </Grid>
   );

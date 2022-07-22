@@ -1,14 +1,13 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import cx from "classnames";
 
 import MethodSelector from "./MethodSelector";
 import Tabs from "./Tabs";
 import HttpHeaderTab, { Headers } from "./HttpHeaderTab";
 import BodyTab from "./BodyTab";
 import UrlInput from "./UrlInput";
-import Selector from "./Selector";
+import CompactSelect from "./CompactSelect";
 import ParametersTab from "./ParametersTab";
 import { TemplateTags } from "metabase-types/types/Query";
 
@@ -217,10 +216,10 @@ const HttpActionInner: React.FC<InnerProps> = ({
             />
           </div>
           <div>
-            <Selector
+            <CompactSelect
               options={CONTENT_TYPE}
               value={contentType}
-              setValue={value => setContentType(value)}
+              onChange={(value: string) => setContentType(value)}
             />
           </div>
         </RightTabs>
@@ -259,7 +258,7 @@ const PARAM_TABS = [{ name: "params", label: t`Parameters` }];
 const CONTENT_TYPE = [
   {
     value: "application/json",
-    label: "JSON",
+    name: "JSON",
   },
 ];
 

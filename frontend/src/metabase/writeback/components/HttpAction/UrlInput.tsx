@@ -1,5 +1,4 @@
 import React from "react";
-import cx from "classnames";
 
 import { Container, UrlContainer, TextArea, Select } from "./UrlInput.styled";
 
@@ -38,14 +37,15 @@ const UrlInput: React.FC<Props> = ({
         </UrlContainer>
         <div>
           <Select
-            id="protocol"
-            name="protocol"
             value={protocol}
-            onChange={event => setProtocol(event.target.value)}
-          >
-            <option value="http">HTTP</option>
-            <option value="https">HTTPS</option>
-          </Select>
+            options={[
+              { value: "http", name: "HTTP" },
+              { value: "https", name: "HTTPS" },
+            ]}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setProtocol(e.target.value)
+            }
+          />
         </div>
       </Container>
     </div>
