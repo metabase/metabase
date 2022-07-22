@@ -3,9 +3,7 @@ import React from "react";
 
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
-import SelectButton from "metabase/core/components/SelectButton";
 import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -17,7 +15,11 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import Question from "metabase-lib/lib/Question";
-import { FieldMappingContainer, ForeignKeyList } from "./FieldRemapping.styled";
+import {
+  FieldMappingContainer,
+  FieldSelectButton,
+  ForeignKeyList,
+} from "./FieldRemapping.styled";
 
 const MAP_OPTIONS = {
   original: { type: "original", name: t`Use original value` },
@@ -287,19 +289,16 @@ export default class FieldRemapping extends React.Component {
                 key="foreignKeyName"
                 ref={this.fkPopover}
                 triggerElement={
-                  <SelectButton
+                  <FieldSelectButton
                     hasValue={hasFKMappingValue}
-                    className={cx({
-                      "border-error": dismissedInitialFkTargetPopover,
-                      "border-dark": !dismissedInitialFkTargetPopover,
-                    })}
+                    hasError={dismissedInitialFkTargetPopover}
                   >
                     {fkMappingField ? (
                       fkMappingField.display_name
                     ) : (
                       <span className="text-medium">{t`Choose a field`}</span>
                     )}
-                  </SelectButton>
+                  </FieldSelectButton>
                 }
                 isInitiallyOpen={isChoosingInitialFkTarget}
                 onClose={this.onFkPopoverDismiss}
