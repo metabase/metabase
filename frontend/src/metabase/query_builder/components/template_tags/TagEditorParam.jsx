@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -18,7 +19,18 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import MetabaseSettings from "metabase/lib/settings";
 
-class TagEditorParam extends Component {
+const propTypes = {
+  tag: PropTypes.object.isRequired,
+  parameter: PropTypes.object,
+  database: PropTypes.object,
+  databases: PropTypes.array,
+  setTemplateTag: PropTypes.func.isRequired,
+  setParameterValue: PropTypes.func.isRequired,
+  fetchField: PropTypes.func.isRequired,
+  metadata: PropTypes.object.isRequired,
+};
+
+export class TagEditorParam extends Component {
   UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
@@ -291,6 +303,8 @@ class TagEditorParam extends Component {
     );
   }
 }
+
+TagEditorParam.propTypes = propTypes;
 
 export default connect(state => ({ metadata: getMetadata(state) }), {
   fetchField,
