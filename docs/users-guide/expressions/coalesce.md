@@ -14,7 +14,7 @@ This function is useful if you want to fill in missing data or consolidate data 
 | Returns the first non-null value from a list of values. | “bananas”                                       |
 
 <div class='doc-toc' markdown=1>
-- [Filling in empty or null rows](#filling-in-empty-or-null-rows).
+- [Filling in empty or null rows](#filling-in-empty-or-null-values).
 - [Consolidating values from different columns](#consolidating-values-from-different-columns).
 - [Creating calculations across different columns](#creating-calculations-across-different-columns).
 - [Accepted data types](#accepted-data-types).
@@ -74,14 +74,14 @@ Use the same data types within a single `coalesce` function. If you want to coal
 - Use the SQL `CAST` operator.
 - [Change the data type from the Data Model page][cast-data-type].
 
-If you want to use `coalesce` with JSON or JSONB data types, you'll need to flatten your JSON arrays first. For more information, look up the JSON functions that are available in your SQL dialect. You can find some [common SQL reference guides here][sql-reference-guide].
+If you want to use `coalesce` with JSON or JSONB data types, you'll need to flatten the JSON objects first. For more information, look up the JSON functions that are available in your SQL dialect. You can find some [common SQL reference guides here][sql-reference-guide].
 
 ## Related functions
 
 This section covers common functions and formulas from other tools that are equivalent to the Metabase `coalesce` expression:
 
 - [SQL](#sql)
-- [Spreadsheets](#spreadsheet)
+- [Spreadsheets](#spreadsheets)
 - [Python](#python)
 
 All examples use the custom expression and sample data from the [Consolidating values](#consolidating-values-from-different-columns) example:
@@ -106,7 +106,7 @@ FROM
     sample_table;
 ```
 
-### Spreadsheet
+### Spreadsheets
 
 If we assume that "Notes" is in column A, and "Comments" is in column B, we can achieve basic coalesce functionality by combining `IF` statements with functions like `ISBLANK` (for empty values) or `ISNA` (for "NaN" values).
 
@@ -132,7 +132,7 @@ df['custom_column'] = df['notes'].combine_first(df['comments'])\
 - [Custom expressions documentation][custom-expressions-doc]
 - [Custom expressions tutorial][custom-expressions-learn]
 
-[cast-data-type]: ../administration-guide/03-metadata-editing#casting-to-a-specific-data-type
+[cast-data-type]: .../administration-guide/03-metadata-editing#casting-to-a-specific-data-type
 [custom-expressions-doc]: ./expressions
 [custom-expressions-learn]: /learn/questions/custom-expressions
 [data-types]: /learn/databases/data-types-overview#examples-of-data-types
