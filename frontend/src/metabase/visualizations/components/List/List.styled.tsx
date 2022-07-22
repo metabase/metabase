@@ -26,6 +26,17 @@ export const RowActionsContainer = styled.div`
   transition: all 0.1s ease-in-out;
 `;
 
+export const BulkSelectionControlContainer = styled(RowActionsContainer)<{
+  isSelectingItems?: boolean;
+}>`
+  ${props =>
+    props.isSelectingItems &&
+    css`
+      width: 100% !important;
+      opacity: 1 !important;
+    `}
+`;
+
 export const RowActionButtonContainer = styled(CellRoot)`
   padding-left: 0.25rem;
   padding-right: 0.25rem;
@@ -44,6 +55,8 @@ export const ListItemContainer = styled.div<{ disabled?: boolean }>`
 
   background-color: ${color("bg-white")};
 
+  overflow-x: hidden;
+
   transition: all 0.1s ease-in-out;
 
   ${props =>
@@ -55,13 +68,13 @@ export const ListItemContainer = styled.div<{ disabled?: boolean }>`
       }
     `}
 
-  ${RowActionsContainer} {
+  ${RowActionsContainer}, ${BulkSelectionControlContainer} {
     width: 0;
     opacity: 0;
   }
 
   &:hover {
-    ${RowActionsContainer} {
+    ${RowActionsContainer}, ${BulkSelectionControlContainer} {
       width: 100%;
       opacity: 1;
     }

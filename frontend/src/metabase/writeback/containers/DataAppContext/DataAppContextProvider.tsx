@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "lodash";
 import { getIn } from "icepick";
@@ -52,6 +52,37 @@ function DataAppContextProvider({
   isLoaded,
   children,
 }: DataAppContextProviderProps) {
+  const [bulkActionCardId, setBulkActionCardId] = useState<number | null>(null);
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+
+  const handleRowSelected = useCallback(
+    (cardId: number, rowIndex: number) => {
+      if (bulkActionCardId !== cardId) {
+        setBulkActionCardId(cardId);
+        setSelectedRows([rowIndex]);
+      } else {
+        setSelectedRows(rows => rows.concat(rowIndex));
+      }
+    },
+    [bulkActionCardId],
+  );
+
+  const handleRowDeselected = useCallback(
+    (rowIndex: number) => {
+      const nextRows = selectedRows.filter(row => row !== rowIndex);
+      setSelectedRows(nextRows);
+      if (nextRows.length === 0) {
+        setBulkActionCardId(null);
+      }
+    },
+    [selectedRows],
+  );
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedRows([]);
+    setBulkActionCardId(null);
+  }, []);
+
   const objectDetails = useMemo(
     () =>
       Object.values(dashCards).filter(
@@ -95,6 +126,13 @@ function DataAppContextProvider({
     const value: DataAppContextType = {
       data: dataContext,
       isLoaded,
+      bulkActions: {
+        cardId: bulkActionCardId,
+        selectedRowIndexes: selectedRows,
+        addRow: handleRowSelected,
+        removeRow: handleRowDeselected,
+        clearSelection: handleClearSelection,
+      },
       format: (text: string) => text,
     };
 
@@ -110,7 +148,15 @@ function DataAppContextProvider({
     );
 
     return value;
-  }, [dataContext, isLoaded]);
+  }, [
+    dataContext,
+    isLoaded,
+    bulkActionCardId,
+    selectedRows,
+    handleRowSelected,
+    handleRowDeselected,
+    handleClearSelection,
+  ]);
 
   return (
     <DataAppContext.Provider value={context}>

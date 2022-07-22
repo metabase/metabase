@@ -11,6 +11,7 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 
 import Button from "metabase/core/components/Button";
+import CheckBox from "metabase/core/components/CheckBox";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 
@@ -23,6 +24,8 @@ import {
   deleteRowFromDataApp,
   updateRowFromDataApp,
 } from "metabase/dashboard/writeback-actions";
+
+import { useDataAppContext } from "metabase/writeback/containers/DataAppContext";
 
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -42,6 +45,7 @@ import {
   Footer,
   ListItemContainer,
   ListItemContent,
+  BulkSelectionControlContainer,
   RowActionsContainer,
   RowActionButtonContainer,
   LIST_ITEM_VERTICAL_GAP,
@@ -49,6 +53,10 @@ import {
 
 function getBoundingClientRectSafe(ref: React.RefObject<HTMLBaseElement>) {
   return ref.current?.getBoundingClientRect?.() ?? ({} as DOMRect);
+}
+
+function stopClickPropagation(event: React.SyntheticEvent) {
+  event.stopPropagation();
 }
 
 interface ListVizDispatchProps {
@@ -95,6 +103,8 @@ function List({
 
   const footerRef = useRef(null);
   const firstRowRef = useRef(null);
+
+  const { bulkActions } = useDataAppContext();
 
   useLayoutEffect(() => {
     const { height: footerHeight = 0 } = getBoundingClientRectSafe(footerRef);
@@ -223,6 +233,47 @@ function List({
   const hasEditButton = settings["buttons.edit"];
   const hasDeleteButton = settings["buttons.delete"];
 
+  const canSelectForBulkAction = useMemo(() => {
+    return (
+      settings["actions.bulk_enabled"] &&
+      (!bulkActions.cardId || bulkActions.cardId === connectedDashCard?.card_id)
+    );
+  }, [connectedDashCard, settings, bulkActions]);
+
+  const isSelectingItems = useMemo(() => {
+    return (
+      settings["actions.bulk_enabled"] &&
+      bulkActions.cardId === connectedDashCard?.card_id &&
+      bulkActions.selectedRowIndexes.length > 0
+    );
+  }, [connectedDashCard, settings, bulkActions]);
+
+  const renderBulkSelectionControl = useCallback(
+    (rowIndex: number) => {
+      const isSelected = bulkActions.selectedRowIndexes.includes(rowIndex);
+
+      return (
+        <BulkSelectionControlContainer isSelectingItems={isSelectingItems}>
+          <CheckBox
+            checked={isSelected}
+            onClick={stopClickPropagation}
+            onChange={event => {
+              const isSelectedNow = event.target.checked;
+              if (isSelectedNow) {
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
+                bulkActions.addRow(card.id, rowIndex);
+              } else {
+                bulkActions.removeRow(rowIndex);
+              }
+            }}
+          />
+        </BulkSelectionControlContainer>
+      );
+    },
+    [card, bulkActions, isSelectingItems],
+  );
+
   const renderListItemCell = useCallback(
     (rowIndex: number, columnIndex: number | null, slot: CellSlot) => {
       if (columnIndex === null) {
@@ -251,6 +302,7 @@ function List({
         const [firstColumnIndex, secondColumnIndex, thirdColumnIndex] = left;
         return (
           <ListItemContent>
+            {canSelectForBulkAction && renderBulkSelectionControl(rowIndex)}
             {renderListItemCell(rowIndex, firstColumnIndex, "left")}
             <div>
               {renderListItemCell(rowIndex, secondColumnIndex, "left")}
@@ -262,13 +314,20 @@ function List({
 
       return (
         <ListItemContent>
+          {canSelectForBulkAction && renderBulkSelectionControl(rowIndex)}
           {left.map(columnIndex =>
             renderListItemCell(rowIndex, columnIndex, "left"),
           )}
         </ListItemContent>
       );
     },
-    [settings, listColumnIndexes, renderListItemCell],
+    [
+      settings,
+      listColumnIndexes,
+      canSelectForBulkAction,
+      renderListItemCell,
+      renderBulkSelectionControl,
+    ],
   );
 
   const renderListItem = useCallback(
@@ -295,7 +354,18 @@ function List({
         isDataApp && checkIsVisualizationClickable(clickObject);
 
       const onRowClick = () => {
-        onVisualizationClick(clickObject);
+        if (isSelectingItems) {
+          const isSelected = bulkActions.selectedRowIndexes.includes(rowIndex);
+          if (isSelected) {
+            bulkActions.removeRow(rowIndex);
+          } else {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            bulkActions.addRow(card.id, rowIndex);
+          }
+        } else {
+          onVisualizationClick(clickObject);
+        }
       };
 
       const onEditClick = (event: React.SyntheticEvent) => {
@@ -308,11 +378,16 @@ function List({
         event.stopPropagation();
       };
 
+      const canClick = isSelectingItems || isClickable;
+
+      const hasInlineActions =
+        !isSelectingItems && (hasEditButton || hasDeleteButton);
+
       return (
         <ListItemContainer
           key={rowIndex}
           onClick={onRowClick}
-          disabled={!isClickable}
+          disabled={!canClick}
           ref={ref}
           data-testid="table-row"
         >
@@ -321,7 +396,7 @@ function List({
             {right.map(columnIndex =>
               renderListItemCell(rowIndex, columnIndex, "right"),
             )}
-            {(hasEditButton || hasDeleteButton) && (
+            {hasInlineActions && (
               <RowActionsContainer>
                 {hasEditButton && (
                   <RowActionButtonContainer slot="right">
@@ -349,12 +424,15 @@ function List({
       );
     },
     [
+      card,
       data,
       settings,
       listColumnIndexes,
       hasEditButton,
       hasDeleteButton,
       isDataApp,
+      isSelectingItems,
+      bulkActions,
       checkIsVisualizationClickable,
       onVisualizationClick,
       renderListItemLeftPart,

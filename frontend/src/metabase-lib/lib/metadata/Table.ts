@@ -132,6 +132,16 @@ class TableInner extends Base {
     return fks.map(fk => new Table(fk.origin.table));
   }
 
+  primaryKeys(): { field: Field; index: number }[] {
+    const pks = [];
+    this.fields.forEach((field, index) => {
+      if (field.isPK()) {
+        pks.push({ field, index });
+      }
+    });
+    return pks;
+  }
+
   /**
    * @private
    * @param {string} description

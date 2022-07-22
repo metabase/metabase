@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
@@ -12,12 +12,19 @@ interface WritebackModalFormProps extends WritebackFormProps {
 function WritebackModalForm({
   table,
   row,
+  type = row ? "update" : "insert",
+  mode,
   onClose,
   onSubmit,
   ...props
 }: WritebackModalFormProps) {
-  const objectName = table.objectName();
-  const title = row ? t`Edit ${objectName}` : t`New ${objectName}`;
+  const title = useMemo(() => {
+    if (type === "update" && mode === "bulk") {
+      return t`Update`;
+    }
+    const objectName = table.objectName();
+    return type === "update" ? t`Edit ${objectName}` : t`New ${objectName}`;
+  }, [table, type, mode]);
 
   const handleSubmit = useCallback(
     async (values: Record<string, unknown>) => {
@@ -32,6 +39,8 @@ function WritebackModalForm({
       <WritebackForm
         table={table}
         row={row}
+        type={type}
+        mode={mode}
         onSubmit={handleSubmit}
         {...props}
       />

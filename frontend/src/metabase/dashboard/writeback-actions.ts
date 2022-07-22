@@ -7,14 +7,19 @@ import {
   createRow,
   updateRow,
   deleteRow,
+  updateManyRows,
+  deleteManyRows,
   InsertRowPayload,
   UpdateRowPayload,
   DeleteRowPayload,
+  BulkUpdatePayload,
+  BulkDeletePayload,
 } from "metabase/writeback/actions";
 
 import { DashboardWithCards, DashCard } from "metabase-types/types/Dashboard";
 
 import { fetchCardData } from "./actions";
+import { getCardData } from "./selectors";
 import { isVirtualDashCard } from "./utils";
 
 export type InsertRowFromDataAppPayload = InsertRowPayload & {
@@ -88,6 +93,139 @@ export const deleteRowFromDataApp = (payload: DeleteRowFromDataAppPayload) => {
           message: t`Something went wrong while deleting the row`,
         }),
       );
+    }
+  };
+};
+
+export type BulkUpdateFromDataAppPayload = Omit<
+  BulkUpdatePayload,
+  "records"
+> & {
+  dashCard: DashCard;
+  rowIndexes: number[];
+  changes: Record<string, unknown>;
+};
+
+export const updateManyRowsFromDataApp = (
+  payload: BulkUpdateFromDataAppPayload,
+) => {
+  return async (dispatch: any, getState: any) => {
+    function showErrorToast() {
+      dispatch(
+        addUndo({
+          icon: "warning",
+          toastColor: "error",
+          message: t`Something went wrong while updating`,
+        }),
+      );
+    }
+
+    try {
+      const { dashCard, rowIndexes, changes, table } = payload;
+      const data = getCardData(getState())[dashCard.id][dashCard.card_id];
+      const pks = table.primaryKeys();
+
+      const records: Record<string, unknown>[] = [];
+
+      rowIndexes.forEach(rowIndex => {
+        const rowPKs: Record<string, unknown> = {};
+        pks.forEach(pk => {
+          const name = pk.field.name;
+          const rawValue = data.data.rows[rowIndex][pk.index];
+          const value = pk?.field.isNumeric()
+            ? parseInt(rawValue, 10)
+            : rawValue;
+          rowPKs[name] = value;
+        });
+        records.push({
+          ...changes,
+          ...rowPKs,
+        });
+      });
+
+      const result = await updateManyRows({ records, table });
+      if (result?.["rows-updated"] > 0) {
+        dispatch(
+          fetchCardData(dashCard.card, dashCard, {
+            reload: true,
+            ignoreCache: true,
+          }),
+        );
+        dispatch(
+          addUndo({
+            message: t`Successfully updated ${rowIndexes.length} records`,
+            toastColor: "success",
+          }),
+        );
+      } else {
+        showErrorToast();
+      }
+    } catch (err) {
+      console.error(err);
+      showErrorToast();
+    }
+  };
+};
+
+export type BulkDeleteFromDataAppPayload = Omit<BulkDeletePayload, "ids"> & {
+  dashCard: DashCard;
+  rowIndexes: number[];
+};
+
+export const deleteManyRowsFromDataApp = (
+  payload: BulkDeleteFromDataAppPayload,
+) => {
+  return async (dispatch: any, getState: any) => {
+    function showErrorToast() {
+      dispatch(
+        addUndo({
+          icon: "warning",
+          toastColor: "error",
+          message: t`Something went wrong while deleting`,
+        }),
+      );
+    }
+
+    try {
+      const { dashCard, rowIndexes, table } = payload;
+      const data = getCardData(getState())[dashCard.id][dashCard.card_id];
+      const pks = table.primaryKeys();
+
+      const ids: Record<string, number | string>[] = [];
+
+      rowIndexes.forEach(rowIndex => {
+        const rowPKs: Record<string, number | string> = {};
+        pks.forEach(pk => {
+          const name = pk.field.name;
+          const rawValue = data.data.rows[rowIndex][pk.index];
+          const value = pk?.field.isNumeric()
+            ? parseInt(rawValue, 10)
+            : rawValue;
+          rowPKs[name] = value;
+        });
+        ids.push(rowPKs);
+      });
+
+      const result = await deleteManyRows({ ids, table });
+      if (result?.["success"]) {
+        dispatch(
+          fetchCardData(dashCard.card, dashCard, {
+            reload: true,
+            ignoreCache: true,
+          }),
+        );
+        dispatch(
+          addUndo({
+            message: t`Successfully deleted ${rowIndexes.length} records`,
+            toastColor: "success",
+          }),
+        );
+      } else {
+        showErrorToast();
+      }
+    } catch (err) {
+      console.error(err);
+      showErrorToast();
     }
   };
 };

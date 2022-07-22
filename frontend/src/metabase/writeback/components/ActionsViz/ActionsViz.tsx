@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -10,6 +10,8 @@ import { useToggle } from "metabase/hooks/use-toggle";
 
 // TODO ActionsViz should ideally be independent from dashboard
 import { getCardData } from "metabase/dashboard/selectors";
+
+import { useDataAppContext } from "metabase/writeback/containers/DataAppContext";
 import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm";
 
 // TODO This should better be extracted to metabase/lib/somewhere
@@ -30,9 +32,13 @@ import {
   DeleteRowFromDataAppPayload,
   InsertRowFromDataAppPayload,
   UpdateRowFromDataAppPayload,
+  BulkUpdateFromDataAppPayload,
+  BulkDeleteFromDataAppPayload,
   deleteRowFromDataApp,
   createRowFromDataApp,
   updateRowFromDataApp,
+  updateManyRowsFromDataApp,
+  deleteManyRowsFromDataApp,
 } from "metabase/dashboard/writeback-actions";
 
 import { HorizontalAlignmentValue } from "./types";
@@ -115,6 +121,9 @@ interface ActionWizDispatchProps {
   deleteRow: (payload: DeleteRowFromDataAppPayload) => void;
   insertRow: (payload: InsertRowFromDataAppPayload) => void;
   updateRow: (payload: UpdateRowFromDataAppPayload) => void;
+
+  updateManyRows: (payload: BulkUpdateFromDataAppPayload) => void;
+  deleteManyRows: (payload: BulkDeleteFromDataAppPayload) => void;
 }
 
 type ActionsVizProps = ActionVizOwnProps &
@@ -132,6 +141,9 @@ const mapDispatchToProps = {
   deleteRow: deleteRowFromDataApp,
   insertRow: createRowFromDataApp,
   updateRow: updateRowFromDataApp,
+
+  updateManyRows: updateManyRowsFromDataApp,
+  deleteManyRows: deleteManyRowsFromDataApp,
 };
 
 function getObjectDetailViewData(
@@ -150,20 +162,32 @@ function ActionsViz({
   deleteRow,
   insertRow,
   updateRow,
+  updateManyRows,
+  deleteManyRows,
 }: ActionsVizProps) {
   const [isModalOpen, { turnOn: showModal, turnOff: hideModal }] =
     useToggle(false);
   const { modalContent: confirmationModalContent, show: requestConfirmation } =
     useConfirmation();
 
+  const { bulkActions } = useDataAppContext();
+
   const connectedDashCardId = settings["actions.linked_card"];
   const connectedDashCard = dashboard.ordered_cards.find(
     dashCard => dashCard.id === connectedDashCardId,
   );
 
-  const question = connectedDashCard
-    ? new Question(connectedDashCard?.card, metadata)
-    : null;
+  const isSelectingItems =
+    bulkActions.cardId === connectedDashCard?.card_id &&
+    bulkActions.selectedRowIndexes.length > 0;
+
+  const question = useMemo(
+    () =>
+      connectedDashCard
+        ? new Question(connectedDashCard?.card, metadata)
+        : null,
+    [connectedDashCard, metadata],
+  );
 
   const isObjectDetailView = question?.display() === "object";
   const table = question?.table();
@@ -176,15 +200,34 @@ function ActionsViz({
       : undefined;
   const row = connectedCardData?.rows[0];
 
+  const isBulkSelectActive = bulkActions.cardId === connectedDashCard?.card_id;
+
   const hasCreateButton =
     settings["actions.create_enabled"] &&
     (!isObjectDetailView || !connectedDashCardId);
-  const hasUpdateButton =
-    settings["actions.update_enabled"] &&
-    (isObjectDetailView || !connectedDashCardId);
-  const hasDeleteButton =
-    settings["actions.delete_enabled"] &&
-    (isObjectDetailView || !connectedDashCardId);
+  const canCreate = !!question;
+
+  const hasUpdateButton = settings["actions.update_enabled"];
+  const canUpdate = useMemo(() => {
+    if (!question) {
+      return false;
+    }
+    if (isObjectDetailView) {
+      return true;
+    }
+    return isBulkSelectActive && bulkActions.selectedRowIndexes.length > 0;
+  }, [question, isObjectDetailView, isBulkSelectActive, bulkActions]);
+
+  const hasDeleteButton = settings["actions.delete_enabled"];
+  const canDelete = useMemo(() => {
+    if (!question) {
+      return false;
+    }
+    if (isObjectDetailView) {
+      return true;
+    }
+    return isBulkSelectActive && bulkActions.selectedRowIndexes.length > 0;
+  }, [question, isObjectDetailView, isBulkSelectActive, bulkActions]);
 
   const horizontalAlignment = settings[
     "actions.align_horizontal"
@@ -200,7 +243,7 @@ function ActionsViz({
     }
   }
 
-  function handleUpdate(values: Record<string, unknown>) {
+  function handleSingleRecordUpdate(values: Record<string, unknown>) {
     if (!table || !connectedDashCard || !connectedCardData || !row) {
       return;
     }
@@ -216,6 +259,41 @@ function ActionsViz({
         dashCard: connectedDashCard,
       });
     }
+  }
+
+  async function handleBulkUpdate(values: Record<string, unknown>) {
+    if (!table || !connectedDashCard) {
+      return;
+    }
+    await updateManyRows({
+      table,
+      dashCard: connectedDashCard,
+      rowIndexes: bulkActions.selectedRowIndexes,
+      changes: values,
+    });
+    bulkActions.clearSelection();
+  }
+
+  async function handleBulkDelete() {
+    if (!table || !connectedDashCard) {
+      return;
+    }
+
+    const rowCount = bulkActions.selectedRowIndexes.length;
+    const objectName = table?.displayName();
+
+    requestConfirmation({
+      title: t`Delete ${rowCount} ${objectName}?`,
+      message: t`This can't be undone`,
+      onConfirm: async () => {
+        await deleteManyRows({
+          table,
+          dashCard: connectedDashCard,
+          rowIndexes: bulkActions.selectedRowIndexes,
+        });
+        bulkActions.clearSelection();
+      },
+    });
   }
 
   function handleDelete() {
@@ -258,19 +336,39 @@ function ActionsViz({
     });
   }
 
+  function onDeleteClick() {
+    if (isBulkSelectActive) {
+      handleBulkDelete();
+    } else {
+      handleDelete();
+    }
+  }
+
+  function onFormSubmit(values: Record<string, unknown>) {
+    if (row && !isSelectingItems) {
+      return handleSingleRecordUpdate(values);
+    }
+    if (isSelectingItems) {
+      return handleBulkUpdate(values);
+    }
+    return handleInsert(values);
+  }
+
+  const isUpdateForm = row || isSelectingItems;
+
   return (
     <>
       <Root horizontalAlignment={horizontalAlignment}>
         {hasCreateButton && (
-          <Button disabled={!question} onClick={showModal}>{t`New`}</Button>
+          <Button disabled={!canCreate} onClick={showModal}>{t`New`}</Button>
         )}
         {hasUpdateButton && (
-          <Button disabled={!question} onClick={showModal}>{t`Edit`}</Button>
+          <Button disabled={!canUpdate} onClick={showModal}>{t`Edit`}</Button>
         )}
         {hasDeleteButton && (
           <Button
-            disabled={!question}
-            onClick={handleDelete}
+            disabled={!canDelete}
+            onClick={onDeleteClick}
             danger
           >{t`Delete`}</Button>
         )}
@@ -280,7 +378,9 @@ function ActionsViz({
           <WritebackModalForm
             table={table}
             row={row}
-            onSubmit={row ? handleUpdate : handleInsert}
+            type={isUpdateForm ? "update" : "insert"}
+            mode={isSelectingItems ? "bulk" : "row"}
+            onSubmit={onFormSubmit}
             onClose={hideModal}
           />
         </Modal>

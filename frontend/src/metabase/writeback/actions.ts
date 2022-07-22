@@ -43,6 +43,22 @@ export const updateRow = (payload: UpdateRowPayload) => {
   });
 };
 
+export type BulkUpdatePayload = {
+  table: Table;
+  records: Record<string, unknown>[];
+};
+
+export const updateManyRows = (payload: BulkUpdatePayload) => {
+  const { table, records } = payload;
+  return ActionsApi.bulkUpdate(
+    {
+      tableId: table.id,
+      body: records,
+    },
+    { bodyParamName: "body" },
+  );
+};
+
 export type DeleteRowPayload = {
   table: Table;
   id: number | string;
@@ -64,4 +80,20 @@ export const deleteRow = (payload: DeleteRowPayload) => {
       filter: ["=", field.reference(), pk],
     },
   });
+};
+
+export type BulkDeletePayload = {
+  table: Table;
+  ids: Record<string, number | string>[];
+};
+
+export const deleteManyRows = (payload: BulkDeletePayload) => {
+  const { table, ids } = payload;
+  return ActionsApi.bulkDelete(
+    {
+      tableId: table.id,
+      body: ids,
+    },
+    { bodyParamName: "body" },
+  );
 };

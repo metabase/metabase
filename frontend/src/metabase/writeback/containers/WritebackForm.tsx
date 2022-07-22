@@ -15,6 +15,8 @@ import CategoryFieldPicker from "./CategoryFieldPicker";
 export interface WritebackFormProps {
   table: Table;
   row?: unknown[];
+  type?: "insert" | "update";
+  mode?: "row" | "bulk";
   onSubmit: (values: Record<string, unknown>) => void;
 
   // Form props
@@ -69,11 +71,22 @@ function getFieldValidationProp(field: Field) {
   };
 }
 
-function WritebackForm({ table, row, onSubmit, ...props }: WritebackFormProps) {
-  const editableFields = useMemo(
-    () => table.fields.filter(isEditableField),
-    [table],
-  );
+function WritebackForm({
+  table,
+  row,
+  type = row ? "update" : "insert",
+  mode,
+  onSubmit,
+  ...props
+}: WritebackFormProps) {
+  const editableFields = useMemo(() => {
+    const fields = table.fields.filter(isEditableField);
+    if (mode === "bulk") {
+      // Ideally we need to filter out fields with 'unique' constraint
+      return fields.filter(field => !field.isPK());
+    }
+    return fields;
+  }, [table, mode]);
 
   const form = useMemo(() => {
     return {
@@ -100,7 +113,7 @@ function WritebackForm({ table, row, onSubmit, ...props }: WritebackFormProps) {
 
   const handleSubmit = useCallback(
     values => {
-      const isUpdate = !!row;
+      const isUpdate = type === "update";
       const changes = isUpdate ? {} : values;
 
       if (isUpdate) {
@@ -118,10 +131,10 @@ function WritebackForm({ table, row, onSubmit, ...props }: WritebackFormProps) {
 
       return onSubmit?.(changes);
     },
-    [form, row, onSubmit],
+    [form, type, onSubmit],
   );
 
-  const submitTitle = row ? t`Update` : t`Create`;
+  const submitTitle = type === "update" ? t`Update` : t`Create`;
 
   return (
     <StyledForm

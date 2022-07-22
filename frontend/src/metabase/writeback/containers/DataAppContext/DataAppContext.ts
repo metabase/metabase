@@ -22,12 +22,26 @@ export type DataContextType = Record<
 
 export type DataAppContextType = {
   data: DataContextType;
+  bulkActions: {
+    cardId: number | null;
+    selectedRowIndexes: number[];
+    addRow: (cardId: number, index: number) => void;
+    removeRow: (index: number) => void;
+    clearSelection: () => void;
+  };
   isLoaded: boolean;
   format: (text: string) => string;
 };
 
 export const DataAppContext = createContext<DataAppContextType>({
   data: {},
+  bulkActions: {
+    cardId: null,
+    selectedRowIndexes: [],
+    addRow: _.noop,
+    removeRow: _.noop,
+    clearSelection: _.noop,
+  },
   isLoaded: true,
   format: (text: string) => text,
 });
