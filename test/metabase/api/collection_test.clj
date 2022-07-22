@@ -1065,72 +1065,33 @@
                                                                            :param1 {:required false}
                                                                            :param2 {:required false}}
                                                            :query         "select {{param0}}, {{param1}} [[ , {{param2}} ]]"}}}]
-          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
-                   [{:name                "Business Card"
-                     :description         nil
-                     :collection_position nil
-                     :collection_preview  true
-                     :display             "table"
-                     :moderated_status    nil
-                     :entity_id           (:entity_id card)
-                     :model               "card"
-                     :fully_parametrized  false}
-                    {:name            "Crowberto Corv's Personal Collection"
-                     :description     nil
-                     :model           "collection"
-                     :authority_level nil
-                     :entity_id       (:entity_id collection)
-                     :can_write       true}])
-                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
-                   (dissoc item :id))))))
+          (is (partial= [{:name                "Business Card"
+                          :entity_id           (:entity_id card)
+                          :model               "card"
+                          :fully_parametrized  false}]
+                        (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))))))
 
       (testing "is false even if a required field-filter parameter has no default"
         (mt/with-temp Card [card {:name          "Business Card"
                                   :dataset_query {:native {:template-tags {:param0 {:default 0}
                                                                            :param1 {:type "dimension", :required true}}
                                                            :query         "select {{param0}}, {{param1}}"}}}]
-          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
-                   [{:name                "Business Card"
-                     :description         nil
-                     :collection_position nil
-                     :collection_preview  true
-                     :display             "table"
-                     :moderated_status    nil
-                     :entity_id           (:entity_id card)
-                     :model               "card"
-                     :fully_parametrized  false}
-                    {:name            "Crowberto Corv's Personal Collection"
-                     :description     nil
-                     :model           "collection"
-                     :authority_level nil
-                     :entity_id       (:entity_id collection)
-                     :can_write       true}])
-                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
-                   (dissoc item :id))))))
+          (is (partial= [{:name                "Business Card"
+                          :entity_id           (:entity_id card)
+                          :model               "card"
+                          :fully_parametrized  false}]
+                        (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))))))
 
       (testing "is false even if an optional required parameter has no default"
         (mt/with-temp Card [card {:name          "Business Card"
                                   :dataset_query {:native {:template-tags {:param0 {:default 0}
                                                                            :param1 {:required true}}
                                                            :query         "select {{param0}}, [[ , {{param1}} ]]"}}}]
-          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
-                   [{:name                "Business Card"
-                     :description         nil
-                     :collection_position nil
-                     :collection_preview  true
-                     :display             "table"
-                     :moderated_status    nil
-                     :entity_id           (:entity_id card)
-                     :model               "card"
-                     :fully_parametrized  false}
-                    {:name            "Crowberto Corv's Personal Collection"
-                     :description     nil
-                     :model           "collection"
-                     :authority_level nil
-                     :entity_id       (:entity_id collection)
-                     :can_write       true}])
-                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
-                   (dissoc item :id))))))
+          (is (partial= [{:name                "Business Card"
+                          :entity_id           (:entity_id card)
+                          :model               "card"
+                          :fully_parametrized  false}]
+                        (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))))))
 
       (testing "is true if all obligatory parameters have defaults"
         (mt/with-temp Card [card {:name          "Business Card"
@@ -1139,24 +1100,103 @@
                                                                            :param2 {}
                                                                            :param3 {:type "dimension"}}
                                                            :query "select {{param0}}, {{param1}} [[ , {{param2}} ]] from t {{param3}}"}}}]
-          (is (= (let [collection (collection/user->personal-collection (mt/user->id :crowberto))]
-                   [{:name                "Business Card"
-                     :description         nil
-                     :collection_position nil
-                     :collection_preview  true
-                     :display             "table"
-                     :moderated_status    nil
-                     :entity_id           (:entity_id card)
-                     :model               "card"
-                     :fully_parametrized  true}
-                    {:name            "Crowberto Corv's Personal Collection"
-                     :description     nil
-                     :model           "collection"
-                     :authority_level nil
-                     :entity_id       (:entity_id collection)
-                     :can_write       true}])
-                 (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
-                   (dissoc item :id)))))))))
+          (is (partial= [{:name                "Business Card"
+                          :entity_id           (:entity_id card)
+                          :model               "card"
+                          :fully_parametrized  true}]
+                        (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))))))
+
+      (testing "using a snippet without parameters is true"
+        (mt/with-temp* [NativeQuerySnippet [snippet {:content    "table"
+                                                     :creator_id (mt/user->id :crowberto)
+                                                     :name       "snippet"}]
+                        Card [card {:name          "Business Card"
+                                    :dataset_query {:native {:template-tags {:param0  {:required false
+                                                                                       :default  0}
+                                                                             :snippet {:name         "snippet"
+                                                                                       :type         :snippet
+                                                                                       :snippet-name "snippet"
+                                                                                       :snippet-id   (:id snippet)}}
+                                                             :query "select {{param0}} from {{snippet}}"}}}]]
+          (is (partial= [{:name                "Business Card"
+                          :entity_id           (:entity_id card)
+                          :model               "card"
+                          :fully_parametrized  true}]
+                        (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))))))
+
+      (testing "using a not fully parametrized snippet without parameters is false"
+        (mt/with-temp* [NativeQuerySnippet [snippet {:content    "table where x = {{param}}"
+                                                     :template_tags {"param" {:required false}}
+                                                     :creator_id (mt/user->id :crowberto)
+                                                     :name       "snippet"}]
+                        Card [card {:name          "Business Card"
+                                    :dataset_query {:native {:template-tags {:param0  {:required false
+                                                                                       :default  0}
+                                                                             :snippet {:name         "snippet"
+                                                                                       :type         :snippet
+                                                                                       :snippet-name "snippet"
+                                                                                       :snippet-id   (:id snippet)}}
+                                                             :query "select {{param0}} from {{snippet}}"}}}]]
+          (is (partial= [{:name                "Business Card"
+                          :entity_id           (:entity_id card)
+                          :model               "card"
+                          :fully_parametrized  false}]
+                        (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))))))
+
+      (testing "using a nested snippet without parameters is true"
+        (mt/with-temp* [NativeQuerySnippet [snippet {:content    "table"
+                                                     :creator_id (mt/user->id :crowberto)
+                                                     :name       "snippet"}]
+                        NativeQuerySnippet [parent-snippet {:content    "{{snippet}}"
+                                                            :creator_id (mt/user->id :crowberto)
+                                                            :name       "parent-snippet"
+                                                            :template_tags
+                                                            {"snippet" {:name         "snippet"
+                                                                        :type         :snippet
+                                                                        :snippet-name "snippet"
+                                                                        :snippet-id   (:id snippet)}}}]
+                        Card [card {:name          "Business Card"
+                                    :dataset_query {:native {:template-tags {:param0  {:required false
+                                                                                       :default  0}
+                                                                             :parent-snippet
+                                                                             {:name         "parent-snippet"
+                                                                              :type         :snippet
+                                                                              :snippet-name "parent-snippet"
+                                                                              :snippet-id   (:id parent-snippet)}}
+                                                             :query "select {{param0}} from {{parent-snippet}}"}}}]]
+          (is (partial= [{:name                "Business Card"
+                          :entity_id           (:entity_id card)
+                          :model               "card"
+                          :fully_parametrized  true}]
+                        (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))))))
+
+      (testing "using a not fully parametrized nested snippet without parameters is false"
+        (mt/with-temp* [NativeQuerySnippet [snippet {:content    "table where x = {{param}}"
+                                                     :template_tags {"param" {:required false}}
+                                                     :creator_id (mt/user->id :crowberto)
+                                                     :name       "snippet"}]
+                        NativeQuerySnippet [parent-snippet {:content    "{{snippet}}"
+                                                            :creator_id (mt/user->id :crowberto)
+                                                            :name       "parent-snippet"
+                                                            :template_tags
+                                                            {"snippet" {:name         "snippet"
+                                                                        :type         :snippet
+                                                                        :snippet-name "snippet"
+                                                                        :snippet-id   (:id snippet)}}}]
+                        Card [card {:name          "Business Card"
+                                    :dataset_query {:native {:template-tags {:param0  {:required false
+                                                                                       :default  0}
+                                                                             :parent-snippet
+                                                                             {:name         "parent-snippet"
+                                                                              :type         :snippet
+                                                                              :snippet-name "parent-snippet"
+                                                                              :snippet-id   (:id parent-snippet)}}
+                                                             :query "select {{param0}} from {{parent-snippet}}"}}}]]
+          (is (partial= [{:name                "Business Card"
+                          :entity_id           (:entity_id card)
+                          :model               "card"
+                          :fully_parametrized  false}]
+                        (:data (mt/user-http-request :crowberto :get 200 "collection/root/items")))))))))
 
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
 
