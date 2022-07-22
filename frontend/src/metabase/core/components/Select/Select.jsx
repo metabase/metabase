@@ -8,13 +8,13 @@ import SelectButton from "metabase/core/components/SelectButton";
 import _ from "underscore";
 import cx from "classnames";
 
-import AccordionList from "../AccordionList";
 import { createSelector } from "reselect";
 
 import { color } from "metabase/lib/colors";
 
 import Uncontrollable from "metabase/hoc/Uncontrollable";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
+import { SelectAccordionList } from "./Select.styled";
 
 const MIN_ICON_WIDTH = 20;
 
@@ -248,10 +248,10 @@ class Select extends Component {
         // this can happen when filtering items via search
         pinInitialAttachment
       >
-        <AccordionList
+        <SelectAccordionList
           hasInitialFocus
           sections={sections}
-          className="MB-Select text-brand"
+          className="MB-Select"
           alwaysExpanded
           width={width}
           itemIsSelected={this.itemIsSelected}
