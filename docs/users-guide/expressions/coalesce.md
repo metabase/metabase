@@ -74,6 +74,8 @@ Use the same data types within a single `coalesce` function. If you want to coal
 - Use the SQL `CAST` operator.
 - [Change the data type from the Data Model page][cast-data-type].
 
+If you want to use `coalesce` with JSON or JSONB data types, you'll need to flatten your JSON arrays first. For more information, look up the JSON functions that are available in your SQL dialect. You can find some [common SQL reference guides here][sql-reference-guide].
+
 ## Related functions
 
 This section covers common functions and formulas from other tools that are equivalent to the Metabase `coalesce` expression:
@@ -93,6 +95,10 @@ All examples use the custom expression and sample data from the [Consolidating v
 
 ### SQL
 
+When you ask Metabase a question from the notebook editor or SQL editor, the question is converted into a SQL query that runs against your database or data warehouse.
+
+The Metabase `coalesce` expression is equivalent to a SQL `coalesce` function:
+
 ```
 SELECT
     COALESCE(notes, comments, "no notes or comments")
@@ -100,31 +106,25 @@ FROM
     sample_table;
 ```
 
-When you ask Metabase a question from the notebook editor or SQL editor, the question is converted into a SQL query that runs against your database or data warehouse.
-
-The Metabase `coalesce` expression is equivalent to a SQL `coalesce` function.
-
 ### Spreadsheet
 
-Assuming that "Notes" is in column A, and "Comments" is in column B:
+If we assume that "Notes" is in column A, and "Comments" is in column B, we can achieve basic coalesce functionality by combining `IF` statements with functions like `ISBLANK` (for empty values) or `ISNA` (for "NaN" values).
+
+Note that this formula doesn't generalize well if you're working with more than two columns. In those cases, you may be used to working with `INDEX` and `MATCH` in an array formula (or maybe considering [a move away from spreadsheets][spreadsheets-to-bi] entirely!).
 
 ```
 =IF(ISBLANK($A2),$B2,IF(ISBLANK($B2),$A2,"No notes or comments."))
 ```
 
-If you're used to consolidating values from three or more columns (e.g., "Notes", "Comments", "Ratings"), you may be familiar with an array formula like this instead:
-
-```
-{=INDEX(A2:B4,MATCH(FALSE,ISBLANK(A2:B4),FALSE))}
-```
-
 ### Python
 
-Using [pandas][pandas] and [numpy][numpy], and assuming our sample data is in a dataframe object called `df`:
+For those of you that come from the [pandas][pandas] and [numpy][numpy] world, let's assume our sample data is in a dataframe object called `df`.
+
+Coalesce-esque `pandas` functions include `combine_first()` and `fillna()`:
 
 ```
-df['custom_column'] = df['notes].combine_first(df['comments'])\
-                                .combine_first("No notes or comments.")
+df['custom_column'] = df['notes'].combine_first(df['comments'])\
+                                 .fillna('No notes or comments.')
 ```
 
 ## Further reading
@@ -132,10 +132,12 @@ df['custom_column'] = df['notes].combine_first(df['comments'])\
 - [Custom expressions documentation][custom-expressions-doc]
 - [Custom expressions tutorial][custom-expressions-learn]
 
-[cast-data-type]: /docs/latest/administration-guide/03-metadata-editing#casting-to-a-specific-data-type
-[custom-expressions-doc]: /docs/latest/users-guide/expressions
+[cast-data-type]: ../administration-guide/03-metadata-editing#casting-to-a-specific-data-type
+[custom-expressions-doc]: ./expressions
 [custom-expressions-learn]: /learn/questions/custom-expressions
 [data-types]: /learn/databases/data-types-overview#examples-of-data-types
 [missing-dates]: /learn/debugging-sql/sql-logic-missing-data#how-to-fill-in-data-for-missing-report-dates
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/
+[spreadsheets-to-bi]: /blog/spreadsheets-to-bi
+[sql-reference-guide]: /learn/debugging-sql/sql-syntax.html#common-sql-reference-guides
