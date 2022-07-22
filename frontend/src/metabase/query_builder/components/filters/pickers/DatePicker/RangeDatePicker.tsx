@@ -40,7 +40,7 @@ export const BetweenPicker = ({
     );
   }
   return (
-    <div className={className}>
+    <div className={className} data-testid="between-date-picker">
       <TimeContainer>
         <div>
           <SpecificDatePicker

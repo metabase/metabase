@@ -46,7 +46,7 @@ export default function DatePickerShortcuts({
   );
 
   return (
-    <div className={className}>
+    <div className={className} data-testid="date-picker-shortcuts">
       {onBack ? (
         <SidebarHeader
           className="text-default py1 mb1"

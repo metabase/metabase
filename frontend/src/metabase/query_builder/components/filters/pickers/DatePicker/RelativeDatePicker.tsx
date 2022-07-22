@@ -121,7 +121,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
   const [optionsVisible, setOptionsVisible] = React.useState(false);
 
   const optionsContent = (
-    <OptionsContainer>
+    <OptionsContainer data-testid="relative-datetime-options-container">
       <OptionButton
         icon="arrow_left_to_line"
         primaryColor={primaryColor}
@@ -155,7 +155,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
     <GridContainer
       className={className}
       numColumns={numColumns}
-      data-testid="relative-datetime-filter"
+      data-testid="relative-date-picker"
     >
       {startingFrom ? (
         <GridText>{intervals < 0 ? t`Past` : t`Next`}</GridText>

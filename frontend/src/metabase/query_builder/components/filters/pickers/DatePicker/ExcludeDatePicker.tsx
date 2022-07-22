@@ -112,7 +112,7 @@ export default function ExcludeDatePicker({
 
   if (!temporalUnit || operator === "is-null" || operator === "not-null") {
     return (
-      <div className={className}>
+      <div className={className} data-testid="exclude-date-picker">
         {EXCLUDE_OPERATORS.map(({ displayName, init }) => (
           <OptionButton
             key={displayName}
