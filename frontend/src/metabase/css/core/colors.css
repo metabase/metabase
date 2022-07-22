@@ -227,17 +227,6 @@
 
 /* entity colors */
 
-.bg-metric {
-  background-color: var(--color-accent1);
-}
-.text-metric {
-  color: var(--color-accent1);
-}
-
-.bg-data {
-  background-color: var(--color-accent1);
-}
-
 .bg-segment {
   background-color: var(--color-accent2);
 }
