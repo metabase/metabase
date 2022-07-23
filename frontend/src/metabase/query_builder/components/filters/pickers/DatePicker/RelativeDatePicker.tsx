@@ -13,6 +13,7 @@ import {
   setStartingFrom,
   toTimeInterval,
 } from "metabase/lib/query_time";
+import { getRelativeTime } from "metabase/lib/time";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
@@ -170,6 +171,29 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
     <OptionsContent {...props} setOptionsVisible={setOptionsVisible} />
   );
 
+  const checkIfTimeDistanceTooGreat = (newValue: number, unit: string) => {
+    const maxDistanceInYears = 10;
+
+    const now = moment();
+    const newTime = now.clone().add(newValue, unit);
+    const diff = now.diff(newTime, "years");
+
+    return Math.abs(diff) > maxDistanceInYears;
+  };
+
+  const handleChangeDateNumericInput = (
+    currentValue: number,
+    newValue: number,
+  ) => {
+    const timeDistanceTooGreat = checkIfTimeDistanceTooGreat(newValue, unit);
+
+    const valueToUse = timeDistanceTooGreat ? currentValue : newValue;
+
+    onFilterChange(setRelativeDatetimeValue(filter, formatter(valueToUse)));
+
+    return false;
+  };
+
   return (
     <GridContainer
       className={className}
@@ -186,9 +210,9 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
         data-ui-tag="relative-date-input"
         data-testid="relative-datetime-value"
         value={typeof intervals === "number" ? Math.abs(intervals) : intervals}
-        onChange={(value: number) => {
-          onFilterChange(setRelativeDatetimeValue(filter, formatter(value)));
-        }}
+        onChange={(newValue: number) =>
+          handleChangeDateNumericInput(intervals, newValue)
+        }
         placeholder="30"
       />
       <DateUnitSelector
