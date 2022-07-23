@@ -79,6 +79,7 @@ function Form({
   onSubmitSuccess,
   ...props
 }: FormContainerProps) {
+  const [error, setError] = useState<string | null>(null);
   const [values, setValues] = useState({});
   const formDefinition = useMemo(() => {
     const formDef = form || {
@@ -117,6 +118,11 @@ function Form({
     return merge(formObject.initial(values), filteredInitialValues);
   }, [values, initialValuesProp, formObject]);
 
+  const fieldNames = useMemo(
+    () => formObject.fieldNames({ ...initialValues, ...values }),
+    [formObject, values, initialValues],
+  );
+
   const handleValidation = useCallback(
     (values: FieldValues) => {
       const result = formObject.validate(values, { values });
@@ -134,17 +140,30 @@ function Form({
       const DEFAULT_ERROR_MESSAGE = t`An error occurred`;
 
       if (typeof error?.data === "object" && error?.data?.errors) {
+        const errorNames = Object.keys(error.data.errors);
+        const hasUnknownFields = errorNames.some(
+          name => !fieldNames.includes(name),
+        );
+
+        if (hasUnknownFields) {
+          const generalMessage =
+            getGeneralErrorMessage(error) || DEFAULT_ERROR_MESSAGE;
+          setError(generalMessage);
+        }
+
         formikHelpers.setErrors(error.data.errors);
         return error.data.errors;
       }
 
       if (error) {
-        return getGeneralErrorMessage(error) || DEFAULT_ERROR_MESSAGE;
+        const message = getGeneralErrorMessage(error) || DEFAULT_ERROR_MESSAGE;
+        setError(message);
+        return message;
       }
 
       return DEFAULT_ERROR_MESSAGE;
     },
-    [],
+    [fieldNames],
   );
 
   const handleSubmit = useCallback(
@@ -179,6 +198,7 @@ function Form({
           formObject={formObject}
           registerFormField={_.noop}
           unregisterFormField={_.noop}
+          error={error}
           onValuesChange={setValues}
         />
       )}
