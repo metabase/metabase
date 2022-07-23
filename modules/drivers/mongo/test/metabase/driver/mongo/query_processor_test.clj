@@ -5,11 +5,11 @@
             [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.models :refer [Field Table]]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.query-processor.timezone :as qp.timezone]))
+            [toucan.db :as db]))
 
 (deftest query->collection-name-test
   (testing "query->collection-name"
