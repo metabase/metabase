@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import _ from "underscore";
 
 // eslint-disable-next-line import/named
 import { FormikProps } from "formik";
 
 import { CustomFormProps } from "metabase/components/form/FormikCustomForm";
+
+import { usePrevious } from "metabase/hooks/use-previous";
 
 import { FieldName, FieldValues, FormField } from "metabase-types/forms";
 
@@ -31,10 +33,17 @@ type FormProps = Omit<
   | "submitFailed"
 >;
 
-type FormikFormViewAdapterProps = FormikProps<FieldValues> & FormProps;
+interface FormikFormViewAdapterOwnProps {
+  onValuesChange: (values: FieldValues) => void;
+}
+
+type FormikFormViewAdapterProps = FormikProps<FieldValues> &
+  FormProps &
+  FormikFormViewAdapterOwnProps;
 
 function FormikFormViewAdapter({
   formObject,
+  onValuesChange,
 
   errors,
   dirty,
@@ -53,6 +62,13 @@ function FormikFormViewAdapter({
   ...rest
 }: FormikFormViewAdapterProps) {
   const [active, setActive] = useState<string | null>(null);
+  const previousValues = usePrevious(values);
+
+  useEffect(() => {
+    if (!_.isEqual(previousValues, values)) {
+      onValuesChange(values);
+    }
+  }, [previousValues, values, onValuesChange]);
 
   const fields = formObject.fields(values);
   const formFieldsByName = _.indexBy(fields, "name");
