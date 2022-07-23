@@ -10,7 +10,8 @@
                    ["pt_BR", "Portuguese (Brazil)"]))))
 
 (deftest tru-test
-  (mt/with-mock-i18n-bundles {"es" {"must be {0} characters or less" "deben tener {0} caracteres o menos"}}
+  (mt/with-mock-i18n-bundles {"es" {:messages {"must be {0} characters or less"
+                                               "deben tener {0} caracteres o menos"}}}
     (doseq [[message f] {"tru"
                          (fn [] (i18n/tru "must be {0} characters or less" 140))
                          "tru with str"
@@ -41,7 +42,8 @@
                        (f)))))))))))
 
 (deftest trs-test
-  (mt/with-mock-i18n-bundles {"es" {"must be {0} characters or less" "deben tener {0} caracteres o menos"}}
+  (mt/with-mock-i18n-bundles {"es" {:messages {"must be {0} characters or less"
+                                               "deben tener {0} caracteres o menos"}}}
     (doseq [[message f] {"trs"
                          (fn [] (i18n/trs "must be {0} characters or less" 140))
                          "trs with str"

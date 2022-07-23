@@ -63,35 +63,35 @@
     ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
     [(normalized-locale-string locale-name) (.getDisplayName (locale locale-name))]))
 
-(defn translate-site-locale
+(defn- translate-site-locale
   "Translate a string with the System locale."
-  [format-string & args]
-  (let [translated (apply translate (site-locale) format-string args)]
+  [format-string args pluralization-opts]
+  (let [translated (translate (site-locale) format-string args pluralization-opts)]
     (log/tracef "Translated %s for site locale %s -> %s"
                 (pr-str format-string) (pr-str (site-locale-string)) (pr-str translated))
     translated))
 
-(defn translate-user-locale
+(defn- translate-user-locale
   "Translate a string with the current User's locale."
-  [format-string & args]
-  (let [translated (apply translate (user-locale) format-string args)]
+  [format-string args pluralization-opts]
+  (let [translated (translate (user-locale) format-string args pluralization-opts)]
     (log/tracef "Translating %s for user locale %s (site locale %s) -> %s"
                 (pr-str format-string) (pr-str (user-locale-string))
                 (pr-str (site-locale-string)) (pr-str translated))
     translated))
 
-(p.types/defrecord+ UserLocalizedString [format-string args]
+(p.types/defrecord+ UserLocalizedString [format-string args pluralization-opts]
   Object
   (toString [_]
-    (apply translate-user-locale format-string args))
+    (translate-user-locale format-string args pluralization-opts))
   schema.core.Schema
   (explain [this]
     (str this)))
 
-(p.types/defrecord+ SiteLocalizedString [format-string args]
+(p.types/defrecord+ SiteLocalizedString [format-string args pluralization-opts]
   Object
   (toString [_]
-    (apply translate-site-locale format-string args))
+    (translate-site-locale format-string args pluralization-opts))
   s/Schema
   (explain [this]
     (str this)))
@@ -149,7 +149,7 @@
   Calling `str` on the results of this invocation will lookup the translated version of the string."
   [format-string-or-str & args]
   (validate-number-of-args format-string-or-str args)
-  `(UserLocalizedString. ~format-string-or-str ~(vec args)))
+  `(UserLocalizedString. ~format-string-or-str ~(vec args) {}))
 
 (defmacro deferred-trs
   "Similar to `trs` but creates a `SiteLocalizedString` instance so that conversion to the correct locale can be
@@ -161,7 +161,7 @@
   Calling `str` on the results of this invocation will lookup the translated version of the string."
   [format-string & args]
   (validate-number-of-args format-string args)
-  `(SiteLocalizedString. ~format-string ~(vec args)))
+  `(SiteLocalizedString. ~format-string ~(vec args) {}))
 
 (def ^String ^{:arglists '([& args])} str*
   "Ensures that `trs`/`tru` isn't called prematurely, during compilation."
@@ -191,6 +191,29 @@
   applied to the result."
   [format-string-or-str & args]
   `(str* (deferred-trs ~format-string-or-str ~@args)))
+
+;; TODO
+#_(defn- validate-n-form
+    "Validates a singular or plural format string passed to `trun`, `deferred-trun`, `trsn`, or `deferred-trsn`.`"
+    [singular])
+
+(defmacro deferred-trsn
+  "Similar to `deferred-trs` but chooses the appropriate singular or plural form based on the value of `n`.
+
+  The first argument should be the singular form; the second argument should be the plural form, and the third argument
+  should be `n`. `n` can be interpolated into the translated string using the `{0}` placeholder syntax, but no
+  additional placeholders are supported."
+  [format-string format-string-pl n]
+  `(SiteLocalizedString. ~format-string ~[n] ~{:n n :format-string-pl format-string-pl}))
+
+(defmacro trsn
+  "Similar to `trs` but chooses the appropriate singular or plural form based on the value of `n`.
+
+  The first argument should be the singular form; the second argument should be the plural form, and the third argument
+  should be `n`. `n` can be interpolated into the translated string using the `{0}` placeholder syntax, but no
+  additional placeholders are supported."
+  [format-string format-string-pl n]
+  `(str* (deferred-trsn ~format-string ~format-string-pl ~n)))
 
 ;; TODO - I seriously doubt whether these are still actually needed now that `tru` and `trs` generate forms wrapped in
 ;; `str` by default

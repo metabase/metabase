@@ -186,5 +186,5 @@
   (def single-file (str u/project-root-directory "/src/metabase/util.clj"))
   (create-pot-file! single-file "pot.pot")
   (map (juxt meta identity)
-       (g/grasp single-file ::translate))
-  )
+       (g/grasp single-file ::translate)))
+
