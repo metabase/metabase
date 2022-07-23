@@ -44,6 +44,53 @@
       (encryption-test/with-secret-key (resolve 'encryption-test/secret)
         (check-secret)))))
 
+(deftest get-secret-string-test
+  (testing "get-secret-string from value only"
+    (is (= "titok"
+           (secret/get-secret-string {:secret-prop-value "titok"} "secret-prop"))))
+
+  (testing "get-secret-string from value only from the database"
+    (mt/with-temp Secret [{id :id} {:name       "private-key"
+                                    :kind       ::secret/pem-cert
+                                    :value      "titok"
+                                    :creator_id (mt/user->id :crowberto)}]
+      (is (= "titok"
+             (secret/get-secret-string {:secret-prop-id id} "secret-prop")))))
+
+  (testing "get-secret-string from uploaded value"
+    (mt/with-temp Secret [{id :id} {:name       "private-key"
+                                    :kind       ::secret/pem-cert
+                                    :value      (let [encoder (java.util.Base64/getEncoder)]
+                                                  (str "data:application/octet-stream;base64,"
+                                                       (.encodeToString encoder
+                                                                        (.getBytes "titok" "UTF-8"))))
+                                    :creator_id (mt/user->id :crowberto)}]
+      (is (= "titok"
+             (secret/get-secret-string
+              {:secret-prop-id      id
+               :secret-prop-options "uploaded"}
+              "secret-prop")))))
+
+  (mt/with-temp-file [file "-key.pem"]
+    (spit file "titok")
+    (testing "get-secret-string from local file in value"
+      (is (= "titok"
+             (secret/get-secret-string
+              {:secret-prop-path    file
+               :secret-prop-options "local"}
+              "secret-prop"))))
+
+    (testing "get-secret-string from local file in the database"
+      (mt/with-temp Secret [{id :id} {:name       "private-key"
+                                      :kind       ::secret/pem-cert
+                                      :value      file
+                                      :creator_id (mt/user->id :crowberto)}]
+        (is (= "titok"
+              (secret/get-secret-string
+               {:secret-prop-id      id
+                :secret-prop-options "local"}
+               "secret-prop")))))))
+
 (deftest value->file!-test
   (testing "value->file! works for a secret value"
     (let [file-secret-val "dingbat"
