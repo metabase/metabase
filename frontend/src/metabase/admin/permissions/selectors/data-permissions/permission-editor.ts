@@ -153,7 +153,7 @@ export const getDatabasesPermissionEditor = createSelector(
     const columns = [
       { name: getEditorEntityName(params, hasSingleSchema) },
       { name: t`Data access` },
-      { name: t`Arbitrary native query editing` },
+      { name: t`Run Ad-Hoc Native Queries` },
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
     ];
 
@@ -273,7 +273,7 @@ export const getGroupsDataPermissionEditor = createSelector(
     const columns = [
       { name: t`Group name` },
       { name: t`Data access` },
-      { name: t`Arbitrary native query editing` },
+      { name: t`Run Ad-Hoc Native Queries` },
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
     ];
 
