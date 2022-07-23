@@ -14,7 +14,7 @@ import {
 } from "metabase-types/forms";
 
 import FormikFormViewAdapter from "./FormikFormViewAdapter";
-import { makeFormObject } from "../formUtils";
+import { makeFormObject, cleanObject } from "../formUtils";
 
 interface FormContainerProps {
   form?: FormObject;
@@ -117,7 +117,13 @@ function Form({
   }, [initialValuesProp, formObject]);
 
   const handleValidation = useCallback(
-    (values: FieldValues) => formObject.validate(values, { values }),
+    (values: FieldValues) => {
+      const result = formObject.validate(values, { values });
+
+      // Ensure errors don't have empty strings
+      // as they will also be treated as errors
+      return cleanObject(result);
+    },
     [formObject],
   );
 
