@@ -26,6 +26,16 @@ import {
   NumericInput,
 } from "./RelativeDatePicker.styled";
 
+type Props = {
+  className?: string;
+  filter: Filter;
+  onFilterChange: (filter: any[]) => void;
+  formatter: (value: number) => number;
+  offsetFormatter: (value: number) => number;
+  primaryColor?: string;
+  reverseIconDirection?: boolean;
+};
+
 export const PastPicker = (props: Props) => (
   <RelativeDatePicker {...props} formatter={value => value * -1} />
 );
@@ -89,16 +99,6 @@ function getCurrentIntervalName(filter: Filter) {
   return null;
 }
 
-type Props = {
-  className?: string;
-  filter: Filter;
-  onFilterChange: (filter: any[]) => void;
-  formatter: (value: number) => number;
-  offsetFormatter: (value: number) => number;
-  primaryColor?: string;
-  reverseIconDirection?: boolean;
-};
-
 const RelativeDatePicker: React.FC<Props> = props => {
   const {
     filter,
@@ -151,6 +151,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
       </OptionButton>
     </OptionsContainer>
   );
+
   return (
     <GridContainer
       className={className}
