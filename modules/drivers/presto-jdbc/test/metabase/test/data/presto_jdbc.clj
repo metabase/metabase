@@ -37,23 +37,34 @@
                              :type/TimeWithTZ             "TIME WITH TIME ZONE"}]
   (defmethod sql.tx/field-base-type->sql-type [:presto-jdbc base-type] [_ _] db-type))
 
+(defn dbdef->connection-details [database-name]
+  (let [base-details
+        {:host                               (tx/db-test-env-var-or-throw :presto-jdbc :host "localhost")
+         :port                               (tx/db-test-env-var :presto-jdbc :port "8080")
+         :user                               (tx/db-test-env-var-or-throw :presto-jdbc :user "metabase")
+         :additional-options                 (tx/db-test-env-var :presto-jdbc :additional-options nil)
+         :ssl                                (tx/db-test-env-var :presto-jdbc :ssl "false")
+         :ssl-keystore-path                  (tx/db-test-env-var :presto-jdbc :ssl-keystore-path nil)
+         :ssl-keystore-password-value        (tx/db-test-env-var :presto-jdbc :ssl-keystore-password nil)
+         :ssl-truststore-path                (tx/db-test-env-var :presto-jdbc :ssl-truststore-path nil)
+         :ssl-truststore-password-value      (tx/db-test-env-var :presto-jdbc :ssl-truststore-password nil)
+         :kerberos                           (tx/db-test-env-var :presto-jdbc :kerberos "false")
+         :kerberos-principal                 (tx/db-test-env-var :presto-jdbc :kerberos-principal nil)
+         :kerberos-remote-service-name       (tx/db-test-env-var :presto-jdbc :kerberos-remote-service-name nil)
+         :kerberos-use-canonical-hostname    (tx/db-test-env-var :presto-jdbc :kerberos-use-canonical-hostname nil)
+         :kerberos-credential-cache-path     (tx/db-test-env-var :presto-jdbc :kerberos-credential-cache-path nil)
+         :kerberos-keytab-path               (tx/db-test-env-var :presto-jdbc :kerberos-keytab-path nil)
+         :kerberos-config-path               (tx/db-test-env-var :presto-jdbc :kerberos-config-path nil)
+         :kerberos-service-principal-pattern (tx/db-test-env-var :presto-jdbc :kerberos-service-principal-pattern nil)
+         :catalog                            (u/snake-key database-name)
+         :schema                             (tx/db-test-env-var :presto-jdbc :schema nil)}]
+    (assoc base-details
+           :ssl-use-keystore (every? some? (map base-details [:ssl-keystore-path :ssl-keystore-password-value]))
+           :ssl-use-truststore (every? some? (map base-details [:ssl-truststore-path :ssl-truststore-password-value])))))
+
 (defmethod tx/dbdef->connection-details :presto-jdbc
   [_ _ {:keys [database-name]}]
-  {:host                               (tx/db-test-env-var-or-throw :presto-jdbc :host "localhost")
-   :port                               (tx/db-test-env-var :presto-jdbc :port "8080")
-   :user                               (tx/db-test-env-var-or-throw :presto-jdbc :user "metabase")
-   :additional-options                 (tx/db-test-env-var :presto-jdbc :additional-options nil)
-   :ssl                                (tx/db-test-env-var :presto-jdbc :ssl "false")
-   :kerberos                           (tx/db-test-env-var :presto-jdbc :kerberos "false")
-   :kerberos-principal                 (tx/db-test-env-var :presto-jdbc :kerberos-principal nil)
-   :kerberos-remote-service-name       (tx/db-test-env-var :presto-jdbc :kerberos-remote-service-name nil)
-   :kerberos-use-canonical-hostname    (tx/db-test-env-var :presto-jdbc :kerberos-use-canonical-hostname nil)
-   :kerberos-credential-cache-path     (tx/db-test-env-var :presto-jdbc :kerberos-credential-cache-path nil)
-   :kerberos-keytab-path               (tx/db-test-env-var :presto-jdbc :kerberos-keytab-path nil)
-   :kerberos-config-path               (tx/db-test-env-var :presto-jdbc :kerberos-config-path nil)
-   :kerberos-service-principal-pattern (tx/db-test-env-var :presto-jdbc :kerberos-service-principal-pattern nil)
-   :catalog                            (u/snake-key database-name)
-   :schema                             (tx/db-test-env-var :presto-jdbc :schema nil)})
+  (dbdef->connection-details database-name))
 
 (defmethod execute/execute-sql! :presto-jdbc
   [& args]
