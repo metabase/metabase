@@ -26,7 +26,6 @@ export interface QueryBuilderUIControls {
   isShowingQuestionDetailsSidebar: boolean;
   isShowingTimelineSidebar: boolean;
   initialChartSetting: null;
-  isPreviewing: boolean;
   isShowingRawTable: boolean;
   queryBuilderMode: QueryBuilderMode;
   previousQueryBuilderMode: boolean;
