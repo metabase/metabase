@@ -81,10 +81,6 @@ const viewTitleHeaderPropTypes = {
   onOpenQuestionDetails: PropTypes.func,
   onCloseQuestionDetails: PropTypes.func,
 
-  isPreviewable: PropTypes.bool,
-  isPreviewing: PropTypes.bool,
-  setIsPreviewing: PropTypes.func,
-
   className: PropTypes.string,
   style: PropTypes.object,
 };
@@ -320,7 +316,6 @@ ViewTitleHeaderRightSide.propTypes = {
   isNative: PropTypes.bool,
   isRunnable: PropTypes.bool,
   isRunning: PropTypes.bool,
-  isPreviewing: PropTypes.bool,
   isNativeEditorOpen: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
   isWritebackEnabled: PropTypes.bool,
@@ -357,7 +352,6 @@ function ViewTitleHeaderRightSide(props) {
     isNative,
     isRunnable,
     isRunning,
-    isPreviewing,
     isNativeEditorOpen,
     isShowingSummarySidebar,
     isWritebackEnabled,
@@ -486,7 +480,6 @@ function ViewTitleHeaderRightSide(props) {
             result={result}
             isRunning={isRunning}
             isDirty={isResultDirty}
-            isPreviewing={isPreviewing}
             onRun={() => runQuestionQuery({ ignoreCache: true })}
             onCancel={cancelQuery}
           />
