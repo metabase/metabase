@@ -8,7 +8,6 @@ import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 
 import Button from "metabase/core/components/Button";
-import ButtonBar from "metabase/components/ButtonBar";
 import Link from "metabase/core/components/Link";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
@@ -24,7 +23,6 @@ import RunButtonWithTooltip from "../RunButtonWithTooltip";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
-import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
 import QuestionFilters, {
   FilterHeaderToggle,
@@ -41,7 +39,6 @@ import {
   ViewHeaderMainLeftContentContainer,
   ViewHeaderLeftSubHeading,
   ViewHeaderContainer,
-  ViewSubHeaderRoot,
   StyledLastEditInfoLabel,
   StyledQuestionDataSource,
   SavedQuestionLeftSideRoot,
@@ -541,43 +538,3 @@ function ExploreResultsLink({ question }) {
 }
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
-
-const viewSubHeaderPropTypes = {
-  isPreviewable: PropTypes.bool,
-  isPreviewing: PropTypes.bool,
-  setIsPreviewing: PropTypes.func,
-};
-
-export class ViewSubHeader extends React.Component {
-  render() {
-    const { isPreviewable, isPreviewing, setIsPreviewing } = this.props;
-
-    const middle = [];
-    const left = [];
-    const right = [];
-
-    if (isPreviewable) {
-      right.push(
-        <QuestionPreviewToggle
-          key="preview"
-          className="ml2"
-          isPreviewing={isPreviewing}
-          setIsPreviewing={setIsPreviewing}
-        />,
-      );
-    }
-
-    return left.length > 0 || middle.length > 0 || right.length > 0 ? (
-      <ViewSubHeaderRoot>
-        <ButtonBar
-          className="flex-full"
-          left={left}
-          center={middle}
-          right={right}
-        />
-      </ViewSubHeaderRoot>
-    ) : null;
-  }
-}
-
-ViewSubHeader.propTypes = viewSubHeaderPropTypes;

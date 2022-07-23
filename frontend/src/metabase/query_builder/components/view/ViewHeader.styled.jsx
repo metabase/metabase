@@ -113,10 +113,6 @@ export const FilterHeaderContainer = styled.div`
   border-bottom: 1px solid ${color("border")};
 `;
 
-export const ViewSubHeaderRoot = styled(ViewSection)`
-  padding-top: 0.5rem;
-`;
-
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
   color: ${color("text-light")};
   //margin-left: 4px;
