@@ -14,6 +14,7 @@ import {
 } from "metabase-types/forms";
 
 import FormikFormViewAdapter from "./FormikFormViewAdapter";
+import useInlineFields from "./useInlineFields";
 import { makeFormObject, cleanObject } from "../formUtils";
 
 interface FormContainerProps {
@@ -81,9 +82,13 @@ function Form({
 }: FormContainerProps) {
   const [error, setError] = useState<string | null>(null);
   const [values, setValues] = useState({});
+
+  const { inlineFields, registerFormField, unregisterFormField } =
+    useInlineFields();
+
   const formDefinition = useMemo(() => {
     const formDef = form || {
-      fields,
+      fields: fields || Object.values(inlineFields),
       validate,
       initial,
       normalize,
@@ -95,10 +100,13 @@ function Form({
           typeof formDef.fields === "function"
             ? (formDef.fields(values) as BaseFieldDefinition[])
             : (formDef.fields as BaseFieldDefinition[]);
-        return fieldList;
+        return fieldList.map(fieldDef => ({
+          ...fieldDef,
+          ...inlineFields[fieldDef.name],
+        }));
       },
     };
-  }, [form, fields, validate, initial, normalize]);
+  }, [form, fields, inlineFields, validate, initial, normalize]);
 
   const formObject = useMemo(
     () => makeFormObject(formDefinition),
@@ -196,9 +204,9 @@ function Form({
           {...formikProps}
           {...props}
           formObject={formObject}
-          registerFormField={_.noop}
-          unregisterFormField={_.noop}
           error={error}
+          registerFormField={registerFormField}
+          unregisterFormField={unregisterFormField}
           onValuesChange={setValues}
         />
       )}
