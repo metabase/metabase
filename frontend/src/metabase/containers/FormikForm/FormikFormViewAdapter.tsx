@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import _ from "underscore";
+import { getIn } from "icepick";
 
 // eslint-disable-next-line import/named
 import { FormikProps } from "formik";
@@ -32,6 +33,14 @@ type FormProps = Omit<
   | "onChangeField"
   | "submitFailed"
 >;
+
+function getMaybeNestedValue<Value = string>(
+  obj: Record<string, Value>,
+  fieldName: string,
+): Value {
+  const isNestedField = fieldName.includes(".");
+  return isNestedField ? getIn(obj, fieldName.split(".")) : obj[fieldName];
+}
 
 interface FormikFormViewAdapterOwnProps {
   onValuesChange: (values: FieldValues) => void;
@@ -76,17 +85,22 @@ function FormikFormViewAdapter({
   const smartFields: FormField[] = fields.map(field => {
     const { name } = field;
 
+    const value = getMaybeNestedValue(values, name);
+    const initialValue = getMaybeNestedValue(initialValues, name);
+    const error = getMaybeNestedValue(errors, name);
+    const isTouched = !!getMaybeNestedValue(touched, name);
+
     return {
       ...field,
-      dirty: values[name] !== initialValues[name],
-      error: errors[name],
+      dirty: value !== initialValue,
+      error,
       initialValue: initialValues[name],
-      invalid: !!errors[name],
-      pristine: !touched[name],
-      touched: !!touched[name],
-      valid: !errors[name],
-      value: values[name],
-      visited: !!touched,
+      invalid: !!error,
+      pristine: !isTouched,
+      touched: isTouched,
+      valid: !error,
+      value: value,
+      visited: isTouched,
       active: active === name,
       onFocus: () => setActive(name),
       onBlur: () => setActive(null),
