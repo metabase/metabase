@@ -66,7 +66,6 @@ const DEFAULT_UI_CONTROLS = {
   isShowingDataReference: false,
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,
-  isEditing: false,
   isRunning: false,
   isQueryComplete: false,
   isShowingSummarySidebar: false,
@@ -194,13 +193,6 @@ export const uiControls = handleActions(
     }),
     [CLOSE_QB_NEWB_MODAL]: {
       next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }),
-    },
-
-    [API_UPDATE_QUESTION]: {
-      next: (state, { payload }) => ({ ...state, isEditing: false }),
-    },
-    [RELOAD_CARD]: {
-      next: (state, { payload }) => ({ ...state, isEditing: false }),
     },
 
     [RUN_QUERY]: state => ({
