@@ -26,6 +26,7 @@ interface FormContainerProps {
   overwriteOnInitialValuesChange?: boolean;
 
   validate?: () => void;
+  asyncValidate?: (values: FieldValues) => Promise<FieldValues | string>;
   initial?: () => void;
   normalize?: () => void;
 
@@ -73,6 +74,7 @@ function Form({
   fields,
   initialValues: initialValuesProp = {},
   overwriteOnInitialValuesChange = false,
+  asyncValidate,
   validate,
   initial,
   normalize,
@@ -132,14 +134,25 @@ function Form({
   );
 
   const handleValidation = useCallback(
-    (values: FieldValues) => {
+    async (values: FieldValues) => {
       const result = formObject.validate(values, { values });
 
       // Ensure errors don't have empty strings
       // as they will also be treated as errors
-      return cleanObject(result);
+      let errors = cleanObject(result);
+
+      if (asyncValidate) {
+        const asyncErrors = await asyncValidate(values);
+        if (typeof asyncErrors === "object") {
+          errors = merge(cleanObject(asyncErrors), errors);
+        } else if (typeof asyncErrors === "string") {
+          setError(asyncErrors);
+        }
+      }
+
+      return errors;
     },
-    [formObject],
+    [asyncValidate, formObject],
   );
 
   const handleError = useCallback(
