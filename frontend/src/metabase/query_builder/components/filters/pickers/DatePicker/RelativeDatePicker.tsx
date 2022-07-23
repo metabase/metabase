@@ -171,27 +171,34 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
     <OptionsContent {...props} setOptionsVisible={setOptionsVisible} />
   );
 
-  const checkIfTimeDistanceTooGreat = (newValue: number, unit: string) => {
-    const maxDistanceInYears = 10;
-
+  const checkIfTimeDistanceTooGreat = (intervals: number, unit: string) => {
     const now = moment();
-    const newTime = now.clone().add(newValue, unit);
+    const newTime = moment().add(Math.abs(intervals), unit);
     const diff = now.diff(newTime, "years");
 
-    return Math.abs(diff) > maxDistanceInYears;
+    return Number.isNaN(diff);
   };
 
-  const handleChangeDateNumericInput = (
-    currentValue: number,
-    newValue: number,
-  ) => {
-    const timeDistanceTooGreat = checkIfTimeDistanceTooGreat(newValue, unit);
+  const handleChangeDateNumericInput = (newIntervals: number) => {
+    const timeDistanceTooGreat = checkIfTimeDistanceTooGreat(
+      newIntervals,
+      unit,
+    );
 
-    const valueToUse = timeDistanceTooGreat ? currentValue : newValue;
+    const valueToUse = timeDistanceTooGreat ? intervals : newIntervals;
 
     onFilterChange(setRelativeDatetimeValue(filter, formatter(valueToUse)));
+  };
 
-    return false;
+  const handleChangeUnitInput = (newUnit: string) => {
+    const timeDistanceTooGreat = checkIfTimeDistanceTooGreat(
+      intervals,
+      newUnit,
+    );
+
+    const unitToUse = timeDistanceTooGreat ? unit : newUnit;
+
+    onFilterChange(setRelativeDatetimeUnit(filter, unitToUse));
   };
 
   return (
@@ -210,17 +217,13 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
         data-ui-tag="relative-date-input"
         data-testid="relative-datetime-value"
         value={typeof intervals === "number" ? Math.abs(intervals) : intervals}
-        onChange={(newValue: number) =>
-          handleChangeDateNumericInput(intervals, newValue)
-        }
+        onChange={handleChangeDateNumericInput}
         placeholder="30"
       />
       <DateUnitSelector
         value={unit}
         primaryColor={primaryColor}
-        onChange={value => {
-          onFilterChange(setRelativeDatetimeUnit(filter, value));
-        }}
+        onChange={handleChangeUnitInput}
         testId="relative-datetime-unit"
         intervals={intervals}
         formatter={formatter}
