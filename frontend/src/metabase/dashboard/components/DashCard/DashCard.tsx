@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
@@ -156,25 +156,37 @@ function DashCard({
     }
   });
 
-  const mainCard = {
-    ...dashcard.card,
-    visualization_settings: mergeSettings(
-      dashcard.card.visualization_settings,
-      dashcard.visualization_settings,
-    ),
-  } as SavedCard;
+  const mainCard: SavedCard = useMemo(
+    () => ({
+      ...dashcard.card,
+      visualization_settings: mergeSettings(
+        dashcard.card.visualization_settings,
+        dashcard.visualization_settings,
+      ),
+    }),
+    [dashcard],
+  );
 
-  const cards = [mainCard].concat(dashcard.series || []);
+  const cards = useMemo(() => {
+    if (Array.isArray(dashcard.series)) {
+      return [mainCard, ...dashcard.series];
+    }
+    return [mainCard];
+  }, [mainCard, dashcard]);
+
+  const series = useMemo(() => {
+    return cards.map(card => ({
+      ...getIn(dashcardData, [dashcard.id, card.id]),
+      card: card,
+      isSlow: slowCards[card.id],
+      isUsuallyFast:
+        card.query_average_duration &&
+        card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD,
+    }));
+  }, [cards, dashcard.id, dashcardData, slowCards]);
+
   const dashboardId = dashcard.dashboard_id;
   const isEmbed = Utils.isJWT(dashboardId);
-  const series = cards.map(card => ({
-    ...getIn(dashcardData, [dashcard.id, card.id]),
-    card: card,
-    isSlow: slowCards[card.id],
-    isUsuallyFast:
-      card.query_average_duration &&
-      card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD,
-  }));
 
   const loading =
     !(series.length > 0 && _.every(series, s => s.data)) &&
