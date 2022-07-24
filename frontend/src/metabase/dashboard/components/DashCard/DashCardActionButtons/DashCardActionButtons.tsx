@@ -6,6 +6,7 @@ import Icon from "metabase/components/Icon";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 
+import { VisualizationSettings } from "metabase-types/api/card";
 import { DashboardWithCards } from "metabase-types/types/Dashboard";
 import { Series } from "metabase-types/types/Visualization";
 
@@ -25,7 +26,7 @@ interface Props {
   hasError: boolean;
   onRemove: () => void;
   onAddSeries: () => void;
-  onReplaceAllVisualizationSettings: () => void;
+  onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
   showClickBehaviorSidebar: () => void;
   onPreviewToggle: () => void;
 }
