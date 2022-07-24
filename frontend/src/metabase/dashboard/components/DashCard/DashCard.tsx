@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, { Component, SyntheticEvent } from "react";
 import ReactDOM from "react-dom";
 import cx from "classnames";
 import _ from "underscore";
@@ -108,6 +108,10 @@ interface DashCardProps {
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
+function preventDragging(e: SyntheticEvent) {
+  e.stopPropagation();
+}
+
 class DashCard extends Component<DashCardProps, { isPreviewingCard: boolean }> {
   async componentDidMount() {
     const { dashcard, markNewCardSeen } = this.props;
@@ -126,10 +130,6 @@ class DashCard extends Component<DashCardProps, { isPreviewingCard: boolean }> {
     this.setState(prevState => ({
       isPreviewingCard: !prevState.isPreviewingCard,
     }));
-  };
-
-  preventDragging = (e: React.SyntheticEvent) => {
-    e.stopPropagation();
   };
 
   render() {
@@ -233,7 +233,7 @@ class DashCard extends Component<DashCardProps, { isPreviewingCard: boolean }> {
         isUsuallySlow={isSlow === "usually-slow"}
       >
         {isEditingDashboardLayout ? (
-          <DashboardCardActionsPanel onMouseDown={this.preventDragging}>
+          <DashboardCardActionsPanel onMouseDown={preventDragging}>
             <DashCardActionButtons
               series={series}
               isLoading={loading}
