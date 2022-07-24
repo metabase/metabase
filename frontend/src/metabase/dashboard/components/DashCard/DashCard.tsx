@@ -334,8 +334,10 @@ function DashCard({
       {isEditingDashboardLayout && (
         <DashboardCardActionsPanel onMouseDown={preventDragging}>
           <DashCardActionButtons
+            dashboard={dashboard}
             series={series}
             isLoading={isLoading}
+            isPreviewing={isPreviewingCard}
             isVirtualDashCard={isVirtualDashCard(dashcard)}
             hasError={hasError}
             onRemove={onRemove}
@@ -344,9 +346,7 @@ function DashCard({
               onReplaceAllVisualizationSettings
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
-            isPreviewing={isPreviewingCard}
             onPreviewToggle={handlePreviewToggle}
-            dashboard={dashboard}
           />
         </DashboardCardActionsPanel>
       )}
@@ -357,9 +357,17 @@ function DashCard({
           "pointer-events-none": isEditingDashboardLayout,
         })}
         classNameWidgets={isEmbed && "text-light text-medium-hover"}
+        dashboard={dashboard}
+        dashcard={dashcard}
+        parameterValues={parameterValues}
+        parameterValuesBySlug={parameterValuesBySlug}
         error={error?.message}
         errorIcon={error?.icon}
         headerIcon={headerIcon}
+        isEditing={isEditing}
+        isPreviewing={isPreviewingCard}
+        isEditingParameter={isEditingParameter}
+        isMobile={isMobile}
         isSlow={isSlow}
         expectedDuration={expectedDuration}
         rawSeries={series}
@@ -367,17 +375,14 @@ function DashCard({
         isFullscreen={isFullscreen}
         isNightMode={isNightMode}
         isDashboard
-        dispatch={dispatch}
-        dashboard={dashboard}
-        dashcard={dashcard}
-        parameterValues={parameterValues}
-        parameterValuesBySlug={parameterValuesBySlug}
-        isEditing={isEditing}
-        isPreviewing={isPreviewingCard}
-        isEditingParameter={isEditingParameter}
-        isMobile={isMobile}
         gridSize={gridSize}
         totalNumGridCols={totalNumGridCols}
+        metadata={metadata}
+        mode={mode}
+        dispatch={dispatch}
+        onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+        onChangeCardAndRun={changeCardAndRunHandler}
+        onChangeLocation={onChangeLocation}
         actionButtons={
           isEmbed ? (
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -393,7 +398,6 @@ function DashCard({
             />
           ) : null
         }
-        onUpdateVisualizationSettings={onUpdateVisualizationSettings}
         replacementContent={
           <VizReplacementContent
             dashcard={dashcard}
@@ -407,10 +411,6 @@ function DashCard({
             showClickBehaviorSidebar={showClickBehaviorSidebar}
           />
         }
-        metadata={metadata}
-        mode={mode}
-        onChangeCardAndRun={changeCardAndRunHandler}
-        onChangeLocation={onChangeLocation}
       />
     </DashCardRoot>
   );
