@@ -167,6 +167,9 @@ function DashCard({
     [dashcard],
   );
 
+  const dashboardId = dashcard.dashboard_id;
+  const isEmbed = Utils.isJWT(dashboardId);
+
   const cards = useMemo(() => {
     if (Array.isArray(dashcard.series)) {
       return [mainCard, ...dashcard.series];
@@ -185,19 +188,20 @@ function DashCard({
     }));
   }, [cards, dashcard.id, dashcardData, slowCards]);
 
-  const dashboardId = dashcard.dashboard_id;
-  const isEmbed = Utils.isJWT(dashboardId);
-
-  const loading =
-    !(series.length > 0 && _.every(series, s => s.data)) &&
-    !isVirtualDashCard(dashcard);
+  const isLoading = useMemo(() => {
+    if (isVirtualDashCard(dashcard)) {
+      return false;
+    }
+    const hasSeries = series.length > 0 && series.every(s => s.data);
+    return !hasSeries;
+  }, [dashcard, series]);
 
   const expectedDuration = Math.max(
     ...series.map(s => s.card.query_average_duration || 0),
   );
   const usuallyFast = _.every(series, s => s.isUsuallyFast);
   const isSlow =
-    loading &&
+    isLoading &&
     _.some(series, s => s.isSlow) &&
     (usuallyFast ? "usually-fast" : "usually-slow");
 
@@ -252,7 +256,7 @@ function DashCard({
         <DashboardCardActionsPanel onMouseDown={preventDragging}>
           <DashCardActionButtons
             series={series}
-            isLoading={loading}
+            isLoading={isLoading}
             isVirtualDashCard={isVirtualDashCard(dashcard)}
             hasError={!!errorMessage}
             onRemove={onRemove}
