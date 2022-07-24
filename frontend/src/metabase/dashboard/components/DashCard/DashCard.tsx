@@ -70,6 +70,8 @@ type NavigateToNewCardFromDashboardOpts = {
   objectId?: unknown;
 };
 
+type CardIsSlow = "usually-fast" | "usually-slow" | false;
+
 interface DashCardProps {
   dashboard: DashboardWithCards;
   dashcard: IDashCard & { justAdded?: boolean };
@@ -196,14 +198,17 @@ function DashCard({
     return !hasSeries;
   }, [dashcard, series]);
 
-  const expectedDuration = Math.max(
-    ...series.map(s => s.card.query_average_duration || 0),
-  );
-  const usuallyFast = _.every(series, s => s.isUsuallyFast);
-  const isSlow =
-    isLoading &&
-    _.some(series, s => s.isSlow) &&
-    (usuallyFast ? "usually-fast" : "usually-slow");
+  const { expectedDuration, isSlow } = useMemo(() => {
+    const expectedDuration = Math.max(
+      ...series.map(s => s.card.query_average_duration || 0),
+    );
+    const isUsuallyFast = series.every(s => s.isUsuallyFast);
+    let isSlow: CardIsSlow = false;
+    if (isLoading && series.some(s => s.isSlow)) {
+      isSlow = isUsuallyFast ? "usually-fast" : "usually-slow";
+    }
+    return { expectedDuration, isSlow };
+  }, [series, isLoading]);
 
   const isAccessRestricted = series.some(
     s =>
