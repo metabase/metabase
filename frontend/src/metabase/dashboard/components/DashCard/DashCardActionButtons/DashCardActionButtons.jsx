@@ -29,9 +29,12 @@ function DashCardActionButtons({
   isPreviewing,
   dashboard,
 }) {
+  const { disableSettingsConfig, supportPreviewing, supportsSeries } =
+    getVisualizationRaw(series).visualization;
+
   const buttons = [];
 
-  if (getVisualizationRaw(series).visualization.supportPreviewing) {
+  if (supportPreviewing) {
     buttons.push(
       <ToggleCardPreviewButton
         key="toggle-card-preview-button"
@@ -42,19 +45,17 @@ function DashCardActionButtons({
   }
 
   if (!isLoading && !hasError) {
-    if (
-      onReplaceAllVisualizationSettings &&
-      !getVisualizationRaw(series).visualization.disableSettingsConfig
-    ) {
+    if (onReplaceAllVisualizationSettings && !disableSettingsConfig) {
       buttons.push(
         <ChartSettingsButton
           key="chart-settings-button"
           series={series}
-          onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
           dashboard={dashboard}
+          onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
         />,
       );
     }
+
     if (!isVirtualDashCard) {
       buttons.push(
         <DashActionButton
@@ -69,7 +70,7 @@ function DashCardActionButtons({
       );
     }
 
-    if (getVisualizationRaw(series).visualization.supportsSeries) {
+    if (supportsSeries) {
       buttons.push(
         <AddSeriesButton
           key="add-series-button"
