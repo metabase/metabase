@@ -5,6 +5,7 @@ import { color } from "metabase/lib/colors";
 export interface DashCardRootProps {
   isNightMode: boolean;
   isUsuallySlow: boolean;
+  hasHiddenBackground: boolean;
 }
 
 const rootNightModeStyle = css`
@@ -16,11 +17,19 @@ const rootSlowCardStyle = css`
   border-color: ${color("accent4")};
 `;
 
+const rootTransparentBackgroundStyle = css`
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+`;
+
 export const DashCardRoot = styled.div<DashCardRootProps>`
   background-color: ${color("white")};
 
   ${({ isNightMode }) => isNightMode && rootNightModeStyle}
   ${({ isUsuallySlow }) => isUsuallySlow && rootSlowCardStyle}
+  ${({ hasHiddenBackground }) =>
+    hasHiddenBackground && rootTransparentBackgroundStyle}
 `;
 
 export const DashboardCardActionsPanel = styled.div`

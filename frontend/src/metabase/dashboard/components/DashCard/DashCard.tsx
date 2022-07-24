@@ -263,11 +263,7 @@ function DashCard({
   return (
     <DashCardRoot
       className="Card rounded flex flex-column hover-parent hover--visibility"
-      style={
-        hasHiddenBackground
-          ? { border: 0, background: "transparent", boxShadow: "none" }
-          : undefined
-      }
+      hasHiddenBackground={hasHiddenBackground}
       isNightMode={isNightMode}
       isUsuallySlow={isSlow === "usually-slow"}
       ref={cardRootRef}
