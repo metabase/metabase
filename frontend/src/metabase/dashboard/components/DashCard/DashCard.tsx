@@ -323,6 +323,10 @@ function DashCard({
   const isEditingDashboardLayout =
     isEditing && !clickBehaviorSidebarDashcard && !isEditingParameter;
 
+  const isClickBehaviorSidebarOpen = !!clickBehaviorSidebarDashcard;
+  const isEditingDashCardClickBehavior =
+    clickBehaviorSidebarDashcard?.id === dashcard.id;
+
   return (
     <DashCardRoot
       className="Card rounded flex flex-column hover-parent hover--visibility"
@@ -399,17 +403,17 @@ function DashCard({
           ) : null
         }
         replacementContent={
-          <VizReplacementContent
-            dashcard={dashcard}
-            isMobile={isMobile}
-            isClickBehaviorSidebarOpen={!!clickBehaviorSidebarDashcard}
-            isEditingDashCardClickBehavior={
-              clickBehaviorSidebarDashcard?.id === dashcard.id
-            }
-            isEditingParameter={isEditingParameter}
-            gridItemWidth={gridItemWidth}
-            showClickBehaviorSidebar={showClickBehaviorSidebar}
-          />
+          (isClickBehaviorSidebarOpen || isEditingParameter) && (
+            <VizReplacementContent
+              dashcard={dashcard}
+              isMobile={isMobile}
+              isClickBehaviorSidebarOpen={isClickBehaviorSidebarOpen}
+              isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}
+              isEditingParameter={isEditingParameter}
+              gridItemWidth={gridItemWidth}
+              showClickBehaviorSidebar={showClickBehaviorSidebar}
+            />
+          )
         }
       />
     </DashCardRoot>
