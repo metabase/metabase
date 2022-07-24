@@ -8,9 +8,8 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import Icon, { iconPropTypes } from "metabase/components/Icon";
+import { iconPropTypes } from "metabase/components/Icon";
 
-import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import Utils from "metabase/lib/utils";
@@ -29,6 +28,7 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 
 import DashCardParameterMapper from "../DashCardParameterMapper";
+import ClickBehaviorSidebarOverlay from "./ClickBehaviorSidebarOverlay";
 import DashCardActionButtons from "./DashCardActionButtons";
 import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
 
@@ -40,7 +40,7 @@ const WrappedVisualization = WithVizSettingsData(
   connect(null, dispatch => ({ dispatch }))(Visualization),
 );
 
-export default class DashCard extends Component {
+class DashCard extends Component {
   static propTypes = {
     dashcard: PropTypes.object.isRequired,
     gridItemWidth: PropTypes.number.isRequired,
@@ -297,42 +297,4 @@ export default class DashCard extends Component {
   }
 }
 
-const MIN_WIDTH_FOR_ON_CLICK_LABEL = 330;
-
-const ClickBehaviorSidebarOverlay = ({
-  dashcard,
-  dashcardWidth,
-  showClickBehaviorSidebar,
-  isShowingThisClickBehaviorSidebar,
-}) => {
-  return (
-    <div className="flex align-center justify-center full-height">
-      <div
-        className={cx("text-bold flex py1 px2 mb2 rounded cursor-pointer", {
-          "bg-brand text-white": isShowingThisClickBehaviorSidebar,
-          "bg-light text-medium": !isShowingThisClickBehaviorSidebar,
-        })}
-        onClick={() =>
-          showClickBehaviorSidebar(
-            isShowingThisClickBehaviorSidebar ? null : dashcard.id,
-          )
-        }
-      >
-        <Icon
-          name="click"
-          className={cx("mr1", {
-            "text-light": !isShowingThisClickBehaviorSidebar,
-          })}
-        />
-        {dashcardWidth > MIN_WIDTH_FOR_ON_CLICK_LABEL && (
-          <div className="mr2">{t`On click`}</div>
-        )}
-        <div
-          className={cx({ "text-brand": !isShowingThisClickBehaviorSidebar })}
-        >
-          {getClickBehaviorDescription(dashcard)}
-        </div>
-      </div>
-    </div>
-  );
-};
+export default DashCard;
