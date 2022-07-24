@@ -2,7 +2,7 @@ import React from "react";
 
 import Tooltip from "metabase/components/Tooltip";
 
-import { StyledAnchor } from "./DashboardActionButtons.styled";
+import { ActionIcon, StyledAnchor } from "./DashboardActionButtons.styled";
 
 interface Props extends React.HTMLAttributes<HTMLAnchorElement> {
   tooltip: string;
@@ -23,4 +23,6 @@ function DashActionButton({
   );
 }
 
-export default DashActionButton;
+export default Object.assign(DashActionButton, {
+  Icon: ActionIcon,
+});

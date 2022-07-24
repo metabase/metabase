@@ -7,8 +7,11 @@ import Icon from "metabase/components/Icon";
 
 import visualizations from "metabase/visualizations";
 
-import { HEADER_ICON_SIZE } from "./constants";
 import DashActionButton from "./DashActionButton";
+import {
+  AddSeriesPlusIcon,
+  HEADER_ICON_SIZE,
+} from "./DashboardActionButtons.styled";
 
 function getSeriesIconName(series) {
   try {
@@ -29,11 +32,7 @@ function AddSeriesButton({ series, onAddSeries }) {
       data-testid="add-series-button"
     >
       <span className="flex">
-        <Icon
-          name="add"
-          style={{ top: 0, left: 1 }}
-          size={HEADER_ICON_SIZE / 2}
-        />
+        <AddSeriesPlusIcon name="add" size={HEADER_ICON_SIZE / 2} />
         <Icon name={getSeriesIconName(series)} size={HEADER_ICON_SIZE - 2} />
       </span>
     </DashActionButton>
