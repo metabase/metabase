@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
@@ -7,13 +6,15 @@ import Icon from "metabase/components/Icon";
 
 import visualizations from "metabase/visualizations";
 
+import { Series } from "metabase-types/types/Visualization";
+
 import DashActionButton from "./DashActionButton";
 import {
   AddSeriesPlusIcon,
   HEADER_ICON_SIZE,
 } from "./DashboardActionButtons.styled";
 
-function getSeriesIconName(series) {
+function getSeriesIconName(series: Series) {
   try {
     const display = series[0].card.display;
     return visualizations.get(display === "scalar" ? "bar" : display).iconName;
@@ -22,11 +23,17 @@ function getSeriesIconName(series) {
   }
 }
 
-function AddSeriesButton({ series, onAddSeries }) {
+function AddSeriesButton({
+  series,
+  onClick,
+}: {
+  series: Series;
+  onClick: () => void;
+}) {
   return (
     <DashActionButton
       className="relative"
-      onClick={onAddSeries}
+      onClick={onClick}
       tooltip={series.length > 1 ? t`Edit series` : t`Add series`}
       analyticsEvent="Edit Series Modal;open"
       data-testid="add-series-button"

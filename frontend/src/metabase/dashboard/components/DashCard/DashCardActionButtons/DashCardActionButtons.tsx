@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
@@ -7,6 +6,9 @@ import Icon from "metabase/components/Icon";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 
+import { DashboardWithCards } from "metabase-types/types/Dashboard";
+import { Series } from "metabase-types/types/Visualization";
+
 import DashActionButton from "./DashActionButton";
 
 import AddSeriesButton from "./AddSeriesButton";
@@ -14,19 +16,33 @@ import ChartSettingsButton from "./ChartSettingsButton";
 
 import { DashCardActionButtonsContainer } from "./DashboardActionButtons.styled";
 
+interface Props {
+  series: Series;
+  dashboard: DashboardWithCards;
+  isLoading: boolean;
+  isVirtualDashCard: boolean;
+  isPreviewing: boolean;
+  hasError: boolean;
+  onRemove: () => void;
+  onAddSeries: () => void;
+  onReplaceAllVisualizationSettings: () => void;
+  showClickBehaviorSidebar: () => void;
+  onPreviewToggle: () => void;
+}
+
 function DashCardActionButtons({
   series,
+  dashboard,
   isLoading,
   isVirtualDashCard,
+  isPreviewing,
   hasError,
   onRemove,
   onAddSeries,
   onReplaceAllVisualizationSettings,
   showClickBehaviorSidebar,
   onPreviewToggle,
-  isPreviewing,
-  dashboard,
-}) {
+}: Props) {
   const { disableSettingsConfig, supportPreviewing, supportsSeries } =
     getVisualizationRaw(series).visualization;
 
@@ -78,7 +94,7 @@ function DashCardActionButtons({
         <AddSeriesButton
           key="add-series-button"
           series={series}
-          onAddSeries={onAddSeries}
+          onClick={onAddSeries}
         />,
       );
     }
