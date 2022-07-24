@@ -23,7 +23,6 @@ function ChartSettingsButton({
           <DashActionButton.Icon name="palette" />
         </DashActionButton>
       }
-      triggerClasses="mr1"
       enableMouseEvents
     >
       <ChartSettingsWithState

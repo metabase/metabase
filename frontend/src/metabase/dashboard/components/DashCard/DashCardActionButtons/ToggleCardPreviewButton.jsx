@@ -8,7 +8,6 @@ import DashActionButton from "./DashActionButton";
 function ToggleCardPreviewButton({ isPreviewing, onPreviewToggle }) {
   return (
     <DashActionButton
-      className="mr1"
       onClick={onPreviewToggle}
       tooltip={isPreviewing ? t`Edit` : t`Preview`}
       analyticsEvent="Text;edit"

@@ -25,7 +25,7 @@ function getSeriesIconName(series) {
 function AddSeriesButton({ series, onAddSeries }) {
   return (
     <DashActionButton
-      className="relative mr1"
+      className="relative"
       onClick={onAddSeries}
       tooltip={series.length > 1 ? t`Edit series` : t`Add series`}
       analyticsEvent="Edit Series Modal;open"

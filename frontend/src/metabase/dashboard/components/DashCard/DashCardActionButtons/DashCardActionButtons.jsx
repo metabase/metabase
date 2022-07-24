@@ -60,7 +60,6 @@ function DashCardActionButtons({
       buttons.push(
         <DashActionButton
           key="click-behavior-tooltip"
-          className="mr1"
           tooltip={t`Click behavior`}
           analyticsEvent="Open Click Behavior Sidebar"
           onClick={showClickBehaviorSidebar}
@@ -84,7 +83,7 @@ function DashCardActionButtons({
   return (
     <DashCardActionButtonsContainer>
       {buttons}
-      <RemoveButton className="ml1" onRemove={onRemove} />
+      <RemoveButton onRemove={onRemove} />
     </DashCardActionButtonsContainer>
   );
 }

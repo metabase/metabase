@@ -11,6 +11,7 @@ export const DashCardActionButtonsContainer = styled.span`
   align-items: center;
   color: ${color("text-medium")};
   line-height: 1px;
+  gap: 0.5rem;
 `;
 
 export const StyledAnchor = styled.a`
