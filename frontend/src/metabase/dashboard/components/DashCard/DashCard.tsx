@@ -145,6 +145,49 @@ function getSeriesError(series: Series) {
   return;
 }
 
+type VizReplacementContentProps = Pick<
+  DashCardProps,
+  | "dashcard"
+  | "isEditingParameter"
+  | "isMobile"
+  | "gridItemWidth"
+  | "showClickBehaviorSidebar"
+> & {
+  isClickBehaviorSidebarOpen: boolean;
+  isEditingDashCardClickBehavior: boolean;
+};
+
+function VizReplacementContent({
+  dashcard,
+  isClickBehaviorSidebarOpen,
+  isEditingDashCardClickBehavior,
+  isMobile,
+  isEditingParameter,
+  gridItemWidth,
+  showClickBehaviorSidebar,
+}: VizReplacementContentProps) {
+  if (isClickBehaviorSidebarOpen) {
+    return isVirtualDashCard(dashcard) ? (
+      <div className="flex full-height align-center justify-center">
+        <h4 className="text-medium">{t`Text card`}</h4>
+      </div>
+    ) : (
+      <ClickBehaviorSidebarOverlay
+        dashcard={dashcard}
+        dashcardWidth={gridItemWidth}
+        showClickBehaviorSidebar={showClickBehaviorSidebar}
+        isShowingThisClickBehaviorSidebar={isEditingDashCardClickBehavior}
+      />
+    );
+  }
+
+  if (isEditingParameter) {
+    return <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />;
+  }
+
+  return null;
+}
+
 function DashCard({
   dashcard,
   dashcardData,
@@ -336,23 +379,17 @@ function DashCard({
         }
         onUpdateVisualizationSettings={onUpdateVisualizationSettings}
         replacementContent={
-          clickBehaviorSidebarDashcard != null &&
-          isVirtualDashCard(dashcard) ? (
-            <div className="flex full-height align-center justify-center">
-              <h4 className="text-medium">{t`Text card`}</h4>
-            </div>
-          ) : isEditingParameter ? (
-            <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
-          ) : clickBehaviorSidebarDashcard != null ? (
-            <ClickBehaviorSidebarOverlay
-              dashcard={dashcard}
-              dashcardWidth={gridItemWidth}
-              showClickBehaviorSidebar={showClickBehaviorSidebar}
-              isShowingThisClickBehaviorSidebar={
-                clickBehaviorSidebarDashcard?.id === dashcard.id
-              }
-            />
-          ) : null
+          <VizReplacementContent
+            dashcard={dashcard}
+            isMobile={isMobile}
+            isClickBehaviorSidebarOpen={!!clickBehaviorSidebarDashcard}
+            isEditingDashCardClickBehavior={
+              clickBehaviorSidebarDashcard?.id === dashcard.id
+            }
+            isEditingParameter={isEditingParameter}
+            gridItemWidth={gridItemWidth}
+            showClickBehaviorSidebar={showClickBehaviorSidebar}
+          />
         }
         metadata={metadata}
         mode={mode}
