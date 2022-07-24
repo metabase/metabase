@@ -268,7 +268,7 @@ function DashCard({
       isUsuallySlow={isSlow === "usually-slow"}
       ref={cardRootRef}
     >
-      {isEditingDashboardLayout ? (
+      {isEditingDashboardLayout && (
         <DashboardCardActionsPanel onMouseDown={preventDragging}>
           <DashCardActionButtons
             series={series}
@@ -288,7 +288,7 @@ function DashCard({
             dashboard={dashboard}
           />
         </DashboardCardActionsPanel>
-      ) : null}
+      )}
       <WrappedVisualization
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
