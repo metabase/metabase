@@ -1,36 +1,38 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
+import cx from "classnames";
+import _ from "underscore";
+import { getIn } from "icepick";
 import { t } from "ttag";
+import { connect } from "react-redux";
+
+import Icon, { iconPropTypes } from "metabase/components/Icon";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Tooltip from "metabase/components/Tooltip";
+
+import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
+import Utils from "metabase/lib/utils";
+
+import { isVirtualDashCard } from "metabase/dashboard/utils";
+
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
+import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
   ERROR_MESSAGE_PERMISSION,
 } from "metabase/visualizations/components/Visualization";
-import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
 import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
 
-import Icon, { iconPropTypes } from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
-import { isVirtualDashCard } from "metabase/dashboard/utils";
-import DashCardParameterMapper from "../DashCardParameterMapper";
-
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
-
-import cx from "classnames";
-import _ from "underscore";
-import { getIn } from "icepick";
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
-import Utils from "metabase/lib/utils";
+
+import DashCardParameterMapper from "../DashCardParameterMapper";
 import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
