@@ -35,7 +35,7 @@ describe("issue 16170", () => {
 
       popover().within(() => {
         testPairedTooltipValues("Created At", "2019");
-        testPairedTooltipValues("Count", "6,578");
+        testPairedTooltipValues("Count", "6,524");
       });
     });
   });
