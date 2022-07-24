@@ -31,7 +31,7 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 
 import DashCardParameterMapper from "../DashCardParameterMapper";
-import { ChartSettingsButton } from "./DashCardActionButtons";
+import { ChartSettingsButton, RemoveButton } from "./DashCardActionButtons";
 import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
@@ -379,17 +379,6 @@ const DashCardActionButtons = ({
     </span>
   );
 };
-
-const RemoveButton = ({ onRemove }) => (
-  <a
-    className="text-dark-hover drag-disabled"
-    data-metabase-event="Dashboard;Remove Card Modal"
-    onClick={onRemove}
-    style={HEADER_ACTION_STYLE}
-  >
-    <Icon name="close" size={HEADER_ICON_SIZE} />
-  </a>
-);
 
 const AddSeriesButton = ({ series, onAddSeries }) => (
   <a
