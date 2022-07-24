@@ -103,7 +103,7 @@ interface DashCardProps {
     dashCard: IDashCard,
     opts?: FetchCardDataOpts,
   ) => void;
-  navigateToNewCardFromDashboard: (
+  navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
@@ -300,6 +300,22 @@ function DashCard({
     showClickBehaviorSidebar(dashcard.id);
   }, [dashcard.id, showClickBehaviorSidebar]);
 
+  const changeCardAndRunHandler = useMemo(() => {
+    if (!navigateToNewCardFromDashboard) {
+      return null;
+    }
+
+    type Args = Omit<NavigateToNewCardFromDashboardOpts, "dashcard">;
+    return ({ nextCard, previousCard, objectId }: Args) => {
+      navigateToNewCardFromDashboard({
+        nextCard,
+        previousCard,
+        dashcard,
+        objectId,
+      });
+    };
+  }, [dashcard, navigateToNewCardFromDashboard]);
+
   const hasHiddenBackground =
     !isEditing &&
     mainCard.visualization_settings["dashcard.background"] === false;
@@ -393,23 +409,7 @@ function DashCard({
         }
         metadata={metadata}
         mode={mode}
-        onChangeCardAndRun={
-          navigateToNewCardFromDashboard
-            ? ({
-                nextCard,
-                previousCard,
-                objectId,
-              }: Omit<NavigateToNewCardFromDashboardOpts, "dashcard">) => {
-                // navigateToNewCardFromDashboard needs `dashcard` for applying active filters to the query
-                navigateToNewCardFromDashboard({
-                  nextCard,
-                  previousCard,
-                  dashcard,
-                  objectId,
-                });
-              }
-            : null
-        }
+        onChangeCardAndRun={changeCardAndRunHandler}
         onChangeLocation={onChangeLocation}
       />
     </DashCardRoot>
