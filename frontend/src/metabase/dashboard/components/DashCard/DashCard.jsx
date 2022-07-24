@@ -18,7 +18,7 @@ import Utils from "metabase/lib/utils";
 
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 
-import visualizations, { getVisualizationRaw } from "metabase/visualizations";
+import { getVisualizationRaw } from "metabase/visualizations";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
@@ -31,7 +31,11 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 
 import DashCardParameterMapper from "../DashCardParameterMapper";
-import { ChartSettingsButton, RemoveButton } from "./DashCardActionButtons";
+import {
+  AddSeriesButton,
+  ChartSettingsButton,
+  RemoveButton,
+} from "./DashCardActionButtons";
 import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
@@ -380,30 +384,6 @@ const DashCardActionButtons = ({
   );
 };
 
-const AddSeriesButton = ({ series, onAddSeries }) => (
-  <a
-    data-testid="add-series-button"
-    data-metabase-event="Dashboard;Edit Series Modal;open"
-    className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
-    onClick={onAddSeries}
-    style={HEADER_ACTION_STYLE}
-  >
-    <Tooltip tooltip={series.length > 1 ? t`Edit series` : t`Add series`}>
-      <span className="flex align-center">
-        <span className="flex">
-          <Icon
-            className="absolute"
-            name="add"
-            style={{ top: 0, left: 1 }}
-            size={HEADER_ICON_SIZE / 2}
-          />
-          <Icon name={getSeriesIconName(series)} size={HEADER_ICON_SIZE - 2} />
-        </span>
-      </span>
-    </Tooltip>
-  </a>
-);
-
 const ToggleCardPreviewButton = ({ isPreviewing, onPreviewToggle }) => {
   return (
     <a
@@ -426,15 +406,6 @@ const ToggleCardPreviewButton = ({ isPreviewing, onPreviewToggle }) => {
     </a>
   );
 };
-
-function getSeriesIconName(series) {
-  try {
-    const display = series[0].card.display;
-    return visualizations.get(display === "scalar" ? "bar" : display).iconName;
-  } catch (e) {
-    return "bar";
-  }
-}
 
 const MIN_WIDTH_FOR_ON_CLICK_LABEL = 330;
 
