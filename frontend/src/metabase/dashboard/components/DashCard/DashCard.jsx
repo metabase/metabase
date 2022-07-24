@@ -9,7 +9,6 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 
 import Icon, { iconPropTypes } from "metabase/components/Icon";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
@@ -21,7 +20,6 @@ import { isVirtualDashCard } from "metabase/dashboard/utils";
 
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
-import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
   ERROR_MESSAGE_PERMISSION,
@@ -33,6 +31,7 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 
 import DashCardParameterMapper from "../DashCardParameterMapper";
+import { ChartSettingsButton } from "./DashCardActionButtons";
 import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
@@ -380,36 +379,6 @@ const DashCardActionButtons = ({
     </span>
   );
 };
-
-const ChartSettingsButton = ({
-  series,
-  onReplaceAllVisualizationSettings,
-  dashboard,
-}) => (
-  <ModalWithTrigger
-    wide
-    tall
-    triggerElement={
-      <Tooltip tooltip={t`Visualization options`}>
-        <Icon
-          name="palette"
-          size={HEADER_ICON_SIZE}
-          style={HEADER_ACTION_STYLE}
-        />
-      </Tooltip>
-    }
-    triggerClasses="text-dark-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
-    enableMouseEvents
-  >
-    <ChartSettingsWithState
-      className="spread"
-      series={series}
-      onChange={onReplaceAllVisualizationSettings}
-      isDashboard
-      dashboard={dashboard}
-    />
-  </ModalWithTrigger>
-);
 
 const RemoveButton = ({ onRemove }) => (
   <a
