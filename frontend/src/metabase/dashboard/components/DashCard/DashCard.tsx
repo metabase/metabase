@@ -1,14 +1,13 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
 import { t } from "ttag";
 import { connect } from "react-redux";
+import { LocationDescriptor } from "history";
 
-import { iconPropTypes } from "metabase/components/Icon";
+import { IconProps } from "metabase/components/Icon";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
@@ -27,6 +26,23 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 
+import Mode from "metabase-lib/lib/Mode";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+
+import { VisualizationSettings } from "metabase-types/api/card";
+import { CardId, SavedCard } from "metabase-types/types/Card";
+import {
+  DashboardWithCards,
+  DashCard as IDashCard,
+  DashCardId,
+} from "metabase-types/types/Dashboard";
+import { DatasetData } from "metabase-types/types/Dataset";
+import {
+  ParameterId,
+  ParameterValueOrArray,
+} from "metabase-types/types/Parameter";
+import { Dispatch } from "metabase-types/store";
+
 import DashCardParameterMapper from "../DashCardParameterMapper";
 import ClickBehaviorSidebarOverlay from "./ClickBehaviorSidebarOverlay";
 import DashCardActionButtons from "./DashCardActionButtons";
@@ -40,44 +56,70 @@ const WrappedVisualization = WithVizSettingsData(
   connect(null, dispatch => ({ dispatch }))(Visualization),
 );
 
-class DashCard extends Component {
-  static propTypes = {
-    dashcard: PropTypes.object.isRequired,
-    gridItemWidth: PropTypes.number.isRequired,
-    totalNumGridCols: PropTypes.number.isRequired,
-    dashcardData: PropTypes.object.isRequired,
-    slowCards: PropTypes.object.isRequired,
-    parameterValues: PropTypes.object.isRequired,
-    markNewCardSeen: PropTypes.func.isRequired,
-    fetchCardData: PropTypes.func.isRequired,
-    navigateToNewCardFromDashboard: PropTypes.func.isRequired,
-    headerIcon: PropTypes.shape(iconPropTypes),
-    isNightMode: PropTypes.bool,
-  };
+type FetchCardDataOpts = {
+  reload?: boolean;
+  clear?: boolean;
+  ignoreCache?: boolean;
+};
 
-  constructor(props) {
-    super(props);
+type NavigateToNewCardFromDashboardOpts = {
+  nextCard: SavedCard;
+  previousCard: SavedCard;
+  dashcard: IDashCard;
+  objectId?: unknown;
+};
 
-    this.state = {
-      isPreviewingCard: false,
-    };
-  }
+interface DashCardProps {
+  dashboard: DashboardWithCards;
+  dashcard: IDashCard & { justAdded?: boolean };
+  gridItemWidth: number;
+  totalNumGridCols: number;
+  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
+  slowCards: Record<CardId, boolean>;
+  parameterValues: Record<ParameterId, ParameterValueOrArray>;
+  metadata: Metadata;
+  mode?: Mode;
 
+  clickBehaviorSidebarDashcard?: IDashCard | null;
+
+  isEditing?: boolean;
+  isEditingParameter?: boolean;
+  isFullscreen?: boolean;
+  isMobile?: boolean;
+  isNightMode?: boolean;
+
+  headerIcon?: IconProps;
+
+  dispatch: Dispatch;
+  onAddSeries: () => void;
+  onRemove: () => void;
+  markNewCardSeen: (dashcardId: DashCardId) => void;
+  fetchCardData: (
+    card: SavedCard,
+    dashCard: IDashCard,
+    opts?: FetchCardDataOpts,
+  ) => void;
+  navigateToNewCardFromDashboard: (
+    opts: NavigateToNewCardFromDashboardOpts,
+  ) => void;
+  onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
+  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  showClickBehaviorSidebar: (dashCardId: DashCardId) => void;
+  onChangeLocation: (location: LocationDescriptor) => void;
+}
+
+class DashCard extends Component<DashCardProps, { isPreviewingCard: boolean }> {
   async componentDidMount() {
     const { dashcard, markNewCardSeen } = this.props;
 
     // HACK: way to scroll to a newly added card
     if (dashcard.justAdded) {
       const element = ReactDOM.findDOMNode(this);
-      if (element && element.scrollIntoView) {
+      if (element && "scrollIntoView" in element) {
         element.scrollIntoView({ block: "nearest" });
       }
       markNewCardSeen(dashcard.id);
     }
-  }
-
-  componentWillUnmount() {
-    window.clearInterval(this.visibilityTimer);
   }
 
   handlePreviewToggle = () => {
@@ -86,7 +128,7 @@ class DashCard extends Component {
     }));
   };
 
-  preventDragging = e => {
+  preventDragging = (e: React.SyntheticEvent) => {
     e.stopPropagation();
   };
 
@@ -94,21 +136,21 @@ class DashCard extends Component {
     const {
       dashcard,
       dashcardData,
+      dashboard,
       slowCards,
-      isEditing,
-      clickBehaviorSidebarDashcard,
+      metadata,
+      parameterValues,
+      mode,
+      isEditing = false,
+      isNightMode = false,
+      isFullscreen = false,
+      isMobile = false,
       isEditingParameter,
-      isFullscreen,
-      isMobile,
+      clickBehaviorSidebarDashcard,
+      headerIcon,
       onAddSeries,
       onRemove,
       navigateToNewCardFromDashboard,
-      metadata,
-      dashboard,
-      parameterValues,
-      mode,
-      headerIcon,
-      isNightMode,
     } = this.props;
 
     const mainCard = {
@@ -117,7 +159,8 @@ class DashCard extends Component {
         dashcard.card.visualization_settings,
         dashcard.visualization_settings,
       ),
-    };
+    } as SavedCard;
+
     const cards = [mainCard].concat(dashcard.series || []);
     const dashboardId = dashcard.dashboard_id;
     const isEmbed = Utils.isJWT(dashboardId);
@@ -184,7 +227,7 @@ class DashCard extends Component {
         style={
           hideBackground
             ? { border: 0, background: "transparent", boxShadow: "none" }
-            : null
+            : undefined
         }
         isNightMode={isNightMode}
         isUsuallySlow={isSlow === "usually-slow"}
@@ -211,6 +254,8 @@ class DashCard extends Component {
           </DashboardCardActionsPanel>
         ) : null}
         <WrappedVisualization
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
           className={cx("flex-full overflow-hidden", {
             "pointer-events-none": isEditingDashboardLayout,
           })}
@@ -238,6 +283,8 @@ class DashCard extends Component {
           totalNumGridCols={this.props.totalNumGridCols}
           actionButtons={
             isEmbed ? (
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore
               <QueryDownloadWidget
                 className="m1 text-brand-hover text-light"
                 classNameClose="hover-child"
@@ -267,10 +314,9 @@ class DashCard extends Component {
               <ClickBehaviorSidebarOverlay
                 dashcard={dashcard}
                 dashcardWidth={this.props.gridItemWidth}
-                dashboard={dashboard}
                 showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
                 isShowingThisClickBehaviorSidebar={
-                  clickBehaviorSidebarDashcard.id === dashcard.id
+                  clickBehaviorSidebarDashcard?.id === dashcard.id
                 }
               />
             ) : null
@@ -279,7 +325,11 @@ class DashCard extends Component {
           mode={mode}
           onChangeCardAndRun={
             navigateToNewCardFromDashboard
-              ? ({ nextCard, previousCard, objectId }) => {
+              ? ({
+                  nextCard,
+                  previousCard,
+                  objectId,
+                }: Omit<NavigateToNewCardFromDashboardOpts, "dashcard">) => {
                   // navigateToNewCardFromDashboard needs `dashcard` for applying active filters to the query
                   navigateToNewCardFromDashboard({
                     nextCard,
