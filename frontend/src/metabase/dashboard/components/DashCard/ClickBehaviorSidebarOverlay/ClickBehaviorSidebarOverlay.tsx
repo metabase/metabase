@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import cx from "classnames";
 import _ from "underscore";
@@ -8,6 +7,15 @@ import Icon from "metabase/components/Icon";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
+import { DashCard, DashCardId } from "metabase-types/types/Dashboard";
+
+interface Props {
+  dashcard: DashCard;
+  dashcardWidth: number;
+  showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
+  isShowingThisClickBehaviorSidebar: boolean;
+}
+
 const MIN_WIDTH_FOR_ON_CLICK_LABEL = 330;
 
 function ClickBehaviorSidebarOverlay({
@@ -15,7 +23,7 @@ function ClickBehaviorSidebarOverlay({
   dashcardWidth,
   showClickBehaviorSidebar,
   isShowingThisClickBehaviorSidebar,
-}) {
+}: Props) {
   return (
     <div className="flex align-center justify-center full-height">
       <div

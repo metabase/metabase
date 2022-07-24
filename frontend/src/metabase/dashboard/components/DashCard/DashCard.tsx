@@ -108,7 +108,7 @@ interface DashCardProps {
   ) => void;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
-  showClickBehaviorSidebar: (dashCardId: DashCardId) => void;
+  showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
