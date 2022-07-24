@@ -42,6 +42,7 @@ import {
   ParameterId,
   ParameterValueOrArray,
 } from "metabase-types/types/Parameter";
+import { Series } from "metabase-types/types/Visualization";
 import { Dispatch } from "metabase-types/store";
 
 import DashCardParameterMapper from "../DashCardParameterMapper";
@@ -113,6 +114,35 @@ interface DashCardProps {
 
 function preventDragging(e: React.SyntheticEvent) {
   e.stopPropagation();
+}
+
+function getSeriesError(series: Series) {
+  const isAccessRestricted = series.some(
+    s =>
+      s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
+      s.error?.status === 403,
+  );
+
+  if (isAccessRestricted) {
+    return {
+      message: ERROR_MESSAGE_PERMISSION,
+      icon: "key",
+    };
+  }
+
+  const errors = series.map(s => s.error).filter(Boolean);
+  if (errors.length > 0) {
+    if (IS_EMBED_PREVIEW) {
+      const message = errors[0]?.data || ERROR_MESSAGE_GENERIC;
+      return { message, icon: "warning" };
+    }
+    return {
+      message: ERROR_MESSAGE_GENERIC,
+      icon: "warning",
+    };
+  }
+
+  return;
 }
 
 function DashCard({
@@ -210,26 +240,8 @@ function DashCard({
     return { expectedDuration, isSlow };
   }, [series, isLoading]);
 
-  const isAccessRestricted = series.some(
-    s =>
-      s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
-      s.error?.status === 403,
-  );
-
-  const errors = series.map(s => s.error).filter(e => e);
-
-  let errorMessage, errorIcon;
-  if (isAccessRestricted) {
-    errorMessage = ERROR_MESSAGE_PERMISSION;
-    errorIcon = "key";
-  } else if (errors.length > 0) {
-    if (IS_EMBED_PREVIEW) {
-      errorMessage = (errors[0] && errors[0].data) || ERROR_MESSAGE_GENERIC;
-    } else {
-      errorMessage = ERROR_MESSAGE_GENERIC;
-    }
-    errorIcon = "warning";
-  }
+  const error = useMemo(() => getSeriesError(series), [series]);
+  const hasError = !!error;
 
   const parameterValuesBySlug = getParameterValuesBySlug(
     dashboard.parameters,
@@ -263,7 +275,7 @@ function DashCard({
             series={series}
             isLoading={isLoading}
             isVirtualDashCard={isVirtualDashCard(dashcard)}
-            hasError={!!errorMessage}
+            hasError={hasError}
             onRemove={onRemove}
             onAddSeries={onAddSeries}
             onReplaceAllVisualizationSettings={
@@ -285,9 +297,9 @@ function DashCard({
           "pointer-events-none": isEditingDashboardLayout,
         })}
         classNameWidgets={isEmbed && "text-light text-medium-hover"}
-        error={errorMessage}
+        error={error?.message}
+        errorIcon={error?.icon}
         headerIcon={headerIcon}
-        errorIcon={errorIcon}
         isSlow={isSlow}
         expectedDuration={expectedDuration}
         rawSeries={series}
