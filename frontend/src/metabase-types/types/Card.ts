@@ -28,6 +28,7 @@ export type SavedCard<Query = DatasetQuery> = UnsavedCard<Query> & {
   public_uuid: string;
   archived?: boolean;
   cache_ttl?: number | null;
+  query_average_duration?: number | null;
 };
 
 export type Card<Query = DatasetQuery> = SavedCard<Query> | UnsavedCard<Query>;
