@@ -243,25 +243,28 @@ function DashCard({
   const error = useMemo(() => getSeriesError(series), [series]);
   const hasError = !!error;
 
-  const parameterValuesBySlug = getParameterValuesBySlug(
-    dashboard.parameters,
-    parameterValues,
+  const parameterValuesBySlug = useMemo(
+    () => getParameterValuesBySlug(dashboard.parameters, parameterValues),
+    [dashboard.parameters, parameterValues],
   );
 
-  const hideBackground =
+  const gridSize = useMemo(
+    () => ({ width: dashcard.sizeX, height: dashcard.sizeY }),
+    [dashcard.sizeX, dashcard.sizeY],
+  );
+
+  const hasHiddenBackground =
     !isEditing &&
     mainCard.visualization_settings["dashcard.background"] === false;
 
   const isEditingDashboardLayout =
-    isEditing && clickBehaviorSidebarDashcard == null && !isEditingParameter;
-
-  const gridSize = { width: dashcard.sizeX, height: dashcard.sizeY };
+    isEditing && !clickBehaviorSidebarDashcard && !isEditingParameter;
 
   return (
     <DashCardRoot
       className="Card rounded flex flex-column hover-parent hover--visibility"
       style={
-        hideBackground
+        hasHiddenBackground
           ? { border: 0, background: "transparent", boxShadow: "none" }
           : undefined
       }
