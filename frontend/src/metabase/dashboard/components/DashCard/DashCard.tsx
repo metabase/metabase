@@ -253,6 +253,10 @@ function DashCard({
     [dashcard.sizeX, dashcard.sizeY],
   );
 
+  const handleShowClickBehaviorSidebar = useCallback(() => {
+    showClickBehaviorSidebar(dashcard.id);
+  }, [dashcard.id, showClickBehaviorSidebar]);
+
   const hasHiddenBackground =
     !isEditing &&
     mainCard.visualization_settings["dashcard.background"] === false;
@@ -280,9 +284,7 @@ function DashCard({
             onReplaceAllVisualizationSettings={
               onReplaceAllVisualizationSettings
             }
-            showClickBehaviorSidebar={() =>
-              showClickBehaviorSidebar(dashcard.id)
-            }
+            showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             isPreviewing={isPreviewingCard}
             onPreviewToggle={handlePreviewToggle}
             dashboard={dashboard}
