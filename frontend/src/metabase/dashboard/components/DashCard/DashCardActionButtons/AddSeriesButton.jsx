@@ -4,11 +4,11 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 
 import visualizations from "metabase/visualizations";
 
-import { HEADER_ACTION_STYLE, HEADER_ICON_SIZE } from "./constants";
+import { HEADER_ICON_SIZE } from "./constants";
+import DashActionButton from "./DashActionButton";
 
 function getSeriesIconName(series) {
   try {
@@ -21,30 +21,24 @@ function getSeriesIconName(series) {
 
 function AddSeriesButton({ series, onAddSeries }) {
   return (
-    <a
-      data-testid="add-series-button"
-      data-metabase-event="Dashboard;Edit Series Modal;open"
-      className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
+    <DashActionButton
+      className="h3 flex-no-shrink relative mr1"
       onClick={onAddSeries}
-      style={HEADER_ACTION_STYLE}
+      tooltip={series.length > 1 ? t`Edit series` : t`Add series`}
+      analyticsEvent="Edit Series Modal;open"
+      data-testid="add-series-button"
     >
-      <Tooltip tooltip={series.length > 1 ? t`Edit series` : t`Add series`}>
-        <span className="flex align-center">
-          <span className="flex">
-            <Icon
-              className="absolute"
-              name="add"
-              style={{ top: 0, left: 1 }}
-              size={HEADER_ICON_SIZE / 2}
-            />
-            <Icon
-              name={getSeriesIconName(series)}
-              size={HEADER_ICON_SIZE - 2}
-            />
-          </span>
+      <span className="flex align-center">
+        <span className="flex">
+          <Icon
+            name="add"
+            style={{ top: 0, left: 1 }}
+            size={HEADER_ICON_SIZE / 2}
+          />
+          <Icon name={getSeriesIconName(series)} size={HEADER_ICON_SIZE - 2} />
         </span>
-      </Tooltip>
-    </a>
+      </span>
+    </DashActionButton>
   );
 }
 

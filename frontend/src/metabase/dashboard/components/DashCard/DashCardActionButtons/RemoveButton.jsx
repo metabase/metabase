@@ -1,21 +1,21 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import _ from "underscore";
+import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 
-import { HEADER_ACTION_STYLE, HEADER_ICON_SIZE } from "./constants";
+import { HEADER_ICON_SIZE } from "./constants";
+import DashActionButton from "./DashActionButton";
 
 function RemoveButton({ onRemove }) {
   return (
-    <a
-      className="text-dark-hover drag-disabled"
-      data-metabase-event="Dashboard;Remove Card Modal"
+    <DashActionButton
+      analyticsEvent="Remove Card Modal"
       onClick={onRemove}
-      style={HEADER_ACTION_STYLE}
+      tooltip={t`Remove`}
     >
       <Icon name="close" size={HEADER_ICON_SIZE} />
-    </a>
+    </DashActionButton>
   );
 }
 

@@ -4,30 +4,28 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 
-import { HEADER_ACTION_STYLE, HEADER_ICON_SIZE } from "./constants";
+import { HEADER_ICON_SIZE } from "./constants";
+import DashActionButton from "./DashActionButton";
 
 function ToggleCardPreviewButton({ isPreviewing, onPreviewToggle }) {
   return (
-    <a
-      data-metabase-event="Dashboard;Text;edit"
-      className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
+    <DashActionButton
+      className="h3 flex-no-shrink relative mr1"
       onClick={onPreviewToggle}
-      style={HEADER_ACTION_STYLE}
+      tooltip={isPreviewing ? t`Edit` : t`Preview`}
+      analyticsEvent="Text;edit"
     >
-      <Tooltip tooltip={isPreviewing ? t`Edit` : t`Preview`}>
-        <span className="flex align-center">
-          <span className="flex" style={{ width: 18 }}>
-            {isPreviewing ? (
-              <Icon name="edit_document" size={HEADER_ICON_SIZE} />
-            ) : (
-              <Icon name="eye" size={18} />
-            )}
-          </span>
+      <span className="flex align-center">
+        <span className="flex" style={{ width: 18 }}>
+          {isPreviewing ? (
+            <Icon name="edit_document" size={HEADER_ICON_SIZE} />
+          ) : (
+            <Icon name="eye" size={18} />
+          )}
         </span>
-      </Tooltip>
-    </a>
+      </span>
+    </DashActionButton>
   );
 }
 

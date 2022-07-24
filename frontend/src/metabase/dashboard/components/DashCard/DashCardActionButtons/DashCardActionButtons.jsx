@@ -4,16 +4,15 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 
 import { getVisualizationRaw } from "metabase/visualizations";
+
+import DashActionButton from "./DashActionButton";
 
 import AddSeriesButton from "./AddSeriesButton";
 import ChartSettingsButton from "./ChartSettingsButton";
 import RemoveButton from "./RemoveButton";
 import ToggleCardPreviewButton from "./ToggleCardPreviewButton";
-
-import { HEADER_ACTION_STYLE } from "./constants";
 
 function DashCardActionButtons({
   series,
@@ -56,16 +55,15 @@ function DashCardActionButtons({
     }
     if (!isVirtualDashCard) {
       buttons.push(
-        <Tooltip key="click-behavior-tooltip" tooltip={t`Click behavior`}>
-          <a
-            className="text-dark-hover drag-disabled mr1"
-            data-metabase-event="Dashboard;Open Click Behavior Sidebar"
-            onClick={showClickBehaviorSidebar}
-            style={HEADER_ACTION_STYLE}
-          >
-            <Icon name="click" />
-          </a>
-        </Tooltip>,
+        <DashActionButton
+          key="click-behavior-tooltip"
+          className="mr1"
+          tooltip={t`Click behavior`}
+          analyticsEvent="Open Click Behavior Sidebar"
+          onClick={showClickBehaviorSidebar}
+        >
+          <Icon name="click" />
+        </DashActionButton>,
       );
     }
 
@@ -83,9 +81,7 @@ function DashCardActionButtons({
   return (
     <span className="flex align-center text-medium" style={{ lineHeight: 1 }}>
       {buttons}
-      <Tooltip tooltip={t`Remove`}>
-        <RemoveButton className="ml1" onRemove={onRemove} />
-      </Tooltip>
+      <RemoveButton className="ml1" onRemove={onRemove} />
     </span>
   );
 }
