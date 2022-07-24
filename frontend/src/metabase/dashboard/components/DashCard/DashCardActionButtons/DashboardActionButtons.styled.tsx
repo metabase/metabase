@@ -6,6 +6,13 @@ import { color } from "metabase/lib/colors";
 
 export const HEADER_ICON_SIZE = 16;
 
+export const DashCardActionButtonsContainer = styled.span`
+  display: flex;
+  align-items: center;
+  color: ${color("text-medium")};
+  line-height: 1px;
+`;
+
 export const StyledAnchor = styled.a`
   display: flex;
   align-items: center;

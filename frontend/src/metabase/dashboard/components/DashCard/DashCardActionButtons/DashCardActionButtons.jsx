@@ -14,6 +14,8 @@ import ChartSettingsButton from "./ChartSettingsButton";
 import RemoveButton from "./RemoveButton";
 import ToggleCardPreviewButton from "./ToggleCardPreviewButton";
 
+import { DashCardActionButtonsContainer } from "./DashboardActionButtons.styled";
+
 function DashCardActionButtons({
   series,
   isLoading,
@@ -79,10 +81,10 @@ function DashCardActionButtons({
   }
 
   return (
-    <span className="flex align-center text-medium" style={{ lineHeight: 1 }}>
+    <DashCardActionButtonsContainer>
       {buttons}
       <RemoveButton className="ml1" onRemove={onRemove} />
-    </span>
+    </DashCardActionButtonsContainer>
   );
 }
 
