@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import styled from "@emotion/styled";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
@@ -32,7 +31,7 @@ import _ from "underscore";
 import { getIn } from "icepick";
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 import Utils from "metabase/lib/utils";
-import { DashCardRoot } from "./DashCard.styled";
+import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
@@ -304,31 +303,6 @@ export default class DashCard extends Component {
     );
   }
 }
-
-const DashboardCardActionsPanel = styled.div`
-  padding: 0.125em 0.25em;
-  position: absolute;
-  background: white;
-  transform: translateY(-50%);
-  top: 0;
-  right: 20px;
-  border-radius: 8px;
-  box-shadow: 0px 1px 3px rgb(0 0 0 / 13%);
-  z-index: 3;
-  cursor: default;
-  transition: opacity 200ms;
-  opacity: 0;
-  pointer-events: none;
-
-  .Card:hover & {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .Dash--dragging & {
-    display: none;
-  }
-`;
 
 const DashCardActionButtons = ({
   series,
