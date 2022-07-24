@@ -25,7 +25,7 @@ function ChartSettingsButton({
           <Icon name="palette" size={HEADER_ICON_SIZE} />
         </DashActionButton>
       }
-      triggerClasses="text-dark-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
+      triggerClasses="mr1"
       enableMouseEvents
     >
       <ChartSettingsWithState

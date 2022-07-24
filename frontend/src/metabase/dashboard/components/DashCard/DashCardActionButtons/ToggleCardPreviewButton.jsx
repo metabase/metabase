@@ -11,20 +11,16 @@ import DashActionButton from "./DashActionButton";
 function ToggleCardPreviewButton({ isPreviewing, onPreviewToggle }) {
   return (
     <DashActionButton
-      className="h3 flex-no-shrink relative mr1"
+      className="mr1"
       onClick={onPreviewToggle}
       tooltip={isPreviewing ? t`Edit` : t`Preview`}
       analyticsEvent="Text;edit"
     >
-      <span className="flex align-center">
-        <span className="flex" style={{ width: 18 }}>
-          {isPreviewing ? (
-            <Icon name="edit_document" size={HEADER_ICON_SIZE} />
-          ) : (
-            <Icon name="eye" size={18} />
-          )}
-        </span>
-      </span>
+      {isPreviewing ? (
+        <Icon name="edit_document" size={HEADER_ICON_SIZE} />
+      ) : (
+        <Icon name="eye" size={18} />
+      )}
     </DashActionButton>
   );
 }

@@ -22,21 +22,19 @@ function getSeriesIconName(series) {
 function AddSeriesButton({ series, onAddSeries }) {
   return (
     <DashActionButton
-      className="h3 flex-no-shrink relative mr1"
+      className="relative mr1"
       onClick={onAddSeries}
       tooltip={series.length > 1 ? t`Edit series` : t`Add series`}
       analyticsEvent="Edit Series Modal;open"
       data-testid="add-series-button"
     >
-      <span className="flex align-center">
-        <span className="flex">
-          <Icon
-            name="add"
-            style={{ top: 0, left: 1 }}
-            size={HEADER_ICON_SIZE / 2}
-          />
-          <Icon name={getSeriesIconName(series)} size={HEADER_ICON_SIZE - 2} />
-        </span>
+      <span className="flex">
+        <Icon
+          name="add"
+          style={{ top: 0, left: 1 }}
+          size={HEADER_ICON_SIZE / 2}
+        />
+        <Icon name={getSeriesIconName(series)} size={HEADER_ICON_SIZE - 2} />
       </span>
     </DashActionButton>
   );
