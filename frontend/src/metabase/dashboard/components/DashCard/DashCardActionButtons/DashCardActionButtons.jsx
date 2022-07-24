@@ -11,8 +11,6 @@ import DashActionButton from "./DashActionButton";
 
 import AddSeriesButton from "./AddSeriesButton";
 import ChartSettingsButton from "./ChartSettingsButton";
-import RemoveButton from "./RemoveButton";
-import ToggleCardPreviewButton from "./ToggleCardPreviewButton";
 
 import { DashCardActionButtonsContainer } from "./DashboardActionButtons.styled";
 
@@ -36,11 +34,17 @@ function DashCardActionButtons({
 
   if (supportPreviewing) {
     buttons.push(
-      <ToggleCardPreviewButton
-        key="toggle-card-preview-button"
-        isPreviewing={isPreviewing}
-        onPreviewToggle={onPreviewToggle}
-      />,
+      <DashActionButton
+        onClick={onPreviewToggle}
+        tooltip={isPreviewing ? t`Edit` : t`Preview`}
+        analyticsEvent="Text;edit"
+      >
+        {isPreviewing ? (
+          <DashActionButton.Icon name="edit_document" />
+        ) : (
+          <DashActionButton.Icon name="eye" size={18} />
+        )}
+      </DashActionButton>,
     );
   }
 
@@ -83,7 +87,13 @@ function DashCardActionButtons({
   return (
     <DashCardActionButtonsContainer>
       {buttons}
-      <RemoveButton onRemove={onRemove} />
+      <DashActionButton
+        analyticsEvent="Remove Card Modal"
+        onClick={onRemove}
+        tooltip={t`Remove`}
+      >
+        <DashActionButton.Icon name="close" />
+      </DashActionButton>
     </DashCardActionButtonsContainer>
   );
 }
