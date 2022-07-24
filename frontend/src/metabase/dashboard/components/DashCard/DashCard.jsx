@@ -9,7 +9,6 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 
 import Icon, { iconPropTypes } from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
@@ -18,7 +17,6 @@ import Utils from "metabase/lib/utils";
 
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 
-import { getVisualizationRaw } from "metabase/visualizations";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
@@ -31,19 +29,10 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 
 import DashCardParameterMapper from "../DashCardParameterMapper";
-import {
-  AddSeriesButton,
-  ChartSettingsButton,
-  RemoveButton,
-  ToggleCardPreviewButton,
-} from "./DashCardActionButtons";
+import DashCardActionButtons from "./DashCardActionButtons";
 import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
-
-const HEADER_ACTION_STYLE = {
-  padding: 4,
-};
 
 // This is done to add the `getExtraDataForClick` prop.
 // We need that to pass relevant data along with the clicked object.
@@ -307,81 +296,6 @@ export default class DashCard extends Component {
     );
   }
 }
-
-const DashCardActionButtons = ({
-  series,
-  isLoading,
-  isVirtualDashCard,
-  hasError,
-  onRemove,
-  onAddSeries,
-  onReplaceAllVisualizationSettings,
-  showClickBehaviorSidebar,
-  onPreviewToggle,
-  isPreviewing,
-  dashboard,
-}) => {
-  const buttons = [];
-
-  if (getVisualizationRaw(series).visualization.supportPreviewing) {
-    buttons.push(
-      <ToggleCardPreviewButton
-        key="toggle-card-preview-button"
-        isPreviewing={isPreviewing}
-        onPreviewToggle={onPreviewToggle}
-      />,
-    );
-  }
-
-  if (!isLoading && !hasError) {
-    if (
-      onReplaceAllVisualizationSettings &&
-      !getVisualizationRaw(series).visualization.disableSettingsConfig
-    ) {
-      buttons.push(
-        <ChartSettingsButton
-          key="chart-settings-button"
-          series={series}
-          onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
-          dashboard={dashboard}
-        />,
-      );
-    }
-    if (!isVirtualDashCard) {
-      buttons.push(
-        <Tooltip key="click-behavior-tooltip" tooltip={t`Click behavior`}>
-          <a
-            className="text-dark-hover drag-disabled mr1"
-            data-metabase-event="Dashboard;Open Click Behavior Sidebar"
-            onClick={showClickBehaviorSidebar}
-            style={HEADER_ACTION_STYLE}
-          >
-            <Icon name="click" />
-          </a>
-        </Tooltip>,
-      );
-    }
-
-    if (getVisualizationRaw(series).visualization.supportsSeries) {
-      buttons.push(
-        <AddSeriesButton
-          key="add-series-button"
-          series={series}
-          onAddSeries={onAddSeries}
-        />,
-      );
-    }
-  }
-
-  return (
-    <span className="flex align-center text-medium" style={{ lineHeight: 1 }}>
-      {buttons}
-      <Tooltip tooltip={t`Remove`}>
-        <RemoveButton className="ml1" onRemove={onRemove} />
-      </Tooltip>
-    </span>
-  );
-};
 
 const MIN_WIDTH_FOR_ON_CLICK_LABEL = 330;
 
