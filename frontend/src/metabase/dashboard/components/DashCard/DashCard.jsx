@@ -35,12 +35,11 @@ import {
   AddSeriesButton,
   ChartSettingsButton,
   RemoveButton,
+  ToggleCardPreviewButton,
 } from "./DashCardActionButtons";
 import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
-
-const HEADER_ICON_SIZE = 16;
 
 const HEADER_ACTION_STYLE = {
   padding: 4,
@@ -381,29 +380,6 @@ const DashCardActionButtons = ({
         <RemoveButton className="ml1" onRemove={onRemove} />
       </Tooltip>
     </span>
-  );
-};
-
-const ToggleCardPreviewButton = ({ isPreviewing, onPreviewToggle }) => {
-  return (
-    <a
-      data-metabase-event="Dashboard;Text;edit"
-      className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
-      onClick={onPreviewToggle}
-      style={HEADER_ACTION_STYLE}
-    >
-      <Tooltip tooltip={isPreviewing ? t`Edit` : t`Preview`}>
-        <span className="flex align-center">
-          <span className="flex" style={{ width: 18 }}>
-            {isPreviewing ? (
-              <Icon name="edit_document" size={HEADER_ICON_SIZE} />
-            ) : (
-              <Icon name="eye" size={18} />
-            )}
-          </span>
-        </span>
-      </Tooltip>
-    </a>
   );
 };
 
