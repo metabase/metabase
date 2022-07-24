@@ -1,13 +1,18 @@
-import React from "react";
-import cx from "classnames";
+import React, { useCallback } from "react";
 import _ from "underscore";
 import { t } from "ttag";
-
-import Icon from "metabase/components/Icon";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
 import { DashCard, DashCardId } from "metabase-types/types/Dashboard";
+
+import {
+  Root,
+  Button,
+  ClickIcon,
+  HelperText,
+  ClickBehaviorDescription,
+} from "./ClickBehaviorSidebarOverlay.styled";
 
 interface Props {
   dashcard: DashCard;
@@ -24,35 +29,28 @@ function ClickBehaviorSidebarOverlay({
   showClickBehaviorSidebar,
   isShowingThisClickBehaviorSidebar,
 }: Props) {
+  const onClick = useCallback(() => {
+    showClickBehaviorSidebar(
+      isShowingThisClickBehaviorSidebar ? null : dashcard.id,
+    );
+  }, [
+    dashcard.id,
+    showClickBehaviorSidebar,
+    isShowingThisClickBehaviorSidebar,
+  ]);
+
   return (
-    <div className="flex align-center justify-center full-height">
-      <div
-        className={cx("text-bold flex py1 px2 mb2 rounded cursor-pointer", {
-          "bg-brand text-white": isShowingThisClickBehaviorSidebar,
-          "bg-light text-medium": !isShowingThisClickBehaviorSidebar,
-        })}
-        onClick={() =>
-          showClickBehaviorSidebar(
-            isShowingThisClickBehaviorSidebar ? null : dashcard.id,
-          )
-        }
-      >
-        <Icon
-          name="click"
-          className={cx("mr1", {
-            "text-light": !isShowingThisClickBehaviorSidebar,
-          })}
-        />
+    <Root>
+      <Button isActive={isShowingThisClickBehaviorSidebar} onClick={onClick}>
+        <ClickIcon name="click" isActive={isShowingThisClickBehaviorSidebar} />
         {dashcardWidth > MIN_WIDTH_FOR_ON_CLICK_LABEL && (
-          <div className="mr2">{t`On click`}</div>
+          <HelperText>{t`On click`}</HelperText>
         )}
-        <div
-          className={cx({ "text-brand": !isShowingThisClickBehaviorSidebar })}
-        >
+        <ClickBehaviorDescription isActive={isShowingThisClickBehaviorSidebar}>
           {getClickBehaviorDescription(dashcard)}
-        </div>
-      </div>
-    </div>
+        </ClickBehaviorDescription>
+      </Button>
+    </Root>
   );
 }
 
