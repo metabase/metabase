@@ -7,21 +7,20 @@ export interface DashCardRootProps {
   isUsuallySlow: boolean;
 }
 
+const rootNightModeStyle = css`
+  border-color: ${color("bg-night")};
+  background-color: ${color("bg-night")};
+`;
+
+const rootSlowCardStyle = css`
+  border-color: ${color("accent4")};
+`;
+
 export const DashCardRoot = styled.div<DashCardRootProps>`
   background-color: ${color("white")};
 
-  ${({ isNightMode }) =>
-    isNightMode &&
-    css`
-      border-color: ${color("bg-night")};
-      background-color: ${color("bg-night")};
-    `}
-
-  ${({ isUsuallySlow }) =>
-    isUsuallySlow &&
-    css`
-      border-color: ${color("accent4")};
-    `}
+  ${({ isNightMode }) => isNightMode && rootNightModeStyle}
+  ${({ isUsuallySlow }) => isUsuallySlow && rootSlowCardStyle}
 `;
 
 export const DashboardCardActionsPanel = styled.div`
