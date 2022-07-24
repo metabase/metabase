@@ -1,4 +1,4 @@
-import { Card, CardId } from "./Card";
+import { CardId, SavedCard } from "./Card";
 import { VisualizationSettings } from "metabase-types/api/card";
 import { Parameter, ParameterMapping } from "./Parameter";
 
@@ -40,8 +40,8 @@ export type DashCard = {
   card_id: CardId;
   dashboard_id: DashboardId;
 
-  card: Card;
-  series: Array<Card>;
+  card: SavedCard;
+  series: Array<SavedCard>;
 
   // incomplete
   parameter_mappings: Array<ParameterMapping>;
