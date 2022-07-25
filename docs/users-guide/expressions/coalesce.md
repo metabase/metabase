@@ -14,7 +14,7 @@ This function is useful if you want to fill in missing data or consolidate data 
 | Returns the first non-null value from a list of values. | “bananas”                                       |
 
 <div class='doc-toc' markdown=1>
-- [Filling in empty or null rows](#filling-in-empty-or-null-values).
+- [Filling in empty or null values](#filling-in-empty-or-null-values).
 - [Consolidating values from different columns](#consolidating-values-from-different-columns).
 - [Creating calculations across different columns](#creating-calculations-across-different-columns).
 - [Accepted data types](#accepted-data-types).
@@ -110,11 +110,11 @@ FROM
 
 If we assume that "Notes" is in column A, and "Comments" is in column B, we can achieve basic coalesce functionality by combining `IF` statements with functions like `ISBLANK` (for empty values) or `ISNA` (for "NaN" values).
 
-Note that this formula doesn't generalize well if you're working with more than two columns. In those cases, you may be used to working with `INDEX` and `MATCH` in an array formula (or maybe considering [a move away from spreadsheets][spreadsheets-to-bi] entirely!).
-
 ```
 =IF(ISBLANK($A2),$B2,IF(ISBLANK($B2),$A2,"No notes or comments."))
 ```
+
+Note that this formula doesn't generalize well if you're working with more than two columns. In those cases, you may be used to working with `INDEX` and `MATCH` in an array formula (or maybe considering [a move away from spreadsheets][spreadsheets-to-bi] entirely!).
 
 ### Python
 
@@ -132,7 +132,7 @@ df['custom_column'] = df['notes'].combine_first(df['comments'])\
 - [Custom expressions documentation][custom-expressions-doc]
 - [Custom expressions tutorial][custom-expressions-learn]
 
-[cast-data-type]: .../administration-guide/03-metadata-editing#casting-to-a-specific-data-type
+[cast-data-type]: ../../administration-guide/03-metadata-editing#casting-to-a-specific-data-type
 [custom-expressions-doc]: ./expressions
 [custom-expressions-learn]: /learn/questions/custom-expressions
 [data-types]: /learn/databases/data-types-overview#examples-of-data-types
