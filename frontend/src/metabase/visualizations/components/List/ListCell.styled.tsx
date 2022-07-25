@@ -3,19 +3,13 @@ import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
 
-import { CellSlot } from "./types";
-
-function getCellAlignment(slot: CellSlot) {
-  return slot === "left" ? "left" : "right";
-}
-
-export const CellRoot = styled.div<{ slot: CellSlot }>`
+export const CellRoot = styled.td`
   padding-left: 0.5rem;
   padding-right: 0.5rem;
 
-  color: ${color("text-dark")};
+  color: ${color("text-medium")};
   font-weight: bold;
-  text-align: ${props => getCellAlignment(props.slot)};
+  text-align: left;
   white-space: nowrap;
 `;
 

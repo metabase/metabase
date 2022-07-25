@@ -4,7 +4,7 @@ import { css } from "@emotion/react";
 import { alpha, color } from "metabase/lib/colors";
 
 import TableFooter from "../TableSimple/TableFooter";
-import { CellRoot } from "./ListCell.styled";
+import { CellRoot, CellContent } from "./ListCell.styled";
 
 export const LIST_ITEM_BORDER_DIVIDER_WIDTH = "1";
 
@@ -21,19 +21,31 @@ export const Root = styled.div<{ isQueryBuilder?: boolean }>`
     `}
 `;
 
-export const RowActionsContainer = styled.div`
-  display: flex;
-  align-items: center;
+const standardTableStyleReset = css`
+  border-collapse: collapse;
+  border-spacing: 0;
+  width: 100%;
+  font-size: 12px;
+  line-height: 12px;
+  text-align: left;
+`;
+
+export const Table = styled.table`
+  ${standardTableStyleReset};
+`;
+
+export const RowActionsContainer = styled.td`
   transition: all 0.1s ease-in-out;
 `;
 
 export const BulkSelectionControlContainer = styled(RowActionsContainer)<{
   isSelectingItems?: boolean;
 }>`
+  padding-left: 6px;
+
   ${props =>
     props.isSelectingItems &&
     css`
-      width: 100% !important;
       opacity: 1 !important;
     `}
 `;
@@ -43,10 +55,7 @@ export const RowActionButtonContainer = styled(CellRoot)`
   padding-right: 0.25rem;
 `;
 
-export const ListItemContainer = styled.div<{ disabled?: boolean }>`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+export const ListItemContainer = styled.tr<{ disabled?: boolean }>`
   height: 4rem;
 
   background-color: ${color("bg-white")};
@@ -54,8 +63,6 @@ export const ListItemContainer = styled.div<{ disabled?: boolean }>`
   overflow-x: hidden;
 
   transition: all 0.1s ease-in-out;
-
-  padding: 1.1875rem 1rem;
 
   ${props =>
     !props.disabled &&
@@ -67,48 +74,70 @@ export const ListItemContainer = styled.div<{ disabled?: boolean }>`
     `}
 
   ${RowActionsContainer}, ${BulkSelectionControlContainer} {
-    width: 0;
     opacity: 0;
   }
 
   &:hover {
     ${RowActionsContainer}, ${BulkSelectionControlContainer} {
-      width: 100%;
       opacity: 1;
     }
   }
 `;
 
-export const ListItemContent = styled.div`
-  display: flex;
-  align-items: center;
-`;
-
 export const InfoContentContainer = styled.div`
-  ${CellRoot}:last-of-type {
-    margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+
+  ${CellContent} {
+    display: block;
+  }
+
+  ${CellContent}:first-of-type {
+    font-size: 0.875rem;
+  }
+
+  ${CellContent}:last-of-type {
+    margin-top: 4px;
     font-size: 0.75rem;
   }
 `;
 
+export const TableHeader = styled.thead`
+  font-size: 0.8rem;
+  color: ${color("text-medium")};
+
+  &:after {
+    content: "-";
+    display: block;
+    line-height: 1em;
+    color: transparent;
+  }
+`;
+
+export const ColumnHeader = styled.th<{ width: string }>`
+  padding-left: 0.5rem;
+  width: ${props => props.width};
+`;
+
 const LIST_ITEM_BORDER_RADIUS = "6px";
 
-// Adding horizontal margin so list item shadows don't get cut in dashboard cards
-// Because of overflow: hidden style. We need overflow-y: hidden to limit the number of visible rows
-// And it's impossible to combine overflow-x: visible with overflow-y: hidden
-// https://stackoverflow.com/questions/6421966/css-overflow-x-visible-and-overflow-y-hidden-causing-scrollbar-issue
-export const ContentContainer = styled.div`
+export const TableBody = styled.tbody`
   box-shadow: 0px 1px 10px ${color("shadow")};
-  border: 1px solid ${color("border")};
   border-radius: ${LIST_ITEM_BORDER_RADIUS};
 
-  ${ListItemContainer}:first-of-type {
+  ${ListItemContainer}:first-of-type td:first-of-type {
     border-top-left-radius: ${LIST_ITEM_BORDER_RADIUS};
+  }
+
+  ${ListItemContainer}:first-of-type td:last-of-type {
     border-top-right-radius: ${LIST_ITEM_BORDER_RADIUS};
   }
 
-  ${ListItemContainer}:last-of-type {
+  ${ListItemContainer}:last-of-type td:first-of-type {
     border-bottom-left-radius: ${LIST_ITEM_BORDER_RADIUS};
+  }
+
+  ${ListItemContainer}:last-of-type td:last-of-type {
     border-bottom-right-radius: ${LIST_ITEM_BORDER_RADIUS};
   }
 
