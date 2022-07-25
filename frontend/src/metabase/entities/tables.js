@@ -175,15 +175,12 @@ const Tables = createEntity({
           virtualQuestion.moderated_status !== card.moderated_status ||
           virtualQuestion.description !== card.description
         ) {
-          console.log("update", state);
           state = updateIn(state, [virtualQuestionId], table => ({
             ...table,
             display_name: card.name,
             moderated_status: card.moderated_status,
             description: card.description,
           }));
-
-          console.log(state);
         }
 
         return state;
