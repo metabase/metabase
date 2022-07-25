@@ -187,4 +187,3 @@
   (create-pot-file! single-file "pot.pot")
   (map (juxt meta identity)
        (g/grasp single-file ::translate)))
-

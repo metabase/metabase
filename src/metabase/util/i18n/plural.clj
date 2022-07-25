@@ -68,6 +68,7 @@
   [f]
   (fn [x y] (to-int (f (to-int x) (to-int y)))))
 
+
 (defn- tag-fns
   "Functions to use for each tag in the parse tree, when transforming the tree into a single value."
   [n]
@@ -85,7 +86,7 @@
    :and-expr  #(to-int (and (to-bool %1) (to-bool %2)))
    :or-expr   #(to-int (or (to-bool %1) (to-bool %2)))
    :ternary   #(to-int (if (to-bool %1) %2 %3))
-   :integer   #(Integer. %)
+   :integer   #(Integer. ^String %)
    :variable  (constantly n)
    :expr      identity})
 
