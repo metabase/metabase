@@ -299,7 +299,8 @@
                                                              table-id-categories
                                                              table-id-users
                                                              table-id-checkins])
-                          (dump dump-dir (:email (test.users/fetch-user :crowberto)) {:only-db-ids #{db-id}})
+                          (dump dump-dir {:user        (:email (test.users/fetch-user :crowberto))
+                                          :only-db-ids #{db-id}})
                           {:query-results (gather-orig-results [card-id
                                                                 card-arch-id
                                                                 card-id-root

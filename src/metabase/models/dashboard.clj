@@ -441,6 +441,7 @@
 (defmethod serdes.base/load-xform "Dashboard"
   [dash]
   (-> dash
+      serdes.base/load-xform-basics
       (update :collection_id serdes.util/import-fk 'Collection)
       (update :creator_id    serdes.util/import-fk-keyed 'User :email)))
 
