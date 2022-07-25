@@ -1,31 +1,30 @@
 import React, { useCallback } from "react";
 
-import { Collection } from "metabase-types/api";
+import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   isFullyParametrized,
   isItemPinned,
-  isPreviewShown,
+  isItemQuestion,
   isPreviewEnabled,
-  Item,
+  isPreviewShown,
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 
 import { EntityItemMenu } from "./ActionMenu.styled";
-import { BookmarksType } from "metabase-types/api/bookmark";
 
-interface ActionMenuProps {
+export interface ActionMenuProps {
   className?: string;
-  item: Item;
+  item: CollectionItem;
   collection: Collection;
-  bookmarks?: BookmarksType;
-  onCopy: (items: Item[]) => void;
-  onMove: (items: Item[]) => void;
+  bookmarks?: Bookmark[];
+  onCopy: (items: CollectionItem[]) => void;
+  onMove: (items: CollectionItem[]) => void;
   createBookmark?: (id: string, collection: string) => void;
   deleteBookmark?: (id: string, collection: string) => void;
 }
 
-function getIsBookmarked(item: Item, bookmarks: BookmarksType) {
+function getIsBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
   const normalizedItemModel = normalizeItemModel(item);
 
   return bookmarks.some(
@@ -36,7 +35,7 @@ function getIsBookmarked(item: Item, bookmarks: BookmarksType) {
 
 // If item.model is `dataset`, that is, this is a Model in a product sense,
 // let’s call it "card" because `card` and `dataset` are treated the same in the back-end.
-function normalizeItemModel(item: Item) {
+function normalizeItemModel(item: CollectionItem) {
   return item.model === "dataset" ? "card" : item.model;
 }
 
@@ -52,10 +51,10 @@ function ActionMenu({
 }: ActionMenuProps) {
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
   const isPreviewOptionShown =
-    isItemPinned(item) && collection.can_write && item.setCollectionPreview;
+    isItemPinned(item) && isItemQuestion(item) && collection.can_write;
 
   const handlePin = useCallback(() => {
-    item.setPinned(!isItemPinned(item));
+    item.setPinned?.(!isItemPinned(item));
   }, [item]);
 
   const handleCopy = useCallback(() => {
@@ -67,7 +66,7 @@ function ActionMenu({
   }, [item, onMove]);
 
   const handleArchive = useCallback(() => {
-    item.setArchived(true);
+    item.setArchived?.(true);
   }, [item]);
 
   const handleToggleBookmark = useCallback(() => {
