@@ -650,19 +650,17 @@
                                          :email        "sso-user@metabase.com"
                                          :sso_source   "jwt"
                                          :is_superuser true}]
-        (letfn [(change-user-via-api! [m]
-                  (mt/user-http-request :crowberto :put 400 (str "user/" user-id) m))]
+        (letfn [(change-user-via-api! [expected-status m]
+                  (mt/user-http-request :crowberto :put expected-status (str "user/" user-id) m))]
           (testing "`:first_name` changes are rejected"
             (is (= {:errors {:first_name "Editing first name is not allowed for SSO users."}}
-                   (change-user-via-api! {:first_name "NOT-SSO"}))))
+                   (change-user-via-api! 400 {:first_name "NOT-SSO"}))))
           (testing "`:last_name` changes are rejected"
             (is (= {:errors {:last_name "Editing last name is not allowed for SSO users."}}
-                   (change-user-via-api! {:last_name "USER"}))))
+                   (change-user-via-api! 400 {:last_name "USER"}))))
           (testing "New names that are the same as existing names succeed because there is no change."
-            (is (partial= {:first_name "SSO"
-                           :last_name  "User"}
-                          (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:first_name "SSO"
-                                                                                           :last_name  "User"})))))))))
+            (is (partial= {:first_name "SSO" :last_name  "User"}
+                          (change-user-via-api! 200 {:first_name "SSO" :last_name  "User"})))))))))
 
 (deftest update-email-check-if-already-used-test
   (testing "PUT /api/user/:id"
