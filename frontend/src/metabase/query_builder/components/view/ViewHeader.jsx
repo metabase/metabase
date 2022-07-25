@@ -79,7 +79,6 @@ const viewTitleHeaderPropTypes = {
   onEditSummary: PropTypes.func,
   onCloseSummary: PropTypes.func,
   onOpenQuestionDetails: PropTypes.func,
-  onCloseQuestionDetails: PropTypes.func,
 
   isPreviewable: PropTypes.bool,
   isPreviewing: PropTypes.bool,
