@@ -3,7 +3,10 @@ import {
   space,
   breakpointMinHeightMedium,
 } from "metabase/styled-components/theme";
-import { color, alpha, darken, lighten } from "metabase/lib/colors";
+
+import { color, lighten } from "metabase/lib/colors";
+
+import Icon from "metabase/components/Icon";
 
 export const InlineOperatorContainer = styled.div`
   font-weight: bold;
@@ -14,14 +17,15 @@ export const InlineOperatorContainer = styled.div`
   margin-bottom: 0.875rem;
   display: inline-flex;
   align-items: flex-start;
+`;
 
-  .field-icon {
-    width: 16px;
-    height: 16px;
-    ${breakpointMinHeightMedium} {
-      width: 20px;
-      height: 20px;
-    }
+export const FieldIcon = styled(Icon)`
+  margin-right: ${space(1)};
+  width: 1rem;
+  height: 1rem;
+  ${breakpointMinHeightMedium} {
+    width: 1.25rem;
+    height: 1.25rem;
   }
 `;
 
