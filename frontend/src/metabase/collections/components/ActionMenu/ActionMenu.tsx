@@ -13,7 +13,7 @@ import EventSandbox from "metabase/components/EventSandbox";
 
 import { EntityItemMenu } from "./ActionMenu.styled";
 
-interface ActionMenuProps {
+export interface ActionMenuProps {
   className?: string;
   item: CollectionItem;
   collection: Collection;
