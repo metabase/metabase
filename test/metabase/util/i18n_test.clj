@@ -99,7 +99,6 @@
             (is (= "2 tablas"
                    (f 2)))))))))
 
-
 (deftest trsn-test
   (mt/with-mock-i18n-bundles {"es" {:headers {"Plural-Forms" "nplurals=2; plural=(n != 1);\n"}
                                     :messages {"{0} table" ["{0} tabla" "{0} tablas"]}}}
