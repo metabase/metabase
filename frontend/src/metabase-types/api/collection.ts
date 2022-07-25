@@ -36,8 +36,8 @@ export interface CollectionItem {
   fully_parametrized?: boolean | null;
   getIcon: () => { name: string };
   getUrl: () => string;
-  setArchived: (isArchived: boolean) => void;
-  setPinned: (isPinned: boolean) => void;
+  setArchived?: (isArchived: boolean) => void;
+  setPinned?: (isPinned: boolean) => void;
   setCollection?: (collection: Collection) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
 }

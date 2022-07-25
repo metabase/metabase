@@ -54,7 +54,7 @@ function ActionMenu({
     isItemPinned(item) && isItemQuestion(item) && collection.can_write;
 
   const handlePin = useCallback(() => {
-    item.setPinned(!isItemPinned(item));
+    item.setPinned?.(!isItemPinned(item));
   }, [item]);
 
   const handleCopy = useCallback(() => {
@@ -66,7 +66,7 @@ function ActionMenu({
   }, [item, onMove]);
 
   const handleArchive = useCallback(() => {
-    item.setArchived(true);
+    item.setArchived?.(true);
   }, [item]);
 
   const handleToggleBookmark = useCallback(() => {
