@@ -34,12 +34,12 @@ Members of the group can create questions using the graphical query builder on d
 
 **Granular access** allows administrators to explicitly set data access to tables or schemas within a database, with "data access" here meaning the ability to create questions using the graphical query builder. In practice, this means that:
 
-- Admins can set the groups access to individual tables to either **Unrestricted**, **No self-service**, or **Sandboxed** access.
+- Admins can set the group's access to individual tables to either **Unrestricted**, **No self-service**, or **Sandboxed** access.
 - If a new table gets added to this database in the future, the group won't get access to that new table. An administrator would need to explicitly grant access to that table.
 
 ### No self-service access
 
-**No self-service** prevents people in a group from creating new ad hoc queries or questions based on this data, or from seeing this data in the Browse Data screen. Groups with this level of access can still see saved questions and charts based on this data in Collections they have access to.
+**No self-service** prevents people in a group from using the graphical query builder to create new questions that query that database, or from seeing this database in the Browse Data section of your Metabase. Groups with No self-service access can still see saved questions that query this data if they 1) have access to the appropriate collection, and 2) aren't in a group with [blocked access](#block-access) to the database.
 
 ### Block access
 
@@ -53,20 +53,20 @@ If a person in that blocked group belongs to _another_ group that _does_ have th
 
 "Corresponding data access" here refers to whether the saved question was created using the graphical query builder, or the native/SQL editor, as the required permissions to overrule a block differ depending on how the question was created.
 
-- If the question was created using the graphical query builder, the person would also need to be in a group with **Unrestricted data access** or **Sandboxed access** to the relevant database (or table) to view that question.
-- If the question was created using the native/SQL editor, the person would need to be a member of a group with both **Unrestricted data access** and **Native query editing** set to **YES** to view that question.
+- If the question was created using the [graphical query builder](../users-guide/04-asking-questions.md), the person would also need to be in a group with **Unrestricted data access** or **Sandboxed access** to the relevant database (or table) to view that question.
+- If the question was created using the [native/SQL editor](../users-guide/writing-sql.md), the person would need to be a member of a group with both **Unrestricted data access** and **Native query editing** set to **YES** to view that question.
 
 ### Table permissions
 
-When you select [Granular access](#granular-access) for a database, you'll be prompted to set permissions on the tables (or schemas) within that database. Here you'll have two or three options, depending on your Metabase plan.
+When you select [Granular access](#granular-access) for a database, you'll be prompted to set permissions on the tables (or schemas) within that database. Here you'll have some options, which differ depending on your Metabase plan.
 
 #### Unrestricted access to the table
 
-Groups with unrestricted access can ask questions using the graphical query builder about this table.
+Groups with unrestricted access can use the [graphical query builder](../users-guide/04-asking-questions.md) to ask questions about this table.
 
 #### No self-service access to the table
 
-Groups with no self-service access to a table can’t access the table at all. They can, however, view questions that use data from that table, provided the group has access to the question's collection.
+Groups with no self-service access to a table can’t access the table at all. They can, however, view questions that use data from that table, provided the group has access to the question's collection, and they're not in a group with [blocked access](#block-access) for that table's database.
 
 #### Sandboxed access to the table
 
@@ -78,7 +78,7 @@ Sandboxed access to a table can restrict access to columns and rows of a table. 
 
 Members of a group with Native query editing set to Yes can write new SQL/native queries using the [native query editor](https://www.metabase.com/docs/latest/users-guide/writing-sql.html). This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
 
-People who aren't in groups with Native query editing permissions will still be able to view the results of questions created from SQL/native queries, but not the code itself. They also won't see the **View the SQL** button in the query builder.
+People in a group without Native query editing permissions will still be able to view the results of questions created from SQL/native queries (though just the results, not the query), provided they 1) have collection access to the question, and 2) the question doesn't query a database that is [blocked](#block-access) for that group.
 
 ## Download results
 
