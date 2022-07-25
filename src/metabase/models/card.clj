@@ -217,8 +217,7 @@
 (defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
   (when is-write?
     (when-not (db/select-one action/QueryAction :card_id card-id)
-      (db/insert! action/QueryAction {:card_id card-id
-                                      :type :query}))))
+      (action/insert! {:card_id card-id :type :query}))))
 
 (defn- delete-actions-when-not-writable! [{is-write? :is_write card-id :id}]
   (when (not is-write?)
