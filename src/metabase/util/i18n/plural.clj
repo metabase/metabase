@@ -20,7 +20,7 @@
    "expr           = <s> maybe-ternary <s> <';'>? <s>
 
    <maybe-ternary> = ternary | maybe-or
-   ternary         = maybe-or <s> <'?'> <s> maybe-or <s> <':'> <s> maybe-ternary
+   ternary         = maybe-or <s> <'?'> <s> maybe-ternary <s> <':'> <s> maybe-ternary
 
    <maybe-or>      = or-expr | maybe-and
    or-expr         = maybe-or <s> <'||'> <s> maybe-and
