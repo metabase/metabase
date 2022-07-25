@@ -11,8 +11,7 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+            [schema.core :as s]))
 
 (comment api.action/keep-me)
 
@@ -283,38 +282,68 @@
                  (:message (mt/user-http-request :crowberto :post 404 action
                                                  (assoc-in request-body [:query :source-table] Integer/MAX_VALUE))))))))))
 
-(deftest action-crud
-  (testing "Happy Path"
+(deftest action-crud-test
+  (mt/with-model-cleanup [Action]
     (actions.test-util/with-actions-enabled
       (let [initial-action {:name "Get example"
                             :type "http"
                             :template {:method "GET"
-                                       :url "https://example.com"}
+                                       :url "https://example.com/{{x}}"
+                                       :parameters [{:id "x" :type "text"}]}
                             :response_handle ".body"
                             :error_handle ".status >= 400"}
             created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
             updated-action (merge initial-action {:name "New name"})
             action-path (str "action/" (:id created-action))]
-        (try
-          (testing "Create"
-            (is (partial= initial-action created-action)))
-          (testing "Update"
-            (is (partial= updated-action
-                          (mt/user-http-request :crowberto :put 200 action-path
-                                                {:name "New name" :type "http"}))))
-          (testing "Get"
-            (is (partial= updated-action
-                          (mt/user-http-request :crowberto :get 200 action-path)))
-            (is (partial= [updated-action]
-                          (mt/user-http-request :crowberto :get 200 "action"))))
+        (testing "Create"
+          (is (partial= initial-action created-action)))
+        (testing "Validate POST"
+          (testing "Required fields"
+            (is (partial= {:errors {:type "Only http actions are supported at this time."}}
+                          (mt/user-http-request :crowberto :post 400 "action" {:type "query"})))
+            (is (partial= {:errors {:name "value must be a string."}}
+                          (mt/user-http-request :crowberto :post 400 "action" {:type "http"})))
+            (is (partial= {:errors {:template "Value does not match schema: (not (map? nil))"}}
+                          (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "test"}))))
+          (testing "Template needs method and url"
+            (is (partial= {:errors {:template "Value does not match schema: {:method missing-required-key, :url missing-required-key}"}}
+                          (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "Test" :template {}}))))
+          (testing "Template parameters should be well formed"
+            (is (partial= {:errors {:template "Value does not match schema: {:parameters (not (sequential? {}))}"}}
+                          (mt/user-http-request :crowberto :post 400 "action" {:type "http"
+                                                                               :name "Test"
+                                                                               :template {:url "https://example.com"
+                                                                                          :method "GET"
+                                                                                          :parameters {}}}))))
+          (testing "Handles need to be valid jq"
+            (is (partial= {:errors {:response_handle "value may be nil, or if non-nil, must be a valid json-query"}}
+                          (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :response_handle "body"))))
+            (is (partial= {:errors {:error_handle "value may be nil, or if non-nil, must be a valid json-query"}}
+                          (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :error_handle "x"))))))
+        (testing "Update"
+          (is (partial= updated-action
+                        (mt/user-http-request :crowberto :put 200 action-path
+                                              {:name "New name" :type "http"}))))
+        (testing "Get"
+          (is (partial= updated-action
+                        (mt/user-http-request :crowberto :get 200 action-path)))
+          (is (partial= updated-action
+                        (last (mt/user-http-request :crowberto :get 200 "action")))))
+        (testing "Validate PUT"
           (testing "Can't create or change http type"
-            (is (partial= {:type "query"} (:action (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :type "query")))))
-            (is (partial= {:type "query"} (:action (mt/user-http-request :crowberto :put 400 action-path {:type "query"})))))
-          (testing "Delete"
-            (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
-            (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))
-          (finally
-            (db/delete! Action :id (:id created-action))))))))
+            (is (partial= {:errors {:type "Only http actions are supported at this time."}}
+                          (mt/user-http-request :crowberto :put 400 action-path {:type "query"}))))
+          (testing "Template needs method and url"
+            (is (partial= {:errors {:template "Value does not match schema: {:method missing-required-key, :url missing-required-key}"}}
+                          (mt/user-http-request :crowberto :put 400 action-path {:type "http" :template {}}))))
+          (testing "Handles need to be valid jq"
+            (is (partial= {:errors {:response_handle "value may be nil, or if non-nil, must be a valid json-query"}}
+                          (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :response_handle "body"))))
+            (is (partial= {:errors {:error_handle "value may be nil, or if non-nil, must be a valid json-query"}}
+                          (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :error_handle "x"))))))
+        (testing "Delete"
+          (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
+          (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))))))
 
 (deftest bulk-create-happy-path-test
   (testing "POST /api/action/bulk/create/:table-id"
