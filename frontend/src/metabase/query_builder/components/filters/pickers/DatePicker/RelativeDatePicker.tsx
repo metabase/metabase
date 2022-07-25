@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import moment from "moment";
 import { assoc } from "icepick";
 
 import {
@@ -13,7 +12,7 @@ import {
   setStartingFrom,
   toTimeInterval,
 } from "metabase/lib/query_time";
-import { getRelativeTime } from "metabase/lib/time";
+import { checkIfTimeSpanTooGreat, getRelativeTime } from "metabase/lib/time";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
@@ -170,14 +169,6 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
   const optionsContent = (
     <OptionsContent {...props} setOptionsVisible={setOptionsVisible} />
   );
-
-  const checkIfTimeSpanTooGreat = (intervals: number, unit: string) => {
-    const now = moment();
-    const newTime = moment().add(intervals as any, unit);
-    const diff = now.diff(newTime, "years");
-
-    return Number.isNaN(diff);
-  };
 
   const handleChangeDateNumericInput = (newIntervals: number) => {
     const timeSpanTooGreat = checkIfTimeSpanTooGreat(newIntervals, unit);
