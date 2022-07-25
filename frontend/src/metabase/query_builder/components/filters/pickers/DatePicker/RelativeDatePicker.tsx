@@ -37,7 +37,7 @@ type RelativeDatePickerProps = {
 };
 
 type OptionsContentProps = RelativeDatePickerProps & {
-  setOptionsVisible: (arg0: boolean) => void;
+  setOptionsVisible: (shouldBeVisible: boolean) => void;
 };
 
 const CURRENT_INTERVAL_NAME = {
