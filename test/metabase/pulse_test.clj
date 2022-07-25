@@ -27,6 +27,7 @@
 
 (defn- rasta-pulse-email [& [email]]
   (mt/email-to :rasta (merge {:subject "Pulse: Pulse Name",
+                              :Precedence "bulk",
                               :body  [{"Pulse Name" true}
                                       png-attachment
                                       png-attachment]}

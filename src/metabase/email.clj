@@ -113,16 +113,17 @@
   ;; Now send the email
   (send-email! (smtp-settings)
                (merge
-                {:from    (if-let [from-name (email-from-name)]
-                            (str from-name " <" (email-from-address) ">")
-                            (email-from-address))
-                 :to      recipients
-                 :subject subject
-                 :body    (case message-type
-                            :attachments message
-                            :text        message
-                            :html        [{:type    "text/html; charset=utf-8"
-                                           :content message}])}
+                {:from       (if-let [from-name (email-from-name)]
+                               (str from-name " <" (email-from-address) ">")
+                               (email-from-address))
+                 :to         recipients
+                 :subject    subject
+                 :Precedence "bulk"
+                 :body       (case message-type
+                               :attachments message
+                               :text        message
+                               :html        [{:type    "text/html; charset=utf-8"
+                                              :content message}])}
                 (when-let [reply-to (email-reply-to)]
                   {:reply-to reply-to}))))
 

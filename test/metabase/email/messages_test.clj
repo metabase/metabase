@@ -7,10 +7,11 @@
   (:import java.io.IOException))
 
 (deftest new-user-email
-  (is (= [{:from    "notifications@metabase.com",
-           :to      ["test@test.com"],
-           :subject "You're invited to join Metabase Test's Metabase",
-           :body    [{:type "text/html; charset=utf-8"}]}]
+  (is (= [{:from       "notifications@metabase.com",
+           :to         ["test@test.com"],
+           :subject    "You're invited to join Metabase Test's Metabase",
+           :Precedence "bulk"
+           :body       [{:type "text/html; charset=utf-8"}]}]
          (tu/with-temporary-setting-values [site-name "Metabase Test"]
            (et/with-fake-inbox
              (messages/send-new-user-email! {:first_name "test" :email "test@test.com"}
@@ -24,10 +25,11 @@
   (testing "password reset email can be sent successfully"
     (et/with-fake-inbox
       (messages/send-password-reset-email! "test@test.com" false "http://localhost/some/url" true)
-      (is (= [{:from    "notifications@metabase.com",
-               :to      ["test@test.com"],
-               :subject "[Metabase] Password Reset Request",
-               :body    [{:type "text/html; charset=utf-8"}]}]
+      (is (= [{:from       "notifications@metabase.com",
+               :to         ["test@test.com"],
+               :subject    "[Metabase] Password Reset Request",
+               :Precedence "bulk"
+               :body       [{:type "text/html; charset=utf-8"}]}]
              (-> (@et/inbox "test@test.com")
                  (update-in [0 :body 0] dissoc :content))))))
   ;; Email contents contain randomized elements, so we only check for the inclusion of a single word to verify

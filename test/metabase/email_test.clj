@@ -220,12 +220,13 @@
                                      email-smtp-security :none]
     (testing "basic sending"
       (is (=
-           [{:from     (str (email/email-from-name) " <" (email/email-from-address) ">")
-             :to       ["test@test.com"]
-             :subject  "101 Reasons to use Metabase"
-             :reply-to (email/email-reply-to)
-             :body     [{:type    "text/html; charset=utf-8"
-                         :content "101. Metabase will make you a better person"}]}]
+           [{:from       (str (email/email-from-name) " <" (email/email-from-address) ">")
+             :to         ["test@test.com"]
+             :subject    "101 Reasons to use Metabase"
+             :Precedence "bulk"
+             :reply-to   (email/email-reply-to)
+             :body       [{:type    "text/html; charset=utf-8"
+                           :content "101. Metabase will make you a better person"}]}]
            (with-fake-inbox
              (email/send-message!
               :subject      "101 Reasons to use Metabase"
@@ -236,12 +237,13 @@
     (testing "basic sending without email-from-name"
       (tu/with-temporary-setting-values [email-from-name nil]
         (is (=
-             [{:from     (email/email-from-address)
-               :to       ["test@test.com"]
-               :subject  "101 Reasons to use Metabase"
-               :reply-to (email/email-reply-to)
-               :body     [{:type    "text/html; charset=utf-8"
-                           :content "101. Metabase will make you a better person"}]}]
+             [{:from       (email/email-from-address)
+               :to         ["test@test.com"]
+               :subject    "101 Reasons to use Metabase"
+               :Precedence "bulk"
+               :reply-to   (email/email-reply-to)
+               :body       [{:type    "text/html; charset=utf-8"
+                             :content "101. Metabase will make you a better person"}]}]
              (with-fake-inbox
                (email/send-message!
                 :subject      "101 Reasons to use Metabase"
@@ -265,17 +267,18 @@
                                           :description  "very scientific data"}]}]
         (testing "it sends successfully"
           (is (=
-               [{:from     (str (email/email-from-name) " <" (email/email-from-address) ">")
-                 :to       [recipient]
-                 :subject  "101 Reasons to use Metabase"
-                 :reply-to (email/email-reply-to)
-                 :body     [{:type    "text/html; charset=utf-8"
-                             :content "100. Metabase will hug you when you're sad"}
-                            {:type         :attachment
-                             :content-type "text/csv"
-                             :file-name    "metabase-reasons.csv"
-                             :content      csv-file
-                             :description  "very scientific data"}]}]
+               [{:from       (str (email/email-from-name) " <" (email/email-from-address) ">")
+                 :to         [recipient]
+                 :subject    "101 Reasons to use Metabase"
+                 :Precedence "bulk"
+                 :reply-to   (email/email-reply-to)
+                 :body       [{:type    "text/html; charset=utf-8"
+                               :content "100. Metabase will hug you when you're sad"}
+                              {:type         :attachment
+                               :content-type "text/csv"
+                               :file-name    "metabase-reasons.csv"
+                               :content      csv-file
+                               :description  "very scientific data"}]}]
                (with-fake-inbox
                  (m/mapply email/send-message! params)
                  (@inbox recipient)))))
