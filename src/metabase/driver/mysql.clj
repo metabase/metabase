@@ -251,7 +251,6 @@
           nfc-path             (:nfc_path stored-field)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
           jsonpath-query       (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
-          printo               (println (hformat/to-sql parent-identifier))
           default-cast         (hsql/call :convert
                                           (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
                                           (hsql/raw (str/upper-case field-type)))
