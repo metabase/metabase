@@ -25,7 +25,7 @@ export interface Collection {
   path?: CollectionId[];
 }
 
-export interface Item {
+export interface CollectionItem {
   id: number;
   model: string;
   name: string;

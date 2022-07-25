@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { Collection, Item } from "metabase-types/api";
+import { Collection, CollectionItem } from "metabase-types/api";
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,
@@ -59,23 +59,23 @@ export function isRootCollection(collection: Collection): boolean {
   return collection.id === "root";
 }
 
-export function isItemPinned(item: Item) {
+export function isItemPinned(item: CollectionItem) {
   return item.collection_position != null;
 }
 
-export function isItemQuestion(item: Item) {
+export function isItemQuestion(item: CollectionItem) {
   return item.model === "card";
 }
 
-export function isPreviewShown(item: Item) {
+export function isPreviewShown(item: CollectionItem) {
   return isPreviewEnabled(item) && isFullyParametrized(item);
 }
 
-export function isPreviewEnabled(item: Item) {
+export function isPreviewEnabled(item: CollectionItem) {
   return item.collection_preview ?? true;
 }
 
-export function isFullyParametrized(item: Item) {
+export function isFullyParametrized(item: CollectionItem) {
   return item.fully_parametrized ?? true;
 }
 

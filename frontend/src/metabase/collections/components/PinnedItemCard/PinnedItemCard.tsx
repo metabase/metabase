@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { t } from "ttag";
 
 import Tooltip from "metabase/components/Tooltip";
-import { Bookmark, Collection, Item } from "metabase-types/api";
+import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import {
   Body,
@@ -20,10 +20,10 @@ type Props = {
   createBookmark: (id: string, collection: string) => void;
   deleteBookmark: (id: string, collection: string) => void;
   className?: string;
-  item: Item;
+  item: CollectionItem;
   collection: Collection;
-  onCopy: (items: Item[]) => void;
-  onMove: (items: Item[]) => void;
+  onCopy: (items: CollectionItem[]) => void;
+  onMove: (items: CollectionItem[]) => void;
 };
 
 const TOOLTIP_MAX_WIDTH = 450;

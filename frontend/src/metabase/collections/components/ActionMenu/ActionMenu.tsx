@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 
-import { Bookmark, Collection, Item } from "metabase-types/api";
+import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   isFullyParametrized,
@@ -15,16 +15,16 @@ import { EntityItemMenu } from "./ActionMenu.styled";
 
 interface ActionMenuProps {
   className?: string;
-  item: Item;
+  item: CollectionItem;
   collection: Collection;
   bookmarks?: Bookmark[];
-  onCopy: (items: Item[]) => void;
-  onMove: (items: Item[]) => void;
+  onCopy: (items: CollectionItem[]) => void;
+  onMove: (items: CollectionItem[]) => void;
   createBookmark?: (id: string, collection: string) => void;
   deleteBookmark?: (id: string, collection: string) => void;
 }
 
-function getIsBookmarked(item: Item, bookmarks: Bookmark[]) {
+function getIsBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
   const normalizedItemModel = normalizeItemModel(item);
 
   return bookmarks.some(
@@ -35,7 +35,7 @@ function getIsBookmarked(item: Item, bookmarks: Bookmark[]) {
 
 // If item.model is `dataset`, that is, this is a Model in a product sense,
 // let’s call it "card" because `card` and `dataset` are treated the same in the back-end.
-function normalizeItemModel(item: Item) {
+function normalizeItemModel(item: CollectionItem) {
   return item.model === "dataset" ? "card" : item.model;
 }
 

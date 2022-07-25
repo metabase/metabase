@@ -2,7 +2,7 @@ import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import { Bookmark, Collection, Item } from "metabase-types/api";
+import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
@@ -23,11 +23,11 @@ type Props = {
   bookmarks?: Bookmark[];
   createBookmark: (id: string, collection: string) => void;
   deleteBookmark: (id: string, collection: string) => void;
-  items: Item[];
+  items: CollectionItem[];
   collection: Collection;
   metadata: Metadata;
-  onCopy: (items: Item[]) => void;
-  onMove: (items: Item[]) => void;
+  onCopy: (items: CollectionItem[]) => void;
+  onMove: (items: CollectionItem[]) => void;
 };
 
 function PinnedItemOverview({
