@@ -7,8 +7,8 @@
             [metabase.config :as config]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
-            [metabase.driver.ddl.mysql :as ddl.mysql]
             [metabase.driver.mysql :as mysql]
+            [metabase.driver.mysql.ddl :as mysql.ddl]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -503,5 +503,5 @@
         (is (thrown-with-msg?
               Exception
               #"Killed mysql process id \d+ due to timeout."
-              (#'ddl.mysql/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
-        (is (= true (#'ddl.mysql/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))
+              (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
+        (is (= true (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))

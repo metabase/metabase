@@ -1,4 +1,4 @@
-(ns metabase.driver.ddl.sql
+(ns metabase.driver.sql.ddl
   (:require [clojure.java.jdbc :as jdbc]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql.util :as sql.u]
