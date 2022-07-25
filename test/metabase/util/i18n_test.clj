@@ -74,29 +74,27 @@
     (doseq [[message singular? f]
             [["trun - singular"
               true
-              (fn [] (i18n/trun "{0} table" "{0} tables" 1))]
-
-             ["trun - plural"
-              false
-              (fn [] (i18n/trun "{0} table" "{0} tables" 2))]
+              (fn [n] (i18n/trun "{0} table" "{0} tables" n))]
 
              ["deferred-trun - singular"
               true
-              (fn [] (str (i18n/deferred-trun "{0} table" "{0} tables" 1)))]
-
-             ["deferred-trun - plural"
-              false
-              (fn [] (str (i18n/deferred-trun "{0} table" "{0} tables" 2)))]]]
+              (fn [n] (str (i18n/deferred-trun "{0} table" "{0} tables" n)))]]]
       (testing message
         (testing "Should fall back to English if user locale & system locale are unset"
           (mt/with-temporary-setting-values [site-locale nil]
-            (is (= (if singular? "1 table" "2 tables")
-                   (f)))))
+            (is (= "1 table"
+                   (f 1)))
+
+            (is (= "2 tables"
+                   (f 2)))))
 
         (testing "Should use user locale if set"
           (mt/with-user-locale "es"
-            (is (= (if singular? "1 tabla" "2 tablas")
-                   (f)))))))))
+            (is (= "1 tabla"
+                   (f 1)))
+
+            (is (= "2 tablas"
+                   (f 2)))))))))
 
 (deftest trsn-test
   (mt/with-mock-i18n-bundles {"es" {:headers {"Plural-Forms" "nplurals=2; plural=(n != 1);\n"}

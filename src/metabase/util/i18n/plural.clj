@@ -64,8 +64,8 @@
   "Converts an integer or Boolean to an integer to use in a C-style arithmetic operator."
   [x]
   (if (boolean? x)
-      (if x 1 0)
-      x))
+    (if x 1 0)
+    x))
 
 (defn- op
   "Converts a Clojure binary function f to a C-style operator that treats Booleans as integers, and returns an integer."
@@ -89,7 +89,7 @@
    :and-expr  #(to-int (and (to-bool %1) (to-bool %2)))
    :or-expr   #(to-int (or (to-bool %1) (to-bool %2)))
    :ternary   #(to-int (if (to-bool %1) %2 %3))
-   :integer   #(Integer. ^String %)
+   :integer   #(Integer. %)
    :variable  (constantly n)
    :expr      identity})
 
