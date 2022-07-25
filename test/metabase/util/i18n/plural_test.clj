@@ -1,5 +1,6 @@
 (ns metabase.util.i18n.plural-test
   (:require [clojure.test :refer :all]
+            [instaparse.core :as insta]
             [metabase.util.i18n.plural :as i18n.plural]))
 
 (defn- compute
@@ -69,7 +70,30 @@
       "6 && 7"        1
 
       "1 < 2 ? 0 : 1" 0
-      "1 > 2 ? 0 : 1" 1)))
+      "1 > 2 ? 0 : 1" 1))
+
+  (testing "Error cases"
+    (are [formula] (is (insta/failure? (compute formula)))
+      ;; Empty formulas
+      ""
+      " "
+      "()"
+      ";"
+      ;; Malformed/unsupported expressions
+      "1 +"
+      "* 2"
+      "(1 + 2"
+      "+ 1 2"
+      "3 >> 4"
+      "n = 3"
+      "n == 1 ? 0 1"
+      ;; Only `n` allowed as a variable
+      "x"
+      "y + 3"
+      ;; Non-integer numbers
+      "1.23"
+      "0.3"
+      ".9")))
 
 (deftest locale-pluralization-test
   ;; This test uses selected example Plural-Forms from https://www.gnu.org/software/gettext/manual/html_node/Plural-forms.html

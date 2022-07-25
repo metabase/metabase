@@ -11,7 +11,11 @@
   https://www.gnu.org/software/gettext/manual/html_node/Plural-forms.html
 
   Operators with LOWER precedence are defined HIGHER in the grammar, and vice versa. A <maybe*> rule defines the
-  grammar for all operators at or above a single level of precedence."
+  grammar for all operators at or above a single level of precedence.
+
+  The `instaparse` README (https://github.com/Engelberg/instaparse) has an example of a parser called `arithmetic`
+  which is essentially a simpler version of this exact same parser. It may help to read and understand that parser
+  first before trying to understand this one."
   (insta/parser
    "expr           = <s> maybe-ternary <s> <';'>? <s>
 
@@ -67,7 +71,6 @@
   "Converts a Clojure binary function f to a C-style operator that treats Booleans as integers, and returns an integer."
   [f]
   (fn [x y] (to-int (f (to-int x) (to-int y)))))
-
 
 (defn- tag-fns
   "Functions to use for each tag in the parse tree, when transforming the tree into a single value."
