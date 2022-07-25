@@ -795,15 +795,8 @@ class TableInteractive extends Component {
           >
             {renderTableHeaderWrapper(
               <Ellipsified tooltip={columnTitle}>
-                {isSortable && isRightAligned && (
-                  <Icon
-                    className="Icon mr1"
-                    name={isAscending ? "chevronup" : "chevrondown"}
-                    size={8}
-                  />
-                )}
                 {columnTitle}
-                {isSortable && !isRightAligned && (
+                {isSortable && (
                   <Icon
                     className="Icon ml1"
                     name={isAscending ? "chevronup" : "chevrondown"}
