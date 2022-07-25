@@ -280,6 +280,7 @@ export default class SchedulePicker extends Component {
             options={scheduleOptions}
             optionNameFn={o => optionNameTranslations[o] || capitalize(o)}
             optionValueFn={o => o}
+            className="ml1"
           />
           {scheduleType === "weekly" && this.renderDayPicker()}
         </div>
