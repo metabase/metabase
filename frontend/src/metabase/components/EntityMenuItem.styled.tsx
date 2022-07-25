@@ -1,9 +1,14 @@
 import styled from "@emotion/styled";
-
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { Link } from "react-router";
 import { color } from "metabase/lib/colors";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Icon from "metabase/components/Icon";
 
-export const Item = styled.div`
+export interface MenuItemProps {
+  disabled?: boolean;
+}
+
+export const MenuItemContent = styled.div<MenuItemProps>`
   display: flex;
   align-items: center;
   border-radius: 0.5em;
@@ -42,7 +47,19 @@ export const Item = styled.div`
   },
 `;
 
-export const StyledExternalLink = styled(ExternalLink)`
+export const MenuItemIcon = styled(Icon)`
+  margin-right: 0.5rem;
+`;
+
+export const MenuItemTitle = styled.span`
+  font-weight: bold;
+`;
+
+export const MenuLink = styled(Link)`
+  display: block;
+`;
+
+export const MenuExternalLink = styled(ExternalLink)`
   text-decoration: none;
   display: block;
 `;
