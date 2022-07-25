@@ -173,7 +173,7 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
 
   const checkIfTimeDistanceTooGreat = (intervals: number, unit: string) => {
     const now = moment();
-    const newTime = moment().add(Math.abs(intervals), unit);
+    const newTime = moment().add(intervals as any, unit);
     const diff = now.diff(newTime, "years");
 
     return Number.isNaN(diff);
@@ -223,7 +223,7 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
       <DateUnitSelector
         value={unit}
         primaryColor={primaryColor}
-        onChange={handleChangeUnitInput}
+        onChange={newUnit => handleChangeUnitInput(newUnit as string)}
         testId="relative-datetime-unit"
         intervals={intervals}
         formatter={formatter}
