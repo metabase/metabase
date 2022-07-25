@@ -7,6 +7,15 @@
    "Dashboard"
    "DashboardCard"
    "Database"
+   "Dimension"
    "Field"
+   "Metric"
+   "NativeQuerySnippet"
+   "Pulse"
+   "PulseCard"
+   "PulseChannel"
+   "Segment"
    "Setting"
-   "Table"])
+   "Table"
+   "Timeline"
+   "TimelineEvent"])

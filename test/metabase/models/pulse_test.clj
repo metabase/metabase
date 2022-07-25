@@ -30,6 +30,7 @@
       (update :channels (fn [channels]
                           (for [channel channels]
                             (-> (dissoc channel :id :pulse_id :created_at :updated_at)
+                                (update :entity_id boolean)
                                 (m/dissoc-in [:details :emails])))))))
 ;; create a channel then select its details
 (defn- create-pulse-then-select!
@@ -92,6 +93,7 @@
                                                  (dissoc card :id))))
                  (update :channels (fn [channels] (for [channel channels]
                                                     (-> (dissoc channel :id :pulse_id :created_at :updated_at)
+                                                        (update :entity_id boolean)
                                                         (m/dissoc-in [:details :emails])))))
                  mt/derecordize))))))
 
@@ -135,6 +137,7 @@
            (-> (PulseChannel :pulse_id id)
                (hydrate :recipients)
                (dissoc :id :pulse_id :created_at :updated_at)
+               (update :entity_id boolean)
                (m/dissoc-in [:details :emails])
                mt/derecordize)))))
 

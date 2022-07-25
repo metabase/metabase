@@ -188,7 +188,7 @@
   When overriding this, [[extract-one-basics]] is probably a useful starting point.
 
   Keyed by the model name of the entity, the first argument."
-  (fn [model _ _] model))
+  (fn [model _opts _entity] model))
 
 (defmethod extract-all :default [model opts]
   (eduction (map (partial extract-one model opts))
@@ -221,14 +221,15 @@
   - Convert to a vanilla Clojure map.
   - Add `:serdes/meta` by calling [[serdes-generate-path]].
   - Drop the primary key.
+  - Making :created_at and :updated_at into UTC-based LocalDateTimes.
 
   Returns the Clojure map."
   [model-name entity]
   (let [model (db/resolve-model (symbol model-name))
         pk    (models/primary-key model)]
     (-> entity
-        (assoc :serdes/meta (serdes-generate-path model-name entity))
-        (dissoc pk))))
+      (assoc :serdes/meta (serdes-generate-path model-name entity))
+      (dissoc pk))))
 
 (defmethod extract-one :default [model-name _opts entity]
   (extract-one-basics model-name entity))

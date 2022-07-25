@@ -141,7 +141,9 @@
 
 (defn- remove-extra-channels-fields [channels]
   (for [channel channels]
-    (dissoc channel :id :pulse_id :created_at :updated_at)))
+    (-> channel
+        (dissoc :id :pulse_id :created_at :updated_at)
+        (update :entity_id boolean))))
 
 (def ^:private pulse-defaults
   {:collection_id       nil

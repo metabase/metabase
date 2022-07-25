@@ -7,7 +7,9 @@
             [metabase.models.dependency :as dependency :refer [Dependency]]
             [metabase.models.interface :as mi]
             [metabase.models.revision :as revision]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -95,6 +97,27 @@
   dependency/IDependent
   {:dependencies metric-dependencies})
 
+;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
+
+(defmethod serdes.base/serdes-generate-path "Metric"
+  [_ metric]
+  (let [base (serdes.base/infer-self-path "Metric" metric)]
+    [(assoc base :label (:name metric))]))
+
+(defmethod serdes.base/extract-one "Metric"
+  [_model-name _opts metric]
+  (-> (serdes.base/extract-one-basics "Metric" metric)
+      (update :table_id   serdes.util/export-table-fk)
+      (update :creator_id serdes.util/export-fk-keyed 'User :email)))
+
+(defmethod serdes.base/load-xform "Metric" [metric]
+  (-> metric
+      serdes.base/load-xform-basics
+      (update :table_id   serdes.util/import-table-fk)
+      (update :creator_id serdes.util/import-fk-keyed 'User :email)))
+
+(defmethod serdes.base/serdes-dependencies "Metric" [{:keys [table_id]}]
+  [(serdes.util/table->path table_id)])
 
 ;;; ----------------------------------------------------- OTHER ------------------------------------------------------
 
