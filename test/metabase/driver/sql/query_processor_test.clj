@@ -67,6 +67,19 @@
              mbql->native
              sql.qp-test-util/sql->sql-map))))
 
+(deftest case-test
+  (testing "Test that boolean case defaults are kept (#24100)"
+    (is (= [[1 1 true]
+            [2 0 false]]
+           (mt/rows
+            (mt/run-mbql-query venues
+              {:source-table $$venues
+               :order-by     [[:asc $id]]
+               :expressions  {"First int"  [:case [[[:= $id 1] 1]]    {:default 0}]
+                              "First bool" [:case [[[:= $id 1] true]] {:default false}]}
+               :fields       [$id [:expression "First int" nil] [:expression "First bool" nil]]
+               :limit        2}))))))
+
 (deftest join-test
   (testing "Test that correct identifiers are used for joins"
     (is (= '{:select    [VENUES.ID          AS ID
