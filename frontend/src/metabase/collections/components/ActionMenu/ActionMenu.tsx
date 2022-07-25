@@ -1,13 +1,13 @@
 import React, { useCallback } from "react";
 
-import { Collection, BookmarksType, Item } from "metabase-types/api";
+import { Bookmark, Collection, Item } from "metabase-types/api";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   isFullyParametrized,
   isItemPinned,
-  isPreviewShown,
-  isPreviewEnabled,
   isItemQuestion,
+  isPreviewEnabled,
+  isPreviewShown,
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 
@@ -17,14 +17,14 @@ interface ActionMenuProps {
   className?: string;
   item: Item;
   collection: Collection;
-  bookmarks?: BookmarksType;
+  bookmarks?: Bookmark[];
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
   createBookmark?: (id: string, collection: string) => void;
   deleteBookmark?: (id: string, collection: string) => void;
 }
 
-function getIsBookmarked(item: Item, bookmarks: BookmarksType) {
+function getIsBookmarked(item: Item, bookmarks: Bookmark[]) {
   const normalizedItemModel = normalizeItemModel(item);
 
   return bookmarks.some(

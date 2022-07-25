@@ -2,21 +2,21 @@ import React, { useState } from "react";
 import { t } from "ttag";
 
 import Tooltip from "metabase/components/Tooltip";
-import { BookmarksType, Collection, Item } from "metabase-types/api";
+import { Bookmark, Collection, Item } from "metabase-types/api";
 
 import {
-  ItemLink,
-  ItemCard,
-  Header,
   Body,
-  ItemIcon,
-  Title,
   Description,
+  Header,
   HoverMenu,
+  ItemCard,
+  ItemIcon,
+  ItemLink,
+  Title,
 } from "./PinnedItemCard.styled";
 
 type Props = {
-  bookmarks?: BookmarksType;
+  bookmarks?: Bookmark[];
   createBookmark: (id: string, collection: string) => void;
   deleteBookmark: (id: string, collection: string) => void;
   className?: string;

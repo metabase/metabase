@@ -9,5 +9,3 @@ export interface Bookmark {
   name: string;
   type: BookmarkableEntities;
 }
-
-export type BookmarksType = Bookmark[];
