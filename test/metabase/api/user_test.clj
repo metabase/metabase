@@ -651,7 +651,7 @@
                                          :sso_source   "jwt"
                                          :is_superuser true}]
         (letfn [(change-user-via-api! [m]
-                  (-> (mt/user-http-request :crowberto :put 400 (str "user/" user-id) m)))]
+                  (mt/user-http-request :crowberto :put 400 (str "user/" user-id) m))]
           (testing "`:first_name` changes are rejected"
             (is (= {:errors {:first_name "Editing first name is not allowed for SSO users."}}
                    (change-user-via-api! {:first_name "NOT-SSO"}))))
