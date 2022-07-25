@@ -1,22 +1,5 @@
 import { t } from "ttag";
-import { Collection } from "metabase-types/api";
-
-export type Item = {
-  id: number;
-  model: string;
-  name: string;
-  description: string | null;
-  copy?: boolean;
-  collection_position?: number | null;
-  collection_preview?: boolean | null;
-  fully_parametrized?: boolean | null;
-  getIcon: () => { name: string };
-  getUrl: () => string;
-  setArchived: (isArchived: boolean) => void;
-  setPinned: (isPinned: boolean) => void;
-  setCollection?: (collection: Collection) => void;
-  setCollectionPreview?: (isEnabled: boolean) => void;
-};
+import { Collection, CollectionItem } from "metabase-types/api";
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,
@@ -76,19 +59,23 @@ export function isRootCollection(collection: Collection): boolean {
   return collection.id === "root";
 }
 
-export function isItemPinned(item: Item) {
+export function isItemPinned(item: CollectionItem) {
   return item.collection_position != null;
 }
 
-export function isPreviewShown(item: Item) {
+export function isItemQuestion(item: CollectionItem) {
+  return item.model === "card";
+}
+
+export function isPreviewShown(item: CollectionItem) {
   return isPreviewEnabled(item) && isFullyParametrized(item);
 }
 
-export function isPreviewEnabled(item: Item) {
+export function isPreviewEnabled(item: CollectionItem) {
   return item.collection_preview ?? true;
 }
 
-export function isFullyParametrized(item: Item) {
+export function isFullyParametrized(item: CollectionItem) {
   return item.fully_parametrized ?? true;
 }
 

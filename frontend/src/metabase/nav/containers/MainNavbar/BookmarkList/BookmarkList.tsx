@@ -12,7 +12,7 @@ import CollapseSection from "metabase/components/CollapseSection";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import { Bookmark, BookmarksType } from "metabase-types/api";
+import { Bookmark } from "metabase-types/api";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
@@ -27,7 +27,7 @@ const mapDispatchToProps = {
 };
 
 interface CollectionSidebarBookmarksProps {
-  bookmarks: BookmarksType;
+  bookmarks: Bookmark[];
   selectedItem?: SelectedItem;
   onSelect: () => void;
   onDeleteBookmark: (bookmark: Bookmark) => void;
