@@ -171,7 +171,7 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
     <OptionsContent {...props} setOptionsVisible={setOptionsVisible} />
   );
 
-  const checkIfTimeDistanceTooGreat = (intervals: number, unit: string) => {
+  const checkIfTimeSpanTooGreat = (intervals: number, unit: string) => {
     const now = moment();
     const newTime = moment().add(intervals as any, unit);
     const diff = now.diff(newTime, "years");
@@ -180,23 +180,15 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
   };
 
   const handleChangeDateNumericInput = (newIntervals: number) => {
-    const timeDistanceTooGreat = checkIfTimeDistanceTooGreat(
-      newIntervals,
-      unit,
-    );
-
-    const valueToUse = timeDistanceTooGreat ? intervals : newIntervals;
+    const timeSpanTooGreat = checkIfTimeSpanTooGreat(newIntervals, unit);
+    const valueToUse = timeSpanTooGreat ? intervals : newIntervals;
 
     onFilterChange(setRelativeDatetimeValue(filter, formatter(valueToUse)));
   };
 
   const handleChangeUnitInput = (newUnit: string) => {
-    const timeDistanceTooGreat = checkIfTimeDistanceTooGreat(
-      intervals,
-      newUnit,
-    );
-
-    const unitToUse = timeDistanceTooGreat ? unit : newUnit;
+    const timeSpanTooGreat = checkIfTimeSpanTooGreat(intervals, newUnit);
+    const unitToUse = timeSpanTooGreat ? unit : newUnit;
 
     onFilterChange(setRelativeDatetimeUnit(filter, unitToUse));
   };
