@@ -15,7 +15,7 @@ Now that you have some groups, you’ll want to control their data access by goi
 You can set various levels of permissions on a data source, from querying access to managing the database connection.
 
 - [Data access](#data-access)
-- [Native querying](#native-querying)
+- [Native querying](#native-query-editing)
 - [Download results](#download-results)\*
 - [Manage data model](#manage-data-model)\*
 - [Manage database](#manage-database)\*
@@ -74,7 +74,7 @@ Groups with no self-service access to a table can’t access the table at all. T
 
 Sandboxed access to a table can restrict access to columns and rows of a table. Check out [data sandboxing][data-sandboxing].
 
-## Native querying editing
+## Native query editing
 
 Members of a group with Native query editing set to Yes can write new SQL/native queries using the [native query editor](https://www.metabase.com/docs/latest/users-guide/writing-sql.html). This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
 
