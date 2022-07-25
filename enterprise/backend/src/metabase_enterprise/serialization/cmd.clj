@@ -43,7 +43,7 @@
 (s/defn v1-load
   "Load serialized metabase instance as created by `dump` command from directory `path`."
   [path context :- Context]
-  (plugins/load-plugins!)               ;
+  (plugins/load-plugins!)
   (mdb/setup-db!)
   (when-not (load/compatible? path)
     (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
@@ -69,7 +69,7 @@
 
 (defn- v2-load
   [path _args]
-  (plugins/load-plugins!)               ;
+  (plugins/load-plugins!)
   (mdb/setup-db!)
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
   ;(when-not (load/compatible? path)
