@@ -6,6 +6,7 @@ import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
 } from "metabase/query_builder/actions";
+import { GET } from "metabase/lib/api";
 
 import Collections, {
   getCollectionType,
@@ -20,6 +21,12 @@ const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
+
+  api: {
+    getWithoutEmitter: async ({ id }) => {
+      return GET(`/api/card/${id}`, { noEvent: true })();
+    },
+  },
 
   objectActions: {
     setArchived: ({ id, model }, archived, opts) =>

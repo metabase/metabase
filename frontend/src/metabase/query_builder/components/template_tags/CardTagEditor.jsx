@@ -16,8 +16,39 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
 
 class CardTagEditor extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { question: null, error: null };
+  }
+
+  componentDidMount() {
+    this.fetchCard();
+  }
+
+  componentDidUpdate(prevProps) {
+    if (this.props.tag["card-id"] !== prevProps.tag["card-id"]) {
+      this.fetchCard();
+    }
+  }
+
+  fetchCard() {
+    this.setState({ question: null, error: null });
+
+    if (typeof this.props.tag["card-id"] === "number") {
+      Questions.api
+        .getWithoutEmitter({ id: this.props.tag["card-id"] })
+        .then(question => {
+          this.setState({ question });
+        })
+        .catch(err => {
+          this.setState({ error: err });
+        });
+    }
+  }
+
   handleQuestionSelection = id => {
-    const { question, query, setDatasetQuery } = this.props;
+    const { query, setDatasetQuery } = this.props;
+    const { question } = this.state;
     setDatasetQuery(
       query.replaceCardId(question ? question.id : "", id).datasetQuery(),
     );
@@ -25,12 +56,14 @@ class CardTagEditor extends Component {
   };
 
   getQuestionUrl() {
-    const { tag, question } = this.props;
+    const { tag } = this.props;
+    const { question } = this.state;
     return Urls.question(question || { id: tag["card-id"] });
   }
 
   errorMessage() {
-    const { error, question, query } = this.props;
+    const { query } = this.props;
+    const { question, error } = this.state;
 
     if (
       question &&
@@ -42,15 +75,20 @@ class CardTagEditor extends Component {
       return t`This question can't be used because it's based on a different database.`;
     }
     if (error) {
-      return error.status === 404
-        ? t`Couldn't find a saved question with that ID number.`
-        : error.data;
+      if (error.status === 404) {
+        return t`Couldn't find a saved question with that ID number.`;
+      }
+      if (error.status === 403) {
+        return t`Sorry, you don’t have permission to see that.`;
+      }
+      return error.data;
     }
     return null;
   }
 
   triggerElement() {
-    const { tag, question } = this.props;
+    const { tag } = this.props;
+    const { question } = this.state;
     return (
       <SelectButton>
         {tag["card-id"] == null ? (
@@ -71,8 +109,8 @@ class CardTagEditor extends Component {
     const {
       tag: { "card-id": cardId },
       loading,
-      question,
     } = this.props;
+    const { question } = this.state;
 
     return (
       <div className="px3 py4 border-top">
@@ -127,10 +165,7 @@ class CardTagEditor extends Component {
   }
 }
 
-export default Questions.load({
-  id: (state, { tag }) => tag["card-id"],
-  loadingAndErrorWrapper: false,
-})(CardTagEditor);
+export default CardTagEditor;
 
 // This formats a timestamp as a date using any custom formatting options.
 function formatDate(value) {
