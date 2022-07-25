@@ -21,7 +21,7 @@ export const MenuItemContent = styled.div<MenuItemProps>`
     background-color: ${props => !props.disabled && color("bg-light")};
   }
   > .Icon {
-    color: ${color("text-dark")};
+    color: ${props => color(props.disabled ? "text-light" : "text-dark")};
     margin-right: 0.65em;
   }
   :hover > .Icon {
