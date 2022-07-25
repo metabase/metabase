@@ -17,7 +17,6 @@ import { Dispatch, GetState, QueryBuilderMode } from "metabase-types/store";
 
 import {
   getFirstQueryResult,
-  getIsEditing,
   getIsShowingTemplateTagsEditor,
   getQueryBuilderMode,
   getQuestion,
@@ -127,8 +126,7 @@ export const updateQuestion = (
     const shouldTurnIntoAdHoc =
       newQuestion.isSaved() &&
       newQuestion.query().isEditable() &&
-      queryBuilderMode !== "dataset" &&
-      !getIsEditing(getState());
+      queryBuilderMode !== "dataset";
 
     if (shouldTurnIntoAdHoc) {
       newQuestion = newQuestion.withoutNameAndId();

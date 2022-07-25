@@ -68,7 +68,6 @@ export const getIsAnySidebarOpen = createSelector([getUiControls], uiControls =>
   SIDEBARS.some(sidebar => uiControls[sidebar]),
 );
 
-export const getIsEditing = state => getUiControls(state).isEditing;
 export const getIsRunning = state => getUiControls(state).isRunning;
 export const getIsLoadingComplete = state =>
   getQueryStatus(state) === "complete";

@@ -17,7 +17,6 @@ export interface QueryBuilderUIControls {
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isShowingNewbModal: boolean;
-  isEditing: boolean;
   isRunning: boolean;
   isQueryComplete: boolean;
   isShowingSummarySidebar: boolean;
