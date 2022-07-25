@@ -76,7 +76,6 @@
   [f]
   (fn [x y] (to-int (f (to-int x) (to-int y)))))
 
-
 (defn- tag-fns
   "Functions to use for each tag in the parse tree, when transforming the tree into a single value."
   [n]
