@@ -31,7 +31,6 @@ export const getAutoChartColors = (
 
   const fallbackColor = Color(palette["brand"]);
   const newColors = getAutoColors(oldColors, fallbackColor);
-  const defaultValues = getDefaultChartColors(values, groups);
 
   const newValues = _.chain(groups)
     .map(([name], index) => [name, newColors[index]?.hex()])
@@ -39,7 +38,7 @@ export const getAutoChartColors = (
     .object()
     .value();
 
-  return { ...defaultValues, ...newValues };
+  return { ...values, ...newValues };
 };
 
 const getAutoColors = (
