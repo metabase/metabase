@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, MouseEvent } from "react";
 import Tooltip from "metabase/components/Tooltip";
 import {
   MenuExternalLink,
@@ -11,7 +11,7 @@ import {
 export interface EntityMenuItemProps {
   title?: string;
   icon?: string;
-  action?: () => void;
+  action?: (event: MouseEvent<HTMLDivElement>) => void;
   link?: string;
   externalLink?: boolean;
   tooltip?: React.ReactNode;
@@ -70,7 +70,7 @@ const EntityMenuItem = ({
 };
 
 interface ActionMenuItemProps {
-  action: () => void;
+  action?: (event: MouseEvent<HTMLDivElement>) => void;
   disabled?: boolean;
   event?: string;
   children?: ReactNode;
