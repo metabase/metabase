@@ -1,4 +1,4 @@
-import React, { ReactNode, MouseEvent } from "react";
+import React, { MouseEvent, ReactNode } from "react";
 import Tooltip from "metabase/components/Tooltip";
 import {
   MenuExternalLink,
@@ -36,12 +36,10 @@ const EntityMenuItem = ({
   }
 
   const content = (
-    <Tooltip tooltip={tooltip}>
-      <MenuItemContent disabled={disabled}>
-        {icon && <MenuItemIcon name={icon} />}
-        <MenuItemTitle>{title}</MenuItemTitle>
-      </MenuItemContent>
-    </Tooltip>
+    <MenuItemContent disabled={disabled}>
+      {icon && <MenuItemIcon name={icon} />}
+      <MenuItemTitle>{title}</MenuItemTitle>
+    </MenuItemContent>
   );
 
   if (link) {
@@ -50,8 +48,9 @@ const EntityMenuItem = ({
         link={link}
         externalLink={externalLink}
         disabled={disabled}
-        onClose={onClose}
         event={event}
+        tooltip={tooltip}
+        onClose={onClose}
       >
         {content}
       </LinkMenuItem>
@@ -60,7 +59,12 @@ const EntityMenuItem = ({
 
   if (action) {
     return (
-      <ActionMenuItem action={action} event={event} disabled={disabled}>
+      <ActionMenuItem
+        action={action}
+        tooltip={tooltip}
+        disabled={disabled}
+        event={event}
+      >
         {content}
       </ActionMenuItem>
     );
@@ -71,6 +75,7 @@ const EntityMenuItem = ({
 
 interface ActionMenuItemProps {
   action?: (event: MouseEvent<HTMLDivElement>) => void;
+  tooltip?: React.ReactNode;
   disabled?: boolean;
   event?: string;
   children?: ReactNode;
@@ -78,18 +83,22 @@ interface ActionMenuItemProps {
 
 const ActionMenuItem = ({
   action,
+  tooltip,
   disabled,
   event,
   children,
 }: ActionMenuItemProps) => (
-  <div onClick={!disabled ? action : undefined} data-metabase-event={event}>
-    {children}
-  </div>
+  <Tooltip tooltip={tooltip} placement="right">
+    <div onClick={!disabled ? action : undefined} data-metabase-event={event}>
+      {children}
+    </div>
+  </Tooltip>
 );
 
 interface LinkMenuItemProps {
   link: string;
   externalLink?: boolean;
+  tooltip?: ReactNode;
   disabled?: boolean;
   event?: string;
   children?: ReactNode;
@@ -99,29 +108,33 @@ interface LinkMenuItemProps {
 const LinkMenuItem = ({
   link,
   externalLink,
+  tooltip,
   disabled,
   event,
   children,
   onClose,
-}: LinkMenuItemProps): JSX.Element =>
-  externalLink ? (
-    <MenuExternalLink
-      href={link}
-      target="_blank"
-      onClick={onClose}
-      data-metabase-event={event}
-    >
-      {children}
-    </MenuExternalLink>
-  ) : (
-    <MenuLink
-      to={link}
-      disabled={disabled}
-      onClick={onClose}
-      data-metabase-event={event}
-    >
-      {children}
-    </MenuLink>
-  );
+}: LinkMenuItemProps): JSX.Element => (
+  <Tooltip tooltip={tooltip} placement="right">
+    {externalLink ? (
+      <MenuExternalLink
+        href={link}
+        target="_blank"
+        data-metabase-event={event}
+        onClick={onClose}
+      >
+        {children}
+      </MenuExternalLink>
+    ) : (
+      <MenuLink
+        to={link}
+        disabled={disabled}
+        data-metabase-event={event}
+        onClick={onClose}
+      >
+        {children}
+      </MenuLink>
+    )}
+  </Tooltip>
+);
 
 export default EntityMenuItem;
