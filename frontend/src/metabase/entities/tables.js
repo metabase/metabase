@@ -159,7 +159,6 @@ const Tables = createEntity({
     }
 
     if (type === Questions.actionTypes.UPDATE) {
-      console.log(type, payload);
       const card = payload.question;
       const virtualQuestionId = getQuestionVirtualTableId(card);
 
