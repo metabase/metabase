@@ -80,6 +80,10 @@ export function isItemPinned(item: Item) {
   return item.collection_position != null;
 }
 
+export function isItemQuestion(item: Item) {
+  return item.model === "card";
+}
+
 export function isPreviewShown(item: Item) {
   return isPreviewEnabled(item) && isFullyParametrized(item);
 }

@@ -8,6 +8,7 @@ import {
   isPreviewShown,
   isPreviewEnabled,
   Item,
+  isItemQuestion,
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 
@@ -52,7 +53,7 @@ function ActionMenu({
 }: ActionMenuProps) {
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
   const isPreviewOptionShown =
-    isItemPinned(item) && collection.can_write && item.setCollectionPreview;
+    isItemPinned(item) && isItemQuestion(item) && collection.can_write;
 
   const handlePin = useCallback(() => {
     item.setPinned(!isItemPinned(item));
