@@ -1,8 +1,14 @@
 import { periodPopoverText } from "./periodPopoverText";
 
 describe("periodPopoverText", () => {
-  const now = new Date("2020-05-13T11:00:00.000Z");
-  Date.now = jest.fn().mockReturnValue(now);
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2020, 4, 13));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
 
   it("builds date for `day`", () => {
     const text = periodPopoverText("day");
