@@ -400,13 +400,13 @@ export class DeleteAlertSection extends Component {
         >{jt`Danger Zone`}</h3>
         <div className="ml1">
           <h4 className="text-bold mb1">{jt`Delete this alert`}</h4>
-          <div className="flex">
+          <div className="flex align-end">
             <p className="h4 pr2">{jt`Stop delivery and delete this alert. There's no undo, so be careful.`}</p>
             <ModalWithTrigger
               ref={ref => (this.deleteModal = ref)}
               as={Button}
               triggerClasses="Button--danger flex-align-right flex-no-shrink"
-              triggerElement={t`Delete this Alert`}
+              triggerElement={t`Delete this alert`}
             >
               <DeleteModalWithConfirm
                 objectType="alert"
