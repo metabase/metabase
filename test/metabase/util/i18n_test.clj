@@ -91,7 +91,7 @@
         (testing "should use user locale if set"
           (mt/with-user-locale "es"
             (is (= "0 tablas"
-                   (f 0)))
+                   (f 1)))
 
             (is (= "1 tabla"
                    (f 1)))
