@@ -1,9 +1,6 @@
 import styled from "@emotion/styled";
 import { color, alpha } from "metabase/lib/colors";
-import {
-  space,
-  breakpointMinHeightMedium,
-} from "metabase/styled-components/theme";
+import { space } from "metabase/styled-components/theme";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Button from "metabase/core/components/Button";
@@ -27,9 +24,6 @@ export const PickerGrid = styled.div`
 
 export const TokenFieldContainer = styled.div`
   min-height: 40px;
-  ${breakpointMinHeightMedium} {
-    min-height: 56px;
-  }
   display: flex;
   flex-wrap: wrap;
   font-weight: bold;

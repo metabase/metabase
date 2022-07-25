@@ -98,10 +98,11 @@ describe("scenarios > filters > bulk filtering", () => {
     visitQuestionAdhoc(rawQuestionDetails);
     filter();
 
-    filterFieldPopover("Quantity", { value: "20" });
+    filterField("Quantity", { operator: "equal to" });
+    filterFieldPopover("Quantity");
 
     cy.findByLabelText("20").click();
-    cy.button("Add filter").click();
+    cy.button("Update filter").click();
     applyFilters();
 
     cy.findByText("Quantity is equal to 20").should("be.visible");

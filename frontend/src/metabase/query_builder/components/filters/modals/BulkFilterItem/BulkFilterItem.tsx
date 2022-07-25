@@ -92,7 +92,10 @@ export const BulkFilterItem = ({
             fieldName={dimension.displayName()}
             value={currentOperator}
             operators={dimension.filterOperators(currentOperator)}
-            iconName="list"
+            iconName={
+              (!dimension.field().isCategory() ? dimension.icon() : "list") ??
+              "list"
+            }
             tableName={tableName}
             onChange={changeOperator}
           />

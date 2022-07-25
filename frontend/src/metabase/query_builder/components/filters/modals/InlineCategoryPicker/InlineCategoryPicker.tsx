@@ -82,8 +82,9 @@ export function InlineCategoryPickerComponent({
       });
   }, [dimension, safeFetchFieldValues, shouldFetchFieldValues]);
 
-  const hasCheckboxOperator =
-    !filter || ["=", "!="].includes(filter?.operatorName());
+  const hasCheckboxOperator = ["=", "!="].includes(
+    (filter ?? newFilter)?.operatorName(),
+  );
 
   const hasValidOptions = fieldValues.flat().find(isValidOption);
 

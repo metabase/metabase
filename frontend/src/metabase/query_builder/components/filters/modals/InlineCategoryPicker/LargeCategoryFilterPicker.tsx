@@ -47,7 +47,7 @@ export function LargeCategoryFilterPicker({
     );
 
   return (
-    <TokenFieldContainer>
+    <TokenFieldContainer data-testid="large-category-picker">
       {filterValues.map(filterValue => (
         <TokenFieldItem key={filterValue} isValid>
           <span className="pl1">{filterValue}</span>
