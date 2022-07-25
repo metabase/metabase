@@ -93,7 +93,7 @@
    :and-expr  #(to-int (and (to-bool %1) (to-bool %2)))
    :or-expr   #(to-int (or (to-bool %1) (to-bool %2)))
    :ternary   #(to-int (if (to-bool %1) %2 %3))
-   :integer   #(Integer. ^Integer %)
+   :integer   #(Integer. ^String %)
    :variable  (constantly n)
    :expr      identity})
 
