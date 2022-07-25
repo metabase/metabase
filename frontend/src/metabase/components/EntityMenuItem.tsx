@@ -1,4 +1,5 @@
 import React, { ReactNode } from "react";
+import Tooltip from "metabase/components/Tooltip";
 import {
   MenuExternalLink,
   MenuItemContent,
@@ -13,6 +14,7 @@ export interface EntityMenuItemProps {
   action?: () => void;
   link?: string;
   externalLink?: boolean;
+  tooltip?: React.ReactNode;
   disabled?: boolean;
   event?: string;
   onClose?: () => void;
@@ -24,6 +26,7 @@ const EntityMenuItem = ({
   action,
   link,
   externalLink,
+  tooltip,
   disabled,
   event,
   onClose,
@@ -33,10 +36,12 @@ const EntityMenuItem = ({
   }
 
   const content = (
-    <MenuItemContent disabled={disabled}>
-      {icon && <MenuItemIcon name={icon} />}
-      <MenuItemTitle>{title}</MenuItemTitle>
-    </MenuItemContent>
+    <Tooltip tooltip={tooltip}>
+      <MenuItemContent disabled={disabled}>
+        {icon && <MenuItemIcon name={icon} />}
+        <MenuItemTitle>{title}</MenuItemTitle>
+      </MenuItemContent>
+    </Tooltip>
   );
 
   if (link) {
