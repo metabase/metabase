@@ -29,6 +29,7 @@ import {
 } from "metabase/lib/saved-questions";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { updateIn } from "icepick";
 
 const listTables = GET("/api/table");
 const listTablesForDatabase = async (...args) =>
@@ -158,6 +159,7 @@ const Tables = createEntity({
     }
 
     if (type === Questions.actionTypes.UPDATE) {
+      console.log(type, payload);
       const card = payload.question;
       const virtualQuestionId = getQuestionVirtualTableId(card);
 
@@ -167,6 +169,23 @@ const Tables = createEntity({
       }
 
       if (state[virtualQuestionId]) {
+        const virtualQuestion = state[virtualQuestionId];
+        if (
+          virtualQuestion.display_name !== card.name ||
+          virtualQuestion.moderated_status !== card.moderated_status ||
+          virtualQuestion.description !== card.description
+        ) {
+          console.log("update", state);
+          state = updateIn(state, [virtualQuestionId], table => ({
+            ...table,
+            display_name: card.name,
+            moderated_status: card.moderated_status,
+            description: card.description,
+          }));
+
+          console.log(state);
+        }
+
         return state;
       }
 
