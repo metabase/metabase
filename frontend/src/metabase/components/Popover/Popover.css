@@ -11,7 +11,9 @@
   flex-direction: column;
   /* add a max-width so that long strings don't cause the popover to expand
    * see metabase#4930 */
-  max-width: 500px;
+  /* max-width: 300px; */
+  /* max-width: 100%; */
+  max-width: 85vw;
 }
 
 .PopoverBody.PopoverBody--withBackground {
@@ -113,7 +115,7 @@
 .PopoverHeader {
   display: flex;
   border-bottom: 1px solid var(--color-border);
-  min-width: 400px;
+  /* min-width: 400px; */
 }
 
 .PopoverHeader-item {
