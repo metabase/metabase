@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [clojure.walk :as walk]
             [metabase.driver :as driver]
-            [metabase.models.field :refer [Field]]
+            [metabase.models :refer [Card Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.query-processor.util.nest-query :as nest-query]
@@ -294,7 +294,31 @@
                                                    {:field_ref [:aggregation 0]}]}]}]
       (is (= [[:field 33 {:join-alias "Question 4918"}]
               [:field "count" {:join-alias "Question 4918"}]]
-             (#'nest-query/joined-fields query))))))
+             (#'nest-query/joined-fields query))))
+    (mt/dataset sample-dataset
+      (mt/with-temp* [Card [base {:dataset_query
+                                  (mt/mbql-query
+                                   reviews
+                                   {:breakout [$product_id],
+                                    :aggregation [[:count]],
+                                    ;; filter on an implicit join
+                                    :filter [:= $product_id->products.category "Doohickey"]})}]]
+        ;; the result returned is not important, just important that the query is valid and completes
+        (is (vector?
+             (mt/rows
+              (qp/process-query
+               (mt/mbql-query
+                orders
+                {:joins [{:source-table (str "card__" (:id base)),
+                          :alias (str "Question " (:id base)),
+                          :condition [:=
+                                      $product_id
+                                      [:field
+                                       %reviews.product_id
+                                       {:join-alias (str "Question " (:id base))}]],
+                          :fields :all}],
+                 :expressions {"CC" [:+ 1 1]}
+                 :limit 2})))))))))
 
 (deftest nest-expressions-with-joins-test
   (testing "If there are any `:joins`, those need to be nested into the `:source-query` as well."
