@@ -75,7 +75,6 @@ const DEFAULT_UI_CONTROLS = {
   isShowingQuestionInfoSidebar: false,
   isShowingTimelineSidebar: false,
   initialChartSetting: null,
-  isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: false, // "view" | "notebook" | "dataset"
   previousQueryBuilderMode: false,

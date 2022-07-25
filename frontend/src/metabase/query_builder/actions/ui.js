@@ -62,11 +62,6 @@ export const onCloseTimelines = createAction("metabase/qb/CLOSE_TIMELINES");
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
 
-export const setIsPreviewing = isPreviewing => ({
-  type: SET_UI_CONTROLS,
-  payload: { isPreviewing },
-});
-
 export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
   return async (dispatch, getState) => {

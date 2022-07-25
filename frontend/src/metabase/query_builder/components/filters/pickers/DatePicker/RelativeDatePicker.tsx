@@ -26,7 +26,7 @@ import {
   NumericInput,
 } from "./RelativeDatePicker.styled";
 
-type Props = {
+type RelativeDatePickerProps = {
   className?: string;
   filter: Filter;
   onFilterChange: (filter: any[]) => void;
@@ -36,17 +36,9 @@ type Props = {
   reverseIconDirection?: boolean;
 };
 
-export const PastPicker = (props: Props) => (
-  <RelativeDatePicker {...props} formatter={value => value * -1} />
-);
-
-export const NextPicker = (props: Props) => (
-  <RelativeDatePicker
-    {...props}
-    offsetFormatter={value => value * -1}
-    reverseIconDirection
-  />
-);
+type OptionsContentProps = RelativeDatePickerProps & {
+  setOptionsVisible: (shouldBeVisible: boolean) => void;
+};
 
 const CURRENT_INTERVAL_NAME = {
   day: t`today`,
@@ -67,6 +59,13 @@ const TIME_PERIODS = ["minute", "hour"];
 
 // define ALL_PERIODS in increasing order of duration
 const ALL_PERIODS = TIME_PERIODS.concat(DATE_PERIODS.flat());
+
+const SELECT_STYLE = {
+  width: 65,
+  fontSize: 14,
+  fontWeight: 700,
+  padding: 8,
+};
 
 const isSmallerUnit = (unit: string, unitToCompare: string) => {
   return ALL_PERIODS.indexOf(unit) < ALL_PERIODS.indexOf(unitToCompare);
@@ -99,7 +98,56 @@ function getCurrentIntervalName(filter: Filter) {
   return null;
 }
 
-const RelativeDatePicker: React.FC<Props> = props => {
+const OptionsContent: React.FC<OptionsContentProps> = ({
+  filter,
+  primaryColor,
+  onFilterChange,
+  reverseIconDirection,
+  setOptionsVisible,
+}) => {
+  const options = filter[4] || {};
+  const includeCurrent = !!options["include-current"];
+  const currentString = getCurrentString(filter);
+
+  const handleClickOnStartingFrom = () => {
+    setOptionsVisible(false);
+    onFilterChange(setStartingFrom(filter));
+  };
+
+  const handleClickOnIncludeCurrentTimeUnit = () => {
+    setOptionsVisible(false);
+    onFilterChange(
+      assoc(filter, 4, {
+        ...options,
+        "include-current": !includeCurrent,
+      }),
+    );
+  };
+
+  return (
+    <OptionsContainer>
+      <OptionButton
+        icon="arrow_left_to_line"
+        primaryColor={primaryColor}
+        reverseIconDirection={reverseIconDirection}
+        onClick={handleClickOnStartingFrom}
+      >
+        {t`Starting from...`}
+      </OptionButton>
+      <OptionButton
+        selected={includeCurrent}
+        primaryColor={primaryColor}
+        icon={includeCurrent ? "check" : "calendar"}
+        onClick={handleClickOnIncludeCurrentTimeUnit}
+      >
+        {/*currentString is already translated*/}
+        {currentString}
+      </OptionButton>
+    </OptionsContainer>
+  );
+};
+
+const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
   const {
     filter,
     onFilterChange,
@@ -112,8 +160,6 @@ const RelativeDatePicker: React.FC<Props> = props => {
 
   const startingFrom = getStartingFrom(filter);
   const [intervals = 30, unit = "day"] = getRelativeDatetimeInterval(filter);
-  const options = filter[4] || {};
-  const includeCurrent = !!options["include-current"];
 
   const showOptions = !startingFrom;
   const numColumns = showOptions ? 3 : 4;
@@ -121,35 +167,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
   const [optionsVisible, setOptionsVisible] = React.useState(false);
 
   const optionsContent = (
-    <OptionsContainer data-testid="relative-datetime-options-container">
-      <OptionButton
-        icon="arrow_left_to_line"
-        primaryColor={primaryColor}
-        reverseIconDirection={reverseIconDirection}
-        onClick={() => {
-          setOptionsVisible(false);
-          onFilterChange(setStartingFrom(filter));
-        }}
-      >
-        {t`Starting from...`}
-      </OptionButton>
-      <OptionButton
-        selected={includeCurrent}
-        primaryColor={primaryColor}
-        icon={includeCurrent ? "check" : "calendar"}
-        onClick={() => {
-          setOptionsVisible(false);
-          onFilterChange(
-            assoc(filter, 4, {
-              ...options,
-              "include-current": !includeCurrent,
-            }),
-          );
-        }}
-      >
-        {getCurrentString(filter)}
-      </OptionButton>
-    </OptionsContainer>
+    <OptionsContent {...props} setOptionsVisible={setOptionsVisible} />
   );
 
   return (
@@ -252,9 +270,14 @@ const RelativeDatePicker: React.FC<Props> = props => {
   );
 };
 
-const SELECT_STYLE = {
-  width: 65,
-  fontSize: 14,
-  fontWeight: 700,
-  padding: 8,
-};
+export const PastPicker = (props: RelativeDatePickerProps) => (
+  <RelativeDatePicker {...props} formatter={value => value * -1} />
+);
+
+export const NextPicker = (props: RelativeDatePickerProps) => (
+  <RelativeDatePicker
+    {...props}
+    offsetFormatter={value => value * -1}
+    reverseIconDirection
+  />
+);
