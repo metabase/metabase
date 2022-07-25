@@ -659,11 +659,10 @@
             (is (= {:errors {:last_name "Editing last name is not allowed for SSO users."}}
                    (change-user-via-api! {:last_name "USER"}))))
           (testing "New names that are the same as existing names succeed because there is no change."
-            (is (= {:first_name "SSO"
-                    :last_name  "User"}
-                   (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:first_name "SSO"
-                                                                                        :last_name  "User"})
-                       (select-keys [:first_name :last_name]))))))))))
+            (is (partial= {:first_name "SSO"
+                           :last_name  "User"}
+                          (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:first_name "SSO"
+                                                                                           :last_name  "User"})))))))))
 
 (deftest update-email-check-if-already-used-test
   (testing "PUT /api/user/:id"
