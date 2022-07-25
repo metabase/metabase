@@ -3,11 +3,10 @@ import { t } from "ttag";
 import {
   isFullyParametrized,
   isPreviewShown,
-  Item,
 } from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
-import { Bookmark, Collection } from "metabase-types/api";
+import { Bookmark, Collection, Item } from "metabase-types/api";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
 import {
   CardActionMenu,

@@ -1,19 +1,17 @@
 import React, { useCallback } from "react";
 
-import { Collection } from "metabase-types/api";
+import { Collection, BookmarksType, Item } from "metabase-types/api";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   isFullyParametrized,
   isItemPinned,
   isPreviewShown,
   isPreviewEnabled,
-  Item,
   isItemQuestion,
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 
 import { EntityItemMenu } from "./ActionMenu.styled";
-import { BookmarksType } from "metabase-types/api/bookmark";
 
 interface ActionMenuProps {
   className?: string;

@@ -1,22 +1,5 @@
 import { t } from "ttag";
-import { Collection } from "metabase-types/api";
-
-export type Item = {
-  id: number;
-  model: string;
-  name: string;
-  description: string | null;
-  copy?: boolean;
-  collection_position?: number | null;
-  collection_preview?: boolean | null;
-  fully_parametrized?: boolean | null;
-  getIcon: () => { name: string };
-  getUrl: () => string;
-  setArchived: (isArchived: boolean) => void;
-  setPinned: (isPinned: boolean) => void;
-  setCollection?: (collection: Collection) => void;
-  setCollectionPreview?: (isEnabled: boolean) => void;
-};
+import { Collection, Item } from "metabase-types/api";
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,

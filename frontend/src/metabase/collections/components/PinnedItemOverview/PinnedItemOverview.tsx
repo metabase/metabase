@@ -2,17 +2,13 @@ import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import { BookmarksType, Collection } from "metabase-types/api";
+import { BookmarksType, Collection, Item } from "metabase-types/api";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import PinnedQuestionCard from "metabase/collections/components/PinnedQuestionCard";
 import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
-import {
-  Item,
-  isRootCollection,
-  isPreviewShown,
-} from "metabase/collections/utils";
+import { isRootCollection, isPreviewShown } from "metabase/collections/utils";
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
