@@ -35,9 +35,9 @@
             [stencil.core :as stencil]
             [stencil.loader :as stencil-loader]
             [toucan.db :as db])
-  (:import [java.io File IOException OutputStream]
-           java.time.format.DateTimeFormatter
-           java.time.LocalTime))
+  (:import (java.io File IOException OutputStream)
+           java.time.LocalTime
+           java.time.format.DateTimeFormatter))
 
 (defn- app-name-trs
   "Return the user configured application name, or Metabase translated
@@ -209,45 +209,6 @@
     (email/send-message!
      :subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
      :recipients   [(:email user-info)]
-     :message-type :html
-     :message      message-body)))
-
-;; TODO - I didn't write these function and I don't know what it's for / what it's supposed to be doing. If this is
-;; determined add appropriate documentation
-
-(defn- model-name->url-fn [model]
-  (case model
-    "Card"      urls/card-url
-    "Dashboard" urls/dashboard-url
-    "Pulse"     urls/pulse-url
-    "Segment"   urls/segment-url))
-
-(defn- add-url-to-dependency [{:keys [id model], :as obj}]
-  (assoc obj :url ((model-name->url-fn model) id)))
-
-(defn- build-dependencies
-  "Build a sequence of dependencies from a `model-name->dependencies` map, and add various information such as obj URLs."
-  [model-name->dependencies]
-  (for [model-name (sort (keys model-name->dependencies))
-        :let       [user-facing-name (if (= model-name "Card")
-                                       "Saved Question"
-                                       model-name)]
-        deps       (get model-name->dependencies model-name)]
-    {:model   user-facing-name
-     :objects (for [dep deps]
-                (add-url-to-dependency dep))}))
-
-(defn send-notification-email!
-  "Format and send an email informing the user about changes to objects in the system."
-  [email context]
-  {:pre [(u/email? email) (map? context)]}
-  (let [context      (merge (update context :dependencies build-dependencies)
-                            notification-context)
-        message-body (stencil/render-file "metabase/email/notification"
-                                          (merge (common-context) context))]
-    (email/send-message!
-     :subject      (trs "[{0}] Notification" (app-name-trs))
-     :recipients   [email]
      :message-type :html
      :message      message-body)))
 
