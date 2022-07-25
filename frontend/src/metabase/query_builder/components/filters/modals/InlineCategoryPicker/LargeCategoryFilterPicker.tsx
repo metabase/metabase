@@ -18,7 +18,7 @@ import {
 import {
   TokenFieldItem,
   TokenFieldAddon,
-} from "metabase/components/TokenField/TokenField.styled";
+} from "metabase/components/TokenFieldItem";
 
 import { isValidOption } from "./utils";
 
