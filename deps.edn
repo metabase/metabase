@@ -189,7 +189,6 @@
     talltale/talltale                                     {:mvn/version "0.5.8"}}
 
    :extra-paths ["dev/src" "local/src" "test" "shared/test" "test_resources"]
-   :main-opts   ["-e" "(set! *warn-on-reflection* true)"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
