@@ -122,6 +122,7 @@ class EntityMenu extends Component {
                                       ),
                                     )
                                   }
+                                  tooltip={item.tooltip}
                                 />
                               </li>
                             );
@@ -141,6 +142,7 @@ class EntityMenu extends Component {
                                   }
                                   event={item.event && item.event}
                                   link={item.link}
+                                  tooltip={item.tooltip}
                                   disabled={item.disabled}
                                   onClose={() => {
                                     this.toggleMenu();
