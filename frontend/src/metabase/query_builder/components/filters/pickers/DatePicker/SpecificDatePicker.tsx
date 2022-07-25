@@ -54,7 +54,7 @@ const SpecificDatePicker: React.FC<Props> = props => {
   const dateFormat = getDateStyleFromSettings() || "MM/DD/YYYY";
 
   return (
-    <div className={className}>
+    <div className={className} data-testid="specific-date-picker">
       <div className="mb2 full bordered rounded flex align-center">
         <InputBlurChange
           placeholder={moment().format(dateFormat)}

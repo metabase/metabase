@@ -176,6 +176,7 @@ export default class Calendar extends Component<Props, State> {
   renderCalender(current?: Moment, side?: "left" | "right") {
     return (
       <div
+        data-testid="calendar"
         className={cx("Calendar", {
           "Calendar--range":
             (this.props.isRangePicker &&
