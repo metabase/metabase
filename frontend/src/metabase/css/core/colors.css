@@ -4,7 +4,6 @@
 :root {
   --color-brand: #509ee3;
   --color-brand-light: #ddecfa;
-  --color-accent1: #88bf4d;
   --color-accent2: #a989c5;
   --color-admin-navbar: #7172ad;
   --color-white: #ffffff;
@@ -113,16 +112,6 @@
   background-color: var(--color-bg-white);
 }
 
-.text-green,
-.text-green-hover:hover {
-  color: var(--color-accent1);
-}
-
-.text-green-saturated,
-.text-green-saturated-hover:hover {
-  color: var(--color-accent1);
-}
-
 .text-orange,
 .text-orange-hover:hover {
   color: var(--color-warning);
@@ -141,15 +130,6 @@
 .bg-purple,
 .bg-purple-hover:hover {
   background-color: var(--color-accent2);
-}
-
-.bg-green,
-.bg-green-hover:hover {
-  background-color: var(--color-accent1);
-}
-.bg-green-saturated,
-.bg-green-saturated-hover:hover {
-  background-color: var(--color-accent1);
 }
 
 /* alt */
@@ -245,20 +225,6 @@
 }
 
 /* entity colors */
-
-.bg-metric {
-  background-color: var(--color-accent1);
-}
-.text-metric {
-  color: var(--color-accent1);
-}
-
-.bg-data {
-  background-color: var(--color-accent1);
-}
-.text-data {
-  color: var(--color-accent1);
-}
 
 .bg-segment {
   background-color: var(--color-accent2);
