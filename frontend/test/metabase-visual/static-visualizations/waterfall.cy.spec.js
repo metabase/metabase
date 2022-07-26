@@ -32,7 +32,7 @@ describe("static visualizations", () => {
       sendSubscriptionsEmail(`${admin.first_name} ${admin.last_name}`);
 
       openEmailPage(dashboardName).then(() => {
-        cy.percySnapshot();
+        cy.createPercySnapshot();
       });
     });
   });

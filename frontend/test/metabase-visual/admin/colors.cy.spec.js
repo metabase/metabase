@@ -45,14 +45,14 @@ describeEE("visual tests > admin > colors", () => {
     });
 
     visitQuestionAdhoc(questionDetails);
-    cy.percySnapshot("chart");
+    cy.createPercySnapshot("chart");
 
     cy.icon("notebook").click();
-    cy.percySnapshot("filters");
+    cy.createPercySnapshot("filters");
     cy.icon("notebook").click();
 
     cy.findByText("Summarize").click();
-    cy.percySnapshot("summarize");
+    cy.createPercySnapshot("summarize");
   });
 
   it("should use custom chart colors", () => {
@@ -65,13 +65,13 @@ describeEE("visual tests > admin > colors", () => {
     });
 
     visitQuestionAdhoc(questionDetails);
-    cy.percySnapshot("chart");
+    cy.createPercySnapshot("chart");
 
     cy.icon("notebook").click();
-    cy.percySnapshot("filters");
+    cy.createPercySnapshot("filters");
     cy.icon("notebook").click();
 
     cy.findByText("Summarize").click();
-    cy.percySnapshot("summarize");
+    cy.createPercySnapshot("summarize");
   });
 });

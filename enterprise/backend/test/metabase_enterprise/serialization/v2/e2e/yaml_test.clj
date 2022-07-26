@@ -39,41 +39,54 @@
     (ts/with-empty-h2-app-db
       ;; TODO Generating some nested collections would make these tests more robust.
       (test-gen/insert!
-        {:collection             [[100 {:refs {:personal_owner_id ::rs/omit}}]
-                                  [10  {:refs     {:personal_owner_id ::rs/omit}
-                                        :spec-gen {:namespace :snippets}}]]
-         :database               [[10]]
-         :table                  (into [] (for [db [:db0 :db1 :db2 :db3 :db4 :db5 :db6 :db7 :db8 :db9]]
-                                            [10 {:refs {:db_id db}}]))
-         :field                  (into [] (for [n     (range 100)
-                                                :let [table (keyword (str "t" n))]]
-                                            [10 {:refs {:table_id table}}]))
-         :core-user              [[10]]
-         :card                   [[100 {:refs (let [db (rand-int 10)
-                                                    t  (rand-int 10)]
-                                                {:database_id   (keyword (str "db" db))
-                                                 :table_id      (keyword (str "t" (+ t (* 10 db))))
-                                                 :collection_id (random-keyword "coll" 100)
-                                                 :creator_id    (random-keyword "u" 10)})}]]
-         :dashboard              [[100 {:refs {:collection_id   (random-keyword "coll" 100)
-                                               :creator_id      (random-keyword "u" 10)}}]]
-         :dashboard-card         [[300 {:refs {:card_id      (random-keyword "c" 100)
-                                               :dashboard_id (random-keyword "d" 100)}}]]
-         :dimension              [;; 20 with both IDs set
-                                  [20 {:refs {:field_id                (random-keyword "field" 1000)
-                                              :human_readable_field_id (random-keyword "field" 1000)}}]
-                                  ;; 20 with just :field_id
-                                  [20 {:refs {:field_id                (random-keyword "field" 1000)
-                                              :human_readable_field_id ::rs/omit}}]]
-         :metric                 [[30 {:refs {:table_id   (random-keyword "t" 100)
-                                              :creator_id (random-keyword "u" 10)}}]]
-         :segment                [[30 {:refs {:table_id   (random-keyword "t" 100)
-                                              :creator_id (random-keyword "u" 10)}}]]
-         :native-query-snippet   [[10 {:refs {:creator_id    (random-keyword "u" 10)
-                                              :collection_id (random-keyword "coll" 10 100)}}]]
-         :timeline               [[10 {:refs {:creator_id    (random-keyword "u" 10)
-                                              :collection_id (random-keyword "coll" 100)}}]]
-         :timeline-event         [[90 {:refs {:timeline_id   (random-keyword "timeline" 10)}}]]})
+        {:collection              [[100 {:refs {:personal_owner_id ::rs/omit}}]
+                                   [10  {:refs     {:personal_owner_id ::rs/omit}
+                                         :spec-gen {:namespace :snippets}}]]
+         :database                [[10]]
+         :table                   (into [] (for [db [:db0 :db1 :db2 :db3 :db4 :db5 :db6 :db7 :db8 :db9]]
+                                             [10 {:refs {:db_id db}}]))
+         :field                   (into [] (for [n     (range 100)
+                                                 :let [table (keyword (str "t" n))]]
+                                             [10 {:refs {:table_id table}}]))
+         :core-user               [[10]]
+         :card                    [[100 {:refs (let [db (rand-int 10)
+                                                     t  (rand-int 10)]
+                                                 {:database_id   (keyword (str "db" db))
+                                                  :table_id      (keyword (str "t" (+ t (* 10 db))))
+                                                  :collection_id (random-keyword "coll" 100)
+                                                  :creator_id    (random-keyword "u" 10)})}]]
+         :dashboard               [[100 {:refs {:collection_id   (random-keyword "coll" 100)
+                                                :creator_id      (random-keyword "u" 10)}}]]
+         :dashboard-card          [[300 {:refs {:card_id      (random-keyword "c" 100)
+                                                :dashboard_id (random-keyword "d" 100)}}]]
+         :dimension               [;; 20 with both IDs set
+                                   [20 {:refs {:field_id                (random-keyword "field" 1000)
+                                               :human_readable_field_id (random-keyword "field" 1000)}}]
+                                   ;; 20 with just :field_id
+                                   [20 {:refs {:field_id                (random-keyword "field" 1000)
+                                               :human_readable_field_id ::rs/omit}}]]
+         :metric                  [[30 {:refs {:table_id   (random-keyword "t" 100)
+                                               :creator_id (random-keyword "u" 10)}}]]
+         :segment                 [[30 {:refs {:table_id   (random-keyword "t" 100)
+                                               :creator_id (random-keyword "u" 10)}}]]
+         :native-query-snippet    [[10 {:refs {:creator_id    (random-keyword "u" 10)
+                                               :collection_id (random-keyword "coll" 10 100)}}]]
+         :timeline                [[10 {:refs {:creator_id    (random-keyword "u" 10)
+                                               :collection_id (random-keyword "coll" 100)}}]]
+         :timeline-event          [[90 {:refs {:timeline_id   (random-keyword "timeline" 10)}}]]
+         :pulse                   [[10 {:refs {:collection_id (random-keyword "coll" 100)}}]
+                                   [10 {:refs {:collection_id ::rs/omit}}]
+                                   [10 {:refs {:collection_id ::rs/omit
+                                               :dashboard_id  (random-keyword "d" 100)}}]]
+         :pulse-card              [[60 {:refs {:card_id       (random-keyword "c" 100)
+                                               :pulse_id      (random-keyword "pulse" 10)}}]
+                                   [60 {:refs {:card_id       (random-keyword "c" 100)
+                                               :pulse_id      (random-keyword "pulse" 10 20)
+                                               :dashboard_card_id (random-keyword "dc" 300)}}]]
+         :pulse-channel           [[15 {:refs {:pulse_id      (random-keyword "pulse" 10)}}]
+                                   [15 {:refs {:pulse_id      (random-keyword "pulse" 10 20)}}]]
+         :pulse-channel-recipient [[40 {:refs {:pulse_channel_id (random-keyword "pulse-channel" 30)
+                                               :user_id          (random-keyword "u" 10)}}]]})
       (let [extraction (into [] (extract/extract-metabase {}))
             entities   (reduce (fn [m entity]
                                  (update m (-> entity :serdes/meta last :model)
@@ -197,6 +210,42 @@
                          (update :created_at u.date/format)
                          (update :updated_at u.date/format))
                      (yaml/from-file (io/file dump-dir "Segment" filename))))))
+
+          (testing "for pulses"
+            (is (= 30 (count (dir->file-set (io/file dump-dir "Pulse")))))
+            (doseq [{:keys [entity_id] :as pulse} (get entities "Pulse")
+                    :let [filename (#'u.yaml/leaf-file-name entity_id)]]
+              (is (= (-> pulse
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Pulse" filename))))))
+
+          (testing "for pulse cards"
+            (is (= 120 (reduce + (for [pulse (get entities "Pulse")]
+                                   (->> (io/file dump-dir "Pulse" (:entity_id pulse) "PulseCard")
+                                        dir->file-set
+                                        count)))))
+            (doseq [{:keys [entity_id pulse_id] :as card} (get entities "PulseCard")
+                    :let [filename (#'u.yaml/leaf-file-name entity_id)]]
+              (is (= (-> card
+                         (dissoc :serdes/meta))
+                     (yaml/from-file (io/file dump-dir "Pulse" pulse_id "PulseCard" filename))))))
+
+          (testing "for pulse channels"
+            (is (= 30 (reduce + (for [pulse (get entities "Pulse")]
+                                  (->> (io/file dump-dir "Pulse" (:entity_id pulse) "PulseChannel")
+                                       dir->file-set
+                                       count)))))
+            (is (= 40 (reduce + (for [{:keys [recipients]} (get entities "PulseChannel")]
+                                  (count recipients)))))
+            (doseq [{:keys [entity_id pulse_id] :as channel} (get entities "PulseChannel")
+                    :let [filename (#'u.yaml/leaf-file-name entity_id)]]
+              (is (= (-> channel
+                         (dissoc :serdes/meta)
+                         (update :created_at u.date/format)
+                         (update :updated_at u.date/format))
+                     (yaml/from-file (io/file dump-dir "Pulse" pulse_id "PulseChannel" filename))))))
 
           (testing "for native query snippets"
             (is (= 10 (count (dir->file-set (io/file dump-dir "NativeQuerySnippet")))))

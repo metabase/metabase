@@ -31,7 +31,6 @@ import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
-import { ViewSubHeader } from "./ViewHeader";
 import NewQuestionHeader from "./NewQuestionHeader";
 import ViewFooter from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
@@ -315,16 +314,8 @@ class View extends React.Component {
   };
 
   renderMain = ({ leftSidebar, rightSidebar }) => {
-    const {
-      query,
-      mode,
-      parameters,
-      isLiveResizable,
-      isPreviewable,
-      isPreviewing,
-      setParameterValue,
-      setIsPreviewing,
-    } = this.props;
+    const { query, mode, parameters, isLiveResizable, setParameterValue } =
+      this.props;
 
     const queryMode = mode && mode.queryMode();
     const ModeFooter = queryMode && queryMode.ModeFooter;
@@ -356,12 +347,6 @@ class View extends React.Component {
             commitImmediately
           />
         )}
-
-        <ViewSubHeader
-          isPreviewable={isPreviewable}
-          isPreviewing={isPreviewing}
-          setIsPreviewing={setIsPreviewing}
-        />
 
         {validationError ? (
           <QueryValidationError error={validationError} />

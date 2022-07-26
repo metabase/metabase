@@ -6,6 +6,7 @@ import { t } from "ttag";
 import Clearable from "./Clearable";
 import AggregationPopover from "./AggregationPopover";
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
+import { AggregationLabel } from "./AggregationWidget.styled";
 
 // NOTE: lots of duplication between AggregationWidget and BreakoutWidget
 
@@ -56,9 +57,9 @@ export default class AggregationWidget extends React.Component {
             : null
         }
       >
-        <span className={className}>
+        <AggregationLabel className={className}>
           {isRows(aggregation) ? t`Raw data` : aggregation.displayName()}
-        </span>
+        </AggregationLabel>
       </Clearable>
     ) : (
       children

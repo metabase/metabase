@@ -28,7 +28,7 @@ import {
 } from "./DefaultPicker.styled";
 
 const defaultPickerPropTypes = {
-  filter: PropTypes.object,
+  filter: PropTypes.array,
   setValue: PropTypes.func,
   setValues: PropTypes.func,
   onCommit: PropTypes.func,

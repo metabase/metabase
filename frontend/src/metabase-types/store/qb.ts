@@ -17,7 +17,6 @@ export interface QueryBuilderUIControls {
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isShowingNewbModal: boolean;
-  isEditing: boolean;
   isRunning: boolean;
   isQueryComplete: boolean;
   isShowingSummarySidebar: boolean;
@@ -26,7 +25,6 @@ export interface QueryBuilderUIControls {
   isShowingQuestionDetailsSidebar: boolean;
   isShowingTimelineSidebar: boolean;
   initialChartSetting: null;
-  isPreviewing: boolean;
   isShowingRawTable: boolean;
   queryBuilderMode: QueryBuilderMode;
   previousQueryBuilderMode: boolean;

@@ -46,11 +46,9 @@ const ViewFooter = ({
   visualizationSettings,
   isAdmin,
   canManageSubscriptions,
-  isPreviewing,
   isResultDirty,
   isVisualized,
   isTimeseries,
-  queryBuilderMode,
   isShowingTimelineSidebar,
   onOpenTimelines,
   onCloseTimelines,
@@ -113,16 +111,15 @@ const ViewFooter = ({
             question,
             result,
             isObjectDetail,
-          }) &&
-            !isPreviewing && (
-              <QuestionRowCount
-                key="row_count"
-                className="mx1"
-                question={question}
-                isResultDirty={isResultDirty}
-                result={result}
-              />
-            ),
+          }) && (
+            <QuestionRowCount
+              key="row_count"
+              className="mx1"
+              question={question}
+              isResultDirty={isResultDirty}
+              result={result}
+            />
+          ),
           QuestionLastUpdated.shouldRender({ result }) && (
             <QuestionLastUpdated
               key="last-updated"

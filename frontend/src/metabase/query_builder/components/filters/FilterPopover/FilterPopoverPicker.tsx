@@ -1,8 +1,8 @@
 import React from "react";
 
-import TimePicker from "../filters/pickers/TimePicker";
-import BooleanPicker from "../filters/pickers/BooleanPicker";
-import DefaultPicker from "../filters/pickers/DefaultPicker";
+import TimePicker from "../pickers/TimePicker";
+import BooleanPicker from "../pickers/BooleanPicker";
+import DefaultPicker from "../pickers/DefaultPicker";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 type Props = {

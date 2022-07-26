@@ -1,5 +1,4 @@
 import _ from "underscore";
-import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import { createAction } from "redux-actions";
@@ -17,7 +16,6 @@ import { getSensibleDisplays } from "metabase/visualizations";
 import Question from "metabase-lib/lib/Question";
 
 import {
-  getIsPreviewing,
   getIsRunning,
   getOriginalQuestion,
   getQueryBuilderMode,
@@ -27,8 +25,6 @@ import {
 } from "../selectors";
 
 import { updateUrl } from "./navigation";
-
-const PREVIEW_RESULT_LIMIT = 10;
 
 export const SET_DOCUMENT_TITLE = "metabase/qb/SET_DOCUMENT_TITLE";
 const setDocumentTitle = createAction(SET_DOCUMENT_TITLE);
@@ -92,7 +88,7 @@ export const runQuestionQuery = ({
     const questionFromCard = card =>
       card && new Question(card, getMetadata(getState()));
 
-    let question = overrideWithCard
+    const question = overrideWithCard
       ? questionFromCard(overrideWithCard)
       : getQuestion(getState());
     const originalQuestion = getOriginalQuestion(getState());
@@ -109,16 +105,6 @@ export const runQuestionQuery = ({
 
       dispatch(
         updateUrl(question.card(), { dirty: !isAdHocModel && cardIsDirty }),
-      );
-    }
-
-    if (getIsPreviewing(getState())) {
-      question = question.setDatasetQuery(
-        assocIn(
-          question.datasetQuery(),
-          ["constraints", "max-results"],
-          PREVIEW_RESULT_LIMIT,
-        ),
       );
     }
 

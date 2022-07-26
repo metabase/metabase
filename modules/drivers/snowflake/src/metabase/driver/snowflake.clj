@@ -18,6 +18,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.driver.sync :as driver.s]
+            [metabase.models.secret :as secret]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
@@ -52,6 +53,20 @@
   []
   (inc (driver.common/start-of-week->int)))
 
+(defn- resolve-private-key
+  "Convert the private-key secret properties into a private_key_file property in `details`.
+
+  Setting the Snowflake driver property privatekey would be easier, but that doesn't work
+  because clojure.java.jdbc (properly) converts the property values into strings while the
+  Snowflake driver expects a java.security.PrivateKey instance."
+  [details]
+  (let [property         "private-key"
+        secret-map       (secret/db-details-prop->secret-map details property)
+        private-key-file (when (some? (:value secret-map))
+                           (secret/value->file! secret-map :snowflake))]
+    (cond-> (apply dissoc details (vals (secret/get-sub-props property)))
+      private-key-file (assoc :private_key_file (.getCanonicalPath private-key-file)))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options], :as details}]
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
@@ -81,6 +96,7 @@
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
                    (update :schema upcase-not-nil)
+                   resolve-private-key
                    (dissoc :host :port :timezone)))
         (sql-jdbc.common/handle-additional-options details))))
 

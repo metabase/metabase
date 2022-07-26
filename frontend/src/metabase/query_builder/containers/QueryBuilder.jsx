@@ -72,8 +72,6 @@ import {
   getQuestionAlerts,
   getVisualizationSettings,
   getIsNativeEditorOpen,
-  getIsPreviewing,
-  getIsPreviewable,
   getIsVisualized,
   getIsLiveResizable,
   getNativeEditorCursorOffset,
@@ -152,8 +150,6 @@ const mapStateToProps = (state, props) => {
     rawSeries: getRawSeries(state),
 
     uiControls: getUiControls(state),
-    // includes isShowingDataReference, isEditing, isRunning, etc
-    // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
     ...state.qb.uiControls,
     isAnySidebarOpen: getIsAnySidebarOpen(state),
 
@@ -161,8 +157,6 @@ const mapStateToProps = (state, props) => {
     isDirty: getIsDirty(state),
     isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),
-    isPreviewing: getIsPreviewing(state),
-    isPreviewable: getIsPreviewable(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
     isVisualized: getIsVisualized(state),
