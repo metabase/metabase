@@ -31,6 +31,23 @@ describe("scenarios > question > bookmarks", () => {
       cy.findByText("Orders").should("not.exist");
     });
   });
+
+  it("should update name in bookmarks list when bookmarked question name is updated", () => {
+    visitQuestion(1);
+    toggleBookmark();
+
+    openNavigationSidebar();
+    navigationSidebar().within(() => {
+      getSectionTitle(/Bookmarks/);
+      cy.findByText("Orders");
+    });
+
+    cy.findByTestId("saved-question-header-title").click().type(" 2").blur();
+
+    navigationSidebar().within(() => {
+      cy.findByText("Orders 2");
+    });
+  });
 });
 
 function toggleBookmark() {
