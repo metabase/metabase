@@ -9,6 +9,7 @@ import {
   openNavigationSidebar,
   closeNavigationSidebar,
   openCollectionMenu,
+  visitCollection,
 } from "__support__/e2e/helpers";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
@@ -472,16 +473,6 @@ function visitRootCollection() {
   cy.visit("/collection/root");
 
   cy.wait(["@fetchRootCollectionItems", "@fetchRootCollectionItems"]);
-}
-
-function visitCollection(id) {
-  const alias = `getCollection${id}Items`;
-
-  cy.intercept("GET", `/api/collection/${id}/items?**`).as(alias);
-
-  cy.visit(`/collection/${id}`);
-
-  cy.wait([`@${alias}`, `@${alias}`]);
 }
 
 function ensureCollectionHasNoChildren(collection) {
