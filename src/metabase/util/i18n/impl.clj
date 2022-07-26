@@ -114,7 +114,6 @@
   (when-let [resource (locale-edn-resource a-locale)]
     (edn/read-string (slurp resource))))
 
-;; TODO: update docstring
 (def ^:private ^{:arglists '([locale-or-name])} translations
   "Fetch a map of original untranslated message format string -> translated message format string for `locale-or-name`
   by reading the corresponding EDN resource file. Does not include translations for parent locale(s). Memoized.

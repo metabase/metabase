@@ -78,26 +78,27 @@
              (fn [n] (str (i18n/deferred-trun "{0} table" "{0} tables" n)))}]
       (testing message
         (testing "should fall back to English if user locale & system locale are unset"
-          (mt/with-temporary-setting-values [site-locale nil])
-          (is (= "0 tables"
-                 (f 0)))
+          (mt/with-temporary-setting-values [site-locale nil]
+            (is (= "0 tables"
+                   (f 0)))
 
-          (is (= "1 table"
-                 (f 1)))
+            (is (= "1 table"
+                   (f 1)))
 
-          (is (= "2 tables"
-                 (f 2))))
+            (is (= "2 tables"
+                   (f 2)))))
 
         (testing "should use user locale if set"
           (mt/with-user-locale "es"
             (is (= "0 tablas"
-                   (f 1)))
+                   (f 0)))
 
             (is (= "1 tabla"
                    (f 1)))
 
             (is (= "2 tablas"
                    (f 2)))))))))
+
 
 (deftest trsn-test
   (mt/with-mock-i18n-bundles {"es" {:headers {"Plural-Forms" "nplurals=2; plural=(n != 1);\n"}
