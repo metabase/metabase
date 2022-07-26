@@ -1,7 +1,8 @@
 (ns metabase.util.i18n.plural
   "Resources for parsing the Plural-Forms header from a translation file and determining which of multiple
   pluralities to use for a translated string."
-  (:require [instaparse.core :as insta]))
+  (:require [clojure.core.memoize :as memoize]
+            [instaparse.core :as insta]))
 
 (def ^:private plural-form-parser
   "This is a parser for the C-like syntax used to express pluralization rules in the Plural-Forms header in
@@ -93,10 +94,20 @@
    :variable  (constantly n)
    :expr      identity})
 
-(defn index
+(def index
   "Returns the index of the correct translated string for a given value n, based on the value of the Plural-Forms header
-  for a locale."
-  [plural-forms-header n]
-  (let [formula (second (re-find #"plural=(.*)" plural-forms-header))
-        tree    (insta/parse plural-form-parser formula)]
-    (insta/transform (tag-fns n) tree)))
+  for a locale.
+
+  Memoized to improve performance for cases where a single string is translated with a limited range of possible
+  values of `n` (e.g. \"{0} months\"). However, in some cases, a string may be translated with a unique value of `n` in
+  every lookup (e.g. \"{0} rows\"). Each distinct value of `n` would take up space in the cache with very little
+  benefit, and if many of these translations are requested at once, they would take up the entire cache. Therefore,
+  we use a least-used eviction policy to ensure that common values of `n` remain in the cache over time."
+  (memoize/lu
+   (fn [plural-forms-header n]
+     (let [formula (second (re-find #"plural=(.*)" plural-forms-header))
+           tree    (insta/parse plural-form-parser formula)]
+       (insta/transform (tag-fns n) tree)))
+   {}
+   ;; This cache size is pretty arbitrary; can be tweaked if necessary
+   :lu/threshold 500))

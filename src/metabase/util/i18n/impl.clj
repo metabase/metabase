@@ -119,7 +119,8 @@
   "Fetch a map of original untranslated message format string -> translated message format string for `locale-or-name`
   by reading the corresponding EDN resource file. Does not include translations for parent locale(s). Memoized.
 
-    (translations \"es\") ;-> {\"Username\" \"Nombre Usuario\", ...}"
+    (translations \"es\") ;-> {:headers  { ... }
+                               :messages {\"Username\" \"Nombre Usuario\", ...}}"
   (comp (memoize translations*) locale))
 
 (defn- translated-format-string*
