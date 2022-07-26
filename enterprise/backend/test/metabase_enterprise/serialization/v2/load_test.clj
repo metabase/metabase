@@ -4,7 +4,8 @@
             [metabase-enterprise.serialization.v2.extract :as serdes.extract]
             [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
             [metabase-enterprise.serialization.v2.load :as serdes.load]
-            [metabase.models :refer [Collection Database Pulse PulseChannel PulseChannelRecipient Table User]]
+            [metabase.models :refer [Card Collection Database Field Pulse PulseChannel PulseChannelRecipient Table
+                                     User]]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [toucan.db :as db]))
@@ -254,3 +255,83 @@
             (is (= 3 (db/count PulseChannelRecipient)))
             (is (= #{(:id @u1d) (:id @u2d) (:id @u3d)}
                    (db/select-field :user_id PulseChannelRecipient)))))))))
+
+(deftest card-dataset-query-test
+  ;; Card.dataset_query is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be
+  ;; converted to a portable form and read back in.
+  ;; This test has a database, table and fields, that exist on both sides with different IDs, and expects a card that
+  ;; references those fields to be correctly loaded with the dest IDs.
+  (testing "embedded MBQL in Card :dataset-query is portable"
+    (let [serialized (atom nil)
+          coll1s     (atom nil)
+          db1s       (atom nil)
+          table1s    (atom nil)
+          field1s    (atom nil)
+          card1s     (atom nil)
+          user1s     (atom nil)
+          db1d       (atom nil)
+          table1d    (atom nil)
+          field1d    (atom nil)
+          user1d     (atom nil)
+          card1d     (atom nil)
+          db2d       (atom nil)
+          table2d    (atom nil)
+          field2d    (atom nil)]
+
+
+      (ts/with-source-and-dest-dbs
+        (testing "serializing the original database, table, field and card"
+          (ts/with-source-db
+            (reset! coll1s  (ts/create! Collection :name "pop! minis"))
+            (reset! db1s    (ts/create! Database :name "my-db"))
+            (reset! table1s (ts/create! Table :name "customers" :db_id (:id @db1s)))
+            (reset! field1s (ts/create! Field :name "age"    :table_id (:id @table1s)))
+            (reset! user1s  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+            (reset! card1s  (ts/create! Card
+                                        :database_id   (:id @db1s)
+                                        :table_id      (:id @table1s)
+                                        :collection_id (:id @coll1s)
+                                        :creator_id    (:id @user1s)
+                                        :query_type    :query
+                                        :name          "Example Card"
+                                        :dataset_query {:type     :query
+                                                        :query    {:source-table (:id @table1s)
+                                                                   :filter       [:>= [:field (:id @field1s) nil] 18]
+                                                                   :aggregation  [[:count]]}
+                                                        :database (:id @db1s)}
+                                        :display        :line))
+            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
+
+        ;; TODO DO NOT SUBMIT Test that the serialized form is as expected?
+
+        (testing "deserializing adjusts the IDs properly"
+          (ts/with-dest-db
+            ;; A different database and tables, so the IDs don't match.
+            (reset! db2d    (ts/create! Database :name "other-db"))
+            (reset! table2d (ts/create! Table    :name "orders" :db_id (:id @db2d)))
+            (reset! field2d (ts/create! Field    :name "subtotal" :table_id (:id @table2d)))
+            (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+
+            ;; Load the serialized content.
+            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+
+            ;; Fetch the relevant bits
+            (reset! db1d    (db/select-one Database :name "my-db"))
+            (reset! table1d (db/select-one Table :name "customers"))
+            (reset! field1d (db/select-one Field :table_id (:id @table1d) :name "age"))
+            (reset! card1d  (db/select-one Card  :name "Example Card"))
+
+            (testing "the main Database, Table, and Field have different IDs now"
+              (is (not= (:id @db1s) (:id @db1d)))
+              (is (not= (:id @table1s) (:id @table1d)))
+              (is (not= (:id @field1s) (:id @field1d))))
+
+            (is (not= (:dataset_query @card1s)
+                      (:dataset_query @card1d)))
+            (testing "the Card's query is based on the new Database, Table, and Field IDs"
+              (is (= {:type     :query
+                      :query    {:source-table (:id @table1d)
+                                 :filter       [:>= [:field (:id @field1d) nil] 18]
+                                 :aggregation  [[:count]]}
+                      :database (:id @db1d)}
+                     (:dataset_query @card1d))))))))))

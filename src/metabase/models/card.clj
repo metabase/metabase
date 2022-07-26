@@ -324,7 +324,8 @@
       (update :database_id   serdes.util/export-fk-keyed 'Database :name)
       (update :table_id      serdes.util/export-table-fk)
       (update :collection_id serdes.util/export-fk 'Collection)
-      (update :creator_id    serdes.util/export-fk-keyed 'User :email)))
+      (update :creator_id    serdes.util/export-fk-keyed 'User :email)
+      (update :dataset_query serdes.util/export-json-mbql)))
 
 (defmethod serdes.base/load-xform "Card"
   [card]
@@ -333,10 +334,12 @@
       (update :database_id   serdes.util/import-fk-keyed 'Database :name)
       (update :table_id      serdes.util/import-table-fk)
       (update :creator_id    serdes.util/import-fk-keyed 'User :email)
-      (update :collection_id serdes.util/import-fk 'Collection)))
+      (update :collection_id serdes.util/import-fk 'Collection)
+      (update :dataset_query serdes.util/import-json-mbql)))
 
 (defmethod serdes.base/serdes-dependencies "Card"
-  [{:keys [collection_id table_id]}]
+  [{:keys [collection_id dataset_query table_id]}]
   ;; The Table implicitly depends on the Database.
-  [(serdes.util/table->path table_id)
-   [{:model "Collection" :id collection_id}]])
+  (into [] (set/union #{(serdes.util/table->path table_id)
+                        [{:model "Collection" :id collection_id}]}
+                      (serdes.util/mbql-deps dataset_query))))
