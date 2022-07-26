@@ -5,7 +5,8 @@
 
    (This namespace is here rather than in the shared MBQL lib because it relies on other QP-land utils like the QP
   refs stuff.)"
-  (:require [medley.core :as m]
+  (:require [clojure.walk :as walk]
+            [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.mbql.util :as mbql.u]
             [metabase.plugins.classloader :as classloader]
@@ -17,7 +18,11 @@
 (defn- joined-fields [inner-query]
   (m/distinct-by
    add/normalize-clause
-   (mbql.u/match (dissoc inner-query :source-query :source-metadata)
+   (mbql.u/match (walk/prewalk (fn [x]
+                                 (if (map? x)
+                                   (dissoc x :source-query :source-metadata)
+                                   x))
+                               inner-query)
      [:field _ (_ :guard :join-alias)]
      &match)))
 
