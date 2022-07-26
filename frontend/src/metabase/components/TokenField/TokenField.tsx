@@ -19,6 +19,8 @@ import {
 } from "metabase/lib/keyboard";
 import { isObscured } from "metabase/lib/dom";
 
+import { TokenInputItem, TokenFieldContainer } from "./TokenField.styled";
+
 export type LayoutRendererArgs = {
   valuesList: React.ReactNode;
   optionsList: React.ReactNode;
@@ -570,12 +572,8 @@ export default class TokenField extends Component<
 
     const isControlledInput = !!this.onInputChange;
     const valuesList = (
-      <ul
-        className={cx(
-          className,
-          "p0 flex align-center flex-wrap bg-white scroll-x scroll-y",
-        )}
-        style={{ maxHeight: 130, ...style }}
+      <TokenFieldContainer
+        style={{ ...style }}
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {!!prefix && (
@@ -585,10 +583,7 @@ export default class TokenField extends Component<
         )}
         {value.map((v, index) => (
           <TokenFieldItem key={index} isValid={validateValue(v)}>
-            <span
-              style={{ ...defaultStyleValue, ...valueStyle }}
-              className={multi ? "pl1 pr0" : "px1"}
-            >
+            <span style={{ ...defaultStyleValue, ...valueStyle }}>
               {valueRenderer(v)}
             </span>
             {multi && (
@@ -624,7 +619,7 @@ export default class TokenField extends Component<
             />
           </TokenInputItem>
         )}
-      </ul>
+      </TokenFieldContainer>
     );
 
     const optionsList =

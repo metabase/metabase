@@ -26,20 +26,23 @@ export const PickerGrid = styled.div`
 `;
 
 export const TokenFieldContainer = styled.div`
-  min-height: 40px;
   display: flex;
   flex-wrap: wrap;
+  padding: ${space(0)};
+  gap: ${space(0)};
   font-weight: bold;
   cursor: pointer;
+
   border-radius: ${space(1)};
-  border: 1px solid ${color("border")};
-  padding-top: ${space(0)};
-  padding-left: ${space(0)};
+  border: 1px solid ${color("border-dark")};
 `;
 
 export const AddText = styled.div`
   min-height: 30px;
-  margin-bottom: ${space(0)};
+
+  ${breakpointMinHeightMedium} {
+    height: 46px;
+  }
   margin-left: ${space(1)};
   border: none;
   display: flex;

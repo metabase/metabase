@@ -58,7 +58,7 @@ export function LargeCategoryFilterPicker({
         >
           {filterValues.map(filterValue => (
             <TokenFieldItem key={filterValue} isValid onClick={preventDefault}>
-              <span className="pl1">{filterValue}</span>
+              <span>{filterValue}</span>
               <TokenFieldAddon
                 isValid
                 onClick={e => {
