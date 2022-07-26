@@ -7,12 +7,18 @@ import { isHistogramBar, xValueForWaterfallTotal } from "./renderer_utils";
 const sumY = data => data.reduce((sum, [, y]) => sum + y, 0);
 
 const calculateMultiseriesYValues = data => {
-  const [positiveData, negativeData] = _.partition(data, ([, y]) => y >= 0);
+  const [positiveData, negativeData] = _.partition(
+    data.filter(([, y]) => y != null),
+    ([, y]) => y >= 0,
+  );
 
   const yPositive = positiveData.length > 0 ? sumY(positiveData) : null;
   const yNegative = negativeData.length > 0 ? sumY(negativeData) : null;
 
-  const yTotal = yPositive ?? 0 + yNegative ?? 0;
+  const yTotal =
+    yPositive != null || yNegative != null
+      ? yPositive ?? 0 + yNegative ?? 0
+      : null;
 
   return {
     yPositive,
