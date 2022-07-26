@@ -1,13 +1,32 @@
 import styled from "@emotion/styled";
-import { space } from "metabase/styled-components/theme";
-import { color, alpha, darken, lighten } from "metabase/lib/colors";
+import {
+  space,
+  breakpointMinHeightMedium,
+} from "metabase/styled-components/theme";
+
+import { color, lighten } from "metabase/lib/colors";
+
+import Icon from "metabase/components/Icon";
 
 export const InlineOperatorContainer = styled.div`
   font-weight: bold;
-  font-size: 1rem;
+  font-size: 0.875rem;
+  ${breakpointMinHeightMedium} {
+    font-size: 1rem;
+  }
   margin-bottom: 0.875rem;
   display: inline-flex;
   align-items: flex-start;
+`;
+
+export const FieldIcon = styled(Icon)`
+  margin-right: ${space(1)};
+  width: 1rem;
+  height: 1rem;
+  ${breakpointMinHeightMedium} {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
 `;
 
 export const FieldTitle = styled.span`

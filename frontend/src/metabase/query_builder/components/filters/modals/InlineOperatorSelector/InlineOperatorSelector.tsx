@@ -10,6 +10,7 @@ import {
   OperatorDisplay,
   OptionContainer,
   Option,
+  FieldIcon,
 } from "./InlineOperatorSelector.styled";
 import { FilterOperatorName } from "metabase-types/types/Metadata";
 
@@ -37,9 +38,7 @@ export function InlineOperatorSelector({
 
   return (
     <InlineOperatorContainer>
-      {!!iconName && (
-        <Icon name={iconName} size={20} style={{ marginRight: 8 }} />
-      )}
+      {!!iconName && <FieldIcon name={iconName} />}
       <div>
         <FieldTitle>{fieldName}</FieldTitle>
         {!!tableName && (

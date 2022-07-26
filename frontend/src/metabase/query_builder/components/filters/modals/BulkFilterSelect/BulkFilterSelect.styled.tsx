@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import { breakpointMinHeightMedium } from "metabase/styled-components/theme";
 
 import SelectButton from "metabase/core/components/SelectButton";
 import FilterPopover from "../../FilterPopover";
@@ -11,7 +12,10 @@ type SelectFilterButtonProps = {
 
 export const SelectFilterButton = styled(SelectButton)<SelectFilterButtonProps>`
   grid-column: 2;
-  height: 55px;
+  height: 40px;
+  ${breakpointMinHeightMedium} {
+    height: 56px;
+  }
 
   ${({ isActive }) => (isActive ? `border-color: ${color("brand")};` : "")}
 
@@ -21,7 +25,10 @@ export const SelectFilterButton = styled(SelectButton)<SelectFilterButtonProps>`
 `;
 
 export const SegmentSelect = styled(Select)`
-  height: 55px;
+  height: 40px;
+  ${breakpointMinHeightMedium} {
+    height: 56px;
+  }
 `;
 
 export const SelectFilterPopover = styled(FilterPopover)`

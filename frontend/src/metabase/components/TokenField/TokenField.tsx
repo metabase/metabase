@@ -6,7 +6,11 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { TokenFieldAddon, TokenFieldItem } from "./TokenField.styled";
+import {
+  TokenFieldAddon,
+  TokenFieldItem,
+  TokenInputItem,
+} from "./TokenField.styled";
 
 import {
   KEYCODE_ESCAPE,
@@ -573,7 +577,7 @@ export default class TokenField extends Component<
       <ul
         className={cx(
           className,
-          "pl1 pt1 pb0 pr0 flex align-center flex-wrap bg-white scroll-x scroll-y",
+          "p0 flex align-center flex-wrap bg-white scroll-x scroll-y",
         )}
         style={{ maxHeight: 130, ...style }}
         onMouseDownCapture={this.onMouseDownCapture}
@@ -606,7 +610,7 @@ export default class TokenField extends Component<
           </TokenFieldItem>
         ))}
         {canAddItems && (
-          <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
+          <TokenInputItem>
             <input
               ref={this.inputRef}
               style={{ ...defaultStyleValue, ...valueStyle }}
@@ -622,7 +626,7 @@ export default class TokenField extends Component<
               onBlur={this.onInputBlur}
               onPaste={this.onInputPaste}
             />
-          </li>
+          </TokenInputItem>
         )}
       </ul>
     );
