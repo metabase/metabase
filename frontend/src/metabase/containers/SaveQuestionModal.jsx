@@ -87,7 +87,8 @@ export default class SaveQuestionModal extends Component {
           : "",
       description: card.description || "",
       collection_id:
-        card.collection_id === undefined
+        card.collection_id == null ||
+        (originalCard != null && !originalCard.can_write)
           ? initialCollectionId
           : card.collection_id,
       saveType:
