@@ -69,12 +69,29 @@ const emptyCategoryField = new Field({
   metadata,
 });
 
+const nullCategoryField = new Field({
+  database_type: "test",
+  semantic_type: "type/Category",
+  effective_type: "type/Text",
+  base_type: "type/Text",
+  table_id: 8,
+  name: "null_category_field",
+  has_field_values: "list",
+  values: [[null], [undefined]],
+  dimensions: {},
+  dimension_options: [],
+  id: 140,
+  metadata,
+});
+
 // @ts-ignore
 metadata.fields[smallCategoryField.id] = smallCategoryField;
 // @ts-ignore
 metadata.fields[largeCategoryField.id] = largeCategoryField;
 // @ts-ignore
 metadata.fields[emptyCategoryField.id] = emptyCategoryField;
+// @ts-ignore
+metadata.fields[nullCategoryField.id] = nullCategoryField;
 
 const card = {
   dataset_query: {
@@ -93,6 +110,7 @@ const query = question.query() as StructuredQuery;
 const smallDimension = smallCategoryField.dimension();
 const largeDimension = largeCategoryField.dimension();
 const emptyDimension = emptyCategoryField.dimension();
+const nullDimension = nullCategoryField.dimension();
 
 describe("InlineCategoryPicker", () => {
   beforeEach(() => {
@@ -362,6 +380,33 @@ describe("InlineCategoryPicker", () => {
         fieldValues={largeCategoryField.values}
         fetchFieldValues={fetchSpy}
         dimension={largeDimension}
+        onClear={changeSpy}
+      />,
+    );
+
+    expect(screen.queryByTestId("category-picker")).not.toBeInTheDocument();
+    expect(screen.getByTestId("large-category-picker")).toBeInTheDocument();
+  });
+
+  it("should render a large category picker for no valid options", () => {
+    // the small category picker would just render no checkboxes which looks funny
+    const testFilter = new Filter(
+      ["=", ["field", nullCategoryField.id, null], undefined],
+      null,
+      query,
+    );
+    const changeSpy = jest.fn();
+    const fetchSpy = jest.fn();
+
+    render(
+      <InlineCategoryPickerComponent
+        query={query}
+        filter={testFilter}
+        newFilter={testFilter}
+        onChange={changeSpy}
+        fieldValues={nullCategoryField.values}
+        fetchFieldValues={fetchSpy}
+        dimension={nullDimension}
         onClear={changeSpy}
       />,
     );
