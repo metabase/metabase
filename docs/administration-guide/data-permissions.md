@@ -24,7 +24,7 @@ You can set various levels of permissions on a data source, from querying access
 
 ## Data access
 
-You can click on any cell in the permissions table to change a group’s access level. When you’re done making your changes, just click the **Save changes** button in the top-right, and you’ll see a confirmation dialog summarizing the changes. 
+You can click on any cell in the permissions table to change a group’s access level. When you’re done making your changes, just click the **Save changes** button in the top-right, and you’ll see a confirmation dialog summarizing the changes.
 
 ### Unrestricted access
 
