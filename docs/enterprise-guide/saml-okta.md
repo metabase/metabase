@@ -32,8 +32,6 @@ Fill out the **Attribute statements (optional)** section in Okta using the infor
 | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` | user.email     |
 | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname`      | user.lastName  |
 
-**Important note**
-
 The email address attribute **must not be editable** by the end-users themselves. This attribute is used to log in an end-user into a corresponding Metabase account (creating it if needed). If a person can change the email address attribute, they'll potentially be able to access Metabase accounts other than their own.
 
 ### Example of an Okta assertion

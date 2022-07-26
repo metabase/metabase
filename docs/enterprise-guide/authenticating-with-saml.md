@@ -75,7 +75,13 @@ However, the names of the fields in the Metabase SAML form won't always match th
 
 ### URL the IdP should redirect back to
 
-This is the URL that your IdP should redirect users back to after they authenticate, and it needs to be the URL where Metabase is hosted, with `/auth/sso` at the end. Here are some examples of the field name in common IdPs:
+The redirect URL is the web address that people will be sent to after signing in with your IdP. 
+
+The redirect URL for your Metabase should be your Metabase [Site URL](../administration-guide/08-configuration-settings.html#site-url), with `/auth/sso` at the end.
+
+For example, if your Metabase Site URL is `https://metabase.yourcompany.com`, you'll use `https://metabase.yourcompany.com/auth/sso` as the redirect URL in your IdP's SAML form.
+
+Different IdPs use different names for the redirect URL. Here are some common examples:
 
 | Provider                       | Name                     |
 | ------------------------------ | ------------------------ |
@@ -85,15 +91,13 @@ This is the URL that your IdP should redirect users back to after they authentic
 
 ### User attributes
 
-Metabase will automatically log in users authenticated with your SAML identity provider. In order to do so, the first assertion returned in the identity provider's SAML response _must_ contain attributes for each user's first name, last name, and email.
+Metabase will automatically log in people who've been authenticated by your SAML identity provider. In order to do so, the first assertion returned in the identity provider's SAML response _must_ contain attributes for each person's first name, last name, and email.
 
 Most IdPs already include these assertions by default, but some (such as [Okta](saml-okta.html)) must be configured to include them.
 
 Generally you'll need to paste these user attributes (first name, last name, and email) into fields labelled "Name", "Attributes" or "Parameters".
 
-**Important note**
-
-The email address attribute **must not be editable** by the end-users themselves. This attribute is used to log in an end-user into a corresponding Metabase account (creating it if needed). If a person can change the email address attribute, they'll potentially be able to access Metabase accounts other than their own.
+**End-users should not be able to edit the email address attribute**. Your IdP will pass the email address attribute to Metabase in order to log people into their Metabase accounts (or to create a Metabase account on the first login). If a person can change the email address attribute, they'll potentially be able to access Metabase accounts other than their own.
 
 ### Settings for signing SSO requests (optional)
 
@@ -105,7 +109,9 @@ Metabase will now need to know some things about your IdP. Here's a breakdown of
 
 ### SAML Identity Provider URL
 
-This is where Metabase will redirect login requests. That is, it's where your users go to log in to your SSO. Here are some examples of the field name in common IdPs:
+Metabase will redirect login requests to this URL. That is, this URL is where people will go to log in to your SSO. 
+
+Different IdPs use different names for the Identity Provider URL. Here are some common examples:
 
 | Provider                       | Name                                 |
 | ------------------------------ | ------------------------------------ |
