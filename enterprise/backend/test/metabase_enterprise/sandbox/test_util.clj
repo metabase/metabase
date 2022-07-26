@@ -116,12 +116,6 @@
   [gtaps-and-attributes-map & body]
   `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) :rasta (fn [~'&group] ~@body)))
 
-(defmacro with-gtaps-for-user
-  "Like `with-gtaps` but for a specific user."
-  {:style/indent 2}
-  [test-user-name-or-user-id gtaps-and-attributes-map & body]
-  `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) ~test-user-name-or-user-id (fn [~'&group] ~@body)))
-
 (defn restricted-column-query
   "An MBQL query against Venues that only returns a subset of the columns."
   [db-id]

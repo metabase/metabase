@@ -48,7 +48,7 @@
 
 (deftest advanced-field-values-hash-test
   (premium-features-test/with-premium-features #{:sandboxes}
-    ;; copy at top level so that `with-gtaps-for-user` does not create a new copy every it got call
+    ;; copy at top level so that `with-gtaps-for-user` does not have to create a new copy every time it gets called
     (mt/with-temp-copy-of-db
       (testing "gtap with remappings"
         (letfn [(hash-for-user-id [user-id login-attributes]

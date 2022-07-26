@@ -53,8 +53,7 @@
   ;; -> [1, {\"State\" \"CA\"}]"
   [{:keys [table_id id] :as _field}]
   (when-let [gtap (table-id->gtap table_id)]
-    (let [login-attributes (or (:login_attributes @api/*current-user*)
-                               (db/select-one-field :login_attributes User :id api/*current-user-id*))
+    (let [login-attributes     (:login_attributes @api/*current-user*)
           attribute_remappings (:attribute_remappings gtap)]
       [(:card_id gtap)
        (into {} (for [[k v] attribute_remappings
