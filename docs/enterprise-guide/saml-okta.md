@@ -15,14 +15,14 @@ For more information, check out our guide for [authenticating with SAML][saml-do
 
 ## Configuring SAML settings in Okta
 
-| Metabase SAML                       | Okta SAML                                                                                                                                                     |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| URL the IdP should redirect back to | Single sign-on URL. This is the same as your Metabase URL -- it should start with `https://` and end with `/auth/sso`.                   |
-| SAML Application Name               | Audience URI (SP Entity ID)                                                                                                              |
+| Metabase SAML                       | Okta SAML                                                                                                                    |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| URL the IdP should redirect back to | Single sign-on URL. This is your Metabase [Site URL][site-url] -- it should start with `https://` and end with `/auth/sso`.  |
+| SAML Application Name               | Audience URI (SP Entity ID)                                                                                                  |
 
 ### Setting attribute statements
 
-In order to automatically log in people authenticated through Okta, Metabase needs you to set the first name (given name), last name (surname), and email address attributes in Okta.
+Metabase needs you to set the first name (given name), last name (surname), and email address attributes in Okta. These attributes will be passed from Okta to Metabase during authentication to automatically log people into their Metabase accounts.
 
 Fill out the **Attribute statements (optional)** section in Okta using the information from your Metabase **SAML attributes** (found under **Admin panel** > **Authentication** > **SAML**).
 
@@ -32,7 +32,7 @@ Fill out the **Attribute statements (optional)** section in Okta using the infor
 | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` | user.email     |
 | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname`      | user.lastName  |
 
-The email address attribute **must not be editable** by the end-users themselves. This attribute is used to log in an end-user into a corresponding Metabase account (creating it if needed). If a person can change the email address attribute, they'll potentially be able to access Metabase accounts other than their own.
+**End-users should not be able to edit the email address attribute**. Your IdP will pass the email address attribute to Metabase in order to log people into their Metabase accounts (or to create an account on the first login). If a person can change the email address attribute, they'll potentially be able to access Metabase accounts other than their own.
 
 ### Example of an Okta assertion
 
@@ -116,4 +116,5 @@ For common issues, go to [Troubleshooting SAML][troubleshooting-saml].
 [okta-saml-docs]: https://help.okta.com/en-us/Content/Topics/Apps/Apps_App_Integration_Wizard_SAML.htm
 [okta-create-attribute-statement]: https://support.okta.com/help/s/article/How-to-define-and-configure-a-custom-SAML-attribute-statement
 [saml-doc]: ../enterprise-guide/authenticating-with-saml.html
+[site-url]: ../administration-guide/08-configuration-settings.html#site-url
 [troubleshooting-saml]: ../troubleshooting-guide/saml.html

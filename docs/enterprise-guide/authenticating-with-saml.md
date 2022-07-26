@@ -63,7 +63,7 @@ We've written up some guides for the most common providers:
 
 **If you don't see your IdP listed here:**
 
-- Refer to your IdP's reference docs on configuring SAML. For example, see [OneLogin's SAML docs](https://onelogin.service-now.com/support?id=kb_article&sys_id=83f71bc3db1e9f0024c780c74b961970).
+- Refer to your IdP's reference docs on configuring SAML. You'll be looking for something like this [OneLogin SAML guide](https://onelogin.service-now.com/support?id=kb_article&sys_id=83f71bc3db1e9f0024c780c74b961970).
 - Fill out your IdP's SAML form using the information found on the [Metabase SAML form](#turning-on-saml-based-sso).
 - For more information, see the next section on [Generic SAML configuration](#generic-saml-configuration).
 
@@ -71,13 +71,11 @@ We've written up some guides for the most common providers:
 
 The top portion of the [SAML form in Metabase](#turning-on-saml-based-sso) has the information you'll need to fill out your IdP's SAML form, with buttons to make copying the information easy.
 
-However, the names of the fields in the Metabase SAML form won't always match the names of the fields in your IdP's SAML form. We've provided a general description of each field below to help you map information from one place to another.
+However, the names of the fields in the Metabase SAML form won't always match the names used by your IdP. We've provided a description of each field below to help you map information from one place to another.
 
 ### URL the IdP should redirect back to
 
-The redirect URL is the web address that people will be sent to after signing in with your IdP. 
-
-The redirect URL for your Metabase should be your Metabase [Site URL](../administration-guide/08-configuration-settings.html#site-url), with `/auth/sso` at the end.
+The redirect URL is the web address that people will be sent to after signing in with your IdP. To redirect people to your Metabase, your redirect URL should be your Metabase [Site URL](../administration-guide/08-configuration-settings.html#site-url), with `/auth/sso` at the end.
 
 For example, if your Metabase Site URL is `https://metabase.yourcompany.com`, you'll use `https://metabase.yourcompany.com/auth/sso` as the redirect URL in your IdP's SAML form.
 
@@ -87,7 +85,7 @@ Different IdPs use different names for the redirect URL. Here are some common ex
 | ------------------------------ | ------------------------ |
 | [Auth0](saml-auth0.html)       | Application Callback URL |
 | [Okta](saml-okta.html)         | Single Sign On URL       |
-| [OneLogin](saml-onelogin.html) | ACS (Consumer) URL       |
+| OneLogin                       | ACS (Consumer) URL       |
 
 ### User attributes
 
@@ -97,7 +95,7 @@ Most IdPs already include these assertions by default, but some (such as [Okta](
 
 Generally you'll need to paste these user attributes (first name, last name, and email) into fields labelled "Name", "Attributes" or "Parameters".
 
-**End-users should not be able to edit the email address attribute**. Your IdP will pass the email address attribute to Metabase in order to log people into their Metabase accounts (or to create a Metabase account on the first login). If a person can change the email address attribute, they'll potentially be able to access Metabase accounts other than their own.
+**End-users should not be able to edit the email address attribute**. Your IdP will pass the email address attribute to Metabase in order to log people into their Metabase accounts (or to create an account on the first login). If a person can change the email address attribute, they'll potentially be able to access Metabase accounts other than their own.
 
 ### Settings for signing SSO requests (optional)
 
@@ -109,7 +107,7 @@ Metabase will now need to know some things about your IdP. Here's a breakdown of
 
 ### SAML Identity Provider URL
 
-Metabase will redirect login requests to this URL. That is, this URL is where people will go to log in to your SSO. 
+Metabase will redirect login requests to the Identity Provider URL, where people will go to log in with SSO.
 
 Different IdPs use different names for the Identity Provider URL. Here are some common examples:
 
@@ -117,7 +115,7 @@ Different IdPs use different names for the Identity Provider URL. Here are some 
 | ------------------------------ | ------------------------------------ |
 | [Auth0](saml-auth0.html)       | Identity Provider Login URL          |
 | [Okta](saml-okta.html)         | Identity Provider Single-Sign On URL |
-| [OneLogin](saml-onelogin.html) | SAML 2.0 Endpoint (HTTP)             |
+| OneLogin                       | SAML 2.0 Endpoint (HTTP)             |
 
 ### SAML Identity Provider Issuer
 
@@ -129,7 +127,7 @@ We recommend that you set this value to make your SAML configuration more secure
 | ------------------------------ | --------------------------- |
 | [Auth0](saml-auth0.html)       | Identity Provider Login URL |
 | [Okta](saml-okta.html)         | Identity Provider Issuer    |
-| [OneLogin](saml-onelogin.html) | Issuer URL                  |
+| OneLogin                       | Issuer URL                  |
 
 ### SAML Identity Provider Certificate
 
@@ -143,7 +141,7 @@ Note that your certificate text may include header and footer comments that look
 | ------------------------------ | ------------------- |
 | [Auth0](saml-auth0.html)       | Signing Certificate |
 | [Okta](saml-okta.html)         | X.509 Certificate   |
-| [OneLogin](saml-onelogin.html) | X.509 Certificate   |
+| OneLogin                       | X.509 Certificate   |
 
 ### Settings for signing SSO requests (optional)
 
