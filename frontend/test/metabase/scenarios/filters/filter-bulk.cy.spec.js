@@ -399,16 +399,12 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Showing 506 rows").should("be.visible");
     });
 
-    it("should not show inline category picker for state", () => {
-      modal().within(() => {
-        cy.findByLabelText("State").click();
-      });
-
-      popover().within(() => {
+    it("should show large category picker for state", () => {
+      cy.findByTestId("large-category-picker").should("exist");
+      filterFieldPopover("State").within(() => {
         cy.findByText("AZ").click();
-        cy.button("Add filter").click();
+        cy.button("Update filter").click();
       });
-
       applyFilters();
 
       cy.findByText("State is AZ").should("be.visible");
