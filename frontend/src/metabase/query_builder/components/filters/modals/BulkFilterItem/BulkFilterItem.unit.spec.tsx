@@ -11,7 +11,6 @@ import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Question from "metabase-lib/lib/Question";
 
 import { BulkFilterItem } from "./BulkFilterItem";
-import { before } from "underscore";
 
 const booleanField = new Field({
   database_type: "test",
