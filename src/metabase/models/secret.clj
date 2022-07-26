@@ -101,7 +101,9 @@
           (.write out v)))
       tmp-file)))
 
-(def ^{:arglists '([{:keys [connection-property-name id value] :as secret} driver?])}
+(def
+  ^java.io.File
+  ^{:arglists '([{:keys [connection-property-name id value] :as secret} driver?])}
   value->file!
   "Returns the value of the given `secret` instance in the form of a file. If the given instance has a `:file-path` as
   its source, a `File` referring to that is returned. Otherwise, the `:value` is written to a temporary file, which is
