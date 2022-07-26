@@ -5,7 +5,6 @@
             [metabase.actions.http-action :as http-action]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
-            [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [HTTPAction]]
             [metabase.models.action :as action]
             [metabase.models.database :refer [Database]]
