@@ -13,7 +13,7 @@ describe("scenarios > question > bookmarks", () => {
     cy.signInAsAdmin();
   });
 
-  it("should add then remove bookmark from question page", () => {
+  it("should add, update bookmark name when question name is updated, then remove bookmark from question page", () => {
     visitQuestion(1);
     toggleBookmark();
 
@@ -21,6 +21,13 @@ describe("scenarios > question > bookmarks", () => {
     navigationSidebar().within(() => {
       getSectionTitle(/Bookmarks/);
       cy.findByText("Orders");
+    });
+
+    // Rename bookmarked question
+    cy.findByTestId("saved-question-header-title").click().type(" 2").blur();
+
+    navigationSidebar().within(() => {
+      cy.findByText("Orders 2");
     });
 
     // Remove bookmark
@@ -28,24 +35,7 @@ describe("scenarios > question > bookmarks", () => {
 
     navigationSidebar().within(() => {
       getSectionTitle(/Bookmarks/).should("not.exist");
-      cy.findByText("Orders").should("not.exist");
-    });
-  });
-
-  it("should update name in bookmarks list when bookmarked question name is updated", () => {
-    visitQuestion(1);
-    toggleBookmark();
-
-    openNavigationSidebar();
-    navigationSidebar().within(() => {
-      getSectionTitle(/Bookmarks/);
-      cy.findByText("Orders");
-    });
-
-    cy.findByTestId("saved-question-header-title").click().type(" 2").blur();
-
-    navigationSidebar().within(() => {
-      cy.findByText("Orders 2");
+      cy.findByText("Orders 2").should("not.exist");
     });
   });
 });
