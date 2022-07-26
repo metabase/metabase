@@ -518,7 +518,7 @@
 (defmethod ->honeysql [:sql :case]
   [driver [_ cases options]]
   (->> (concat cases
-               (when (:default options)
+               (when (some? (:default options))
                  [[:else (:default options)]]))
        (apply concat)
        (mapv (partial ->honeysql driver))
