@@ -312,6 +312,6 @@
 ;;; ---------------------------------- Native Query Snippet replacement snippet info ---------------------------------
 
 (defmethod ->replacement-snippet-info [:sql ReferencedQuerySnippet]
-  [_ {:keys [content params]}]
-  {:prepared-statement-args (not-empty params)
+  [_ {:keys [content]}]
+  {:prepared-statement-args nil
    :replacement-snippet     content})
