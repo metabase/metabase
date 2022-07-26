@@ -177,4 +177,21 @@
       (is (thrown-with-msg?
            AssertionError
            #"expects 2 args, got 1"
-           (#'i18n/validate-number-of-args '(str "{0}" "{1}") [0])))))
+           (#'i18n/validate-number-of-args '(str "{0}" "{1}") [0]))))
+
+  (testing "`trsn` and `trun` should validate that the are being called with at most one arg\n"
+    (is (thrown?
+         clojure.lang.Compiler$CompilerException
+         (walk/macroexpand-all `(i18n/trsn "{1}" "{1}" n))))
+    (is (thrown-with-msg?
+         AssertionError
+         #"only supports a single \{0\} placeholder"
+         (#'i18n/validate-n "{1}" "{1}")))
+
+    (is (thrown?
+         clojure.lang.Compiler$CompilerException
+         (walk/macroexpand-all `(i18n/trsn "{0} {1}" "{0} {1}" n))))
+    (is (thrown-with-msg?
+         AssertionError
+         #"only supports a single \{0\} placeholder"
+         (#'i18n/validate-n "{0} {1}" "{0} {1}")))))

@@ -192,10 +192,21 @@
   [format-string-or-str & args]
   `(str* (deferred-trs ~format-string-or-str ~@args)))
 
-;; TODO
-#_(defn- validate-n-form
-    "Validates a singular or plural format string passed to `trun`, `deferred-trun`, `trsn`, or `deferred-trsn`.`"
-    [singular])
+(defn- validate-n
+  "Make sure that `trsn`/`trun` and related forms have valid format strings, with most one placeholder (for n)"
+  [format-string format-string-pl]
+  (assert (and (string? format-string) (string? format-string-pl))
+          "The first and second args to (deferred-)trsn/trun must be Strings!")
+  (let [validate (fn [format-string]
+                   (let [message-format    (MessageFormat. format-string)
+                         ;; number of {n} placeholders in format string including any you may have skipped. e.g. "{0} {2}" -> 3
+                         num-args-by-index (count (.getFormatsByArgumentIndex message-format))
+                         ;; number of {n} placeholders in format string *not* including ones you make have skipped. e.g. "{0} {2}" -> 2
+                         num-args          (count (.getFormats message-format))]
+                     (assert (and (<= num-args-by-index 1) (<= num-args 1))
+                             (format "(deferred-)trsn/trun only supports a single {0} placeholder for the value `n`"))))]
+    (validate format-string)
+    (validate format-string-pl)))
 
 (defmacro deferred-trun
   "Similar to `deferred-tru` but chooses the appropriate singular or plural form based on the value of `n`.
@@ -204,6 +215,7 @@
   should be `n`. `n` can be interpolated into the translated string using the `{0}` placeholder syntax, but no
   additional placeholders are supported."
   [format-string format-string-pl n]
+  (validate-n format-string format-string-pl)
   `(UserLocalizedString. ~format-string ~[n] ~{:n n :format-string-pl format-string-pl}))
 
 (defmacro trun
@@ -222,6 +234,7 @@
   should be `n`. `n` can be interpolated into the translated string using the `{0}` placeholder syntax, but no
   additional placeholders are supported."
   [format-string format-string-pl n]
+  (validate-n format-string format-string-pl)
   `(SiteLocalizedString. ~format-string ~[n] ~{:n n :format-string-pl format-string-pl}))
 
 (defmacro trsn
