@@ -7,7 +7,7 @@
             [metabase.public-settings :as public-settings]
             [toucan.db :as db]))
 
-(def ^:private ^:const persisted-info-topics
+(def ^:private persisted-info-topics
   "The `Set` of event topics which are subscribed to add persisted-info to new models."
   #{:card-create
     :card-update})

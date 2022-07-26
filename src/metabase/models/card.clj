@@ -4,9 +4,7 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.util :as mbql.u]
             [metabase.models.collection :as collection]
-            [metabase.models.dependency :as dependency]
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as mi]
             [metabase.models.params :as params]
@@ -64,27 +62,6 @@
 
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
-
-;;; -------------------------------------------------- Dependencies --------------------------------------------------
-
-(defn- extract-ids
-  "Get all the Segment or Metric IDs referenced by a query."
-  [segment-or-metric query]
-  (set
-   (case segment-or-metric
-     :segment (mbql.u/match query [:segment id] id)
-     :metric  (mbql.u/match query [:metric  id] id))))
-
-(defn card-dependencies
-  "Calculate any dependent objects for a given `card`."
-  ([_ _ card]
-   (card-dependencies card))
-  ([{{query-type :type, inner-query :query} :dataset_query}]
-   (when (= :query query-type)
-     {:Metric  (extract-ids :metric inner-query)
-      :Segment (extract-ids :segment inner-query)})))
-
-
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -281,8 +258,7 @@
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
   (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (db/delete! 'Revision :model "Card", :model_id id)
-  (db/delete! 'Dependency :model "Card", :model_id id))
+  (db/delete! 'Revision :model "Card", :model_id id))
 
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
@@ -323,9 +299,6 @@
   revision/IRevisioned
   (assoc revision/IRevisionedDefaults
          :serialize-instance serialize-instance)
-
-  dependency/IDependent
-  {:dependencies card-dependencies}
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})

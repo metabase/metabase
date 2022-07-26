@@ -223,7 +223,6 @@
                                         metabase.models.collection-permission-graph-revision            c-perm-revision
                                         metabase.models.dashboard-card                                  dashboard-card
                                         metabase.models.database                                        database
-                                        metabase.models.dependency                                      dependency
                                         metabase.models.field-values                                    field-values
                                         metabase.models.interface                                       mi
                                         metabase.models.moderation-review                               moderation-review

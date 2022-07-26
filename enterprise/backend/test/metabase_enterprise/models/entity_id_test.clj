@@ -1,4 +1,4 @@
-(ns metabase_enterprise.models.entity-id-test
+(ns metabase-enterprise.models.entity-id-test
   "To support serialization, all exported entities should have either an external name (eg. a database path) or a
   generated NanoID in a column called entity_id. There's a property :entity_id to automatically populate that field.
 
@@ -8,13 +8,11 @@
     [clojure.test :refer :all]
     metabase.db.data-migrations
     metabase.models
-    metabase.models.dependency-test
     metabase.models.revision-test
     [toucan.models :refer [IModel properties]]))
 
 (comment metabase.models/keep-me
          metabase.db.data-migrations/keep-me
-         metabase.models.dependency-test/keep-me
          metabase.models.revision-test/keep-me)
 
 (def entities-external-name
@@ -24,10 +22,7 @@
     metabase.models.table.TableInstance
     metabase.models.field.FieldInstance
     ;; Settings have human-selected unique names.
-    metabase.models.setting.SettingInstance
-    ;; Dependencies are serialized but no extra ID is necessary since they're just many-to-many links between entities
-    ;; with unique IDs, and don't need unique IDs of their own.
-    metabase.models.dependency.DependencyInstance})
+    metabase.models.setting.SettingInstance})
 
 (def entities-not-exported
   "Entities that are either:
@@ -44,7 +39,6 @@
     metabase.models.collection.root.RootCollection
     metabase.models.collection_permission_graph_revision.CollectionPermissionGraphRevisionInstance
     metabase.models.dashboard_card_series.DashboardCardSeriesInstance
-    metabase.models.dependency_test.MockInstance
     metabase.models.field_values.FieldValuesInstance
     metabase.models.login_history.LoginHistoryInstance
     metabase.models.metric_important_field.MetricImportantFieldInstance

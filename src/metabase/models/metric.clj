@@ -3,8 +3,6 @@
   It is passed in as an `:aggregation` clause but is replaced by the `expand-macros` middleware with the appropriate
   clauses."
   (:require [medley.core :as m]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.dependency :as dependency :refer [Dependency]]
             [metabase.models.interface :as mi]
             [metabase.models.revision :as revision]
             [metabase.models.serialization.base :as serdes.base]
@@ -19,9 +17,6 @@
             [toucan.models :as models]))
 
 (models/defmodel Metric :metric)
-
-(defn- pre-delete [{:keys [id]}]
-  (db/delete! Dependency :model "Metric", :model_id id))
 
 (defn- pre-update [{:keys [creator_id id], :as updates}]
   (u/prog1 updates
@@ -42,8 +37,7 @@
    {:types      (constantly {:definition :metric-segment-definition})
     :properties (constantly {:timestamped? true
                              :entity_id    true})
-    :pre-update pre-update
-    :pre-delete pre-delete})
+    :pre-update pre-update})
   mi/IObjectPermissions
   (merge
    mi/IObjectPermissionsDefaults
@@ -84,18 +78,6 @@
          {:serialize-instance serialize-metric
           :diff-map           diff-metrics}))
 
-
-;;; -------------------------------------------------- DEPENDENCIES --------------------------------------------------
-
-(defn metric-dependencies
-  "Calculate any dependent objects for a given Metric."
-  [_ _ {:keys [definition]}]
-  (when definition
-    {:Segment (set (mbql.u/match definition [:segment id] id))}))
-
-(u/strict-extend (class Metric)
-  dependency/IDependent
-  {:dependencies metric-dependencies})
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
 
