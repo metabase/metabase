@@ -148,7 +148,7 @@
     (let [action-id (action/insert! {:type :http
                                      :name "Echo Example"
                                      :template {:url (client/build-url "testing/echo[[?fail={{fail}}]]" {})
-                                                :method :post
+                                                :method "POST"
                                                 :body "{\"the_parameter\": {{id}}}"
                                                 :headers "{\"x-test\": \"{{id}}\"}"
                                                 :parameters [{:id "id" :type "number"}
