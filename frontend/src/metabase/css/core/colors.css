@@ -4,7 +4,6 @@
 :root {
   --color-brand: #509ee3;
   --color-brand-light: #ddecfa;
-  --color-accent2: #a989c5;
   --color-admin-navbar: #7172ad;
   --color-white: #ffffff;
   --color-black: #2e353b;
@@ -127,11 +126,6 @@
   background-color: var(--color-bg-light);
 }
 
-.bg-purple,
-.bg-purple-hover:hover {
-  background-color: var(--color-accent2);
-}
-
 /* alt */
 .bg-alt,
 .bg-alt-hover:hover {
@@ -225,13 +219,6 @@
 }
 
 /* entity colors */
-
-.bg-segment {
-  background-color: var(--color-accent2);
-}
-.text-segment {
-  color: var(--color-accent2);
-}
 
 .bg-dashboard {
   background-color: var(--color-brand);
