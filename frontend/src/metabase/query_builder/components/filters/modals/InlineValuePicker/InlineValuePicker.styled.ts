@@ -1,13 +1,11 @@
 import styled from "@emotion/styled";
-import { space } from "metabase/styled-components/theme";
+import {
+  space,
+  breakpointMinHeightMedium,
+} from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
-import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import NumericInput from "metabase/core/components/NumericInput";
-
-export const ArgumentSelector = styled(FieldValuesWidget)`
-  min-height: 55px;
-`;
 
 export const ValuesPickerContainer = styled.div`
   ul.input {
@@ -42,6 +40,9 @@ export const NumberSeparator = styled.span`
 export const NumberInput = styled(NumericInput)`
   width: 10rem;
   input {
-    height: 55px;
+    height: 40px;
+    ${breakpointMinHeightMedium} {
+      height: 56px;
+    }
   }
 `;

@@ -42,7 +42,6 @@ export const TabIcon = styled(Icon)`
 `;
 
 export const TabLabel = styled(Ellipsified)`
-  font-size: 1rem;
   font-weight: bold;
   max-width: 16rem;
 `;
