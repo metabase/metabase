@@ -182,21 +182,40 @@
   (str "%" s "%"))
 
 (defn- search-string-clause
-  [query searchable-columns]
+  [model query searchable-columns]
   (when query
     (into [:or]
           (for [column searchable-columns
-                token (scoring/tokenize (scoring/normalize query))]
+                token (scoring/tokenize (scoring/normalize query))
+                :let [qualified-column (hsql/qualify (model->alias model) column)]]
             [:like
-             (hsql/call :lower column)
+             (hsql/call :lower qualified-column)
              (wildcard-match token)]))))
+
+(defn- search-string-clause
+  [model query searchable-columns]
+  (when query
+    (let [tokens (scoring/tokenize (scoring/normalize query))]
+      (into [:or]
+            (apply concat (for [column searchable-columns
+                                :let [qualified-column (hsql/qualify (model->alias model) column)]]
+                            (if (and (= column :dataset_query)
+                                     (= (mdb/db-type) :postgres))
+                              ;; TODO: is there a SQL injection issue here?
+                              [(hsql/raw (str "dataset_query_tokens @@ to_tsquery('"
+                                              (->> tokens
+                                                   (str/join "|")) "')"))]
+                              (for [token tokens]
+                                [:like
+                                 (hsql/call :lower qualified-column)
+                                 (wildcard-match token)]))))))))
 
 (s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and :=) "type") s/Any]
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
   (let [archived-clause (archived-where-clause model archived?)
-        search-clause   (search-string-clause search-string
-                                              (map (partial hsql/qualify (model->alias model))
-                                                   (search-config/searchable-columns-for-model model)))]
+        search-clause   (search-string-clause model
+                                              search-string
+                                              (search-config/searchable-columns-for-model model))]
     (if search-clause
       [:and archived-clause search-clause]
       archived-clause)))
@@ -349,7 +368,12 @@
                                (map first)
                                (remove #{:collection_authority_level :moderated_status :initial_sync_status}))
         case-clauses      (as-> columns-to-search <>
-                            (map (fn [col] [:like (hsql/call :lower col) match]) <>)
+                            (map (fn [col]
+                                   (if (and (= col :dataset_query)
+                                            (= (mdb/db-type) :postgres))
+                                     ;; TODO qualify the column
+                                     (hsql/raw (str "dataset_query_tokens @@ phraseto_tsquery('" (scoring/normalize query) "')"))
+                                     [:like (hsql/call :lower col) match])) <>)
                             (interleave <> (repeat 0))
                             (concat <> [:else 1]))]
     (apply hsql/call :case case-clauses)))
