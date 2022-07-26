@@ -4,16 +4,12 @@ import { t } from "ttag";
 import type Filter from "metabase-lib/lib/queries/structured/Filter";
 import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type Dimension from "metabase-lib/lib/Dimension";
+import { pluralize } from "metabase/lib/formatting";
 
 import Icon from "metabase/components/Icon";
 
 import { BulkFilterSelect } from "../BulkFilterSelect";
-import {
-  TokenFieldContainer,
-  AddButton,
-  AddButtonIcon,
-  AddButtonLabel,
-} from "./InlineCategoryPicker.styled";
+import { TokenFieldContainer, AddText } from "./InlineCategoryPicker.styled";
 
 import {
   TokenFieldItem,
@@ -46,31 +42,39 @@ export function LargeCategoryFilterPicker({
       ),
     );
 
+  const preventDefault = (e: React.SyntheticEvent) => e.preventDefault();
+
   return (
-    <TokenFieldContainer data-testid="large-category-picker">
-      {filterValues.map(filterValue => (
-        <TokenFieldItem key={filterValue} isValid>
-          <span className="pl1">{filterValue}</span>
-          <TokenFieldAddon isValid onClick={() => removeValue(filterValue)}>
-            <Icon name="close" className="flex align-center" size={12} />
-          </TokenFieldAddon>
-        </TokenFieldItem>
-      ))}
-      <BulkFilterSelect
-        query={query}
-        filter={filter}
-        dimension={dimension}
-        handleChange={onChange}
-        handleClear={onClear}
-        customTrigger={({ onClick }) => (
-          <AddButton onClick={onClick} aria-label={t`Add options`}>
-            <AddButtonIcon name="add" size={14} />
-            {filterValues?.length === 0 && (
-              <AddButtonLabel>{t`Add options`}</AddButtonLabel>
-            )}
-          </AddButton>
-        )}
-      />
-    </TokenFieldContainer>
+    <BulkFilterSelect
+      query={query}
+      filter={filter}
+      dimension={dimension}
+      handleChange={onChange}
+      handleClear={onClear}
+      customTrigger={({ onClick }) => (
+        <TokenFieldContainer
+          data-testid="large-category-picker"
+          onClick={onClick}
+        >
+          {filterValues.map(filterValue => (
+            <TokenFieldItem key={filterValue} isValid onClick={preventDefault}>
+              <span className="pl1">{filterValue}</span>
+              <TokenFieldAddon
+                isValid
+                onClick={e => {
+                  e.stopPropagation();
+                  removeValue(filterValue);
+                }}
+              >
+                <Icon name="close" className="flex align-center" size={12} />
+              </TokenFieldAddon>
+            </TokenFieldItem>
+          ))}
+          <AddText>
+            {t`Select ${pluralize(dimension.displayName().toLowerCase())}...`}
+          </AddText>
+        </TokenFieldContainer>
+      )}
+    />
   );
 }

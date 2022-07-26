@@ -1,6 +1,9 @@
 import styled from "@emotion/styled";
 import { color, alpha } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import {
+  space,
+  breakpointMinHeightMedium,
+} from "metabase/styled-components/theme";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Button from "metabase/core/components/Button";
@@ -27,22 +30,22 @@ export const TokenFieldContainer = styled.div`
   display: flex;
   flex-wrap: wrap;
   font-weight: bold;
+  cursor: pointer;
+  border-radius: ${space(1)};
+  border: 1px solid ${color("border")};
+  padding-top: ${space(0)};
+  padding-left: ${space(0)};
 `;
 
-export const AddButton = styled(Button)`
+export const AddText = styled.div`
+  min-height: 30px;
   margin-bottom: ${space(0)};
   margin-left: ${space(1)};
-  border-radius: ${space(1)};
-  padding: ${space(1)} ${space(2)};
-  border: 1px solid ${color("border")};
+  border: none;
   display: flex;
   align-items: center;
 
-  color: ${color("text-dark")};
-
-  &:hover {
-    color: ${color("brand")};
-  }
+  color: ${color("text-light")};
 `;
 
 export const AddButtonIcon = styled(Icon)``;
