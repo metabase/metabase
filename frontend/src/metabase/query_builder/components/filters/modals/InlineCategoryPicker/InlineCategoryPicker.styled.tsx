@@ -1,13 +1,11 @@
 import styled from "@emotion/styled";
-import { color, alpha } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import {
   space,
   breakpointMinHeightMedium,
 } from "metabase/styled-components/theme";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Button from "metabase/core/components/Button";
-import Icon from "metabase/components/Icon";
 
 export const Loading = styled(LoadingSpinner)`
   margin: ${space(1)} 0;
@@ -33,6 +31,9 @@ export const TokenFieldContainer = styled.div`
   font-weight: bold;
   cursor: pointer;
 
+  max-height: 200px;
+  overflow-y: auto;
+
   border-radius: ${space(1)};
   border: 1px solid ${color("border-dark")};
 `;
@@ -49,10 +50,4 @@ export const AddText = styled.div`
   align-items: center;
 
   color: ${color("text-light")};
-`;
-
-export const AddButtonIcon = styled(Icon)``;
-
-export const AddButtonLabel = styled.span`
-  margin-left: ${space(1)};
 `;

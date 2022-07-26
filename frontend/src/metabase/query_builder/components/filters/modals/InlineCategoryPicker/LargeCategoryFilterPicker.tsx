@@ -70,7 +70,7 @@ export function LargeCategoryFilterPicker({
               </TokenFieldAddon>
             </TokenFieldItem>
           ))}
-          <AddText>
+          <AddText data-testid="select-filter-option">
             {t`Select ${pluralize(dimension.displayName().toLowerCase())}...`}
           </AddText>
         </TokenFieldContainer>
