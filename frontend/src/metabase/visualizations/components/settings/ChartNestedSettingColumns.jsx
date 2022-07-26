@@ -81,6 +81,17 @@ class ColumnWidgets extends React.Component {
   }
 
   render() {
-    return <div>{this.props.objectSettingsWidgets}</div>;
+    const {
+      id,
+      question: { _metadata: columns },
+    } = this.props;
+
+    return (
+      <div>
+        {this.props.objectSettingsWidgets.map(element =>
+          React.cloneElement(element, { parentId: id, columns }),
+        )}
+      </div>
+    );
   }
 }
