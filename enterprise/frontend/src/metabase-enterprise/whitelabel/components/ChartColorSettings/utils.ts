@@ -24,22 +24,18 @@ export const getAutoChartColors = (
   groups: string[][],
   palette: Record<string, string>,
 ) => {
-  const oldColors = _.chain(groups)
+  const oldColors = groups
     .map(([name]) => values[name])
-    .map(value => (value ? Color(value) : undefined))
-    .value();
+    .map(value => (value ? Color(value) : undefined));
 
   const fallbackColor = Color(palette["brand"]);
   const newColors = getAutoColors(oldColors, fallbackColor);
-  const defaultValues = getDefaultChartColors(values, groups);
 
-  const newValues = _.chain(groups)
+  const newValues = groups
     .map(([name], index) => [name, newColors[index]?.hex()])
-    .filter(([_, value]) => value != null)
-    .object()
-    .value();
+    .filter(([_, value]) => value != null);
 
-  return { ...defaultValues, ...newValues };
+  return { ...values, ...Object.fromEntries(newValues) };
 };
 
 const getAutoColors = (
