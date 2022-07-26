@@ -7,7 +7,6 @@ import * as Urls from "metabase/lib/urls";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 
-import ButtonBar from "metabase/components/ButtonBar";
 import Link from "metabase/core/components/Link";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
@@ -23,7 +22,6 @@ import RunButtonWithTooltip from "../RunButtonWithTooltip";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
-import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
 import QuestionFilters, {
   FilterHeaderToggle,
@@ -40,7 +38,6 @@ import {
   ViewHeaderMainLeftContentContainer,
   ViewHeaderLeftSubHeading,
   ViewHeaderContainer,
-  ViewSubHeaderRoot,
   StyledLastEditInfoLabel,
   StyledQuestionDataSource,
   SavedQuestionLeftSideRoot,
@@ -77,11 +74,6 @@ const viewTitleHeaderPropTypes = {
   onEditSummary: PropTypes.func,
   onCloseSummary: PropTypes.func,
   onOpenQuestionDetails: PropTypes.func,
-  onCloseQuestionDetails: PropTypes.func,
-
-  isPreviewable: PropTypes.bool,
-  isPreviewing: PropTypes.bool,
-  setIsPreviewing: PropTypes.func,
 
   className: PropTypes.string,
   style: PropTypes.object,
@@ -318,7 +310,6 @@ ViewTitleHeaderRightSide.propTypes = {
   isNative: PropTypes.bool,
   isRunnable: PropTypes.bool,
   isRunning: PropTypes.bool,
-  isPreviewing: PropTypes.bool,
   isNativeEditorOpen: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
   isDirty: PropTypes.bool,
@@ -356,7 +347,6 @@ function ViewTitleHeaderRightSide(props) {
     isNative,
     isRunnable,
     isRunning,
-    isPreviewing,
     isNativeEditorOpen,
     isShowingSummarySidebar,
     isDirty,
@@ -475,7 +465,6 @@ function ViewTitleHeaderRightSide(props) {
             result={result}
             isRunning={isRunning}
             isDirty={isResultDirty}
-            isPreviewing={isPreviewing}
             onRun={() => runQuestionQuery({ ignoreCache: true })}
             onCancel={cancelQuery}
           />
@@ -539,43 +528,3 @@ function ExploreResultsLink({ question }) {
 }
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
-
-const viewSubHeaderPropTypes = {
-  isPreviewable: PropTypes.bool,
-  isPreviewing: PropTypes.bool,
-  setIsPreviewing: PropTypes.func,
-};
-
-export class ViewSubHeader extends React.Component {
-  render() {
-    const { isPreviewable, isPreviewing, setIsPreviewing } = this.props;
-
-    const middle = [];
-    const left = [];
-    const right = [];
-
-    if (isPreviewable) {
-      right.push(
-        <QuestionPreviewToggle
-          key="preview"
-          className="ml2"
-          isPreviewing={isPreviewing}
-          setIsPreviewing={setIsPreviewing}
-        />,
-      );
-    }
-
-    return left.length > 0 || middle.length > 0 || right.length > 0 ? (
-      <ViewSubHeaderRoot>
-        <ButtonBar
-          className="flex-full"
-          left={left}
-          center={middle}
-          right={right}
-        />
-      </ViewSubHeaderRoot>
-    ) : null;
-  }
-}
-
-ViewSubHeader.propTypes = viewSubHeaderPropTypes;

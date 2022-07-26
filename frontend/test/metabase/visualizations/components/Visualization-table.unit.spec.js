@@ -2,6 +2,7 @@ import React from "react";
 import { renderWithProviders } from "__support__/ui";
 
 import { NumberColumn } from "../__support__/visualizations";
+import { createMockQueryBuilderState } from "metabase-types/store/mocks/qb";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 
@@ -37,11 +38,18 @@ describe("Table", () => {
         },
       ],
     };
+    const qbState = createMockQueryBuilderState();
     const { getByText } = renderWithProviders(
       <Visualization rawSeries={series(rows, settings)} />,
       {
         withSettings: true,
         withEmbedSettings: true,
+        storeInitialState: {
+          qb: qbState,
+        },
+        reducers: {
+          qb: () => qbState,
+        },
       },
     );
     jest.runAllTimers();

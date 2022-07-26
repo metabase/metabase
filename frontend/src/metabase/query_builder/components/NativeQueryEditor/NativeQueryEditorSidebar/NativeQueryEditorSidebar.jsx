@@ -15,7 +15,6 @@ import {
 
 const propTypes = {
   cancelQuery: PropTypes.func.isRequired,
-  isPreviewing: PropTypes.bool.isRequired,
   isResultDirty: PropTypes.bool.isRequired,
   isRunnable: PropTypes.bool.isRequired,
   isRunning: PropTypes.bool.isRequired,
@@ -30,7 +29,6 @@ const ICON_SIZE = 18;
 const NativeQueryEditorSidebar = props => {
   const {
     cancelQuery,
-    isPreviewing,
     isResultDirty,
     isRunnable,
     isRunning,
@@ -69,7 +67,6 @@ const NativeQueryEditorSidebar = props => {
         disabled={!isRunnable}
         isRunning={isRunning}
         isDirty={isResultDirty}
-        isPreviewing={isPreviewing}
         onRun={runQuery}
         onCancel={cancelQuery}
         compact
