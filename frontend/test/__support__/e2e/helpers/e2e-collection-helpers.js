@@ -29,3 +29,13 @@ export function getCollectionIdFromSlug(slug, callback) {
     callback && callback(id);
   });
 }
+
+export function visitCollection(id) {
+  const alias = `getCollection${id}Items`;
+
+  cy.intercept("GET", `/api/collection/${id}/items?**`).as(alias);
+
+  cy.visit(`/collection/${id}`);
+
+  cy.wait([`@${alias}`, `@${alias}`]);
+}
