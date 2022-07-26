@@ -42,15 +42,14 @@ const CreateActionPage: React.FC<Props> = ({ createHttpAction }) => {
       const tags = Object.values(templateTags);
       const parameters = tags
         .filter(tag => tag.type != null)
-        .map(getHttpActionTemplateTagParameter)
-        .map(param => [param.name, param]);
+        .map(getHttpActionTemplateTagParameter);
       const entity = {
         name,
         description,
         ...data,
         template: {
           ...data.template,
-          parameters: Object.fromEntries(parameters),
+          parameters,
         },
         response_handle: responseHandler || null,
         error_handle: errorHandler || null,
