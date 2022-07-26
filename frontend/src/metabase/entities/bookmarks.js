@@ -67,13 +67,17 @@ const Bookmarks = createEntity({
     }
 
     if (type === Collections.actionTypes.UPDATE && payload?.object) {
-      const { id, authority_level } = payload.object;
+      const { id, authority_level, name } = payload.object;
       const key = `collection-${id}`;
 
       if (payload.object.archived) {
         return dissoc(state, key);
       } else {
-        return updateIn(state, [key], item => ({ ...item, authority_level }));
+        return updateIn(state, [key], item => ({
+          ...item,
+          authority_level,
+          name,
+        }));
       }
     }
 
