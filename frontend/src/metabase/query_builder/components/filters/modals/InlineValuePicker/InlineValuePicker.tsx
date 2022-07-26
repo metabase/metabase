@@ -4,8 +4,9 @@ import { t } from "ttag";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Field from "metabase-lib/lib/metadata/Field";
 
+import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+
 import {
-  ArgumentSelector,
   ValuesPickerContainer,
   BetweenContainer,
   NumberInput,
@@ -73,7 +74,7 @@ function ValuesInput({
 
   if (!isBetween) {
     return (
-      <ArgumentSelector
+      <FieldValuesWidget
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore: this component doesn't have types or propTypes
         value={filterArguments}
