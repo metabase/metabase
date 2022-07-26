@@ -9,6 +9,7 @@ import FormDateWidget from "./widgets/FormDateWidget";
 import FormEmailWidget from "./widgets/FormEmailWidget";
 import FormTextAreaWidget from "./widgets/FormTextAreaWidget";
 import FormPasswordWidget from "./widgets/FormPasswordWidget";
+import FormPasswordStrengthWidget from "./widgets/FormPasswordStrengthWidget";
 import FormRadioWidget from "./widgets/FormRadioWidget";
 import FormCheckBoxWidget from "./widgets/FormCheckBoxWidget";
 import FormColorWidget from "./widgets/FormColorWidget";
@@ -30,6 +31,7 @@ const WIDGETS = {
   checkbox: FormCheckBoxWidget,
   color: FormColorWidget,
   password: FormPasswordWidget,
+  passwordStrength: FormPasswordStrengthWidget,
   radio: FormRadioWidget,
   section: FormSectionWidget,
   select: FormSelectWidget,

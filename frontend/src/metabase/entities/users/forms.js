@@ -52,7 +52,7 @@ const getPasswordFields = () => [
   {
     name: "password",
     title: t`Create a password`,
-    type: "password",
+    type: "passwordStrength",
     placeholder: t`Shhh...`,
     validate: validate.required().passwordComplexity(),
   },

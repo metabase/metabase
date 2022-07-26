@@ -78,6 +78,7 @@
     "react-is": "^17.0.2",
     "react-markdown": "^6.0.2",
     "react-motion": "0.5.2",
+    "react-password-strength-bar": "^0.4.1",
     "react-redux": "^5.0.4",
     "react-resizable": "^1.9.0",
     "react-router": "3",
