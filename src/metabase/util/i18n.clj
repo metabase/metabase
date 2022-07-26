@@ -227,24 +227,6 @@
   [format-string format-string-pl n]
   `(str* (deferred-trun ~format-string ~format-string-pl ~n)))
 
-(defmacro deferred-trun
-  "Similar to `deferred-tru` but chooses the appropriate singular or plural form based on the value of `n`.
-
-  The first argument should be the singular form; the second argument should be the plural form, and the third argument
-  should be `n`. `n` can be interpolated into the translated string using the `{0}` placeholder syntax, but no
-  additional placeholders are supported."
-  [format-string format-string-pl n]
-  `(UserLocalizedString. ~format-string ~[n] ~{:n n :format-string-pl format-string-pl}))
-
-(defmacro trun
-  "Similar to `tru` but chooses the appropriate singular or plural form based on the value of `n`.
-
-  The first argument should be the singular form; the second argument should be the plural form, and the third argument
-  should be `n`. `n` can be interpolated into the translated string using the `{0}` placeholder syntax, but no
-  additional placeholders are supported."
-  [format-string format-string-pl n]
-  `(str* (deferred-trun ~format-string ~format-string-pl ~n)))
-
 (defmacro deferred-trsn
   "Similar to `deferred-trs` but chooses the appropriate singular or plural form based on the value of `n`.
 
