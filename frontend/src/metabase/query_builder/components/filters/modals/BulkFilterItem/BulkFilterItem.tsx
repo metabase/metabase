@@ -179,8 +179,10 @@ const getNewFilter = (query: StructuredQuery, dimension: Dimension): Filter => {
     filter = filter.setOperator("between");
   }
 
-  const isTextField = isString(field) && field.has_field_values !== "list";
-  if (isTextField) {
+  const isLongTextField =
+    field.has_field_values !== "list" && field.isLongText();
+
+  if (isLongTextField) {
     filter = filter.setOperator("contains");
   }
   return filter;

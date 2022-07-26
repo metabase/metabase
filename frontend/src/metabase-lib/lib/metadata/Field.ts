@@ -22,6 +22,8 @@ import {
   isCountry,
   isCoordinate,
   isLocation,
+  isDescription,
+  isComment,
   isDimension,
   isMetric,
   isPK,
@@ -34,6 +36,9 @@ import { Field as FieldRef } from "metabase-types/types/Query";
 import { FieldDimension } from "../Dimension";
 import Table from "./Table";
 import Base from "./Base";
+
+export const LONG_TEXT_MIN = 80;
+
 /**
  * @typedef { import("./metadata").FieldValues } FieldValues
  */
@@ -198,6 +203,16 @@ class FieldInner extends Base {
 
   isEntityName() {
     return isEntityName(this);
+  }
+
+  isLongText() {
+    return (
+      isString(this) &&
+      (isComment(this) ||
+        isDescription(this) ||
+        this?.fingerprint?.type?.["type/Text"]?.["average-length"] >=
+          LONG_TEXT_MIN)
+    );
   }
 
   /**
