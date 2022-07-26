@@ -1,6 +1,10 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import { space, breakpointMaxSmall } from "metabase/styled-components/theme";
+import {
+  space,
+  breakpointMaxSmall,
+  breakpointMinHeightMedium,
+} from "metabase/styled-components/theme";
 
 import TabList from "metabase/core/components/TabList";
 import TabPanel from "metabase/core/components/TabPanel";
@@ -22,12 +26,18 @@ export const ModalRoot = styled.div`
 export const ModalHeader = styled.div`
   display: flex;
   align-items: center;
-  padding: 2rem 2rem 0 2rem;
+  padding: 1rem 2rem 0 2rem;
+  ${breakpointMinHeightMedium} {
+    padding: 2rem 2rem 0 2rem;
+  }
 `;
 
 export const ModalBody = styled.div`
   border-top: 1px solid ${color("border")};
-  margin-top: 1.5rem;
+  margin-top: 1rem;
+  ${breakpointMinHeightMedium} {
+    margin-top: 1.5rem;
+  }
   overflow-y: auto;
   flex: 1;
 `;
@@ -42,12 +52,19 @@ export const ModalFooter = styled.div`
 export const ModalTitle = styled(Ellipsified)`
   flex: 1 1 auto;
   color: ${color("text-dark")};
-  font-size: 1.25rem;
+  font-size: 1rem;
+  ${breakpointMinHeightMedium} {
+    font-size: 1.25rem;
+  }
   line-height: 1.5rem;
   font-weight: bold;
 `;
 
 export const ModalTabList = styled(TabList)`
+  font-size: 0.875rem;
+  ${breakpointMinHeightMedium} {
+    font-size: 1rem;
+  }
   margin: 1.5rem 2rem 0 2rem;
   flex-shrink: 0;
 `;

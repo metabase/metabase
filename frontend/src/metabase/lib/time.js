@@ -210,3 +210,11 @@ export function hasTimePart(date) {
 export function getDefaultTimezone() {
   return moment.tz.guess();
 }
+
+export function checkIfTimeSpanTooGreat(amount, key) {
+  const now = moment();
+  const newTime = moment().add(amount, key);
+  const diff = now.diff(newTime, "years");
+
+  return Number.isNaN(diff);
+}

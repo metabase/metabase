@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import Icon from "metabase/components/Icon";
-
 import ClauseStep from "./ClauseStep";
+import { SortFieldList } from "./SortStep.styled";
 
 export default function SortStep({
   color,
@@ -50,8 +49,6 @@ export default function SortStep({
   );
 }
 
-import FieldList from "metabase/query_builder/components/FieldList";
-
 const SortPopover = ({
   sort = ["asc", null],
   onChangeSort,
@@ -67,8 +64,7 @@ const SortPopover = ({
     return null;
   }
   return (
-    <FieldList
-      className="text-green"
+    <SortFieldList
       maxHeight={maxHeight}
       field={sort && sort[1]}
       fieldOptions={sortOptions || query.sortOptions(sort && sort[1])}
