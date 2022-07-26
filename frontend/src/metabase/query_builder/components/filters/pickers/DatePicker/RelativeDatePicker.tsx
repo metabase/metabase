@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import moment from "moment";
 import { assoc } from "icepick";
 
 import {
@@ -13,6 +12,7 @@ import {
   setStartingFrom,
   toTimeInterval,
 } from "metabase/lib/query_time";
+import { checkIfTimeSpanTooGreat, getRelativeTime } from "metabase/lib/time";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
@@ -170,6 +170,20 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
     <OptionsContent {...props} setOptionsVisible={setOptionsVisible} />
   );
 
+  const handleChangeDateNumericInput = (newIntervals: number) => {
+    const timeSpanTooGreat = checkIfTimeSpanTooGreat(newIntervals, unit);
+    const valueToUse = timeSpanTooGreat ? intervals : newIntervals;
+
+    onFilterChange(setRelativeDatetimeValue(filter, formatter(valueToUse)));
+  };
+
+  const handleChangeUnitInput = (newUnit: string) => {
+    const timeSpanTooGreat = checkIfTimeSpanTooGreat(intervals, newUnit);
+    const unitToUse = timeSpanTooGreat ? unit : newUnit;
+
+    onFilterChange(setRelativeDatetimeUnit(filter, unitToUse));
+  };
+
   return (
     <GridContainer
       className={className}
@@ -186,17 +200,13 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
         data-ui-tag="relative-date-input"
         data-testid="relative-datetime-value"
         value={typeof intervals === "number" ? Math.abs(intervals) : intervals}
-        onChange={(value: number) => {
-          onFilterChange(setRelativeDatetimeValue(filter, formatter(value)));
-        }}
+        onChange={handleChangeDateNumericInput}
         placeholder="30"
       />
       <DateUnitSelector
         value={unit}
         primaryColor={primaryColor}
-        onChange={value => {
-          onFilterChange(setRelativeDatetimeUnit(filter, value));
-        }}
+        onChange={newUnit => handleChangeUnitInput(newUnit as string)}
         testId="relative-datetime-unit"
         intervals={intervals}
         formatter={formatter}
