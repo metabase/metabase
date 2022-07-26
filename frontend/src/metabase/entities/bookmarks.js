@@ -51,9 +51,14 @@ const Bookmarks = createEntity({
       return dissoc(state, key);
     }
 
-    if (type === Dashboards.actionTypes.UPDATE && payload?.object?.archived) {
-      const key = `dashboard-${payload.object.id}`;
-      return dissoc(state, key);
+    if (type === Dashboards.actionTypes.UPDATE && payload?.object) {
+      const { archived, id, name } = payload.object;
+      const key = `dashboard-${id}`;
+      if (archived) {
+        return dissoc(state, key);
+      } else {
+        return updateIn(state, [key], item => ({ ...item, name }));
+      }
     }
 
     if (type === Collections.actionTypes.UPDATE && payload?.object) {
