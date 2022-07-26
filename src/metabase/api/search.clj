@@ -395,7 +395,9 @@
         sql-alias    :alias_is_required_by_sql_but_not_needed_here
         order-clause [((fnil order-clause "") (:search-string search-ctx))]]
     (if (= (count models) 1)
-      (search-query-for-model (first models) search-ctx)
+      {:select   [:*]
+       :from     (search-query-for-model (first models) search-ctx)
+       :order-by order-clause}
       {:select [:*]
        :from [[{:union-all (for [model models
                                  :let  [query (search-query-for-model model search-ctx)]
