@@ -104,8 +104,10 @@ const DashboardApp = props => {
 
   const { isRunning, isLoadingComplete, dashboard } = props;
 
-  const [editingOnLoad] = useState(options.edit);
-  const [addCardOnLoad] = useState(options.add && parseInt(options.add));
+  const [editingOnLoad, setEditingOnLoad] = useState(options.edit);
+  const [addCardOnLoad, setAddCardOnLoad] = useState(
+    options.add && parseInt(options.add),
+  );
 
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 
@@ -123,6 +125,11 @@ const DashboardApp = props => {
   const [requestPermission, showNotification] = useWebNotification();
 
   useOnUnmount(props.reset);
+
+  useEffect(() => {
+    setEditingOnLoad(options.edit);
+    setAddCardOnLoad(options.add && parseInt(options.add));
+  }, [options.add, options.edit]);
 
   useEffect(() => {
     if (isLoadingComplete) {
