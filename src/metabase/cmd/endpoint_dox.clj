@@ -170,7 +170,7 @@
   (or (str/includes? (:endpoint-str (first ep-data)) "/api/ee")
       ;; some ee endpoints are inconsistent in naming, see #22687
       (str/includes? (:endpoint-str (first ep-data)) "/api/mt")
-      (= 'metabase-enterprise.sandbox.api.table (.getName (:ns (first ep-data))))
+      (= 'metabase-enterprise.sandbox.api.table (ns-name (:ns (first ep-data))))
       (str/includes? (:endpoint-str (first ep-data)) "/auth/sso")
       (str/includes? (:endpoint-str (first ep-data)) "/api/moderation-review")))
 
