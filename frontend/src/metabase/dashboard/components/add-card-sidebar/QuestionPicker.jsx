@@ -6,6 +6,7 @@ import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { getCrumbs } from "metabase/lib/collections";
@@ -110,6 +111,11 @@ function QuestionPicker({
 }
 
 export default _.compose(
+  entityObjectLoader({
+    id: () => "root",
+    entityType: "collections",
+    loadingAndErrorWrapper: false,
+  }),
   entityListLoader({
     entityType: "collections",
     loadingAndErrorWrapper: false,
