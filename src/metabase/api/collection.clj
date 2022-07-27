@@ -302,22 +302,14 @@
     (not (zero? v))
     v))
 
-(declare fully-parametrized-text?)
-
-(defn- fully-parametrized-snippet? [tag]
-  (and (= (:type tag) :snippet)
-       (let [{:keys [content template_tags]} (NativeQuerySnippet (:snippet-id tag))]
-         (fully-parametrized-text? content template_tags))))
-
 (defn- fully-parametrized-text?
   "Decide if `text`, usually (a part of) a query, is fully parametrized given the parameter types
-  described by `template-tags` (usually the template tags of a native query or a snippet).
+  described by `template-tags` (usually the template tags of a native query).
 
   The rules to consider a piece of text fully parametrized is as follows:
 
-  1. All parameters not in an optional block are field-filters or have a default value.
+  1. All parameters not in an optional block are field-filters or snippets or have a default value.
   2. All required parameters have a default value.
-  3. Rules 1 and 2 recursively apply to all snippets not in an optional block.
 
   The first rule is absolutely necessary, as queries violating it cannot be executed without
   externally supplied parameter values. The second rule is more controversial, as field-filters
@@ -332,9 +324,8 @@
                                 (comp (filter params/Param?)
                                       (map :k))
                                 (params.parse/parse text))]
-    (and (every? #(or (= (:type %) :dimension)
-                      (:default %)
-                      (fully-parametrized-snippet? %))
+    (and (every? #(or (#{:dimension :snippet} (:type %))
+                      (:default %))
                  (map template-tags obligatory-params))
          (every? #(or (not (:required %))
                       (:default %))
