@@ -46,9 +46,14 @@ const Bookmarks = createEntity({
     getIcon,
   },
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === Questions.actionTypes.UPDATE && payload?.object?.archived) {
-      const key = `card-${payload.object.id}`;
-      return dissoc(state, key);
+    if (type === Questions.actionTypes.UPDATE && payload?.object) {
+      const { archived, id, name } = payload.object;
+      const key = `card-${id}`;
+      if (archived) {
+        return dissoc(state, key);
+      } else {
+        return updateIn(state, [key], item => ({ ...item, name }));
+      }
     }
 
     if (type === Dashboards.actionTypes.UPDATE && payload?.object?.archived) {
