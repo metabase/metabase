@@ -452,6 +452,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("adds a contains text filter", () => {
       filterField("City", {
+        operator: "contains",
         value: "Indian",
       });
 
