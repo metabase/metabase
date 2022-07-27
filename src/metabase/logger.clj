@@ -58,8 +58,7 @@
 ;;; [[clojure.tools.logging]] should be using our custom Logging factory which performs NICELY and memoizes calls to
 ;;; `.getLogger` instead of fetching it every single time which is SLOW in Multi-Release JARs. See #16830
 
-(defn- log-level-keyword->Level
-  ^Level [level-keyword]
+(defn- log-level-keyword->Level ^Level [level-keyword]
   (case level-keyword
     :trace Level/TRACE
     :debug Level/DEBUG
@@ -85,14 +84,12 @@
         (.log this level message e)
         (.log this level message)))))
 
-;;; presumably this is always called with a [[clojure.lang.Namespace]] but it's probably better to be flexible and handle
-;;; symbols and strings as well in case anybody tries to do anything weird e.g. in [[metabase.test.util.log]]
 (defn- ns-logger*
-  "Unmemoized function for getting the appropriate [[Logger]] to use for a Clojure namespace."
+  "Unmemoized function for getting the appropriate [[Logger]] to use for a Clojure namespace. `a-namespace` can be
+  either a [[clojure.lang.Namespace]], a [[clojure.lang.Symbol]], or a [[String]]."
   ^Logger [a-namespace]
-  (if (string? a-namespace)
-    (.getLogger (LogManager/getContext false) ^String a-namespace)
-    (recur (name (ns-name a-namespace)))))
+  ;; [[str]] does the right thing here regardless of whether `a-namespace` is a `Namespace`, `Symbol`, or `String`
+  (.getLogger (LogManager/getContext false) (str a-namespace)))
 
 ;;; Yes, the arglists metadata below is missing `:tag` but if I try to write something like
 ;;;
