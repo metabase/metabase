@@ -376,5 +376,5 @@
                 (format
                   "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
                   max-nested-field-columns))
-              (take max-nested-field-columns fields))
+              (set (take max-nested-field-columns fields)))
             fields))))))
