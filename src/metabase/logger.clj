@@ -2,6 +2,7 @@
   (:require [amalloy.ring-buffer :refer [ring-buffer]]
             [clj-time.coerce :as time.coerce]
             [clj-time.format :as time.format]
+            [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
             [clojure.tools.logging.impl :as log.impl]
             [metabase.config :as config])
@@ -58,8 +59,11 @@
 ;;; [[clojure.tools.logging]] should be using our custom Logging factory which performs NICELY and memoizes calls to
 ;;; `.getLogger` instead of fetching it every single time which is SLOW in Multi-Release JARs. See #16830
 
-(defn- log-level-keyword->Level ^Level [level-keyword]
+(defn- log-level-keyword->Level
+  "Return the Log4j2 [[Level]] that corresponds to a given [[clojure.tools.logging]] `level-keyword`."
+  ^Level [level-keyword]
   (case level-keyword
+    :off   Level/OFF
     :trace Level/TRACE
     :debug Level/DEBUG
     :info  Level/INFO
@@ -84,34 +88,28 @@
         (.log this level message e)
         (.log this level message)))))
 
-(defn- ns-logger*
-  "Unmemoized function for getting the appropriate [[Logger]] to use for a Clojure namespace. `a-namespace` can be
-  either a [[clojure.lang.Namespace]], a [[clojure.lang.Symbol]], or a [[String]]."
-  ^Logger [a-namespace]
-  ;; [[str]] does the right thing here regardless of whether `a-namespace` is a `Namespace`, `Symbol`, or `String`
-  (.getLogger (LogManager/getContext false) (str a-namespace)))
+(def ^:private ^{:arglists '(^org.apache.logging.log4j.Logger [a-namespace])} ns-logger
+  "Get the appropriate [[Logger]] to use for a Clojure namespace. `a-namespace` can be either
+  a [[clojure.lang.Namespace]], a [[clojure.lang.Symbol]], or a [[String]]. This is memoized because `.getLogger` can
+  be pretty slow and it should never change in a prod run anyway.
 
-;;; Yes, the arglists metadata below is missing `:tag` but if I try to write something like
-;;;
-;;;    ^{:arglists `(^Logger [~'a-namespace])}
-;;;
-;;; or
-;;;    ^{:arglists (list (vary-meta ['a-namespace] assoc :tag `Logger))}
-;;;
-;;; then Eastwood has a fit. We don't really need it anyway.
-(def ^:private ^{:arglists '([a-namespace])} ns-logger
-  "In prod, this is a memoized version of [[ns-logger*]]. Otherwise it's the same as [[ns-logger*]].
+  When changing loggers at runtime e.g. in [[metabase.test.util.log]] you need to call [[clear-memoized-ns-loggers!]]
+  so the logger factory will pick them up."
+  (memoize/memo
+   (fn [a-namespace]
+     (println (pr-str (list '.getLogger '(LogManager/getContext false) (str a-namespace)))) ; NOCOMMIT
+     (.getLogger (LogManager/getContext false) (str a-namespace)))))
 
-  The logger will never change for a given namespace in prod runs so memoizing slow calls to `.getLogger` can speed
-  things up a lot. In non-prod [[metabase.test.util.log]] stuff can swap out loggers at runtime."
-  (if config/is-prod?
-    (memoize ns-logger*)
-    ns-logger*))
+(defn clear-memoized-ns-loggers!
+  "Clear the memoization cache for [[ns-logger]]. This is used when [[metabase.test.util.log/set-ns-log-level!]]
+  installs new loggers at runtime."
+  []
+  (memoize/memo-clear! ns-logger))
 
 (defrecord MetabaseLoggerFactory []
   log.impl/LoggerFactory
   (name [_this]
-    "org.apache.logging.log4j")
+    (str `MetabaseLoggerFactory))
   (get-logger [_this logger-ns]
     (ns-logger logger-ns)))
 

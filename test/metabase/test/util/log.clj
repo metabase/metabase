@@ -13,9 +13,6 @@
            [org.apache.logging.log4j.core Appender LifeCycle LogEvent Logger LoggerContext]
            [org.apache.logging.log4j.core.config Configuration LoggerConfig]))
 
-;; this needs to be loaded for side effects to ensure that the correct MetabaseLoggerFactory is used.
-(comment mb.logger/keep-me)
-
 (def ^:private ^:deprecated logger->original-level
   (delay
     (let [loggers (.getLoggers ^LoggerContext (LogManager/getContext false))]
@@ -144,6 +141,7 @@
                          (.getFilter parent-logger))]
       (.addLogger (configuration) (logger-name a-namespace) new-logger)
       (.updateLoggers (logger-context))
+      (mb.logger/clear-memoized-ns-loggers!)
       (println "Created a new logger for" (logger-name a-namespace)))))
 
 (s/defn set-ns-log-level!
@@ -279,7 +277,6 @@
          (fn [logs#]
            ~@body
            (logs#)))))))
-
 
 
 ;;;; tests
