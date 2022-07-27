@@ -15,10 +15,8 @@ export const ModalRoot = styled.div`
   display: flex;
   flex-direction: column;
   height: 90vh;
-  width: 65vw;
-  max-width: 60rem;
+  width: min(98vw, 50rem);
   ${breakpointMaxSmall} {
-    width: 98vw;
     height: 98vh;
   }
 `;
@@ -26,9 +24,9 @@ export const ModalRoot = styled.div`
 export const ModalHeader = styled.div`
   display: flex;
   align-items: center;
-  padding: 1rem 2rem 0 2rem;
+  padding: 1rem 3rem 0 3rem;
   ${breakpointMinHeightMedium} {
-    padding: 2rem 2rem 0 2rem;
+    padding: 2rem 3rem 0 3rem;
   }
 `;
 
@@ -46,7 +44,7 @@ export const ModalFooter = styled.div`
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1.5rem 2rem;
+  padding: 1.5rem 3rem;
 `;
 
 export const ModalTitle = styled(Ellipsified)`
@@ -65,7 +63,7 @@ export const ModalTabList = styled(TabList)`
   ${breakpointMinHeightMedium} {
     font-size: 1rem;
   }
-  margin: 1.5rem 2rem 0 2rem;
+  margin: 1.5rem 3rem 0 3rem;
   flex-shrink: 0;
 `;
 
