@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color, alpha } from "metabase/lib/colors";
 import { breakpointMinHeightMedium } from "metabase/styled-components/theme";
 
 import SelectButton from "metabase/core/components/SelectButton";
@@ -8,26 +8,38 @@ import Select from "metabase/core/components/Select";
 
 type SelectFilterButtonProps = {
   isActive?: boolean;
+  hasValue?: boolean;
 };
 
-export const SelectFilterButton = styled(SelectButton)<SelectFilterButtonProps>`
-  grid-column: 2;
-  height: 40px;
-  ${breakpointMinHeightMedium} {
-    height: 56px;
-  }
+const lightSelectButton = ({ hasValue, isActive }: SelectFilterButtonProps) => `
+    height: 40px;
+    ${breakpointMinHeightMedium} {
+      height: 56px;
+    }
+    padding: 0.5rem 1rem;
 
-  ${({ isActive }) => (isActive ? `border-color: ${color("brand")};` : "")}
+    background-color: ${hasValue ? alpha("brand", 0.2) : "transparent"};
+    color: ${hasValue ? color("brand") : color("text-light")};
+    border-color: ${
+      isActive
+        ? color("brand")
+        : hasValue
+        ? "transparent"
+        : color("border-dark")
+    };
 
-  &:not(:first-of-type) {
-    margin-top: 0.75rem;
-  }
+    .Icon {
+      color: ${hasValue ? color("brand") : color("text-light")};
+    }
 `;
 
-export const SegmentSelect = styled(Select)`
-  height: 40px;
-  ${breakpointMinHeightMedium} {
-    height: 56px;
+export const SelectFilterButton = styled(SelectButton)<SelectFilterButtonProps>`
+  ${({ hasValue, isActive }) => lightSelectButton({ hasValue, isActive })}
+`;
+
+export const SegmentSelect = styled(Select)<SelectFilterButtonProps>`
+  button {
+    ${({ hasValue, isActive }) => lightSelectButton({ hasValue, isActive })}
   }
 `;
 
