@@ -3,6 +3,8 @@
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
+            [honeysql.core :as hsql]
+            [metabase.db :as mdb]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.collection :as collection]
@@ -227,6 +229,13 @@
      (params/assert-valid-parameter-mappings card)
      (collection/check-collection-namespace Card (:collection_id card)))))
 
+(defn- post-update [card]
+  (when (and (= (mdb/db-type) :postgres)
+             (= (:query_type card) :native))
+    (db/execute! {:update Card
+                  :set    {:dataset_query_tokens (hsql/call :to_tsvector :dataset_query)}
+                  :where  [:= :id (:id card)]})))
+
 (defn- post-insert [card]
   ;; if this Card has any native template tag parameters we need to update FieldValues for any Fields that are
   ;; eligible for FieldValues and that belong to a 'On-Demand' database
@@ -268,6 +277,7 @@
             (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
     ;; make sure this Card doesn't have circular source query references if we're updating the query
     (when (:dataset_query changes)
+      ;; TODO change dataset_query_tokens for postgres
       (check-for-circular-source-query-references changes))
     ;; Make sure any native query template tags match the DB in the query.
     (check-field-filter-fields-are-from-correct-database changes)
@@ -312,6 +322,7 @@
           ;; functions those fns call assume normalized queries
           :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
           :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
+          :post-update    post-update
           :post-insert    post-insert
           :pre-delete     pre-delete
           :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
