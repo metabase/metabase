@@ -246,12 +246,12 @@
 (defmethod sql.qp/json-query :mysql
   [_ unwrapped-identifier stored-field]
   (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
-    (let [field-type           (:database_type stored-field)
-          field-type           (get database-type->mysql-cast-type-name field-type field-type)
-          nfc-path             (:nfc_path stored-field)
-          parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
-          jsonpath-query       (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
-          default-cast         (hsql/call :convert
+    (let [field-type        (:database_type stored-field)
+          field-type        (get database-type->mysql-cast-type-name field-type field-type)
+          nfc-path          (:nfc_path stored-field)
+          parent-identifier (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
+          jsonpath-query    (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
+          default-cast      (hsql/call :convert
                                           (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
                                           (hsql/raw (str/upper-case field-type)))
           ;; If we see JSON datetimes we expect them to be in ISO8601. However, MySQL expects them as something different.
