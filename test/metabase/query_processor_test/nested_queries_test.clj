@@ -242,6 +242,19 @@
                       {:aggregation [:count]
                        :breakout    [$price]}))))))))))
 
+(deftest grouped-expression-in-card-test
+  (mt/with-temp Card [card {:dataset_query
+                            (mt/mbql-query venues
+                              {:aggregation [[:count]]
+                               :breakout [[:expression "Price level"]]
+                               :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
+                               :limit 2})}]
+    (is (= [["budget"    81]
+            ["expensive" 19]]
+           (mt/rows
+            (qp/process-query
+             (query-with-source-card card)))))))
+
 (deftest card-id-native-source-queries-test
   (let [run-native-query
         (fn [sql]
