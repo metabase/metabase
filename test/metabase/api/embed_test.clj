@@ -420,6 +420,23 @@
         (is (= [{:id "_d", :slug "d", :name "d", :type "date"}]
                (:parameters (client/client :get 200 (dashboard-url dash {:params {:c 100}})))))))))
 
+(deftest locked-params-are-substituted-into-text-cards
+  (testing "check that locked params are substituted into text cards with mapped variables on the backend"
+    (with-embedding-enabled-and-new-secret-key
+      (mt/with-temp* [Dashboard     [dash {:enable_embedding true
+                                           :parameters       [{:id "_a" :slug "a", :name "a", :type :string/=}]}]
+                      DashboardCard [_ {:dashboard_id           (:id dash)
+                                        :parameter_mappings     [{:parameter_id "_a",
+                                                                  :target       [:text-tag "foo"]}]
+                                        :visualization_settings {:virtual_card {:display "text"}
+                                                                 :text         "Text card with variable: {{foo}}"}}]]
+        (is (= "Text card with variable: bar"
+               (-> (client/client :get 200 (dashboard-url dash {:params {:a "bar"}}))
+                   :ordered_cards
+                   first
+                   :visualization_settings
+                   :text)))))))
+
 
 ;;; ---------------------- GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -----------------------
 

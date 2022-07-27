@@ -21,7 +21,6 @@
             [metabase.query-processor.dashboard :as qp.dashboard]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.server.middleware.session :as mw.session]
-            [metabase.shared.parameters.parameters :as shared.params]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.retry :as retry]
@@ -45,22 +44,6 @@
      (when default-value
        {:value default-value})
      (dissoc parameter :default))))
-
-(defn- process-virtual-dashcard
-  "Given a dashcard and the parameters on a dashboard, returns the dashcard with any parameter values appropriately
-  substituted into connected variables in the text."
-  [dashcard parameters]
-  (let [text               (-> dashcard :visualization_settings :text)
-        parameter-mappings (:parameter_mappings dashcard)
-        tag-names          (shared.params/tag_names text)
-        param-id->param    (into {} (map (juxt :id identity) parameters))
-        tag-name->param-id (into {} (map (juxt (comp second :target) :parameter_id) parameter-mappings))
-        tag->param         (reduce (fn [m tag-name]
-                                     (when-let [param-id (get tag-name->param-id tag-name)]
-                                       (assoc m tag-name (get param-id->param param-id))))
-                                   {}
-                                   tag-names)]
-    (update-in dashcard [:visualization_settings :text] shared.params/substitute_tags tag->param (public-settings/site-locale))))
 
 (defn- execute-dashboard-subscription-card
   [owner-id dashboard dashcard card-or-id parameters]
@@ -107,7 +90,7 @@
         (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id parameters)
         ;; For virtual cards, return just the viz settings map, with any parameter values substituted appropriately
         (-> dashcard
-            (process-virtual-dashcard parameters)
+            (params/process-virtual-dashcard parameters)
             :visualization_settings)))))
 
 (defn- database-id [card]
