@@ -24,8 +24,6 @@ import {
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import SelectList from "metabase/components/SelectList";
 
-const { isRegularCollection } = PLUGIN_COLLECTIONS;
-
 QuestionPicker.propTypes = {
   onSelect: PropTypes.func.isRequired,
   collectionsById: PropTypes.object,
@@ -76,7 +74,9 @@ function QuestionPicker({
             <SelectList>
               {collections.map(collection => {
                 const icon = getCollectionIcon(collection);
-                const iconColor = isRegularCollection(collection)
+                const iconColor = PLUGIN_COLLECTIONS.isRegularCollection(
+                  collection,
+                )
                   ? "text-light"
                   : icon.color;
                 return (
