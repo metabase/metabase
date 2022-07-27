@@ -15,12 +15,14 @@ const FormMock = (props: FormHTMLAttributes<HTMLFormElement>) => (
 
 jest.mock("metabase/containers/Form", () => FormMock);
 
+const user = userEvent.setup();
+
 describe("EditEventModal", () => {
-  it("should submit modal", () => {
+  it("should submit modal", async () => {
     const props = getProps();
 
     render(<EditEventModal {...props} />);
-    userEvent.click(screen.getByText("Update"));
+    await user.click(screen.getByText("Update"));
 
     expect(props.onSubmit).toHaveBeenCalled();
   });

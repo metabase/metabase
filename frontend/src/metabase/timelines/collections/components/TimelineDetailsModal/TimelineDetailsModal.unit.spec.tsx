@@ -10,6 +10,8 @@ import TimelineDetailsModal, {
   TimelineDetailsModalProps,
 } from "./TimelineDetailsModal";
 
+const user = userEvent.setup();
+
 describe("TimelineDetailsModal", () => {
   it("should use the collection's name for default timelines", () => {
     const props = getProps({
@@ -56,14 +58,14 @@ describe("TimelineDetailsModal", () => {
 
     render(<TimelineDetailsModal {...props} />);
 
-    userEvent.type(screen.getByPlaceholderText("Search for an event"), "RC");
+    await user.type(screen.getByPlaceholderText("Search for an event"), "RC");
     await waitFor(() => {
       expect(screen.getByText("RC1")).toBeInTheDocument();
       expect(screen.getByText("RC2")).toBeInTheDocument();
       expect(screen.queryByText("Release")).not.toBeInTheDocument();
     });
 
-    userEvent.type(screen.getByPlaceholderText("Search for an event"), "1");
+    await user.type(screen.getByPlaceholderText("Search for an event"), "1");
     await waitFor(() => {
       expect(screen.getByText("RC1")).toBeInTheDocument();
       expect(screen.queryByText("RC2")).not.toBeInTheDocument();

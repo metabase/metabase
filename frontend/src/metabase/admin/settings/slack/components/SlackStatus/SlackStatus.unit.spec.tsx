@@ -5,6 +5,8 @@ import SlackStatus from "./SlackStatus";
 
 const FormMock = () => <div />;
 
+const user = userEvent.setup();
+
 describe("SlackStatus", () => {
   it("should render the status for a working app", () => {
     const onDelete = jest.fn();
@@ -26,8 +28,8 @@ describe("SlackStatus", () => {
     const onDelete = jest.fn();
 
     render(<SlackStatus Form={FormMock} isValid={true} onDelete={onDelete} />);
-    userEvent.click(screen.getByText("Delete Slack App"));
-    userEvent.click(screen.getByText("Delete"));
+    await user.click(screen.getByText("Delete Slack App"));
+    await user.click(screen.getByText("Delete"));
 
     await waitFor(() => expect(onDelete).toHaveBeenCalled());
   });

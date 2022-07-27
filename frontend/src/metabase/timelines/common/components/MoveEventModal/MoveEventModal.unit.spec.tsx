@@ -7,8 +7,10 @@ import {
 } from "metabase-types/api/mocks";
 import MoveEventModal, { MoveEventModalProps } from "./MoveEventModal";
 
+const user = userEvent.setup();
+
 describe("MoveEventModal", () => {
-  it("should move an event to a different timeline", () => {
+  it("should move an event to a different timeline", async () => {
     const event = createMockTimelineEvent({ timeline_id: 1 });
     const oldTimeline = createMockTimeline({ id: 1, name: "Builds" });
     const newTimeline = createMockTimeline({ id: 2, name: "Releases" });
@@ -21,8 +23,8 @@ describe("MoveEventModal", () => {
     render(<MoveEventModal {...props} />);
     expect(screen.getByText("Move")).toBeDisabled();
 
-    userEvent.click(screen.getByText(newTimeline.name));
-    userEvent.click(screen.getByText("Move"));
+    await user.click(screen.getByText(newTimeline.name));
+    await user.click(screen.getByText("Move"));
     expect(props.onSubmit).toHaveBeenLastCalledWith(
       event,
       newTimeline,

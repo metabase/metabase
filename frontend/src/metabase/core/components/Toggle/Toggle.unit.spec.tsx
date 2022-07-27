@@ -1,51 +1,53 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import userEvent, { specialChars } from "@testing-library/user-event";
+import userEvent from "@testing-library/user-event";
 import Toggle from "./Toggle";
 
+const user = userEvent.setup();
+
 describe("Toggle", () => {
-  it("should receive focus on tab", () => {
+  it("should receive focus on tab", async () => {
     const onChange = jest.fn();
 
     render(<Toggle value={false} onChange={onChange} />);
 
     const checkbox = screen.getByRole("switch");
-    userEvent.tab();
+    await user.tab();
 
     expect(checkbox).toHaveFocus();
   });
 
-  it("should toggle on enter", () => {
+  it("should toggle on enter", async () => {
     const onChange = jest.fn();
 
     render(<Toggle value={false} onChange={onChange} />);
 
     const checkbox = screen.getByRole("switch");
-    userEvent.tab();
-    userEvent.type(checkbox, specialChars.enter);
+    await user.tab();
+    await user.type(checkbox, "{Enter}");
 
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
-  it("should toggle on space", () => {
+  it("should toggle on space", async () => {
     const onChange = jest.fn();
 
     render(<Toggle value={false} onChange={onChange} />);
 
     const checkbox = screen.getByRole("switch");
-    userEvent.tab();
-    userEvent.type(checkbox, specialChars.space);
+    await user.tab();
+    await user.type(checkbox, "{Space}");
 
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
-  it("should toggle on click", () => {
+  it("should toggle on click", async () => {
     const onChange = jest.fn();
 
     render(<Toggle value={false} onChange={onChange} />);
 
     const checkbox = screen.getByRole("switch");
-    userEvent.click(checkbox);
+    await user.click(checkbox);
 
     expect(checkbox).toHaveFocus();
     expect(onChange).toHaveBeenCalledWith(true);

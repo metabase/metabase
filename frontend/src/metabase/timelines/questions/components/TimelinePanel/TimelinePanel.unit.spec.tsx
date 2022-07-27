@@ -7,27 +7,29 @@ import {
 } from "metabase-types/api/mocks";
 import TimelinePanel, { TimelinePanelProps } from "./TimelinePanel";
 
+const user = userEvent.setup();
+
 describe("TimelinePanel", () => {
-  it("should allow creating an event and a default timeline", () => {
+  it("should allow creating an event and a default timeline", async () => {
     const props = getProps({
       timelines: [],
       collection: createMockCollection({ can_write: true }),
     });
 
     render(<TimelinePanel {...props} />);
-    userEvent.click(screen.getByText("Add an event"));
+    await user.click(screen.getByText("Add an event"));
 
     expect(props.onNewEvent).toHaveBeenCalled();
   });
 
-  it("should allow creating an event within existing timelines", () => {
+  it("should allow creating an event within existing timelines", async () => {
     const props = getProps({
       timelines: [createMockTimeline()],
       collection: createMockCollection({ can_write: true }),
     });
 
     render(<TimelinePanel {...props} />);
-    userEvent.click(screen.getByText("Add an event"));
+    await user.click(screen.getByText("Add an event"));
 
     expect(props.onNewEvent).toHaveBeenCalled();
   });

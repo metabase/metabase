@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import SyncingModal from "./SyncingModal";
 
+const user = userEvent.setup();
+
 describe("SyncingModal", () => {
   it("should render with a table from the sample database", () => {
     render(<SyncingModal sampleUrl={"/auto/table/1"} />);
@@ -10,11 +12,11 @@ describe("SyncingModal", () => {
     expect(screen.getByText("Explore sample data")).toBeInTheDocument();
   });
 
-  it("should render with no sample database", () => {
+  it("should render with no sample database", async () => {
     const onClose = jest.fn();
 
     render(<SyncingModal onClose={onClose} />);
-    userEvent.click(screen.getByText("Got it"));
+    await user.click(screen.getByText("Got it"));
 
     expect(onClose).toHaveBeenCalled();
   });

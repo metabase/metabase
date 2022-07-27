@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import React from "react";
-import { screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "__support__/ui";
 
@@ -76,6 +76,7 @@ const card = {
 
 const question = new Question(card, metadata);
 const query = question.query();
+const user = userEvent.setup();
 
 describe("InlineValuePicker", () => {
   it("renders an inline value picker with values fields", () => {
@@ -137,7 +138,7 @@ describe("InlineValuePicker", () => {
     screen.getByText("BazBarFoo");
   });
 
-  it("adds additional filter values", () => {
+  it("adds additional filter values", async () => {
     const testFilter = new Filter(
       ["=", ["field", pkField.id, null], undefined],
       null,
@@ -154,7 +155,7 @@ describe("InlineValuePicker", () => {
     );
 
     const textInput = screen.getByPlaceholderText("Enter an ID");
-    userEvent.type(textInput, "456");
+    await user.type(textInput, "456");
 
     expect(changeSpy).toHaveBeenCalledTimes(3);
     const changes = changeSpy.mock.calls;
@@ -181,7 +182,7 @@ describe("InlineValuePicker", () => {
 
     // click remove on the first data item, which is 777
     const [firstDataItem] = await screen.getAllByLabelText("close icon");
-    userEvent.click(firstDataItem);
+    await user.click(firstDataItem);
     expect(changeSpy).toHaveBeenCalled();
     expect(changeSpy.mock.calls[0][0].arguments()).toEqual([888]);
   });
@@ -203,7 +204,7 @@ describe("InlineValuePicker", () => {
     );
 
     const textInput = screen.getByPlaceholderText("Enter some text");
-    userEvent.type(textInput, "foo,bar,");
+    await user.type(textInput, "foo,bar,");
     changeSpy.mock.calls.forEach(([[_, __, value]]) => {
       // passed value will never contain a comma because the tokenizer will filter it out
       expect(value).not.toContain(",");
@@ -227,7 +228,7 @@ describe("InlineValuePicker", () => {
     );
 
     const textInput = screen.getByPlaceholderText("Enter some text");
-    userEvent.type(textInput, "foo,bar,");
+    await user.type(textInput, "foo,bar,");
 
     const lastCall = changeSpy.mock.calls[changeSpy.mock.calls.length - 1][0];
     // reads commas as part of the input instead of token separators

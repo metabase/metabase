@@ -4,8 +4,10 @@ import userEvent from "@testing-library/user-event";
 import { createMockFontFile } from "metabase-types/api/mocks";
 import FontFilesWidget from "./FontFilesWidget";
 
+const user = userEvent.setup();
+
 describe("FontFilesWidget", () => {
-  it("should add a font file with a query string in the URL", () => {
+  it("should add a font file with a query string in the URL", async () => {
     const file = createMockFontFile({
       src: "https://metabase.test/regular.ttf?raw=true",
       fontWeight: 400,
@@ -17,13 +19,13 @@ describe("FontFilesWidget", () => {
     render(<FontFilesWidget setting={setting} onChange={onChange} />);
 
     const input = screen.getByLabelText("Regular");
-    userEvent.type(input, file.src);
-    userEvent.tab();
+    await user.type(input, file.src);
+    await user.tab();
 
     expect(onChange).toHaveBeenCalledWith([file]);
   });
 
-  it("should add a font file with an invalid URL", () => {
+  it("should add a font file with an invalid URL", async () => {
     const file = createMockFontFile({
       src: "invalid",
       fontWeight: 400,
@@ -35,13 +37,13 @@ describe("FontFilesWidget", () => {
     render(<FontFilesWidget setting={setting} onChange={onChange} />);
 
     const input = screen.getByLabelText("Regular");
-    userEvent.type(input, file.src);
-    userEvent.tab();
+    await user.type(input, file.src);
+    await user.tab();
 
     expect(onChange).toHaveBeenCalledWith([file]);
   });
 
-  it("should remove a font file", () => {
+  it("should remove a font file", async () => {
     const files = [
       createMockFontFile({
         src: "https://metabase.test/regular.ttf?raw=true",
@@ -60,8 +62,8 @@ describe("FontFilesWidget", () => {
     render(<FontFilesWidget setting={setting} onChange={onChange} />);
 
     const input = screen.getByLabelText("Regular");
-    userEvent.clear(input);
-    userEvent.tab();
+    await user.clear(input);
+    await user.tab();
 
     expect(onChange).toHaveBeenCalledWith([files[1]]);
   });

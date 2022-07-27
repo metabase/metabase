@@ -23,6 +23,8 @@ jest.mock("metabase/entities/schemas", () => ({
   Loader: ({ children }) => children(),
 }));
 
+const user = userEvent.setup();
+
 const mockFetchField = jest.fn();
 const mockSetTemplateTag = jest.fn();
 const mockSetParameterValue = jest.fn();
@@ -181,14 +183,14 @@ describe("TagEditorParam", () => {
   });
 
   describe("when changing the display name of the tag", () => {
-    it("should update the display-name property", () => {
+    it("should update the display-name property", async () => {
       setup({
         tag: mappedDimensionTag,
       });
 
       const label = screen.getByText("Filter widget label");
       const input = label.parentElement.querySelector("input");
-      userEvent.type(input, "Foo");
+      await user.type(input, "Foo");
       fireEvent.blur(input);
 
       expect(mockSetTemplateTag).toHaveBeenCalledWith({

@@ -8,6 +8,8 @@ import Question from "metabase-lib/lib/Question";
 
 import SavedQuestionHeaderButton from "./SavedQuestionHeaderButton";
 
+const user = userEvent.setup();
+
 describe("SavedQuestionHeaderButton", () => {
   let onSave;
   let question;
@@ -35,9 +37,9 @@ describe("SavedQuestionHeaderButton", () => {
     expect(screen.getByText("foo")).toBeInTheDocument();
   });
 
-  it("is updateable", () => {
+  it("is updateable", async () => {
     const title = screen.getByTestId("saved-question-header-title");
-    userEvent.type(title, "1");
+    await user.type(title, "1");
     title.blur();
 
     expect(onSave).toHaveBeenCalled();

@@ -35,14 +35,16 @@ const Revision = createEntity({
   },
 
   actionShouldInvalidateLists(action) {
-    const entities = require("metabase/entities");
-    for (const type of ASSOCIATED_ENTITY_TYPES) {
-      if (entities[type].actionShouldInvalidateLists(action)) {
-        return true;
+    if (action) {
+      const entities = require("metabase/entities");
+      for (const type of ASSOCIATED_ENTITY_TYPES) {
+        if (entities[type].actionShouldInvalidateLists(action)) {
+          return true;
+        }
       }
-    }
 
-    return action.type === this.actionTypes.INVALIDATE_LISTS_ACTION;
+      return action.type === this.actionTypes.INVALIDATE_LISTS_ACTION;
+    }
   },
 });
 

@@ -17,6 +17,8 @@ import {
 } from "__support__/sample_database_fixture";
 import JoinStep from "./JoinStep";
 
+const user = userEvent.setup();
+
 // These tests appeared to be flaky, so they're disabled for now
 // (timeouts on CI, with jest.setTimeout varying from 15 to 30 sec)
 // Most likely it'll become more reliable once we update the Popover component
@@ -374,7 +376,7 @@ describe.skip("Notebook Editor > Join Step", () => {
   it("shows the fields picker tooltip on control hover", async () => {
     await setup({ joinTable: "Products" });
 
-    userEvent.hover(screen.getByLabelText("table icon"));
+    await user.hover(screen.getByLabelText("table icon"));
 
     const tooltip = screen.queryByRole("tooltip");
     expect(tooltip).toBeInTheDocument();
@@ -384,8 +386,8 @@ describe.skip("Notebook Editor > Join Step", () => {
   it("hides the fields picker tooltip when the picker opens", async () => {
     await setup({ joinTable: "Products" });
 
-    userEvent.click(screen.getByLabelText("table icon"));
-    userEvent.hover(screen.getByLabelText("table icon"));
+    await user.click(screen.getByLabelText("table icon"));
+    await user.hover(screen.getByLabelText("table icon"));
 
     expect(screen.queryByRole("tooltip")).toBe(null);
   });

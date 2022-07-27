@@ -1,17 +1,14 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders } from "__support__/ui";
 import { metadata } from "__support__/sample_database_fixture";
-
 import Field from "metabase-lib/lib/metadata/Field";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
 import { InlineCategoryPickerComponent } from "./InlineCategoryPicker";
 import { MAX_INLINE_CATEGORIES } from "./constants";
 
@@ -29,6 +26,8 @@ const smallCategoryField = new Field({
   id: 137,
   metadata,
 });
+
+const user = userEvent.setup();
 
 // we want to make sure we always get enough unique field values
 // even if we change MAX_INLINE_CATEGORIES
@@ -257,7 +256,7 @@ describe("InlineCategoryPicker", () => {
     expect(screen.getByLabelText("Michaelangelo")).not.toBeChecked();
   });
 
-  it("should save a filter based on selection", () => {
+  it("should save a filter based on selection", async () => {
     const testFilter = new Filter(
       ["=", ["field", smallCategoryField.id, null], undefined],
       null,
@@ -280,7 +279,7 @@ describe("InlineCategoryPicker", () => {
     );
 
     screen.getByTestId("category-picker");
-    userEvent.click(screen.getByLabelText("Raphael"));
+    await user.click(screen.getByLabelText("Raphael"));
     expect(changeSpy.mock.calls.length).toBe(1);
     expect(changeSpy.mock.calls[0][0]).toEqual([
       "=",

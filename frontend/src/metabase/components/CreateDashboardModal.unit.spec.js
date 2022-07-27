@@ -1,10 +1,12 @@
 import React from "react";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, fireEvent } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import MetabaseSettings from "metabase/lib/settings";
 import CreateDashboardModal from "./CreateDashboardModal";
+
+const user = userEvent.setup();
 
 function mockCachingEnabled(enabled = true) {
   const original = MetabaseSettings.get.bind(MetabaseSettings);
@@ -58,19 +60,16 @@ function setupCreateRequestAssertion(doneCallback, changedValues) {
     }
   });
 }
-
 function fillForm({ name, description } = {}) {
   const nextDashboardState = {};
   if (name) {
     const input = screen.getByLabelText("Name");
-    userEvent.clear(input);
-    userEvent.type(input, name);
+    fireEvent.change(input, { target: { value: name } });
     nextDashboardState.name = name;
   }
   if (description) {
     const input = screen.getByLabelText("Description");
-    userEvent.clear(input);
-    userEvent.type(input, description);
+    fireEvent.change(input, { target: { value: description } });
     nextDashboardState.description = description;
   }
   return nextDashboardState;
@@ -118,9 +117,9 @@ describe("CreateDashboardModal", () => {
     expect(screen.queryByRole("button", { name: "Create" })).toBeDisabled();
   });
 
-  it("calls onClose when Cancel button is clicked", () => {
+  it("calls onClose when Cancel button is clicked", async () => {
     const { onClose } = setup();
-    fireEvent.click(screen.queryByRole("button", { name: "Cancel" }));
+    await user.click(screen.queryByRole("button", { name: "Cancel" }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

@@ -9,6 +9,8 @@ import {
 import EventCard, { EventCardProps } from "./EventCard";
 import userEvent from "@testing-library/user-event";
 
+const user = userEvent.setup();
+
 describe("EventCard", () => {
   it("should format a day-only event", () => {
     const props = getProps({
@@ -77,13 +79,13 @@ describe("EventCard", () => {
     });
 
     render(<EventCard {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await user.click(screen.getByLabelText("ellipsis icon"));
 
     expect(screen.getByText("Edit event")).toBeInTheDocument();
     expect(screen.getByText("Archive event")).toBeInTheDocument();
   });
 
-  it("should render the menu for an archived event", () => {
+  it("should render the menu for an archived event", async () => {
     const props = getProps({
       timeline: createMockTimeline({
         collection: createMockCollection({
@@ -96,7 +98,7 @@ describe("EventCard", () => {
     });
 
     render(<EventCard {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await user.click(screen.getByLabelText("ellipsis icon"));
 
     expect(screen.getByText("Unarchive event")).toBeInTheDocument();
     expect(screen.getByText("Delete event")).toBeInTheDocument();

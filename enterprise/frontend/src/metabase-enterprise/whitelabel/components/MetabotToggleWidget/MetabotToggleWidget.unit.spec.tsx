@@ -6,23 +6,25 @@ import { MetabotSetting } from "./types";
 
 const TOGGLE_LABEL = "Display our little friend on the homepage";
 
+const user = userEvent.setup();
+
 describe("MetabotToggleWidget", () => {
-  it("should disable Metabot", () => {
+  it("should disable Metabot", async () => {
     const setting = getSetting();
     const onChange = jest.fn();
 
     render(<MetabotToggleWidget setting={setting} onChange={onChange} />);
-    userEvent.click(screen.getByText(TOGGLE_LABEL));
+    await user.click(screen.getByText(TOGGLE_LABEL));
 
     expect(onChange).toHaveBeenCalledWith(false);
   });
 
-  it("should enable Metabot", () => {
+  it("should enable Metabot", async () => {
     const setting = getSetting({ value: false });
     const onChange = jest.fn();
 
     render(<MetabotToggleWidget setting={setting} onChange={onChange} />);
-    userEvent.click(screen.getByText(TOGGLE_LABEL));
+    await user.click(screen.getByText(TOGGLE_LABEL));
 
     expect(onChange).toHaveBeenCalledWith(true);
   });

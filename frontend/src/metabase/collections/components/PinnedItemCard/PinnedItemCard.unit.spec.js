@@ -1,8 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
 import PinnedItemCard from "./PinnedItemCard";
+
+const user = userEvent.setup();
 
 const mockOnCopy = jest.fn();
 const mockOnMove = jest.fn();
@@ -76,9 +77,9 @@ describe("PinnedItemCard", () => {
     expect(screen.getByText("A dashboard")).toBeInTheDocument();
   });
 
-  it("should show an action menu when user clicks on the menu icon in the card", () => {
+  it("should show an action menu when user clicks on the menu icon in the card", async () => {
     const { container } = setup();
-    userEvent.click(container.querySelector(MENU_ICON_SELECTOR));
+    await user.click(container.querySelector(MENU_ICON_SELECTOR));
     expect(screen.getByText("Unpin")).toBeInTheDocument();
   });
 });

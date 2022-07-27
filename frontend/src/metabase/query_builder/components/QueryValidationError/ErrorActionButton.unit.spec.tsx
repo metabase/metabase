@@ -27,6 +27,8 @@ describe("ErrorActionButton", () => {
     };
   });
 
+  const user = userEvent.setup();
+
   describe("when using an error that does not have an associated action", () => {
     const errorWithoutType = new ValidationError("oof"); // undefined action type
     beforeEach(() => {
@@ -70,8 +72,8 @@ describe("ErrorActionButton", () => {
         render(<ErrorActionButton {...props} />);
       });
 
-      it("should call the toggleTemplateTagsEditor action", () => {
-        userEvent.click(
+      it("should call the toggleTemplateTagsEditor action", async () => {
+        await user.click(
           screen.getByRole("button", {
             name: buttonLabel,
           }),
@@ -87,8 +89,8 @@ describe("ErrorActionButton", () => {
         render(<ErrorActionButton {...props} />);
       });
 
-      it("should not call the toggleTemplateTagsEditor action", () => {
-        userEvent.click(
+      it("should not call the toggleTemplateTagsEditor action", async () => {
+        await user.click(
           screen.getByRole("button", {
             name: buttonLabel,
           }),

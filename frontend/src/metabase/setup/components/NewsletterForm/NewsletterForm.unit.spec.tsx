@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import NewsletterForm from "./NewsletterForm";
 
+const user = userEvent.setup();
+
 const FormMock = (props: FormHTMLAttributes<HTMLFormElement>) => (
   <form {...props}>
     <button>Subscribe</button>
@@ -20,7 +22,7 @@ describe("NewsletterForm", () => {
     const onSubscribe = jest.fn();
 
     render(<NewsletterForm onSubscribe={onSubscribe} />);
-    userEvent.click(screen.getByText("Subscribe"));
+    await user.click(screen.getByText("Subscribe"));
 
     expect(await screen.findByText(/You're subscribed/)).toBeInTheDocument();
   });

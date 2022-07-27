@@ -6,19 +6,21 @@ import { FontSetting, FontSettingValues } from "./types";
 
 const FONT_FILES_KEY = "application-font-files";
 
+const user = userEvent.setup();
+
 describe("FontWidget", () => {
-  it("should set a built-in font from a built-in font", () => {
+  it("should set a built-in font from a built-in font", async () => {
     const props = getProps();
 
     render(<FontWidget {...props} />);
-    userEvent.click(screen.getByText("Lato"));
-    userEvent.click(screen.getByText("Lora"));
+    await user.click(screen.getByText("Lato"));
+    await user.click(screen.getByText("Lora"));
 
     expect(props.onChange).toHaveBeenCalledWith("Lora");
     expect(props.onChangeSetting).toHaveBeenCalledWith(FONT_FILES_KEY, null);
   });
 
-  it("should set a custom font from a built-in font", () => {
+  it("should set a custom font from a built-in font", async () => {
     const props = getProps({
       setting: getSetting({
         value: "Lora",
@@ -26,14 +28,14 @@ describe("FontWidget", () => {
     });
 
     render(<FontWidget {...props} />);
-    userEvent.click(screen.getByText("Lora"));
-    userEvent.click(screen.getByText("Custom…"));
+    await user.click(screen.getByText("Lora"));
+    await user.click(screen.getByText("Custom…"));
 
     expect(props.onChange).toHaveBeenCalledWith("Lato");
     expect(props.onChangeSetting).toHaveBeenCalledWith(FONT_FILES_KEY, []);
   });
 
-  it("should set a built-in font from a custom font", () => {
+  it("should set a built-in font from a custom font", async () => {
     const props = getProps({
       settingValues: getSettingValues({
         "application-font-files": [],
@@ -41,8 +43,8 @@ describe("FontWidget", () => {
     });
 
     render(<FontWidget {...props} />);
-    userEvent.click(screen.getByText("Custom…"));
-    userEvent.click(screen.getByText("Lora"));
+    await user.click(screen.getByText("Custom…"));
+    await user.click(screen.getByText("Lora"));
 
     expect(props.onChange).toHaveBeenCalledWith("Lora");
     expect(props.onChangeSetting).toHaveBeenCalledWith(FONT_FILES_KEY, null);

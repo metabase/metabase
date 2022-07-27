@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DatabaseCacheTTLField from "./DatabaseCacheTTLField";
 
+const user = userEvent.setup();
+
 function setup({ value = null } = {}) {
   const onChange = jest.fn();
   render(
@@ -11,14 +13,14 @@ function setup({ value = null } = {}) {
   return { onChange };
 }
 
-function selectMode(nextMode) {
+async function selectMode(nextMode) {
   const currentModeLabel =
     nextMode === "custom" ? "Use instance default (TTL)" : "Custom";
   const nextModeLabel =
     nextMode === "instance-default" ? "Use instance default (TTL)" : "Custom";
 
-  userEvent.click(screen.getByText(currentModeLabel));
-  userEvent.click(screen.getByText(nextModeLabel));
+  await user.click(screen.getByText(currentModeLabel));
+  await user.click(screen.getByText(nextModeLabel));
 }
 
 describe("DatabaseCacheTTLField", () => {
@@ -38,18 +40,17 @@ describe("DatabaseCacheTTLField", () => {
     expect(screen.queryByLabelText("Cache TTL Field")).not.toBeInTheDocument();
   });
 
-  it("sets 24 hours as a default TTL custom value", () => {
+  it("sets 24 hours as a default TTL custom value", async () => {
     const { onChange } = setup();
-    selectMode("custom");
+    await selectMode("custom");
     expect(onChange).toHaveBeenLastCalledWith(24);
   });
 
-  it("can select and fill custom cache TTL value", () => {
+  it("can select and fill custom cache TTL value", async () => {
     const { onChange } = setup();
-
-    selectMode("custom");
+    await selectMode("custom");
     const input = screen.getByPlaceholderText("24");
-    userEvent.type(input, "{selectall}{backspace}14");
+    await user.type(input, "{selectall}{backspace}14");
     input.blur();
 
     expect(onChange).toHaveBeenLastCalledWith(14);
@@ -64,9 +65,9 @@ describe("DatabaseCacheTTLField", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("can reset cache_ttl to instance default", () => {
+  it("can reset cache_ttl to instance default", async () => {
     const { onChange } = setup({ value: 48 });
-    selectMode("instance-default");
+    await selectMode("instance-default");
     expect(onChange).toHaveBeenLastCalledWith(null);
   });
 });

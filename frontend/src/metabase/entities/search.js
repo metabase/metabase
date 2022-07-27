@@ -87,7 +87,7 @@ export default createEntity({
       if (entities[type].actionShouldInvalidateLists(action)) {
         return true;
       }
+      return false;
     }
-    return false;
   },
 });

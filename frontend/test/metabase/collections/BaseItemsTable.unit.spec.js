@@ -2,13 +2,13 @@ import React from "react";
 import { renderWithProviders } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import moment from "moment";
-
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
 } from "metabase/lib/formatting/date";
-
 import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
+
+const user = userEvent.setup();
 
 describe("Collections BaseItemsTable", () => {
   const timestamp = "2021-06-03T19:46:52.128";
@@ -48,11 +48,11 @@ describe("Collections BaseItemsTable", () => {
     expect(getByText(lastEditedAt)).toBeInTheDocument();
   });
 
-  it("displays last edit time on hover", () => {
+  it("displays last edit time on hover", async () => {
     const { getByText, getByRole } = setup();
     const lastEditedAt = moment(timestamp).format("MMMM DD, YYYY");
 
-    userEvent.hover(getByText(lastEditedAt));
+    await user.hover(getByText(lastEditedAt));
 
     expect(getByRole("tooltip")).toHaveTextContent(
       moment(timestamp).format(`${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`),

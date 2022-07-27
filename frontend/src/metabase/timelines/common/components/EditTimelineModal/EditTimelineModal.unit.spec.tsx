@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { createMockTimeline } from "metabase-types/api/mocks";
 import EditTimelineModal, { EditTimelineModalProps } from "./EditTimelineModal";
 
+const user = userEvent.setup();
+
 const FormMock = (props: FormHTMLAttributes<HTMLFormElement>) => (
   <form {...props}>
     <button>Update</button>
@@ -13,11 +15,11 @@ const FormMock = (props: FormHTMLAttributes<HTMLFormElement>) => (
 jest.mock("metabase/containers/Form", () => FormMock);
 
 describe("EditTimelineModal", () => {
-  it("should submit modal", () => {
+  it("should submit modal", async () => {
     const props = getProps();
 
     render(<EditTimelineModal {...props} />);
-    userEvent.click(screen.getByText("Update"));
+    await user.click(screen.getByText("Update"));
 
     expect(props.onSubmit).toHaveBeenCalled();
   });

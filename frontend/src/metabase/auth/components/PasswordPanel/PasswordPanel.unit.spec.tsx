@@ -4,12 +4,14 @@ import userEvent from "@testing-library/user-event";
 import PasswordPanel from "./PasswordPanel";
 import { AuthProvider } from "metabase/auth/types";
 
+const user = userEvent.setup();
+
 describe("PasswordPanel", () => {
-  it("should login successfully", () => {
+  it("should login successfully", async () => {
     const onLogin = jest.fn().mockResolvedValue({});
 
     render(<PasswordPanel onLogin={onLogin} />);
-    userEvent.click(screen.getByText("Sign in"));
+    await user.click(screen.getByText("Sign in"));
 
     expect(onLogin).toHaveBeenCalled();
   });

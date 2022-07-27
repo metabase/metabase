@@ -1,9 +1,10 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
 import AccordionList from "metabase/core/components/AccordionList";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+
+const user = userEvent.setup();
 
 const SECTIONS = [
   {
@@ -95,12 +96,14 @@ describe("AccordionList", () => {
 
       render(
         <AccordionList
+          itemTestId={"itemTestId"}
           sections={SECTIONS}
           renderItemWrapper={renderItemWrapper}
         />,
       );
 
-      userEvent.hover(screen.getByText("Foo"));
+      const item = screen.getAllByTestId("itemTestId")[0];
+      await user.hover(item);
       expect(await screen.findByText("popover")).toBeVisible();
     });
   });

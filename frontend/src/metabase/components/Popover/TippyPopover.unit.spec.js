@@ -2,8 +2,9 @@
 import React, { useEffect } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
 import TippyPopover from "./TippyPopover";
+
+const user = userEvent.setup();
 
 const defaultTarget = (
   <div id="child-target" style={{ width: 100, height: 100 }}>
@@ -38,7 +39,7 @@ function setup({
 describe("Popover", () => {
   it("should be visible on hover of child target element", async () => {
     setup();
-    userEvent.hover(screen.getByText("child target element"));
+    await user.hover(screen.getByText("child target element"));
     expect(await screen.findByText("popover content")).toBeVisible();
   });
 
@@ -54,7 +55,7 @@ describe("Popover", () => {
       const contentFn = jest.fn();
       setup({ contentFn });
       expect(contentFn).not.toHaveBeenCalled();
-      userEvent.hover(screen.getByText("child target element"));
+      await user.hover(screen.getByText("child target element"));
 
       await screen.findByText("popover content");
       expect(contentFn).toHaveBeenCalled();

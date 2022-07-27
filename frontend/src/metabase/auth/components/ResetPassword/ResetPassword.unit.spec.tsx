@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ResetPassword, { ResetPasswordProps } from "./ResetPassword";
 
+const user = userEvent.setup();
+
 describe("ResetPassword", () => {
   it("should show a form when token validations succeeds", async () => {
     const props = getProps({
@@ -35,7 +37,7 @@ describe("ResetPassword", () => {
     render(<ResetPassword {...props} />);
 
     const button = await screen.findByText("Save new password");
-    userEvent.click(button);
+    await user.click(button);
 
     const message = await screen.findByText("All done!");
     expect(message).toBeInTheDocument();

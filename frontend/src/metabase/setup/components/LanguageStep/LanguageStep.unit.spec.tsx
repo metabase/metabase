@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { Locale } from "metabase-types/store";
 import LanguageStep, { LanguageStepProps } from "./LanguageStep";
 
+const user = userEvent.setup();
+
 describe("LanguageStep", () => {
   it("should render in inactive state", () => {
     const props = getProps({
@@ -16,14 +18,14 @@ describe("LanguageStep", () => {
     expect(screen.getByText(/set to English/)).toBeInTheDocument();
   });
 
-  it("should allow language selection", () => {
+  it("should allow language selection", async () => {
     const props = getProps({
       isStepActive: true,
       onLocaleChange: jest.fn(),
     });
 
     render(<LanguageStep {...props} />);
-    userEvent.click(screen.getByText("English"));
+    await user.click(screen.getByText("English"));
 
     expect(props.onLocaleChange).toHaveBeenCalled();
   });

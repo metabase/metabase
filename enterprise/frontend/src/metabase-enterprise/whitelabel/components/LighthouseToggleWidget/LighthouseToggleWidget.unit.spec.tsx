@@ -6,23 +6,25 @@ import { LighthouseSetting } from "./types";
 
 const TOGGLE_LABEL = "Show this on the home and login pages";
 
+const user = userEvent.setup();
+
 describe("LighthouseToggleWidget", () => {
-  it("should disable the illustration", () => {
+  it("should disable the illustration", async () => {
     const setting = getSetting();
     const onChange = jest.fn();
 
     render(<LighthouseToggleWidget setting={setting} onChange={onChange} />);
-    userEvent.click(screen.getByText(TOGGLE_LABEL));
+    await user.click(screen.getByText(TOGGLE_LABEL));
 
     expect(onChange).toHaveBeenCalledWith(false);
   });
 
-  it("should enable the illustration", () => {
+  it("should enable the illustration", async () => {
     const setting = getSetting({ value: false });
     const onChange = jest.fn();
 
     render(<LighthouseToggleWidget setting={setting} onChange={onChange} />);
-    userEvent.click(screen.getByText(TOGGLE_LABEL));
+    await user.click(screen.getByText(TOGGLE_LABEL));
 
     expect(onChange).toHaveBeenCalledWith(true);
   });

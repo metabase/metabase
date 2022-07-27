@@ -9,6 +9,8 @@ import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import ItemPicker from "./ItemPicker";
 
+const user = userEvent.setup({ delay: null });
+
 function collection({
   id,
   name,
@@ -163,7 +165,7 @@ function queryListItem(itemName) {
 
 async function openCollection(itemName) {
   const collectionNode = queryListItem(itemName);
-  userEvent.click(collectionNode.getByLabelText("chevronright icon"));
+  await user.click(collectionNode.getByLabelText("chevronright icon"));
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 }
 
@@ -224,7 +226,7 @@ describe("ItemPicker", () => {
     await openCollection(COLLECTION.REGULAR.name);
     let header = getItemPickerHeader();
 
-    userEvent.click(header.getByText(/Our analytics/i));
+    await user.click(header.getByText(/Our analytics/i));
 
     header = getItemPickerHeader();
     const list = getItemPickerList();
@@ -240,7 +242,7 @@ describe("ItemPicker", () => {
   it("calls onChange when selecting an item", async () => {
     const { onChange } = await setup();
 
-    userEvent.click(screen.getByText(DASHBOARD.REGULAR.name));
+    await user.click(screen.getByText(DASHBOARD.REGULAR.name));
 
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining(DASHBOARD.REGULAR),
@@ -250,14 +252,14 @@ describe("ItemPicker", () => {
 
   it("doesn't call onChange if it's not a collection picker", async () => {
     const { onChange } = await setup();
-    userEvent.click(screen.getByText(COLLECTION.REGULAR.name));
+    await user.click(screen.getByText(COLLECTION.REGULAR.name));
     expect(onChange).not.toHaveBeenCalled();
   });
 
   it("groups personal collections into single folder if there are more than one", async () => {
     await setup({ extraCollections: [COLLECTION_OTHER_USERS] });
 
-    userEvent.click(screen.queryByText(/All personal collections/i));
+    await user.click(screen.queryByText(/All personal collections/i));
 
     const list = getItemPickerList();
     expect(list.queryByText(COLLECTION_OTHER_USERS.name)).toBeInTheDocument();

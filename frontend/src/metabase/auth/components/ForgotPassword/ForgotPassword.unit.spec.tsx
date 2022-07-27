@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ForgotPassword, { ForgotPasswordProps } from "./ForgotPassword";
 
+const user = userEvent.setup();
+
 describe("ForgotPassword", () => {
   it("should show a form when the user can reset their password", () => {
     const props = getProps({ canResetPassword: true });
@@ -19,7 +21,7 @@ describe("ForgotPassword", () => {
     });
 
     render(<ForgotPassword {...props} />);
-    userEvent.click(screen.getByText("Send password reset email"));
+    await user.click(screen.getByText("Send password reset email"));
 
     const message = await screen.findByText(/Check your email/);
     expect(message).toBeInTheDocument();

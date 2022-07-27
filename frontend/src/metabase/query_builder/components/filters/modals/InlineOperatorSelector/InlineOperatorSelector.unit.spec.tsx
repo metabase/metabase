@@ -107,6 +107,7 @@ const operatorOptions = [
     fields: [],
   },
 ];
+const user = userEvent.setup();
 
 describe("InlineOperatorSelector", () => {
   it("displays a field name", () => {
@@ -162,7 +163,7 @@ describe("InlineOperatorSelector", () => {
       />,
     );
 
-    userEvent.click(screen.getByText("Equal to"));
+    await user.click(screen.getByText("Equal to"));
     await screen.findByTestId("operator-options");
 
     operatorOptions.forEach(option => {
@@ -181,10 +182,10 @@ describe("InlineOperatorSelector", () => {
       />,
     );
 
-    userEvent.click(screen.getByText("Equal to"));
+    await user.click(screen.getByText("Equal to"));
     await screen.findByTestId("operator-options");
 
-    userEvent.click(screen.getByText("Less than or equal to"));
+    await user.click(screen.getByText("Less than or equal to"));
     expect(changeSpy).toHaveBeenCalledWith("<=");
   });
 });

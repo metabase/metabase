@@ -1,8 +1,9 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
 import Sidebar from "./Sidebar";
+
+const user = userEvent.setup();
 
 it("syncs database schema", () => {
   const databaseId = 1;
@@ -101,7 +102,7 @@ it("discards saved field values", () => {
   expect(discardSavedFieldValues).toHaveBeenCalledWith(databaseId);
 });
 
-it("removes database", () => {
+it("removes database", async () => {
   const databaseId = 1;
   const name = "DB Name";
   const database = {
@@ -130,7 +131,7 @@ it("removes database", () => {
 
   const input = screen.getByRole("textbox");
 
-  userEvent.type(input, name);
+  await user.type(input, name);
 
   const deleteButton = screen.getByText("Delete");
 

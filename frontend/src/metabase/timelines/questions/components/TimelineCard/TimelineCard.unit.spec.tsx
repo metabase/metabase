@@ -7,8 +7,10 @@ import {
 } from "metabase-types/api/mocks";
 import TimelineCard, { TimelineCardProps } from "./TimelineCard";
 
+const user = userEvent.setup();
+
 describe("TimelineCard", () => {
-  it("should expand and collapse the card", () => {
+  it("should expand and collapse the card", async () => {
     const props = getProps({
       timeline: createMockTimeline({
         name: "Releases",
@@ -19,14 +21,14 @@ describe("TimelineCard", () => {
     render(<TimelineCard {...props} />);
     expect(screen.queryByText("RC")).not.toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Releases"));
+    await user.click(screen.getByText("Releases"));
     expect(screen.getByText("RC")).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Releases"));
+    await user.click(screen.getByText("Releases"));
     expect(screen.queryByText("RC")).not.toBeInTheDocument();
   });
 
-  it("should toggle visibility of the card", () => {
+  it("should toggle visibility of the card", async () => {
     const props = getProps({
       timeline: createMockTimeline({
         name: "Releases",
@@ -35,12 +37,12 @@ describe("TimelineCard", () => {
     });
 
     render(<TimelineCard {...props} />);
-    userEvent.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("checkbox"));
 
     expect(props.onToggleTimeline).toHaveBeenCalled();
   });
 
-  it("should make a timeline visible when its even is selected", () => {
+  it("should make a timeline visible when its even is selected", async () => {
     const props = getProps({
       timeline: createMockTimeline({
         name: "Releases",
@@ -50,8 +52,8 @@ describe("TimelineCard", () => {
     });
 
     render(<TimelineCard {...props} />);
-    userEvent.click(screen.getByText("Releases"));
-    userEvent.click(screen.getByText("RC"));
+    await user.click(screen.getByText("Releases"));
+    await user.click(screen.getByText("RC"));
 
     expect(props.onToggleTimeline).toHaveBeenCalledWith(props.timeline, true);
   });

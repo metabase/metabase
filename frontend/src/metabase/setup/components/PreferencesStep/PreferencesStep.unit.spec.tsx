@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PreferencesStep, { PreferencesStepProps } from "./PreferencesStep";
 
+const user = userEvent.setup();
+
 describe("PreferencesStep", () => {
   it("should render in inactive state", () => {
     const props = getProps({
@@ -14,14 +16,14 @@ describe("PreferencesStep", () => {
     expect(screen.getByText("Usage data preferences")).toBeInTheDocument();
   });
 
-  it("should allow toggling tracking permissions", () => {
+  it("should allow toggling tracking permissions", async () => {
     const props = getProps({
       isTrackingAllowed: false,
       isStepActive: true,
     });
 
     render(<PreferencesStep {...props} />);
-    userEvent.click(screen.getByLabelText(/Allow Metabase/));
+    await user.click(screen.getByLabelText(/Allow Metabase/));
 
     expect(props.onTrackingChange).toHaveBeenCalledWith(true);
   });
@@ -34,7 +36,7 @@ describe("PreferencesStep", () => {
     });
 
     render(<PreferencesStep {...props} />);
-    userEvent.click(screen.getByText("Finish"));
+    await user.click(screen.getByText("Finish"));
 
     expect(await screen.findByText("An error occurred")).toBeInTheDocument();
   });

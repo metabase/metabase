@@ -1,12 +1,9 @@
 /* eslint-disable react/display-name */
 /* eslint-disable react/prop-types */
-
 import React from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
 import TokenField from "metabase/components/TokenField";
-
 import {
   KEYCODE_DOWN,
   KEYCODE_TAB,
@@ -33,6 +30,8 @@ const DEFAULT_TOKEN_FIELD_PROPS = {
     </div>
   ),
 };
+
+const user = userEvent.setup();
 
 class TokenFieldWithStateAndDefaults extends React.Component {
   constructor(props) {
@@ -169,7 +168,7 @@ describe("TokenField", () => {
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 
-  it("should add freeform value if parseFreeformValue is provided", () => {
+  it("should add freeform value if parseFreeformValue is provided", async () => {
     render(
       <TokenFieldWithStateAndDefaults
         value={[]}
@@ -177,7 +176,7 @@ describe("TokenField", () => {
         parseFreeformValue={value => value}
       />,
     );
-    userEvent.type(input(), "yep");
+    await user.type(input(), "yep");
     expect(input().value).toEqual("yep");
 
     type("yep");
@@ -267,9 +266,9 @@ describe("TokenField", () => {
     });
 
     // This is messy and tricky to test with RTL
-    it("should not commit empty freeform value", () => {
+    it("should not commit empty freeform value", async () => {
       type("Doohickey");
-      userEvent.clear(input());
+      await user.clear(input());
       type("");
       input().blur();
       expect(values().textContent).toBe("");
@@ -429,7 +428,7 @@ describe("TokenField", () => {
 
   describe("with multi=true", () => {
     // Couldn't confirm that blur is prevented
-    xit("should prevent blurring on tab", () => {
+    xit("should prevent blurring on tab", async () => {
       render(
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
@@ -441,7 +440,7 @@ describe("TokenField", () => {
       );
       type("asdf");
       input().focus();
-      userEvent.tab();
+      await user.tab();
 
       // Instead of relying on `preventDefault` like the previous version of the test did,
       // we're simply checking the values - onBlur would've set the value
@@ -470,7 +469,7 @@ describe("TokenField", () => {
   });
 
   describe("with multi=false", () => {
-    it("should not prevent blurring on tab", () => {
+    it("should not prevent blurring on tab", async () => {
       render(
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
@@ -481,7 +480,7 @@ describe("TokenField", () => {
       );
       type("asdf");
       input().focus();
-      userEvent.tab();
+      await user.tab();
       findWithinValues(["asdf"]);
     });
 

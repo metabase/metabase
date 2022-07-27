@@ -29,6 +29,8 @@ const dateField = new Field({
 
 metadata.fields[dateField.id] = dateField;
 
+const user = userEvent.setup();
+
 const card = {
   dataset_query: {
     database: 5,
@@ -280,8 +282,8 @@ describe("InlineDatePicker", () => {
     await waitFor(() => screen.getByTestId("relative-datetime-value"));
 
     const input = screen.getByTestId("relative-datetime-value");
-    userEvent.clear(input);
-    userEvent.type(input, "88");
+    await user.clear(input);
+    await user.type(input, "88");
     // FIXME: for some reason this button never gets enabled
     await waitFor(() =>
       expect(screen.getByText("Add filter")).not.toBeDisabled(),
@@ -318,12 +320,12 @@ describe("InlineDatePicker", () => {
     );
 
     const btn = screen.getByText("between November 5, 1605 November 5, 2005");
-    userEvent.click(btn);
+    await user.click(btn);
     await waitFor(() => screen.getByDisplayValue("11/05/1605"));
     const input = screen.getByDisplayValue("11/05/1605");
 
-    userEvent.clear(input);
-    userEvent.type(input, "09/05/1995");
+    await user.clear(input);
+    await user.type(input, "09/05/1995");
 
     // FIXME: for some reason this button never gets enabled
     await waitFor(() =>
@@ -340,7 +342,7 @@ describe("InlineDatePicker", () => {
     ]);
   });
 
-  it("clears a custom value", () => {
+  it("clears a custom value", async () => {
     const testFilter = new Filter(
       ["between", ["field", dateField.id, null], "1605-11-05", "2005-11-05"],
       null,
@@ -362,7 +364,7 @@ describe("InlineDatePicker", () => {
     );
 
     const clearBtn = screen.getByLabelText("close icon");
-    userEvent.click(clearBtn);
+    await user.click(clearBtn);
     expect(clearSpy).toBeCalledTimes(1);
     expect(changeSpy).toBeCalledTimes(0);
   });

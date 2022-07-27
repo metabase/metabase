@@ -58,6 +58,8 @@ const SAVED_QUESTION = {
   can_write: true,
 };
 
+const user = userEvent.setup();
+
 function getQuestion(card) {
   return new Question(card, metadata);
 }
@@ -357,11 +359,11 @@ describe("ViewHeader", () => {
           xhrMock.teardown();
         });
 
-        it("calls save function on title update", () => {
+        it("calls save function on title update", async () => {
           const { onSave } = setup({ question });
           const title = screen.getByTestId("saved-question-header-title");
-          userEvent.clear(title);
-          userEvent.type(title, "New Title{enter}");
+          await user.clear(title);
+          await user.type(title, "New Title{Enter}");
           expect(title).toHaveValue("New Title");
           title.blur();
           expect(onSave).toHaveBeenCalled();

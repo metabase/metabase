@@ -7,12 +7,14 @@ import {
 } from "metabase-types/api/mocks";
 import DeleteEventModal, { DeleteEventModalProps } from "./DeleteEventModal";
 
+const user = userEvent.setup();
+
 describe("DeleteEventModal", () => {
-  it("should submit modal", () => {
+  it("should submit modal", async () => {
     const props = getProps();
 
     render(<DeleteEventModal {...props} />);
-    userEvent.click(screen.getByText("Delete"));
+    await user.click(screen.getByText("Delete"));
 
     expect(props.onSubmit).toHaveBeenCalled();
   });

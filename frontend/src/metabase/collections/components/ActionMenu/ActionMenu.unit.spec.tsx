@@ -7,8 +7,10 @@ import {
 } from "metabase-types/api/mocks";
 import ActionMenu, { ActionMenuProps } from "./ActionMenu";
 
+const user = userEvent.setup({ delay: null });
+
 describe("ActionMenu", () => {
-  it("should show an option to hide preview for a pinned question", () => {
+  it("should show an option to hide preview for a pinned question", async () => {
     const props = getProps({
       item: createMockCollectionItem({
         model: "card",
@@ -22,13 +24,13 @@ describe("ActionMenu", () => {
     });
 
     render(<ActionMenu {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
-    userEvent.click(screen.getByText("Don’t show visualization"));
+    await user.click(screen.getByLabelText("ellipsis icon"));
+    await user.click(screen.getByText("Don’t show visualization"));
 
     expect(props.item.setCollectionPreview).toHaveBeenCalledWith(false);
   });
 
-  it("should show an option to show preview for a pinned question", () => {
+  it("should show an option to show preview for a pinned question", async () => {
     const props = getProps({
       item: createMockCollectionItem({
         model: "card",
@@ -42,13 +44,13 @@ describe("ActionMenu", () => {
     });
 
     render(<ActionMenu {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
-    userEvent.click(screen.getByText("Show visualization"));
+    await user.click(screen.getByLabelText("ellipsis icon"));
+    await user.click(screen.getByText("Show visualization"));
 
     expect(props.item.setCollectionPreview).toHaveBeenCalledWith(true);
   });
 
-  it("should not show an option to hide preview for a pinned model", () => {
+  it("should not show an option to hide preview for a pinned model", async () => {
     const props = getProps({
       item: createMockCollectionItem({
         model: "model",
@@ -61,7 +63,7 @@ describe("ActionMenu", () => {
     });
 
     render(<ActionMenu {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await user.click(screen.getByLabelText("ellipsis icon"));
 
     expect(
       screen.queryByText("Don’t show visualization"),

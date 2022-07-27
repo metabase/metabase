@@ -1,8 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
 import Warnings from "metabase/query_builder/components/Warnings";
+
+const user = userEvent.setup();
 
 describe("Warnings", () => {
   it("should render a warning icon", () => {
@@ -10,16 +11,16 @@ describe("Warnings", () => {
     expect(screen.getByLabelText("warning icon"));
   });
 
-  it("should render a warning message tooltip on hover", () => {
+  it("should render a warning message tooltip on hover", async () => {
     render(<Warnings warnings={["test warning message"]} />);
-    userEvent.hover(screen.getByLabelText("warning icon"));
+    await user.hover(screen.getByLabelText("warning icon"));
     screen.getByText("test warning message");
   });
 
-  it("should render multiple warnings", () => {
+  it("should render multiple warnings", async () => {
     const warningMessages = ["foo", "bar", "baz"];
     render(<Warnings warnings={warningMessages} />);
-    userEvent.hover(screen.getByLabelText("warning icon"));
+    await user.hover(screen.getByLabelText("warning icon"));
 
     warningMessages.forEach(message => {
       screen.getByText(message);
