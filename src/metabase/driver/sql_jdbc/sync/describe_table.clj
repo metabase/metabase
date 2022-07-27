@@ -372,9 +372,9 @@
               fields           (field-types->fields field-types)]
           (if (> (count fields) max-nested-field-columns)
             (do
-              (take max-nested-field-columns fields)
               (log/warn
                 (format
                   "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
-                  max-nested-field-columns)))
+                  max-nested-field-columns))
+              (take max-nested-field-columns fields))
             fields))))))
