@@ -236,17 +236,34 @@
   [driver [_ arg]]
   (hsql/call :char_length (sql.qp/->honeysql driver arg)))
 
+(def ^:private database-type->mysql-cast-type-name
+  "MySQL supports the ordinary SQL standard database type names for actual type stuff but not for coercions, sometimes.
+  If it doesn't support the ordinary SQL standard type, then we coerce it to a different type that MySQL does support here"
+  {"integer"          "signed"
+   "text"             "char"
+   "double precision" "double"})
+
 (defmethod sql.qp/json-query :mysql
   [_ unwrapped-identifier stored-field]
   (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
-    (let [nfc-path             (:nfc_path stored-field)
-          parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
-          jsonpath-query       (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))]
-      (reify
-        hformat/ToSql
-        (to-sql [_]
-          (hformat/to-params-default jsonpath-query "nfc_path")
-          (format "JSON_EXTRACT(%s, ?)" (hformat/to-sql parent-identifier)))))))
+    (let [field-type        (:database_type stored-field)
+          field-type        (get database-type->mysql-cast-type-name field-type field-type)
+          nfc-path          (:nfc_path stored-field)
+          parent-identifier (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
+          jsonpath-query    (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
+          default-cast      (hsql/call :convert
+                                          (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
+                                          (hsql/raw (str/upper-case field-type)))
+          ;; If we see JSON datetimes we expect them to be in ISO8601. However, MySQL expects them as something different.
+          ;; We explicitly tell MySQL to go and accept ISO8601, because that is JSON datetimes, although there is no real standard for JSON, ISO8601 is the de facto standard.
+          iso8601-cast         (hsql/call :convert
+                                          (hsql/call :str_to_date
+                                          (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)
+                                          "\"%Y-%m-%dT%T.%fZ\"")
+                                          (hsql/raw "DATETIME"))]
+      (case field-type
+        "timestamp" iso8601-cast
+        default-cast))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as clause]]
