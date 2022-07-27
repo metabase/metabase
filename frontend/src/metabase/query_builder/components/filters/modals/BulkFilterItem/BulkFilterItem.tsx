@@ -174,13 +174,15 @@ const getNewFilter = (query: StructuredQuery, dimension: Dimension): Filter => {
     useDefaultOperator: !isBooleanField,
   });
 
-  const isNumericField = isNumber(field);
+  const isNumericField = isNumber(field) && field.has_field_values !== "list";
   if (isNumericField) {
     filter = filter.setOperator("between");
   }
 
   const isLongTextField =
-    field.has_field_values !== "list" && field.isLongText();
+    isString(field) &&
+    field.has_field_values !== "list" &&
+    (field.has_field_values === "none" || field.isLongText());
 
   if (isLongTextField) {
     filter = filter.setOperator("contains");
