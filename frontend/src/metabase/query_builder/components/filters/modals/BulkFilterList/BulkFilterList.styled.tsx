@@ -10,9 +10,9 @@ export const ListRoot = styled.div`
 `;
 
 export const ListRow = styled.div`
-  padding: 1.5rem 2rem;
+  padding: 1.5rem 3rem;
   ${breakpointMinHeightMedium} {
-    padding: 2.5rem 2rem;
+    padding: 2.5rem 3rem;
   }
   border-bottom: 1px solid ${color("border")};
   &:last-of-type {
