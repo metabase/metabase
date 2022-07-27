@@ -85,14 +85,14 @@
         (.log this level message e)
         (.log this level message)))))
 
-;;; presumably this is always called with a `clojure.lang.Namespace` but it's probably better to be flexible and handle
+;;; presumably this is always called with a [[clojure.lang.Namespace]] but it's probably better to be flexible and handle
 ;;; symbols and strings as well in case anybody tries to do anything weird e.g. in [[metabase.test.util.log]]
 (defn- ns-logger*
   "Unmemoized function for getting the appropriate [[Logger]] to use for a Clojure namespace."
   ^Logger [a-namespace]
   (if (string? a-namespace)
     (.getLogger (LogManager/getContext false) ^String a-namespace)
-    (recur (name (ns-name (the-ns a-namespace))))))
+    (recur (name (ns-name a-namespace)))))
 
 ;;; Yes, the arglists metadata below is missing `:tag` but if I try to write something like
 ;;;
