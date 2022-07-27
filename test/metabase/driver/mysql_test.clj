@@ -436,11 +436,11 @@
     (mt/dataset json
       (when (not (is-mariadb? (u/id (mt/db))))
         (testing "Nested field column listing, but big"
-          (is (= #{}
-                 (sql-jdbc.sync/describe-nested-field-columns
-                   :mysql
-                   (mt/db)
-                   {:name "big_json"}))))))))
+          (is (= metabase.driver.sql-jdbc.sync.describe-table/max-nested-field-columns
+                 (count (sql-jdbc.sync/describe-nested-field-columns
+                          :mysql
+                          (mt/db)
+                          {:name "big_json"})))))))))
 
 (deftest json-query-test
   (let [boop-identifier (:form (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {}))]
