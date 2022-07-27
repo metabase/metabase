@@ -11949,11 +11949,11 @@ databaseChangeLog:
 
   - changeSet:
       id: v44.00-043
+      dbms: postgresql
       author: calherries
       comment: Added 0.44.0 - Add tsvector column for postgres full text search of dataset_query
       changes:
         - addColumn:
-            dbms: postgresql
             tableName: report_card
             columns:
               - column:
@@ -11962,7 +11962,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
         - sql:
-            dbms: postgresql
             sql: update report_card set dataset_query_tokens = to_tsvector(dataset_query) where query_type = 'native';
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
