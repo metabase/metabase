@@ -57,7 +57,7 @@ const Timelines = createEntity({
   },
 
   reducer: (state = {}, action) => {
-    if (action.type === TimelineEvents.actionTypes.CREATE) {
+    if (action.type === TimelineEvents.actionTypes.CREATE && !action.error) {
       const event = TimelineEvents.HACK_getObjectFromAction(action);
 
       return updateIn(state, [event.timeline_id, "events"], (eventIds = []) => {
@@ -65,7 +65,7 @@ const Timelines = createEntity({
       });
     }
 
-    if (action.type === TimelineEvents.actionTypes.UPDATE) {
+    if (action.type === TimelineEvents.actionTypes.UPDATE && !action.error) {
       const event = TimelineEvents.HACK_getObjectFromAction(action);
 
       return _.mapObject(state, timeline => {
@@ -84,7 +84,7 @@ const Timelines = createEntity({
       });
     }
 
-    if (action.type === TimelineEvents.actionTypes.DELETE) {
+    if (action.type === TimelineEvents.actionTypes.DELETE && !action.error) {
       const eventId = action.payload.result;
 
       return _.mapObject(state, timeline => {

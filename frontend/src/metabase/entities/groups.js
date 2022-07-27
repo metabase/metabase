@@ -13,8 +13,8 @@ const Groups = createEntity({
     fields: [{ name: "name" }],
   },
 
-  reducer: (state = {}, { type, payload }) => {
-    if (type === CREATE_MEMBERSHIP) {
+  reducer: (state = {}, { type, payload, error }) => {
+    if (type === CREATE_MEMBERSHIP && !error) {
       const { membership, group_id } = payload;
       const members = state[group_id]?.members;
       if (members) {
@@ -25,7 +25,7 @@ const Groups = createEntity({
       }
     }
 
-    if (type === DELETE_MEMBERSHIP) {
+    if (type === DELETE_MEMBERSHIP && !error) {
       const { membershipId, groupId } = payload;
       const members = state[groupId]?.members;
       if (members) {
