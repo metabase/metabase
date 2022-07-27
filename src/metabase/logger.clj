@@ -85,8 +85,8 @@
         (.log this level message e)
         (.log this level message)))))
 
-;; presumably this is always called with a `clojure.lang.Namespace` but it's probably better to be flexible and handle
-;; symbols and strings as well in case anybody tries to do anything weird e.g. in [[metabase.test.util.log]]
+;;; presumably this is always called with a `clojure.lang.Namespace` but it's probably better to be flexible and handle
+;;; symbols and strings as well in case anybody tries to do anything weird e.g. in [[metabase.test.util.log]]
 (defn- ns-logger*
   "Unmemoized function for getting the appropriate [[Logger]] to use for a Clojure namespace."
   ^Logger [a-namespace]
@@ -94,7 +94,15 @@
     (.getLogger (LogManager/getContext false) ^String a-namespace)
     (recur (name (ns-name (the-ns a-namespace))))))
 
-(def ^:private ^{:arglists `(^Logger [~'logger-ns])} ns-logger
+;;; Yes, the arglists metadata below is missing `:tag` but if I try to write something like
+;;;
+;;;    ^{:arglists `(^Logger [~'a-namespace])}
+;;;
+;;; or
+;;;    ^{:arglists (list (vary-meta ['a-namespace] assoc :tag `Logger))}
+;;;
+;;; then Eastwood has a fit. We don't really need it anyway.
+(def ^:private ^{:arglists '([a-namespace])} ns-logger
   "In prod, this is a memoized version of [[ns-logger*]]. Otherwise it's the same as [[ns-logger*]].
 
   The logger will never change for a given namespace in prod runs so memoizing slow calls to `.getLogger` can speed
