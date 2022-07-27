@@ -26,6 +26,7 @@ describe("scenarios > dashboard > filters > date", () => {
   it(`should work when set through the filter widget`, () => {
     // Add and connect every single available date filter type
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(([filter]) => {
+      cy.log(`Make sure we can connect ${filter} filter`);
       setFilter("Time", filter);
 
       cy.findByText("Select…").click();
@@ -44,6 +45,7 @@ describe("scenarios > dashboard > filters > date", () => {
           filterValue: value,
         });
 
+        cy.log(`Make sure ${filter} filter returns correct result`);
         cy.get(".Card").within(() => {
           cy.findByText(representativeResult);
         });
