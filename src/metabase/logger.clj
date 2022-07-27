@@ -97,7 +97,6 @@
   so the logger factory will pick them up."
   (memoize/memo
    (fn [a-namespace]
-     (println (pr-str (list '.getLogger '(LogManager/getContext false) (str a-namespace)))) ; NOCOMMIT
      (.getLogger (LogManager/getContext false) (str a-namespace)))))
 
 (defn clear-memoized-ns-loggers!
