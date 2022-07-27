@@ -11933,6 +11933,21 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v44.00-039
+      author: qnkhuat
+      comment: Added 0.44.0 - Add template_tags to native_query_snippet
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: template_tags
+                  type: ${text.type}
+                  remarks: Template tags for a snippet
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v44.00-041
       author: braden
       comment: Added 0.44.0 - add entity_id column to PulseCard, PulseChannel
@@ -11963,6 +11978,15 @@ databaseChangeLog:
                   nullable: true
                   unique: true
             tableName: pulse_channel
+
+  - changeSet:
+      id: v44.00-044
+      author: qnkhuat
+      comment: Added 0.44.0 - drop native_query_snippet.template_tags added in v44.00-039
+      changes:
+        - dropColumn:
+            tableName: native_query_snippet
+            columnName: template_tags
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
