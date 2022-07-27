@@ -117,7 +117,7 @@
      {::memoize/args-fn (fn [[secret _driver?]]
                           ;; not clear if value->string could return nil due to the cond so we'll just cache on a key
                           ;; that is unique
-                          [(or (value->string secret) (gensym))])})))
+                          [(vec (:value secret))])})))
 
 (defn get-sub-props
   "Return a map of secret subproperties for the property `connection-property-name`."
