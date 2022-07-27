@@ -18,6 +18,7 @@ describe("timelines", () => {
 
   it("should display empty state", () => {
     cy.visit("/collection/root/timelines");
+    cy.findByText("Last edited at");
 
     cy.findByText("Our analytics events").should("be.visible");
     cy.createPercySnapshot();
