@@ -1,6 +1,7 @@
 ---
 title: "Notify"
-summary: "/api/notify/* endpoints which receive inbound etl server notifications."
+summary: |
+  /api/notify/* endpoints which receive inbound etl server notifications.
 ---
 
 # Notify

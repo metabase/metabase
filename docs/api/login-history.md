@@ -1,6 +1,7 @@
 ---
 title: "Login history"
-summary: "API endpoints for Login history."
+summary: |
+  API endpoints for Login history.
 ---
 
 # Login history

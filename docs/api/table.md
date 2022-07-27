@@ -1,6 +1,7 @@
 ---
 title: "Table"
-summary: "/api/table endpoints."
+summary: |
+  /api/table endpoints.
 ---
 
 # Table
