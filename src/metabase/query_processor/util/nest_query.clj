@@ -102,7 +102,8 @@
   tests for examples. This is used by the SQL QP to make sure expressions happen in a subselect."
   [{:keys [expressions], :as query}]
   (if (empty? expressions)
-    query
+    (cond-> query
+      (:source-query query) (update :source-query nest-expressions))
     (let [{:keys [source-query], :as query} (nest-source query)
           query                             (rewrite-fields-and-expressions query)
           source-query                      (assoc source-query :expressions expressions)]
