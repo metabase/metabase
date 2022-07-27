@@ -20,7 +20,7 @@ describe("issue 23981", () => {
     cy.signIn("nocollection");
   });
 
-  it("should not show the root collection name in breadcrumbs if the user does not have access to it (metabase#22726)", () => {
+  it("should not show the root collection name in breadcrumbs if the user does not have access to it (metabase#23981)", () => {
     visitQuestionAdhoc({
       name: "23981",
       dataset_query: {
