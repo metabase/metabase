@@ -11979,6 +11979,15 @@ databaseChangeLog:
                   unique: true
             tableName: pulse_channel
 
+  - changeSet:
+      id: v44.00-044
+      author: qnkhuat
+      comment: Added 0.44.0 - drop native_query_snippet.template_tags added in v44.00-039
+      changes:
+        - dropColumn:
+            tableName: native_query_snippet
+            columnName: template_tags
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

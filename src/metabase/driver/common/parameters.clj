@@ -32,7 +32,7 @@
 ;;
 ;; `query` is the native query as stored in the Card
 ;;
-;; `params` are positional parameters for a parameterized native query e.g. the JDBC parameters corresponding to
+;; `parameters` are positional parameters for a parameterized native query e.g. the JDBC parameters corresponding to
 ;; `?` placeholders
 (p.types/defrecord+ ReferencedCardQuery [card-id query params]
   pretty/PrettyPrintable
@@ -44,34 +44,13 @@
   [x]
   (instance? ReferencedCardQuery x))
 
-;; `ParsedQuerySnippet` is a parsed representation of the content in `NativeQuerySnippet`.
-;; It is to be used as an intermediate state when subsituting parameter in a Snippet.
-;;
-;; `snippet-id` is the integer ID of the row in the application DB from where the snippet content is loaded.
-;;
-;; `parsed-query` is an array we got from parsing the raw query of the snippet
-;;
-;; `param->value` is a map with with template tags parsed from the raw query as keys
-(p.types/defrecord+ ParsedQuerySnippet [snippet-id parsed-query param->value]
-  pretty/PrettyPrintable
-  (pretty [this]
-    (list (pretty/qualify-symbol-for-*ns* `map->ParsedQuerySnippet) (into {} this))))
-
-(defn ParsedQuerySnippet?
-  "Is `x` an instance of the `ParsedQuerySnippet` record type?"
-  [x]
-  (instance? ParsedQuerySnippet x))
-
 ;; A `ReferencedQuerySnippet` expands to the partial query snippet stored in the `NativeQuerySnippet` table in the
 ;; application DB.
 ;;
 ;; `snippet-id` is the integer ID of the row in the application DB from where the snippet content is loaded.
 ;;
 ;; `content` is the raw query snippet which will be replaced, verbatim, for this template tag.
-;;
-;; `params` are positional parameters for a parameterized native query e.g. the JDBC parameters corresponding to
-;; `?` placeholders
-(p.types/defrecord+ ReferencedQuerySnippet [snippet-id content params]
+(p.types/defrecord+ ReferencedQuerySnippet [snippet-id content]
   pretty/PrettyPrintable
   (pretty [this]
     (list (pretty/qualify-symbol-for-*ns* `map->ReferencedQuerySnippet) (into {} this))))
