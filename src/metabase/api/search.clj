@@ -1,5 +1,6 @@
 (ns metabase.api.search
-  (:require [clojure.string :as str]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [GET]]
             [flatland.ordered.map :as ordered-map]
@@ -184,29 +185,15 @@
   (str "%" s "%"))
 
 (defn- search-string-clause
-  [model query searchable-columns]
-  (when query
-    (into [:or]
-          (for [column searchable-columns
-                token (scoring/tokenize (scoring/normalize query))
-                :let [qualified-column (hsql/qualify (model->alias model) column)]]
-            [:like
-             (hsql/call :lower qualified-column)
-             (wildcard-match token)]))))
-
-(defn- search-string-clause
-  [model query searchable-columns]
+  [model query]
   (when query
     (let [tokens (scoring/tokenize (scoring/normalize query))]
       (into [:or]
-            (apply concat (for [column searchable-columns
+            (apply concat (for [column (search-config/searchable-columns-for-model model)
                                 :let [qualified-column (hsql/qualify (model->alias model) column)]]
                             (if (and (= column :dataset_query)
                                      (= (mdb/db-type) :postgres))
-                              ;; TODO: is there a SQL injection issue here?
-                              [(hsql/raw (str "dataset_query_tokens @@ to_tsquery('"
-                                              (->> tokens
-                                                   (str/join "|")) "')"))]
+                              [(hsql/raw ["dataset_query_tokens @@ to_tsquery(" #sql/param :search-tokens ")"])]
                               (for [token tokens]
                                 [:like
                                  (hsql/call :lower qualified-column)
@@ -215,9 +202,7 @@
 (s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and :=) "type") s/Any]
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
   (let [archived-clause (archived-where-clause model archived?)
-        search-clause   (search-string-clause model
-                                              search-string
-                                              (search-config/searchable-columns-for-model model))]
+        search-clause   (search-string-clause model search-string)]
     (if search-clause
       [:and archived-clause search-clause]
       archived-clause)))
@@ -374,7 +359,7 @@
                                    (if (and (= col :dataset_query)
                                             (= (mdb/db-type) :postgres))
                                      ;; TODO qualify the column
-                                     (hsql/raw (str "dataset_query_tokens @@ phraseto_tsquery('" (scoring/normalize query) "')"))
+                                     (hsql/raw (str "dataset_query_tokens @@ phraseto_tsquery('" #sql/param :search-tokens "')"))
                                      [:like (hsql/call :lower col) match])) <>)
                             (interleave <> (repeat 0))
                             (concat <> [:else 1]))]
@@ -438,9 +423,17 @@
             (if (number? v)
               (not (zero? v))
               v))]
-    (let [search-query      (full-search-query search-ctx)
+    (let [search-tokens     (scoring/tokenize (scoring/normalize (:search-string search-ctx)))
+          search-query      (full-search-query search-ctx)
           _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
-          reducible-results (db/reducible-query search-query :max-rows search-config/*db-max-results*)
+          search-sql        (hsql/format search-query
+                                         :quoting             (db/quoting-style)
+                                         :allow-dashed-names? (not (db/automatically-convert-dashes-and-underscores?))
+                                         :params              {:search-tokens (str "'" (str/join "|" search-tokens) "'")})
+          reducible-results (jdbc/reducible-query (db/connection)
+                                                  search-sql
+                                                  (merge {:max-rows search-config/*db-max-results*}
+                                                         @@#'db/default-jdbc-options))
           xf                (comp
                              (filter check-permissions-for-model)
                              ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as needed
