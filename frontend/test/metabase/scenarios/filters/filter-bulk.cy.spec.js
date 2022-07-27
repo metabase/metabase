@@ -98,10 +98,11 @@ describe("scenarios > filters > bulk filtering", () => {
     visitQuestionAdhoc(rawQuestionDetails);
     filter();
 
-    filterFieldPopover("Quantity", { value: "20" });
+    filterField("Quantity", { operator: "equal to" });
+    filterFieldPopover("Quantity");
 
     cy.findByLabelText("20").click();
-    cy.button("Add filter").click();
+    cy.button("Update filter").click();
     applyFilters();
 
     cy.findByText("Quantity is equal to 20").should("be.visible");
@@ -398,16 +399,12 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Showing 506 rows").should("be.visible");
     });
 
-    it("should not show inline category picker for state", () => {
-      modal().within(() => {
-        cy.findByLabelText("State").click();
-      });
-
-      popover().within(() => {
+    it("should show large category picker for state", () => {
+      cy.findByTestId("large-category-picker").should("exist");
+      filterFieldPopover("State").within(() => {
         cy.findByText("AZ").click();
-        cy.button("Add filter").click();
+        cy.button("Update filter").click();
       });
-
       applyFilters();
 
       cy.findByText("State is AZ").should("be.visible");

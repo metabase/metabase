@@ -2,24 +2,23 @@ import React, { useState, useEffect } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import type Filter from "metabase-lib/lib/queries/structured/Filter";
 import Fields from "metabase/entities/fields";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 
 import Warnings from "metabase/query_builder/components/Warnings";
-import Checkbox from "metabase/core/components/CheckBox";
 
-import { BulkFilterSelect } from "../BulkFilterSelect";
 import { InlineValuePicker } from "../InlineValuePicker";
 
 import { MAX_INLINE_CATEGORIES } from "./constants";
-import {
-  PickerContainer,
-  PickerGrid,
-  Loading,
-} from "./InlineCategoryPicker.styled";
+import { isValidOption } from "./utils";
+
+import { SimpleCategoryFilterPicker } from "./SimpleCategoryFilterPicker";
+import { LargeCategoryFilterPicker } from "./LargeCategoryFilterPicker";
+
+import { Loading } from "./InlineCategoryPicker.styled";
 
 const mapStateToProps = (state: any, props: any) => {
   const fieldId = props.dimension?.field?.()?.id;
@@ -83,8 +82,9 @@ export function InlineCategoryPickerComponent({
       });
   }, [dimension, safeFetchFieldValues, shouldFetchFieldValues]);
 
-  const hasCheckboxOperator =
-    !filter || ["=", "!="].includes(filter?.operatorName());
+  const hasCheckboxOperator = ["=", "!="].includes(
+    (filter ?? newFilter)?.operatorName(),
+  );
 
   const hasValidOptions = fieldValues.flat().find(isValidOption);
 
@@ -121,12 +121,12 @@ export function InlineCategoryPickerComponent({
 
   if (showPopoverPicker) {
     return (
-      <BulkFilterSelect
+      <LargeCategoryFilterPicker
         query={query}
-        filter={filter}
+        filter={filter ?? newFilter}
         dimension={dimension}
-        handleChange={onChange}
-        handleClear={onClear}
+        onChange={onChange}
+        onClear={onClear}
       />
     );
   }
@@ -139,45 +139,6 @@ export function InlineCategoryPickerComponent({
     />
   );
 }
-
-interface SimpleCategoryFilterPickerProps {
-  filter: Filter;
-  options: (string | number)[];
-  onChange: (newFilter: Filter) => void;
-}
-
-export function SimpleCategoryFilterPicker({
-  filter,
-  options,
-  onChange,
-}: SimpleCategoryFilterPickerProps) {
-  const filterValues = filter.arguments().filter(isValidOption);
-
-  const handleChange = (option: string | number, checked: boolean) => {
-    const newArgs = checked
-      ? [...filterValues, option]
-      : filterValues.filter(filterValue => filterValue !== option);
-
-    onChange(filter.setArguments(newArgs));
-  };
-
-  return (
-    <PickerContainer data-testid="category-picker">
-      <PickerGrid>
-        {options.map((option: string | number) => (
-          <Checkbox
-            key={option?.toString() ?? "empty"}
-            checked={filterValues.includes(option)}
-            onChange={e => handleChange(option, e.target.checked)}
-            label={option?.toString() ?? t`empty`}
-          />
-        ))}
-      </PickerGrid>
-    </PickerContainer>
-  );
-}
-
-const isValidOption = (option: any) => option !== undefined && option !== null;
 
 export const InlineCategoryPicker = connect(
   mapStateToProps,
