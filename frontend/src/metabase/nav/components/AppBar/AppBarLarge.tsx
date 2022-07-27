@@ -46,7 +46,7 @@ const AppBarLarge = ({
       <AppBarLeftContainer isNavBarVisible={isNavBarVisible}>
         <AppBarLogo
           isNavBarOpen={isNavBarOpen}
-          isToggleVisible={isNavBarVisible}
+          isToggleVisible={!isNavBarOpen}
           onToggleClick={onToggleNavbar}
         />
         <AppBarInfoContainer

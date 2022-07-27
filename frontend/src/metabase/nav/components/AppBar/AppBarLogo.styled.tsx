@@ -14,15 +14,10 @@ export const LogoLink = styled(Link)`
   border-radius: 0.375rem;
   padding: 0.5rem 1rem;
   transition: opacity 0.3s;
-
-  &:hover {
-    background-color: ${color("bg-light")};
-  }
 `;
 
 export const ToggleContainer = styled.div`
-  position: absolute;
-  top: 0.625rem;
-  left: 0.9375rem;
+  position: fixed;
+  top: 90%;
   transition: opacity 0.3s;
 `;

@@ -162,3 +162,27 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
     }
   }
 `;
+
+export const SidebarButtonContainer = styled.div<{ isOpen: boolean }>`
+  position: fixed;
+  bottom: 0;
+  // Height is hard-set so it remains
+  // the same as the ArchiveBarContent
+  // in ArchiveApp
+  height: 49px;
+  left: 0;
+  padding: ${space(0)};
+  width: ${props => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
+  border-top: 1px solid ${color("border")};
+  background-color: ${color("white")};
+  display: none;
+  overflow: hidden;
+  align-items: center;
+  margin-right: ${space(2)};
+  color: ${color("text-light")};
+  justify-content: flex-end;
+
+  ${breakpointMinSmall} {
+    display: flex;
+  }
+`;

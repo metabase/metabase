@@ -29,21 +29,6 @@ export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
   flex: 1 1 auto;
   align-items: center;
   min-width: 5rem;
-
-  ${SidebarButton} {
-    opacity: ${props => (props.isNavBarVisible ? 0 : 1)};
-  }
-
-  &:hover {
-    ${LogoLink} {
-      opacity: ${props => (props.isNavBarVisible ? 0 : 1)};
-      pointer-events: ${props => (props.isNavBarVisible ? "none" : "")};
-    }
-
-    ${SidebarButton} {
-      opacity: ${props => (props.isNavBarVisible ? 1 : 0)};
-    }
-  }
 `;
 
 export const AppBarRightContainer = styled.div`

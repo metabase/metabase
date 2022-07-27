@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -28,8 +28,12 @@ import {
   SidebarContentRoot,
   SidebarHeading,
   SidebarHeadingWrapper,
+  SidebarButtonContainer,
   SidebarSection,
 } from "./MainNavbar.styled";
+import SidebarButton from "../../components/SidebarButton/SidebarButton";
+import Tooltip from "metabase/components/Tooltip";
+import { isMac } from "metabase/lib/browser";
 
 interface CollectionTreeItem extends Collection {
   icon: string | IconProps;
@@ -45,6 +49,7 @@ type Props = {
   hasOwnDatabase: boolean;
   collections: CollectionTreeItem[];
   selectedItems: SelectedItem[];
+  openNavbar?: () => void;
   handleCloseNavbar: () => void;
   handleLogout: () => void;
   handleCreateNewCollection: () => void;
@@ -70,6 +75,7 @@ function MainNavbarView({
   hasOwnDatabase,
   selectedItems,
   hasDataAccess,
+  isOpen,
   reorderBookmarks,
   handleCreateNewCollection,
   handleCloseNavbar,
@@ -86,6 +92,12 @@ function MainNavbarView({
       handleCloseNavbar();
     }
   }, [handleCloseNavbar]);
+
+  const sidebarButtonTooltip = useMemo(() => {
+    const message = isOpen ? t`Close sidebar` : t`Open sidebar`;
+    const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
+    return `${message} ${shortcut}`;
+  }, [isOpen]);
 
   return (
     <SidebarContentRoot>
@@ -159,6 +171,13 @@ function MainNavbarView({
           )}
         </ul>
       </div>
+      {!IFRAMED && (
+        <SidebarButtonContainer isOpen={isOpen}>
+          <Tooltip tooltip={sidebarButtonTooltip} isEnabled={!isSmallScreen()}>
+            <SidebarButton isSidebarOpen={isOpen} onClick={handleCloseNavbar} />
+          </Tooltip>
+        </SidebarButtonContainer>
+      )}
     </SidebarContentRoot>
   );
 }
