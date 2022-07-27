@@ -63,35 +63,37 @@
   Columns that aren't used in any individual query are replaced with `SELECT cast(NULL AS <type>)` statements. (These
   are cast to the appropriate type because Postgres will assume `SELECT NULL` is `TEXT` by default and will refuse to
   `UNION` two columns of two different types.)"
-  (ordered-map/ordered-map
-   ;; returned for all models. Important to be first for changing model for dataset
-   :model               :text
-   :id                  :integer
-   :name                :text
-   :display_name        :text
-   :description         :text
-   :archived            :boolean
-   ;; returned for Card, Dashboard, Pulse, and Collection
-   :collection_id       :integer
-   :collection_name     :text
-   :collection_authority_level :text
-   ;; returned for Card and Dashboard
-   :collection_position :integer
-   :bookmark            :boolean
-   ;; returned for everything except Collection
-   :updated_at          :timestamp
-   ;; returned for Card only
-   :dashboardcard_count :integer
-   :dataset_query       :text
-   :moderated_status    :text
-   ;; returned for Metric and Segment
-   :table_id            :integer
-   :database_id         :integer
-   :table_schema        :text
-   :table_name          :text
-   :table_description   :text
-   ;; returned for Database and Table
-   :initial_sync_status :text))
+  (cond-> (ordered-map/ordered-map
+           ;; returned for all models. Important to be first for changing model for dataset
+           :model :text
+           :id :integer
+           :name :text
+           :display_name :text
+           :description :text
+           :archived :boolean
+           ;; returned for Card, Dashboard, Pulse, and Collection
+           :collection_id :integer
+           :collection_name     :text
+           :collection_authority_level :text
+           ;; returned for Card and Dashboard
+           :collection_position :integer
+           :bookmark            :boolean
+           ;; returned for everything except Collection
+           :updated_at          :timestamp
+           ;; returned for Card only
+           :dashboardcard_count :integer
+           :dataset_query       :text
+           :moderated_status    :text
+           ;; returned for Metric and Segment
+           :table_id            :integer
+           :database_id         :integer
+           :table_schema        :text
+           :table_name          :text
+           :table_description   :text
+           ;; returned for Database and Table
+           :initial_sync_status :text)
+    (= (mdb/db-type) :postgres)
+    (assoc :dataset_query_tokens :tsvector)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
