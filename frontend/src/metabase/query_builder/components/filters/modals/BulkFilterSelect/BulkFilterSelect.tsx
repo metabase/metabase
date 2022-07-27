@@ -159,6 +159,7 @@ export const SegmentFilterSelect = ({
         icon: segment.icon,
       }))}
       value={activeSegmentOptions}
+      hasValue={activeSegmentOptions.length > 0}
       onChange={(e: any) => toggleSegment(e.target.value.changedItem)}
       multiple
       buttonProps={{
