@@ -88,8 +88,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
   });
 });
 
-function clearFilter(index = 0) {
-  console.log(cy.state());
+function clearFilter(index) {
   filterWidget().eq(index).find(".Icon-close").click();
   cy.wait("@dashcardQuery2");
 }
