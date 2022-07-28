@@ -8,7 +8,7 @@
   "This is a parser for the C-like syntax used to express pluralization rules in the Plural-Forms header in
   translation files.
 
-  For example, the Plural-Forms hedaer for Czech is: `nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;`
+  For example, the Plural-Forms header for Czech is: `nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;`
   This is a parser for the expression following `plural=`.
 
   See the original gettext docs for more details on how pluralization rules work:
