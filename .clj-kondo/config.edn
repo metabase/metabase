@@ -350,8 +350,7 @@
 
  :lint-as
  {metabase-enterprise.serialization.test-util/with-random-dump-dir      clojure.core/let
-  metabase.actions.test-util/with-query-action                          clojure.core/fn
-  metabase.actions.test-util/with-http-action                           clojure.core/fn
+  metabase.actions.test-util/with-action                                clojure.core/let
   metabase.actions.test-util/with-card-emitter                          clojure.core/let
   metabase.actions.test-util/with-dashboard-emitter                     clojure.core/let
   metabase.api.common/let-404                                           clojure.core/let
