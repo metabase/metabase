@@ -98,7 +98,9 @@ export default Object.assign(ListViz, {
           data: { cols },
         },
       ]: Series) => {
-        const columns = cols.filter(col => col.visibility_type === "normal");
+        const columns = cols.filter(
+          col => col.visibility_type !== "details-only",
+        );
         const firstThreeColumns = columns.slice(0, 3).filter(Boolean);
         const nextThreeColumns = columns.slice(3, 6).filter(Boolean);
         return {
@@ -111,7 +113,7 @@ export default Object.assign(ListViz, {
           data: { cols },
         },
       ]: Series) => ({
-        columns: cols.filter(col => col.visibility_type === "normal"),
+        columns: cols.filter(col => col.visibility_type !== "details-only"),
       }),
     },
   },
