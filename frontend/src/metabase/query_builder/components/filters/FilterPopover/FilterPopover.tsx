@@ -313,7 +313,6 @@ export default class FilterPopover extends Component<Props, State> {
               )}
               <FilterPopoverFooter
                 className="px1 pb1"
-                primaryColor={primaryColor}
                 filter={filter}
                 onFilterChange={this.handleFilterChange}
                 onCommit={!this.props.noCommitButton ? this.handleCommit : null}
