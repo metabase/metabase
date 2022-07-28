@@ -101,20 +101,6 @@ export function parseTime(value) {
   return moment.utc(value);
 }
 
-// @deprecated - use formatTimeWithUnit(hour, "hour-of-day")
-export function formatHourAMPM(hour) {
-  if (hour > 12) {
-    const newHour = hour - 12;
-    return t`${newHour}:00 PM`;
-  } else if (hour === 0) {
-    return t`12:00 AM`;
-  } else if (hour === 12) {
-    return t`12:00 PM`;
-  } else {
-    return t`${hour}:00 AM`;
-  }
-}
-
 // @deprecated use formatDateTimeWithUnit(day, "day-of-week")
 export function formatDay(day) {
   switch (day) {
