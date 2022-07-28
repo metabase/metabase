@@ -467,7 +467,7 @@
 
 (deftest describe-big-nested-field-columns-test
   (mt/test-driver :postgres
-    (testing "blank out if huge. blank out instead of silently limiting"
+    (testing "limit if huge. limit it and yell warning (#23635)"
       (drop-if-exists-and-create-db! "big-json-test")
       (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "big-json-test"
                                                                   :json-unfolding true})
@@ -479,11 +479,19 @@
         (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [sql]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= #{}
-                 (sql-jdbc.sync/describe-nested-field-columns
-                  :postgres
-                  database
-                  {:name "big_json_table"}))))))))
+          (is (= metabase.driver.sql-jdbc.sync.describe-table/max-nested-field-columns
+                 (count
+                   (sql-jdbc.sync/describe-nested-field-columns
+                     :postgres
+                     database
+                     {:name "big_json_table"}))))
+          (is (str/includes?
+                (get-in (mt/with-log-messages-for-level :warn
+                              (sql-jdbc.sync/describe-nested-field-columns
+                                :postgres
+                                database
+                                {:name "big_json_table"})) [0 2])
+                "More nested field columns detected than maximum.")))))))
 
 (mt/defdataset with-uuid
   [["users"
