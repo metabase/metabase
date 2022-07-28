@@ -371,5 +371,10 @@
               field-types      (transduce describe-json-xform describe-json-rf query)
               fields           (field-types->fields field-types)]
           (if (> (count fields) max-nested-field-columns)
-            #{}
+            (do
+              (log/warn
+                (format
+                  "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
+                  max-nested-field-columns))
+              (set (take max-nested-field-columns fields)))
             fields))))))
