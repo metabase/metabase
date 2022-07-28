@@ -46,4 +46,5 @@ jobs:
             context: grep
             java-version: 11
     steps:
-      - run: 'echo "No build required" '
+      - run: |
+          echo "Didn't run due to conditional filtering"

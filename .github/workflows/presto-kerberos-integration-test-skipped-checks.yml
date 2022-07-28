@@ -19,4 +19,5 @@ jobs:
   run-presto-kerberos-test:
     runs-on: ubuntu-latest
     steps:
-      - run: 'echo "No build required" '
+      - run: |
+          echo "Didn't run due to conditional filtering"
