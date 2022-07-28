@@ -1,0 +1,48 @@
+# Required checks with path filtering rules will block pull requests from merging if they change only the excluded files.
+# This is a workaround to allow the PR to be merged.
+# https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks
+name: Backend
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "**.md"
+      - "frontend/test/**"
+      - "enterprise/frontend/test/**"
+
+jobs:
+
+  be-linter-clj-kondo:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-linter-eastwood:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 20
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-linter-namespace-decls:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-tests:
+    runs-on: ubuntu-20.04
+    name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [oss, ee]
+        java-version: [11, 17]
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
