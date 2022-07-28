@@ -214,8 +214,8 @@ function TableSimple({
           end={end}
           limit={limit}
           total={rows.length}
-          handlePreviousPage={handlePreviousPage}
-          handleNextPage={handleNextPage}
+          onPreviousPage={handlePreviousPage}
+          onNextPage={handleNextPage}
           ref={footerRef}
         />
       )}
