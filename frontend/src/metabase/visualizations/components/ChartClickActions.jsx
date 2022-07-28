@@ -247,14 +247,22 @@ class ChartClickActions extends Component {
                     { "flex-column my1": SECTIONS[key].icon === "summarize" },
                   )}
                 >
-                  {actions.map((action, index) => (
-                    <ChartClickAction
-                      key={index}
-                      action={action}
-                      isLastItem={index === actions.length - 1}
-                      handleClickAction={this.handleClickAction}
-                    />
-                  ))}
+                  {actions.map((action, index) => {
+                    const invalidAction =
+                      clicked.value === null &&
+                      (action.name === "<" || action.name === ">");
+
+                    if (!invalidAction) {
+                      return (
+                        <ChartClickAction
+                          key={index}
+                          action={action}
+                          isLastItem={index === actions.length - 1}
+                          handleClickAction={this.handleClickAction}
+                        />
+                      );
+                    }
+                  })}
                 </div>
               </div>
             ))}
