@@ -219,7 +219,7 @@ describe("scenarios > collection defaults", () => {
       cy.findByText("Orders");
     });
 
-    describe.skip("nested collections with revoked parent access", () => {
+    describe("nested collections with revoked parent access", () => {
       const { first_name, last_name } = nocollection;
       const revokedUsersPersonalCollectionName = `${first_name} ${last_name}'s Personal Collection`;
 
