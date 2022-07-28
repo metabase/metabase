@@ -18,6 +18,14 @@
            (scoring/tokenize "Rasta the Toucan's search")))
     (is (= ["Rasta" "the" "Toucan"]
            (scoring/tokenize "                Rasta\tthe    \tToucan     ")))
+    (is (= ["foo" "bar" "as" "foo_bar"]
+           (scoring/tokenize "foo(bar  ) as foo_bar")))
+    (is (= ["foo" "bar" "as" "foo_bar"]
+           (scoring/tokenize "foo[bar  ] as foo_bar")))
+    (is (= ["foo" "bar" "as" "foo_bar"]
+           (scoring/tokenize "foo{bar  } as foo_bar")))
+    (is (= ["foo.bar" "as" "foo_bar"]
+           (scoring/tokenize "foo.bar as foo_bar")))
     (is (= []
            (scoring/tokenize " \t\n\t ")))
     (is (= []
