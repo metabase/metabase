@@ -35,34 +35,6 @@ export const DASHBOARD_SQL_TEXT_FILTERS = {
   },
 };
 
-export const DASHBOARD_SQL_NUMBER_FILTERS = {
-  "Equal to": {
-    sqlFilter: "number/=",
-    value: "3.8",
-    representativeResult: "Small Marble Hat",
-  },
-  "Not equal to": {
-    sqlFilter: "number/!=",
-    value: "2.07",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  Between: {
-    sqlFilter: "number/between",
-    value: ["3", "4"],
-    representativeResult: "Small Marble Hat",
-  },
-  "Greater than or equal to": {
-    sqlFilter: "number/>=",
-    value: "4.3",
-    representativeResult: "Aerodynamic Linen Coat",
-  },
-  "Less than or equal to": {
-    sqlFilter: "number/<=",
-    value: "3",
-    representativeResult: "Enormous Aluminum Shirt",
-  },
-};
-
 export const DASHBOARD_SQL_LOCATION_FILTERS = {
   Dropdown: {
     sqlFilter: "string/=",
