@@ -17,7 +17,13 @@
   (str/lower-case query))
 
 (defn tokenize
-  "Break a search `query` into its constituent tokens
+  "Break a search `query` into its constituent tokens"
+  [query]
+  (filter seq
+          (str/split query #"\s+")))
+
+(defn sql-tokenize
+  "Break a search `query` into its constituent tokens for searching in a native SQL query
    Note 'foo.bar' is tokenized to ['foo.bar'] but 'foo(bar)' is tokenized to ['foo', 'bar']"
   [query]
   (filter seq
