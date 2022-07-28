@@ -1,6 +1,7 @@
 import {
   restore,
   navigationSidebar,
+  openQuestionActions,
   openNavigationSidebar,
   visitQuestion,
 } from "__support__/e2e/helpers";
@@ -28,6 +29,23 @@ describe("scenarios > question > bookmarks", () => {
 
     navigationSidebar().within(() => {
       cy.findByText("Orders 2");
+    });
+
+    // Convert to model
+    openQuestionActions();
+    cy.findByText("Turn into a model").click();
+    cy.findByText("Turn this into a model").click();
+
+    navigationSidebar().within(() => {
+      cy.icon("model");
+    });
+
+    // Convert back to question
+    openQuestionActions();
+    cy.findByText("Turn back to saved question").click();
+
+    navigationSidebar().within(() => {
+      cy.icon("model").should("not.exist");
     });
 
     // Remove bookmark
