@@ -18,6 +18,7 @@ import { connect } from "react-redux";
 import EntityListLoader, {
   entityListLoader,
 } from "metabase/entities/containers/EntityListLoader";
+import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 
 import Collections from "metabase/entities/collections";
 import {
@@ -264,10 +265,13 @@ class ItemPicker extends React.Component {
 }
 
 export default _.compose(
+  entityObjectLoader({
+    id: () => "root",
+    entityType: (state, props) => props.entity?.name ?? "collections",
+    loadingAndErrorWrapper: false,
+  }),
   entityListLoader({
-    entityType: (state, props) => {
-      return props.entity ? props.entity.name : "collections";
-    },
+    entityType: (state, props) => props.entity?.name ?? "collections",
     loadingAndErrorWrapper: false,
   }),
   connect((state, props) => ({
