@@ -302,7 +302,15 @@
                                         :display        :line))
             (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
 
-        ;; TODO DO NOT SUBMIT Test that the serialized form is as expected?
+        (testing "the serialized form is as desired"
+          (is (= {:type "query"
+                  :query {:source-table ["my-db" nil "customers"]
+                          :filter       [">=" [:field ["my-db" nil "customers" "age"] nil] 18]
+                          :aggregation  [[:count]]}
+                  :database "my-db"}
+                 (->> (by-model @serialized "Card")
+                      first
+                      :dataset_query))))
 
         (testing "deserializing adjusts the IDs properly"
           (ts/with-dest-db

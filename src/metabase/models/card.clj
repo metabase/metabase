@@ -325,7 +325,8 @@
       (update :table_id      serdes.util/export-table-fk)
       (update :collection_id serdes.util/export-fk 'Collection)
       (update :creator_id    serdes.util/export-fk-keyed 'User :email)
-      (update :dataset_query serdes.util/export-json-mbql)))
+      (update :dataset_query serdes.util/export-json-mbql)
+      (dissoc :result_metadata))) ; Not portable, and can be rebuilt on the other side.
 
 (defmethod serdes.base/load-xform "Card"
   [card]
