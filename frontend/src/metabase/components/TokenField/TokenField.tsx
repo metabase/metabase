@@ -573,7 +573,7 @@ export default class TokenField extends Component<
     const isControlledInput = !!this.onInputChange;
     const valuesList = (
       <TokenFieldContainer
-        style={{ ...style }}
+        style={style}
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {!!prefix && (
