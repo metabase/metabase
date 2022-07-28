@@ -34,7 +34,9 @@ import {
   getCanZoomPreviousRow,
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
+import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 
 import {
   getObjectName,
@@ -456,6 +458,44 @@ export const ObjectDetailProperties = {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     ...columnSettings({ hidden: true }),
+    // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
+    //   { name: "COLUMN_NAME", enabled: true }
+    //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
+    "table.columns": {
+      section: t`Columns`,
+      title: t`Visible columns`,
+      widget: ChartSettingOrderedColumns,
+      getHidden: () => false,
+      isValid: ([{ card, data }]: any) =>
+        // If "table.columns" happened to be an empty array,
+        // it will be treated as "all columns are hidden",
+        // This check ensures it's not empty,
+        // otherwise it will be overwritten by `getDefault` below
+        card.visualization_settings["table.columns"].length !== 0 &&
+        _.all(
+          card.visualization_settings["table.columns"],
+          columnSetting =>
+            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
+        ),
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]: any) =>
+        cols.map((col: any) => ({
+          name: col.name,
+          fieldRef: col.field_ref,
+          enabled: col.visibility_type !== "hidden",
+        })),
+      getProps: ([
+        {
+          data: { cols },
+        },
+      ]: any) => ({
+        columns: cols,
+      }),
+    },
+
   },
   isSensible: () => true,
 };
