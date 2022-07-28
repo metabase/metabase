@@ -358,8 +358,7 @@
                             (map (fn [col]
                                    (if (and (= col :dataset_query)
                                             (= (mdb/db-type) :postgres))
-                                     ;; TODO qualify the column
-                                     (hsql/raw (str "dataset_query_tokens @@ phraseto_tsquery('" #sql/param :search-tokens "')"))
+                                     (hsql/raw (str "dataset_query_tokens @@ phraseto_tsquery('simple', '" #sql/param :search-string "')"))
                                      [:like (hsql/call :lower col) match])) <>)
                             (interleave <> (repeat 0))
                             (concat <> [:else 1]))]
@@ -429,7 +428,8 @@
           search-sql        (hsql/format search-query
                                          :quoting             (db/quoting-style)
                                          :allow-dashed-names? (not (db/automatically-convert-dashes-and-underscores?))
-                                         :params              {:search-tokens (str "'" (str/join "|" search-tokens) "'")})
+                                         :params              {:search-string (:search-string search-ctx)
+                                                               :search-tokens (str "'" (str/join "|" search-tokens) "'")})
           reducible-results (jdbc/reducible-query (db/connection)
                                                   search-sql
                                                   (merge {:max-rows search-config/*db-max-results*}
