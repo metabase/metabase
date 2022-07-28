@@ -62,7 +62,7 @@ const FormDateWidget = forwardRef(function FormDateWidget(
   return (
     <DateWidget
       ref={ref}
-      value={value}
+      value={value as Moment | undefined}
       placeholder={placeholder}
       hasTime={Boolean(values[hasTimeField])}
       dateFormat={getNumericDateStyleFromSettings()}
