@@ -21,7 +21,7 @@
    Note 'foo.bar' is tokenized to ['foo.bar'] but 'foo(bar)' is tokenized to ['foo', 'bar']"
   [query]
   (filter seq
-          (str/split query #"[\s+\(\)\[\]\{\}\,]")))
+          (str/split query #"[\s+\(\)\[\]\{\}\,\'\"]")))
 
 (def ^:private largest-common-subseq-length
   (memoize/fifo

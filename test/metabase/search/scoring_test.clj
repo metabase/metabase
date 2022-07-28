@@ -14,7 +14,7 @@
 
 (deftest tokenize-test
   (testing "basic tokenization"
-    (is (= ["Rasta" "the" "Toucan's" "search"]
+    (is (= ["Rasta" "the" "Toucan" "s" "search"]
            (scoring/tokenize "Rasta the Toucan's search")))
     (is (= ["Rasta" "the" "Toucan"]
            (scoring/tokenize "                Rasta\tthe    \tToucan     ")))
@@ -26,6 +26,8 @@
            (scoring/tokenize "foo{bar  } as foo_bar")))
     (is (= ["foo" "bar" "as" "foo_bar"]
            (scoring/tokenize "foo, bar as foo_bar")))
+    (is (= ["c.local" "=" "en"]
+           (scoring/tokenize "c.local = 'en'")))
     (is (= ["foo.bar" "as" "foo_bar"]
            (scoring/tokenize "foo.bar as foo_bar")))
     (is (= []
