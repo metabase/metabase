@@ -101,28 +101,6 @@ export function parseTime(value) {
   return moment.utc(value);
 }
 
-// @deprecated use formatDateTimeWithUnit(day, "day-of-week")
-export function formatDay(day) {
-  switch (day) {
-    case "mon":
-      return t`Monday`;
-    case "tue":
-      return t`Tuesday`;
-    case "wed":
-      return t`Wednesday`;
-    case "thu":
-      return t`Thursday`;
-    case "fri":
-      return t`Friday`;
-    case "sat":
-      return t`Saturday`;
-    case "sun":
-      return t`Sunday`;
-    default:
-      return day;
-  }
-}
-
 export function formatFrame(frame) {
   switch (frame) {
     case "first":
