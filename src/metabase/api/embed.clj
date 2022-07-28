@@ -136,7 +136,7 @@
   make these parameters visible at all to the frontend."
   [dashboard token-params]
   (let [params             (:parameters dashboard)
-        ordered-cards       (:ordered_cards dashboard)
+        ordered-cards      (:ordered_cards dashboard)
         params-with-values (reduce
                             (fn [acc param]
                              (if-let [value (get token-params (keyword (:slug param)))]
@@ -144,14 +144,14 @@
                                 acc))
                             []
                             params)]
-    (assoc
-     dashboard
-     :ordered_cards
-     (map (fn [card]
-            (if (-> card :visualization_settings :virtual_card)
-              (params/process-virtual-dashcard card params-with-values)
-              card))
-          ordered-cards))))
+    (assoc dashboard
+           :ordered_cards
+           (map
+            (fn [card]
+              (if (-> card :visualization_settings :virtual_card)
+                (params/process-virtual-dashcard card params-with-values)
+                card))
+            ordered-cards))))
 
 (defn- template-tag-parameters
   "Transforms native query's `template-tags` into `parameters`."
