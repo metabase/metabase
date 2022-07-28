@@ -193,7 +193,7 @@
            #"expects 2 args, got 1"
            (#'i18n/validate-number-of-args '(str "{0}" "{1}") [0]))))
 
-  (testing "`trsn` and `trun` should validate that the are being called with at most one arg\n"
+  (testing "`trsn` and `trun` should validate that they are being called with at most one arg\n"
     (is (thrown?
          clojure.lang.Compiler$CompilerException
          (walk/macroexpand-all `(i18n/trsn "{1}" "{1}" n))))
