@@ -6,10 +6,10 @@ name: Backend
 on:
   pull_request:
     paths:
-    - "docs/**"
-    - "**.md"
-    - "frontend/test/**"
-    - "enterprise/frontend/test/**"
+      - "docs/**"
+      - "**.md"
+      - "frontend/test/**"
+      - "enterprise/frontend/test/**"
 
 jobs:
 
