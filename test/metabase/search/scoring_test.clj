@@ -24,14 +24,14 @@
            (scoring/tokenize "foo[bar  ] as foo_bar")))
     (is (= ["foo" "bar" "as" "foo_bar"]
            (scoring/tokenize "foo{bar  } as foo_bar")))
+    (is (= ["foo" "bar" "as" "foo_bar"]
+           (scoring/tokenize "foo, bar as foo_bar")))
     (is (= ["foo.bar" "as" "foo_bar"]
            (scoring/tokenize "foo.bar as foo_bar")))
     (is (= []
            (scoring/tokenize " \t\n\t ")))
     (is (= []
-           (scoring/tokenize "")))
-    (is (thrown-with-msg? Exception #"does not match schema"
-                          (scoring/tokenize nil)))))
+           (scoring/tokenize "")))))
 
 (defn scorer->score
   [scorer]

@@ -16,12 +16,12 @@
   [query :- s/Str]
   (str/lower-case query))
 
-(s/defn tokenize :- [s/Str]
+(defn tokenize
   "Break a search `query` into its constituent tokens
    Note 'foo.bar' is tokenized to ['foo.bar'] but 'foo(bar)' is tokenized to ['foo', 'bar']"
-  [query :- s/Str]
+  [query]
   (filter seq
-          (str/split query #"[\s+\(\)\[\]\{\}]")))
+          (str/split query #"[\s+\(\)\[\]\{\}\,]")))
 
 (def ^:private largest-common-subseq-length
   (memoize/fifo
