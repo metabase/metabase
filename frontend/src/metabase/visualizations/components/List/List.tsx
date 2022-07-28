@@ -37,18 +37,20 @@ import { DashboardWithCards } from "metabase-types/types/Dashboard";
 import { VisualizationProps } from "metabase-types/types/Visualization";
 import { State } from "metabase-types/store";
 
-import { CellSlot } from "./types";
 import ListCell from "./ListCell";
 import {
   Root,
-  ContentContainer,
+  Table,
+  TableHeader,
+  TableBody,
+  ColumnHeader,
   Footer,
   ListItemContainer,
-  ListItemContent,
   BulkSelectionControlContainer,
+  InfoContentContainer,
   RowActionsContainer,
   RowActionButtonContainer,
-  LIST_ITEM_VERTICAL_GAP,
+  LIST_ITEM_BORDER_DIVIDER_WIDTH,
 } from "./List.styled";
 
 function getBoundingClientRectSafe(ref: React.RefObject<HTMLBaseElement>) {
@@ -89,6 +91,7 @@ function List({
   className,
   isDataApp,
   isQueryBuilder,
+  getColumnTitle,
   onVisualizationClick,
   visualizationIsClickable,
   updateRow,
@@ -106,11 +109,13 @@ function List({
 
   const { bulkActions } = useDataAppContext();
 
+  const listVariant = settings["list.variant"];
+
   useLayoutEffect(() => {
     const { height: footerHeight = 0 } = getBoundingClientRectSafe(footerRef);
     const { height: rowHeight = 0 } = getBoundingClientRectSafe(firstRowRef);
     const rowHeightWithMargin =
-      rowHeight + parseInt(LIST_ITEM_VERTICAL_GAP, 10);
+      rowHeight + parseInt(LIST_ITEM_BORDER_DIVIDER_WIDTH, 10);
     const currentPageSize = Math.floor(
       (height - footerHeight) / rowHeightWithMargin,
     );
@@ -248,26 +253,31 @@ function List({
     );
   }, [connectedDashCard, settings, bulkActions]);
 
+  const hasInlineActions =
+    !isSelectingItems && (hasEditButton || hasDeleteButton);
+
   const renderBulkSelectionControl = useCallback(
     (rowIndex: number) => {
       const isSelected = bulkActions.selectedRowIndexes.includes(rowIndex);
 
       return (
         <BulkSelectionControlContainer isSelectingItems={isSelectingItems}>
-          <CheckBox
-            checked={isSelected}
-            onClick={stopClickPropagation}
-            onChange={event => {
-              const isSelectedNow = event.target.checked;
-              if (isSelectedNow) {
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
-                bulkActions.addRow(card.id, rowIndex);
-              } else {
-                bulkActions.removeRow(rowIndex);
-              }
-            }}
-          />
+          <ListCell.Root>
+            <CheckBox
+              checked={isSelected}
+              onClick={stopClickPropagation}
+              onChange={event => {
+                const isSelectedNow = event.target.checked;
+                if (isSelectedNow) {
+                  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                  // @ts-ignore
+                  bulkActions.addRow(card.id, rowIndex);
+                } else {
+                  bulkActions.removeRow(rowIndex);
+                }
+              }}
+            />
+          </ListCell.Root>
         </BulkSelectionControlContainer>
       );
     },
@@ -275,7 +285,7 @@ function List({
   );
 
   const renderListItemCell = useCallback(
-    (rowIndex: number, columnIndex: number | null, slot: CellSlot) => {
+    (rowIndex: number, columnIndex: number | null) => {
       if (columnIndex === null) {
         return null;
       }
@@ -283,7 +293,6 @@ function List({
         <ListCell
           key={`${rowIndex}-${columnIndex}`}
           value={data.rows[rowIndex][columnIndex]}
-          slot={slot}
           data={data}
           settings={settings}
           columnIndex={columnIndex}
@@ -301,27 +310,42 @@ function List({
       if (listVariant === "info") {
         const [firstColumnIndex, secondColumnIndex, thirdColumnIndex] = left;
         return (
-          <ListItemContent>
+          <>
             {canSelectForBulkAction && renderBulkSelectionControl(rowIndex)}
-            {renderListItemCell(rowIndex, firstColumnIndex, "left")}
-            <div>
-              {renderListItemCell(rowIndex, secondColumnIndex, "left")}
-              {renderListItemCell(rowIndex, thirdColumnIndex, "left")}
-            </div>
-          </ListItemContent>
+            {renderListItemCell(rowIndex, firstColumnIndex)}
+            <ListCell.Root>
+              <InfoContentContainer>
+                {secondColumnIndex !== null && (
+                  <ListCell.Content
+                    value={data.rows[rowIndex][secondColumnIndex]}
+                    data={data}
+                    settings={settings}
+                    columnIndex={secondColumnIndex}
+                  />
+                )}
+                {thirdColumnIndex !== null && (
+                  <ListCell.Content
+                    value={data.rows[rowIndex][thirdColumnIndex]}
+                    data={data}
+                    settings={settings}
+                    columnIndex={thirdColumnIndex}
+                  />
+                )}
+              </InfoContentContainer>
+            </ListCell.Root>
+          </>
         );
       }
 
       return (
-        <ListItemContent>
+        <>
           {canSelectForBulkAction && renderBulkSelectionControl(rowIndex)}
-          {left.map(columnIndex =>
-            renderListItemCell(rowIndex, columnIndex, "left"),
-          )}
-        </ListItemContent>
+          {left.map(columnIndex => renderListItemCell(rowIndex, columnIndex))}
+        </>
       );
     },
     [
+      data,
       settings,
       listColumnIndexes,
       canSelectForBulkAction,
@@ -380,9 +404,6 @@ function List({
 
       const canClick = isSelectingItems || isClickable;
 
-      const hasInlineActions =
-        !isSelectingItems && (hasEditButton || hasDeleteButton);
-
       return (
         <ListItemContainer
           key={rowIndex}
@@ -392,34 +413,30 @@ function List({
           data-testid="table-row"
         >
           {renderListItemLeftPart(rowIndex)}
-          <ListItemContent>
-            {right.map(columnIndex =>
-              renderListItemCell(rowIndex, columnIndex, "right"),
-            )}
-            {hasInlineActions && (
-              <RowActionsContainer>
-                {hasEditButton && (
-                  <RowActionButtonContainer slot="right">
-                    <Button
-                      disabled={!isDataApp}
-                      onClick={onEditClick}
-                      small
-                    >{t`Edit`}</Button>
-                  </RowActionButtonContainer>
-                )}
-                {hasDeleteButton && (
-                  <RowActionButtonContainer slot="right">
-                    <Button
-                      disabled={!isDataApp}
-                      onClick={onDeleteClick}
-                      small
-                      danger
-                    >{t`Delete`}</Button>
-                  </RowActionButtonContainer>
-                )}
-              </RowActionsContainer>
-            )}
-          </ListItemContent>
+          {right.map(columnIndex => renderListItemCell(rowIndex, columnIndex))}
+          {hasInlineActions && (
+            <RowActionsContainer>
+              {hasEditButton && (
+                <RowActionButtonContainer>
+                  <Button
+                    disabled={!isDataApp}
+                    onClick={onEditClick}
+                    small
+                  >{t`Edit`}</Button>
+                </RowActionButtonContainer>
+              )}
+              {hasDeleteButton && (
+                <RowActionButtonContainer>
+                  <Button
+                    disabled={!isDataApp}
+                    onClick={onDeleteClick}
+                    small
+                    danger
+                  >{t`Delete`}</Button>
+                </RowActionButtonContainer>
+              )}
+            </RowActionsContainer>
+          )}
         </ListItemContainer>
       );
     },
@@ -428,6 +445,7 @@ function List({
       data,
       settings,
       listColumnIndexes,
+      hasInlineActions,
       hasEditButton,
       hasDeleteButton,
       isDataApp,
@@ -441,12 +459,97 @@ function List({
     ],
   );
 
+  const getBasicVariantColumnHeaders = useCallback(() => {
+    const leftColumnsCount = listColumnIndexes.left.filter(Boolean).length;
+    const columnIndexes = [
+      ...listColumnIndexes.left,
+      ...listColumnIndexes.right,
+    ];
+    return columnIndexes.map((columnIndex, index) => {
+      if (columnIndex === null) {
+        return null;
+      }
+      const isLastLeft = index === leftColumnsCount - 1;
+      return (
+        <ColumnHeader key={columnIndex} width={isLastLeft ? "60%" : "10%"}>
+          {getColumnTitle(columnIndex)}
+        </ColumnHeader>
+      );
+    });
+  }, [listColumnIndexes, getColumnTitle]);
+
+  const getInfoVariantColumnHeaders = useCallback(() => {
+    const [firstColumnIndex, secondColumnIndex, thirdColumnIndex] =
+      listColumnIndexes.left;
+
+    const cols = [];
+
+    if (firstColumnIndex) {
+      cols.push(
+        <ColumnHeader key={firstColumnIndex} width="5%">
+          {getColumnTitle(firstColumnIndex)}
+        </ColumnHeader>,
+      );
+    }
+    if (secondColumnIndex || thirdColumnIndex) {
+      cols.push(
+        <ColumnHeader
+          key={`${secondColumnIndex}-${thirdColumnIndex}`}
+          width="45%"
+        ></ColumnHeader>,
+      );
+    }
+    listColumnIndexes.right.forEach(columnIndex => {
+      if (columnIndex === null) {
+        return null;
+      }
+      cols.push(
+        <ColumnHeader key={columnIndex} width="10%">
+          {getColumnTitle(columnIndex)}
+        </ColumnHeader>,
+      );
+    });
+
+    return cols;
+  }, [listColumnIndexes, getColumnTitle]);
+
+  const renderColumnHeaders = useCallback(() => {
+    const cols = [];
+
+    if (canSelectForBulkAction) {
+      cols.push(<ColumnHeader key="bulk-selection-control" width="1%" />);
+    }
+
+    if (listVariant === "info") {
+      cols.push(...getInfoVariantColumnHeaders());
+    } else {
+      cols.push(...getBasicVariantColumnHeaders());
+    }
+
+    if (hasInlineActions) {
+      cols.push(<ColumnHeader key="inline-actions" width="5%" />);
+    }
+
+    return cols;
+  }, [
+    listVariant,
+    canSelectForBulkAction,
+    hasInlineActions,
+    getBasicVariantColumnHeaders,
+    getInfoVariantColumnHeaders,
+  ]);
+
   return (
     <>
       <Root className={className} isQueryBuilder={isQueryBuilder}>
-        <ContentContainer>
-          {paginatedRowIndexes.map(renderListItem)}
-        </ContentContainer>
+        <div>
+          <Table>
+            <TableHeader>
+              <tr>{renderColumnHeaders()}</tr>
+            </TableHeader>
+            <TableBody>{paginatedRowIndexes.map(renderListItem)}</TableBody>
+          </Table>
+        </div>
         {pageSize < rows.length && (
           <Footer
             start={start}

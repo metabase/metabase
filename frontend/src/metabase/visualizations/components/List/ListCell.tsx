@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { useMemo } from "react";
 import cx from "classnames";
 import _ from "underscore";
@@ -11,7 +10,6 @@ import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { Column, Row, Value } from "metabase-types/types/Dataset";
 import { VisualizationProps } from "metabase-types/types/Visualization";
 
-import { CellSlot } from "./types";
 import MiniBar from "../MiniBar";
 import { CellRoot, CellContent } from "./ListCell.styled";
 
@@ -19,7 +17,6 @@ export interface ListCellProps
   extends Pick<VisualizationProps, "data" | "settings"> {
   value: Value;
   columnIndex: number;
-  slot: CellSlot;
 }
 
 interface CellDataProps {
@@ -57,7 +54,12 @@ function getCellData({
   });
 }
 
-function ListCell({ value, data, settings, columnIndex, slot }: ListCellProps) {
+function ListCellContent({
+  value,
+  data,
+  settings,
+  columnIndex,
+}: ListCellProps) {
   const { rows, cols } = data;
   const column = cols[columnIndex];
   const columnSettings = settings.column(column);
@@ -81,12 +83,26 @@ function ListCell({ value, data, settings, columnIndex, slot }: ListCellProps) {
   });
 
   return (
-    <CellRoot className={classNames} slot={slot}>
-      <CellContent isClickable={isLink} data-testid="cell-data">
-        {cellData}
-      </CellContent>
+    <CellContent
+      className={classNames}
+      isClickable={isLink}
+      data-testid="cell-data"
+    >
+      {cellData}
+    </CellContent>
+  );
+}
+
+function ListCell(props: ListCellProps) {
+  return (
+    <CellRoot>
+      <ListCellContent {...props} />
     </CellRoot>
   );
 }
 
-export default ListCell;
+export default Object.assign(ListCell, {
+  Root: CellRoot,
+  ContentStyled: CellContent,
+  Content: ListCellContent,
+});
