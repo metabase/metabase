@@ -3,6 +3,8 @@ import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 
+export * from "./time-typescript";
+
 addAbbreviatedLocale();
 
 // when you define a custom locale, moment automatically makes it the active global locale,
@@ -84,21 +86,6 @@ export function parseTimestamp(value, unit = null, local = false) {
     m = moment.utc(value);
   }
   return local ? m.local() : m;
-}
-
-export function parseTime(value) {
-  if (moment.isMoment(value)) {
-    return value;
-  } else if (typeof value === "string") {
-    return moment(value, [
-      "HH:mm:ss.sss[Z]",
-      "HH:mm:SS.sss",
-      "HH:mm:SS",
-      "HH:mm",
-    ]);
-  }
-
-  return moment.utc(value);
 }
 
 export function formatFrame(frame) {
