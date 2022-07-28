@@ -280,7 +280,7 @@ describe("scenarios > collection defaults", () => {
         // Click to choose which collection should this question be saved to
         cy.findByText(revokedUsersPersonalCollectionName).click();
         popover().within(() => {
-          cy.findByText(/Our analytics/i);
+          cy.findByText(/Collections/i);
           cy.findByText(/My personal collection/i);
           cy.findByText("Parent").should("not.exist");
           cy.log("Reported failing from v0.34.3");
