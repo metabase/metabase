@@ -14,8 +14,11 @@ import Subhead from "metabase/components/type/Subhead";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Tooltip from "metabase/components/Tooltip";
 
-import { formatTimeWithUnit } from "metabase/lib/formatting";
-import { formatDay, formatFrame } from "metabase/lib/time";
+import {
+  formatDateTimeWithUnit,
+  formatTimeWithUnit,
+} from "metabase/lib/formatting";
+import { formatFrame } from "metabase/lib/time";
 import { getActivePulseParameters } from "metabase/lib/pulse";
 
 import { getParameters } from "metabase/dashboard/selectors";
@@ -250,13 +253,15 @@ function friendlySchedule(channel) {
     }
     case "weekly": {
       const hour = formatTimeWithUnit(schedule_hour, "hour-of-day");
-      const day = formatDay(schedule_day);
+      const day = formatDateTimeWithUnit(schedule_day, "day-of-week");
       scheduleString += t`${day} at ${hour}`;
       break;
     }
     case "monthly": {
       const hour = formatTimeWithUnit(schedule_hour, "hour-of-day");
-      const day = schedule_day ? formatDay(schedule_day) : "calendar day";
+      const day = schedule_day
+        ? formatDateTimeWithUnit(schedule_day, "day-of-week")
+        : "calendar day";
       const frame = formatFrame(schedule_frame);
       scheduleString += t`monthly on the ${frame} ${day} at ${hour}`;
       break;
