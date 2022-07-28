@@ -229,12 +229,15 @@
      (params/assert-valid-parameter-mappings card)
      (collection/check-collection-namespace Card (:collection_id card)))))
 
-(defn- post-update [card]
+(defn- tokenize-dataset-query [card]
   (when (and (= (mdb/db-type) :postgres)
              (= (:query_type card) :native))
     (db/execute! {:update Card
                   :set    {:dataset_query_tokens (hsql/raw "to_tsvector(cast(dataset_query as json) -> 'native' -> 'query'")}
                   :where  [:= :id (:id card)]})))
+
+(defn- post-update [card]
+  (tokenize-dataset-query card))
 
 (defn- post-insert [card]
   ;; if this Card has any native template tag parameters we need to update FieldValues for any Fields that are
@@ -242,7 +245,8 @@
   (u/prog1 card
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! field-ids))))
+      (field-values/update-field-values-for-on-demand-dbs! field-ids))
+    (tokenize-dataset-query card)))
 
 (defonce
   ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
