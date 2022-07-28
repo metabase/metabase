@@ -406,7 +406,7 @@
         order-clause [((fnil order-clause "") (:search-string search-ctx))]]
     (if (= (count models) 1)
       {:select   [:*]
-       :from     (search-query-for-model (first models) search-ctx)
+       :from     [[(search-query-for-model (first models) search-ctx) sql-alias]]
        :order-by order-clause}
       {:select [:*]
        :from [[{:union-all (for [model models
@@ -422,18 +422,18 @@
             (if (number? v)
               (not (zero? v))
               v))]
-    (let [search-tokens     (scoring/tokenize (scoring/normalize (:search-string search-ctx)))
+    (let [search-sql-tokens (scoring/sql-tokenize (scoring/normalize (:search-string search-ctx)))
           search-query      (full-search-query search-ctx)
           _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
           search-sql        (hsql/format search-query
                                          :quoting             (db/quoting-style)
                                          :allow-dashed-names? (not (db/automatically-convert-dashes-and-underscores?))
                                          :params              {:search-string (:search-string search-ctx)
-                                                               :search-tokens (str "'" (str/join "|" search-tokens) "'")})
+                                                               :search-tokens (str "'" (str/join "|" search-sql-tokens) "'")})
           reducible-results (jdbc/reducible-query (db/connection)
                                                   search-sql
                                                   (merge {:max-rows search-config/*db-max-results*}
-                                                         @@#'db/default-jdbc-options))
+                                                         @(var-get #'db/default-jdbc-options)))
           xf                (comp
                              (filter check-permissions-for-model)
                              ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as needed
