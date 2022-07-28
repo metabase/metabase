@@ -2,6 +2,7 @@
   "`/api/action/` endpoints."
   (:require [compojure.core :as compojure :refer [POST]]
             [metabase.actions :as actions]
+            [metabase.actions.http-action :as http-action]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.models :refer [HTTPAction]]
@@ -10,8 +11,30 @@
             [metabase.models.setting :as setting]
             [metabase.models.table :as table]
             [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [trs]]
+            [metabase.util.i18n :as i18n]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
             [toucan.db :as db]))
+
+(def ^:private JsonQuerySchema
+  (su/with-api-error-message
+    (s/constrained
+      s/Str
+      #(http-action/apply-json-query {} %))
+    "must be a valid json-query"))
+
+(def ^:private SupportedActionType
+  (su/with-api-error-message
+    (s/enum "http")
+    "Only http actions are supported at this time."))
+
+(def ^:private HTTPActionTemplate
+  {:method (s/enum "GET" "POST" "PUT" "DELETE" "PATCH")
+   :url s/Str
+   (s/optional-key :body) (s/maybe s/Str)
+   (s/optional-key :headers) (s/maybe s/Str)
+   (s/optional-key :parameters) (s/maybe [su/Map])
+   (s/optional-key :parameter_mappings) (s/maybe su/Map)})
 
 (api/defendpoint POST "/:action-namespace/:action-name"
   "Generic API endpoint for executing any sort of Action."
@@ -61,9 +84,12 @@
 
 (api/defendpoint POST "/"
   "Create a new HTTP action."
-  [:as {action :body}]
-  (when (not= "http" (:type action))
-    (throw (ex-info (trs "Action type is not supported") {:status-code 400 :action action})))
+  [:as {{:keys [type name template response_handle error_handle] :as action} :body}]
+  {type SupportedActionType
+   name s/Str
+   template HTTPActionTemplate
+   response_handle (s/maybe JsonQuerySchema)
+   error_handle (s/maybe JsonQuerySchema)}
   (let [action-id (action/insert! action)]
     (if action-id
       (first (action/select-actions :id action-id))
@@ -72,9 +98,13 @@
       (last (action/select-actions :type "http")))))
 
 (api/defendpoint PUT "/:id"
-  [id :as {action :body}]
-  (when (not= "http" (:type action))
-    (throw (ex-info (trs "Action type is not supported") {:status-code 400 :action action})))
+  [id :as {{:keys [type name template response_handle error_handle] :as action} :body}]
+  {id su/IntGreaterThanZero
+   type SupportedActionType
+   name (s/maybe s/Str)
+   template (s/maybe HTTPActionTemplate)
+   response_handle (s/maybe JsonQuerySchema)
+   error_handle (s/maybe JsonQuerySchema)}
   (db/update! HTTPAction id action)
   (first (action/select-actions :id id)))
 

@@ -99,8 +99,14 @@
   (emit [_ x]
     (vswap! results conj (str x))))
 
-(defn- apply-json-query [json-node jq-query]
-  (let [vresults (volatile! [])
+(defn apply-json-query
+  "Executes a jq query on [[object]]."
+  [object jq-query]
+  ;; TODO this is pretty ineficient. We parse with `:as :json`, then reencode within a response
+  ;; I couldn't find a way to get JSONNode out of cheshire, so we fall back to jackson.
+  ;; Should jackson be added explicitly to deps.edn?
+  (let [json-node (.readTree ^ObjectMapper @object-mapper (json/generate-string object))
+        vresults (volatile! [])
         output (ActionOutput. vresults)
         expr (JsonQuery/compile jq-query Versions/JQ_1_6)
         ;; might need to Scope childScope = Scope.newChildScope(rootScope); if root-scope can be modified by expression
@@ -127,12 +133,10 @@
                                   (parse-and-substitute params->value)
                                   (json/decode)))
                    :body (parse-and-substitute body params->value)}
-          response (update (select-keys (http/request request) [:body :headers :status]) :body json/decode)
-          ;; TODO this is pretty ineficient. We parse with `:as :json`, then reencode within a response
-          ;; I couldn't find a way to get JSONNode out of cheshire, so we fall back to jackson.
-          ;; Should jackson be added explicitly to deps.edn?
-          response-node (.readTree ^ObjectMapper @object-mapper (json/generate-string response))
-          error (json/parse-string (apply-json-query response-node (or (:error_handle action) ".status >= 400")))]
+          response (-> (http/request request)
+                       (select-keys [:body :headers :status])
+                       (update :body json/decode))
+          error (json/parse-string (apply-json-query response (or (:error_handle action) ".status >= 400")))]
       (log/trace "Response before handle:" response)
       (if error
         {:status 400
@@ -140,7 +144,7 @@
          :body (if (boolean? error)
                  {:remote-status (:status response)}
                  error)}
-        (if-some [response (some->> action :response_handle (apply-json-query response-node))]
+        (if-some [response (some->> action :response_handle (apply-json-query response))]
           {:status 200
            :headers {"Content-Type" "application/json"}
            :body response}
