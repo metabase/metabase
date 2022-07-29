@@ -75,53 +75,8 @@ describe("scenarios > dashboard > parameters", () => {
     cy.get(".DashCard").last().should("contain", "4,939");
   });
 
-  it("should not search field for results non-exact parameter string operators", () => {
-    visitDashboard(1);
-    cy.findByTextEnsureVisible("Created At");
-
-    // Add a filter tied to a field that triggers a search for field values
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
-    cy.findByText("Text or Category").click();
-    cy.findByText("Starts with").click();
-
-    // Link that filter to the card
-    cy.findByText("Select…").click();
-    popover().within(() => {
-      cy.findByText("Name").click();
-    });
-
-    // Add a filter with few enough values that it does not search
-    cy.icon("filter").click();
-    cy.findByText("Text or Category").click();
-    cy.findByText("Ends with").click();
-
-    // Link that filter to the card
-    cy.findByText("Select…").click();
-    popover().within(() => {
-      cy.findByText("Category").click();
-    });
-
-    cy.findByText("Save").click();
-    cy.wait("@dashboard");
-    cy.findByText("You're editing this dashboard.").should("not.exist");
-
-    cy.contains("Text starts with").click();
-    cy.findByPlaceholderText("Enter some text").click().type("Corbin");
-    cy.findByText("Corbin Mertz").should("not.exist");
-    cy.findByText("Add filter").click();
-
-    cy.contains("Text ends with").click();
-    cy.findByPlaceholderText("Enter some text").click().type("dget");
-    cy.findByText("Widget").should("not.exist");
-    cy.findByText("Add filter").click();
-  });
-
-  it("should remove parameter from URL after its name has been removed (metabase#10829)", () => {
+  it("should remove parameter name or the whole parameter (metabase#10829, metabase#17933)", () => {
     // Mirrored issue in metabase-enterprise#275
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
 
     const questionDetails = {
       query: {
@@ -130,7 +85,15 @@ describe("scenarios > dashboard > parameters", () => {
       },
     };
 
-    const filter = {
+    const startsWith = {
+      name: "Text starts with",
+      slug: "text_starts_with",
+      id: "1b9cd9f1",
+      type: "string/starts-with",
+      sectionId: "string",
+    };
+
+    const endsWith = {
       name: "Text ends with",
       slug: "text_ends_with",
       id: "88a1257c",
@@ -139,7 +102,7 @@ describe("scenarios > dashboard > parameters", () => {
     };
 
     const dashboardDetails = {
-      parameters: [filter],
+      parameters: [startsWith, endsWith],
     };
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
@@ -157,7 +120,21 @@ describe("scenarios > dashboard > parameters", () => {
               visualization_settings: {},
               parameter_mappings: [
                 {
-                  parameter_id: filter.id,
+                  parameter_id: startsWith.id,
+                  card_id,
+                  target: [
+                    "dimension",
+                    [
+                      "field",
+                      PRODUCTS.CATEGORY,
+                      {
+                        "source-field": ORDERS.PRODUCT_ID,
+                      },
+                    ],
+                  ],
+                },
+                {
+                  parameter_id: endsWith.id,
                   card_id,
                   target: [
                     "dimension",
@@ -180,34 +157,56 @@ describe("scenarios > dashboard > parameters", () => {
       },
     );
 
-    // populate the filter input
-    filterWidget().click();
-    cy.findByPlaceholderText("Enter some text").type("zmo{enter}");
+    cy.findByText(startsWith.name).click();
+    cy.findByPlaceholderText("Enter some text").type("G");
+    // Make sure the dropdown list with values is not populated,
+    // because it makes no sense for non-exact parameter string operators.
+    // See: https://github.com/metabase/metabase/pull/15477
+    cy.findByText("Gizmo").should("not.exist");
+    cy.findByText("Gadget").should("not.exist");
+
     cy.button("Add filter").click();
 
-    cy.log(
-      "**URL is updated correctly with the given parameter at this point**",
-    );
-    cy.location("search").should("eq", "?text_ends_with=zmo");
+    const startsWithSlug = `${startsWith.slug}=G`;
+    cy.location("search").should("eq", `?${startsWithSlug}`);
+    cy.findByText("37.65").should("not.exist");
 
-    // Remove filter name
+    cy.findByText(endsWith.name).click();
+    cy.findByPlaceholderText("Enter some text").type("zmo");
+    // Make sure the dropdown list with values is not populated,
+    // because it makes no sense for non-exact parameter string operators.
+    // See: https://github.com/metabase/metabase/pull/15477
+    cy.findByText("Gizmo").should("not.exist");
+
+    cy.button("Add filter").click();
+
+    const endsWithSlug = `${endsWith.slug}=zmo`;
+    cy.location("search").should("eq", `?${startsWithSlug}&${endsWithSlug}`);
+    cy.findByText("52.72").should("not.exist");
+
+    // Remove filter (metabase#17933)
     cy.icon("pencil").click();
-    cy.get(".Dashboard").find(".Icon-gear").click();
+    cy.findByText(startsWith.name).find(".Icon-gear").click();
 
-    cy.findByDisplayValue("Text ends with").clear().blur();
+    cy.findByText("Remove").click();
+    cy.location("search").should("eq", `?${endsWithSlug}`);
 
-    cy.findByDisplayValue("unnamed");
+    // Remove filter name (metabase#10829)
+    cy.findByText(endsWith.name).find(".Icon-gear").click();
+    cy.findByDisplayValue(endsWith.name).clear().blur();
 
     cy.location("search").should("eq", "?unnamed=zmo");
+    cy.findByDisplayValue("unnamed");
 
     cy.button("Save").click();
-    cy.wait("@dashcardQuery");
 
     cy.log("Filter name should be 'unnamed' and the value cleared");
     filterWidget().contains(/unnamed/i);
 
     cy.log("URL should reset");
     cy.location("search").should("eq", "");
+
+    cy.findByText("37.65");
   });
 
   it("should allow linked question to be changed without breaking (metabase#9299)", () => {
@@ -430,24 +429,6 @@ describe("scenarios > dashboard > parameters", () => {
     );
     cy.button("Add filter").click();
     cy.get("tbody > tr").should("have.length", 2);
-  });
-
-  it("should be removable from dashboard", () => {
-    visitDashboard(1);
-    cy.findByTextEnsureVisible("Created At");
-
-    // Add a filter
-    addCityFilterWithDefault();
-
-    // Remove the filter from the dashboard
-    cy.icon("pencil").click();
-    cy.findByText("Location").click();
-    cy.findByText("Remove").click();
-    cy.findByText("Save").click();
-    cy.wait("@dashboard");
-    cy.findByText("You're editing this dashboard.").should("not.exist");
-
-    cy.findByText("Baker").should("not.exist");
   });
 
   describe("when the user does not have self service data permissions", () => {
