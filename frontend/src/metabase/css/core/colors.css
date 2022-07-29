@@ -220,13 +220,6 @@
 
 /* entity colors */
 
-.bg-dashboard {
-  background-color: var(--color-brand);
-}
-.text-dashboard {
-  color: var(--color-brand);
-}
-
 .bg-question {
   background-color: var(--color-bg-dark);
 }
