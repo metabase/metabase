@@ -138,10 +138,12 @@
           (log/trace (u/format-color 'cyan "<< CLOSED SSH TUNNEL >>")))))
     (f details)))
 
+;;; TODO -- I think `with-ssh-tunnel-details` or something like that would be a better name for this. Since it doesn't
+;;; actually give you a tunnel. It just gives you connection details that include a tunnel in there.
 (defmacro with-ssh-tunnel
   "Starts an ssh tunnel, and binds the supplied name to a database
   details map with it's values adjusted to use the tunnel"
   [[details-binding details] & body]
   `(do-with-ssh-tunnel ~details
-     (fn [~details-binding]
-       ~@body)))
+                       (fn [~details-binding]
+                         ~@body)))
