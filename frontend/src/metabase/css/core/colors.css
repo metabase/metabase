@@ -54,18 +54,7 @@
   background-color: var(--color-brand-light);
 }
 
-.bg-brand-dark,
-.bg-brand-dark-hover:hover {
-  background-color: color-mod(var(--color-brand) blackness(12%));
-}
-
-.bg-brand-dark,
-.bg-brand-dark-hover:hover {
-  background-color: color-mod(var(--color-brand) blackness(12%));
-}
-
-.bg-brand-dark,
-.bg-brand-dark-hover:hover {
+.bg-brand-dark {
   background-color: color-mod(var(--color-brand) blackness(12%));
 }
 
