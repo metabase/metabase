@@ -273,8 +273,7 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
   // like for cases when we needed to really dial in the spacing.
   const className = cx("cursor-pointer no-decoration", {
     sort: action.buttonType === "sort",
-    "formatting-button flex-align-right text-brand-hover text-light":
-      action.buttonType === "formatting",
+    "formatting-button": action.buttonType === "formatting",
     "horizontal-button p1 flex flex-auto align-center text-dark text-white-hover":
       action.buttonType === "horizontal",
     "token text-white-hover mr1": action.buttonType === "token",

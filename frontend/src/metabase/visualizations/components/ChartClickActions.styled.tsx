@@ -20,6 +20,17 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
     `}
 
   ${({ type }) =>
+    type === "formatting" &&
+    css`
+      color: ${color("text-light")};
+      margin-left: auto;
+
+      &:hover {
+        color: ${color("brand")};
+      }
+    `}
+
+  ${({ type }) =>
     type === "horizontal" &&
     css`
       &:hover {
