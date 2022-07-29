@@ -1,0 +1,9 @@
+name: Conditionally skip required checks
+# https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks
+description: "Workaround to conditionally skip required checks if there is path filtering enabled in the workflow"
+
+runs:
+  using: "composite"
+  steps:
+    - run: echo "Didn't run due to conditional filtering"
+      shell: bash
