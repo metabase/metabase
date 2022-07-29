@@ -14,7 +14,7 @@ export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
   t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
 
 // these are all the permission levels ordered by level of access
-const PERM_LEVELS = ["write", "read", "all", "controlled", "none", "block"];
+const PERM_LEVELS = ["write", "read", "all", "controlled", "none"];
 function hasGreaterPermissions(
   a: string,
   b: string,
@@ -33,7 +33,8 @@ export function getPermissionWarning(
   groupId: Group["id"],
   descendingPermissions?: string[],
 ) {
-  if (!defaultGroup || groupId === defaultGroup.id) {
+  // 'block' overrides any perm non-monotonically: see #24380
+  if (!defaultGroup || groupId === defaultGroup.id || value === "block") {
     return null;
   }
 
