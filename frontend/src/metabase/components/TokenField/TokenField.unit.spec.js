@@ -5,7 +5,7 @@ import React from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import TokenField from "metabase/components/TokenField";
+import TokenField from "./TokenField";
 
 import {
   KEYCODE_DOWN,
@@ -120,7 +120,11 @@ describe("TokenField", () => {
 
   it("should render with 1 options and 1 values", () => {
     render(
-      <TokenFieldWithStateAndDefaults value={["foo"]} options={["bar"]} />,
+      <TokenFieldWithStateAndDefaults
+        multi
+        value={["foo"]}
+        options={["bar"]}
+      />,
     );
     findWithinValues(["foo"]);
     findWithinOptions(["bar"]);
@@ -186,7 +190,11 @@ describe("TokenField", () => {
 
   it("should add clicked option to values and hide it in options list", () => {
     render(
-      <TokenFieldWithStateAndDefaults value={[]} options={["bar", "baz"]} />,
+      <TokenFieldWithStateAndDefaults
+        multi
+        value={[]}
+        options={["bar", "baz"]}
+      />,
     );
     findWithinOptions(["bar", "baz"]);
 
@@ -197,7 +205,11 @@ describe("TokenField", () => {
 
   it("should add option when filtered and clicked", () => {
     render(
-      <TokenFieldWithStateAndDefaults value={[]} options={["foo", "bar"]} />,
+      <TokenFieldWithStateAndDefaults
+        multi
+        value={[]}
+        options={["foo", "bar"]}
+      />,
     );
     type("ba");
     clickText("bar");
@@ -463,6 +475,7 @@ describe("TokenField", () => {
           getData: () => "1,2,3",
         },
       });
+
       findWithinValues(["1", "2", "3"]);
       // prevent pasting into <input>
       expect(input().value).toBe("");
@@ -482,7 +495,7 @@ describe("TokenField", () => {
       type("asdf");
       input().focus();
       userEvent.tab();
-      findWithinValues(["asdf"]);
+      expect(input()).not.toHaveFocus();
     });
 
     it('should paste "1,2,3" as one value', () => {
@@ -499,8 +512,8 @@ describe("TokenField", () => {
           getData: () => DATA,
         },
       });
-      findWithinValues([DATA]);
-      expect(input().value).toBe("");
+
+      expect(input().value).toBe(DATA);
     });
   });
 
