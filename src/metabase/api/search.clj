@@ -432,8 +432,8 @@
                                                                :search-tokens (str "'" (str/join "|" search-sql-tokens) "'")})
           reducible-results (jdbc/reducible-query (db/connection)
                                                   search-sql
-                                                  (merge {:max-rows search-config/*db-max-results*}
-                                                         @(var-get #'db/default-jdbc-options)))
+                                                  (merge @(var-get #'db/default-jdbc-options)
+                                                         {:max-rows search-config/*db-max-results*}))
           xf                (comp
                              (filter check-permissions-for-model)
                              ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as needed
