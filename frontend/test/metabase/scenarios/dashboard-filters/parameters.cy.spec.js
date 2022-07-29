@@ -93,49 +93,6 @@ describe("scenarios > dashboard > parameters", () => {
     popover().contains("Add filter").click();
   });
 
-  it("should query with a 2 argument parameter", () => {
-    cy.createDashboard({ name: "my dash" });
-
-    cy.visit("/collection/root");
-    cy.wait("@collection");
-    cy.findByText("my dash").click();
-    cy.wait("@collection");
-
-    // add a question
-    cy.icon("pencil").click();
-    cy.get(".QueryBuilder-section .Icon-add").click();
-    cy.wait("@collection");
-    addQuestion("Orders, Count");
-
-    // add a Number - Between filter
-    cy.icon("filter").click();
-    cy.contains("Number").click();
-    cy.findByText("Between").click();
-
-    // map the parameter to the Rating field
-    selectFilter(cy.get(".DashCard"), "Rating");
-
-    // finish editing filter and save dashboard
-    cy.contains("Save").click();
-
-    // wait for saving to finish
-    cy.wait("@dashboard");
-    cy.contains("You're editing this dashboard.").should("not.exist");
-
-    // populate the filter inputs
-    cy.contains("Between").click();
-    popover().find("input").first().type("3");
-
-    popover().find("input").last().type("4");
-
-    popover().contains("Add filter").click();
-    cy.wait("@dashboard");
-
-    // There should be 8849 orders with a rating >= 3 && <= 4
-    cy.get(".DashCard").contains("8,849");
-    cy.url().should("include", "between=3&between=4");
-  });
-
   it("should not search field for results non-exact parameter string operators", () => {
     visitDashboard(1);
     cy.findByTextEnsureVisible("Created At");
