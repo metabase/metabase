@@ -305,7 +305,10 @@ describe("scenarios > dashboard > parameters", () => {
     });
   });
 
-  it("should render other categories filter that allows selecting multiple values (metabase#18113)", () => {
+  // TODO: Completely rewrite, and put together with other nested question reproductions
+  //  - This repro is using the old params API
+  //  - It's tightly connected to metabase#12985 so put them together if possible
+  it("should allow applying multiple values to filter connected to nested question (metabase#18113)", () => {
     const filter = {
       id: "c2967a17",
       name: "Category",
