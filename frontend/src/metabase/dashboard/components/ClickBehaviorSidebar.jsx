@@ -5,7 +5,7 @@ import { getIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
-import { color, darken } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import Button from "metabase/core/components/Button";
@@ -601,24 +601,16 @@ function LinkOptions({ clickBehavior, updateSettings, dashcard, parameters }) {
                       ? clickBehavior.linkTemplate
                       : t`URL`}
                   </h4>
-                  <span
-                    className="ml-auto bg-brand-dark-hover border-left"
-                    style={{
-                      borderLeftColor: darken(color("brand"), 0.2),
-                      padding: 17,
-                    }}
+                  <RemoveIconContainer
+                    onClick={() =>
+                      updateSettings({
+                        type: clickBehavior.type,
+                        linkType: null,
+                      })
+                    }
                   >
-                    <Icon
-                      name="close"
-                      size={12}
-                      onClick={() =>
-                        updateSettings({
-                          type: clickBehavior.type,
-                          linkType: null,
-                        })
-                      }
-                    />
-                  </span>
+                    <Icon name="close" size={12} />
+                  </RemoveIconContainer>
                 </div>
               </SidebarItemWrapper>
             }
