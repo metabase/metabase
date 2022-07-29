@@ -34,6 +34,7 @@ import {
 } from "metabase/lib/click-behavior";
 import { getIconForField } from "metabase/lib/schema_metadata";
 import { keyForColumn } from "metabase/lib/dataset";
+import { CloseIconContainer } from "./ClickBehaviorSidebar.styled";
 
 const clickBehaviorOptions = [
   { value: "menu", icon: "popover" },
@@ -471,15 +472,9 @@ class ClickBehaviorSidebar extends React.Component {
                     <h4>
                       {getClickBehaviorOptionName(clickBehavior.type, dashcard)}
                     </h4>
-                    <span
-                      className="ml-auto bg-brand-dark-hover border-left"
-                      style={{
-                        padding: 16,
-                        borderLeftColor: darken(color("brand"), 0.2),
-                      }}
-                    >
+                    <CloseIconContainer>
                       <Icon name="close" size={12} />
-                    </span>
+                    </CloseIconContainer>
                   </div>
                 </SidebarItemWrapper>
               </SidebarContentBordered>
