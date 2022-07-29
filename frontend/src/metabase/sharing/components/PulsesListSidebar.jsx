@@ -71,6 +71,7 @@ function _PulsesListSidebar({
             <PulseCard
               key={pulse.id}
               flat
+              canEdit={canEdit}
               onClick={() =>
                 canEdit && editPulse(pulse, pulse.channels[0].channel_type)
               }
