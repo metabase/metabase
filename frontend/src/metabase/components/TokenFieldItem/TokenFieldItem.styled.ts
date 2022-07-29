@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color, alpha } from "metabase/lib/colors";
+import { color, alpha, darken } from "metabase/lib/colors";
 import { breakpointMinHeightMedium } from "metabase/styled-components/theme";
 
 export const TokenFieldItem = styled.li<{
@@ -26,6 +26,6 @@ export const TokenFieldAddon = styled.a<{
   color: ${({ isValid }) => (isValid ? "" : color("error"))};
 
   &:hover {
-    color: ${color("error")};
+    color: ${darken("brand", 0.2)};
   }
 `;
