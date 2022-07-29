@@ -48,11 +48,16 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
   ${({ type }) =>
     type === "token" &&
     css`
-      font-size: 0.875em;
       color: ${color("brand")};
+      font-size: 0.875em;
+      line-height: 1rem;
+      margin-right: 0.5rem;
+      padding: 0.3125rem 0.875rem;
       border: 1px solid ${alpha("brand", 0.35)};
+      border-radius: 100px;
 
       &:hover {
+        color: ${color("white")};
         background-color: ${color("brand")};
       }
     `}

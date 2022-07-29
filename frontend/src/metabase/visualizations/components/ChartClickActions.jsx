@@ -275,7 +275,6 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
     sort: action.buttonType === "sort",
     "formatting-button": action.buttonType === "formatting",
     "horizontal-button": action.buttonType === "horizontal",
-    "token text-white-hover mr1": action.buttonType === "token",
   });
   if (action.url) {
     return (
