@@ -193,8 +193,7 @@
 }
 
 .bg-white,
-:local(.bg-white),
-.bg-white-hover:hover {
+:local(.bg-white) {
   background-color: var(--color-bg-white);
 }
 
