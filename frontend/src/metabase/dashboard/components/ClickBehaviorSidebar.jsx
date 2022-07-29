@@ -34,7 +34,11 @@ import {
 } from "metabase/lib/click-behavior";
 import { getIconForField } from "metabase/lib/schema_metadata";
 import { keyForColumn } from "metabase/lib/dataset";
-import { CloseIconContainer } from "./ClickBehaviorSidebar.styled";
+import {
+  CloseIconContainer,
+  RemoveIconContainer,
+  SidebarItem,
+} from "./ClickBehaviorSidebar.styled";
 
 const clickBehaviorOptions = [
   { value: "menu", icon: "popover" },
@@ -707,8 +711,7 @@ function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
                 color: color("white"),
               }}
             >
-              <div
-                className="flex align-center bg-brand-dark-hover full"
+              <SidebarItem
                 style={{
                   paddingLeft: SidebarItemStyle.paddingLeft,
                   paddingRight: SidebarItemStyle.paddingRight,
@@ -731,13 +734,8 @@ function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
                   )}
                   <Icon name="chevrondown" size={12} className="ml-auto" />
                 </div>
-              </div>
-              <span
-                className="ml-auto bg-brand-dark-hover border-left"
-                style={{
-                  borderLeftColor: darken(color("brand"), 0.2),
-                  padding: 17,
-                }}
+              </SidebarItem>
+              <RemoveIconContainer
                 onClick={() =>
                   updateSettings({
                     type: clickBehavior.type,
@@ -746,7 +744,7 @@ function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
                 }
               >
                 <Icon name="close" size={12} />
-              </span>
+              </RemoveIconContainer>
             </div>
           }
           isInitiallyOpen={clickBehavior.targetId == null}
