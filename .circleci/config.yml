@@ -10,12 +10,7 @@ executors:
   builder:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-8-clj-1.10.3.929-07-27-2021-node-browsers
-
-  java-8:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:circleci-java-8-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
 
   # Java 11 tests also test Metabase with the at-rest encryption enabled. See
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
@@ -23,19 +18,19 @@ executors:
   java-11:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
 
-  java-16:
+  java-17:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-16-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-17-clj-1.11.0.1100.04-2022-build
 
   postgres-9-6:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_DB_TYPE: postgres
           MB_DB_PORT: 5432
@@ -51,7 +46,7 @@ executors:
   postgres-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_DB_TYPE: postgres
           MB_DB_PORT: 5432
@@ -68,7 +63,7 @@ executors:
   mysql-5-7:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -81,7 +76,7 @@ executors:
   mysql-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -94,7 +89,7 @@ executors:
   mariadb-10-2:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -107,7 +102,7 @@ executors:
   mariadb-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -124,19 +119,19 @@ executors:
   mongo-4-0:
      working_directory: /home/circleci/metabase/metabase/
      docker:
-       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
        - image: circleci/mongo:4.0
+       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
 
   mongo-latest:
      working_directory: /home/circleci/metabase/metabase/
      docker:
-       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
        - image: circleci/mongo:latest
 
   presto-186:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
       - image: metabase/presto-mb-ci:0.186
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
@@ -147,7 +142,7 @@ executors:
   presto-jdbc-env:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
       - image: metabase/presto-mb-ci:latest # version 0.254
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
@@ -166,20 +161,20 @@ executors:
   sparksql:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
       - image: metabase/spark:3.2.1
     resource_class: large
 
   vertica:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
       - image: sumitchawla/vertica
 
   sqlserver:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_SQLSERVER_TEST_HOST: localhost
           MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
@@ -193,7 +188,7 @@ executors:
   druid:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
       - image: metabase/druid:0.20.2
         environment:
           CLUSTER_SIZE: nano-quickstart
@@ -655,8 +650,8 @@ workflows:
       - clojure:
           matrix:
             parameters:
-              edition: ["ee", "oss"]
-              java-version: ["java-8", "java-11", "java-16"]
+              edition: ["ee"]
+              java-version: ["java-11", "java-17"]
           name: be-tests-<< matrix.java-version >>-<< matrix.edition >>
           requires:
             - be-deps
@@ -683,7 +678,7 @@ workflows:
               driver: ["bigquery-cloud-sdk", "googleanalytics", "sqlite"]
           name: be-tests-<< matrix.driver >>-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           driver: << matrix.driver >>
 
       - test-driver:
@@ -692,14 +687,14 @@ workflows:
               driver: ["sqlserver", "druid"]
           name: be-tests-<< matrix.driver >>-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: << matrix.driver >>
           driver: << matrix.driver >>
 
       - test-driver:
           name: be-google-related-drivers-classpath-test
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           driver: googleanalytics,bigquery-cloud-sdk
           test-args: >-
             :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
@@ -712,7 +707,7 @@ workflows:
           name: be-tests-<< matrix.version >>-ee
           description: "(<< matrix.version >>)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: << matrix.version >>
           driver: mongo
 
@@ -723,7 +718,7 @@ workflows:
           name: be-tests-<< matrix.version >>-ee
           description: "(<< matrix.version >>)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e:
             name: << matrix.version >>
           driver: mysql
@@ -732,7 +727,7 @@ workflows:
           name: be-tests-mysql-latest-ee
           description: "(MySQL latest)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e:
             name: mysql-latest
           driver: mysql
@@ -752,7 +747,7 @@ workflows:
       - test-driver:
           name: be-tests-oracle-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           before-steps:
             - fetch-jdbc-driver:
                 source: ORACLE_JDBC_JAR
@@ -773,7 +768,7 @@ workflows:
           name: be-tests-postgres-ee
           description: "(9.6)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: postgres-9-6
           driver: postgres
 
@@ -781,7 +776,7 @@ workflows:
           name: be-tests-postgres-latest-ee
           description: "(Latest)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: postgres-latest
           driver: postgres
           extra-env: >-
@@ -792,7 +787,7 @@ workflows:
       - test-driver:
           name: be-tests-presto-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: presto-186
           before-steps:
             - wait-for-port:
@@ -802,7 +797,7 @@ workflows:
       - test-driver:
           name: be-tests-presto-jdbc-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: presto-jdbc-env # specific env for running Presto JDBC tests (newer Presto version, SSL, etc.)
           before-steps:
             - wait-for-port:
@@ -838,21 +833,21 @@ workflows:
       - test-driver:
           name: be-tests-redshift-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           driver: redshift
           timeout: 15m
 
       - test-driver:
           name: be-tests-snowflake-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           driver: snowflake
           timeout: 115m
 
       - test-driver:
           name: be-tests-sparksql-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: sparksql
           before-steps:
             - wait-for-port:
@@ -862,7 +857,7 @@ workflows:
       - test-driver:
           name: be-tests-vertica-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: vertica
           before-steps:
             - fetch-jdbc-driver:
