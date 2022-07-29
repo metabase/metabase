@@ -19,7 +19,7 @@ This function is useful if you want to fill in missing data or consolidate data 
 - [Creating calculations across different columns](#creating-calculations-across-different-columns).
 - [Accepted data types](#accepted-data-types).
 - [Limitations](#limitations).
-- [Related functions](#related-functions).
+- [Converting other functions to `coalesce` expressions](#converting-other-functions-to-coalesce-expressions).
 - [Further reading](#further-reading).
 </div>
 
@@ -76,9 +76,15 @@ Use the same data types within a single `coalesce` function. If you want to coal
 
 If you want to use `coalesce` with JSON or JSONB data types, you'll need to flatten the JSON objects first. For more information, look up the JSON functions that are available in your SQL dialect. You can find some [common SQL reference guides here][sql-reference-guide].
 
-## Related functions
+## Converting other functions to `coalesce` expressions
 
-This section covers common functions and formulas from other tools that are equivalent to the Metabase `coalesce` expression:
+This section covers functions and formulas that can be used interchangeably with the Metabase `coalesce` expression, with notes on how to choose the best option for your use case.
+
+**Metabase expressions**
+
+- [coalesce](#coalesce)
+
+**Other tools**
 
 - [SQL](#sql)
 - [Spreadsheets](#spreadsheets)
@@ -93,38 +99,73 @@ All examples use the custom expression and sample data from the [Consolidating v
 | I have a note. |                   | I have a note.                                          |
 |                |                   | No notes or comments.                                   |
 
+### Coalesce
+
+The Metabase `case` expression
+
+```sql
+case(ISBLANK([Notes]) = FALSE AND ISBLANK([Comments]) = FALSE, [Notes],
+     ISBLANK([Notes]) = TRUE  AND ISBLANK([Comments]) = False, [Comments],
+     ISBLANK([Notes]) = FALSE AND ISBLANK([Comments]) = TRUE,  [Notes],
+     ISBLANK([Notes]) = TRUE  AND ISBLANK([Comments]) = TRUE,  "No notes or comments")
+```
+
+is equivalent to the Metabase `coalesce` expression:
+
+```sql
+coalesce([Notes], [Comments] "No notes or comments.")
+```
+
+`coalesce` is much nicer to write if you don't mind taking the first value when both of your columns are non-blank. [Use `case`][case-to-coalesce] if you want to define a specific output (e.g., if you want to return "I have a note _and_ a comment" instead of "I have a note".).
+
 ### SQL
 
 When you ask Metabase a question from the notebook editor or SQL editor, the question is converted into a SQL query that runs against your database or data warehouse.
 
-The Metabase `coalesce` expression is equivalent to a SQL `coalesce` function:
+The SQL `coalesce` function
 
-```
+```sql
 SELECT
     COALESCE(notes, comments, "no notes or comments")
 FROM
     sample_table;
 ```
 
+is equivalent to the Metabase `coalesce` expression: 
+
+```sql
+coalesce([Notes], [Comments] "No notes or comments.")
+```
+
 ### Spreadsheets
 
-If we assume that "Notes" is in column A, and "Comments" is in column B, we can achieve basic coalesce functionality by combining `IF` statements with functions like `ISBLANK` (for empty values) or `ISNA` (for "NaN" values).
+If your [notes and comments table](#converting-other-functions-to-coalesce-expressions) is in a spreadsheet where "Notes" is in column A, and "Comments" is in column B, then the formula
 
 ```
 =IF(ISBLANK($A2),$B2,IF(ISBLANK($B2),$A2,"No notes or comments."))
 ```
 
-Note that this formula doesn't generalize well if you're working with more than two columns. In those cases, you may be used to working with `INDEX` and `MATCH` in an array formula (or maybe considering [a move away from spreadsheets][spreadsheets-to-bi] entirely!).
+is equivalent to the Metabase `coalesce` expression: 
+
+```sql
+coalesce([Notes], [Comments] "No notes or comments.")
+```
+
+Alternatively, you may be used to working with a INDEX and MATCH in an array formula if you’re “coalescing” data across three or more columns in a spreadsheet.
 
 ### Python
 
-For those of you that come from the [pandas][pandas] and [numpy][numpy] world, let's assume our sample data is in a dataframe object called `df`.
-
-Coalesce-esque `pandas` functions include `combine_first()` and `fillna()`:
+Assuming the [notes and comments table](#converting-other-functions-to-coalesce-expressions) is in a dataframe called `df`, the combination of `pandas` functions `combine_first()` and `fillna()`
 
 ```
 df['custom_column'] = df['notes'].combine_first(df['comments'])\
                                  .fillna('No notes or comments.')
+```
+
+are equivalent to the Metabase `coalesce` expression: 
+
+```sql
+coalesce([Notes], [Comments] "No notes or comments.")
 ```
 
 ## Further reading
@@ -132,6 +173,7 @@ df['custom_column'] = df['notes'].combine_first(df['comments'])\
 - [Custom expressions documentation][custom-expressions-doc]
 - [Custom expressions tutorial][custom-expressions-learn]
 
+[case-to-coalesce]: ./case#coalesce
 [cast-data-type]: ../../administration-guide/03-metadata-editing#casting-to-a-specific-data-type
 [custom-expressions-doc]: ./expressions
 [custom-expressions-learn]: /learn/questions/custom-expressions
