@@ -233,7 +233,7 @@
   (when (and (= (mdb/db-type) :postgres)
              (= (:query_type card) :native))
     (db/execute! {:update Card
-                  :set    {:dataset_query_tokens (hsql/raw "to_tsvector(cast(dataset_query as json) -> 'native' -> 'query'")}
+                  :set    {:dataset_query_tokens (hsql/raw "to_tsvector('simple', cast(dataset_query as json) -> 'native' -> 'query'")}
                   :where  [:= :id (:id card)]})))
 
 (defn- post-update [card]

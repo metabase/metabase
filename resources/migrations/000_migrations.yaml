@@ -11962,7 +11962,7 @@ databaseChangeLog:
                   constraints:
                     nullable: true
         - sql:
-            sql: update report_card set dataset_query_tokens = to_tsvector(cast(dataset_query as json) -> 'native' -> 'query') where query_type = 'native';
+            sql: update report_card set dataset_query_tokens = to_tsvector('simple', cast(dataset_query as json) -> 'native' -> 'query') where query_type = 'native';
       rollback: alter table report_card drop column dataset_query_tokens;
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

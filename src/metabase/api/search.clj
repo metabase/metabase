@@ -193,7 +193,7 @@
                                 :let [qualified-column (hsql/qualify (model->alias model) column)]]
                             (if (and (= column :dataset_query)
                                      (= (mdb/db-type) :postgres))
-                              [(hsql/raw ["dataset_query_tokens @@ to_tsquery(" #sql/param :search-tokens ")"])]
+                              [(hsql/raw ["dataset_query_tokens @@ plainto_tsquery('simple', " #sql/param :search-tokens ")"])]
                               (for [token tokens]
                                 [:like
                                  (hsql/call :lower qualified-column)
@@ -358,7 +358,7 @@
                             (map (fn [col]
                                    (if (and (= col :dataset_query)
                                             (= (mdb/db-type) :postgres))
-                                     (hsql/raw (str "dataset_query_tokens @@ phraseto_tsquery('simple', '" #sql/param :search-string "')"))
+                                     (hsql/raw (str "dataset_query_tokens @@ plainto_tsquery('simple', '" #sql/param :search-string "')"))
                                      [:like (hsql/call :lower col) match])) <>)
                             (interleave <> (repeat 0))
                             (concat <> [:else 1]))]
