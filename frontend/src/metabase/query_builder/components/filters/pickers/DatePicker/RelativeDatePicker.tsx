@@ -26,6 +26,8 @@ import {
   NumericInput,
 } from "./RelativeDatePicker.styled";
 
+import { DurationInputArg2 } from "moment-timezone";
+
 type RelativeDatePickerProps = {
   className?: string;
   filter: Filter;
@@ -177,7 +179,7 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
     onFilterChange(setRelativeDatetimeValue(filter, formatter(valueToUse)));
   };
 
-  const handleChangeUnitInput = (newUnit: string) => {
+  const handleChangeUnitInput = (newUnit: DurationInputArg2) => {
     const timeSpanTooGreat = checkIfTimeSpanTooGreat(intervals, newUnit);
     const unitToUse = timeSpanTooGreat ? unit : newUnit;
 
@@ -206,7 +208,9 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
       <DateUnitSelector
         value={unit}
         primaryColor={primaryColor}
-        onChange={newUnit => handleChangeUnitInput(newUnit as string)}
+        onChange={newUnit =>
+          handleChangeUnitInput(newUnit as DurationInputArg2)
+        }
         testId="relative-datetime-unit"
         intervals={intervals}
         formatter={formatter}
