@@ -181,7 +181,7 @@ describe("buildDataModelPermission", () => {
       const [downgradePermissionConfirmation] =
         permissionModel.confirmations("all");
 
-      expect(permissionModel.warning).toBe("");
+      expect(permissionModel.warning).toBe(null);
     });
   });
 });
