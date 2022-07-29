@@ -17,22 +17,19 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
-      - run: |
-          echo "Didn't run due to conditional filtering"
+      - uses: ./.github/actions/required-workaround
 
   be-linter-eastwood:
     runs-on: ubuntu-20.04
     timeout-minutes: 20
     steps:
-      - run: |
-          echo "Didn't run due to conditional filtering"
+      - uses: ./.github/actions/required-workaround
 
   be-linter-namespace-decls:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
-      - run: |
-          echo "Didn't run due to conditional filtering"
+      - uses: ./.github/actions/required-workaround
 
   be-tests:
     runs-on: ubuntu-20.04
@@ -44,5 +41,4 @@ jobs:
         edition: [oss, ee]
         java-version: [11, 17]
     steps:
-      - run: |
-          echo "Didn't run due to conditional filtering"
+      - uses: ./.github/actions/required-workaround

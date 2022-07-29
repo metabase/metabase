@@ -46,5 +46,4 @@ jobs:
             context: grep
             java-version: 11
     steps:
-      - run: |
-          echo "Didn't run due to conditional filtering"
+      - uses: ./.github/actions/required-workaround

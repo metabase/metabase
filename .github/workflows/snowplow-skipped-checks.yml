@@ -15,5 +15,4 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          echo "Didn't run due to conditional filtering"
+      - uses: ./.github/actions/required-workaround
