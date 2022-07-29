@@ -374,21 +374,29 @@ describe("scenarios > dashboard > parameters", () => {
     cy.get("tbody > tr").should("have.length", 2);
   });
 
-  describe("when the user does not have self service data permissions", () => {
+  describe("when the user does not have self-service data permissions", () => {
     beforeEach(() => {
       visitDashboard(1);
-      cy.wait("@collection");
       cy.findByTextEnsureVisible("Created At");
-      addCityFilterWithDefault();
+
+      cy.icon("pencil").click();
+      cy.icon("filter").click();
+      popover().findByText("ID").click();
+
+      selectFilter(cy.get(".DashCard"), "User ID");
+
+      cy.findByText("Save").click();
+      cy.findByText("You're editing this dashboard.").should("not.exist");
 
       cy.signIn("nodata");
-      cy.reload();
-      cy.wait("@collection");
+      visitDashboard(1);
     });
 
     it("should not see mapping options", () => {
       cy.icon("pencil").click();
-      cy.findByText("Location").click({ force: true });
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .find(".Icon-gear")
+        .click();
 
       cy.icon("key");
     });
@@ -398,29 +406,4 @@ describe("scenarios > dashboard > parameters", () => {
 function selectFilter(selection, filterName) {
   selection.contains("Select…").click();
   popover().contains(filterName).click({ force: true });
-}
-
-function addCityFilterWithDefault() {
-  cy.icon("pencil").click();
-  cy.icon("filter").click();
-  cy.findByText("Location").click();
-  cy.findByText("Dropdown").click();
-
-  // Link that filter to the card
-  cy.findByText("Select…").click();
-  popover().within(() => {
-    cy.findByText("City").click();
-  });
-
-  // Create a default value and save filter
-  cy.findByText("No default").click();
-  cy.findByPlaceholderText("Search by City").click().type("B");
-  cy.findByText("Baker").click();
-  cy.findByText("Add filter").click();
-  cy.get(".Button--primary").contains("Done").click();
-
-  cy.findByText("Save").click();
-  cy.wait("@dashboard");
-  cy.findByText("You're editing this dashboard.").should("not.exist");
-  cy.findByTextEnsureVisible("Baker");
 }
