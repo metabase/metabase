@@ -8,9 +8,9 @@ summary: |
 
 API endpoints for Content management review.
 
-  - [POST /api/ee/content-management/review/](#post-apieecontent-managementreview)
+  - [POST /api/moderation-review/review/](#post-apimoderation-reviewreview)
 
-## `POST /api/ee/content-management/review/`
+## `POST /api/moderation-review/review/`
 
 Create a new `ModerationReview`.
 
