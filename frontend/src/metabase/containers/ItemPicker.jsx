@@ -306,11 +306,9 @@ const Item = ({
           ? () => onChangeParentId(item.id)
           : null
       }
-      className={cx("rounded", {
-        "bg-brand text-white": selected,
-        "bg-brand-hover text-white-hover cursor-pointer":
-          canSelect || hasChildren,
-      })}
+      canSelect={canSelect}
+      isSelected={selected}
+      hasChildren={hasChildren}
       data-testid="item-picker-item"
     >
       <ItemContent>
