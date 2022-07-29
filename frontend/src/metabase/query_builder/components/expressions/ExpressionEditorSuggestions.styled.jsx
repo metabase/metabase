@@ -19,6 +19,11 @@ export const ExpressionListItem = styled.li`
   padding: 5px 1rem;
   cursor: pointer;
 
+  &:hover {
+    color: ${color("white")};
+    background-color: ${color("brand")};
+  }
+
   ${({ isHighlighted }) =>
     isHighlighted &&
     css`
