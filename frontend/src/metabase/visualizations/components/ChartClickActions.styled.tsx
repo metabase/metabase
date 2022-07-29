@@ -8,6 +8,30 @@ export interface ClickActionButtonProps {
 
 export const ClickActionButton = styled.div<ClickActionButtonProps>`
   ${({ type }) =>
+    type === "sort" &&
+    css`
+      &:hover {
+        background-color: ${color("brand")};
+      }
+    `}
+
+  ${({ type }) =>
+    type === "horizontal" &&
+    css`
+      &:hover {
+        background-color: ${color("brand")};
+      }
+    `}
+
+  ${({ type }) =>
+    type === "token" &&
+    css`
+      &:hover {
+        background-color: ${color("brand")};
+      }
+    `}
+
+  ${({ type }) =>
     type === "token-filter" &&
     css`
       color: ${color("filter")};
