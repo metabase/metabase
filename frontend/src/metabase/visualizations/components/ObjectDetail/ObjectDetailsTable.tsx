@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { DatasetData } from "metabase-types/types/Dataset";
 
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
+import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 import EmptyState from "metabase/components/EmptyState";
 
 import { isID } from "metabase/lib/schema_metadata";
@@ -115,8 +116,23 @@ export function DetailsTable({
   onVisualizationClick,
   visualizationIsClickable,
 }: DetailsTableProps): JSX.Element {
-  const { cols } = data;
-  const row = zoomedRow;
+  const { cols, row } = React.useMemo(() => {
+    const { cols } = data;
+    const columnSettings = settings["detail.columns"];
+    const columnIndexes = columnSettings
+      .filter((columnSetting: any) => columnSetting.enabled)
+      .map((columnSetting: any) =>
+        findColumnIndexForColumnSetting(cols, columnSetting),
+      )
+      .filter(
+        (columnIndex: number) => columnIndex >= 0 && columnIndex < cols.length,
+      );
+
+    return {
+      cols: columnIndexes.map((i: number) => cols[i]) as any[],
+      row: columnIndexes.map((i: number) => zoomedRow[i]),
+    };
+  }, [data.cols, zoomedRow, settings]);
 
   if (!row?.length) {
     return <EmptyState message={t`No details found`} />;
