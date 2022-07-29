@@ -272,12 +272,12 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
   // Some of them have bespoke classes defined in ChartClickActions.css,
   // like for cases when we needed to really dial in the spacing.
   const className = cx("cursor-pointer no-decoration", {
-    "text-center sort token-blue mr1": action.buttonType === "sort",
+    sort: action.buttonType === "sort",
     "formatting-button flex-align-right text-brand-hover text-light":
       action.buttonType === "formatting",
     "horizontal-button p1 flex flex-auto align-center text-dark text-white-hover":
       action.buttonType === "horizontal",
-    "token token-blue text-white-hover mr1": action.buttonType === "token",
+    "token text-white-hover mr1": action.buttonType === "token",
   });
   if (action.url) {
     return (

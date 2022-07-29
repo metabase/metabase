@@ -10,6 +10,10 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
   ${({ type }) =>
     type === "sort" &&
     css`
+      color: ${color("brand")};
+      border: 1px solid ${alpha("brand", 0.35)};
+      margin-right: 0.5rem;
+
       &:hover {
         background-color: ${color("brand")};
       }
@@ -27,6 +31,8 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
     type === "token" &&
     css`
       font-size: 0.875em;
+      color: ${color("brand")};
+      border: 1px solid ${alpha("brand", 0.35)};
 
       &:hover {
         background-color: ${color("brand")};
