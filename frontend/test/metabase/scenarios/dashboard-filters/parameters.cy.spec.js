@@ -20,30 +20,6 @@ describe("scenarios > dashboard > parameters", () => {
     cy.intercept("GET", "/api/collection/**").as("collection");
   });
 
-  it("should be visible if previously added", () => {
-    visitDashboard(1);
-    cy.findByTextEnsureVisible("Created At");
-    cy.findByText("Baker").should("not.exist");
-
-    // Add a filter
-    addCityFilterWithDefault();
-
-    cy.log(
-      "**Filter should be set and applied after we leave and back to the dashboard**",
-    );
-    cy.visit("/");
-    cy.wait("@collection");
-
-    cy.findByText("Our analytics").click();
-    cy.wait("@collection");
-
-    cy.findByText("Orders in a dashboard").click();
-    cy.wait("@collection");
-    cy.findByTextEnsureVisible("Product ID");
-
-    cy.findByTextEnsureVisible("Baker");
-  });
-
   it("one filter should search across multiple fields", () => {
     cy.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
       // add the same question twice
