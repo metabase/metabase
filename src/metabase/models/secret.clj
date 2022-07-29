@@ -1,5 +1,6 @@
 (ns metabase.models.secret
   (:require [cheshire.generate :refer [add-encoder encode-map]]
+            [clojure.core.memoize :as memoize]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -54,7 +55,7 @@
   (->> (filter #(= :secret (keyword (:type %))) conn-props)
     (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {})))
 
-(defn value->file!
+(defn value->file!*
   "Returns the value of the given `secret` instance in the form of a file. If the given instance has a `:file-path` as
   its source, a `File` referring to that is returned. Otherwise, the `:value` is written to a temporary file, which is
   then returned.
@@ -99,6 +100,24 @@
                          ^bytes value)]
           (.write out v)))
       tmp-file)))
+
+(def
+  ^java.io.File
+  ^{:arglists '([{:keys [connection-property-name id value] :as secret} driver?])}
+  value->file!
+  "Returns the value of the given `secret` instance in the form of a file. If the given instance has a `:file-path` as
+  its source, a `File` referring to that is returned. Otherwise, the `:value` is written to a temporary file, which is
+  then returned.
+
+  `driver?` is an optional argument that is only used if an ostensibly existing file value (i.e. `:file-path`) can't be
+  resolved, in order to render a more user-friendly error message (by looking up the display names of the connection
+  properties involved)."
+  (memoize/memo
+   (with-meta value->file!*
+     {::memoize/args-fn (fn [[secret _driver?]]
+                          ;; not clear if value->string could return nil due to the cond so we'll just cache on a key
+                          ;; that is unique
+                          [(vec (:value secret))])})))
 
 (def ^:private uploaded-base-64-pattern #"^data:application/([^;]*);base64,")
 
