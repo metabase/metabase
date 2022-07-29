@@ -16,16 +16,18 @@
   [query :- s/Str]
   (str/lower-case query))
 
-(defn tokenize
-  "Break a search `query` into its constituent tokens"
-  [query]
+(s/defn tokenize
+  "Break a search `query` into its constituent tokens.
+   Don't add a return value schema to this function, it slows down the search."
+  [query :- s/Str]
   (filter seq
           (str/split query #"\s+")))
 
-(defn sql-tokenize
+(s/defn sql-tokenize
   "Break a search `query` into its constituent tokens for searching in a native SQL query
-   Note 'foo.bar' is tokenized to ['foo.bar'] but 'foo(bar)' is tokenized to ['foo', 'bar']"
-  [query]
+   'foo.bar' is tokenized to ['foo.bar'] but 'foo(bar)' is tokenized to ['foo', 'bar'].
+   Don't add a return value schema to this function, it slows down the search."
+  [query :- s/Str]
   (filter seq
           (str/split query #"[\s+\(\)\[\]\{\}\,\'\"]")))
 

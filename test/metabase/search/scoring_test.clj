@@ -21,7 +21,9 @@
     (is (= []
            (scoring/tokenize " \t\n\t ")))
     (is (= []
-           (scoring/tokenize "")))))
+           (scoring/tokenize "")))
+    (is (thrown-with-msg? Exception #"does not match schema"
+                          (scoring/tokenize nil)))))
 
 (deftest sql-tokenize-test
   (testing "tokenization for sql queries"
@@ -36,7 +38,9 @@
     (is (= ["c.local" "=" "en"]
            (scoring/sql-tokenize "c.local = 'en'")))
     (is (= ["foo.bar" "as" "foo_bar"]
-           (scoring/sql-tokenize "foo.bar as foo_bar")))))
+           (scoring/sql-tokenize "foo.bar as foo_bar")))
+    (is (thrown-with-msg? Exception #"does not match schema"
+                          (scoring/sql-tokenize nil)))))
 
 (defn scorer->score
   [scorer]
