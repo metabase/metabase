@@ -83,7 +83,7 @@
 
 (deftest snowplow-tracking-test
   (snowplow-test/with-fake-snowplow-collector
-    (let [t1 (t/zoned-date-time)]
+    (let [t (t/zoned-date-time)]
       (testing "inserting a task history should track a snowplow event"
         (is (= {:data   {"duration"     10
                          "ended_at"     true
@@ -93,7 +93,7 @@
                          "task_id"      true
                          "task_name"   "a fake task"}
                 :user-id nil}
-               (insert-then-pop! (assoc (make-10-millis-task t1)
+               (insert-then-pop! (assoc (make-10-millis-task t)
                                         :task         "a fake task"
                                         :task_details {:apple  40
                                                        :orange 2}))))
@@ -108,25 +108,30 @@
                               "task_id"      true
                               "task_name"   "a fake task"}
                     :user-id "1"}
-                   (insert-then-pop! (assoc (make-10-millis-task t1)
+                   (insert-then-pop! (assoc (make-10-millis-task t)
                                             :task         "a fake task"
                                             :task_details {:apple  40
                                                            :orange 2}))))))
 
         (testing "infer db_engine if db_id exists"
           (mt/with-temp Database [{db-id :id} {:engine "postgres"}]
-           (is (= {:data    {"duration"     10
-                             "ended_at"     true
-                             "started_at"   true
-                             "db_id"        true
-                             "db_engine"    "postgres"
-                             "event"        "new_task_history"
-                             "task_details" {"apple" 40, "orange" 2}
-                             "task_id"      true
-                             "task_name"   "a fake task"}
-                   :user-id nil}
-                  (insert-then-pop! (assoc (make-10-millis-task t1)
-                                           :task         "a fake task"
-                                           :db_id        db-id
-                                           :task_details {:apple  40
-                                                          :orange 2}))))))))))
+            (is (= {:data    {"duration"     10
+                              "ended_at"     true
+                              "started_at"   true
+                              "db_id"        true
+                              "db_engine"    "postgres"
+                              "event"        "new_task_history"
+                              "task_details" {"apple" 40, "orange" 2}
+                              "task_id"      true
+                              "task_name"   "a fake task"}
+                    :user-id nil}
+                   (insert-then-pop! (assoc (make-10-millis-task t)
+                                            :task         "a fake task"
+                                            :db_id        db-id
+                                            :task_details {:apple  40
+                                                           :orange 2}))))))
+        (testing "date-time properties should be correctly formatted"
+          (db/insert! TaskHistory (assoc (make-10-millis-task t) :task "a fake task"))
+          (let [event (:data (first (snowplow-test/pop-event-data-and-user-id!)))]
+            (is (snowplow-test/valid-datetime-for-snowplow? (get event "started_at")))
+            (is (snowplow-test/valid-datetime-for-snowplow? (get event "ended_at")))))))))

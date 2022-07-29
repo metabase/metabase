@@ -61,7 +61,7 @@
       "minimum": 0,
       "maximum": 2147483647
     },
-    "task-details": {
+    "task_details": {
       "description": "the JSON-encoded details of the task",
       "type": [
         "string",

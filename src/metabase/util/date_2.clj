@@ -91,6 +91,25 @@
      :else
      (t/format formatter t))))
 
+(defn format-date-rfc3339
+  "Format datetime to rfc3339 format.
+  Reference: https://json-schema.org/understanding-json-schema/reference/string.html#dates-and-times"
+  [dt]
+  (cond
+    (instance? Instant dt)
+    (format-date-rfc3339 (t/zoned-date-time dt (t/zone-id "UTC")))
+
+    ;; if AppDB is mysql and instance-time is first-user-creation
+    ;; it'll be in localDatetime since "select now()" in mysql returns localdatetime
+    (instance? LocalDateTime dt)
+    (format-date-rfc3339 (t/zoned-date-time dt (t/zone-id)))
+
+    (instance? LocalDate dt)
+    (format-date-rfc3339 (t/zoned-date-time dt (t/local-time 0) (t/zone-id)))
+
+    :else
+    (t/format "yyyy-MM-dd'T'hh:mm:ss.SSXXX" dt)))
+
 (defn format-sql
   "Format a temporal value `t` as a SQL-style literal string (for most SQL databases). This is the same as ISO-8601 but
   uses a space rather than of a `T` to separate the date and time components."

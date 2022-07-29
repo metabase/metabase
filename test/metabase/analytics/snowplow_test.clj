@@ -2,6 +2,7 @@
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
             [clojure.walk :as walk]
+            [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.models.setting :as setting :refer [Setting]]
             [metabase.public-settings :as public-settings]
@@ -10,7 +11,8 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [toucan.db :as db])
-  (:import java.util.LinkedHashMap))
+  (:import [java.time ZonedDateTime]
+           java.util.LinkedHashMap))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -70,6 +72,17 @@
                        :user-id (-> events :subject :uid)})
          events)))
 
+(defn valid-datetime-for-snowplow?
+  "Check if a date use the format yyyy-mm-dd'T'hh:mm:ss.SSSXXX which is a RFC3339 format."
+  [t]
+  (try
+    (java.time.LocalDate/parse
+      t
+      (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'hh:mm:ss.SSXXX"))
+    true
+    (catch Exception _e
+      false)))
+
 (deftest custom-content-test
   (testing "Snowplow events include a custom context that includes the schema, instance ID, version, token features
            and creation timestamp"
@@ -79,8 +92,12 @@
               :data {:id             (snowplow/analytics-uuid)
                      :version        {:tag (:tag (public-settings/version))},
                      :token_features (public-settings/token-features)
-                     :created_at     (u.date/format (snowplow/instance-creation))}}
-             (:context (first @*snowplow-collector*)))))))
+                     :created_at     (snowplow/instance-creation)}}
+             (:context (first @*snowplow-collector*))))
+
+      (testing "the created_at should have the format yyyy-MM-dd'T'hh:mm:ss.SSXXX"
+        (is (valid-datetime-for-snowplow?
+              (get-in (first @*snowplow-collector*) [:context :data :created_at])))))))
 
 (deftest ip-address-override-test
   (testing "IP address on Snowplow subject is overridden with a dummy value (127.0.0.1)"
@@ -161,8 +178,8 @@
           (db/delete! Setting :key "instance-creation")
           (let [first-user-creation (:min (db/select-one ['User [:%min.date_joined :min]]))
                 instance-creation   (snowplow/instance-creation)]
-            (is (= (java-time/local-date-time first-user-creation)
-                   (java-time/local-date-time instance-creation))))))
+            (is (= (u.date/format-date-rfc3339 first-user-creation)
+                   instance-creation)))))
       (finally
         (if original-value
           (db/update-where! Setting {:key "instance-creation"} :value original-value))))))
