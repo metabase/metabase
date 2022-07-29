@@ -94,8 +94,8 @@
   org.apache.sshd/sshd-core                 {:mvn/version "2.9.0"}              ; ssh tunneling and test server -- do not use 2.6.0 to 2.7.0, see metabase#18316
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.14"}               ; SVG -> image
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
-  org.bouncycastle/bcpkix-jdk15on           {:mvn/version "1.69"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
-  org.bouncycastle/bcprov-jdk15on           {:mvn/version "1.69"}
+  org.bouncycastle/bcpkix-jdk15on           {:mvn/version "1.70"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
+  org.bouncycastle/bcprov-jdk15on           {:mvn/version "1.70"}
   org.clojure/clojure                       {:mvn/version "1.10.3"}
   org.clojure/core.async                    {:mvn/version "1.3.618"
                                              :exclusions  [org.clojure/tools.reader]}
