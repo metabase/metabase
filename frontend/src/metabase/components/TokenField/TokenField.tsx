@@ -19,7 +19,11 @@ import {
 } from "metabase/lib/keyboard";
 import { isObscured } from "metabase/lib/dom";
 
-import { TokenInputItem, TokenFieldContainer } from "./TokenField.styled";
+import {
+  TokenInputItem,
+  TokenFieldContainer,
+  PrefixContainer,
+} from "./TokenField.styled";
 
 export type LayoutRendererArgs = {
   valuesList: React.ReactNode;
@@ -577,9 +581,7 @@ export default class TokenField extends Component<
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {!!prefix && (
-          <span className="text-medium mb1 py1 pr1" data-testid="input-prefix">
-            {prefix}
-          </span>
+          <PrefixContainer data-testid="input-prefix">{prefix}</PrefixContainer>
         )}
         {value.map((v, index) => (
           <TokenFieldItem key={index} isValid={validateValue(v)}>
