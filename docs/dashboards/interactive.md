@@ -1,5 +1,7 @@
 ---
 title: Interactive dashboards
+redirect_from:
+- /docs/latest/users-guide/interactive-dashboards
 ---
 
 # Interactive dashboards

@@ -1,5 +1,7 @@
 ---
 title: Charts with multiple series
+redirect_from:
+- /docs/latest/users-guide/09-multi-series-charting
 ---
 
 # Charts with multiple series

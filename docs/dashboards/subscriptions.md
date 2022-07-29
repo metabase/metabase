@@ -1,5 +1,7 @@
 ---
 title: Dashboard subscriptions
+redirect_from:
+- /docs/latest/users-guide/dashboard-subscriptions
 ---
 
 # Dashboard subscriptions
