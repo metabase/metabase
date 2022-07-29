@@ -1,5 +1,4 @@
 import {
-  sidebar,
   popover,
   restore,
   openNativeEditor,
@@ -45,20 +44,21 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByTextEnsureVisible("Baker");
   });
 
-  it("should search across multiple fields", () => {
-    cy.createDashboard({ name: "my dash" });
+  it("one filter should search across multiple fields", () => {
+    cy.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
+      // add the same question twice
+      cy.request("POST", `/api/dashboard/${id}/cards`, {
+        cardId: 2, // Orders, count
+      });
 
-    cy.visit("/collection/root");
-    cy.wait("@collection");
-    cy.findByText("my dash").click();
-    cy.wait("@collection");
+      cy.request("POST", `/api/dashboard/${id}/cards`, {
+        cardId: 2,
+      });
 
-    // add the same question twice
+      visitDashboard(id);
+    });
+
     cy.icon("pencil").click();
-    cy.get(".QueryBuilder-section .Icon-add").click();
-    cy.wait("@collection");
-    addQuestion("Orders, Count");
-    addQuestion("Orders, Count");
 
     // add a category filter
     cy.icon("filter").click();
@@ -78,7 +78,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.contains("You're editing this dashboard.").should("not.exist");
 
     // confirm that typing searches both fields
-    cy.contains("Text").click();
+    filterWidget().contains("Text").click();
 
     // After typing "Ga", you should see this name
     popover().find("input").type("Ga");
@@ -88,9 +88,15 @@ describe("scenarios > dashboard > parameters", () => {
     // Continue typing a "d" and you see "Gadget"
     popover().find("input").type("d");
     cy.wait("@dashboard");
-    popover().contains("Gadget").click();
 
-    popover().contains("Add filter").click();
+    popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+
+    cy.location("search").should("eq", "?text=Gadget");
+    cy.get(".DashCard").first().should("contain", "0");
+    cy.get(".DashCard").last().should("contain", "4,939");
   });
 
   it("should not search field for results non-exact parameter string operators", () => {
@@ -492,11 +498,6 @@ describe("scenarios > dashboard > parameters", () => {
 function selectFilter(selection, filterName) {
   selection.contains("Select…").click();
   popover().contains(filterName).click({ force: true });
-}
-
-function addQuestion(name) {
-  sidebar().contains(name).click();
-  cy.wait("@cardQuery");
 }
 
 function addCityFilterWithDefault() {
