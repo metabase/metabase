@@ -14,15 +14,15 @@ To enable dashboard subscriptions, your administrators will need to have set up 
 
 To set up a subscription to a dashboard, click on the **sharing** icon (the one-way arrow) and select **Dashboard subscriptions**.
 
-![Select dashboard subscriptions](images/dashboard-subscriptions/select-dashboard-subscription.png)
+![Select dashboard subscriptions](./images/select-dashboard-subscription.png)
 
 Metabase will slide out a sidebar on the right, with an option to set up a subscription via email or Slack:
 
-![Set up a dashboard subscription with email or slack](images/dashboard-subscriptions/email-or-slack.png)
+![Set up a dashboard subscription with email or slack](./images/email-or-slack.png)
 
 Let's say we want to email a dashboard. We'll click on the **Email it** option in the sidebar, and Metabase will give us some options:
 
-![Dashboard subscription email options](images/dashboard-subscriptions/email-options.png)
+![Dashboard subscription email options](./images/email-options.png)
 
 ## Email subscription options
 
@@ -38,7 +38,7 @@ If you've added filters to your dashboard and set default values for those filte
 
 ## Email example
 
-![Example dashboard subscription email](images/dashboard-subscriptions/example-email.png)
+![Example dashboard subscription email](./images/example-email.png)
 
 You'll notice in the email that Metabase excludes any text cards on the dashboard, and that the charts look different - Metabase reformats the charts to make them more legible in email. Additionally, tables that exceed either 10 columns or 20 rows get the rest of their results, up to 2000 rows, included as an attachment.
 
@@ -46,7 +46,7 @@ You'll notice in the email that Metabase excludes any text cards on the dashboar
 
 For Slack subscriptions, you can set up a subscription for a channel (like #general), or for a single person via their Slack username.
 
-![slack subscription options](images/dashboard-subscriptions/slack-subscription-options.png)
+![slack subscription options](./images/slack-subscription-options.png)
 
 You can specify how often Metabase sends a Slack message (hourly, daily, weekly, or monthly), and whether to send a message if the dashboard fails to return results.
 
