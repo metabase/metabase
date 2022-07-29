@@ -429,24 +429,36 @@
                                                               :email      "ann@heart.band"}]
                        Database   [{db-id        :id}        {:name "My Database"}]
                        Table      [{no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}]
+                       Field      [{field-id     :id}        {:name "Some Field" :table_id no-schema-id}]
                        Segment    [{s1-id        :id
                                     s1-eid       :entity_id} {:name       "My Segment"
                                                               :creator_id ann-id
-                                                              :table_id   no-schema-id}]]
+                                                              :table_id   no-schema-id
+                                                              :definition {:source-table no-schema-id
+                                                                           :aggregation [[:count]]
+                                                                           :filter [:< [:field field-id nil] 18]}}]]
       (testing "segment"
         (let [ser (serdes.base/extract-one "Segment" {} (select-one "Segment" [:= :id s1-id]))]
           (is (schema= {:serdes/meta                 (s/eq [{:model "Segment" :id s1-eid :label "My Segment"}])
                         :table_id                    (s/eq ["My Database" nil "Schemaless Table"])
                         :creator_id                  (s/eq "ann@heart.band")
                         :created_at                  LocalDateTime
+                        :definition                  (s/eq {:source-table ["My Database" nil "Schemaless Table"]
+                                                            :aggregation [[:count]]
+                                                            :filter ["<" [:field ["My Database" nil
+                                                                                 "Schemaless Table" "Some Field"]
+                                                                         nil] 18]})
                         (s/optional-key :updated_at) LocalDateTime
                         s/Keyword                    s/Any}
                        ser))
           (is (not (contains? ser :id)))
 
-          (testing "depend on the Table"
+          (testing "depend on the Table and any fields from the definition"
             (is (= #{[{:model "Database"   :id "My Database"}
-                      {:model "Table"      :id "Schemaless Table"}]}
+                      {:model "Table"      :id "Schemaless Table"}]
+                     [{:model "Database"   :id "My Database"}
+                      {:model "Table"      :id "Schemaless Table"}
+                      {:model "Field"      :id "Some Field"}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))
 
 (deftest pulses-test
