@@ -75,8 +75,7 @@
 }
 
 .bg-brand,
-.bg-brand-hover:hover,
-.bg-brand-active:active {
+.bg-brand-hover:hover {
   background-color: var(--color-brand);
 }
 
