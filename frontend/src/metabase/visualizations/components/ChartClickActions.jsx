@@ -274,8 +274,7 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
   const className = cx("cursor-pointer no-decoration", {
     sort: action.buttonType === "sort",
     "formatting-button": action.buttonType === "formatting",
-    "horizontal-button p1 flex flex-auto align-center text-dark text-white-hover":
-      action.buttonType === "horizontal",
+    "horizontal-button": action.buttonType === "horizontal",
     "token text-white-hover mr1": action.buttonType === "token",
   });
   if (action.url) {

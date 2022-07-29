@@ -33,7 +33,14 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
   ${({ type }) =>
     type === "horizontal" &&
     css`
+      display: flex;
+      flex: auto;
+      align-items: center;
+      padding: 0.5rem;
+      color: ${color("text-dark")};
+
       &:hover {
+        color: ${color("white")};
         background-color: ${color("brand")};
       }
     `}
