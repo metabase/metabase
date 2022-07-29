@@ -280,24 +280,35 @@
                                                               :email      "ann@heart.band"}]
                        Database   [{db-id        :id}        {:name "My Database"}]
                        Table      [{no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}]
+                       Field      [{field-id     :id}        {:name "Some Field" :table_id no-schema-id}]
                        Metric     [{m1-id        :id
                                     m1-eid       :entity_id} {:name       "My Metric"
                                                               :creator_id ann-id
-                                                              :table_id   no-schema-id}]]
+                                                              :table_id   no-schema-id
+                                                              :definition
+                                                              {:source-table no-schema-id
+                                                               :aggregation [[:sum [:field field-id nil]]]}}]]
       (testing "metrics"
         (let [ser (serdes.base/extract-one "Metric" {} (select-one "Metric" [:= :id m1-id]))]
           (is (schema= {:serdes/meta                 (s/eq [{:model "Metric" :id m1-eid :label "My Metric"}])
                         :table_id                    (s/eq ["My Database" nil "Schemaless Table"])
                         :creator_id                  (s/eq "ann@heart.band")
+                        :definition                  (s/eq {:source-table ["My Database" nil "Schemaless Table"]
+                                                            :aggregation
+                                                            [[:sum [:field ["My Database" nil
+                                                                            "Schemaless Table" "Some Field"] nil]]]})
                         :created_at                  LocalDateTime
                         (s/optional-key :updated_at) LocalDateTime
                         s/Keyword                    s/Any}
                        ser))
           (is (not (contains? ser :id)))
 
-          (testing "depend on the Table"
+          (testing "depend on the Table and any fields referenced in :definition"
             (is (= #{[{:model "Database"   :id "My Database"}
-                      {:model "Table"      :id "Schemaless Table"}]}
+                      {:model "Table"      :id "Schemaless Table"}]
+                     [{:model "Database"   :id "My Database"}
+                      {:model "Table"      :id "Schemaless Table"}
+                      {:model "Field"      :id "Some Field"}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))
 
 (deftest native-query-snippets-test

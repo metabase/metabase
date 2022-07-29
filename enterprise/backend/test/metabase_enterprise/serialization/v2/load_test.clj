@@ -4,8 +4,8 @@
             [metabase-enterprise.serialization.v2.extract :as serdes.extract]
             [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
             [metabase-enterprise.serialization.v2.load :as serdes.load]
-            [metabase.models :refer [Card Collection Database Field Pulse PulseChannel PulseChannelRecipient Segment
-                                     Table User]]
+            [metabase.models :refer [Card Collection Database Field Metric Pulse PulseChannel PulseChannelRecipient
+                                     Segment Table User]]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [toucan.db :as db]))
@@ -347,7 +347,7 @@
 (deftest segment-test
   ;; Segment.definition is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be
   ;; converted to a portable form and read back in.
-  ;; This test has a database, table and fields, that exist on both sides with different IDs, and expects a card that
+  ;; This test has a database, table and fields, that exist on both sides with different IDs, and expects a segment that
   ;; references those fields to be correctly loaded with the dest IDs.
   (testing "embedded MBQL in Segment :definition is portable"
     (let [serialized (atom nil)
@@ -420,3 +420,80 @@
                       :filter       [:< [:field (:id @field1d) nil] 18]
                       :aggregation  [[:count]]}
                      (:definition @seg1d))))))))))
+
+(deftest metric-test
+  ;; Metric.definition is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be
+  ;; converted to a portable form and read back in.
+  ;; This test has a database, table and fields, that exist on both sides with different IDs, and expects a metric
+  ;; to be correctly loaded with the dest IDs.
+  (testing "embedded MBQL in Metric :definition is portable"
+    (let [serialized (atom nil)
+          coll1s     (atom nil)
+          db1s       (atom nil)
+          table1s    (atom nil)
+          field1s    (atom nil)
+          metric1s   (atom nil)
+          user1s     (atom nil)
+          db1d       (atom nil)
+          table1d    (atom nil)
+          field1d    (atom nil)
+          user1d     (atom nil)
+          metric1d   (atom nil)
+          db2d       (atom nil)
+          table2d    (atom nil)
+          field2d    (atom nil)]
+
+
+      (ts/with-source-and-dest-dbs
+        (testing "serializing the original database, table, field and card"
+          (ts/with-source-db
+            (reset! coll1s   (ts/create! Collection :name "pop! minis"))
+            (reset! db1s     (ts/create! Database :name "my-db"))
+            (reset! table1s  (ts/create! Table :name "orders" :db_id (:id @db1s)))
+            (reset! field1s  (ts/create! Field :name "subtotal"    :table_id (:id @table1s)))
+            (reset! user1s   (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+            (reset! metric1s (ts/create! Metric :table_id (:id @table1s) :name "Revenue"
+                                         :definition {:source-table (:id @table1s)
+                                                      :aggregation [[:sum [:field (:id @field1s) nil]]]}
+                                         :creator_id (:id @user1s)))
+            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
+
+        (testing "exported form is properly converted"
+          (is (= {:source-table ["my-db" nil "orders"]
+                  :aggregation [[:sum [:field ["my-db" nil "orders" "subtotal"] nil]]]}
+                 (-> @serialized
+                     (by-model "Metric")
+                     first
+                     :definition))))
+
+        (testing "deserializing adjusts the IDs properly"
+          (ts/with-dest-db
+            ;; A different database and tables, so the IDs don't match.
+            (reset! db2d    (ts/create! Database :name "other-db"))
+            (reset! table2d (ts/create! Table    :name "customers" :db_id (:id @db2d)))
+            (reset! field2d (ts/create! Field    :name "age" :table_id (:id @table2d)))
+            (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+
+            ;; Load the serialized content.
+            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+
+            ;; Fetch the relevant bits
+            (reset! db1d     (db/select-one Database :name "my-db"))
+            (reset! table1d  (db/select-one Table :name "orders"))
+            (reset! field1d  (db/select-one Field :table_id (:id @table1d) :name "subtotal"))
+            (reset! metric1d (db/select-one Metric :name "Revenue"))
+
+            (testing "the main Database, Table, and Field have different IDs now"
+              (is (not= (:id @db1s) (:id @db1d)))
+              (is (not= (:id @table1s) (:id @table1d)))
+              (is (not= (:id @field1s) (:id @field1d))))
+
+            (is (some? @metric1s))
+            (is (some? @metric1d))
+            ;(clojure.pprint/pprint @metric1d)
+            (is (not= (:definition @metric1s)
+                      (:definition @metric1d)))
+            (testing "the Metric's definition is based on the new Database, Table, and Field IDs"
+              (is (= {:source-table (:id @table1d)
+                      :aggregation  [[:sum [:field (:id @field1d) nil]]]}
+                     (:definition @metric1d))))))))))
