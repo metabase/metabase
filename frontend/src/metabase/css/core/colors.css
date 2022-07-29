@@ -74,8 +74,7 @@
   background-color: color-mod(var(--color-brand) blackness(12%));
 }
 
-.bg-brand,
-.bg-brand-hover:hover {
+.bg-brand {
   background-color: var(--color-brand);
 }
 
