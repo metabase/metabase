@@ -277,9 +277,7 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
       action.buttonType === "formatting",
     "horizontal-button p1 flex flex-auto align-center text-dark text-white-hover":
       action.buttonType === "horizontal",
-    "text-small token token-blue text-white-hover mr1":
-      action.buttonType === "token",
-    "text-small text-white-hover mr1": action.buttonType === "token-filter",
+    "token token-blue text-white-hover mr1": action.buttonType === "token",
   });
   if (action.url) {
     return (
