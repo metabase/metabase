@@ -27,6 +27,7 @@ import AdminContentTable from "metabase/components/AdminContentTable";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 
 import { AddRow } from "./AddRow";
+import { DeleteModalTrigger } from "./GroupsListing.styled";
 
 // ------------------------------------------------------------ Add Group ------------------------------------------------------------
 
@@ -94,8 +95,7 @@ function ActionsPopover({ group, onEditGroupClicked, onDeleteGroupClicked }) {
           {t`Edit Name`}
         </li>
         <ModalWithTrigger
-          as="li"
-          triggerClasses="py1 px2 bg-brand-hover text-white-hover cursor-pointer text-error"
+          as={DeleteModalTrigger}
           triggerElement={t`Remove Group`}
         >
           <DeleteGroupModal group={group} onConfirm={onDeleteGroupClicked} />
