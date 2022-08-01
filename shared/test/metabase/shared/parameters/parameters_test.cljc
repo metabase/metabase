@@ -226,40 +226,4 @@
       ;; Don't strip square brackets that are in parameter values
       "{{foo}}"
       {"foo" {:type :string/= :value "[[bar]]"}}
-      "\\[\\[bar\\]\\]"
-
-      "[[{{foo}}]"
-      {"foo" {:type :string/= :value "bar]"}}
-      "[[bar\\]]"
-
-      ;; Escaping weirdness (brackets should be able to be escaped by backslashes, unless they are themselves escaped)
-      "[[{{foo}}\\]]"
-      {}
-      "[[{{foo}}\\]]"
-
-      "[[{{foo}}]\\]"
-      {}
-      "[[{{foo}}]\\]"
-
-      "\\[[{{foo}}]]"
-      {}
-      "\\[[{{foo}}]]"
-
-      "[\\[{{foo}}]]"
-      {}
-      "[\\[{{foo}}]]"
-
-      "\\\\[[{{foo}}]]"
-      {}
-      ""
-
-      "\\\\\\[[{{foo}}]]"
-      {}
-      "\\\\\\[[{{foo}}]]"
-
-      "[[{{foo}}\\\\]]"
-      {}
-      ""
-      "[[{{foo}}\\\\\\]]"
-      {}
-      "[[{{foo}}\\\\\\]]")))
+      "\\[\\[bar\\]\\]")))
