@@ -98,8 +98,8 @@ const SpecificDatePicker: React.FC<Props> = props => {
       {calendar && (
         <ExpandingContent isOpen={showCalendar}>
           <Calendar
-            selected={date as Moment}
-            initial={(date as Moment) || moment()}
+            selected={date}
+            initial={date || moment()}
             onChange={value => onChange(value, hours, minutes)}
             isRangePicker={false}
             selectAll={selectAll}
