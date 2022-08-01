@@ -69,12 +69,29 @@ const emptyCategoryField = new Field({
   metadata,
 });
 
+const nullCategoryField = new Field({
+  database_type: "test",
+  semantic_type: "type/Category",
+  effective_type: "type/Text",
+  base_type: "type/Text",
+  table_id: 8,
+  name: "null_category_field",
+  has_field_values: "list",
+  values: [[null], [undefined]],
+  dimensions: {},
+  dimension_options: [],
+  id: 140,
+  metadata,
+});
+
 // @ts-ignore
 metadata.fields[smallCategoryField.id] = smallCategoryField;
 // @ts-ignore
 metadata.fields[largeCategoryField.id] = largeCategoryField;
 // @ts-ignore
 metadata.fields[emptyCategoryField.id] = emptyCategoryField;
+// @ts-ignore
+metadata.fields[nullCategoryField.id] = nullCategoryField;
 
 const card = {
   dataset_query: {
@@ -93,8 +110,13 @@ const query = question.query() as StructuredQuery;
 const smallDimension = smallCategoryField.dimension();
 const largeDimension = largeCategoryField.dimension();
 const emptyDimension = emptyCategoryField.dimension();
+const nullDimension = nullCategoryField.dimension();
 
 describe("InlineCategoryPicker", () => {
+  beforeEach(() => {
+    console.error = jest.fn();
+    console.warn = jest.fn();
+  });
   it("should render an inline category picker", () => {
     const testFilter = new Filter(
       ["=", ["field", smallCategoryField.id, null], undefined],
@@ -224,8 +246,8 @@ describe("InlineCategoryPicker", () => {
     );
 
     expect(screen.queryByTestId("category-picker")).not.toBeInTheDocument();
-    // should render general purpose picker instead
-    screen.getByTestId("select-button");
+    // should render large option picker
+    expect(screen.getByTestId("large-category-picker")).toBeInTheDocument();
   });
 
   it("should load existing filter selections", () => {
@@ -340,7 +362,7 @@ describe("InlineCategoryPicker", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("should fall back to a bulk (popover) picker if there are many options", () => {
+  it("should render a large category picker if there are many options", () => {
     const testFilter = new Filter(
       ["=", ["field", largeCategoryField.id, null], undefined],
       null,
@@ -363,7 +385,62 @@ describe("InlineCategoryPicker", () => {
     );
 
     expect(screen.queryByTestId("category-picker")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("select-button")).toBeInTheDocument();
+    expect(screen.getByTestId("large-category-picker")).toBeInTheDocument();
+  });
+
+  it("should render a large category picker for no valid options", () => {
+    // the small category picker would just render no checkboxes which looks funny
+    const testFilter = new Filter(
+      ["=", ["field", nullCategoryField.id, null], undefined],
+      null,
+      query,
+    );
+    const changeSpy = jest.fn();
+    const fetchSpy = jest.fn();
+
+    render(
+      <InlineCategoryPickerComponent
+        query={query}
+        filter={testFilter}
+        newFilter={testFilter}
+        onChange={changeSpy}
+        fieldValues={nullCategoryField.values}
+        fetchFieldValues={fetchSpy}
+        dimension={nullDimension}
+        onClear={changeSpy}
+      />,
+    );
+
+    expect(screen.queryByTestId("category-picker")).not.toBeInTheDocument();
+    expect(screen.getByTestId("large-category-picker")).toBeInTheDocument();
+  });
+
+  it("should show field options inline for category fields with many options", () => {
+    const testFilter = new Filter(
+      ["=", ["field", largeCategoryField.id, null], "Raphael 2", "Donatello 3"],
+      null,
+      query,
+    );
+    const changeSpy = jest.fn();
+    const fetchSpy = jest.fn();
+
+    render(
+      <InlineCategoryPickerComponent
+        query={query}
+        filter={testFilter}
+        newFilter={testFilter}
+        onChange={changeSpy}
+        fieldValues={largeCategoryField.values}
+        fetchFieldValues={fetchSpy}
+        dimension={largeDimension}
+        onClear={changeSpy}
+      />,
+    );
+
+    expect(screen.queryByTestId("category-picker")).not.toBeInTheDocument();
+    expect(screen.getByTestId("large-category-picker")).toBeInTheDocument();
+    expect(screen.getByText("Raphael 2")).toBeInTheDocument();
+    expect(screen.getByText("Donatello 3")).toBeInTheDocument();
   });
 
   const fieldSizes = [
