@@ -30,7 +30,10 @@ function getFilterValueSerializer(func: (...args: any[]) => string) {
   };
 }
 
-const serializersByOperatorName: Record<string, (...args: any[]) => string> = {
+const serializersByOperatorName: Record<
+  string,
+  (...args: any[]) => string | null
+> = {
   previous: getFilterValueSerializer((value, unit, options = {}) => {
     if (options.startingFrom) {
       const [fromValue, fromUnit] = options.startingFrom;
@@ -52,6 +55,9 @@ const serializersByOperatorName: Record<string, (...args: any[]) => string> = {
   between: getFilterValueSerializer((from, to) => `${from}~${to}`),
   exclude: (filter: any[]) => {
     const [_op, _field, ...values] = filter;
+    if (values.length === 0) {
+      return null;
+    }
     const operator = getExcludeOperator(filter);
     if (!operator) {
       return "";
