@@ -36,7 +36,7 @@ For emails, we can:
 - **Skip updates without results**. If there are no results, we can tell Metabase to skip sending the email.
 - **Attach results**. Tell Metabase if it should also attach results to the email (which will include up to 2000 rows of data). You can choose between CSV and XLSX file formats.
 
-If you've added filters to your dashboard and set default values for those filters, Metabase will apply those default values to your subscriptions, filtering the results of all questions that are connected to those filters when the subscriptions are sent. To learn more, check out [dashboard filters](https://www.metabase.com/docs/latest/users-guide/08-dashboard-filters.html).
+If you've added filters to your dashboard and set default values for those filters, Metabase will apply those default values to your subscriptions, filtering the results of all questions that are connected to those filters when the subscriptions are sent. To learn more, check out [dashboard filters](./filters.md).
 
 ## Email example
 

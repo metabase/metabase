@@ -2,6 +2,8 @@
 title: Dashboards overview
 ---
 
+# Dashboards overview
+
 ![Example dashboard](./images/dashboard.png)
 
 ## [Introduction to dashboards](./introduction)
