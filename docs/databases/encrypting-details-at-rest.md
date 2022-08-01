@@ -1,5 +1,7 @@
 ---
 title: Encrypting your database connection details at rest
+redirect_from:
+  - /docs/latest/operations-guide/encrypting-database-details-at-rest
 ---
 
 # Encrypting your database connection details at rest

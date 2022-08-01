@@ -1,5 +1,7 @@
 ---
 title: Adding and managing databases
+redirect_from:
+  - /docs/latest/administration-guide/01-managing-databases
 ---
 
 # Adding and managing databases

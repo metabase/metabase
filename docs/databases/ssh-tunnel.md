@@ -1,5 +1,7 @@
 ---
 title: SSH tunneling in Metabase
+redirect_from:
+  - /docs/latest/administration-guide/ssh-tunnel-for-database-connections
 ---
 
 # SSH tunneling in Metabase

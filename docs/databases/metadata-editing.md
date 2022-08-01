@@ -1,5 +1,7 @@
 ---
 title: The Data Model page
+redirect_from:
+  - /docs/latest/administration-guide/03-metadata-editing
 ---
 
 # The Data Model page

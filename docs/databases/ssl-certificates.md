@@ -1,5 +1,7 @@
 ---
 title: Securing database connections using an SSL certificate
+redirect_from:
+  - /docs/latest/administration-guide/secure-database-connections-with-ssl-certificates.md
 ---
 
 ## Securing database connections using an SSL certificate

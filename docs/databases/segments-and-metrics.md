@@ -1,5 +1,7 @@
 ---
 title: Creating custom segments and metrics
+redirect_from:
+  - /docs/latest/administration-guide/07-segments-and-metrics
 ---
 
 # Creating custom segments and metrics
