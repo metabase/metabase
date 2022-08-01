@@ -1,6 +1,6 @@
-```
+---
 title: Dashboards overview
-```
+---
 
 # Dashboards overview
 
