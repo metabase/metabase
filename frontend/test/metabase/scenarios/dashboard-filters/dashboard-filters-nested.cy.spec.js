@@ -5,7 +5,12 @@ import {
   editDashboard,
   saveDashboard,
   visitDashboard,
+  setFilter,
 } from "__support__/e2e/helpers";
+
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > filters > nested questions", () => {
   beforeEach(() => {
@@ -97,5 +102,32 @@ describe("scenarios > dashboard > filters > nested questions", () => {
       cy.findByText(/Vendor/i);
       cy.findByText(/Category/i).click();
     });
+  });
+
+  it("should be possible to use ID filter on a nested question (metabase#17212)", () => {
+    const baseQuestion = {
+      query: { "source-table": PRODUCTS_ID },
+    };
+
+    cy.createQuestion(baseQuestion).then(({ body: { id: baseQuestionId } }) => {
+      const questionDetails = {
+        query: { "source-table": `card__${baseQuestionId}` },
+      };
+
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: { dashboard_id } }) => {
+          visitDashboard(dashboard_id);
+        },
+      );
+    });
+
+    editDashboard();
+
+    setFilter("ID");
+
+    cy.findByText("No valid fields").should("not.exist");
+
+    cy.findByText("Select…").click();
+    popover().contains("ID").click();
   });
 });
