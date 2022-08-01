@@ -1,6 +1,8 @@
 import {
   popover,
   restore,
+  editDashboard,
+  saveDashboard,
   visitDashboard,
   filterWidget,
 } from "__support__/e2e/helpers";
@@ -305,76 +307,68 @@ describe("scenarios > dashboard > parameters", () => {
     });
   });
 
-  // TODO: Completely rewrite, and put together with other nested question reproductions
-  //  - This repro is using the old params API
-  //  - It's tightly connected to metabase#12985 so put them together if possible
-  it("should allow applying multiple values to filter connected to nested question (metabase#18113)", () => {
+  it("should allow applying multiple values to filter connected to nested question (metabase#13186, metabase#18113)", () => {
     const filter = {
-      id: "c2967a17",
-      name: "Category",
-      slug: "category",
-      type: "category",
+      name: "Text Filter",
+      slug: "text",
+      id: "27454068",
+      type: "string/=",
+      sectionId: "string",
     };
 
     cy.createNativeQuestion({
-      name: "Products SQL",
+      name: "18113 Source",
       native: {
-        query: "select * from products",
-        "template-tags": {},
+        query: "select * from products limit 5",
       },
       display: "table",
-    }).then(({ body: { id: card_id } }) => {
-      cy.createQuestion({
-        name: "Products use saved SQL question",
+    }).then(({ body: { id: Q1_ID } }) => {
+      const nestedQuestion = {
+        name: "18113 Nested",
         query: {
-          "source-table": `card__${card_id}`,
-          aggregation: [],
-          breakout: [],
+          "source-table": `card__${Q1_ID}`,
         },
-      }).then(({ body: { id: card_id } }) => {
-        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
-          // Add previously created question to the dashboard
-          cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
-            cardId: card_id,
-          }).then(({ body: { id } }) => {
-            cy.addFilterToDashboard({ filter, dashboard_id });
-            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-              cards: [
-                {
-                  id,
-                  card_id,
-                  row: 0,
-                  col: 0,
-                  sizeX: 8,
-                  sizeY: 6,
-                  parameter_mappings: [
-                    {
-                      card_id: 5,
-                      parameter_id: "c2967a17",
-                      target: [
-                        "dimension",
-                        ["field", "TITLE", { "base-type": "type/Text" }],
-                      ],
-                    },
-                  ],
-                },
-              ],
-            });
-          });
+      };
 
-          visitDashboard(dashboard_id);
-          cy.wait("@collection");
-        });
+      const dashboardDetails = {
+        name: "Nested Filters",
+        parameters: [filter],
+      };
+
+      cy.createQuestionAndDashboard({
+        questionDetails: nestedQuestion,
+        dashboardDetails,
+      }).then(({ body: { dashboard_id } }) => {
+        visitDashboard(dashboard_id);
       });
     });
 
-    cy.findByText("Category").click();
-    cy.wait("@dashboard");
+    editDashboard();
+    cy.findByText(filter.name).find(".Icon-gear").click();
+    cy.findByText("Select…").click();
+
+    // This part reproduces metabase#13186
+    cy.log("Reported failing in v0.36.4 (`Category` is missing)");
+    popover().within(() => {
+      cy.findByText(/Ean/i);
+      cy.findByText(/Title/i);
+      cy.findByText(/Vendor/i);
+      cy.findByText(/Category/i).click();
+    });
+
+    saveDashboard();
+
+    // Add multiple values
+    filterWidget().click();
     cy.findByPlaceholderText("Enter some text").type(
-      "Small Marble Hat{enter}Enormous Marble Wallet{enter}",
+      "Gizmo{enter}Gadget{enter}",
     );
     cy.button("Add filter").click();
+
+    cy.findByText("2 selections");
     cy.get("tbody > tr").should("have.length", 2);
+
+    cy.findByText("Doohickey").should("not.exist");
   });
 
   describe("when the user does not have self-service data permissions", () => {
