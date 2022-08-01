@@ -111,7 +111,7 @@ const OptionsContent: React.FC<OptionsContentProps> = ({
   const includeCurrent = !!options["include-current"];
   const currentString = getCurrentString(filter);
   const database = filter.query().database();
-  const supportsExpressions = database?.hasFeature("expressions");
+  const supportsStartingFromFilters = database?.supportsExpressions();
 
   const handleClickOnStartingFrom = () => {
     setOptionsVisible(false);
@@ -130,7 +130,7 @@ const OptionsContent: React.FC<OptionsContentProps> = ({
 
   return (
     <OptionsContainer>
-      {supportsExpressions && (
+      {supportsStartingFromFilters && (
         <OptionButton
           icon="arrow_left_to_line"
           primaryColor={primaryColor}
