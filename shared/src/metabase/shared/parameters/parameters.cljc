@@ -185,10 +185,10 @@
 
 ;; Lots of lookahead/lookbehind in these regexes to handle escaping; see tests for examples
 (def ^:private optional-block-regex
-  #"(?<!\\)(?>\\\\)*\[\[.*(?<!\\)(?>\\\\)*\]\]")
+  #"(?<!\\)(?:\\\\)*\[\[.*(?<!\\)(?:\\\\)*\]\]")
 
 (def ^:private non-optional-block-regex
-  #"(?<!\\)(?>\\\\)*\[\[(.*)(?<!\\)(?>\\\\)*\]\]")
+  #"(?<!\\)(?:\\\\)*\[\[(.*)(?<!\\)(?:\\\\)*\]\]")
 
 (defn- strip-optional-blocks
   "Removes any [[optional]] blocks from individual strings in `split-text`, which are blocks that have no parameters
