@@ -274,6 +274,10 @@ export default class Dimension {
     );
   }
 
+  isExpression(): boolean {
+    return isExpressionDimension(this);
+  }
+
   foreign(dimension: Dimension): FieldDimension {
     return null;
   }
