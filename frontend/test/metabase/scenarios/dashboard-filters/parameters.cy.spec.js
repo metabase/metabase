@@ -307,7 +307,7 @@ describe("scenarios > dashboard > parameters", () => {
     });
   });
 
-  it("should allow applying multiple values to filter connected to nested question (metabase#13186, metabase#18113)", () => {
+  it("should allow applying multiple values to filter connected to nested question (metabase#12614, metabase#13186, metabase#18113)", () => {
     const filter = {
       name: "Text Filter",
       slug: "text",
@@ -364,11 +364,33 @@ describe("scenarios > dashboard > parameters", () => {
       "Gizmo{enter}Gadget{enter}",
     );
     cy.button("Add filter").click();
+    cy.wait("@dashcardQuery2");
 
     cy.findByText("2 selections");
     cy.get("tbody > tr").should("have.length", 2);
 
     cy.findByText("Doohickey").should("not.exist");
+
+    cy.reload();
+    cy.wait("@dashcardQuery2");
+
+    cy.location("search").should("eq", "?text=Gizmo&text=Gadget");
+    cy.findByText("2 selections");
+
+    editDashboard();
+    cy.findByText(filter.name).find(".Icon-gear").click();
+    cy.findByText("Column to filter on")
+      .parent()
+      .contains(/Category/i)
+      .click();
+
+    // This part reproduces metabase#12614
+    popover().within(() => {
+      cy.findByText(/Ean/i);
+      cy.findByText(/Title/i);
+      cy.findByText(/Vendor/i);
+      cy.findByText(/Category/i).click();
+    });
   });
 
   describe("when the user does not have self-service data permissions", () => {
