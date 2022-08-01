@@ -49,8 +49,8 @@
             :task_name    (:task task)
             :duration     (:duration task)
             :task_details (json/generate-string task-details)
-            :started_at   (u.date/format-date-rfc3339 (:started_at task))
-            :ended_at     (u.date/format-date-rfc3339 (:ended_at task))}
+            :started_at   (u.date/format-rfc3339 (:started_at task))
+            :ended_at     (u.date/format-rfc3339 (:ended_at task))}
            (when-let [db-id (:db_id task)]
              {:db_id     db-id
               :db_engine (db/select-one-field :engine Database :id db-id)}))))

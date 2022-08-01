@@ -2,7 +2,6 @@
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
             [clojure.walk :as walk]
-            [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.models.setting :as setting :refer [Setting]]
             [metabase.public-settings :as public-settings]
@@ -11,8 +10,7 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [toucan.db :as db])
-  (:import [java.time ZonedDateTime]
-           java.util.LinkedHashMap))
+  (:import java.util.LinkedHashMap))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -73,7 +71,9 @@
          events)))
 
 (defn valid-datetime-for-snowplow?
-  "Check if a date use the format yyyy-mm-dd'T'hh:mm:ss.SSSXXX which is a RFC3339 format."
+  "Check if a datetime string has the format that snowplow accepts.
+  The string should have the format yyyy-mm-dd'T'hh:mm:ss.SSXXX which is a RFC3339 format.
+  Reference: https://json-schema.org/understanding-json-schema/reference/string.html#dates-and-times"
   [t]
   (try
     (java.time.LocalDate/parse
@@ -178,7 +178,7 @@
           (db/delete! Setting :key "instance-creation")
           (let [first-user-creation (:min (db/select-one ['User [:%min.date_joined :min]]))
                 instance-creation   (snowplow/instance-creation)]
-            (is (= (u.date/format-date-rfc3339 first-user-creation)
+            (is (= (u.date/format-rfc3339 first-user-creation)
                    instance-creation)))))
       (finally
         (if original-value

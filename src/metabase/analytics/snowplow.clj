@@ -75,7 +75,7 @@
                   (let [value (or (first-user-creation) (t/offset-date-time))]
                     (setting/set-value-of-type! :timestamp :instance-creation value)
                     (track-event! ::new-instance-created)))
-                (u.date/format-date-rfc3339 (setting/get-value-of-type :timestamp :instance-creation))))
+                (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation))))
 
 (def ^:private emitter
   "Returns an instance of a Snowplow emitter"
@@ -167,7 +167,7 @@
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector
   is available."
   [event-kw & [user-id data]]
-  (when (and (public-settings/anon-tracking-enabled) (snowplow-available))
+  (when (snowplow-enabled)
     (try
       (let [schema (event->schema event-kw)
             ^Unstructured$Builder builder (-> (. Unstructured builder)
