@@ -47,12 +47,12 @@ const Bookmarks = createEntity({
   },
   reducer: (state = {}, { type, payload, error }) => {
     if (type === Questions.actionTypes.UPDATE && payload?.object) {
-      const { archived, id, name } = payload.object;
+      const { archived, dataset, id, name } = payload.object;
       const key = `card-${id}`;
       if (archived) {
         return dissoc(state, key);
       } else {
-        return updateIn(state, [key], item => ({ ...item, name }));
+        return updateIn(state, [key], item => ({ ...item, dataset, name }));
       }
     }
 

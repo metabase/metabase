@@ -1,96 +1,6 @@
-export const DASHBOARD_SQL_TEXT_FILTERS = {
-  Dropdown: {
-    sqlFilter: "string/=",
-    value: "Gizmo",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  "Is not": {
-    sqlFilter: "string/!=",
-    value: "Gadget",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  Contains: {
-    sqlFilter: "string/contains",
-    value: "oo",
-    representativeResult: "Small Marble Shoes",
-  },
-  "Does not contain": {
-    sqlFilter: "string/does-not-contain",
-    value: "oo",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  "Starts with": {
-    sqlFilter: "string/starts-with",
-    value: "G",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  "Ends with": {
-    sqlFilter: "string/ends-with",
-    value: "y",
-    representativeResult: "Small Marble Shoes",
-  },
-};
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-export const DASHBOARD_SQL_NUMBER_FILTERS = {
-  "Equal to": {
-    sqlFilter: "number/=",
-    value: "3.8",
-    representativeResult: "Small Marble Hat",
-  },
-  "Not equal to": {
-    sqlFilter: "number/!=",
-    value: "2.07",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  Between: {
-    sqlFilter: "number/between",
-    value: ["3", "4"],
-    representativeResult: "Small Marble Hat",
-  },
-  "Greater than or equal to": {
-    sqlFilter: "number/>=",
-    value: "4.3",
-    representativeResult: "Aerodynamic Linen Coat",
-  },
-  "Less than or equal to": {
-    sqlFilter: "number/<=",
-    value: "3",
-    representativeResult: "Enormous Aluminum Shirt",
-  },
-};
-
-export const DASHBOARD_SQL_LOCATION_FILTERS = {
-  Dropdown: {
-    sqlFilter: "string/=",
-    value: "Rye",
-    representativeResult: "Arnold Adams",
-  },
-  "Is not": {
-    sqlFilter: "string/!=",
-    value: "Rye",
-    representativeResult: "Hudson Borer",
-  },
-  Contains: {
-    sqlFilter: "string/contains",
-    value: "oo",
-    representativeResult: "Hudson Borer",
-  },
-  "Does not contain": {
-    sqlFilter: "string/does-not-contain",
-    value: "oo",
-    representativeResult: "Domenica Williamson",
-  },
-  "Starts with": {
-    sqlFilter: "string/starts-with",
-    value: "W",
-    representativeResult: "Hudson Borer",
-  },
-  "Ends with": {
-    sqlFilter: "string/ends-with",
-    value: "g",
-    representativeResult: "Aracely Jenkins",
-  },
-};
+const { PEOPLE } = SAMPLE_DATABASE;
 
 export const DASHBOARD_SQL_DATE_FILTERS = {
   "Month and Year": {
@@ -133,5 +43,70 @@ export const DASHBOARD_SQL_DATE_FILTERS = {
       timeBucket: "years",
     },
     representativeResult: "Hudson Borer",
+  },
+};
+
+export const questionDetails = {
+  name: "SQL with Field Filters",
+  native: {
+    query:
+      "  select PEOPLE.NAME, PEOPLE.CREATED_AT from people where true\n  [[AND {{monthyear}}]]\n  [[AND {{quarteryear}}]]\n  [[AND {{single}}]]\n  [[AND {{range}}]]\n  [[AND {{relative}}]]\n  [[AND {{date}}]]\n  limit 10",
+    "template-tags": {
+      monthyear: {
+        default: null,
+        dimension: ["field", PEOPLE.CREATED_AT, null],
+        "display-name": "Month and Year",
+        id: "5e40619a-34ff-426d-a5b8-251defe355e5",
+        name: "monthyear",
+        type: "dimension",
+        "widget-type": "date/month-year",
+      },
+      quarteryear: {
+        default: null,
+        dimension: ["field", PEOPLE.CREATED_AT, null],
+        "display-name": "Quarter and Year",
+        id: "1f4ddbaf-e071-7be3-ce5d-fdc5b4f62ab9",
+        name: "quarteryear",
+        type: "dimension",
+        "widget-type": "date/quarter-year",
+      },
+      single: {
+        default: null,
+        dimension: ["field", PEOPLE.CREATED_AT, null],
+        "display-name": "Single Date",
+        id: "726fd574-ed18-5b06-4d9d-4f901ef3378a",
+        name: "single",
+        type: "dimension",
+        "widget-type": "date/single",
+      },
+      range: {
+        default: null,
+        dimension: ["field", PEOPLE.CREATED_AT, null],
+        "display-name": "Date Range",
+        id: "f4ed832a-8882-d25a-1517-95a7ac478660",
+        name: "range",
+        type: "dimension",
+        "widget-type": "date/range",
+      },
+      relative: {
+        default: null,
+        dimension: ["field", PEOPLE.CREATED_AT, null],
+        "display-name": "Relative Date",
+        id: "4a6c70c8-8b39-7058-5b4e-7a7ede920fca",
+        name: "relative",
+        type: "dimension",
+        "widget-type": "date/relative",
+      },
+
+      date: {
+        default: null,
+        dimension: ["field", PEOPLE.CREATED_AT, null],
+        "display-name": "All Options",
+        id: "04171d50-5901-edaf-fba1-9b14211e965e",
+        name: "date",
+        type: "dimension",
+        "widget-type": "date/all-options",
+      },
+    },
   },
 };

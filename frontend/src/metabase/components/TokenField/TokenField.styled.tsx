@@ -1,33 +1,27 @@
 import styled from "@emotion/styled";
-import { color, alpha } from "metabase/lib/colors";
-import { breakpointMinHeightMedium } from "metabase/styled-components/theme";
 
-export const TokenFieldItem = styled.li<{
-  isValid: boolean;
-}>`
+import { color } from "metabase/lib/colors";
+
+import {
+  space,
+  breakpointMinHeightMedium,
+} from "metabase/styled-components/theme";
+
+export const TokenFieldContainer = styled.ul`
   display: flex;
-  align-items: center;
-  margin: 0.25rem;
-  padding: 0.5rem 0.3rem;
-  ${breakpointMinHeightMedium} {
-    padding: 0.75rem 0.5rem;
-  }
-  border-radius: 0.5rem;
-  color: ${({ isValid }) => (isValid ? color("brand") : color("error"))};
-  background-color: ${alpha("brand", 0.2)};
-`;
+  flex-wrap: wrap;
+  padding: ${space(0)};
+  gap: ${space(0)};
+  font-weight: bold;
+  cursor: pointer;
 
-export const TokenFieldAddon = styled.a<{
-  isValid: boolean;
-}>`
-  display: flex;
-  align-items: center;
-  padding: 0 0.5rem;
-  color: ${({ isValid }) => (isValid ? "" : color("error"))};
+  max-height: 130px;
 
-  &:hover {
-    color: ${color("error")};
-  }
+  background-color: ${color("white")};
+  overflow-x: auto;
+  overflow-y: auto;
+  border-radius: ${space(1)};
+  border: 1px solid ${color("border")};
 `;
 
 export const TokenInputItem = styled.li`
@@ -36,9 +30,14 @@ export const TokenInputItem = styled.li`
   align-items: center;
   margin-right: 0.5rem;
   padding: 0.5rem;
-
-  height: 38px;
+  height: 30px;
   ${breakpointMinHeightMedium} {
-    height: 54px;
+    height: 46px;
   }
+`;
+
+export const PrefixContainer = styled.div`
+  display: flex;
+  align-items: center;
+  color: ${color("text-medium")};
 `;

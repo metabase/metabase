@@ -178,12 +178,18 @@ const QuestionActions = ({
         action: turnDatasetIntoQuestion,
       });
     }
+  }
+
+  if (!question.query().readOnly()) {
     extraButtons.push({
       title: t`Duplicate`,
       icon: "segment",
       action: () => onOpenModal(MODAL_TYPES.CLONE),
       testId: CLONE_TESTID,
     });
+  }
+
+  if (canWrite) {
     extraButtons.push({
       title: t`Archive`,
       icon: "view_archive",

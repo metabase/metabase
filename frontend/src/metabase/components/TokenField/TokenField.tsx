@@ -6,11 +6,7 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import {
-  TokenFieldAddon,
-  TokenFieldItem,
-  TokenInputItem,
-} from "./TokenField.styled";
+import { TokenFieldAddon, TokenFieldItem } from "../TokenFieldItem";
 
 import {
   KEYCODE_ESCAPE,
@@ -22,6 +18,12 @@ import {
   KEY_COMMA,
 } from "metabase/lib/keyboard";
 import { isObscured } from "metabase/lib/dom";
+
+import {
+  TokenInputItem,
+  TokenFieldContainer,
+  PrefixContainer,
+} from "./TokenField.styled";
 
 export type LayoutRendererArgs = {
   valuesList: React.ReactNode;
@@ -541,7 +543,8 @@ export default class TokenField extends Component<
       selectedOptionValue,
     } = this.state;
 
-    if (!multi && isFocused) {
+    // for non-multi fields, keep the value in the input
+    if (!multi) {
       inputValue = inputValue || value[0];
       value = [];
     }
@@ -551,7 +554,8 @@ export default class TokenField extends Component<
       value.length > 0 &&
       updateOnInputChange &&
       parseFreeformValue &&
-      value[value.length - 1] === parseFreeformValue(inputValue)
+      value[value.length - 1] === parseFreeformValue(inputValue) &&
+      multi
     ) {
       if (isFocused) {
         // if focused, don't render the last value
@@ -574,25 +578,16 @@ export default class TokenField extends Component<
 
     const isControlledInput = !!this.onInputChange;
     const valuesList = (
-      <ul
-        className={cx(
-          className,
-          "p0 flex align-center flex-wrap bg-white scroll-x scroll-y",
-        )}
-        style={{ maxHeight: 130, ...style }}
+      <TokenFieldContainer
+        style={style}
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {!!prefix && (
-          <span className="text-medium mb1 py1 pr1" data-testid="input-prefix">
-            {prefix}
-          </span>
+          <PrefixContainer data-testid="input-prefix">{prefix}</PrefixContainer>
         )}
         {value.map((v, index) => (
           <TokenFieldItem key={index} isValid={validateValue(v)}>
-            <span
-              style={{ ...defaultStyleValue, ...valueStyle }}
-              className={multi ? "pl1 pr0" : "px1"}
-            >
+            <span style={{ ...defaultStyleValue, ...valueStyle }}>
               {valueRenderer(v)}
             </span>
             {multi && (
@@ -628,7 +623,7 @@ export default class TokenField extends Component<
             />
           </TokenInputItem>
         )}
-      </ul>
+      </TokenFieldContainer>
     );
 
     const optionsList =

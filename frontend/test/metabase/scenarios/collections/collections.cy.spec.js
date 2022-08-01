@@ -219,7 +219,7 @@ describe("scenarios > collection defaults", () => {
       cy.findByText("Orders");
     });
 
-    describe.skip("nested collections with revoked parent access", () => {
+    describe("nested collections with revoked parent access", () => {
       const { first_name, last_name } = nocollection;
       const revokedUsersPersonalCollectionName = `${first_name} ${last_name}'s Personal Collection`;
 
@@ -280,7 +280,7 @@ describe("scenarios > collection defaults", () => {
         // Click to choose which collection should this question be saved to
         cy.findByText(revokedUsersPersonalCollectionName).click();
         popover().within(() => {
-          cy.findByText(/Our analytics/i);
+          cy.findByText(/Collections/i);
           cy.findByText(/My personal collection/i);
           cy.findByText("Parent").should("not.exist");
           cy.log("Reported failing from v0.34.3");
