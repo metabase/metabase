@@ -4,7 +4,7 @@ title: Dashboard filters
 
 # Dashboard filters
 
-![Dashboard Filters](images/filters.png)
+![Dashboard Filters](./images/filters.png)
 
 Have you ever found yourself in a situation where it seems like you need to create nearly identical copies of the same dashboard, with just one different variable? Maybe you have an Earnings dashboard, but you want to see the data for each city your business is in, or maybe you have a KPI dashboard that you want to see broken out by month.
 
@@ -14,7 +14,7 @@ Instead of creating duplicate dashboards, you can use dashboard filters to creat
 
 To add a filter to a dashboard, first click the **pencil icon** to enter dashboard editing mode, then click the **Add a Filter** button that appears in the top-right.
 
-![Add a Filter](images/add-filter.png)
+![Add a Filter](./images/add-filter.png)
 
 You can choose from a number of filter types:
 
@@ -61,17 +61,17 @@ The Other Categories filter is a flexible filter type that will let you create e
 
 Let's add a filter widget to our dashboard. We'll select a **Time** filter, and then select the **Month and Year** option.
 
-![Choose filter type](images/filter-type.png)
+![Choose filter type](./images/filter-type.png)
 
 Metabase will display a filter editing interface where you can wire up your new filter to each applicable card.
 
-![Wiring up the cards](images/wiring-cards.png)
+![Wiring up the cards](./images/wiring-cards.png)
 
 Each card will feature a dropdown menu where you can select the column to filter. The sidebar on the right displays the settings for the current filter. If there’s a card on your dashboard that you don’t want to use with the filter, or that doesn’t make sense to use with the filter, that’s okay — the filter will only be applied to the cards you select.
 
 So here’s what we’re doing — when we pick a month and year with our new filter, the filter needs to know which column in the card to filter on. For example, if we have a **Total Orders** card, and each order has a `Date Ordered` as well as a `Date Delivered` column, we have to pick which of those columns to filter — do we want to see all the orders _placed_ in January, or do we want to see all the orders _delivered_ in January? So, for each card on our dashboard, we’ll pick a date column to connect to the filter. If one of your cards says there aren’t any valid columns, that just means that card doesn’t contain any columns that match the kind of filter you chose.
 
-![Select fields](images/select-fields.png)
+![Select fields](./images/select-fields.png)
 
 Before we **Save** our changes, we can use the right sidebar to customize the **Label** of our new filter, or set a **Default value**.
 
@@ -88,27 +88,27 @@ When you're finished wiring up the filter, click **Done** at the bottom of the s
 
 Once you’ve added a filter to your dashboard, just click on the filter to select a value and activate the filter. To stop filtering, just click the blue X.
 
-![Using a filter](images/use-filter.png)
+![Using a filter](./images/use-filter.png)
 
-You can also set up a dashboard question to [update a filter on click](./interactive-dashboards.md#use-a-chart-to-filter-a-dashboard).
+You can also set up a dashboard question to [update a filter on click](./interactive.md#use-a-chart-to-filter-a-dashboard).
 
 ## Choosing between a dropdown or autocomplete for your filter
 
 If the column you're using for a filter has more than 100 unique values, you'll now automatically see a search box with autocomplete suggestions:
 
-![Autocomplete](images/autocomplete.png)
+![Autocomplete](./images/autocomplete.png)
 
 Columns with fewer than 100 distinct values will list all options:
 
-![List](images/list.png)
+![List](./images/list.png)
 
 In both cases, you can pick one or multiple selections for your filter.
 
-![Multi-select](images/multi-select.png)
+![Multi-select](./images/multi-select.png)
 
 If Metabase somehow picked the wrong behavior for your field, admins can go to the [Data Model](../administration-guide/03-metadata-editing.md) section of the admin panel and click on the **gear** icon by the field in question to specify a list, search box, or plain input box.
 
-![Search options](images/search-options.png)
+![Search options](./images/search-options.png)
 
 ## Linking filters
 
@@ -118,7 +118,7 @@ Say you have two filters, one to filter by state, the other to filter by city. Y
 
 To link filters, you'll need to set up this parent-child relationship. And you set up this relationship through the child filter. In the above scenario, with a state and city filter, we'd edit the child filter, city, by clicking on the **gears** icon on the city filter. From the filter sidebar on the right, select the **Linked filters** tab.
 
-![Linked filters](images/linked-filter.png)
+![Linked filters](./images/linked-filter.png)
 
 Here you can limit the current filter's choices. If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for this filter. In this case, we toggle on the state filter (the parent), to limit the choices for the city filter. When states are selected, the city filter will limit its choices to cities in those states. Click **Done**, then **Save** to save the dashboard.
 
@@ -134,8 +134,8 @@ Here are a few tips to get the most out of dashboard filters:
 
 ## Further reading
 
-- [Introduction to dashboards](./dashboards.md)
-- [Interactive dashboards](./interactive-dashboards.md)
+- [Introduction to dashboards](./introduction.md)
+- [Interactive dashboards](./interactive.md)
 - [Dashboard subscriptions](./subscriptions.md)
 - [Dashboard charts with multiple series](./multiple-series.md)
 - [Learn dashboards](/learn/dashboards)

@@ -28,14 +28,15 @@ title: User guide
 
 ## Dashboards
 
-- [Creating dashboards](07-dashboards.md)
-- [Adding filters to dashboards](08-dashboard-filters.md)
-- [Making dashboards interactive](interactive-dashboards.md)
-- [Creating dashboard charts with multiple series](09-multi-series-charting.md)
+- [Dashboard overview](../dashboards/README.md)
+- [Creating dashboards](../dashboards/dashboards.md)
+- [Adding filters to dashboards](../dashboards/filters.md)
+- [Making dashboards interactive](..dashboards/interactive.md)
+- [Creating dashboard charts with multiple series](../dashboards/multiple-series.md)
 
 ## Setting up subscriptions and alerts
 
-- [Dashboard subscriptions](dashboard-subscriptions.md)
+- [Dashboard subscriptions](../dashboards/subscriptions.md)
 - [Question alerts](15-alerts.md)
 
 ## Writing SQL

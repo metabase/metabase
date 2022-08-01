@@ -2,7 +2,6 @@
 title: Interactive dashboards
 redirect_from:
 - /docs/latest/users-guide/interactive-dashboards
-- /docs/latest/users-guide/interactive-dashboards.html
 ---
 
 # Interactive dashboards
@@ -26,7 +25,7 @@ If you hover over the card that contains question you want to customize, Metabas
 
 - **Visualization options**: This icon looks like a painter's palette.
 - **Click behavior**: This is the icon with the mouse cursor clicking on a card.
-- **Add series**: If your question has a visualization to which you can add an [additional series](09-multi-series-charting) (like a line or bar chart), you'll see this icon as a **+** next to a small representation of that chart type. Not all cards will show this option.
+- **Add series**: If your question has a visualization to which you can add an [additional series](./multi-series.md) (like a line or bar chart), you'll see this icon as a **+** next to a small representation of that chart type. Not all cards will show this option.
 - **Remove**: This icon is an **X**. Selecting this will remove your question from the dashboard.
 
 Select the **Click behavior** option. 

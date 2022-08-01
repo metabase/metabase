@@ -6,7 +6,7 @@ redirect_from:
 
 # Introduction to dashboards 
 
-![Interactive dashboard](images/dashboards/interactive-dashboard.png)
+![Interactive dashboard](./images/interactive-dashboard.png)
 
 ## What is a dashboard?
 
@@ -20,7 +20,7 @@ You can make as many dashboards as you want. Go nuts.
 
 ## How to create a dashboard
 
-In the top right of the screen, click the **+** icon to open the **Create** menu, and select **New Dashboard**. Give your new dashboard a name and a description, choose which [collections](collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
+In the top right of the screen, click the **+** icon to open the **Create** menu, and select **New Dashboard**. Give your new dashboard a name and a description, choose which [collections](../users-guide/collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
 
 ![Create Dashboard](images/create.png)
 
