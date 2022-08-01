@@ -18,7 +18,7 @@ const lightSelectButton = ({ hasValue, isActive }: SelectFilterButtonProps) => `
     }
     padding: 0.5rem 1rem;
 
-    background-color: ${hasValue ? alpha("brand", 0.2) : "transparent"};
+    background-color: ${hasValue ? alpha("brand", 0.2) : color("white")};
     color: ${hasValue ? color("brand") : color("text-light")};
     border-color: ${
       isActive ? color("brand") : hasValue ? "transparent" : color("border")

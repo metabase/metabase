@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import {
   space,
   breakpointMinHeightMedium,
+  breakpointMaxSmall,
 } from "metabase/styled-components/theme";
 
 import { color, lighten } from "metabase/lib/colors";
@@ -14,7 +15,15 @@ export const InlineOperatorContainer = styled.div`
   ${breakpointMinHeightMedium} {
     font-size: 1rem;
   }
-  margin-bottom: 0.875rem;
+  ${breakpointMaxSmall} {
+    margin-bottom: 0.875rem;
+  }
+  display: flex;
+  width: 100%;
+  align-items: center;
+`;
+
+export const FieldNameContainer = styled.div`
   display: inline-flex;
   align-items: flex-start;
 `;
@@ -47,7 +56,7 @@ export const OperatorDisplay = styled.button`
   font-weight: bold;
   text-decoration: ${props => (props.onClick ? "underline" : "none")};
   text-underline-offset: 2px;
-  color: ${color("text-light")};
+  color: ${color("brand")};
   text-transform: lowercase;
 
   ${props => (props.onClick ? "cursor: pointer;" : "")} &:hover {

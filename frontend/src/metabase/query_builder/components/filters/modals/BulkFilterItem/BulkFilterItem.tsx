@@ -76,8 +76,6 @@ export const BulkFilterItem = ({
             fieldName={dimension.displayName()}
             iconName="io"
             tableName={tableName}
-            value={currentOperator}
-            operators={dimension.filterOperators(currentOperator)}
           />
           <BooleanPickerCheckbox
             filter={filter ?? newFilter}
@@ -97,12 +95,10 @@ export const BulkFilterItem = ({
             onChange={changeOperator}
           />
           <InlineCategoryPicker
-            query={query}
             filter={filter}
             newFilter={newFilter}
             dimension={dimension}
             onChange={handleChange}
-            onClear={handleClear}
           />
         </>
       );

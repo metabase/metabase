@@ -15,7 +15,7 @@ export const ModalRoot = styled.div`
   display: flex;
   flex-direction: column;
   height: 90vh;
-  width: min(98vw, 50rem);
+  width: min(98vw, 60rem);
   ${breakpointMaxSmall} {
     height: 98vh;
   }
@@ -33,9 +33,6 @@ export const ModalHeader = styled.div`
 export const ModalBody = styled.div`
   border-top: 1px solid ${color("border")};
   margin-top: 1rem;
-  ${breakpointMinHeightMedium} {
-    margin-top: 1.5rem;
-  }
   overflow-y: auto;
   flex: 1;
 `;
@@ -60,9 +57,6 @@ export const ModalTitle = styled(Ellipsified)`
 
 export const ModalTabList = styled(TabList)`
   font-size: 0.875rem;
-  ${breakpointMinHeightMedium} {
-    font-size: 1rem;
-  }
   margin: 1.5rem 3rem 0 3rem;
   flex-shrink: 0;
 `;
