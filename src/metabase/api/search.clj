@@ -182,19 +182,26 @@
   (str "%" s "%"))
 
 (defn- search-string-clause
-  [query searchable-columns]
+  [model query searchable-columns]
   (when query
     (into [:or]
           (for [column searchable-columns
                 token (scoring/tokenize (scoring/normalize query))]
-            [:like
-             (hsql/call :lower column)
-             (wildcard-match token)]))))
+            (if (and (= model "card") (= column (hsql/qualify (model->alias model) :dataset_query)))
+              [:and
+               [:= (hsql/qualify (model->alias model) :query_type) "native"]
+               [:like
+                (hsql/call :lower column)
+                (wildcard-match token)]]
+              [:like
+               (hsql/call :lower column)
+               (wildcard-match token)])))))
 
 (s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and :=) "type") s/Any]
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
   (let [archived-clause (archived-where-clause model archived?)
-        search-clause   (search-string-clause search-string
+        search-clause   (search-string-clause model
+                                              search-string
                                               (map (partial hsql/qualify (model->alias model))
                                                    (search-config/searchable-columns-for-model model)))]
     (if search-clause
