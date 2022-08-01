@@ -419,7 +419,7 @@
                              (map #(update % :bookmark bit->boolean))
                              (map #(update % :archived bit->boolean))
                              (map (partial scoring/score-and-result (:search-string search-ctx)))
-                             (filter some?))
+                             (filter #(pos? (:score %))))
           total-results     (scoring/top-results reducible-results xf)]
       ;; We get to do this slicing and dicing with the result data because
       ;; the pagination of search is for UI improvement, not for performance.
