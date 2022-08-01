@@ -183,14 +183,21 @@
          maybe-variable))
    split-text))
 
+;; Lots of lookahead/lookbehind in these regexes to handle escaping; see tests for examples
+(def ^:private optional-block-regex
+  #"(?<!\\)(?>\\\\)*\[\[.*(?<!\\)(?>\\\\)*\]\]")
+
+(def ^:private non-optional-block-regex
+  #"(?<!\\)(?>\\\\)*\[\[(.*)(?<!\\)(?>\\\\)*\]\]")
+
 (defn- strip-optional-blocks
   "Removes any [[optional]] blocks from individual strings in `split-text`, which are blocks that have no parameters
   with values. Then, concatenates the full string and removes the brackets from any remaining optional blocks."
   [split-text]
   (let [s (->> split-text
-               (map #(if (TextVariable? %) % (str/replace % #"\[\[.*\]\]" "")))
+               (map #(if (TextVariable? %) % (str/replace % optional-block-regex "")))
                str/join)]
-    (str/replace s #"(?<!\\)\[(?<!\\)\[(.*)(?<!\\)\](?<!\\)\]" second)))
+    (str/replace s non-optional-block-regex second)))
 
 (defn ^:export tag_names
   "Given the content of a text dashboard card, return a set of the unique names of template tags in the text."
