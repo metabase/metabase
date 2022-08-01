@@ -110,6 +110,8 @@ const OptionsContent: React.FC<OptionsContentProps> = ({
   const options = filter[4] || {};
   const includeCurrent = !!options["include-current"];
   const currentString = getCurrentString(filter);
+  const database = filter.query().database();
+  const supportsExpressions = database?.hasFeature("expressions");
 
   const handleClickOnStartingFrom = () => {
     setOptionsVisible(false);
@@ -128,14 +130,16 @@ const OptionsContent: React.FC<OptionsContentProps> = ({
 
   return (
     <OptionsContainer>
-      <OptionButton
-        icon="arrow_left_to_line"
-        primaryColor={primaryColor}
-        reverseIconDirection={reverseIconDirection}
-        onClick={handleClickOnStartingFrom}
-      >
-        {t`Starting from...`}
-      </OptionButton>
+      {supportsExpressions && (
+        <OptionButton
+          icon="arrow_left_to_line"
+          primaryColor={primaryColor}
+          reverseIconDirection={reverseIconDirection}
+          onClick={handleClickOnStartingFrom}
+        >
+          {t`Starting from...`}
+        </OptionButton>
+      )}
       <OptionButton
         selected={includeCurrent}
         primaryColor={primaryColor}
