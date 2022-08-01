@@ -1,5 +1,7 @@
 ---
 title: MySQL
+redirect_from:
+  - /docs/latest/administration-guide/databases/mysql
 ---
 
 # MySQL

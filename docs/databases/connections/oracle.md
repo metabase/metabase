@@ -1,5 +1,7 @@
 ---
 title: Working with Oracle in Metabase
+redirect_from:
+  - /docs/latest/administration-guide/databases/oracle
 ---
 
 # Working with Oracle in Metabase

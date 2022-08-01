@@ -1,5 +1,7 @@
 ---
 title: Redshift
+redirect_from:
+  - /docs/latest/administration-guide/databases/redshift
 ---
 
 # Redshift

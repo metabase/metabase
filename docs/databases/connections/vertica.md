@@ -1,5 +1,7 @@
 ---
 title: Working with Vertica in Metabase
+redirect_from:
+  - /docs/latest/administration-guide/databases/vertica
 ---
 
 # Working with Vertica in Metabase

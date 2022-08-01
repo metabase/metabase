@@ -1,5 +1,7 @@
 ---
 title: Working with Google BigQuery in Metabase
+redirect_from:
+  - /docs/latest/administration-guide/databases/bigquery
 ---
 
 # Working with Google BigQuery in Metabase

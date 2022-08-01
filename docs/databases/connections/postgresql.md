@@ -1,5 +1,7 @@
 ---
 title: Connecting to a PostgreSQL database
+redirect_from:
+  - /docs/latest/administration-guide/databases/postgresql
 ---
 
 # Connecting to a PostgreSQL database
