@@ -17,6 +17,12 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByLabelText("Reply-To Address")
       .type("reply-to@metabase.test")
       .blur();
+    cy.findByLabelText("From Name")
+      .type("Sender Name")
+      .blur();
+    cy.findByLabelText("Reply-To Address")
+      .type("reply-to@metabase.test")
+      .blur();
     cy.findByText("Save changes").click();
 
     cy.findByText("Changes saved!", { timeout: 10000 });
