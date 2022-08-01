@@ -1,5 +1,5 @@
 :root {
-  --form-field-border-color: var(--color-border-dark);
+  --form-field-border-color: var(--color-border);
   --input-border-radius: 8px;
 }
 ::-webkit-input-placeholder {
