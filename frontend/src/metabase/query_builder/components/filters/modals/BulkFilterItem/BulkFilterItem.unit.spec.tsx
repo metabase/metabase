@@ -329,7 +329,7 @@ describe("BulkFilterItem", () => {
       />,
     );
     screen.getByTestId("value-picker");
-    screen.getByText("foo");
+    screen.getByDisplayValue("foo");
   });
 
   it("defaults key filters to 'is' operator", () => {
