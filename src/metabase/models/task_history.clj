@@ -45,15 +45,15 @@
 (defn- task->snowplow-event
   [task]
   (let [task-details (:task_details task)]
-   (merge {:task_id      (:id task)
-           :task_name    (:task task)
-           :duration     (:duration task)
-           :task_details (json/generate-string task-details)
-           :started_at   (u.date/format (:started_at task))
-           :ended_at     (u.date/format (:ended_at task))}
-          (when-let [db-id (:db_id task)]
-            {:db_id     db-id
-             :db_engine (db/select-one-field :engine Database :id db-id)}))))
+    (merge {:task_id      (:id task)
+            :task_name    (:task task)
+            :duration     (:duration task)
+            :task_details (json/generate-string task-details)
+            :started_at   (u.date/format-rfc3339 (:started_at task))
+            :ended_at     (u.date/format-rfc3339 (:ended_at task))}
+           (when-let [db-id (:db_id task)]
+             {:db_id     db-id
+              :db_engine (db/select-one-field :engine Database :id db-id)}))))
 
 (defn- post-insert
   [task]
