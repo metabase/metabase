@@ -459,18 +459,12 @@ export default class TokenField extends Component<
     } else {
       onChange(valueToAdd.slice(0, 1));
     }
-    // reset the input value
-    // setTimeout(() =>
-    //   this.setInputValue("")
-    // )
   }
 
   removeValue(valueToRemove: any) {
     const { value, onChange } = this.props;
     const values = value.filter(v => !this._valueIsEqual(v, valueToRemove));
     onChange(values);
-    // reset the input value
-    // this.setInputValue("");
   }
 
   _valueIsEqual(v1: any, v2: any) {
@@ -596,6 +590,7 @@ export default class TokenField extends Component<
                 onClick={e => {
                   e.preventDefault();
                   this.removeValue(v);
+                  this.inputRef?.current?.blur();
                 }}
                 onMouseDown={e => e.preventDefault()}
               >
