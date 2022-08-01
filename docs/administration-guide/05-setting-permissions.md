@@ -63,7 +63,7 @@ Whenever you change permissions for a group, make sure you:
 - [Troubleshooting permissions][troubleshooting-permissions]
 
 [collections]: 06-collections.md
-[dashboard-subscriptions]: ../users-guide/dashboard-subscriptions.md
+[dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-permissions]: data-permissions.md
 [pulses]: ../users-guide/10-pulses.md
 [data-sandboxing]: ../enterprise-guide/data-sandboxes.md

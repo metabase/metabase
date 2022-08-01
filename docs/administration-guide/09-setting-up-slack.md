@@ -87,4 +87,4 @@ In Metabase, click on the **Save changes** button and that’s it! Metabase will
 
 There are a few other settings you configure in Metabase. [Learn how](08-configuration-settings).
 
-[dashboard-subscriptions]: ../users-guide/dashboard-subscriptions.html
+[dashboard-subscriptions]: ../dashboards/subscriptions.md
