@@ -8,7 +8,7 @@ import {
   visitDashboard,
 } from "__support__/e2e/helpers";
 
-import { DASHBOARD_DATE_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
+import { DASHBOARD_DATE_FILTERS } from "./dashboard-filters-date";
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 
 describe("scenarios > dashboard > filters > date", () => {
