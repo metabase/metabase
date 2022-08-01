@@ -539,7 +539,8 @@ export default class TokenField extends Component<
       selectedOptionValue,
     } = this.state;
 
-    if (!multi && isFocused) {
+    // for non-multi fields, keep the value in the input
+    if (!multi) {
       inputValue = inputValue || value[0];
       value = [];
     }
@@ -549,7 +550,8 @@ export default class TokenField extends Component<
       value.length > 0 &&
       updateOnInputChange &&
       parseFreeformValue &&
-      value[value.length - 1] === parseFreeformValue(inputValue)
+      value[value.length - 1] === parseFreeformValue(inputValue) &&
+      multi
     ) {
       if (isFocused) {
         // if focused, don't render the last value
