@@ -65,7 +65,7 @@ const SpecificDatePicker: React.FC<Props> = props => {
           onBlurChange={({ target: { value } }: any) => {
             const date = moment(value, dateFormat);
             if (date.isValid()) {
-              onChange(date as momentTimezone.Moment, hours, minutes);
+              onChange(date, hours, minutes);
             } else {
               onChange();
             }
