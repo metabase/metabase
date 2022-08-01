@@ -35,3 +35,9 @@ export const TokenInputItem = styled.li`
     height: 46px;
   }
 `;
+
+export const PrefixContainer = styled.div`
+  display: flex;
+  align-items: center;
+  color: ${color("text-medium")};
+`;
