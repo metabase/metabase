@@ -34,27 +34,27 @@ Metabase supports many different databases and data sources, with different leve
 
 The following databases have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing/) will get official support.
 
-- [BigQuery](databases/bigquery.md) (Google Cloud Platform)
+- [BigQuery](./connections/bigquery.md) (Google Cloud Platform)
 - Druid
-- [Google Analytics](databases/google-analytics.md)
+- [Google Analytics](./connections/google-analytics.md)
 - H2
-- [MongoDB (version 3.6 or higher)](databases/mongodb.md) <!-- MongoDB supported version is from https://www.mongodb.com/support-policy -->
+- [MongoDB (version 3.6 or higher)](./connections/mongodb.md) <!-- MongoDB supported version is from https://www.mongodb.com/support-policy -->
 - [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](databases/mysql.md)
-- [Oracle](databases/oracle.md)
-- [PostgreSQL](databases/postgresql.md)
+- [Oracle](./connections/oracle.md)
+- [PostgreSQL](connections/postgresql.md)
 - Presto
 - Redshift (Amazon Web Services)
-- [Snowflake](databases/snowflake.md)
+- [Snowflake](./connections/snowflake.md)
 - SparkSQL
-- [SQL Server](databases/sql-server.md)
+- [SQL Server](./connections/sql-server.md)
 - SQLite
-- [Vertica](databases/vertica.md)
+- [Vertica](./connections/vertica.md)
 
 ## Connecting to databases hosted by a cloud provider
 
 For provider-specific connection details, like connecting to a PostgreSQL data warehouse on RDS:
 
-- [AWS's Relational Database Service (RDS)](databases/aws-rds.md)
+- [AWS's Relational Database Service (RDS)](./connections/aws-rds.md)
 
 ## Database connection options
 
@@ -85,7 +85,7 @@ Syncing can be set to hourly, or daily at a specific time. Syncing can't be turn
 
 If you'd like to sync your database manually at any time, click on it from the Databases list in the admin panel and click on the **Sync database schema now** button on the right side of the screen:
 
-![Database Manual Sync](images/DatabaseManualSync.png)
+![Database Manual Sync](./images/DatabaseManualSync.png)
 
 #### Scanning for field values
 
@@ -93,7 +93,7 @@ When Metabase first connects to your database, it takes a look at the metadata o
 
 By default, Metabase also performs a more intensive daily sampling of each field's values and caches the distinct values in order to make checkbox and select filters work in dashboards and SQL/native questions. This process can slow down large databases, so if you have a particularly large database, you can turn on the option to choose when Metabase scans, and select one of three scan options in the Scheduling tab:
 
-![Scanning options](images/scanning-options.png)
+![Scanning options](./images/scanning-options.png)
 
 - **Regularly, on a schedule** lets you choose to scan daily, weekly, or monthly, and also lets you choose what time of day, or which day of the month to scan. This is the best option if you have a relatively small database, or if the distinct values in your tables change often.
 - **Only when adding a new filter widget** is a great option if you have a relatively large database, but you still want to enable dashboard and SQL/native query filters. With this option enabled, Metabase will only scan and cache the values of the field or fields that are required whenever a new filter is added to a dashboard or SQL/native question. For example, if you were to add a dashboard category filter, mapped to one field called `Customer ID` and another one called `ID`, only those two fields would be scanned at the moment the filter is saved.
@@ -124,7 +124,7 @@ On either the table settings or field settings page, you'll see these options:
 - Re-scan this table/field
 - Discard cached field values
 
-![Re-scan options](images/re-scan-options.png)
+![Re-scan options](./images/re-scan-options.png)
 
 For more on editing metadata, check out [the Data Model page: editing metadata](03-metadata-editing.md).
 
@@ -134,25 +134,19 @@ For more on editing metadata, check out [the Data Model page: editing metadata](
 
 To delete a database from Metabase, click on **Remove this database** from the database detail screen.
 
-![Database Manual Sync](images/DatabaseManualSync.png)
+![Database Manual Sync](./images/DatabaseManualSync.png)
 
 You can also delete a database from the database list: hover over the row with the database you want to remove and click the **Delete** button that appears.
 
-![deletedatabasebutton](images/DatabaseDeleteButton.png)
+![deletedatabasebutton](./images/DatabaseDeleteButton.png)
 
 ## Troubleshooting
 
-If you're having trouble with your database connection, you can check out this [troubleshooting guide](https://www.metabase.com/docs/latest/troubleshooting-guide/datawarehouse.html), or visit [Metabase's discussion forum](https://discourse.metabase.com/) to see if someone has encountered and resolved a similar issue.
+If you're having trouble with your database connection, you can check out this [troubleshooting guide](../troubleshooting-guide/datawarehouse.md), or visit [Metabase's discussion forum](https://discourse.metabase.com/) to see if someone has encountered and resolved a similar issue.
 
 ## Further reading
 
-- [Managing databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html).
-- [Metadata editing](https://www.metabase.com/docs/latest/administration-guide/03-metadata-editing.html).
+- [Metadata editing](./metadata-editing.md).
 - [Models](../users-guide/models.md).
-- [Setting data access permissions](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html).
+- [Setting data access permissions](../administration-guide/05-setting-permissions.md).
 
----
-
-## Next: enabling features that send email
-
-Metabase can send emails for certain features, like email invites, but first you need to [set up an email account](02-setting-up-email.md).
