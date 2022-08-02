@@ -255,7 +255,7 @@ const getTitle = (query: StructuredQuery, singleTable: boolean) => {
   if (singleTable) {
     return t`Filter ${pluralize(table.displayName())} by`;
   } else {
-    return t`Filter by}`;
+    return t`Filter by`;
   }
 };
 
