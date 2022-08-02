@@ -95,15 +95,11 @@ function ActionButtonViz({
   );
 
   return (
-    <Button
-      className={cx({
-        "full-height": !isSettings,
-      })}
-      onClick={onClick}
-      {...variantProps}
-    >
-      {label}
-    </Button>
+    <div className="flex full-height full-width layout-centered px1">
+      <Button onClick={onClick} {...variantProps} fullWidth>
+        {label}
+      </Button>
+    </div>
   );
 }
 
