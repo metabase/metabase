@@ -660,8 +660,9 @@ class QuestionInner {
       query.columnNames(),
     );
 
+    const graphMetrics = this.setting("graph.metrics");
     if (
-      this.setting("graph.metrics") &&
+      graphMetrics &&
       addedColumnNames.length > 0 &&
       removedColumnNames.length === 0
     ) {
@@ -672,22 +673,22 @@ class QuestionInner {
 
       if (addedMetricColumnNames.length > 0) {
         return this.updateSettings({
-          "graph.metrics": [
-            ...this.setting("graph.metrics"),
-            ...addedMetricColumnNames,
-          ],
+          "graph.metrics": [...graphMetrics, ...addedMetricColumnNames],
         });
       }
     }
 
+    const tableColumns = this.setting("table.columns");
     if (
-      this.setting("table.columns") &&
+      tableColumns &&
       addedColumnNames.length > 0 &&
       removedColumnNames.length === 0
     ) {
       return this.updateSettings({
         "table.columns": [
-          ...this.setting("table.columns"),
+          ...tableColumns.filter(
+            column => !addedColumnNames.includes(column.name),
+          ),
           ...addedColumnNames.map(name => {
             const dimension = query.columnDimensionWithName(name);
             return {
