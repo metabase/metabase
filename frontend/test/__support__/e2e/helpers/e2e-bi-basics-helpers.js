@@ -28,7 +28,7 @@ export function filterFieldPopover(
   { value, placeholder, order } = {},
 ) {
   getFilterField(fieldName, order).within(() => {
-    cy.findByTestId("select-filter-option").click();
+    cy.get("input").click();
   });
 
   if (value) {
