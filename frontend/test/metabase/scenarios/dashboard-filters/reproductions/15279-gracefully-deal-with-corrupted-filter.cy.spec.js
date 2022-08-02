@@ -3,7 +3,7 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
-const firstFilter = {
+const listFilter = {
   name: "List",
   slug: "list",
   id: "6fe14171",
@@ -11,7 +11,7 @@ const firstFilter = {
   sectionId: "string",
 };
 
-const secondFilter = {
+const searchFilter = {
   name: "Search",
   slug: "search",
   id: "4db4913a",
@@ -28,7 +28,7 @@ const corruptedFilter = {
   sectionId: "string",
 };
 
-const parameters = [firstFilter, secondFilter, corruptedFilter];
+const parameters = [listFilter, searchFilter, corruptedFilter];
 
 const questionDetails = {
   name: "15279",
@@ -63,12 +63,12 @@ describe("issue 15279", () => {
               visualization_settings: {},
               parameter_mappings: [
                 {
-                  parameter_id: firstFilter.id,
+                  parameter_id: listFilter.id,
                   card_id,
                   target: ["dimension", ["field", PEOPLE.SOURCE, null]],
                 },
                 {
-                  parameter_id: secondFilter.id,
+                  parameter_id: searchFilter.id,
                   card_id,
                   target: ["dimension", ["field-id", PEOPLE.NAME, null]],
                 },
