@@ -50,6 +50,7 @@ const DateAllOptionsWidget = ({
         hideTimeSelectors
         hideEmptinessOperators
         disableOperatorSelection={disableOperatorSelection}
+        supportsExpressions
       >
         <UpdateButton
           className={cx({
