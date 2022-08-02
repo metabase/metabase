@@ -113,6 +113,10 @@ class FieldInner extends Base {
     return stripId(this.displayName());
   }
 
+  isExpression() {
+    return this.field_ref?.[0] === "expression";
+  }
+
   isDate() {
     return isDate(this);
   }

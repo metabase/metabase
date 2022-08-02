@@ -796,6 +796,7 @@ class StructuredQueryInner extends AtomicQuery {
             .filter(breakout => !_.isEqual(breakout, includedBreakout))
             .map(breakout => breakout.field().id),
     );
+    console.log(this.breakouts(), usedFields);
     return this.fieldOptions(
       field => fieldFilter(field) && !usedFields.has(field.id),
     );
