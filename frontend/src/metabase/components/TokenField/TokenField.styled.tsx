@@ -2,10 +2,7 @@ import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 
-import {
-  space,
-  breakpointMinHeightMedium,
-} from "metabase/styled-components/theme";
+import { space } from "metabase/styled-components/theme";
 
 export const TokenFieldContainer = styled.ul`
   display: flex;
@@ -29,11 +26,7 @@ export const TokenInputItem = styled.li`
   flex: 1 0 auto;
   align-items: center;
   margin-right: 0.5rem;
-  padding: 0.5rem;
-  height: 30px;
-  ${breakpointMinHeightMedium} {
-    height: 46px;
-  }
+  height: 46px;
 `;
 
 export const PrefixContainer = styled.div`

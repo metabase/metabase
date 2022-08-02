@@ -18,6 +18,9 @@ export const ValuesPickerContainer = styled.div<ValuesPickerContainerProps>`
     :focus-within {
       border-color: ${color("brand")};
     }
+    li {
+      height: 30px;
+    }
   }
   input {
     color: ${color("brand")};
@@ -45,8 +48,5 @@ export const NumberInput = styled(NumericInput)`
   width: 8rem;
   input {
     height: 40px;
-    ${breakpointMinHeightMedium} {
-      height: 56px;
-    }
   }
 `;

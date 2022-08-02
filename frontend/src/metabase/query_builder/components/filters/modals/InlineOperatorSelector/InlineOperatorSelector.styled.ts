@@ -1,9 +1,5 @@
 import styled from "@emotion/styled";
-import {
-  space,
-  breakpointMinHeightMedium,
-  breakpointMaxSmall,
-} from "metabase/styled-components/theme";
+import { space, breakpointMaxSmall } from "metabase/styled-components/theme";
 
 import { color, lighten } from "metabase/lib/colors";
 
@@ -12,9 +8,6 @@ import Icon from "metabase/components/Icon";
 export const InlineOperatorContainer = styled.div`
   font-weight: bold;
   font-size: 0.875rem;
-  ${breakpointMinHeightMedium} {
-    font-size: 1rem;
-  }
   ${breakpointMaxSmall} {
     margin-bottom: 0.875rem;
   }
@@ -30,12 +23,9 @@ export const FieldNameContainer = styled.div`
 
 export const FieldIcon = styled(Icon)`
   margin-right: ${space(1)};
+  color: ${color("text-medium")};
   width: 1rem;
   height: 1rem;
-  ${breakpointMinHeightMedium} {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
 `;
 
 export const FieldTitle = styled.span`
