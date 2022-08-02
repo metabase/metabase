@@ -1,4 +1,11 @@
-import { restore, filterWidget, visitDashboard } from "__support__/e2e/helpers";
+import {
+  restore,
+  filterWidget,
+  visitDashboard,
+  popover,
+  editDashboard,
+  saveDashboard,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -35,21 +42,18 @@ const questionDetails = {
   query: { "source-table": PEOPLE_ID },
 };
 
-describe("issue 15279", () => {
+const dashboardDetails = { parameters };
+
+describe("issues 15279 and 24500", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  it("a corrupted parameter filter should still appear in the UI (metabase #15279)", () => {
-    cy.createQuestionAndDashboard({ questionDetails }).then(
+  it("a corrupted parameter filter should still appear in the UI and not disrupt the other filters from working (metabase#15279, metabase#24500)", () => {
+    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
-        // Add filters to the dashboard
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          parameters,
-        });
-
-        // Connect filters to that question
+        // Connect filters to the question
         cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
           cards: [
             {
@@ -85,20 +89,38 @@ describe("issue 15279", () => {
 
     // Check that list filter works
     filterWidget().contains("List").click();
-
     cy.wait("@values");
-    cy.findByTextEnsureVisible("Add filter");
 
-    cy.findByPlaceholderText("Enter some text").type("Organic").blur();
+    cy.findByPlaceholderText("Search the list").type("Or").blur();
+    popover().contains("Organic").click();
     cy.button("Add filter").click();
+
+    cy.get(".DashCard")
+      .should("contain", "Lora Cronin")
+      .and("contain", "Dagmar Fay");
 
     // Check that the search filter works
     filterWidget().contains("Search").click();
     cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
     cy.button("Add filter").click();
 
+    cy.get(".DashCard")
+      .should("contain", "Lora Cronin")
+      .and("not.contain", "Dagmar Fay");
+
     // The corrupted filter is now present in the UI, but it doesn't work (as expected)
     // People can now easily remove it
     cy.findByText("Select…");
+
+    editDashboard();
+    filterWidget().last().find(".Icon-gear").click();
+    // Uncomment the next line if we end up disabling fields for the corrupted filter
+    // cy.findByText("No valid fields")
+    cy.findByText("Remove").click();
+    saveDashboard();
+
+    cy.get(".DashCard")
+      .should("contain", "Lora Cronin")
+      .and("not.contain", "Dagmar Fay");
   });
 });
