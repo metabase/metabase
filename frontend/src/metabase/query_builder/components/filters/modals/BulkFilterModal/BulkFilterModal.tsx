@@ -4,6 +4,8 @@ import { t } from "ttag";
 import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
+import { pluralize } from "metabase/lib/formatting";
+
 import StructuredQuery, {
   FilterSection,
   DimensionOption,
@@ -251,9 +253,9 @@ const getTitle = (query: StructuredQuery, singleTable: boolean) => {
   const table = query.table();
 
   if (singleTable) {
-    return t`Filter by ${table.displayName()}`;
+    return t`Filter ${pluralize(table.displayName())} by`;
   } else {
-    return t`Filter by`;
+    return t`Filter by}`;
   }
 };
 
