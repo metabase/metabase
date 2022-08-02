@@ -47,7 +47,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     );
   });
 
-  it(`should work when set as the default filter`, () => {
+  it(`should work when set as the default filter which (if cleared) should not be preserved on reload (metabase#13960)`, () => {
     setFilter("Text or Category", "Dropdown");
 
     cy.findByText("Select…").click();
@@ -57,11 +57,39 @@ describe("scenarios > dashboard > filters > text/category", () => {
 
     applyFilterByType("Dropdown", "Organic");
 
-    saveDashboard();
+    // We need to add another filter only to reproduce metabase#13960
+    setFilter("ID");
+    cy.findByText("Select…").click();
+    popover().contains("User ID").click();
 
+    saveDashboard();
+    cy.wait("@dashcardQuery1");
+
+    cy.location("search").should("eq", "?text=Organic");
     cy.get(".Card").within(() => {
       cy.contains("39.58");
     });
+
+    // This part reproduces metabase#13960
+    // Remove default filter (category)
+    cy.get("fieldset .Icon-close").click();
+    cy.wait("@dashcardQuery1");
+
+    cy.location("search").should("eq", "?text=");
+
+    filterWidget().contains("ID").click();
+    cy.findByPlaceholderText("Enter an ID").type("4{enter}").blur();
+    cy.button("Add filter").click();
+    cy.wait("@dashcardQuery1");
+
+    cy.location("search").should("eq", "?text=&id=4");
+
+    cy.reload();
+    cy.wait("@dashcardQuery1");
+
+    cy.location("search").should("eq", "?text=&id=4");
+    filterWidget().contains("Text");
+    filterWidget().contains("Arnold Adams");
   });
 });
 
