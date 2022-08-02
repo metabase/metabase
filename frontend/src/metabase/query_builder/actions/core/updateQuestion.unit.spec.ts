@@ -46,6 +46,7 @@ type SetupOpts = {
   originalQuestion?: Question;
   run?: boolean;
   shouldUpdateUrl?: boolean;
+  shouldStartAdHocQuestion?: boolean;
   queryBuilderMode?: QueryBuilderMode;
   isShowingTemplateTagsEditor?: boolean;
 };
@@ -66,6 +67,7 @@ async function setup({
   isShowingTemplateTagsEditor = false,
   run,
   shouldUpdateUrl,
+  shouldStartAdHocQuestion,
 }: SetupOpts) {
   const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
 
@@ -90,7 +92,11 @@ async function setup({
     qb: qbState,
   });
 
-  await updateQuestion(question, { run, shouldUpdateUrl })(dispatch, getState);
+  await updateQuestion(question, {
+    run,
+    shouldUpdateUrl,
+    shouldStartAdHocQuestion,
+  })(dispatch, getState);
 
   const actions = dispatch.mock.calls.find(
     call => call[0]?.type === UPDATE_QUESTION,
@@ -287,6 +293,21 @@ describe("QB Actions > updateQuestion", () => {
             expect(result.card.id).toBeUndefined();
             expect(result.card.name).toBeUndefined();
             expect(result.card.description).toBeUndefined();
+            expect(result.card.dataset_query).toEqual(question.datasetQuery());
+            expect(result.card.visualization_settings).toEqual(
+              question.settings(),
+            );
+          });
+
+          it("doesn't turn question into ad-hoc if `shouldStartAdHocQuestion` option is disabled", async () => {
+            const { result } = await setup({
+              question,
+              shouldStartAdHocQuestion: false,
+            });
+
+            expect(result.card.id).toBe(question.id());
+            expect(result.card.name).toBe(question.displayName());
+            expect(result.card.description).toBe(question.description());
             expect(result.card.dataset_query).toEqual(question.datasetQuery());
             expect(result.card.visualization_settings).toEqual(
               question.settings(),
