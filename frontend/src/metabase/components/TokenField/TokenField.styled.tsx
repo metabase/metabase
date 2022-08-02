@@ -21,7 +21,7 @@ export const TokenFieldContainer = styled.ul`
   overflow-x: auto;
   overflow-y: auto;
   border-radius: ${space(1)};
-  border: 1px solid ${color("border-dark")};
+  border: 1px solid ${color("border")};
 `;
 
 export const TokenInputItem = styled.li`

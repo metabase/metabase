@@ -21,11 +21,7 @@ const lightSelectButton = ({ hasValue, isActive }: SelectFilterButtonProps) => `
     background-color: ${hasValue ? alpha("brand", 0.2) : color("white")};
     color: ${hasValue ? color("brand") : color("text-light")};
     border-color: ${
-      isActive
-        ? color("brand")
-        : hasValue
-        ? "transparent"
-        : color("border-dark")
+      isActive ? color("brand") : hasValue ? "transparent" : color("border")
     };
 
     .Icon {

@@ -33,7 +33,7 @@ const getBorderColor = (colorScheme: ColorScheme, invalid?: boolean) => {
     return color("error");
   }
 
-  return colorScheme === "transparent" ? "transparent" : color("border-dark");
+  return colorScheme === "transparent" ? "transparent" : color("border");
 };
 
 export const Input = styled.input<InputProps>`
