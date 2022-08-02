@@ -135,17 +135,17 @@
   If you modify this, also modify `template-tag-splitting-regex` below."
   #"\{\{\s*([A-Za-z0-9_\.]+?)\s*\}\}")
 
-; Represents a variable parsed out of a text card. `tag` contains the tag name alone, as a string. `source` contains
-; the full original syntax for the parameter)
-(defrecord ^:private TextVariable [tag source]
+;; Represents a variable parsed out of a text card. `tag` contains the tag name alone, as a string. `source` contains
+;; the full original syntax for the parameter)
+(defrecord ^:private TextParam [tag source]
   Object
   (toString
     [x]
     (or (:value x) source)))
 
-(defn- TextVariable?
+(defn- TextParam?
   [x]
-  (instance? TextVariable x))
+  (instance? TextParam x))
 
 (def ^:private template-tag-splitting-regex
   (let [base "\\{\\{\\s*[A-Za-z0-9_\\.]+?\\s*\\}\\}"]
@@ -153,17 +153,17 @@
     (re-pattern (str "(?<=" base ")|(?=" base ")"))))
 
 (defn- split-on-tags
-  "Given the text of a Markdown card, splits it into a sequence of alternating strings and TextVariable records."
+  "Given the text of a Markdown card, splits it into a sequence of alternating strings and TextParam records."
   [text]
   (let [split-text (str/split text template-tag-splitting-regex)]
     (map (fn [text]
            (if-let [[_, match] (re-matches template-tag-regex text)]
-             (->TextVariable match text)
+             (->TextParam match text)
              text))
          split-text)))
 
 (defn- join-consecutive-strings
-  "Given a vector of strings and/or TextVariables, concatenate consecutive strings and TextVariables without values."
+  "Given a vector of strings and/or TextParam, concatenate consecutive strings and TextParams without values."
   [strs-or-vars]
   (->> strs-or-vars
        (partition-by (fn [str-or-var]
@@ -175,12 +175,12 @@
                      strs-or-var)))))
 
 (defn- add-values-to-variables
-  "Given `split-text`, containing a list of alternating strings and TextVariables, add a :value key to any TextVariables
+  "Given `split-text`, containing a list of alternating strings and TextParam, add a :value key to any TextParams
   with a corresponding value in `tag->normalized-param`."
   [tag->normalized-param locale split-text]
   (map
    (fn [maybe-variable]
-     (if (TextVariable? maybe-variable)
+     (if (TextParam? maybe-variable)
          (assoc maybe-variable :value (value (:tag maybe-variable) tag->normalized-param locale))
          maybe-variable))
    split-text))
@@ -196,7 +196,7 @@
   with values. Then, concatenates the full string and removes the brackets from any remaining optional blocks."
   [split-text]
   (let [s (->> split-text
-               (map #(if (TextVariable? %) % (str/replace % optional-block-regex "")))
+               (map #(if (TextParam? %) % (str/replace % optional-block-regex "")))
                str/join)]
     (str/replace s non-optional-block-regex second)))
 
