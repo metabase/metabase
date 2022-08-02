@@ -2,19 +2,19 @@
   "Util functions for dealing with parameters. Primarily used for substituting parameters into variables in Markdown
   dashboard cards."
   #?@
-   (:clj
-    [(:require [clojure.string :as str]
-               [metabase.mbql.normalize :as mbql.normalize]
-               [metabase.shared.util.i18n :refer [trs]]
-               [metabase.util.date-2 :as u.date]
-               [metabase.util.date-2.parse.builder :as b]
-               [metabase.util.i18n.impl :as i18n.impl])
-     (:import java.time.format.DateTimeFormatter)]
-    :cljs
-    [(:require ["moment" :as moment]
-               [clojure.string :as str]
-               [metabase.mbql.normalize :as mbql.normalize]
-               [metabase.shared.util.i18n :refer [trs]])]))
+      (:clj
+       [(:require [clojure.string :as str]
+                  [metabase.mbql.normalize :as mbql.normalize]
+                  [metabase.shared.util.i18n :refer [trs]]
+                  [metabase.util.date-2 :as u.date]
+                  [metabase.util.date-2.parse.builder :as b]
+                  [metabase.util.i18n.impl :as i18n.impl])
+        (:import java.time.format.DateTimeFormatter)]
+       :cljs
+       [(:require ["moment" :as moment]
+                  [clojure.string :as str]
+                  [metabase.mbql.normalize :as mbql.normalize]
+                  [metabase.shared.util.i18n :refer [trs]])]))
 
 ;; Without this comment, the namespace-checker linter incorrectly detects moment as unused
 #?(:cljs (comment moment/keep-me))
