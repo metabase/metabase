@@ -1,3 +1,5 @@
+import d3 from "d3";
+
 import { isLatitude, isLongitude } from "metabase/lib/schema_metadata";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
 
