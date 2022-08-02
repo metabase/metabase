@@ -74,7 +74,7 @@ describe.skip("issues 15279 and 24500", () => {
                 {
                   parameter_id: searchFilter.id,
                   card_id,
-                  target: ["dimension", ["field-id", PEOPLE.NAME, null]],
+                  target: ["dimension", ["field", PEOPLE.NAME, null]],
                 },
               ],
             },
