@@ -1,7 +1,6 @@
 (ns metabase.api.user
   "/api/user endpoints"
-  (:require [cemerick.friend.credentials :as creds]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
             [java-time :as t]
@@ -15,6 +14,7 @@
             [metabase.models.login-history :refer [LoginHistory]]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.user :as user :refer [User]]
+            [metabase.util.password :as u.password]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.server.middleware.offset-paging :as mw.offset-paging]
@@ -378,7 +378,7 @@
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
-      (api/checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user))
+      (api/checkp (u.password/bcrypt-verify (str (:password_salt user) old_password) (:password user))
         "old_password"
         (tru "Invalid password"))))
   (user/set-password! id password)
