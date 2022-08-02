@@ -25,6 +25,7 @@ import {
   ModalFooter,
   ModalHeader,
   ModalRoot,
+  ModalMain,
   ModalTabList,
   ModalTabPanel,
   ModalTitle,
@@ -107,8 +108,10 @@ const BulkFilterModal = ({
     setIsChanged(true);
   };
 
+  const hasSideNav = sections.length > 1;
+
   return (
-    <ModalRoot>
+    <ModalRoot hasSideNav={hasSideNav}>
       <ModalHeader>
         <ModalTitle>{getTitle(query, sections.length === 1)}</ModalTitle>
         {showSearch ? (
@@ -119,28 +122,30 @@ const BulkFilterModal = ({
           </ModalCloseButton>
         )}
       </ModalHeader>
-      {sections.length === 1 || searchItems ? (
-        <BulkFilterModalSection
-          query={query}
-          filters={filters}
-          items={searchItems ?? sections[0].items}
-          isSearch={!!searchItems}
-          onAddFilter={handleAddFilter}
-          onChangeFilter={handleChangeFilter}
-          onRemoveFilter={handleRemoveFilter}
-          onClearSegments={handleClearSegments}
-        />
-      ) : (
-        <BulkFilterModalSectionList
-          query={query}
-          filters={filters}
-          sections={sections}
-          onAddFilter={handleAddFilter}
-          onChangeFilter={handleChangeFilter}
-          onRemoveFilter={handleRemoveFilter}
-          onClearSegments={handleClearSegments}
-        />
-      )}
+      <ModalMain>
+        {!hasSideNav || searchItems ? (
+          <BulkFilterModalSection
+            query={query}
+            filters={filters}
+            items={searchItems ?? sections[0].items}
+            isSearch={!!searchItems}
+            onAddFilter={handleAddFilter}
+            onChangeFilter={handleChangeFilter}
+            onRemoveFilter={handleRemoveFilter}
+            onClearSegments={handleClearSegments}
+          />
+        ) : (
+          <BulkFilterModalSectionList
+            query={query}
+            filters={filters}
+            sections={sections}
+            onAddFilter={handleAddFilter}
+            onChangeFilter={handleChangeFilter}
+            onRemoveFilter={handleRemoveFilter}
+            onClearSegments={handleClearSegments}
+          />
+        )}
+      </ModalMain>
       <ModalDivider />
       <ModalFooter>
         <Button
