@@ -313,7 +313,7 @@ export const loadMetadataForQuery = (query, extraDependencies) =>
   loadMetadataForQueries([query], extraDependencies);
 
 export const loadMetadataForQueries =
-  (queries, extraDependencies = []) =>
+  (queries, extraDependencies = [], options = {}) =>
   dispatch => {
     const dependencies = _.chain(queries)
       .map(q => q.dependentMetadata())
@@ -326,11 +326,11 @@ export const loadMetadataForQueries =
             foreignTables
               ? Tables.actions.fetchMetadataAndForeignTables
               : Tables.actions.fetchMetadata
-          )({ id });
+          )({ id }, options);
         } else if (type === "field") {
-          return Fields.actions.fetch({ id });
+          return Fields.actions.fetch({ id }, options);
         } else if (type === "schema") {
-          return Schemas.actions.fetchList({ dbId: id });
+          return Schemas.actions.fetchList({ dbId: id }, options);
         } else {
           console.warn(`loadMetadataForQueries: type ${type} not implemented`);
         }
