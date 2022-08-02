@@ -561,7 +561,7 @@
                          first
                          :parameter_mappings))))))
 
-        
+
 
         (testing "deserializing adjusts the IDs properly"
           (ts/with-dest-db
