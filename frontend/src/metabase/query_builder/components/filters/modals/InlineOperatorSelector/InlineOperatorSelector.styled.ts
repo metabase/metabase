@@ -56,12 +56,14 @@ export const OperatorDisplay = styled.button`
   font-weight: bold;
   text-decoration: ${props => (props.onClick ? "underline" : "none")};
   text-underline-offset: 2px;
-  color: ${color("brand")};
+  color: ${props => (props.onClick ? color("brand") : color("text-medium"))};
   text-transform: lowercase;
 
-  ${props => (props.onClick ? "cursor: pointer;" : "")} &:hover {
+  ${props => (props.onClick ? "cursor: pointer;" : "")}
+
+  &:hover {
     color: ${props =>
-      props.onClick ? lighten("brand", 0.1) : color("text-light")};
+      props.onClick ? lighten("brand", 0.1) : color("text-medium")};
   }
 `;
 

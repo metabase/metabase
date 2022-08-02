@@ -76,6 +76,8 @@ export const BulkFilterItem = ({
             fieldName={dimension.displayName()}
             iconName="io"
             tableName={tableName}
+            value={currentOperator}
+            operators={dimension.filterOperators(currentOperator)}
           />
           <BooleanPickerCheckbox
             filter={filter ?? newFilter}
