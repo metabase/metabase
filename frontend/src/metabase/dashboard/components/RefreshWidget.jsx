@@ -57,9 +57,11 @@ export default class RefreshWidget extends Component {
         triggerElement={
           elapsed == null ? (
             <Tooltip tooltip={t`Auto-refresh`}>
-              <DashboardHeaderButton>
-                <ClockIcon width={16} height={16} className={className} />
-              </DashboardHeaderButton>
+              <DashboardHeaderButton
+                icon={
+                  <ClockIcon width={16} height={16} className={className} />
+                }
+              />
             </Tooltip>
           ) : (
             <Tooltip
@@ -72,14 +74,16 @@ export default class RefreshWidget extends Component {
                 Math.round(remaining % 60)
               }
             >
-              <DashboardHeaderButton>
-                <CountdownIcon
-                  width={18}
-                  height={18}
-                  className="text-green"
-                  percent={Math.min(0.95, (period - elapsed) / period)}
-                />
-              </DashboardHeaderButton>
+              <DashboardHeaderButton
+                icon={
+                  <CountdownIcon
+                    width={16}
+                    height={16}
+                    className="text-green"
+                    percent={Math.min(0.95, (period - elapsed) / period)}
+                  />
+                }
+              />
             </Tooltip>
           )
         }
