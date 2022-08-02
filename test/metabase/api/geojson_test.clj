@@ -91,7 +91,8 @@
                                 (throw result)
 
                                 (instance? Exception result)
-                                (recur (dec remaining))
+                                (do (Thread/sleep 1000)
+                                    (recur (dec remaining)))
 
                                 :else
                                 result)))))]
