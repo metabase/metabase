@@ -461,19 +461,19 @@ export const ObjectDetailProperties = {
     // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
     //   { name: "COLUMN_NAME", enabled: true }
     //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
-    "table.columns": {
+    "detail.columns": {
       section: t`Columns`,
       title: t`Visible columns`,
       widget: ChartSettingOrderedColumns,
       getHidden: () => false,
       isValid: ([{ card, data }]: any) =>
-        // If "table.columns" happened to be an empty array,
+        // If "detail.columns" happened to be an empty array,
         // it will be treated as "all columns are hidden",
         // This check ensures it's not empty,
         // otherwise it will be overwritten by `getDefault` below
-        card.visualization_settings["table.columns"].length !== 0 &&
+        card.visualization_settings["detail.columns"].length !== 0 &&
         _.all(
-          card.visualization_settings["table.columns"],
+          card.visualization_settings["detail.columns"],
           columnSetting =>
             findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
         ),
