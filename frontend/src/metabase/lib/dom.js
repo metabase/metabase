@@ -353,17 +353,23 @@ export function shouldOpenInBlankWindow(
   return false;
 }
 
-const a = document.createElement("a"); // reuse the same tag for performance
+const getOrigin = url => {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+};
+
 export function isSameOrigin(url) {
-  a.href = url;
-  return a.origin === window.location.origin;
+  const origin = getOrigin(url);
+  return origin == null || origin === window.location.origin;
 }
 
 function isSiteUrlOrigin(url) {
-  a.href = MetabaseSettings.get("site-url");
-  const siteUrlOrigin = a.origin;
-  a.href = url;
-  return a.origin === siteUrlOrigin;
+  const siteUrl = getOrigin(MetabaseSettings.get("site-url"));
+  const urlOrigin = getOrigin(url);
+  return siteUrl === urlOrigin;
 }
 
 // When a url is either has the same origin or it is the same with the site url
