@@ -175,6 +175,8 @@
                      strs-or-var)))))
 
 (defn- add-values-to-variables
+  "Given `split-text`, containing a list of alternating strings and TextVariables, add a :value key to any TextVariables
+  with a corresponding value in `tag->normalized-param`."
   [tag->normalized-param locale split-text]
   (map
    (fn [maybe-variable]
@@ -183,7 +185,6 @@
          maybe-variable))
    split-text))
 
-;; Lots of lookahead/lookbehind in these regexes to handle escaping; see tests for examples
 (def ^:private optional-block-regex
   #"\[\[.*\]\]")
 
