@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 import {
   space,
   breakpointMaxSmall,
-  breakpointMinSmall,
+  breakpointMinHeightMedium,
 } from "metabase/styled-components/theme";
 
 import TabList from "metabase/core/components/TabList";
@@ -60,12 +60,17 @@ export const ModalTitle = styled(Ellipsified)`
 export const ModalTabList = styled(TabList)`
   padding: 1rem;
   width: 15rem;
+  border-right: 1px solid ${color("border")};
+  overflow-y: auto;
+
   ${breakpointMaxSmall} {
     width: 100%;
     height: 5rem;
   }
-  border-right: 1px solid ${color("border")};
-  overflow-y: auto;
+
+  ${breakpointMinHeightMedium} {
+    font-size: 1rem;
+  }
 `;
 
 export const ModalTabPanel = styled(TabPanel)`
