@@ -1293,16 +1293,15 @@ export class ExpressionDimension extends Dimension {
     // we try to find the field using the metadata directly,
     // so that we don't have to try to infer field metadata from the expression
 
-    // const resultMetadata = query?.question()?.getResultMetadata?.();
-    // if (resultMetadata) {
-    //   const fieldMetadata = _.findWhere(resultMetadata, {
-    //     name: this.name(),
-    //   });
-    //   if (fieldMetadata) {
-    //     console.log('has field metadata?', fieldMetadata, resultMetadata);
-    //     return this._createField(fieldMetadata);
-    //   }
-    // }
+    const resultMetadata = query?.question()?.getResultMetadata?.();
+    if (resultMetadata) {
+      const fieldMetadata = _.findWhere(resultMetadata, {
+        name: this.name(),
+      });
+      if (fieldMetadata) {
+        return this._createField(fieldMetadata);
+      }
+    }
 
     const subsOptions = getOptions(semantic_type ? semantic_type : base_type);
     const dimension_options =
