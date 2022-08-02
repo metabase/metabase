@@ -16,7 +16,6 @@ import { MAX_INLINE_CATEGORIES } from "./constants";
 import { isValidOption } from "./utils";
 
 import { SimpleCategoryFilterPicker } from "./SimpleCategoryFilterPicker";
-import { LargeCategoryFilterPicker } from "./LargeCategoryFilterPicker";
 
 import { Loading } from "./InlineCategoryPicker.styled";
 
@@ -41,7 +40,6 @@ const mapDispatchToProps = {
 };
 
 interface InlineCategoryPickerProps {
-  query: StructuredQuery;
   filter?: Filter;
   tableName?: string;
   newFilter: Filter;
@@ -49,18 +47,15 @@ interface InlineCategoryPickerProps {
   fieldValues: any[];
   fetchFieldValues: ({ id }: { id: number }) => Promise<any>;
   onChange: (newFilter: Filter) => void;
-  onClear: () => void;
 }
 
 export function InlineCategoryPickerComponent({
-  query,
   filter,
   newFilter,
   dimension,
   fieldValues,
   fetchFieldValues,
   onChange,
-  onClear,
 }: InlineCategoryPickerProps) {
   const safeFetchFieldValues = useSafeAsyncFunction(fetchFieldValues);
   const shouldFetchFieldValues = !dimension?.field()?.hasFieldValues();
@@ -93,8 +88,6 @@ export function InlineCategoryPickerComponent({
     fieldValues.length <= MAX_INLINE_CATEGORIES &&
     hasCheckboxOperator;
 
-  const showPopoverPicker = !showInlinePicker && hasCheckboxOperator;
-
   if (hasError) {
     return (
       <Warnings
@@ -115,18 +108,6 @@ export function InlineCategoryPickerComponent({
         filter={filter ?? newFilter}
         onChange={onChange}
         options={fieldValues.flat().filter(isValidOption)}
-      />
-    );
-  }
-
-  if (showPopoverPicker) {
-    return (
-      <LargeCategoryFilterPicker
-        query={query}
-        filter={filter ?? newFilter}
-        dimension={dimension}
-        onChange={onChange}
-        onClear={onClear}
       />
     );
   }
