@@ -121,7 +121,6 @@ describe("scenarios > question > filter", () => {
     filter();
 
     filterFieldPopover("Product ID").contains("Aerodynamic Linen Coat").click();
-    cy.findByText("Update filter").click();
 
     cy.findByTestId("apply-filters").click();
 

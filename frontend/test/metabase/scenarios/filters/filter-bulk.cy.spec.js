@@ -99,10 +99,10 @@ describe("scenarios > filters > bulk filtering", () => {
     filter();
 
     filterField("Quantity", { operator: "equal to" });
-    filterFieldPopover("Quantity");
+    filterFieldPopover("Quantity").within(() => {
+      cy.findByText("20").click();
+    });
 
-    cy.findByLabelText("20").click();
-    cy.button("Update filter").click();
     applyFilters();
 
     cy.findByText("Quantity is equal to 20").should("be.visible");
@@ -399,11 +399,9 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Showing 506 rows").should("be.visible");
     });
 
-    it("should show large category picker for state", () => {
-      cy.findByTestId("large-category-picker").should("exist");
+    it("should show value picker for state", () => {
       filterFieldPopover("State").within(() => {
         cy.findByText("AZ").click();
-        cy.button("Update filter").click();
       });
       applyFilters();
 
