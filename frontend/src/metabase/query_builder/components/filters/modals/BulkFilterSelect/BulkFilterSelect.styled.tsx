@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 import { color, alpha } from "metabase/lib/colors";
-import { breakpointMinHeightMedium } from "metabase/styled-components/theme";
 
 import SelectButton from "metabase/core/components/SelectButton";
 import FilterPopover from "../../FilterPopover";
@@ -12,20 +11,17 @@ type SelectFilterButtonProps = {
 };
 
 const lightSelectButton = ({ hasValue, isActive }: SelectFilterButtonProps) => `
-    height: 40px;
-    ${breakpointMinHeightMedium} {
-      height: 56px;
-    }
     padding: 0.5rem 1rem;
+    height: 40px;
 
     background-color: ${hasValue ? alpha("brand", 0.2) : color("white")};
-    color: ${hasValue ? color("brand") : color("text-light")};
+    color: ${hasValue ? color("brand") : color("text-medium")};
     border-color: ${
       isActive ? color("brand") : hasValue ? "transparent" : color("border")
     };
 
     .Icon {
-      color: ${hasValue ? color("brand") : color("text-light")};
+      color: ${hasValue ? color("brand") : color("text-medium")};
     }
 `;
 

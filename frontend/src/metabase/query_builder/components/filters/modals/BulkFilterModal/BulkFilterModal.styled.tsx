@@ -1,10 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import {
-  space,
-  breakpointMaxSmall,
-  breakpointMinHeightMedium,
-} from "metabase/styled-components/theme";
+import { space, breakpointMaxSmall } from "metabase/styled-components/theme";
 
 import TabList from "metabase/core/components/TabList";
 import TabPanel from "metabase/core/components/TabPanel";
@@ -66,10 +62,6 @@ export const ModalTabList = styled(TabList)`
   ${breakpointMaxSmall} {
     width: 100%;
     height: 5rem;
-  }
-
-  ${breakpointMinHeightMedium} {
-    font-size: 1rem;
   }
 `;
 
