@@ -114,7 +114,7 @@
 (defn- mbql-entity-reference?
   "Is given form an MBQL entity reference?"
   [form]
-  (mbql.normalize/is-clause? #{:field :field-id :fk-> :metric :segment} form))
+  (mbql.normalize/is-clause? #{:field :field-id :fk-> :dimension :metric :segment} form))
 
 (defn- mbql-id->fully-qualified-name
   [mbql]
@@ -124,6 +124,10 @@
         ;; `integer?` guard is here to make the operation idempotent
         [:field (id :guard integer?) opts]
         [:field (export-field-fk id) (mbql-id->fully-qualified-name opts)]
+
+        ;; `integer?` guard is here to make the operation idempotent
+        [:field (id :guard integer?)]
+        [:field (export-field-fk id)]
 
         ;; field-id is still used within parameter mapping dimensions
         ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
@@ -137,6 +141,9 @@
         ;; example relevant clause - [:field 2 {:source-field 1}]
         {:source-field (id :guard integer?)}
         (assoc &match :source-field (export-field-fk id))
+
+        [:dimension (dim :guard vector?)]
+        [:dimension (mbql-id->fully-qualified-name dim)]
 
         [:metric (id :guard integer?)]
         [:metric (export-fk id 'Metric)]
@@ -231,6 +238,7 @@
       mbql-fully-qualified-names->ids
       json/generate-string))
 
+
 (declare ^:private mbql-deps-map)
 
 (defn- mbql-deps-vector [entity]
@@ -259,3 +267,19 @@
   databases, tables and fields are loaded."
   [entity]
   (mbql-deps-map entity)) ;; process other keys
+
+(defn export-parameter-mappings
+  "Given the :parameter_mappings field of a `Card` or `DashboardCard`, as a JSON-encoded list of objects, converts
+  it to a portable form with the field IDs replaced with `[db schema table field]` references."
+  [mappings]
+  (->> (json/parse-string mappings true)
+       (map ids->fully-qualified-names)))
+
+(defn import-parameter-mappings
+  "Given the :parameter_mappings field as exported by serialization convert its field references
+  (`[db schema table field]`) back into raw IDs, and encode it back into JSON."
+  [mappings]
+  (->> mappings
+       (map mbql-fully-qualified-names->ids)
+       (map #(m/update-existing % :card_id import-fk 'Card))
+       json/generate-string))
