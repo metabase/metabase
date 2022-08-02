@@ -13,12 +13,11 @@ describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card/**/query").as("cardQuery");
-    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-    cy.intercept("GET", "/api/collection/**").as("collection");
   });
 
   it("one filter should search across multiple fields", () => {
+    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+
     cy.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
       // add the same question twice
       cy.request("POST", `/api/dashboard/${id}/cards`, {
