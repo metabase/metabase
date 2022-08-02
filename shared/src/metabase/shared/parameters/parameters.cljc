@@ -230,6 +230,14 @@
                                               (assoc acc tag (normalize-parameter param)))
                                             {}
                                             tag->param)]
+       ;; Most of the functions in this pipeline are relating to handling [[optional] blocks in the text.
+       ;; For example, given an input "[[a {{b}}]] [[{{c}}]]", where `b` has no value and `c` = 3:
+       ;; 1. `split-on-tags` =>
+       ;;      ("[[a " {:tag "b" :source "{{b}}"} "]] [[" {:tag "c" :source "{{c}}"} "]]")
+       ;; 2. `add-values-to-variables` =>
+       ;;      ("[[a " {:tag "b" :source "{{b}}" :value nil} "]] [[" {:tag "c" :source "{{c}}" :value 3} "]]")
+       ;; 3. `join-consecutive-strings` => ("[[a {{b}}]] [[" {:tag "b" :source "{{c}}" :value 3} "]])
+       ;; 4. `strip-optional-blocks`    => "3"
        (->> text
             split-on-tags
             (add-values-to-variables tag->normalized-param locale)
