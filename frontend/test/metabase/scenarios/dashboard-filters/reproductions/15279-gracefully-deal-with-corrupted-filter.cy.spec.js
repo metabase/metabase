@@ -7,14 +7,16 @@ const firstFilter = {
   name: "List",
   slug: "list",
   id: "6fe14171",
-  type: "category",
+  type: "string/=",
+  sectionId: "string",
 };
 
 const secondFilter = {
   name: "Search",
   slug: "search",
   id: "4db4913a",
-  type: "category",
+  type: "string/=",
+  sectionId: "string",
 };
 
 // This filter is corrupted because it's missing `name` and `slug`
@@ -22,7 +24,8 @@ const corruptedFilter = {
   name: "",
   slug: "",
   id: "af72ce9c",
-  type: "category",
+  type: "string/=",
+  sectionId: "string",
 };
 
 const parameters = [firstFilter, secondFilter, corruptedFilter];
@@ -62,12 +65,12 @@ describe("issue 15279", () => {
                 {
                   parameter_id: firstFilter.id,
                   card_id,
-                  target: ["dimension", ["field-id", PEOPLE.SOURCE]],
+                  target: ["dimension", ["field", PEOPLE.SOURCE, null]],
                 },
                 {
                   parameter_id: secondFilter.id,
                   card_id,
-                  target: ["dimension", ["field-id", PEOPLE.NAME]],
+                  target: ["dimension", ["field-id", PEOPLE.NAME, null]],
                 },
               ],
             },
