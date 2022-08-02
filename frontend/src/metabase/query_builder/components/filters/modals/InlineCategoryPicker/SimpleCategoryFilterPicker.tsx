@@ -7,6 +7,7 @@ import type Filter from "metabase-lib/lib/queries/structured/Filter";
 import { PickerContainer, PickerGrid } from "./InlineCategoryPicker.styled";
 
 import { isValidOption } from "./utils";
+import { LONG_OPTION_LENGTH } from "./constants";
 
 interface SimpleCategoryFilterPickerProps {
   filter: Filter;
@@ -29,9 +30,15 @@ export function SimpleCategoryFilterPicker({
     onChange(filter.setArguments(newArgs));
   };
 
+  const hasShortOptions = !options.find(
+    option => String(option).length > LONG_OPTION_LENGTH,
+  );
+  // because we want options to flow by column, we have to explicitly set the number of rows
+  const rows = Math.round(options.length / 2);
+
   return (
     <PickerContainer data-testid="category-picker">
-      <PickerGrid>
+      <PickerGrid multiColumn={hasShortOptions} rows={rows}>
         {options.map((option: string | number) => (
           <Checkbox
             key={option?.toString() ?? "empty"}
