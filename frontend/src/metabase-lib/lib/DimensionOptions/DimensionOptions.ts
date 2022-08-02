@@ -36,7 +36,9 @@ export default class DimensionOptions {
   }
 
   sections({ extraItems = [] } = {}): DimensionOptionsSection[] {
-    const [dimension] = this.dimensions;
+    const dimension =
+      this.dimensions.find(dimension => !dimension.isExpression()) ??
+      this.dimensions[0];
     const table = dimension && dimension.field().table;
     const tableName = table ? table.objectName() : null;
     const mainSection: DimensionOptionsSection = {
