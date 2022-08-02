@@ -794,11 +794,10 @@ class StructuredQueryInner extends AtomicQuery {
         ? []
         : this.breakouts()
             .filter(breakout => !_.isEqual(breakout, includedBreakout))
-            .map(breakout => breakout.field().id),
+            .map(breakout => breakout.field().reference().join()),
     );
-    console.log(this.breakouts(), usedFields);
     return this.fieldOptions(
-      field => fieldFilter(field) && !usedFields.has(field.id),
+      field => fieldFilter(field) && !usedFields.has(field.reference().join()),
     );
   }
 
