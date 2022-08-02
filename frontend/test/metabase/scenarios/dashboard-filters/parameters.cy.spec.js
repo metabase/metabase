@@ -7,7 +7,7 @@ import {
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
-const { ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
@@ -304,6 +304,137 @@ describe("scenarios > dashboard > parameters", () => {
     });
   });
 
+  it("should handle multiple filters and allow multiple filter values without sending superfluous queries or limiting results (metabase#13150, metabase#15689, metabase#15695, metabase#16103)", () => {
+    const questionDetails = {
+      name: "13150 (Products)",
+      query: { "source-table": PRODUCTS_ID },
+    };
+
+    const parameters = [
+      {
+        name: "Title",
+        slug: "title",
+        id: "9f20a0d5",
+        type: "string/=",
+        sectionId: "string",
+      },
+      {
+        name: "Category",
+        slug: "category",
+        id: "719fe1c2",
+        type: "string/=",
+        sectionId: "string",
+      },
+      {
+        name: "Vendor",
+        slug: "vendor",
+        id: "a73b7c9",
+        type: "string/=",
+        sectionId: "string",
+      },
+    ];
+
+    const [titleFilter, categoryFilter, vendorFilter] = parameters;
+
+    const dashboardDetails = { parameters };
+
+    cy.intercept(
+      "POST",
+      "/api/dashboard/*/dashcard/*/card/*/query",
+      cy.spy().as("cardQueryRequest"),
+    ).as("cardQuery");
+
+    cy.intercept(
+      "GET",
+      `/api/dashboard/*/params/${categoryFilter.id}/values`,
+      cy.spy().as("fetchAllCategories"),
+    ).as("filterValues");
+
+    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        cy.log("Connect all filters to the card");
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              sizeX: 14,
+              sizeY: 12,
+              parameter_mappings: [
+                {
+                  parameter_id: titleFilter.id,
+                  card_id,
+                  target: ["dimension", ["field", PRODUCTS.TITLE, null]],
+                },
+                {
+                  parameter_id: categoryFilter.id,
+                  card_id,
+                  target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                },
+                {
+                  parameter_id: vendorFilter.id,
+                  card_id,
+                  target: ["dimension", ["field", PRODUCTS.VENDOR, null]],
+                },
+              ],
+              visualization_settings: {},
+            },
+          ],
+        });
+
+        cy.visit(
+          `/dashboard/${dashboard_id}?title=Awesome Concrete Shoes&category=Widget&vendor=McClure-Lockman`,
+        );
+      },
+    );
+
+    cy.wait("@cardQuery");
+    // Multiple filters shouldn't affect the number of card query requests (metabase#13150)
+    cy.get("@cardQueryRequest").should("have.been.calledOnce");
+
+    // Open category dropdown
+    filterWidget().contains("Widget").click();
+    cy.wait("@filterValues");
+
+    // Make sure all filters were fetched (should be cached after this)
+    popover().within(() => {
+      // Widget should be selected by default
+      isFilterSelected("Widget", true);
+      // Select one more filter (metabase#15689)
+      cy.findByText("Gizmo").click();
+      isFilterSelected("Gizmo", true);
+
+      cy.findByText("Doohickey");
+      cy.findByText("Gadget");
+    });
+
+    cy.get("@fetchAllCategories").should("have.been.calledOnce");
+
+    cy.button("Update filter").click();
+    cy.findByText("2 selections").click();
+
+    // Even after we reopen the dropdown, it shouldn't send additional requests for values (metabase#16103)
+    cy.get("@fetchAllCategories").should("have.been.calledOnce");
+
+    // As a sanity check, make sure we can deselect the filter by clicking on it
+    popover().within(() => {
+      cy.findByText("Gizmo").click();
+      isFilterSelected("Gizmo", false);
+    });
+
+    cy.button("Update filter").click();
+    cy.findByText("2 selections").should("not.exist");
+    filterWidget().contains("Widget");
+
+    filterWidget().contains("Awesome Concrete Shoes").click();
+    // Do not limit number of results (metabase#15695)
+    // Prior to the issue being fixed, the cap was 100 results
+    cy.findByPlaceholderText("Search the list").type("Syner");
+    cy.findByText("Synergistic Wool Coat");
+  });
+
   describe("when the user does not have self-service data permissions", () => {
     beforeEach(() => {
       visitDashboard(1);
@@ -336,4 +467,12 @@ describe("scenarios > dashboard > parameters", () => {
 function selectFilter(selection, filterName) {
   selection.contains("Select…").click();
   popover().contains(filterName).click({ force: true });
+}
+
+function isFilterSelected(filter, bool) {
+  cy.findByTestId(`${filter}-filter-value`).within(() =>
+    cy
+      .findByRole("checkbox")
+      .should(`${bool === false ? "not." : ""}be.checked`),
+  );
 }
