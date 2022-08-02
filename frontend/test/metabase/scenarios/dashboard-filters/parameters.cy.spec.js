@@ -3,6 +3,7 @@ import {
   restore,
   visitDashboard,
   filterWidget,
+  editDashboard,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -304,7 +305,7 @@ describe("scenarios > dashboard > parameters", () => {
     });
   });
 
-  it("should handle multiple filters and allow multiple filter values without sending superfluous queries or limiting results (metabase#13150, metabase#15689, metabase#15695, metabase#16103)", () => {
+  it("should handle multiple filters and allow multiple filter values without sending superfluous queries or limiting results (metabase#13150, metabase#15689, metabase#15695, metabase#16103, metabase#17139)", () => {
     const questionDetails = {
       name: "13150 (Products)",
       query: { "source-table": PRODUCTS_ID },
@@ -433,6 +434,23 @@ describe("scenarios > dashboard > parameters", () => {
     // Prior to the issue being fixed, the cap was 100 results
     cy.findByPlaceholderText("Search the list").type("Syner");
     cy.findByText("Synergistic Wool Coat");
+
+    cy.location("search").should(
+      "eq",
+      "?title=Awesome%20Concrete%20Shoes&category=Widget&vendor=McClure-Lockman",
+    );
+    cy.findAllByTestId("table-row").should("have.length", 1);
+
+    // It should not reset previously defined filters when exiting 'edit' mode without making any changes (metabase#5332, metabase#17139)
+    editDashboard();
+    cy.findByText("Cancel").click();
+    cy.findByText("You're editing this dashboard.").should("not.exist");
+
+    cy.location("search").should(
+      "eq",
+      "?title=Awesome%20Concrete%20Shoes&category=Widget&vendor=McClure-Lockman",
+    );
+    cy.findAllByTestId("table-row").should("have.length", 1);
   });
 
   describe("when the user does not have self-service data permissions", () => {
