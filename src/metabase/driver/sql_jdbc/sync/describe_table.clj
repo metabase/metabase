@@ -316,7 +316,8 @@
   This is the lowest common denominator of types, hopefully,
   although as of writing this is just geared towards Postgres types"
   {:type/Text       "text"
-   :type/Integer    "integer"
+   ;; Also see #22732
+   :type/Integer    "bigint"
    ;; You might think that the ordinary 'bigint' type in Postgres and MySQL should be this.
    ;; However, Bigint in those DB's maxes out at 2 ^ 64.
    ;; JSON, like Javascript itself, will happily represent 1.8 * (10^308),
