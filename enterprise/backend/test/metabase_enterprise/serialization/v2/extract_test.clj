@@ -105,8 +105,7 @@
                                                                :schema      "PUBLIC"}]
                        Field      [{field2-id    :id}         {:name "Other Field" :table_id schema-id}]
                        Card       [{c1-id  :id
-                                    c1-eid :entity_id
-                                    :as c1}        {:name          "Some Question"
+                                    c1-eid :entity_id}        {:name          "Some Question"
                                                                :database_id   db-id
                                                                :table_id      no-schema-id
                                                                :collection_id coll-id
