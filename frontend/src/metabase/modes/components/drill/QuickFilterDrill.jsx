@@ -16,11 +16,15 @@ function getFiltersForColumn(column) {
       { name: ">", operator: ">" },
       { name: "=", operator: "=" },
       { name: "≠", operator: "!=" },
+      { name: "=", operator: "is-null" },
+      { name: "≠", operator: "not-null" },
     ];
   } else if (!INVALID_TYPES.some(type => isa(column.base_type, type))) {
     return [
       { name: "=", operator: "=" },
       { name: "≠", operator: "!=" },
+      { name: "=", operator: "is-empty" },
+      { name: "≠", operator: "not-empty" },
     ];
   } else {
     return [];
