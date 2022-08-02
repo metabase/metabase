@@ -215,6 +215,10 @@
       {"foo" {:type :string/= :value "foo"}}
       "foofoo"
 
+      "[[{{foo}}]] [[{{bar}}]]"
+      {"foo" {:type :string/= :value 1} "bar" {:type :string/= :value 2}}
+      "1 2"
+
       "[[{{foo}}]"
       {"foo" {:type :string/= :value "bar"}}
       "[[bar]"

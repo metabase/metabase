@@ -186,10 +186,10 @@
    split-text))
 
 (def ^:private optional-block-regex
-  #"\[\[.*\]\]")
+  #"\[\[.+\]\]")
 
 (def ^:private non-optional-block-regex
-  #"\[\[(.*)\]\]")
+  #"\[\[(.+?)\]\]")
 
 (defn- strip-optional-blocks
   "Removes any [[optional]] blocks from individual strings in `split-text`, which are blocks that have no parameters
@@ -237,7 +237,7 @@
        ;; 2. `add-values-to-variables` =>
        ;;      ("[[a " {:tag "b" :source "{{b}}" :value nil} "]] [[" {:tag "c" :source "{{c}}" :value 3} "]]")
        ;; 3. `join-consecutive-strings` => ("[[a {{b}}]] [[" {:tag "b" :source "{{c}}" :value 3} "]])
-       ;; 4. `strip-optional-blocks`    => "3"
+       ;; 4. `strip-optional-blocks` => "3"
        (->> text
             split-on-tags
             (add-values-to-variables tag->normalized-param locale)
