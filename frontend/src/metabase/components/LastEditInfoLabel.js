@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import moment from "moment";
+import moment from "moment-timezone";
 
 import { getUser } from "metabase/selectors/user";
 import { getFullName } from "metabase/lib/user";
