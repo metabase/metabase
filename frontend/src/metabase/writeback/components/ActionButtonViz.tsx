@@ -1,8 +1,11 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
+import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
+
+import { useConfirmation } from "metabase/hooks/use-confirmation";
 
 import { DashboardWithCards } from "metabase-types/types/Dashboard";
 import { VisualizationProps } from "metabase-types/types/Visualization";
@@ -50,6 +53,44 @@ const ACTIONS_VIZ_DEFINITION = {
         ],
       },
     },
+    "confirmation_modal.is_required": {
+      section: t`Confirmation`,
+      title: t`Require confirmation`,
+      widget: "toggle",
+      default: false,
+    },
+    "confirmation_modal.title": {
+      section: t`Confirmation`,
+      title: t`Confirmation modal title`,
+      widget: "input",
+      default: t`Are you sure?`,
+      getHidden: (_: any, settings: any) =>
+        !settings["confirmation_modal.is_required"],
+    },
+    "confirmation_modal.description": {
+      section: t`Confirmation`,
+      title: t`Confirmation modal description`,
+      widget: "input",
+      default: t`This cannot be undone`,
+      getHidden: (_: any, settings: any) =>
+        !settings["confirmation_modal.is_required"],
+    },
+    "confirmation_modal.submit.title": {
+      section: t`Confirmation`,
+      title: t`Submit button title`,
+      widget: "input",
+      default: t`Confirm`,
+      getHidden: (_: any, settings: any) =>
+        !settings["confirmation_modal.is_required"],
+    },
+    "confirmation_modal.cancel.title": {
+      section: t`Confirmation`,
+      title: t`Cancel button title`,
+      widget: "input",
+      default: t`Cancel`,
+      getHidden: (_: any, settings: any) =>
+        !settings["confirmation_modal.is_required"],
+    },
   },
 };
 
@@ -63,8 +104,24 @@ function ActionButtonViz({
   getExtraDataForClick,
   onVisualizationClick,
 }: ActionButtonVizProps) {
+  const { modalContent: confirmationModal, show: requestConfirmation } =
+    useConfirmation();
+
   const label = settings["button.label"];
   const variant = settings["button.variant"];
+
+  const confirmationModalSettings = useMemo(() => {
+    const result: Record<string, any> = {};
+
+    Object.keys(settings).forEach(key => {
+      if (key.startsWith("confirmation_modal.")) {
+        const shortKey = key.replace("confirmation_modal.", "");
+        result[shortKey] = settings[key];
+      }
+    });
+
+    return result;
+  }, [settings]);
 
   const variantProps: any = {};
   if (variant !== "default") {
@@ -83,9 +140,9 @@ function ActionButtonViz({
     [clicked, getExtraDataForClick],
   );
 
-  const onClick = useCallback(
+  const handleTriggerAction = useCallback(
     (e: React.MouseEvent) => {
-      onVisualizationClick({
+      return onVisualizationClick({
         ...clicked,
         extraData,
         element: e.currentTarget as HTMLElement,
@@ -94,12 +151,43 @@ function ActionButtonViz({
     [clicked, extraData, onVisualizationClick],
   );
 
+  const handleActionRequiringConfirmation = useCallback(
+    (e: React.MouseEvent) => {
+      requestConfirmation({
+        title: confirmationModalSettings.title,
+        message: confirmationModalSettings.description,
+        confirmButtonText: confirmationModalSettings["submit.title"],
+        cancelButtonText: confirmationModalSettings["cancel.title"],
+        onConfirm: async () => handleTriggerAction(e),
+      });
+    },
+    [confirmationModalSettings, requestConfirmation, handleTriggerAction],
+  );
+
+  const onClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (confirmationModalSettings.is_required) {
+        handleActionRequiringConfirmation(e);
+      } else {
+        handleTriggerAction(e);
+      }
+    },
+    [
+      confirmationModalSettings,
+      handleTriggerAction,
+      handleActionRequiringConfirmation,
+    ],
+  );
+
   return (
-    <div className="flex full-height full-width layout-centered px1">
-      <Button onClick={onClick} {...variantProps} fullWidth>
-        {label}
-      </Button>
-    </div>
+    <>
+      <div className="flex full-height full-width layout-centered px1">
+        <Button onClick={onClick} {...variantProps} fullWidth>
+          {label}
+        </Button>
+      </div>
+      {confirmationModal}
+    </>
   );
 }
 
