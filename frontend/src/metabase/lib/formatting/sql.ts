@@ -1,4 +1,4 @@
-export function formatSQL(sql) {
+export function formatSQL(sql: string) {
   if (typeof sql === "string") {
     sql = sql.replace(/\sFROM/, "\nFROM");
     sql = sql.replace(/\sLEFT JOIN/, "\nLEFT JOIN");
