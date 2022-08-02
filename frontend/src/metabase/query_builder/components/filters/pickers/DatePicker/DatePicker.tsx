@@ -237,6 +237,7 @@ type Props = {
   hideEmptinessOperators?: boolean;
   disableOperatorSelection?: boolean;
   disableChangingDimension?: boolean;
+  supportsExpressions?: boolean;
 
   primaryColor?: string;
   minWidth?: number | null;
@@ -255,6 +256,7 @@ const DatePicker: React.FC<Props> = props => {
     onFilterChange,
     disableOperatorSelection,
     disableChangingDimension,
+    supportsExpressions,
     primaryColor,
     onCommit,
     children,
@@ -313,6 +315,7 @@ const DatePicker: React.FC<Props> = props => {
               filter={filter}
               onCommit={onCommit}
               primaryColor={primaryColor}
+              supportsExpressions={supportsExpressions}
               onFilterChange={(filter: Filter) => {
                 if (!isStartingFrom(filter) && operator && operator.init) {
                   onFilterChange(operator.init(filter));
