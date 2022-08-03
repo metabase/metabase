@@ -141,6 +141,7 @@ export class TagEditorParam extends Component {
     const hasWidgetOptions = widgetOptions && widgetOptions.length > 0;
     const hasNoWidgetType =
       tag["widget-type"] === "none" || !tag["widget-type"];
+    const hasNoWidgetLabel = !tag["display-name"];
 
     return (
       <div className="px3 pt3 mb1 border-top">
@@ -247,7 +248,12 @@ export class TagEditorParam extends Component {
 
         {(hasWidgetOptions || !isDimension) && (
           <div className="pb4">
-            <h4 className="text-medium pb1">{t`Filter widget label`}</h4>
+            <h4 className="text-medium pb1">
+              {t`Filter widget label`}
+              {hasNoWidgetLabel && (
+                <span className="text-error mx1">{t`(required)`}</span>
+              )}
+            </h4>
             <InputBlurChange
               type="text"
               value={tag["display-name"]}
