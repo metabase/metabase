@@ -1,8 +1,6 @@
 name: E2E Cross-version Tests
 
-on:
-  push:
-
+on: [push]
 
 jobs:
 
@@ -10,33 +8,46 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     services:
-      maildev:
+      metabase-source:
         image: metabase/metabase:v0.42.0
         ports:
           - "4200:3000"
+        volumes:
+          - $PWD/my-metabase:/metabase.db
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
+    - run: ls $PWD
     - name: Wait for Metabase to start on port 4200
-      run: while ! curl -s localhost:4200/api/health; do sleep 1; done
-    - name: Foo
-      run: echo 'foo'
+      run: while ! curl -s 'http://localhost:4200/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+    - name: Upload Metabase app DB
+      uses: actions/upload-artifact@v2
+      with:
+        name: metabase-app-db
+        path: $PWD/my-metabase/metabase.db.mv.db
 
-  target:
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
-    needs: source
-    services:
-      maildev:
-        image: metabase/metabase:v0.43.0
-        ports:
-          - "4300:3000"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-    steps:
-    - name: Wait for Metabase to start on port 4300
-      run: while ! curl -s localhost:4300/api/health; do sleep 1; done
-    - name: Bar
-      run: echo 'bar'
+  # target:
+  #   runs-on: ubuntu-20.04
+  #   timeout-minutes: 60
+  #   needs: source
+  #   services:
+  #     metabase-target:
+  #       image: metabase/metabase:v0.43.0
+  #       ports:
+  #         - "4300:3000"
+  #       volumes:
+  #         - /foobar/my-metabase:/metabase.db
+  #       credentials:
+  #         username: ${{ secrets.DOCKERHUB_USERNAME }}
+  #         password: ${{ secrets.DOCKERHUB_TOKEN }}
+  #   steps:
+  #   - name: Download previously populated Metabase app DB
+  #     uses: actions/download-artifact@v2
+  #     with:
+  #       name: metabase-app-db
+  #       path: /foobar/my-metabase/
+  #   - name: Wait for Metabase to start on port 4300
+  #     run: while ! curl -s 'http://localhost:4300/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+  #   - name: Bar
+  #     run: ls /foobar/my-metabase/ | grep 'metabase.db'
