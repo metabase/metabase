@@ -26,6 +26,7 @@ jobs:
   target:
     runs-on: ubuntu-20.04
     timeout-minutes: 60
+    needs: source
     services:
       maildev:
         image: metabase/metabase:v0.43.0
