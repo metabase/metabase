@@ -10,6 +10,7 @@ import Icon from "metabase/components/Icon";
 import ChartSettingSelect from "./ChartSettingSelect";
 
 import { keyForColumn } from "metabase/lib/dataset";
+import { RemoveIcon } from "./ChartSettingFieldPicker.styled";
 
 const ChartSettingFieldPicker = ({
   value,
@@ -53,12 +54,9 @@ const ChartSettingFieldPicker = ({
           }}
         />
       )}
-      <Icon
+      <RemoveIcon
         data-testid={`remove-${value}`}
         name="close"
-        className={cx("ml1 text-medium text-brand-hover cursor-pointer", {
-          "disabled hidden": !onRemove,
-        })}
         onClick={onRemove}
       />
     </div>
