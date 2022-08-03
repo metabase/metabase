@@ -10,7 +10,7 @@ export const CopyWidgetButton = styled(CopyButton)`
   display: flex;
   align-items: center;
   padding: 0.5rem;
-  border-left: 1px solid ${color("border-dark")};
+  border-left: 1px solid ${color("border")};
   border-top-right-radius: 0.5rem;
   border-bottom-right-radius: 0.5rem;
   color: ${color("brand")};
