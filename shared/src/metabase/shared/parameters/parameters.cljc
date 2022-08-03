@@ -135,6 +135,11 @@
   If you modify this, also modify `template-tag-splitting-regex` below."
   #"\{\{\s*([A-Za-z0-9_\.]+?)\s*\}\}")
 
+(def ^:private template-tag-splitting-regex
+  "A regex for spliting text around template tags. This should be identical to `template-tag-regex` above, but without
+  the capture group around the tag name."
+  #"\{\{\s*[A-Za-z0-9_\.]+?\s*\}\}")
+
 ;; Represents a variable parsed out of a text card. `tag` contains the tag name alone, as a string. `source` contains
 ;; the full original syntax for the parameter)
 (defrecord ^:private TextParam [tag source]
@@ -147,20 +152,22 @@
   [x]
   (instance? TextParam x))
 
-(def ^:private template-tag-splitting-regex
-  (let [base "\\{\\{\\s*[A-Za-z0-9_\\.]+?\\s*\\}\\}"]
-    ;; Use lookahead and lookbehind to retain matches in split
-    (re-pattern (str "(?<=" base ")|(?=" base ")"))))
-
 (defn- split-on-tags
   "Given the text of a Markdown card, splits it into a sequence of alternating strings and TextParam records."
   [text]
-  (let [split-text (str/split text template-tag-splitting-regex)]
+  (let [split-text      (str/split text template-tag-splitting-regex)
+        matches         (map first (re-seq template-tag-regex text))
+        max-len         (max (count split-text) (count matches))
+        ;; Pad both `split-text` and `matches` with empty strings until they are equal length, so that nothing is
+        ;; dropped by the call to `interleave`
+        padded-text     (concat split-text (repeatedly (- max-len (count split-text)) (constantly "")))
+        padded-matches  (concat matches (repeatedly (- max-len (count matches)) (constantly "")))
+        full-split-text (interleave padded-text padded-matches)]
     (map (fn [text]
            (if-let [[_, match] (re-matches template-tag-regex text)]
              (->TextParam match text)
              text))
-         split-text)))
+         full-split-text)))
 
 (defn- join-consecutive-strings
   "Given a vector of strings and/or TextParam, concatenate consecutive strings and TextParams without values."
