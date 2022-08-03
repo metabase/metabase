@@ -12,11 +12,22 @@ jobs:
         source: [v0.42.0]
         target: [v0.43.0]
     steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
     - name: Start Metabase ${{ matrix.source }}
       run: docker run -d -v $PWD/my-metabase:/metabase.db -p 3000:3000 --name metabase-${{ matrix.source }} metabase/metabase:${{ matrix.source }}
     - name: Wait for Metabase to start on port 3000
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-    - run: echo 'Foo'
+    - name: Prepare cypress environment
+      uses: ./.github/actions/prepare-cypress
+    - name: Run Cypress
+      run: |
+        yarn cypress run \
+          --browser chrome \
+          --config-file frontend/test/metabase/scenarios/cross-version/source/cypress.json \
+          --spec frontend/test/metabase/scenarios/cross-version/source/${{ matrix.source }}/setup.cy.spec.js
     - name: Stop Metabase ${{ matrix.source }}
       run: docker stop metabase-${{ matrix.source }}
 
