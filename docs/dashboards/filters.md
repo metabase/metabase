@@ -137,5 +137,5 @@ Here are a few tips to get the most out of dashboard filters:
 - [Introduction to dashboards](./introduction.md)
 - [Interactive dashboards](./interactive.md)
 - [Dashboard subscriptions](./subscriptions.md)
-- [Dashboard charts with multiple series](./multiple-series.md)
+- [Charts with multiple series](./multiple-series.md)
 - [Learn dashboards](/learn/dashboards)

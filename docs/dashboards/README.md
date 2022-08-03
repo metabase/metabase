@@ -20,7 +20,7 @@ Customize what happens when people click on a chart in your dashboard.
 
 ## [Dashboard charts with multiple series](./multiple-series.md)
 
-Combine multiple questions on a single dashboard card.
+Combine multiple questions on a single chart.
 
 ## [Dashboard subscriptions](./subscriptions.md)
 
