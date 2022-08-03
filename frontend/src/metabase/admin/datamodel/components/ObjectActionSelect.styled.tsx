@@ -1,14 +1,12 @@
 import styled from "@emotion/styled";
+import { Link } from "react-router";
 import { color } from "metabase/lib/colors";
 
-export const FormButton = styled.button`
-  display: flex;
-  align-items: center;
-  width: 100%;
-  margin: 0.5rem 0;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
+export const ActionLink = styled(Link)`
+  display: block;
+  padding: 0.5rem 1rem;
   cursor: pointer;
+  text-decoration: none;
 
   &:hover {
     color: ${color("white")};

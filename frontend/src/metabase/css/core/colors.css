@@ -42,11 +42,6 @@
   color: var(--color-brand);
 }
 
-.text-brand-darken,
-.text-brand-darken-hover:hover {
-  color: var(--color-brand);
-}
-
 .text-brand-light,
 :local(.text-brand-light),
 .text-brand-light-hover:hover,
@@ -58,31 +53,12 @@
   background-color: var(--color-brand-light);
 }
 
-.bg-brand-dark,
-.bg-brand-dark-hover:hover {
+.bg-brand-dark {
   background-color: color-mod(var(--color-brand) blackness(12%));
 }
 
-.bg-brand-dark,
-.bg-brand-dark-hover:hover {
-  background-color: color-mod(var(--color-brand) blackness(12%));
-}
-
-.bg-brand-dark,
-.bg-brand-dark-hover:hover {
-  background-color: color-mod(var(--color-brand) blackness(12%));
-}
-
-.bg-brand,
-.bg-brand-hover:hover,
-.bg-brand-active:active {
+.bg-brand {
   background-color: var(--color-brand);
-}
-
-@media screen and (--breakpoint-min-md) {
-  .md-bg-brand {
-    background-color: var(--color-brand) !important;
-  }
 }
 
 /* success */
@@ -192,8 +168,7 @@
 }
 
 .bg-white,
-:local(.bg-white),
-.bg-white-hover:hover {
+:local(.bg-white) {
   background-color: var(--color-bg-white);
 }
 
@@ -218,13 +193,6 @@
 }
 
 /* entity colors */
-
-.bg-dashboard {
-  background-color: var(--color-brand);
-}
-.text-dashboard {
-  color: var(--color-brand);
-}
 
 .bg-question {
   background-color: var(--color-bg-dark);
