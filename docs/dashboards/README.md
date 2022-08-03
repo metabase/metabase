@@ -18,7 +18,7 @@ Add filters to dashboards to update tables and charts.
 
 Customize what happens when people click on a chart in your dashboard.
 
-## [Dashboard charts with multiple series](./multiple-series.md)
+## [Charts with multiple series](./multiple-series.md)
 
 Combine multiple questions on a single chart.
 
