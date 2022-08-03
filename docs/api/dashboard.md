@@ -267,7 +267,7 @@ Add a `Card` to a Dashboard.
 
 *  **`cardId`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`parameter_mappings`** value must be an array. Each value must be a map.
+*  **`parameter_mappings`** value may be nil, or if non-nil, value must be an array.
 
 *  **`dashboard-card`**
 
