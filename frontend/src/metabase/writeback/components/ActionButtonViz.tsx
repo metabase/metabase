@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
@@ -99,7 +98,6 @@ interface ActionButtonVizProps extends VisualizationProps {
 }
 
 function ActionButtonViz({
-  isSettings,
   settings,
   getExtraDataForClick,
   onVisualizationClick,
