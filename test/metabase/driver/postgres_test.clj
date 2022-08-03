@@ -866,6 +866,26 @@
                                           (qp/process-query)
                                           (mt/rows))))))))))
 
+(deftest json-alias-replacements
+  (testing "JSON alias replacement time bucketing (22831)"
+    (mt/test-driver :postgres
+                    (drop-if-exists-and-create-db! "json-alias-test")
+                    (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-alias-test"})
+                          spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+                      (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.json_table;"
+                                         "CREATE TABLE PUBLIC.json_table (json_val JSON NOT NULL);"
+                                         "INSERT INTO PUBLIC.json_table (json_val) VALUES ('{\"a\": 1, \"b\": 2}'), ('{\"a\": 1, \"b\": 2}');"]]
+                        (jdbc/execute! spec [statement])))
+      (let [json-db-details (mt/dbdef->connection-details :postgres :db {:database-name "json-alias-test"})
+            ;;;;;;;;;
+            ;;;;;;;;;
+            ;;;;;;;;;
+            query           some crap]
+        (mt/with-temp Database [database {:engine :postgres, :details json-db-details}]
+          (mt/with-db database (sync/sync-database! database)
+                               (is (= "some stuff"
+                                      (get the sqlization of the query)))))))))
+
 (defn- pretty-sql [s]
   (-> s
       (str/replace #"\"" "")
