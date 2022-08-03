@@ -110,13 +110,13 @@ Just like with a question, admins can verify models. Verifying a model will give
 
 _Currently available for PostgreSQL, MySQL, and Redshift_.
 
-You can enable caching for models so that loading questions based on those models is significantly faster. Instead of running the query that creates the model fresh each time, Metabase will store the results in a table, and simply fetch the saved results table to quickly return the model. Caching models will make questions built on models run much faster. We recommend scheduling the cache to refresh on a schedule that makes sense with how often your source tables update with new data.
+You can enable caching for models so that loading questions based on those models is significantly faster. Instead of running the query that creates the model fresh each time, Metabase will store the results in a table, and simply fetch the saved results table to quickly return the model. Caching models will make questions built on models run much faster. We recommend scheduling the cache to refresh on a frequency that makes sense with how often your source tables update with new data.
 
 To enable model caching, click on the **gear** icon in the upper right and select **Admin settings** > **Settings** > **Caching**.
 
 ![Model caching](./images/models/model-caching-custom.png)
 
-You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency. 
+You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency.
 
 You can view the logs for model caching by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../enterprise-guide/tools.md).
 
