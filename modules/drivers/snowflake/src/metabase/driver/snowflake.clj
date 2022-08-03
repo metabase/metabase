@@ -335,6 +335,15 @@
 
 ;; Like Vertica, Snowflake doesn't seem to be able to return a LocalTime/OffsetTime like everyone else, but it can
 ;; return a String that we can parse
+
+(defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/TIMESTAMP_WITH_TIMEZONE]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs %d) [TIMESTAMP_WITH_TIMEZONE] -> %s -> %s" i (pr-str s) (pr-str t))
+        t))))
+
 (defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/TIME]
   [_ ^ResultSet rs _ ^Integer i]
   (fn []

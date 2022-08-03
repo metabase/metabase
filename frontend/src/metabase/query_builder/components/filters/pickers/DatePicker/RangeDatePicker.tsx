@@ -3,7 +3,7 @@ import React from "react";
 
 import Calendar from "metabase/components/Calendar";
 
-import moment from "moment";
+import moment from "moment-timezone";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { TimeContainer } from "./RangeDatePicker.styled";
 import {

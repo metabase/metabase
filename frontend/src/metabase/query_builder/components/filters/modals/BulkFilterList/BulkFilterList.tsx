@@ -168,8 +168,8 @@ const SegmentListItem = ({
   onRemoveFilter,
   onClearSegments,
 }: SegmentListItemProps): JSX.Element => (
-  <>
-    <ListRow data-testid="filter-field-segments">
+  <ListRow>
+    <FilterContainer data-testid="filter-field-segments">
       <InlineOperatorSelector
         fieldName={t`Filter down to a segment`}
         iconName="filter"
@@ -182,8 +182,8 @@ const SegmentListItem = ({
         onRemoveFilter={onRemoveFilter}
         onClearSegments={onClearSegments}
       />
-    </ListRow>
-  </>
+    </FilterContainer>
+  </ListRow>
 );
 
 export default BulkFilterList;

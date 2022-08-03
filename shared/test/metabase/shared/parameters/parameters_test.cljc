@@ -185,3 +185,49 @@
        "{{foo}}"
        {"foo" {:type :date/month-year :value "2019-08"}}
        "agosto\\, 2019"))))
+
+(t/deftest substitute-tags-optional-blocks-test
+  (t/testing "Optional blocks are removed when necessary"
+    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
+      "[[{{foo}}]]"
+      {}
+      ""
+
+      "[[{{foo}}]]"
+      {"foo" {:type :string/= :value "bar"}}
+      "bar"
+
+      "Customers[[ with over {{order_count}} orders]]"
+      {"order_count" {:type :number/= :value nil}}
+      "Customers"
+
+      "Customers[[ with over {{order_count}} orders]]"
+      {"order_count" {:type :number/= :value 10}}
+      "Customers with over 10 orders"
+
+      ;; Optional block is retained when *any* parameters within are substituted
+      "[[{{foo}} {{baz}}]]"
+      {"foo" {:type :string/= :value "bar"}}
+      "bar {{baz}}"
+
+      ;; Make sure `join-consecutive-strings` retains consecutive non-strings (this was a bug during implementation)
+      "[[{{foo}}{{foo}}]]"
+      {"foo" {:type :string/= :value "foo"}}
+      "foofoo"
+
+      "[[{{foo}}]] [[{{bar}}]]"
+      {"foo" {:type :string/= :value 1} "bar" {:type :string/= :value 2}}
+      "1 2"
+
+      "[[{{foo}}]"
+      {"foo" {:type :string/= :value "bar"}}
+      "[[bar]"
+
+      "[{{foo}}]]"
+      {"foo" {:type :string/= :value "bar"}}
+      "[bar]]"
+
+      ;; Don't strip square brackets that are in parameter values
+      "{{foo}}"
+      {"foo" {:type :string/= :value "[[bar]]"}}
+      "\\[\\[bar\\]\\]")))

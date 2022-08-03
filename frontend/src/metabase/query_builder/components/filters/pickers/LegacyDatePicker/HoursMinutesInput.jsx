@@ -5,7 +5,7 @@ import { has24HourModeSetting } from "metabase/lib/time";
 import NumericInput from "metabase/components/NumericInput";
 import Icon from "metabase/components/Icon";
 
-import moment from "moment";
+import moment from "moment-timezone";
 import { AmPmLabel } from "./HoursMinutesInput.styled";
 
 const HoursMinutesInput = ({

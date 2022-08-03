@@ -96,7 +96,7 @@
   org.apache.poi/poi-ooxml                  {:mvn/version "5.2.2"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
-  org.apache.sshd/sshd-core                 {:mvn/version "2.8.0"}              ; ssh tunneling and test server -- do not use 2.6.0 to 2.7.0, see metabase#18316
+  org.apache.sshd/sshd-core                 {:mvn/version "2.9.0"}              ; ssh tunneling and test server
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.14"}               ; SVG -> image
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.bouncycastle/bcpkix-jdk15on           {:mvn/version "1.70"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
@@ -117,7 +117,7 @@
   org.clojure/tools.namespace               {:mvn/version "1.3.0"}
   org.clojure/tools.reader                  {:mvn/version "1.3.6"}
   org.clojure/tools.trace                   {:mvn/version "0.7.11"}             ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "9.4.44.v20210927"}   ; web server
+  org.eclipse.jetty/jetty-server            {:mvn/version "9.4.48.v20220622"}   ; web server
   org.flatland/ordered                      {:mvn/version "1.15.10"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.1.0"}             ; JavaScript engine
   org.liquibase/liquibase-core              {:mvn/version "4.10.0"              ; migration management (Java lib)

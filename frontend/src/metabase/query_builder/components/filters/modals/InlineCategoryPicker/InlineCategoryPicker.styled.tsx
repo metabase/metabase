@@ -13,9 +13,21 @@ export const PickerContainer = styled.div`
   font-weight: bold;
 `;
 
-export const PickerGrid = styled.div`
-  margin: ${space(2)} 0;
+interface PickerGridProps {
+  multiColumn?: boolean;
+  rows?: number;
+}
+
+export const PickerGrid = styled.div<PickerGridProps>`
   display: grid;
-  align-items: center;
+  ${props =>
+    props.multiColumn
+      ? `
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(${props.rows ?? 2}, 1fr);
+    grid-auto-flow: column;
+  `
+      : ""}
+
   gap: ${space(2)};
 `;
