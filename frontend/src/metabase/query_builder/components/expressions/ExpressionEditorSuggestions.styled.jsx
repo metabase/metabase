@@ -16,7 +16,7 @@ export const ExpressionList = styled.ul`
 export const ExpressionListItem = styled.li`
   display: flex;
   align-items: center;
-  padding: 5px 1rem;
+  padding: 0.3125rem 0.875rem;
   cursor: pointer;
 
   &:hover {
@@ -29,5 +29,5 @@ export const ExpressionListItem = styled.li`
     css`
       color: ${color("white")};
       background-color: ${color("brand")};
-    `})}
+    `}
 `;
