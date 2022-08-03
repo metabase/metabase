@@ -82,7 +82,7 @@ You can also make text options by wrapping the text in double brackets, `[[` and
 
 In this case, the phrase `{% raw %}from {{state}}{%endraw%}` would only display if someone selected a value (or values) in the filter widget.
 
-To see how to wire up a filter to a card, see [dashboard filters](./08-dashboard-filters.md)
+To see how to wire up a filter to a card, see [dashboard filters](./filters.md)
 
 ## Arranging cards
 
