@@ -110,13 +110,34 @@ Just like with a question, admins can verify models. Verifying a model will give
 
 _Currently available for PostgreSQL, MySQL, and Redshift_.
 
-You can enable caching for models so that loading questions based on those models is significantly faster. Instead of running the query that creates the model fresh each time, Metabase will periodically run the query and store the results in a table in your data warehouse, so that whenever someone loads the model (or a question based on that model), Metabase will simply fetch the saved results from the table in your data warehouse.
-
-To store cached results, Metabase creates a new schema in your data warehouse, and creates new tables in that schema to store the results of the queries that power the models. In order for Metabase to cache models in your database, the connection credentials you use to connect Metabase to your data warehouse need to be able to create new schemas in your data warehouse. So, for example, if you're connected to a PostgreSQL database, the Postgres user account that you use to connect Metabase to that Postgres database must have privileges to create new schemas in that Postgres database.
+You can enable caching for models so that loading questions based on those models is significantly faster. Instead of running the query that creates the model fresh each time, Metabase will periodically run the query and store the results in a table in your data warehouse, so that whenever someone loads the model (or a question based on that model), Metabase will simply fetch the saved results from that table in your data warehouse.
 
 ### Enable model caching for a database
 
-To enable model caching, click on the **gear** icon in the upper right and select **Admin settings** > **Settings** > **Caching**.
+There are two steps to enabling model caching for your database.
+
+1. [Create a schema in your database to store cached models](#1-create-a-schema-in-your-database-to-store-cached-models)
+2. [Enable model caching in your Metabase](#2-enable-model-caching-in-your-metabase)
+
+#### 1. Create a schema in your database to store cached models
+
+To store cached results, Metabase creates a new schema in your data warehouse, and creates new tables in that schema to store the results of the queries that power the models.
+
+To create the schema in your database, click on the **gear** icon in the upper right and select **Admin settings** > **Databases**, then select the relevant database connection. On the right, click on **Turn model caching on**.
+
+![Cache models UI](./images/models/cache-model-schema.png)
+
+Click on the info button to view the name of the schema that Metabase (or you) will create to store your cached models. In the above image, the schema name is "metabase_cache_134ba_7", but your schema name will differ.
+
+What this means is that, in order for Metabase to cache models in your database, the connection credentials you use to connect Metabase to your data warehouse need to have privileges to either:
+
+- Create and manage schemas in that database.
+- Manage the specific schema (found in that info tooltip) that Metabase will use to store results. This option will require you to create the schema manually in your database using different credentials, then giving the account you use to connect to your database privileges to manage that schema. Make sure that you name the schema exactly as the tooltip in Metabase suggests.
+
+#### 2. Enable model caching in your Metabase
+
+Once you've completed step one, return to the **Admin settings** > **Settings** > **Caching**.
+
 ![Model caching](./images/models/model-caching-custom.png)
 
 You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency. We recommend scheduling the cache to refresh on a frequency that makes sense with how often your source tables update with new data.
