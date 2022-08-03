@@ -1,14 +1,18 @@
 import React from "react";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { renderLinkTextForClick } from "./link";
+import { getDataFromClicked } from "metabase/lib/click-behavior";
+
+import { OptionsType } from "./types";
 
 // https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27
 const EMAIL_ALLOW_LIST_REGEX =
   /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
 
 export function formatEmail(
-  value,
-  { jsx, rich, view_as = "auto", link_text, clicked } = {},
+  value: string,
+  { jsx, rich, view_as = "auto", link_text, clicked }: OptionsType = {},
 ) {
   const email = String(value);
   const label =

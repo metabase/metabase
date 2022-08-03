@@ -13,6 +13,8 @@ import { isBoolean, isCoordinate } from "metabase/lib/schema_metadata";
 import { renderLinkTextForClick } from "metabase/lib/formatting/link";
 import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 
+import { OptionsType } from "./types";
+
 const MARKDOWN_RENDERERS = {
   // eslint-disable-next-line react/display-name
   a: ({ href, children }) => (
@@ -77,20 +79,7 @@ export function formatValue(value, options = {}) {
   }
 }
 
-interface FormatUrlOptionsType {
-  clicked?: any;
-  column?: any;
-  jsx?: boolean;
-  link_text?: string;
-  link_url?: string;
-  remap?: any;
-  rich?: boolean;
-  view_as?: string;
-}
-export function getRemappedValue(
-  value,
-  { remap, column }: FormatUrlOptionsType = {},
-) {
+export function getRemappedValue(value, { remap, column }: OptionsType = {}) {
   if (remap && column) {
     if (column.hasRemappedValue && column.hasRemappedValue(value)) {
       return column.remappedValue(value);
@@ -161,7 +150,7 @@ export function formatValueRaw(value, options = {}) {
   ) {
     return formatDateTimeWithUnit(value, "minute", options);
   } else if (typeof value === "string") {
-    if (column && column.semantic_type != null) {
+    if (column?.semantic_type != null) {
       return value;
     } else {
       return formatStringFallback(value, options);

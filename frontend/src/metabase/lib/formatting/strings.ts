@@ -1,17 +1,20 @@
 import inflection from "inflection";
 
+import { formatUrl } from "./url";
 import { formatEmail } from "./email";
 import { formatImage } from "./image";
 
-export function singularize(...args) {
-  return inflection.singularize(...args);
+import type { OptionsType } from "./types";
+
+export function singularize(str: string, singular?: string) {
+  return inflection.singularize(str, singular);
 }
 
-export function pluralize(...args) {
-  return inflection.pluralize(...args);
+export function pluralize(str: string, plural?: string) {
+  return inflection.pluralize(str, plural);
 }
 
-export function capitalize(str, { lowercase = true } = {}) {
+export function capitalize(str: string, { lowercase = true } = {}) {
   const firstChar = str.charAt(0).toUpperCase();
   let rest = str.slice(1);
   if (lowercase) {
@@ -20,33 +23,36 @@ export function capitalize(str, { lowercase = true } = {}) {
   return firstChar + rest;
 }
 
-export function inflect(...args) {
-  return inflection.inflect(...args);
+export function inflect(
+  str: string,
+  count: number,
+  singular: string | undefined,
+  plural: string | undefined,
+) {
+  return inflection.inflect(str, count, singular, plural);
 }
 
-export function titleize(...args) {
-  return inflection.titleize(...args);
+export function titleize(str: string) {
+  return inflection.titleize(str);
 }
 
-export function humanize(...args) {
-  return inflection.humanize(...args);
+export function humanize(str: string, lowFirstLetter?: boolean) {
+  return inflection.humanize(str, lowFirstLetter);
 }
 
 // fallback for formatting a string without a column semantic_type
-function formatStringFallback(value, options = {}) {
+function formatStringFallback(value: any, options: OptionsType = {}) {
   if (options.view_as !== null) {
     value = formatUrl(value, options);
     if (typeof value === "string") {
       value = formatEmail(value, options);
-    }
-    if (typeof value === "string") {
       value = formatImage(value, options);
     }
   }
   return value;
 }
 
-export function conjunct(list, conjunction) {
+export function conjunct(list: string[], conjunction: string) {
   return (
     list.slice(0, -1).join(`, `) +
     (list.length > 2 ? `,` : ``) +
@@ -56,6 +62,6 @@ export function conjunct(list, conjunction) {
 }
 
 // Removes trailing "id" from field names
-export function stripId(name) {
-  return name && name.replace(/ id$/i, "").trim();
+export function stripId(name: string) {
+  return name?.replace(/ id$/i, "").trim();
 }

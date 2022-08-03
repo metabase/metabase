@@ -7,6 +7,8 @@ import moment, {
 
 import MetabaseSettings from "metabase/lib/settings";
 
+import type { DatetimeUnit } from "metabase-types/types/Query";
+
 addAbbreviatedLocale();
 
 const TIME_FORMAT_24_HOUR = "HH:mm";
@@ -176,17 +178,7 @@ export function parseTime(value: moment.Moment | string) {
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
 export function parseTimestamp(
   value: MomentInput,
-  unit:
-    | "year"
-    | "minute-of-hour"
-    | "hour-of-day"
-    | "day-of-week"
-    | "day-of-month"
-    | "day-of-year"
-    | "week-of-year"
-    | "month-of-year"
-    | "quarter-of-year"
-    | null = null,
+  unit: DatetimeUnit | null = null,
   local: boolean = false,
 ) {
   let m;

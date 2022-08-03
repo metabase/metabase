@@ -6,16 +6,7 @@ import { getDataFromClicked } from "metabase/lib/click-behavior";
 import { formatValue, getRemappedValue } from "./value";
 import { isURL } from "metabase/lib/schema_metadata";
 
-interface FormatUrlOptionsType {
-  clicked?: any;
-  column?: any;
-  jsx?: boolean;
-  link_text?: string;
-  link_url?: string;
-  remap?: any;
-  rich?: boolean;
-  view_as?: string;
-}
+import type { OptionsType } from "./types";
 
 function isSafeProtocol(protocol: string) {
   return (
@@ -29,7 +20,7 @@ function isDefaultLinkProtocol(protocol: string) {
   );
 }
 
-export function getUrlProtocol(url: URL) {
+export function getUrlProtocol(url: string) {
   try {
     const { protocol } = new URL(url);
     return protocol;
@@ -38,7 +29,7 @@ export function getUrlProtocol(url: URL) {
   }
 }
 
-export function formatUrl(value: URL, options: FormatUrlOptionsType = {}) {
+export function formatUrl(value: string, options: OptionsType = {}) {
   const { jsx, rich } = options;
 
   const url = getLinkUrl(value, options);
@@ -55,7 +46,7 @@ export function formatUrl(value: URL, options: FormatUrlOptionsType = {}) {
   }
 }
 
-function getLinkText(value: URL, options: FormatUrlOptionsType) {
+function getLinkText(value: string, options: OptionsType) {
   const { view_as, link_text, clicked } = options;
 
   const isExplicitLink = view_as === "link";
@@ -72,8 +63,8 @@ function getLinkText(value: URL, options: FormatUrlOptionsType) {
 }
 
 function getLinkUrl(
-  value: URL,
-  { view_as, link_url, clicked, column }: FormatUrlOptionsType,
+  value: string,
+  { view_as, link_url, clicked, column }: OptionsType,
 ) {
   const isExplicitLink = view_as === "link";
   const hasCustomizedUrl = link_url && clicked;

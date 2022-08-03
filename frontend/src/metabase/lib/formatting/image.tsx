@@ -1,10 +1,11 @@
 import React from "react";
 
 import { getUrlProtocol } from "./url";
+import { OptionsType } from "./types";
 
 export function formatImage(
-  value,
-  { jsx, rich, view_as = "auto", link_text } = {},
+  value: string,
+  { jsx, rich, view_as = "auto", link_text }: OptionsType = {},
 ) {
   const url = String(value);
   const protocol = getUrlProtocol(url);

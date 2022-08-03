@@ -1,10 +1,17 @@
 import { msgid, ngettext } from "ttag";
-import { parseTime } from "metabase/lib/time";
+import { parseTime, parseTimestamp } from "metabase/lib/time";
 import { Moment } from "moment-timezone";
 
-import type { Value } from "metabase-types/types/Dataset";
+import {
+  DEFAULT_TIME_STYLE,
+  getTimeFormatFromStyle,
+  hasHour,
+} from "./dateTimeUtils";
 
-export function duration(milliseconds) {
+import type { Value } from "metabase-types/types/Dataset";
+import type { DatetimeUnit } from "metabase-types/types/Query";
+
+export function duration(milliseconds: number) {
   const SECOND = 1000;
   const MINUTE = 60 * SECOND;
   const HOUR = 60 * MINUTE;
@@ -28,7 +35,18 @@ export function formatTime(time: Moment) {
   return parsedTime.isValid() ? parsedTime.format("LT") : String(time);
 }
 
-export function formatTimeWithUnit(value, unit, options = {}) {
+interface TimeWithUnitType {
+  local?: boolean;
+  time_enabled?: boolean;
+  time_format?: string;
+  time_style?: string;
+}
+
+export function formatTimeWithUnit(
+  value: number,
+  unit: DatetimeUnit,
+  options: TimeWithUnitType = {},
+) {
   const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
     return String(value);
