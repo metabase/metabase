@@ -348,24 +348,33 @@
                                                           "injection' OR 1=1--' AND released = 1"
                                                           (keyword "injection' OR 1=1--' AND released = 1")],
                                                :name     "json_alias_test"}]]
-          (let [field-desc  [:field (u/the-id field)
-                              {:temporal-unit :month,
-                               :metabase.query-processor.util.add-alias-info/source-table (u/the-id table),
-                               :metabase.query-processor.util.add-alias-info/source-alias "dontwannaseethis",
-                               :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis",
-                               :metabase.query-processor.util.add-alias-info/position 1}]
+          (let [field-bucketed [:field (u/the-id field)
+                                {:temporal-unit :month,
+                                 :metabase.query-processor.util.add-alias-info/source-table (u/the-id table),
+                                 :metabase.query-processor.util.add-alias-info/source-alias "dontwannaseethis",
+                                 :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis",
+                                 :metabase.query-processor.util.add-alias-info/position 1}]
+                field-ordinary [:field (u/the-id field) nil]
                 compile-res (qp/compile
                               {:database (u/the-id database)
                                :type     :query
                                :query    {:source-table (u/the-id table)
                                           :aggregation  [[:count]]
-                                          :breakout     [field-desc]
-                                          :order-by     [[:asc field-desc]]}})]
+                                          :breakout     [field-bucketed]
+                                          :order-by     [[:asc field-bucketed]]}})
+                only-order  (qp/compile
+                              {:database (u/the-id database)
+                               :type     :query
+                               :query    {:source-table (u/the-id table)
+                                          :order-by     [[:asc field-ordinary]]}})]
             (is (= (str "SELECT date_trunc('month', CAST((\"json_alias_test\".\"bob\"#>> ?::text[])::VARCHAR  AS timestamp)) "
                         "AS \"json_alias_test\", count(*) AS \"count\" FROM \"json_alias_test\" "
                         "GROUP BY \"json_alias_test\" ORDER BY \"json_alias_test\" ASC")
                    (:query compile-res)))
-            (is (= '("{injection' OR 1=1--' AND released = 1,injection' OR 1=1--' AND released = 1}") (:params compile-res)))))))))
+            (is (= '("{injection' OR 1=1--' AND released = 1,injection' OR 1=1--' AND released = 1}") (:params compile-res)))
+            (is (= (str "SELECT (\"json_alias_test\".\"bob\"#>> ?::text[])::VARCHAR  AS \"json_alias_test\" FROM \"json_alias_test\" "
+                        "ORDER BY \"json_alias_test\" ASC LIMIT 1048575")
+                   (:query only-order)))))))))
 
 (deftest describe-nested-field-columns-test
   (mt/test-driver :postgres
