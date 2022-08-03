@@ -22,6 +22,7 @@ import {
 } from "metabase/lib/data_grid";
 import { keyForColumn } from "metabase/lib/dataset";
 import {
+  ExpandIconContainer,
   FormattingOptionsRoot,
   ShowTotalsOptionRoot,
   SortOrderOptionRoot,
@@ -333,9 +334,9 @@ class ColumnInner extends React.Component {
                 "text-dark text-bold cursor-grab flex justify-between",
               )}
             >
-              <span
+              <ExpandIconContainer
                 onClick={this.toggleExpand}
-                className="cursor-pointer text-brand-hover hover-parent hover--inherit"
+                className="hover-parent hover--inherit"
               >
                 {column.display_name}
                 <Icon
@@ -343,7 +344,7 @@ class ColumnInner extends React.Component {
                   size="10"
                   className="text-light hover-child hover--inherit ml1"
                 />
-              </span>
+              </ExpandIconContainer>
               <Grabber style={{ width: 10 }} />
             </div>
             {showOptionsPanel && (
