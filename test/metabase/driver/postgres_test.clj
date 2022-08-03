@@ -353,7 +353,7 @@
                                :type     :query
                                :query    {:source-table (u/the-id table)
                                           :aggregation  [[:count]]
-                                          :breakout     [[:field (u/the-id field) 
+                                          :breakout     [[:field (u/the-id field)
                                                           {:temporal-unit :month,
                                                            :metabase.query-processor.util.add-alias-info/source-table (u/the-id table),
                                                            :metabase.query-processor.util.add-alias-info/source-alias "dontwannaseethis",
