@@ -6,31 +6,25 @@ title: Coalesce
 
 `coalesce` looks at the values in a list (in order), and returns the first non-null value.
 
-This function is useful if you want to fill in missing data or consolidate data from multiple columns.
+This function is useful when you want to:
+
+- [fill in missing data](#filling-in-empty-or-null-values),
+- [consolidate data from multiple columns](#consolidating-values-from-different-columns), or
+- [create calculations across multiple columns](#creating-calculations-across-different-columns).
 
 | Syntax                                                  | Example                                         |
 | ------------------------------------------------------- | ----------------------------------------------- |
 | `coalesce(value1, value2, …)`                           | `coalesce("null", "null", "bananas", "null" …)` |
 | Returns the first non-null value from a list of values. | “bananas”                                       |
 
-<div class='doc-toc' markdown=1>
-- [Filling in empty or null values](#filling-in-empty-or-null-values).
-- [Consolidating values from different columns](#consolidating-values-from-different-columns).
-- [Creating calculations across different columns](#creating-calculations-across-different-columns).
-- [Accepted data types](#accepted-data-types).
-- [Limitations](#limitations).
-- [Related functions](#related-functions).
-- [Further reading](#further-reading).
-</div>
-
 ## Filling in empty or null values
 
-| left_table_col | right_table_col   | `coalesce([right_table_col], 0)` |
-| -------------- | ----------------- | -------------------------------------------------- |
-| 1              | 1                 | 1                                                  |
-| 2              | `null`            | 0                                                  |
-| 3              | `null`            | 0                                                  |
-| 4              | 4                 | 4                                                  |
+| left_table_col | right_table_col | `coalesce([right_table_col], 0)` |
+| -------------- | --------------- | -------------------------------- |
+| 1              | 1               | 1                                |
+| 2              | `null`          | 0                                |
+| 3              | `null`          | 0                                |
+| 4              | 4               | 4                                |
 
 You may want to fill in empty or null values if you have:
 
@@ -57,6 +51,10 @@ For a more detailed example, see [Filling in data for missing report dates][miss
 | 16.00    | 1.60     | 14.40                                               |
 | 4.00     |          | 4.00                                                |
 
+Calculations in Metabase will return `null` if any of the input columns are `null`. This is because `null` values in your data represent "missing" or "unknown" information, which isn't necessarily the same as an amount of "0". That is, adding 1 + "unknown" = "unknown".
+
+If you want to treat "unknown" values as zeroes (or some other value that means "nothing" in your data), we recommend using `coalesce` to wrap the columns used in your calculations.
+
 ## Accepted data types
 
 | [Data type][data-types] | Works with `coalesce` |
@@ -76,9 +74,15 @@ Use the same data types within a single `coalesce` function. If you want to coal
 
 If you want to use `coalesce` with JSON or JSONB data types, you'll need to flatten the JSON objects first. For more information, look up the JSON functions that are available in your SQL dialect. You can find some [common SQL reference guides here][sql-reference-guide].
 
-## Related functions
+## Converting a function into a `coalesce` expression
 
-This section covers common functions and formulas from other tools that are equivalent to the Metabase `coalesce` expression:
+This section covers functions and formulas that can be used interchangeably with the Metabase `coalesce` expression, with notes on how to choose the best option for your use case.
+
+**Metabase expressions**
+
+- [case](#case)
+
+**Other tools**
 
 - [SQL](#sql)
 - [Spreadsheets](#spreadsheets)
@@ -93,49 +97,87 @@ All examples use the custom expression and sample data from the [Consolidating v
 | I have a note. |                   | I have a note.                                          |
 |                |                   | No notes or comments.                                   |
 
-### SQL
+### Case
 
-When you ask Metabase a question from the notebook editor or SQL editor, the question is converted into a SQL query that runs against your database or data warehouse.
-
-The Metabase `coalesce` expression is equivalent to a SQL `coalesce` function:
+The [Metabase `case` expression](./case)
 
 ```
+case(ISBLANK([Notes]) = FALSE AND ISBLANK([Comments]) = FALSE, [Notes],
+     ISBLANK([Notes]) = TRUE  AND ISBLANK([Comments]) = False, [Comments],
+     ISBLANK([Notes]) = FALSE AND ISBLANK([Comments]) = TRUE,  [Notes],
+     ISBLANK([Notes]) = TRUE  AND ISBLANK([Comments]) = TRUE,  "No notes or comments")
+```
+
+is equivalent to the Metabase `coalesce` expression:
+
+```
+coalesce([Notes], [Comments] "No notes or comments.")
+```
+
+`coalesce` is much nicer to write if you don't mind taking the first value when both of your columns are non-blank. [Use `case` if you want to define a specific output][case-to-coalesce] (e.g., if you want to return "I have a note _and_ a comment" instead of "I have a note".).
+
+### SQL
+
+In most cases (unless you're using a NoSQL database), questions created from the [notebook editor][notebook-editor-def] are converted into SQL queries that run against your database or data warehouse.
+
+The SQL `coalesce` function
+
+```sql
 SELECT
     COALESCE(notes, comments, "no notes or comments")
 FROM
     sample_table;
 ```
 
+is equivalent to the Metabase `coalesce` expression:
+
+```
+coalesce([Notes], [Comments] "No notes or comments.")
+```
+
 ### Spreadsheets
 
-If we assume that "Notes" is in column A, and "Comments" is in column B, we can achieve basic coalesce functionality by combining `IF` statements with functions like `ISBLANK` (for empty values) or `ISNA` (for "NaN" values).
+If your [notes and comments table](#consolidating-values-from-different-columns) is in a spreadsheet where "Notes" is in column A, and "Comments" is in column B, then the formula
 
 ```
 =IF(ISBLANK($A2),$B2,IF(ISBLANK($B2),$A2,"No notes or comments."))
 ```
 
-Note that this formula doesn't generalize well if you're working with more than two columns. In those cases, you may be used to working with `INDEX` and `MATCH` in an array formula (or maybe considering [a move away from spreadsheets][spreadsheets-to-bi] entirely!).
+is equivalent to the Metabase `coalesce` expression:
+
+```
+coalesce([Notes], [Comments] "No notes or comments.")
+```
+
+Alternatively, you may be used to working with a INDEX and MATCH in an array formula if you’re “coalescing” data across three or more columns in a spreadsheet.
 
 ### Python
 
-For those of you that come from the [pandas][pandas] and [numpy][numpy] world, let's assume our sample data is in a dataframe object called `df`.
-
-Coalesce-esque `pandas` functions include `combine_first()` and `fillna()`:
+Assuming the [notes and comments table](#consolidating-values-from-different-columns) is in a dataframe called `df`, the combination of `pandas` functions `combine_first()` and `fillna()`
 
 ```
 df['custom_column'] = df['notes'].combine_first(df['comments'])\
                                  .fillna('No notes or comments.')
 ```
 
+are equivalent to the Metabase `coalesce` expression:
+
+```
+coalesce([Notes], [Comments] "No notes or comments.")
+```
+
 ## Further reading
 
-- [Custom expressions documentation](../expressions.md)
+- [Custom expressions documentation][custom-expressions-doc]
 - [Custom expressions tutorial][custom-expressions-learn]
 
+[case-to-coalesce]: ./case#coalesce
 [cast-data-type]: ../../administration-guide/03-metadata-editing#casting-to-a-specific-data-type
+[custom-expressions-doc]: ../expressions
 [custom-expressions-learn]: /learn/questions/custom-expressions
 [data-types]: /learn/databases/data-types-overview#examples-of-data-types
 [missing-dates]: /learn/debugging-sql/sql-logic-missing-data#how-to-fill-in-data-for-missing-report-dates
+[notebook-editor-def]: /glossary/notebook_editor
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/
 [spreadsheets-to-bi]: /blog/spreadsheets-to-bi
