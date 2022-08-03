@@ -569,6 +569,8 @@
             (reset! db2d    (ts/create! Database :name "other-db"))
             (reset! table2d (ts/create! Table    :name "customers" :db_id (:id @db2d)))
             (reset! field3d (ts/create! Field    :name "age" :table_id (:id @table2d)))
+            (ts/create! Field :name "name" :table_id (:id @table2d))
+            (ts/create! Field :name "address" :table_id (:id @table2d))
             (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
 
             ;; Load the serialized content.
