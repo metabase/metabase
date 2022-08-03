@@ -106,6 +106,18 @@ Just like with saved questions, you can click on the model name with the down ar
 
 Just like with a question, admins can verify models. Verifying a model will give it a check mark to let others know an admin vetted the model. If anyone makes any changes to the model, the check mark will disappear. An admin will have to verify the question again to restore the check mark.
 
+## Model caching
+
+You can enable caching for models so that loading questions based on those models is significantly faster. Instead of running the query that creates the model fresh each time, Metabase will store the results in a table, and simply fetch the saved results table to quickly return the model. Caching models will make questions built on models run much faster. We recommend scheduling the cache to refresh on a schedule that makes sense with how often your source tables update with new data.
+
+To enable model caching, click on the **gear** icon in the upper right and select **Admin settings** > **Settings** > **Caching**.
+
+![Model caching](./images/models/model-caching-custom.png)
+
+You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency. 
+
+You can view the logs for model caching by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../enterprise-guide/tools.md)
+
 ## Further reading
 
 - [Models in Metabase][learn-models]
