@@ -70,7 +70,7 @@ export const ScalarTitle = ({ title, description, onClick }) => (
       </Ellipsified>
     </ScalarTitleContent>
     {description && description.length > 0 && (
-      <ScalarDescriptionContainer>
+      <ScalarDescriptionContainer className="hover-child">
         <Tooltip tooltip={description} maxWidth="22em">
           <Icon name="info_outline" />
         </Tooltip>
