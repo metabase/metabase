@@ -135,6 +135,11 @@
   If you modify this, also modify `template-tag-splitting-regex` below."
   #"\{\{\s*([A-Za-z0-9_\.]+?)\s*\}\}")
 
+(def ^:private template-tag-splitting-regex
+  "A regex for spliting text around template tags. This should be identical to `template-tag-regex` above, but without
+  the capture group around the tag name."
+  #"\{\{\s*[A-Za-z0-9_\.]+?\s*\}\}")
+
 ;; Represents a variable parsed out of a text card. `tag` contains the tag name alone, as a string. `source` contains
 ;; the full original syntax for the parameter)
 (defrecord ^:private TextParam [tag source]
@@ -150,7 +155,7 @@
 (defn- split-on-tags
   "Given the text of a Markdown card, splits it into a sequence of alternating strings and TextParam records."
   [text]
-  (let [split-text      (str/split text template-tag-regex)
+  (let [split-text      (str/split text template-tag-splitting-regex)
         matches         (map first (re-seq template-tag-regex text))
         max-len         (max (count split-text) (count matches))
         ;; Pad both `split-text` and `matches` with empty strings until they are equal length, so that nothing is
