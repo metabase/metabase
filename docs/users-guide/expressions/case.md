@@ -36,11 +36,11 @@ Use the `case` expression whenever you need to:
 where **Bucket** is a custom column with the expression:
 
 ```
-case([Amount] >=0  AND [Amount] <=  9,  "0-9",
-     [Amount] >=10 AND [Amount] <= 19,  "10-19",
-     [Amount] >=20 AND [Amount] <= 29,  "20-29",
-     [Amount] >=30 AND [Amount] <= 39,  "30-39",
-     [Amount] >=40 AND [Amount] <= 49,  "40-49", "50+")
+case([Amount] >= 0  AND [Amount] <=  9,  "0-9",
+     [Amount] >= 10 AND [Amount] <= 19,  "10-19",
+     [Amount] >= 20 AND [Amount] <= 29,  "20-29",
+     [Amount] >= 30 AND [Amount] <= 39,  "30-39",
+     [Amount] >= 40 AND [Amount] <= 49,  "40-49", "50+")
 ```
 
 ## Labeling a row based on conditions from multiple columns
@@ -149,7 +149,7 @@ coalesce([Notes], [Comments] "No notes or comments.")
 
 is equivalent to the `case` expression
 
-```sql
+```
 case(ISBLANK([Notes]) = FALSE AND ISBLANK([Comments]) = FALSE, [Notes],
      ISBLANK([Notes]) = TRUE  AND ISBLANK([Comments]) = False, [Comments],
      ISBLANK([Notes]) = FALSE AND ISBLANK([Comments]) = TRUE,  [Notes],
@@ -275,7 +275,7 @@ case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
 
 ### Python
 
-There are many ways to implement conditional logic using Python. We'll cover some common approaches that make sense to convert to `case` statements.
+There are many ways to implement conditional logic using Python. We'll cover the approaches that make sense to convert into Metabase `case` expressions.
 
 Using the table from the [Labeling rows](#labeling-a-row-based-on-conditions-from-multiple-columns) example (and assuming it's in a dataframe called `df`):
 
