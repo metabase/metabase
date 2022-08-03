@@ -96,7 +96,7 @@ The problem is that if the keys in the JSON vary record to record, the first fiv
 
 We'll create tables with model data and refresh them on a schedule you define. To enable it, you need to grant this connection's credentials read and write permissions for the schema displayed in the info tooltip, or grant create schema permissions.
 
-See [Models](../users-guide/models.md).
+See [Models](../../users-guide/models.md).
 
 [ssl-modes]: https://jdbc.postgresql.org/documentation/head/ssl-client.html
 [ssh-tunnel]: ../ssh-tunnel-for-database-connections.html
