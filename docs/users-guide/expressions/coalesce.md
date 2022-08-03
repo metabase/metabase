@@ -101,7 +101,7 @@ All examples use the custom expression and sample data from the [Consolidating v
 
 The [Metabase `case` expression](./case)
 
-```sql
+```
 case(ISBLANK([Notes]) = FALSE AND ISBLANK([Comments]) = FALSE, [Notes],
      ISBLANK([Notes]) = TRUE  AND ISBLANK([Comments]) = False, [Comments],
      ISBLANK([Notes]) = FALSE AND ISBLANK([Comments]) = TRUE,  [Notes],
@@ -110,7 +110,7 @@ case(ISBLANK([Notes]) = FALSE AND ISBLANK([Comments]) = FALSE, [Notes],
 
 is equivalent to the Metabase `coalesce` expression:
 
-```sql
+```
 coalesce([Notes], [Comments] "No notes or comments.")
 ```
 
@@ -131,7 +131,7 @@ FROM
 
 is equivalent to the Metabase `coalesce` expression:
 
-```sql
+```
 coalesce([Notes], [Comments] "No notes or comments.")
 ```
 
@@ -145,7 +145,7 @@ If your [notes and comments table](#consolidating-values-from-different-columns)
 
 is equivalent to the Metabase `coalesce` expression:
 
-```sql
+```
 coalesce([Notes], [Comments] "No notes or comments.")
 ```
 
@@ -162,7 +162,7 @@ df['custom_column'] = df['notes'].combine_first(df['comments'])\
 
 are equivalent to the Metabase `coalesce` expression:
 
-```sql
+```
 coalesce([Notes], [Comments] "No notes or comments.")
 ```
 

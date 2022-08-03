@@ -35,7 +35,7 @@ Use the `case` expression whenever you need to:
 
 where **Bucket** is a custom column with the expression:
 
-```sql
+```
 case([Amount] >=0  AND [Amount] <=  9,  "0-9",
      [Amount] >=10 AND [Amount] <= 19,  "10-19",
      [Amount] >=20 AND [Amount] <= 29,  "20-29",
@@ -54,10 +54,10 @@ case([Amount] >=0  AND [Amount] <=  9,  "0-9",
 
 where **Sighting Type** is a custom column with the expression:
 
-```sql
-case([has_wings] = TRUE  AND [is_alive] = TRUE,  "Bird",
-     [has_wings] = TRUE  AND [is_alive] = FALSE, "Plane",
-     [has_wings] = FALSE AND [is_alive] = TRUE,  "Superman"), "Unknown")
+```
+case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
+     [Has Wings] = TRUE  AND [Has Face] = FALSE, "Plane",
+     [Has Wings] = FALSE AND [Has Face] = TRUE,  "Superman"), "Unknown")
 ```
 
 You can use the columns holding your "labels" to:
@@ -104,13 +104,13 @@ All of the outputs must have the same data type.
 
 **Avoid:**:
 
-```sql
+```
 case(condition1, "string", condition2, TRUE, condition3, 1)
 ```
 
 **Do:**:
 
-```sql
+```
 case(condition1, "string", condition2, "TRUE", condition3, "1")
 ```
 
@@ -143,7 +143,7 @@ Using the table from the [Coalesce: Consolidating values](./coalesce#consolidati
 
 The [Metabase `coalesce` expression](./coalesce)
 
-```sql
+```
 coalesce([Notes], [Comments] "No notes or comments.")
 ```
 
@@ -171,13 +171,13 @@ Using the table from the [Aggregating data](#aggregating-data-based-on-condition
 
 The [Metabase `countif` expression][countif]
 
-```sql
+```
 countif(case([Status] = "Shipped"))
 ```
 
 is equivalent to the `case` expression:
 
-```sql
+```
 count(case([Status] = "Shipped", [Row ID]))
 ```
 
@@ -196,13 +196,13 @@ Using an expanded version of the table from the [Aggregating data](#aggregating-
 
 The [Metabase `sumif` expression][sumif]
 
-```sql
+```
 sumif([Amount], [Status] = "Shipped")
 ```
 
 is equivalent to the `case` expression:
 
-```sql
+```
 sum(case([Status] = "Shipped", [Amount]))
 ```
 
@@ -236,7 +236,7 @@ FROM mystery_sightings
 
 is equivalent to the `case` expression used for **Sighting Type**:
 
-```sql
+```
 case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
      [Has Wings] = TRUE  AND [Has Face] = FALSE, "Plane",
      [Has Wings] = FALSE AND [Has Face] = TRUE,  "Superman", "Unknown")
@@ -267,7 +267,7 @@ The spreadsheet formula
 
 is equivalent to the `case` expression used for **Sighting Type**:
 
-```sql
+```
 case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
      [Has Wings] = TRUE  AND [Has Face] = FALSE, "Plane",
      [Has Wings] = FALSE AND [Has Face] = TRUE,  "Superman", "Unknown")
@@ -317,7 +317,7 @@ df["Sighting Type"]= df.apply(Identify, axis=1)
 
 The approaches above are equivalent to the `case` expression used for **Sighting Type**:
 
-```sql
+```
 case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
      [Has Wings] = TRUE  AND [Has Face] = FALSE, "Plane",
      [Has Wings] = FALSE AND [Has Face] = TRUE,  "Superman", "Unknown")
