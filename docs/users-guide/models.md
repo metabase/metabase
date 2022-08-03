@@ -123,6 +123,10 @@ You can set models to refresh based on one of the default frequencies, or select
 
 If someone changes the query definition of a model, any question based on that model will skip the cache the until the next cache refresh.
 
+### Refreshing a model's cached results
+
+To refresh a model's cached results, go to the model and click on the **i** info icon. In the info sidebar that opens, you'll see a note about when Metabase last refreshed the model's cache, and an icon to refresh the cache.
+
 ### View model caching logs
 
 You can view the logs for model caching by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../enterprise-guide/tools.md).
