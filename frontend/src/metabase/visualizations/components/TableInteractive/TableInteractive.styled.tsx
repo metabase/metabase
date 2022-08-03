@@ -2,6 +2,14 @@ import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button";
 import { color, lighten } from "metabase/lib/colors";
 
+export const HeaderCell = styled.div`
+  color: ${color("text-medium")};
+
+  &:hover {
+    color: ${color("text-brand")};
+  }
+`;
+
 export const ResizeHandle = styled.div`
   &:active {
     background-color: ${color("brand")};
