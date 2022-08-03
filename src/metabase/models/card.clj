@@ -289,7 +289,11 @@
                                        :embedding_params       :json
                                        :query_type             :keyword
                                        :result_metadata        ::result-metadata
-                                       :visualization_settings :visualization-settings})
+                                       :visualization_settings :visualization-settings
+                                       ;; parameters and parameter_mappings are added in 44 but we have it
+                                       ;; here to make sure it doesn't break if an user downgrades from 44 to 43 #(24497)
+                                       :parameters             :parameters-list
+                                       :parameters_mappings    :parameters-list})
           :properties     (constantly {:timestamped? true})
           ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
           ;; functions those fns call assume normalized queries
