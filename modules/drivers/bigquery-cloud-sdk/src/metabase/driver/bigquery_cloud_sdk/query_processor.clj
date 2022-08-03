@@ -573,9 +573,7 @@
   (let [parent-method (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
                                driver top-level-clause honeysql-form)
         qualified     (parent-method query)
-        unqualified   (parent-method (update query
-                                             :breakout
-                                             #(sql.qp/rewrite-fields-to-force-using-column-aliases {:is-breakout true})))]
+        unqualified   (parent-method (update query :breakout sql.qp/rewrite-fields-to-force-using-column-aliases))]
     (merge qualified
            (select-keys unqualified #{:group-by}))))
 
