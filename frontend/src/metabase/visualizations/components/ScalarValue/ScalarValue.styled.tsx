@@ -32,11 +32,26 @@ export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
   font-size: ${props => props.fontSize};
 `;
 
-export const ScalarTitleRoot = styled.div`
+export const ScalarTitleContainer = styled.div`
   line-height: ${TITLE_LINE_HEIGHT_REM}rem;
   height: ${TITLE_LINE_HEIGHT_REM * TITLE_MAX_LINES}rem;
   display: flex;
   justify-content: center;
   padding: 0 1rem;
   width: 100%;
+`;
+
+export const ScalarDescriptionContainer = styled.div`
+  cursor: pointer;
+  width: 1.5rem;
+  margin-top: 0.3125rem;
+  padding-left: 0.5rem;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
+export const ScalarDescriptionPlaceholder = styled.div`
+  width: 1.5rem;
 `;

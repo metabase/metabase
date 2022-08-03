@@ -11,7 +11,9 @@ import Ellipsified from "metabase/core/components/Ellipsified";
 import {
   ScalarRoot,
   ScalarValueWrapper,
-  ScalarTitleRoot,
+  ScalarTitleContainer,
+  ScalarDescriptionContainer,
+  ScalarDescriptionPlaceholder,
 } from "./ScalarValue.styled";
 
 import { findSize, getMaxFontSize } from "./utils";
@@ -51,17 +53,13 @@ const ScalarValue = ({
   );
 };
 
-const ICON_WIDTH = 24;
-
 export const ScalarTitle = ({ title, description, onClick }) => (
-  <ScalarTitleRoot>
+  <ScalarTitleContainer>
     {/*
       This is a hacky spacer so that the h3 is centered correctly.
       It needs match the width of the tooltip icon on the other side.
      */}
-    {description && description.length > 0 && (
-      <div style={{ width: ICON_WIDTH }} />
-    )}
+    {description && description.length > 0 && <ScalarDescriptionPlaceholder />}
     <h3
       onClick={onClick}
       className={cx(
@@ -76,16 +74,13 @@ export const ScalarTitle = ({ title, description, onClick }) => (
       </Ellipsified>
     </h3>
     {description && description.length > 0 && (
-      <div
-        className="hover-child cursor-pointer pl1 text-brand-hover"
-        style={{ marginTop: 5, width: ICON_WIDTH }}
-      >
+      <ScalarDescriptionContainer>
         <Tooltip tooltip={description} maxWidth="22em">
           <Icon name="info_outline" />
         </Tooltip>
-      </div>
+      </ScalarDescriptionContainer>
     )}
-  </ScalarTitleRoot>
+  </ScalarTitleContainer>
 );
 
 export default ScalarValue;
