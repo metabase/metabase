@@ -121,7 +121,7 @@ To enable model caching, click on the **gear** icon in the upper right and selec
 
 You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency. We recommend scheduling the cache to refresh on a frequency that makes sense with how often your source tables update with new data.
 
-If someone changes the query definition of a model, any question based on that model will skip the cache the until the next cache refresh.
+If someone changes the query definition of a model, any question based on that model will skip the cache until the next cache refresh.
 
 ### Refreshing a model's cached results
 
