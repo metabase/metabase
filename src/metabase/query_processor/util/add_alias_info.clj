@@ -1,5 +1,5 @@
 (ns metabase.query-processor.util.add-alias-info
-  "Walks query and adds generates appropriate aliases for every selected column; and adds extra keys to the
+  "Walks query and generates appropriate aliases for every selected column; and adds extra keys to the
   corresponding MBQL clauses with this information. Deduplicates aliases and calls [[metabase.driver/escape-alias]]
   with the generated aliases. Adds information about the aliases in source queries and joins that correspond to
   columns in the parent level.
