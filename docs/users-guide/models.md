@@ -121,7 +121,7 @@ There are two steps to enabling model caching for your database.
 
 #### 1. Create a schema in your database to store cached models
 
-To store cached results, Metabase creates a new schema in your data warehouse, and creates new tables in that schema to store the results of the queries that power the models.
+To store cached results, Metabase creates a new schema in your data warehouse, and creates new tables in that schema to store the results of the queries that power your models.
 
 To create the schema in your database, click on the **gear** icon in the upper right and select **Admin settings** > **Databases**, then select the relevant database connection. On the right, click on **Turn model caching on**.
 
@@ -132,7 +132,7 @@ Click on the info button to view the name of the schema that Metabase (or you) w
 What this means is that, in order for Metabase to cache models in your database, the connection credentials you use to connect Metabase to your data warehouse need to have privileges to either:
 
 - Create and manage schemas in that database.
-- Manage the specific schema (found in that info tooltip) that Metabase will use to store results. This option will require you to create the schema manually in your database using different credentials, then giving the account you use to connect to your database privileges to manage that schema. Make sure that you name the schema exactly as the tooltip in Metabase suggests.
+- Manage the specific schema (found in that info tooltip) that Metabase will use to store results. This option will require you to 1) create the schema manually in your database using different credentials, then 2) give the account you use to connect to your database privileges to manage that schema. Make sure that you name the schema exactly as the tooltip in Metabase suggests.
 
 #### 2. Enable model caching in your Metabase
 
