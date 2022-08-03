@@ -36,3 +36,9 @@ Let's say you have three schemas: foo, bar, and baz.
 - If you have **All except...** set, and enter the string `b*`, you'll just sync foo.
 
 Note that only the `*` wildcard is supported; you can't use other special characters or regexes.
+
+## Model caching
+
+We'll create tables with model data and refresh them on a schedule you define. To enable it, you need to grant this connection's credentials read and write permissions for the schema displayed in the info tooltip, or grant create schema permissions.
+
+See [Models](../users-guide/models.md).
