@@ -1292,7 +1292,6 @@ export class ExpressionDimension extends Dimension {
     // if a dimension has access to a question with result metadata,
     // we try to find the field using the metadata directly,
     // so that we don't have to try to infer field metadata from the expression
-
     const resultMetadata = query?.question()?.getResultMetadata?.();
     if (resultMetadata) {
       const fieldMetadata = _.findWhere(resultMetadata, {
