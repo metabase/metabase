@@ -41,6 +41,16 @@ export const ScalarTitleContainer = styled.div`
   width: 100%;
 `;
 
+export const ScalarTitleContent = styled.h3`
+  text-align: center;
+  overflow: hidden;
+  cursor: ${props => props.onClick && "pointer"};
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
 export const ScalarDescriptionContainer = styled.div`
   cursor: pointer;
   width: 1.5rem;

@@ -3,7 +3,6 @@
  */
 /* eslint-disable react/prop-types */
 import React, { useMemo } from "react";
-import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
@@ -14,6 +13,7 @@ import {
   ScalarTitleContainer,
   ScalarDescriptionContainer,
   ScalarDescriptionPlaceholder,
+  ScalarTitleContent,
 } from "./ScalarValue.styled";
 
 import { findSize, getMaxFontSize } from "./utils";
@@ -60,19 +60,15 @@ export const ScalarTitle = ({ title, description, onClick }) => (
       It needs match the width of the tooltip icon on the other side.
      */}
     {description && description.length > 0 && <ScalarDescriptionPlaceholder />}
-    <h3
+    <ScalarTitleContent
+      className="fullscreen-normal-text fullscreen-night-text"
+      data-testid="scalar-title"
       onClick={onClick}
-      className={cx(
-        "Scalar-title overflow-hidden text-centered fullscreen-normal-text fullscreen-night-text text-brand-hover",
-        {
-          "cursor-pointer": !!onClick,
-        },
-      )}
     >
       <Ellipsified tooltip={title} lines={2} placement="bottom">
         {title}
       </Ellipsified>
-    </h3>
+    </ScalarTitleContent>
     {description && description.length > 0 && (
       <ScalarDescriptionContainer>
         <Tooltip tooltip={description} maxWidth="22em">
