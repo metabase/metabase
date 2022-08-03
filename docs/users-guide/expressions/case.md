@@ -8,55 +8,72 @@ title: Case
 
 You can optionally tell `case` to return a default output if none of the conditions are met. If you don't set a default output, `case` will return `null` after checking all of your conditions (`null` values are displayed as blank values in Metabase).
 
-Use the `case` expression whenever you need to bucket a range of values, label the rows in your dataset, or aggregate rows based on conditional logic.
+Use the `case` expression whenever you need to:
 
-| Syntax                                                                | Example                                         |
-| --------------------------------------------------------------------- | ----------------------------------------------- |
-| `case(condition1, output1, condition2, output2, ..., default_output)` | `case()` |
-| Returns the output from the first condition that's met.               | "sample output"         |
+- [bucket a range of values](#bucketing-data-for-frequency-tables-or-histograms),
+- [label the rows in your dataset](#labeling-a-row-based-on-conditions-from-multiple-columns), or
+- [aggregate rows based on conditional logic](#aggregating-data-based-on-conditions-from-multiple-columns).
 
-<div class='doc-toc' markdown=1>
-- [Bucketing data for frequency tables or histograms]().
-- [Labeling a row based on conditions from multiple columns]().
-- [Aggregating data based on conditions from multiple columns]().
-- [Accepted data types](#accepted-data-types).
-- [Limitations](#limitations).
-- [Converting other functions to `case` expressions](#converting-other-functions-to-case-expressions).
-- [Further reading](#further-reading).
-</div> 
+| Syntax                                                                |
+| --------------------------------------------------------------------- |
+| `case(condition1, output1, condition2, output2, ..., default_output)` |
+| Returns the output from the first condition that's met.               |
+
+| Example                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------- |
+| `case(isempty("glass half full"), "empty glass", isnull("glass half full"), "missing glass", "glass half full")` |
+| "glass half full"                                                                                                |
 
 ## Bucketing data for frequency tables or histograms
 
-| Amount | <code>case(Amount >=0  AND Amount <= 9,   "0-9",<br>      Amount >=10 AND Amount <= 19,  "10-19",<br>      Amount >=20 AND Amount <= 29,  "20-29",<br>      Amount >=30 AND Amount <= 39,  "30-39",<br>      Amount >=40 AND Amount <= 49,  "40-49", "50+")</code> |
-|--------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 6      | 0-9                                                                                                                                                                                                                                                          |
-| 18     | 10-19                                                                                                                                                                                                                                                        |
-| 31     | 30-39                                                                                                                                                                                                                                                        |
-| 57     | 50+                                                                                                                                                                                                                                                          |
+| Amount | Bucket |
+| ------ | ------ |
+| 6      | 0-9    |
+| 18     | 10-19  |
+| 31     | 30-39  |
+| 57     | 50+    |
+
+where **Bucket** is a custom column with the expression:
+
+```sql
+case(Amount >=0  AND Amount <=  9,  "0-9",
+     Amount >=10 AND Amount <= 19,  "10-19",
+     Amount >=20 AND Amount <= 29,  "20-29",
+     Amount >=30 AND Amount <= 39,  "30-39",
+     Amount >=40 AND Amount <= 49,  "40-49", "50+")
+```
 
 ## Labeling a row based on conditions from multiple columns
 
-| sighting_id | has_wings | has_face | <code>case([has_wings]=TRUE  AND [is_alive]=TRUE,  "Bird",<br>      [has_wings]=TRUE  AND [is_alive]=FALSE, "Plane",<br>      [has_wings]=FALSE AND [is_alive]=TRUE,  "Superman")</code> |
-|-------------|-----------|----------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1           | True      | True     | Bird                                                                                                                                                                                 |
-| 2           | True      | False    | Plane                                                                                                                                                                                |
-| 3           | False     | False    | Superman                                                                                                                                                                             |
-| 4           | False     | True     | null                                                                                                                                                                                 |
+| Sighting ID | Has Wings | Has Face | Sighting Type |
+| ----------- | --------- | -------- | ------------- |
+| 1           | True      | True     | Bird          |
+| 2           | True      | False    | Plane         |
+| 3           | False     | False    | Superman      |
+| 4           | False     | True     | Unknown       |
+
+where **Sighting Type** is a custom column with the expression:
+
+```sql
+case([has_wings]=TRUE  AND [is_alive]=TRUE,  "Bird",
+     [has_wings]=TRUE  AND [is_alive]=FALSE, "Plane",
+     [has_wings]=FALSE AND [is_alive]=TRUE,  "Superman"), "Unknown")
+```
 
 You can use the columns holding your "labels" to:
 
-- Apply business definitions or business logic to your datasets.
-- Power a filter.
-- Segment data for data sandboxing.
+- Apply [business definitions or business logic][business-logic] to your datasets.
+- [Power a filter][filter-learn].
+- [Segment data for data sandboxing][data-sandboxing-docs].
 
 ## Aggregating data based on conditions from multiple columns
 
-You can combine `case` with aggregate functions from **Summarize** > **Custom expression**.
+You can combine `case` with [aggregate functions][aggregate-functions] to only aggregate rows that meet your conditions.
 
-For example, if we want to count the unique number of orders with a "shipped" status for each order date:
+For example, if we want to count the unique number of orders for each order date, but only those with a "Shipped" status:
 
 | Order ID | Order Date | Status    |
-|----------|------------|-----------|
+| -------- | ---------- | --------- |
 | 1        | 2022-04-01 | Paid      |
 | 1        | 2022-04-03 | Shipped   |
 | 2        | 2022-05-12 | Paid      |
@@ -67,7 +84,7 @@ For example, if we want to count the unique number of orders with a "shipped" st
 3. Click **Visualize** to return the result:
 
 | Order Date | Total Orders Shipped |
-|------------|----------------------|
+| ---------- | -------------------- |
 | 2022-04-01 | 1                    |
 | 2022-05-01 | 0                    |
 
@@ -85,13 +102,13 @@ For example, if we want to count the unique number of orders with a "shipped" st
 
 All of the outputs must have the same data type.
 
-For example, **don't** do this:
+**Avoid:**:
 
 ```sql
 case(condition1, "string", condition2, TRUE, condition3, 1)
 ```
 
-Do this instead:
+**Do:**:
 
 ```sql
 case(condition1, "string", condition2, "TRUE", condition3, "1")
@@ -101,7 +118,7 @@ case(condition1, "string", condition2, "TRUE", condition3, "1")
 
 This section covers functions and formulas that can be used interchangeably with the Metabase `case` expression, with notes on how to choose the best option for your use case.
 
-**Metabase expressions**
+**[Metabase expressions][custom-expressions-list]**
 
 - [Coalesce](#coalesce)
 - [Countif](#countif)
@@ -124,7 +141,7 @@ Using the table from the [Coalesce: Consolidating values](./coalesce#consolidati
 | I have a note. |                   | I have a note.                                          |
 |                |                   | No notes or comments.                                   |
 
-The `coalesce` expression
+The [Metabase `coalesce` expression](./coalesce)
 
 ```sql
 coalesce([Notes], [Comments] "No notes or comments.")
@@ -139,20 +156,20 @@ case(ISBLANK([Notes]) = FALSE AND ISBLANK([Comments]) = FALSE, [Notes],
      ISBLANK([Notes]) = TRUE  AND ISBLANK([Comments]) = TRUE,  "No notes or comments")
 ```
 
-`coalesce` is much nicer to write if you don't mind taking the first value when both of your columns are non-blank. Use `case` if you want to define a specific output (such as "I have a note _and_ a comment").
+`coalesce` is much nicer to write if you don't mind taking the first value when both of your columns are non-blank. Use `case` if you want to define a specific output for this case (such as, "I have a note _and_ a comment").
 
 ### Countif
 
 Using the table from the [Aggregating data](#aggregating-data-based-on-conditions-from-multiple-columns) example:
 
 | Order ID | Order Date | Status    |
-|----------|------------|-----------|
+| -------- | ---------- | --------- |
 | 1        | 2022-04-01 | Paid      |
 | 1        | 2022-04-03 | Shipped   |
 | 2        | 2022-05-12 | Paid      |
 | 2        | 2022-05-12 | Cancelled |
 
-The `countif` expression
+The [Metabase `countif` expression][countif]
 
 ```sql
 countif(case([Status] = "Shipped"))
@@ -164,20 +181,20 @@ is equivalent to the `case` expression:
 count(case([Status] = "Shipped"), [Row ID])
 ```
 
-`countif` is equivalent to `case` when you are counting **all** rows in the table that meet your condition. It is **not** equivalent if you want to count **distinct** rows that meet your condition.
+`countif` is equivalent to `case` when you are counting **all** rows in the table that meet your conditions. It is **not** equivalent if you want to count **unique** rows that meet your conditions.
 
 ### Sumif
 
 Using an expanded version of the table from the [Aggregating data](#aggregating-data-based-on-conditions-from-multiple-columns) example:
 
 | Row ID | Order ID | Order Date | Status    | Amount |
-|--------|----------|------------|-----------|--------|
-| 1      | 1        | 2022-04-01 | Paid      | $20    |
-| 2      | 1        | 2022-04-03 | Shipped   | $20    |
-| 3      | 2        | 2022-05-12 | Paid      | $80    |
-| 4      | 2        | 2022-05-12 | Cancelled | $80    |
+| ------ | -------- | ---------- | --------- | ------ |
+| 1      | 1        | 2022-04-01 | Paid      | \$20   |
+| 2      | 1        | 2022-04-03 | Shipped   | \$20   |
+| 3      | 2        | 2022-05-12 | Paid      | \$80   |
+| 4      | 2        | 2022-05-12 | Cancelled | \$80   |
 
-The `sumif` expression
+The [Metabase `sumif` expression][sumif]
 
 ```sql
 sumif([Amount],[Status] = "Shipped")
@@ -189,39 +206,39 @@ is equivalent to the `case` expression:
 sum(case([Status] = "Shipped"), [Amount])
 ```
 
-`sumif` is equivalent to `case` when you sum a single column for single condition (where conditions can include multiple columns). 
+`sumif` is equivalent to `case` when you sum a single column for single condition.
 
-You should use `case` if you want to sum a different column under a different condition. For example, if you want to sum the **Amount** column when **Status** = "Shipped" and another (hypothetical) column like **Refunded Amount** when **Status** = "Refunded".
+You should use `case` if you want to sum a second column under a second, separate condition. For example, if you want to sum the **Amount** column when **Status** = "Shipped" and another (hypothetical) column like **Refunded Amount** when **Status** = "Refunded".
 
 ### SQL
 
-In general, questions created from the notebook editor are converted into SQL queries that runs against your database or data warehouse. Metabase `case` expressions are converted into SQL `CASE WHEN` statements.
+In most cases (unless you're using a NoSQL database), questions created from the [notebook editor][notebook-editor-def] are converted into SQL queries that run against your database or data warehouse. Metabase `case` expressions are converted into SQL `CASE WHEN` statements.
 
 Using the table from the [Labeling rows](#labeling-a-row-based-on-conditions-from-multiple-columns) example:
 
-| sighting_id | has_wings | has_face | <code>case([has_wings]=TRUE  AND [is_alive]=TRUE,  "Bird",<br>      [has_wings]=TRUE  AND [is_alive]=FALSE, "Plane",<br>      [has_wings]=FALSE AND [is_alive]=TRUE,  "Superman")</code> |
-|-------------|-----------|----------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1           | True      | True     | Bird                                                                                                                                                                                 |
-| 2           | True      | False    | Plane                                                                                                                                                                                |
-| 3           | False     | False    | Superman                                                                                                                                                                             |
-| 4           | False     | True     | null                                                                                                                                                                                 |
+| Sighting ID | Has Wings | Has Face | Sighting Type |
+| ----------- | --------- | -------- | ------------- |
+| 1           | True      | True     | Bird          |
+| 2           | True      | False    | Plane         |
+| 3           | False     | False    | Superman      |
+| 4           | False     | True     | Unknown       |
 
 The SQL `CASE WHEN` statement:
 
 ```sql
-SELECT 
+SELECT
 CASE WHEN has_wings = TRUE  AND is_alive = TRUE  THEN "Bird"
      WHEN has_wings = TRUE  AND is_alive = FALSE THEN "Plane"
      WHEN has_wings = FALSE AND is_alive = TRUE  THEN "Superman" END
 FROM mystery_sightings
 ```
 
-is equivalent to the `case` expression:
+is equivalent to the `case` expression used for **Sighting Type**:
 
 ```sql
 case([has_wings]=TRUE  AND [is_alive]=TRUE,  "Bird",
      [has_wings]=TRUE  AND [is_alive]=FALSE, "Plane",
-     [has_wings]=FALSE AND [is_alive]=TRUE,  "Superman")
+     [has_wings]=FALSE AND [is_alive]=TRUE,  "Superman", "Unknown")
 ```
 
 For example, this [SQL trick to order bar charts](https://www.metabase.com/learn/sql-questions/sql-tricks-ordering-charts) could be written using a Metabase `case` expression instead.
@@ -230,45 +247,87 @@ For example, this [SQL trick to order bar charts](https://www.metabase.com/learn
 
 Using the table from the [Labeling rows](#labeling-a-row-based-on-conditions-from-multiple-columns) example:
 
-| sighting_id | has_wings | has_face | <code>case([has_wings]=TRUE  AND [is_alive]=TRUE,  "Bird",<br>      [has_wings]=TRUE  AND [is_alive]=FALSE, "Plane",<br>      [has_wings]=FALSE AND [is_alive]=TRUE,  "Superman")</code> |
-|-------------|-----------|----------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1           | True      | True     | Bird                                                                                                                                                                                 |
-| 2           | True      | False    | Plane                                                                                                                                                                                |
-| 3           | False     | False    | Superman                                                                                                                                                                             |
-| 4           | False     | True     | null                                                                                                                                                                                 |
+| Sighting ID | Has Wings | Has Face | Sighting Type |
+| ----------- | --------- | -------- | ------------- |
+| 1           | True      | True     | Bird          |
+| 2           | True      | False    | Plane         |
+| 3           | False     | False    | Superman      |
+| 4           | False     | True     | Unknown       |
 
 The spreadsheet formula
 
 ```
-=IF(A:A = TRUE AND B:B = TRUE, "Bird", 
+=IF(A:A = TRUE AND B:B = TRUE, "Bird",
     IF(A:A = TRUE AND B:B = FALSE, "Plane",
-       IF(A:A = FALSE AND B:B = TRUE, "Superman")
+       IF(A:A = FALSE AND B:B = TRUE, "Superman", "Unknown")
       )
     )
 ```
 
-is equivalent to the Metabase `case` expression: 
+is equivalent to the `case` expression used for **Sighting Type**:
 
 ```sql
 case([has_wings]=TRUE  AND [is_alive]=TRUE,  "Bird",
      [has_wings]=TRUE  AND [is_alive]=FALSE, "Plane",
-     [has_wings]=FALSE AND [is_alive]=TRUE,  "Superman")
+     [has_wings]=FALSE AND [is_alive]=TRUE,  "Superman", "Unknown")
 ```
 
 ### Python
 
-Assuming the [mysterious sightings table](#converting-other-functions-to-coalesce-expressions) is in a dataframe called `df`, all of the following `pandas` functions
+There are many ways to implement conditional logic using Python. This section will cover common approaches that make sense to convert to `case` statements.
 
-```
-df['custom_column'] = ...
+Assuming the table from the [Labeling rows](#labeling-a-row-based-on-conditions-from-multiple-columns) example is in a dataframe called `df`:
+
+| Sighting ID | Has Wings | Has Face | Sighting Type |
+| ----------- | --------- | -------- | ------------- |
+| 1           | True      | True     | Bird          |
+| 2           | True      | False    | Plane         |
+| 3           | False     | False    | Superman      |
+| 4           | False     | True     | Unknown       |
+
+**numpy select()**
+
+```python
+conditions = [
+    (df["has_wings"] == True) & (df["has_face"] == True),
+    (df["has_wings"] == True) & (df["has_face"] == False),
+    (df["has_wings"] == False) & (df["has_face"] == True)]
+
+outputs = ["Bird", "Plane", "Superman"]
+
+df["Sighting Type"] = np.select(conditions, outputs, default="Unknown")
 ```
 
-are equivalent to the Metabase `case` expression: 
+**numpy where()**
+
+```python
+df["Sighting Type"] = np.where(df["has_wings"] == True  and df["has_face"] == True, "Bird"),
+                      np.where(df["has_wings"] == True  and df["has_face"] == False, "Plane"),
+                      np.where(df["has_wings"] == False and df["has_face"] == True, "Superman", "Unknown"))
+```
+
+**helper function with pandas apply()**
+
+```python
+def Identify(row):
+    if df["has_wings"] == True and df["has_face"] == True:
+        return "Bird"
+    elif df["has_wings"] == True and df["has_face"] == False:
+        return "Plane"
+    elif df["has_wings"] == False and df["has_face"] == True:
+        return "Superman"
+    else:
+        return "Unknown"
+
+df["Sighting Type"]= df["Sighting Type"].apply(Identify, axis=1))
+```
+
+are _all_ equivalent to the Metabase `case` expression for **Sighting Type**
 
 ```sql
 case([has_wings]=TRUE  AND [is_alive]=TRUE,  "Bird",
      [has_wings]=TRUE  AND [is_alive]=FALSE, "Plane",
-     [has_wings]=FALSE AND [is_alive]=TRUE,  "Superman")
+     [has_wings]=FALSE AND [is_alive]=TRUE,  "Superman", "Unknown")
 ```
 
 ## Further reading
@@ -276,10 +335,18 @@ case([has_wings]=TRUE  AND [is_alive]=TRUE,  "Bird",
 - [Custom expressions documentation][custom-expressions-doc]
 - [Custom expressions tutorial][custom-expressions-learn]
 
-[custom-expressions-doc]: ./expressions
+[aggregate-functions]: ../expressions-list#aggregations
+[business-logic]: /learn/analytics/avoiding-data-jargon#create-specific-language-and-shared-definitions
+[countif]: ../expressions-list#countif
+[custom-expressions-doc]: ../expressions
+[custom-expressions-list]: ../expressions-list
 [custom-expressions-learn]: /learn/questions/custom-expressions
+[data-sandboxing-docs]: ../../enterprise-guide/data-sandboxes.html#filtering-a-sandboxed-table
 [data-types]: /learn/databases/data-types-overview#examples-of-data-types
+[filter-learn]: /learn/questions/searching-tables
+[notebook-editor-def]: /glossary/notebook_editor
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/
 [spreadsheets-to-bi]: /blog/spreadsheets-to-bi
 [sql-reference-guide]: /learn/debugging-sql/sql-syntax.html#common-sql-reference-guides
+[sumif]: ../expressions-list#sumif
