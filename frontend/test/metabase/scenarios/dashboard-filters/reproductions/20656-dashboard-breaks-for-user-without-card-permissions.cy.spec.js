@@ -64,15 +64,14 @@ describe("issue 20656", () => {
     // Trying to edit the filter should not show mapping fields and shouldn't break frontend (metabase#24536)
     editDashboard();
 
-    // TODO: Uncomment when the issue gets fixed!
-    // cy.findByTestId("edit-dashboard-parameters-widget-container")
-    //   .find(".Icon-gear")
-    //   .click();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .find(".Icon-gear")
+      .click();
 
-    // cy.findByText("Column to filter on")
-    //   .parent()
-    //   .within(() => {
-    //     cy.icon("key");
-    //   });
+    cy.findByText("Column to filter on")
+      .parent()
+      .within(() => {
+        cy.icon("key");
+      });
   });
 });
