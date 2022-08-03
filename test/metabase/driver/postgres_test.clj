@@ -353,8 +353,13 @@
                                :type     :query
                                :query    {:source-table (u/the-id table)
                                           :aggregation  [[:count]]
-                                          :breakout     [[:field (u/the-id field) nil]]}})]
-            (is (= (str "SELECT (\"json_alias_test\".\"bob\"#>> ?::text[])::VARCHAR  "
+                                          :breakout     [[:field (u/the-id field) 
+                                                          {:temporal-unit :month,
+                                                           :metabase.query-processor.util.add-alias-info/source-table (u/the-id table),
+                                                           :metabase.query-processor.util.add-alias-info/source-alias "ts",
+                                                           :metabase.query-processor.util.add-alias-info/desired-alias "ts",
+                                                           :metabase.query-processor.util.add-alias-info/position 1}]]}})]
+            (is (= (str "SELECT date_trunc('month', CAST((\"json_alias_test\".\"bob\"#>> ?::text[])::VARCHAR  AS timestamp)) "
                         "AS \"json_alias_test\", count(*) AS \"count\" FROM \"json_alias_test\" "
                         "GROUP BY \"json_alias_test\" ORDER BY \"json_alias_test\" ASC")
                    (:query compile-res)))
@@ -865,26 +870,6 @@
                                           (mt/native-query)
                                           (qp/process-query)
                                           (mt/rows))))))))))
-
-(deftest json-alias-replacements
-  (testing "JSON alias replacement time bucketing (22831)"
-    (mt/test-driver :postgres
-                    (drop-if-exists-and-create-db! "json-alias-test")
-                    (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-alias-test"})
-                          spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-                      (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.json_table;"
-                                         "CREATE TABLE PUBLIC.json_table (json_val JSON NOT NULL);"
-                                         "INSERT INTO PUBLIC.json_table (json_val) VALUES ('{\"a\": 1, \"b\": 2}'), ('{\"a\": 1, \"b\": 2}');"]]
-                        (jdbc/execute! spec [statement])))
-      (let [json-db-details (mt/dbdef->connection-details :postgres :db {:database-name "json-alias-test"})
-            ;;;;;;;;;
-            ;;;;;;;;;
-            ;;;;;;;;;
-            query           some crap]
-        (mt/with-temp Database [database {:engine :postgres, :details json-db-details}]
-          (mt/with-db database (sync/sync-database! database)
-                               (is (= "some stuff"
-                                      (get the sqlization of the query)))))))))
 
 (defn- pretty-sql [s]
   (-> s
