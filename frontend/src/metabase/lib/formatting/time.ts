@@ -1,4 +1,8 @@
 import { msgid, ngettext } from "ttag";
+import { parseTime } from "metabase/lib/time";
+import { Moment } from "moment-timezone";
+
+import type { Value } from "metabase-types/types/Dataset";
 
 export function duration(milliseconds) {
   const SECOND = 1000;
@@ -18,13 +22,10 @@ export function duration(milliseconds) {
   return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
 }
 
-export function formatTime(value) {
-  const m = parseTime(value);
-  if (!m.isValid()) {
-    return String(value);
-  }
+export function formatTime(time: Moment) {
+  const parsedTime = parseTime(time);
 
-  return m.format("LT");
+  return parsedTime.isValid() ? parsedTime.format("LT") : String(time);
 }
 
 export function formatTimeWithUnit(value, unit, options = {}) {
