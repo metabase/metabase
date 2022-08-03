@@ -622,7 +622,7 @@
 (defn rewrite-fields-to-force-using-column-aliases
   "Rewrite `:field` clauses to force them to use the column alias regardless of where they appear."
   ([form]
-   (rewrite-fields-to-force-using-column-aliases form {:is-breakout true}))
+   (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
    (mbql.u/replace form
      [:field id-or-name opts]
