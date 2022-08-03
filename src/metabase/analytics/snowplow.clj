@@ -16,7 +16,7 @@
            [com.snowplowanalytics.snowplow.tracker.events Unstructured Unstructured$Builder]
            [com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter ApacheHttpClientAdapter$Builder]
            com.snowplowanalytics.snowplow.tracker.payload.SelfDescribingJson
-           org.apache.http.client.config.CookieSpecs
+           [org.apache.http.client.config CookieSpecs RequestConfig]
            org.apache.http.impl.client.HttpClients
            org.apache.http.impl.conn.PoolingHttpClientConnectionManager))
 
@@ -81,11 +81,14 @@
 (def ^:private emitter
   "Returns an instance of a Snowplow emitter"
   (let [emitter* (delay
-                   (let [client (-> (HttpClients/custom)
+                   (let [request-config (-> (RequestConfig/custom)
+                                            ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
+                                            ;; header in request response (PR #24579)
+                                            (.setCookieSpec CookieSpecs/STANDARD)
+                                            (.build))
+                         client (-> (HttpClients/custom)
                                     (.setConnectionManager (PoolingHttpClientConnectionManager.))
-                                    ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie header
-                                    ;; in request response (PR #24579)
-                                    (.setCookieSpec (CookieSpecs/STANDARD))
+                                    (.setDefaultRequestConfig request-config)
                                     (.build))
                          builder (-> (ApacheHttpClientAdapter/builder)
                                      (.httpClient client)
