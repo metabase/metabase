@@ -25,6 +25,7 @@ import {
   ExpandIconContainer,
   FormattingOptionsRoot,
   ShowTotalsOptionRoot,
+  SortButtonIcon,
   SortOrderOptionRoot,
 } from "./ChartSettingFieldsPartition.styled";
 
@@ -52,14 +53,12 @@ function ShowTotalsOption({ value, onChange }) {
 function SortButton({ iconName, onChange, currentValue, buttonValue }) {
   const isSelected = buttonValue === currentValue;
   return (
-    <Icon
+    <SortButtonIcon
+      className="sort"
       name={iconName}
-      onClick={() => onChange(isSelected ? undefined : buttonValue)}
       size={16}
-      className={cx("sort cursor-pointer", {
-        "text-brand": isSelected,
-        "text-medium text-brand-hover": !isSelected,
-      })}
+      isSelected={isSelected}
+      onClick={() => onChange(isSelected ? undefined : buttonValue)}
     />
   );
 }

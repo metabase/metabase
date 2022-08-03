@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
 
 export const ShowTotalsOptionRoot = styled.div`
   display: flex;
@@ -27,5 +28,18 @@ export const ExpandIconContainer = styled.span`
 
   &:hover {
     color: ${color("brand")};
+  }
+`;
+
+export interface SortButtonIconProps {
+  isSelected: boolean;
+}
+
+export const SortButtonIcon = styled(Icon)<SortButtonIconProps>`
+  cursor: pointer;
+  color: ${props => (props.isSelected ? color("brand") : color("text-medium"))};
+
+  &:hover {
+    color: ${props => !props.isSelected && color("brand")};
   }
 `;
