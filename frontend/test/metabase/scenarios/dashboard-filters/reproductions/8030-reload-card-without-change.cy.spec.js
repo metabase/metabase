@@ -26,13 +26,13 @@ const dashboardDetails = {
   parameters: [filterDetails],
 };
 
-describe("issue 22197", () => {
+describe("issue 8030", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  it("should not reload cards in a dashboard when corresponding filters are not changed (metabase#22197)", () => {
+  it("should not reload dashboard cards not connected to a filter (metabase#8030)", () => {
     createQuestionsAndDashboard().then(
       ({ dashboard_id, card1_id, card2_id }) => {
         interceptRequests({ dashboard_id, card1_id, card2_id });
