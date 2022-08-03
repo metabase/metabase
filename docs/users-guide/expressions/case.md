@@ -36,11 +36,11 @@ Use the `case` expression whenever you need to:
 where **Bucket** is a custom column with the expression:
 
 ```sql
-case(Amount >=0  AND Amount <=  9,  "0-9",
-     Amount >=10 AND Amount <= 19,  "10-19",
-     Amount >=20 AND Amount <= 29,  "20-29",
-     Amount >=30 AND Amount <= 39,  "30-39",
-     Amount >=40 AND Amount <= 49,  "40-49", "50+")
+case([Amount] >=0  AND [Amount] <=  9,  "0-9",
+     [Amount] >=10 AND [Amount] <= 19,  "10-19",
+     [Amount] >=20 AND [Amount] <= 29,  "20-29",
+     [Amount] >=30 AND [Amount] <= 39,  "30-39",
+     [Amount] >=40 AND [Amount] <= 49,  "40-49", "50+")
 ```
 
 ## Labeling a row based on conditions from multiple columns
@@ -55,9 +55,9 @@ case(Amount >=0  AND Amount <=  9,  "0-9",
 where **Sighting Type** is a custom column with the expression:
 
 ```sql
-case([has_wings]=TRUE  AND [is_alive]=TRUE,  "Bird",
-     [has_wings]=TRUE  AND [is_alive]=FALSE, "Plane",
-     [has_wings]=FALSE AND [is_alive]=TRUE,  "Superman"), "Unknown")
+case([has_wings] = TRUE  AND [is_alive] = TRUE,  "Bird",
+     [has_wings] = TRUE  AND [is_alive] = FALSE, "Plane",
+     [has_wings] = FALSE AND [is_alive] = TRUE,  "Superman"), "Unknown")
 ```
 
 You can use the columns holding your "labels" to:
@@ -114,7 +114,7 @@ case(condition1, "string", condition2, TRUE, condition3, 1)
 case(condition1, "string", condition2, "TRUE", condition3, "1")
 ```
 
-## Converting other functions to `case` expressions
+## Converting a function into a `case` expression
 
 This section covers functions and formulas that can be used interchangeably with the Metabase `case` expression, with notes on how to choose the best option for your use case.
 
@@ -178,7 +178,7 @@ countif(case([Status] = "Shipped"))
 is equivalent to the `case` expression:
 
 ```sql
-count(case([Status] = "Shipped"), [Row ID])
+count(case([Status] = "Shipped", [Row ID]))
 ```
 
 `countif` is equivalent to `case` when you are counting **all** rows in the table that meet your conditions. It is **not** equivalent if you want to count **unique** rows that meet your conditions.
@@ -197,13 +197,13 @@ Using an expanded version of the table from the [Aggregating data](#aggregating-
 The [Metabase `sumif` expression][sumif]
 
 ```sql
-sumif([Amount],[Status] = "Shipped")
+sumif([Amount], [Status] = "Shipped")
 ```
 
 is equivalent to the `case` expression:
 
 ```sql
-sum(case([Status] = "Shipped"), [Amount])
+sum(case([Status] = "Shipped", [Amount]))
 ```
 
 `sumif` is equivalent to `case` when you sum a single column for single condition.
@@ -227,18 +227,19 @@ The SQL `CASE WHEN` statement:
 
 ```sql
 SELECT
-CASE WHEN has_wings = TRUE  AND is_alive = TRUE  THEN "Bird"
-     WHEN has_wings = TRUE  AND is_alive = FALSE THEN "Plane"
-     WHEN has_wings = FALSE AND is_alive = TRUE  THEN "Superman" END
+    CASE WHEN "Has Wings" = TRUE  AND "Has Face" = TRUE  THEN "Bird"
+         WHEN "Has Wings" = TRUE  AND "Has Face" = FALSE THEN "Plane"
+         WHEN "Has Wings" = FALSE AND "Has Face" = TRUE  THEN "Superman" 
+         ELSE "Unknown" END
 FROM mystery_sightings
 ```
 
 is equivalent to the `case` expression used for **Sighting Type**:
 
 ```sql
-case([has_wings]=TRUE  AND [is_alive]=TRUE,  "Bird",
-     [has_wings]=TRUE  AND [is_alive]=FALSE, "Plane",
-     [has_wings]=FALSE AND [is_alive]=TRUE,  "Superman", "Unknown")
+case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
+     [Has Wings] = TRUE  AND [Has Face] = FALSE, "Plane",
+     [Has Wings] = FALSE AND [Has Face] = TRUE,  "Superman", "Unknown")
 ```
 
 For example, this [SQL trick to order bar charts](https://www.metabase.com/learn/sql-questions/sql-tricks-ordering-charts) could be written using a Metabase `case` expression instead.
@@ -257,9 +258,9 @@ Using the table from the [Labeling rows](#labeling-a-row-based-on-conditions-fro
 The spreadsheet formula
 
 ```
-=IF(A:A = TRUE AND B:B = TRUE, "Bird",
-    IF(A:A = TRUE AND B:B = FALSE, "Plane",
-       IF(A:A = FALSE AND B:B = TRUE, "Superman", "Unknown")
+=IF(AND(B2 = TRUE, C2 = TRUE), "Bird",
+    IF(AND(B2 = TRUE, C2 = FALSE), "Plane",
+       IF(AND(B2 = FALSE, C2 = TRUE), "Superman", "Unknown")
       )
     )
 ```
@@ -267,16 +268,16 @@ The spreadsheet formula
 is equivalent to the `case` expression used for **Sighting Type**:
 
 ```sql
-case([has_wings]=TRUE  AND [is_alive]=TRUE,  "Bird",
-     [has_wings]=TRUE  AND [is_alive]=FALSE, "Plane",
-     [has_wings]=FALSE AND [is_alive]=TRUE,  "Superman", "Unknown")
+case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
+     [Has Wings] = TRUE  AND [Has Face] = FALSE, "Plane",
+     [Has Wings] = FALSE AND [Has Face] = TRUE,  "Superman", "Unknown")
 ```
 
 ### Python
 
-There are many ways to implement conditional logic using Python. This section will cover common approaches that make sense to convert to `case` statements.
+There are many ways to implement conditional logic using Python. We'll cover some common approaches that make sense to convert to `case` statements.
 
-Assuming the table from the [Labeling rows](#labeling-a-row-based-on-conditions-from-multiple-columns) example is in a dataframe called `df`:
+Using the table from the [Labeling rows](#labeling-a-row-based-on-conditions-from-multiple-columns) example (and assuming it's in a dataframe called `df`):
 
 | Sighting ID | Has Wings | Has Face | Sighting Type |
 | ----------- | --------- | -------- | ------------- |
@@ -285,7 +286,7 @@ Assuming the table from the [Labeling rows](#labeling-a-row-based-on-conditions-
 | 3           | False     | False    | Superman      |
 | 4           | False     | True     | Unknown       |
 
-**numpy select()**
+**[numpy][numpy] select()**
 
 ```python
 conditions = [
@@ -298,36 +299,28 @@ outputs = ["Bird", "Plane", "Superman"]
 df["Sighting Type"] = np.select(conditions, outputs, default="Unknown")
 ```
 
-**numpy where()**
+**Helper function with [pandas][pandas] apply()**
 
 ```python
-df["Sighting Type"] = np.where(df["has_wings"] == True  and df["has_face"] == True, "Bird"),
-                      np.where(df["has_wings"] == True  and df["has_face"] == False, "Plane"),
-                      np.where(df["has_wings"] == False and df["has_face"] == True, "Superman", "Unknown"))
-```
-
-**helper function with pandas apply()**
-
-```python
-def Identify(row):
-    if df["has_wings"] == True and df["has_face"] == True:
+def Identify(df):
+    if ((df["has_wings"] == True) & (df["has_face"] == True)):
         return "Bird"
-    elif df["has_wings"] == True and df["has_face"] == False:
+    elif ((df["has_wings"] == True) & (df["has_face"] == False)):
         return "Plane"
-    elif df["has_wings"] == False and df["has_face"] == True:
+    elif ((df["has_wings"] == False) & (df["has_face"] == True)):
         return "Superman"
     else:
         return "Unknown"
 
-df["Sighting Type"]= df["Sighting Type"].apply(Identify, axis=1))
+df["Sighting Type"]= df.apply(Identify, axis=1)
 ```
 
-are _all_ equivalent to the Metabase `case` expression for **Sighting Type**
+The approaches above are equivalent to the `case` expression used for **Sighting Type**:
 
 ```sql
-case([has_wings]=TRUE  AND [is_alive]=TRUE,  "Bird",
-     [has_wings]=TRUE  AND [is_alive]=FALSE, "Plane",
-     [has_wings]=FALSE AND [is_alive]=TRUE,  "Superman", "Unknown")
+case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
+     [Has Wings] = TRUE  AND [Has Face] = FALSE, "Plane",
+     [Has Wings] = FALSE AND [Has Face] = TRUE,  "Superman", "Unknown")
 ```
 
 ## Further reading
