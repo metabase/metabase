@@ -1,20 +1,35 @@
 import React from "react";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { renderLinkTextForClick, renderLinkURLForClick } from "./link";
+import { getDataFromClicked } from "metabase/lib/click-behavior";
+import { formatValue, getRemappedValue } from "./value";
+import { isURL } from "metabase/lib/schema_metadata";
 
-function isSafeProtocol(protocol) {
+interface FormatUrlOptionsType {
+  clicked?: any;
+  column?: any;
+  jsx?: boolean;
+  link_text?: string;
+  link_url?: string;
+  remap?: any;
+  rich?: boolean;
+  view_as?: string;
+}
+
+function isSafeProtocol(protocol: string) {
   return (
     protocol !== "javascript:" && protocol !== "data:" && protocol !== "file:"
   );
 }
 
-function isDefaultLinkProtocol(protocol) {
+function isDefaultLinkProtocol(protocol: string) {
   return (
     protocol === "http:" || protocol === "https:" || protocol === "mailto:"
   );
 }
 
-export function getUrlProtocol(url) {
+export function getUrlProtocol(url: URL) {
   try {
     const { protocol } = new URL(url);
     return protocol;
@@ -22,7 +37,8 @@ export function getUrlProtocol(url) {
     return undefined;
   }
 }
-export function formatUrl(value, options = {}) {
+
+export function formatUrl(value: URL, options: FormatUrlOptionsType = {}) {
   const { jsx, rich } = options;
 
   const url = getLinkUrl(value, options);
@@ -39,7 +55,7 @@ export function formatUrl(value, options = {}) {
   }
 }
 
-function getLinkText(value, options) {
+function getLinkText(value: URL, options: FormatUrlOptionsType) {
   const { view_as, link_text, clicked } = options;
 
   const isExplicitLink = view_as === "link";
@@ -55,7 +71,10 @@ function getLinkText(value, options) {
   );
 }
 
-function getLinkUrl(value, { view_as, link_url, clicked, column }) {
+function getLinkUrl(
+  value: URL,
+  { view_as, link_url, clicked, column }: FormatUrlOptionsType,
+) {
   const isExplicitLink = view_as === "link";
   const hasCustomizedUrl = link_url && clicked;
 
@@ -88,6 +107,6 @@ function getLinkUrl(value, { view_as, link_url, clicked, column }) {
   return null;
 }
 
-export function slugify(name) {
+export function slugify(name: string) {
   return name && encodeURIComponent(name.toLowerCase().replace(/\s/g, "_"));
 }

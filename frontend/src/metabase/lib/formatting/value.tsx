@@ -76,7 +76,21 @@ export function formatValue(value, options = {}) {
     return formatted;
   }
 }
-export function getRemappedValue(value, { remap, column } = {}) {
+
+interface FormatUrlOptionsType {
+  clicked?: any;
+  column?: any;
+  jsx?: boolean;
+  link_text?: string;
+  link_url?: string;
+  remap?: any;
+  rich?: boolean;
+  view_as?: string;
+}
+export function getRemappedValue(
+  value,
+  { remap, column }: FormatUrlOptionsType = {},
+) {
   if (remap && column) {
     if (column.hasRemappedValue && column.hasRemappedValue(value)) {
       return column.remappedValue(value);
