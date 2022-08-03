@@ -16,6 +16,7 @@
            [com.snowplowanalytics.snowplow.tracker.events Unstructured Unstructured$Builder]
            [com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter ApacheHttpClientAdapter$Builder]
            com.snowplowanalytics.snowplow.tracker.payload.SelfDescribingJson
+           org.apache.http.client.config.CookieSpecs
            org.apache.http.impl.client.HttpClients
            org.apache.http.impl.conn.PoolingHttpClientConnectionManager))
 
@@ -82,6 +83,7 @@
   (let [emitter* (delay
                    (let [client (-> (HttpClients/custom)
                                     (.setConnectionManager (PoolingHttpClientConnectionManager.))
+                                    (.setCookieSpec (CookieSpecs/STANDARD))
                                     (.build))
                          builder (-> (ApacheHttpClientAdapter/builder)
                                      (.httpClient client)
