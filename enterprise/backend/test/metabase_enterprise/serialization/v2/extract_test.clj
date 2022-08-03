@@ -1,5 +1,6 @@
 (ns metabase-enterprise.serialization.v2.extract-test
-  (:require [clojure.test :refer :all]
+  (:require [cheshire.core :as json]
+            [clojure.test :refer :all]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field Metric
@@ -98,16 +99,23 @@
 
                        Database   [{db-id      :id}           {:name "My Database"}]
                        Table      [{no-schema-id :id}         {:name "Schemaless Table" :db_id db-id}]
+                       Field      [{field-id     :id}         {:name "Some Field" :table_id no-schema-id}]
                        Table      [{schema-id    :id}         {:name        "Schema'd Table"
                                                                :db_id       db-id
                                                                :schema      "PUBLIC"}]
                        Card       [{c1-id  :id
-                                    c1-eid :entity_id}        {:name          "Some Question"
+                                    c1-eid :entity_id
+                                    :as c1}        {:name          "Some Question"
                                                                :database_id   db-id
                                                                :table_id      no-schema-id
                                                                :collection_id coll-id
                                                                :creator_id    mark-id
-                                                               :dataset_query "{\"json\": \"string values\"}"}]
+                                                               :dataset_query
+                                                               (json/generate-string
+                                                                 {:query {:source-table no-schema-id
+                                                                          :filter [:>= [:field field-id nil] 18]
+                                                                          :aggregation [[:count]]}
+                                                                  :database db-id})}]
                        Card       [{c2-id  :id
                                     c2-eid :entity_id}        {:name          "Second Question"
                                                                :database_id   db-id
@@ -134,16 +142,23 @@
                         :table_id                    (s/eq ["My Database" nil "Schemaless Table"])
                         :creator_id                  (s/eq "mark@direstrai.ts")
                         :collection_id               (s/eq coll-eid)
-                        :dataset_query               (s/eq "{\"json\": \"string values\"}")
+                        :dataset_query               (s/eq {:query {:source-table ["My Database" nil "Schemaless Table"]
+                                                                    :filter [">=" [:field ["My Database" nil "Schemaless Table" "Some Field"] nil] 18]
+                                                                    :aggregation [[:count]]}
+                                                            :database "My Database"})
                         :created_at                  LocalDateTime
                         (s/optional-key :updated_at) LocalDateTime
                         s/Keyword                    s/Any}
                        ser))
           (is (not (contains? ser :id)))
 
-          (testing "cards depend on their Table and Collection"
-            (is (= #{[{:model "Database"   :id "My Database"}
+          (testing "cards depend on their Table and Collection, and also anything referenced in the query"
+            (is (= #{[{:model "Database"   :id "My Database"}]
+                     [{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}]
+                     [{:model "Database"   :id "My Database"}
+                      {:model "Table"      :id "Schemaless Table"}
+                      {:model "Field"      :id "Some Field"}]
                      [{:model "Collection" :id coll-eid}]}
                    (set (serdes.base/serdes-dependencies ser))))))
 
@@ -152,7 +167,7 @@
                         :table_id                    (s/eq ["My Database" "PUBLIC" "Schema'd Table"])
                         :creator_id                  (s/eq "mark@direstrai.ts")
                         :collection_id               (s/eq coll-eid)
-                        :dataset_query               (s/eq "{}") ; Undecoded, still a string.
+                        :dataset_query               (s/eq {})
                         :created_at                  LocalDateTime
                         (s/optional-key :updated_at) LocalDateTime
                         s/Keyword      s/Any}

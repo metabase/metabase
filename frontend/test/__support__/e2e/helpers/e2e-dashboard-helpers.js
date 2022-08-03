@@ -18,11 +18,6 @@ export function editDashboard() {
   cy.icon("pencil").click();
 }
 
-export function cancelEditingDashboard() {
-  cy.findByText("Cancel").click();
-  cy.findByText("You're editing this dashboard.").should("not.exist");
-}
-
 export function saveDashboard() {
   cy.findByText("Save").click();
   cy.findByText("You're editing this dashboard.").should("not.exist");
