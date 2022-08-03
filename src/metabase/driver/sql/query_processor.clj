@@ -621,7 +621,9 @@
 
 (defn rewrite-fields-to-force-using-column-aliases
   "Rewrite `:field` clauses to force them to use the column alias regardless of where they appear."
-  [form & {is-breakout :is-breakout}]
+  ([form]
+   (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
+  ([form {is-breakout :is-breakout}]
   (mbql.u/replace form
     [:field id-or-name opts]
     [:field id-or-name (cond-> opts
@@ -636,7 +638,7 @@
                          ;; That happens inside the `SELECT`
                          ;; (#22831) however, we do want it in breakout
                          (not is-breakout)
-                         (dissoc :temporal-unit :binning))]))
+                         (dissoc :temporal-unit :binning))])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Clause Handlers                                                 |
