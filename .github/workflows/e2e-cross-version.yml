@@ -4,50 +4,24 @@ on: [push]
 
 jobs:
 
-  source:
+  upgrade:
     runs-on: ubuntu-20.04
     timeout-minutes: 60
-    services:
-      metabase-source:
-        image: metabase/metabase:v0.42.0
-        ports:
-          - "4200:3000"
-        volumes:
-          - $PWD/my-metabase:/metabase.db
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+    strategy:
+      matrix:
+        source: [v0.42.0]
+        target: [v0.43.0]
     steps:
-    - run: ls $PWD
-    - name: Wait for Metabase to start on port 4200
-      run: while ! curl -s 'http://localhost:4200/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-    - name: Upload Metabase app DB
-      uses: actions/upload-artifact@v2
-      with:
-        name: metabase-app-db
-        path: $PWD/my-metabase/metabase.db.mv.db
+    - name: Start Metabase ${{ matrix.source }}
+      run: docker run -d -v $PWD/my-metabase:/metabase.db -p 3000:3000 --name metabase-${{ matrix.source }} metabase/metabase:${{ matrix.source }}
+    - name: Wait for Metabase to start on port 3000
+      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+    - run: echo 'Foo'
+    - name: Stop Metabase ${{ matrix.source }}
+      run: docker stop metabase-${{ matrix.source }}
 
-  # target:
-  #   runs-on: ubuntu-20.04
-  #   timeout-minutes: 60
-  #   needs: source
-  #   services:
-  #     metabase-target:
-  #       image: metabase/metabase:v0.43.0
-  #       ports:
-  #         - "4300:3000"
-  #       volumes:
-  #         - /foobar/my-metabase:/metabase.db
-  #       credentials:
-  #         username: ${{ secrets.DOCKERHUB_USERNAME }}
-  #         password: ${{ secrets.DOCKERHUB_TOKEN }}
-  #   steps:
-  #   - name: Download previously populated Metabase app DB
-  #     uses: actions/download-artifact@v2
-  #     with:
-  #       name: metabase-app-db
-  #       path: /foobar/my-metabase/
-  #   - name: Wait for Metabase to start on port 4300
-  #     run: while ! curl -s 'http://localhost:4300/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-  #   - name: Bar
-  #     run: ls /foobar/my-metabase/ | grep 'metabase.db'
+    - name: Start Metabase ${{ matrix.target }}
+      run: docker run -d -v $PWD/my-metabase:/metabase.db -p 3001:3000 --name metabase-${{ matrix.target }} metabase/metabase:${{ matrix.target }}
+    - name: Wait for Metabase to start on port 3001
+      run: while ! curl -s 'http://localhost:3001/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+    - run: ls ./my-metabase | grep 'metabase.db'
