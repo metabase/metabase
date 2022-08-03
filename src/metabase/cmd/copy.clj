@@ -22,7 +22,6 @@
                                      DashboardCard
                                      DashboardCardSeries
                                      Database
-                                     Dependency
                                      Dimension
                                      Field
                                      FieldValues
@@ -81,7 +80,6 @@
   [Database
    User
    Setting
-   Dependency
    Table
    Field
    FieldValues

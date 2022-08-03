@@ -1,6 +1,7 @@
 ---
 title: "User"
-summary: "/api/user endpoints."
+summary: |
+  /api/user endpoints.
 ---
 
 # User
@@ -75,9 +76,9 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`first_name`** value must be a non-blank string.
+*  **`first_name`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`last_name`** value must be a non-blank string.
+*  **`last_name`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`email`** value must be a valid email address.
 

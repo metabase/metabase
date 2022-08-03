@@ -1,6 +1,7 @@
 ---
 title: "Task"
-summary: "/api/task endpoints."
+summary: |
+  /api/task endpoints.
 ---
 
 # Task

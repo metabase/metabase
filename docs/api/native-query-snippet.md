@@ -1,6 +1,7 @@
 ---
 title: "Native query snippet"
-summary: "Native query snippet (/api/native-query-snippet) endpoints."
+summary: |
+  Native query snippet (/api/native-query-snippet) endpoints.
 ---
 
 # Native query snippet
@@ -42,6 +43,8 @@ Create a new `NativeQuerySnippet`.
 
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
+*  **`template_tags`** value may be nil, or if non-nil, template tags must be a map with key of name->TemplateTag.
+
 ## `PUT /api/native-query-snippet/:id`
 
 Update an existing `NativeQuerySnippet`.
@@ -59,6 +62,8 @@ Update an existing `NativeQuerySnippet`.
 *  **`name`** value may be nil, or if non-nil, snippet names cannot include } or start with spaces
 
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+*  **`template_tags`** value may be nil, or if non-nil, template tags must be a map with key of name->TemplateTag.
 
 ---
 

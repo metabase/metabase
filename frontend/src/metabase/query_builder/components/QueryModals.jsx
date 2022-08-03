@@ -55,8 +55,14 @@ class QueryModals extends React.Component {
   };
 
   render() {
-    const { modal, modalContext, question, onCloseModal, onOpenModal } =
-      this.props;
+    const {
+      modal,
+      modalContext,
+      question,
+      initialCollectionId,
+      onCloseModal,
+      onOpenModal,
+    } = this.props;
 
     return modal === MODAL_TYPES.SAVE ? (
       <Modal form onClose={onCloseModal}>
@@ -211,10 +217,15 @@ class QueryModals extends React.Component {
       <Modal onClose={onCloseModal}>
         <EntityCopyModal
           entityType="questions"
-          entityObject={this.props.card}
+          entityObject={{
+            ...question.card(),
+            collection_id: question.canWrite()
+              ? question.collectionId()
+              : initialCollectionId,
+          }}
           copy={async formValues => {
             const object = await this.props.onCreate({
-              ...this.props.card,
+              ...question.card(),
               ...formValues,
               description: formValues.description || null,
               collection_position: null,

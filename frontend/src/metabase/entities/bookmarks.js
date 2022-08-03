@@ -46,24 +46,38 @@ const Bookmarks = createEntity({
     getIcon,
   },
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === Questions.actionTypes.UPDATE && payload?.object?.archived) {
-      const key = `card-${payload.object.id}`;
-      return dissoc(state, key);
+    if (type === Questions.actionTypes.UPDATE && payload?.object) {
+      const { archived, dataset, id, name } = payload.object;
+      const key = `card-${id}`;
+      if (archived) {
+        return dissoc(state, key);
+      } else {
+        return updateIn(state, [key], item => ({ ...item, dataset, name }));
+      }
     }
 
-    if (type === Dashboards.actionTypes.UPDATE && payload?.object?.archived) {
-      const key = `dashboard-${payload.object.id}`;
-      return dissoc(state, key);
+    if (type === Dashboards.actionTypes.UPDATE && payload?.object) {
+      const { archived, id, name } = payload.object;
+      const key = `dashboard-${id}`;
+      if (archived) {
+        return dissoc(state, key);
+      } else {
+        return updateIn(state, [key], item => ({ ...item, name }));
+      }
     }
 
     if (type === Collections.actionTypes.UPDATE && payload?.object) {
-      const { id, authority_level } = payload.object;
+      const { id, authority_level, name } = payload.object;
       const key = `collection-${id}`;
 
       if (payload.object.archived) {
         return dissoc(state, key);
       } else {
-        return updateIn(state, [key], item => ({ ...item, authority_level }));
+        return updateIn(state, [key], item => ({
+          ...item,
+          authority_level,
+          name,
+        }));
       }
     }
 

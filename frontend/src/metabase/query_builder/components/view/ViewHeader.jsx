@@ -258,7 +258,13 @@ function AhHocQuestionLeftSide(props) {
     onOpenModal,
   } = props;
 
-  const handleTitleClick = () => onOpenModal(MODAL_TYPES.SAVE);
+  const handleTitleClick = () => {
+    const query = question.query();
+    if (!query.readOnly()) {
+      onOpenModal(MODAL_TYPES.SAVE);
+    }
+  };
+
   return (
     <AdHocLeftSideRoot>
       <ViewHeaderMainLeftContentContainer>

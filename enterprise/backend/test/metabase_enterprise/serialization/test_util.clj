@@ -6,7 +6,7 @@
             [metabase.db.connection :as mdb.connection]
             [metabase.db.data-source :as mdb.data-source]
             [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency
+            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
                                      Field Metric NativeQuerySnippet Pulse PulseCard Segment Table User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions-group :as perms-group]
@@ -208,11 +208,6 @@
                                                                              [:field
                                                                               ~'category-pk-field-id
                                                                               {:join-alias "cat"}]]}]}}}]
-                   Dependency [{~'dependency-id :id} {:model "Card"
-                                                      :model_id ~'card-id
-                                                      :dependent_on_model "Segment"
-                                                      :dependent_on_id ~'segment-id
-                                                      :created_at :%now}]
                    Card       [{~'card-arch-id :id}
                                {;:archived true
                                 :table_id ~'table-id

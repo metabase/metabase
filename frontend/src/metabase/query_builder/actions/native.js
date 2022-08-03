@@ -118,11 +118,7 @@ export const setTemplateTag = createThunkAction(
       const updatedCard = Utils.copy(card);
 
       // when the query changes on saved card we change this into a new query w/ a known starting point
-      if (
-        !uiControls.isEditing &&
-        uiControls.queryBuilderMode !== "dataset" &&
-        updatedCard.id
-      ) {
+      if (uiControls.queryBuilderMode !== "dataset" && updatedCard.id) {
         delete updatedCard.id;
         delete updatedCard.name;
         delete updatedCard.description;

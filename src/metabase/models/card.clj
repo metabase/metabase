@@ -4,9 +4,7 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.util :as mbql.u]
             [metabase.models.collection :as collection]
-            [metabase.models.dependency :as dependency]
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as mi]
             [metabase.models.params :as params]
@@ -64,27 +62,6 @@
 
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
-
-;;; -------------------------------------------------- Dependencies --------------------------------------------------
-
-(defn- extract-ids
-  "Get all the Segment or Metric IDs referenced by a query."
-  [segment-or-metric query]
-  (set
-   (case segment-or-metric
-     :segment (mbql.u/match query [:segment id] id)
-     :metric  (mbql.u/match query [:metric  id] id))))
-
-(defn card-dependencies
-  "Calculate any dependent objects for a given `card`."
-  ([_ _ card]
-   (card-dependencies card))
-  ([{{query-type :type, inner-query :query} :dataset_query}]
-   (when (= :query query-type)
-     {:Metric  (extract-ids :metric inner-query)
-      :Segment (extract-ids :segment inner-query)})))
-
-
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -281,8 +258,7 @@
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
   (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (db/delete! 'Revision :model "Card", :model_id id)
-  (db/delete! 'Dependency :model "Card", :model_id id))
+  (db/delete! 'Revision :model "Card", :model_id id))
 
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
@@ -324,9 +300,6 @@
   (assoc revision/IRevisionedDefaults
          :serialize-instance serialize-instance)
 
-  dependency/IDependent
-  {:dependencies card-dependencies}
-
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
 
@@ -348,22 +321,29 @@
   ;; :collection_id is extracted as its entity_id or identity-hash.
   ;; :creator_id as the user's email.
   (-> (serdes.base/extract-one-basics "Card" card)
-      (update :database_id   serdes.util/export-fk-keyed 'Database :name)
-      (update :table_id      serdes.util/export-table-fk)
-      (update :collection_id serdes.util/export-fk 'Collection)
-      (update :creator_id    serdes.util/export-fk-keyed 'User :email)))
+      (update :database_id        serdes.util/export-fk-keyed 'Database :name)
+      (update :table_id           serdes.util/export-table-fk)
+      (update :collection_id      serdes.util/export-fk 'Collection)
+      (update :creator_id         serdes.util/export-fk-keyed 'User :email)
+      (update :dataset_query      serdes.util/export-json-mbql)
+      (update :parameter_mappings serdes.util/export-parameter-mappings)
+      (dissoc :result_metadata))) ; Not portable, and can be rebuilt on the other side.
 
 (defmethod serdes.base/load-xform "Card"
   [card]
   (-> card
       serdes.base/load-xform-basics
-      (update :database_id   serdes.util/import-fk-keyed 'Database :name)
-      (update :table_id      serdes.util/import-table-fk)
-      (update :creator_id    serdes.util/import-fk-keyed 'User :email)
-      (update :collection_id serdes.util/import-fk 'Collection)))
+      (update :database_id        serdes.util/import-fk-keyed 'Database :name)
+      (update :table_id           serdes.util/import-table-fk)
+      (update :creator_id         serdes.util/import-fk-keyed 'User :email)
+      (update :collection_id      serdes.util/import-fk 'Collection)
+      (update :dataset_query      serdes.util/import-json-mbql)
+      (update :parameter_mappings serdes.util/import-parameter-mappings)))
 
 (defmethod serdes.base/serdes-dependencies "Card"
-  [{:keys [collection_id table_id]}]
+  [{:keys [collection_id dataset_query parameter_mappings table_id]}]
   ;; The Table implicitly depends on the Database.
-  [(serdes.util/table->path table_id)
-   [{:model "Collection" :id collection_id}]])
+  (into [] (reduce set/union #{(serdes.util/table->path table_id)
+                               [{:model "Collection" :id collection_id}]}
+                   (cons (serdes.util/mbql-deps dataset_query)
+                         (map serdes.util/mbql-deps parameter_mappings)))))

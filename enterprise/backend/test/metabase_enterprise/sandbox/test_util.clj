@@ -1,5 +1,5 @@
 (ns metabase-enterprise.sandbox.test-util
-  "Shared test utilities for multi-tenant tests."
+  "Shared test utilities for sandbox tests."
   (:require [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase.models.card :refer [Card]]
             [metabase.models.permissions :as perms]

@@ -7,7 +7,7 @@ import StructuredQuery, {
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
-import { isBoolean } from "metabase/lib/schema_metadata";
+import { isBoolean, isDate } from "metabase/lib/schema_metadata";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { DateShortcutOptions } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
@@ -48,12 +48,13 @@ export const BulkFilterSelect = ({
     return getNewFilter(query, dimension);
   }, [query, dimension]);
 
-  const hideArgumentSelector = [
-    "is-null",
-    "not-null",
-    "is-empty",
-    "not-empty",
-  ].includes(filter?.operatorName());
+  const isDateField = useMemo(() => isDate(dimension?.field()), [dimension]);
+
+  const hideArgumentSelector =
+    !isDateField &&
+    ["is-null", "not-null", "is-empty", "not-empty"].includes(
+      filter?.operatorName(),
+    );
 
   if (hideArgumentSelector) {
     return null;
@@ -158,6 +159,7 @@ export const SegmentFilterSelect = ({
         icon: segment.icon,
       }))}
       value={activeSegmentOptions}
+      hasValue={activeSegmentOptions.length > 0}
       onChange={(e: any) => toggleSegment(e.target.value.changedItem)}
       multiple
       buttonProps={{

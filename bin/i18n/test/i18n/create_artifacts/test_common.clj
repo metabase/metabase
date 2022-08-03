@@ -50,6 +50,16 @@
    :source-references ["frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:77"]
    :comment           nil})
 
+(def plural-message-backend
+  {:id               "{0} table"
+   :id-plural        "{0} tables"
+   :str               nil
+   :str-plural        ["{0} tabla" "{0} tablas"]
+   :fuzzy?            false
+   :plural?           true
+   :source-references ["src/metabase/automagic_dashboards/core.clj"]
+   :comment           nil})
+
 (def plural-message-frontend-with-empty
   {:id                "{0} metric"
    :id-plural         "{0} metrics"
@@ -60,13 +70,25 @@
    :source-references ["frontend/src/metabase/query_builder/components/view/QuestionDescription.jsx:20"]
    :comment           nil})
 
+(def plural-message-backend-with-empty
+  {:id                "{0} metric"
+   :id-plural         "{0} metrics"
+   :str               nil
+   :str-plural        ["{0} metrik" ""]
+   :fuzzy?            false
+   :plural?           true
+   :source-references ["src/metabase/automagic_dashboards/core.clj"]
+   :comment           nil})
+
 (def messages
   [singular-message-frontend
    singular-message-backend
    singular-template-message-frontend
    singular-template-message-backend
    plural-message-frontend
-   plural-message-frontend-with-empty])
+   plural-message-frontend-with-empty
+   plural-message-backend
+   plural-message-backend-with-empty])
 
 (def po-contents
   {:headers  {"MIME-Version"              "1.0",
