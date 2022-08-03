@@ -356,8 +356,8 @@
                                           :breakout     [[:field (u/the-id field) 
                                                           {:temporal-unit :month,
                                                            :metabase.query-processor.util.add-alias-info/source-table (u/the-id table),
-                                                           :metabase.query-processor.util.add-alias-info/source-alias "ts",
-                                                           :metabase.query-processor.util.add-alias-info/desired-alias "ts",
+                                                           :metabase.query-processor.util.add-alias-info/source-alias "dontwannaseethis",
+                                                           :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis",
                                                            :metabase.query-processor.util.add-alias-info/position 1}]]}})]
             (is (= (str "SELECT date_trunc('month', CAST((\"json_alias_test\".\"bob\"#>> ?::text[])::VARCHAR  AS timestamp)) "
                         "AS \"json_alias_test\", count(*) AS \"count\" FROM \"json_alias_test\" "
