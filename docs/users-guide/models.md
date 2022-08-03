@@ -110,19 +110,28 @@ Just like with a question, admins can verify models. Verifying a model will give
 
 _Currently available for PostgreSQL, MySQL, and Redshift_.
 
-You can enable caching for models so that loading questions based on those models is significantly faster. Instead of running the query that creates the model fresh each time, Metabase will periodically run the query and store the results in a table in your data warehouse, so that whenever someone loads the model (or a question based on that model), Metabase will simply fetch the saved results from the table in your data warehouse. To store cached results, Metabase creates a new schema in your data warehouse, and creates new tables in that schema to store the results of the queries that power the models.
+You can enable caching for models so that loading questions based on those models is significantly faster. Instead of running the query that creates the model fresh each time, Metabase will periodically run the query and store the results in a table in your data warehouse, so that whenever someone loads the model (or a question based on that model), Metabase will simply fetch the saved results from the table in your data warehouse.
 
-We recommend scheduling the cache to refresh on a frequency that makes sense with how often your source tables update with new data.
+To store cached results, Metabase creates a new schema in your data warehouse, and creates new tables in that schema to store the results of the queries that power the models. In order for Metabase to cache models in your database, the connection credentials you use to connect Metabase to your data warehouse need to be able to create new schemas in your data warehouse. So, for example, if you're connected to a PostgreSQL database, the Postgres user account that you use to connect Metabase to that Postgres database must have privileges to create new schemas in that Postgres database.
+
+### Enable model caching for a database
 
 To enable model caching, click on the **gear** icon in the upper right and select **Admin settings** > **Settings** > **Caching**.
-
 ![Model caching](./images/models/model-caching-custom.png)
 
-You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency.
+You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency. We recommend scheduling the cache to refresh on a frequency that makes sense with how often your source tables update with new data.
+
+If someone changes the query definition of a model, any question based on that model will skip the cache the until the next cache refresh.
+
+### View model caching logs
 
 You can view the logs for model caching by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../enterprise-guide/tools.md).
 
-You can also toggle caching on or off for individual models by viewing the model and clicking on the **...** and selecting **Turn model caching on/off**.
+### Caching individual models
+
+{% include plans-blockquote.html feature="Caching individual models" %}
+
+On some paid plans, you can also toggle caching on or off for individual models. When viewing a model, click on the **...** in the upper right and select **Turn model caching on/off**.
 
 ## Further reading
 
