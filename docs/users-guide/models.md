@@ -108,7 +108,7 @@ Just like with a question, admins can verify models. Verifying a model will give
 
 ## Model caching
 
-You can enable caching for models so that loading questions based on those models is significantly faster. Instead of running the query that creates the model fresh each time, Metabase will store the results in a table, and simply fetch the saved results table to quickly return the model. Caching models will make questions built on models run much faster. We recommend scheduling the cache to refresh on a schedule that makes sense with how often your source tables update with new data.
+You can enable caching for models so that loading questions based on those models is significantly faster. Instead of running the query that creates the model fresh each time, Metabase will store the results in a table, and simply fetch the saved results table to quickly return the model. Caching models will make questions built on models run much faster. We recommend scheduling the cache to refresh on a frequency that makes sense with how often your source tables update with new data.
 
 To enable model caching, click on the **gear** icon in the upper right and select **Admin settings** > **Settings** > **Caching**.
 
