@@ -289,9 +289,9 @@
     ;; suffix to escaped identifiers.)
     ;;
     ;; We'll have to look into this more in the future. For now, it seems to work for everything we try it with.
-    (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
     (and join-is-this-level? alias-from-join)  alias-from-join
     alias-from-source-query                    alias-from-source-query
+    (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
     :else                                      field-name))
 
 (defn- field-desired-alias
