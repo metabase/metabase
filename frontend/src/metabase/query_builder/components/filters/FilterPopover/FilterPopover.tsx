@@ -250,6 +250,7 @@ export default class FilterPopover extends Component<Props, State> {
       };
 
       const shouldShowDatePicker = field?.isDate() && !field?.isTime();
+      const supportsExpressions = query.database()?.supportsExpressions();
 
       return (
         <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>
@@ -265,6 +266,7 @@ export default class FilterPopover extends Component<Props, State> {
               onCommit={this.handleCommit}
               onFilterChange={this.handleFilterChange}
               disableChangingDimension={!showFieldPicker}
+              supportsExpressions={supportsExpressions}
             >
               <Button
                 data-ui-tag="add-filter"
@@ -313,7 +315,6 @@ export default class FilterPopover extends Component<Props, State> {
               )}
               <FilterPopoverFooter
                 className="px1 pb1"
-                primaryColor={primaryColor}
                 filter={filter}
                 onFilterChange={this.handleFilterChange}
                 onCommit={!this.props.noCommitButton ? this.handleCommit : null}

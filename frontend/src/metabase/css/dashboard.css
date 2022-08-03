@@ -285,10 +285,6 @@
   nav {
     display: none;
   }
-  .DashCard .Card {
-    box-shadow: none;
-    border-color: var(--color-border);
-  }
   /* improve label contrast */
   .dc-chart .axis .tick text,
   .dc-chart .x-axis-label,

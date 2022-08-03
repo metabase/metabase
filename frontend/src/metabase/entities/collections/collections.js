@@ -159,6 +159,9 @@ export function getExpandedCollectionsById(
   // "Our Analytics"
   collectionsById[ROOT_COLLECTION.id] = {
     ...ROOT_COLLECTION,
+    name: collectionsById[ROOT_COLLECTION.id]
+      ? ROOT_COLLECTION.name
+      : t`Collections`,
     parent: null,
     children: [],
     ...(collectionsById[ROOT_COLLECTION.id] || {}),

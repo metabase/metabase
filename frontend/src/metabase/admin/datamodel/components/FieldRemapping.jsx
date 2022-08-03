@@ -3,9 +3,7 @@ import React from "react";
 
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
-import SelectButton from "metabase/core/components/SelectButton";
 import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -17,7 +15,12 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import Question from "metabase-lib/lib/Question";
-import { FieldMappingContainer, ForeignKeyList } from "./FieldRemapping.styled";
+import {
+  FieldMappingContainer,
+  FieldMappingRoot,
+  FieldSelectButton,
+  ForeignKeyList,
+} from "./FieldRemapping.styled";
 
 const MAP_OPTIONS = {
   original: { type: "original", name: t`Use original value` },
@@ -287,19 +290,16 @@ export default class FieldRemapping extends React.Component {
                 key="foreignKeyName"
                 ref={this.fkPopover}
                 triggerElement={
-                  <SelectButton
+                  <FieldSelectButton
                     hasValue={hasFKMappingValue}
-                    className={cx({
-                      "border-error": dismissedInitialFkTargetPopover,
-                      "border-dark": !dismissedInitialFkTargetPopover,
-                    })}
+                    hasError={dismissedInitialFkTargetPopover}
                   >
                     {fkMappingField ? (
                       fkMappingField.display_name
                     ) : (
                       <span className="text-medium">{t`Choose a field`}</span>
                     )}
-                  </SelectButton>
+                  </FieldSelectButton>
                 }
                 isInitiallyOpen={isChoosingInitialFkTarget}
                 onClose={this.onFkPopoverDismiss}
@@ -428,7 +428,7 @@ export class ValueRemappings extends React.Component {
     const { editingRemappings } = this.state;
 
     return (
-      <div className="bordered rounded py2 px4 border-dark">
+      <FieldMappingRoot>
         <div className="flex align-center my1 pb2 border-bottom">
           <h3>{t`Original value`}</h3>
           <h3 className="ml-auto">{t`Mapped value`}</h3>
@@ -455,7 +455,7 @@ export class ValueRemappings extends React.Component {
             {t`Save`}
           </ButtonWithStatus>
         </div>
-      </div>
+      </FieldMappingRoot>
     );
   }
 }

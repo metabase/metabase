@@ -11,7 +11,6 @@
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
             [metabase.models.database :as database :refer [Database]]
-            [metabase.models.dependency :refer [Dependency]]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.metric :refer [Metric]]
@@ -230,13 +229,6 @@
   (-> dimension
       (update :field_id (partial fully-qualified-name Field))
       (update :human_readable_field_id (partial fully-qualified-name Field))))
-
-(defmethod serialize-one (type Dependency)
-  [dependency]
-  (-> dependency
-      (select-keys [:dependent_on_id :model_id])
-      (update :dependent_on_id (partial fully-qualified-name (-> dependency :dependent_on_model symbol)))
-      (update :model_id (partial fully-qualified-name (-> dependency :model symbol)))))
 
 (defmethod serialize-one (type NativeQuerySnippet)
   [snippet]

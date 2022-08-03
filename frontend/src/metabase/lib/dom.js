@@ -347,20 +347,39 @@ export function shouldOpenInBlankWindow(
     return true;
   } else if (blankOnMetaOrCtrlKey && (isMetaKey || isCtrlKey)) {
     return true;
-  } else if (blankOnDifferentOrigin && !isSameOrigin(url)) {
+  } else if (blankOnDifferentOrigin && !isSameOrSiteUrlOrigin(url)) {
     return true;
   }
   return false;
 }
 
-const a = document.createElement("a"); // reuse the same tag for performance
+const getOrigin = url => {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+};
+
 export function isSameOrigin(url) {
-  a.href = url;
-  return a.origin === window.location.origin;
+  const origin = getOrigin(url);
+  return origin == null || origin === window.location.origin;
+}
+
+function isSiteUrlOrigin(url) {
+  const siteUrl = getOrigin(MetabaseSettings.get("site-url"));
+  const urlOrigin = getOrigin(url);
+  return siteUrl === urlOrigin;
+}
+
+// When a url is either has the same origin or it is the same with the site url
+// we want to open it in the same window (https://github.com/metabase/metabase/issues/24451)
+export function isSameOrSiteUrlOrigin(url) {
+  return isSameOrigin(url) || isSiteUrlOrigin(url);
 }
 
 export function getUrlTarget(url) {
-  return isSameOrigin(url) ? "_self" : "_blank";
+  return isSameOrSiteUrlOrigin(url) ? "_self" : "_blank";
 }
 
 export function removeAllChildren(element) {

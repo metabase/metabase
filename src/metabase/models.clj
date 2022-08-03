@@ -9,7 +9,6 @@
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-card-series :as dashboard-card-series]
             [metabase.models.database :as database]
-            [metabase.models.dependency :as dependency]
             [metabase.models.dimension :as dimension]
             [metabase.models.field :as field]
             [metabase.models.field-values :as field-values]
@@ -52,7 +51,6 @@
          dashboard-card/keep-me
          dashboard-card-series/keep-me
          database/keep-me
-         dependency/keep-me
          dimension/keep-me
          field/keep-me
          field-values/keep-me
@@ -98,7 +96,6 @@
  [dashboard-card DashboardCard]
  [dashboard-card-series DashboardCardSeries]
  [database Database]
- [dependency Dependency]
  [dimension Dimension]
  [field Field]
  [field-values FieldValues]

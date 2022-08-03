@@ -98,6 +98,10 @@ class DatabaseInner extends Base {
     return this.hasFeature("expressions") && this.hasFeature("left-join");
   }
 
+  supportsExpressions() {
+    return this.hasFeature("expressions");
+  }
+
   canWrite() {
     return this.native_permissions === "write";
   }

@@ -1,19 +1,25 @@
 import styled from "@emotion/styled";
-import { space } from "metabase/styled-components/theme";
+import {
+  space,
+  breakpointMinHeightMedium,
+} from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
-import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import NumericInput from "metabase/core/components/NumericInput";
 
-export const ArgumentSelector = styled(FieldValuesWidget)`
-  min-height: 55px;
-`;
+interface ValuesPickerContainerProps {
+  fieldWidth?: string;
+}
 
-export const ValuesPickerContainer = styled.div`
-  ul.input {
+export const ValuesPickerContainer = styled.div<ValuesPickerContainerProps>`
+  max-width: ${props => props.fieldWidth ?? "100%"};
+  ul {
     margin-bottom: 0;
     :focus-within {
       border-color: ${color("brand")};
+    }
+    li {
+      height: 30px;
     }
   }
   input {
@@ -28,7 +34,6 @@ export const ValuesPickerContainer = styled.div`
 
 export const BetweenContainer = styled.div`
   display: flex;
-  height: 53px;
   width: 100%;
   align-items: center;
 `;
@@ -40,8 +45,8 @@ export const NumberSeparator = styled.span`
 `;
 
 export const NumberInput = styled(NumericInput)`
-  width: 10rem;
+  width: 8rem;
   input {
-    height: 55px;
+    height: 40px;
   }
 `;

@@ -1,4 +1,5 @@
 import {
+  checkIfTimeSpanTooGreat,
   parseTime,
   parseTimestamp,
   getRelativeTimeAbbreviated,
@@ -7,7 +8,7 @@ import {
   msToHours,
   hoursToSeconds,
 } from "metabase/lib/time";
-import moment from "moment";
+import moment from "moment-timezone";
 
 describe("time", () => {
   describe("parseTimestamp", () => {
@@ -149,6 +150,18 @@ describe("time", () => {
       it(`returns ${expected} for ${value}`, () => {
         expect(hoursToSeconds(value)).toBe(expected);
       });
+    });
+  });
+
+  describe("checkIfTimeSpanTooGreat", () => {
+    it(`returns false for small time spans`, () => {
+      const isTimeSpanTooGreat = checkIfTimeSpanTooGreat(10, "days");
+      expect(isTimeSpanTooGreat).toBeFalsy();
+    });
+
+    it(`returns truthy for large time spans`, () => {
+      const isTimeSpanTooGreat = checkIfTimeSpanTooGreat(1000000000, "years");
+      expect(isTimeSpanTooGreat).toBeTruthy();
     });
   });
 });

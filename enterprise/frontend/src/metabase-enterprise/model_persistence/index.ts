@@ -20,7 +20,7 @@ if (hasPremiumFeature("advanced_config")) {
     const isPersisted = model.isPersisted();
 
     return {
-      title: isPersisted ? t`Unpersist model` : t`Persist model`,
+      title: isPersisted ? t`Turn model caching off` : t`Turn model caching on`,
       action: () => toggleModelPersistence(model, onChange),
       icon: "database",
     };

@@ -5,7 +5,7 @@
             [metabase.models.view-log :refer [ViewLog]]
             [toucan.db :as db]))
 
-(def ^:private ^:const view-log-topics
+(def ^:private view-log-topics
   "The `Set` of event topics which we subscribe to for view counting."
   #{:card-create
     :card-read

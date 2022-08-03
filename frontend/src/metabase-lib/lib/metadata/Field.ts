@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-import moment from "moment";
+import moment from "moment-timezone";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
@@ -22,6 +22,8 @@ import {
   isCountry,
   isCoordinate,
   isLocation,
+  isDescription,
+  isComment,
   isDimension,
   isMetric,
   isPK,
@@ -34,6 +36,9 @@ import { Field as FieldRef } from "metabase-types/types/Query";
 import { FieldDimension } from "../Dimension";
 import Table from "./Table";
 import Base from "./Base";
+
+export const LONG_TEXT_MIN = 80;
+
 /**
  * @typedef { import("./metadata").FieldValues } FieldValues
  */
@@ -198,6 +203,16 @@ class FieldInner extends Base {
 
   isEntityName() {
     return isEntityName(this);
+  }
+
+  isLongText() {
+    return (
+      isString(this) &&
+      (isComment(this) ||
+        isDescription(this) ||
+        this?.fingerprint?.type?.["type/Text"]?.["average-length"] >=
+          LONG_TEXT_MIN)
+    );
   }
 
   /**
