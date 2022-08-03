@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         source: [v0.42.0]
-        target: [v0.43.0]
+        target: [v0.43.4]
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -22,7 +22,7 @@ jobs:
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
     - name: Prepare cypress environment
       uses: ./.github/actions/prepare-cypress
-    - name: Run Cypress
+    - name: Run Cypress on the source
       run: |
         yarn cypress run \
           --browser chrome \
@@ -35,4 +35,9 @@ jobs:
       run: docker run -d -v $PWD/my-metabase:/metabase.db -p 3001:3000 --name metabase-${{ matrix.target }} metabase/metabase:${{ matrix.target }}
     - name: Wait for Metabase to start on port 3001
       run: while ! curl -s 'http://localhost:3001/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-    - run: ls ./my-metabase | grep 'metabase.db'
+    - name: Run Cypress on the target
+      run: |
+        yarn cypress run \
+          --browser chrome \
+          --config-file frontend/test/metabase/scenarios/cross-version/target/cypress.json \
+          --spec frontend/test/metabase/scenarios/cross-version/target/${{ matrix.target }}/smoke.cy.spec.js

@@ -1,4 +1,4 @@
-describe("setup on version 42.4", () => {
+describe("setup on version 42.0", () => {
   it("should set up metabase", () => {
     cy.visit("/");
     cy.findByText("Welcome to Metabase");
