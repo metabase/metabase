@@ -129,11 +129,10 @@ df['custom_column'] = df['notes'].combine_first(df['comments'])\
 
 ## Further reading
 
-- [Custom expressions documentation][custom-expressions-doc]
+- [Custom expressions documentation](../expressions.md)
 - [Custom expressions tutorial][custom-expressions-learn]
 
 [cast-data-type]: ../../administration-guide/03-metadata-editing#casting-to-a-specific-data-type
-[custom-expressions-doc]: ./expressions
 [custom-expressions-learn]: /learn/questions/custom-expressions
 [data-types]: /learn/databases/data-types-overview#examples-of-data-types
 [missing-dates]: /learn/debugging-sql/sql-logic-missing-data#how-to-fill-in-data-for-missing-report-dates
