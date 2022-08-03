@@ -12,9 +12,3 @@ export const CloseIconContainer = styled.span`
   padding: 1rem;
   border-left: 1px solid ${darken("brand", 0.2)};
 `;
-
-export const RemoveIconContainer = styled.span`
-  margin-left: auto;
-  padding: 1.0625rem;
-  border-left: 1px solid ${darken("brand", 0.2)};
-`;
