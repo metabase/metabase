@@ -111,7 +111,10 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
         );
       }
       _teardownQueryMediaListener() {
-        this._printMediaQuery?.removeEventListener("change", this._updateSize);
+        this._printMediaQuery?.removeEventListener(
+          "change",
+          this._updateRefreshMode,
+        );
       }
 
       __updateSize = () => {
