@@ -348,17 +348,19 @@
                                                           "injection' OR 1=1--' AND released = 1"
                                                           (keyword "injection' OR 1=1--' AND released = 1")],
                                                :name     "json_alias_test"}]]
-          (let [compile-res (qp/compile
+          (let [field-desc  [:field (u/the-id field)
+                              {:temporal-unit :month,
+                               :metabase.query-processor.util.add-alias-info/source-table (u/the-id table),
+                               :metabase.query-processor.util.add-alias-info/source-alias "dontwannaseethis",
+                               :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis",
+                               :metabase.query-processor.util.add-alias-info/position 1}]
+                compile-res (qp/compile
                               {:database (u/the-id database)
                                :type     :query
                                :query    {:source-table (u/the-id table)
                                           :aggregation  [[:count]]
-                                          :breakout     [[:field (u/the-id field)
-                                                          {:temporal-unit :month,
-                                                           :metabase.query-processor.util.add-alias-info/source-table (u/the-id table),
-                                                           :metabase.query-processor.util.add-alias-info/source-alias "dontwannaseethis",
-                                                           :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis",
-                                                           :metabase.query-processor.util.add-alias-info/position 1}]]}})]
+                                          :breakout     [field-desc]
+                                          :order-by     [[:asc field-desc]]}})]
             (is (= (str "SELECT date_trunc('month', CAST((\"json_alias_test\".\"bob\"#>> ?::text[])::VARCHAR  AS timestamp)) "
                         "AS \"json_alias_test\", count(*) AS \"count\" FROM \"json_alias_test\" "
                         "GROUP BY \"json_alias_test\" ORDER BY \"json_alias_test\" ASC")
