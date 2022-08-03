@@ -90,6 +90,11 @@ const ACTIONS_VIZ_DEFINITION = {
       getHidden: (_: any, settings: any) =>
         !settings["confirmation_modal.is_required"],
     },
+    "user_input_modal.description": {
+      section: t`User input modal`,
+      title: t`Description`,
+      widget: "text",
+    },
   },
 };
 
