@@ -83,6 +83,8 @@
   (let [emitter* (delay
                    (let [client (-> (HttpClients/custom)
                                     (.setConnectionManager (PoolingHttpClientConnectionManager.))
+                                    ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie header
+                                    ;; in request response (PR #24579)
                                     (.setCookieSpec (CookieSpecs/STANDARD))
                                     (.build))
                          builder (-> (ApacheHttpClientAdapter/builder)
