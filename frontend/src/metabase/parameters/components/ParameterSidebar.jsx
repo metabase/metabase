@@ -17,7 +17,7 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
-import Sidebar from "metabase/dashboard/components/Sidebar";
+import { ResponsiveSidebar } from "./ParameterSidebar.styled";
 
 const LINKED_FILTER = "linked-filters";
 const TABS = [
@@ -62,7 +62,7 @@ class ParameterSidebar extends React.Component {
       : TABS.filter(({ value }) => value !== LINKED_FILTER);
 
     return (
-      <Sidebar onClose={done} onCancel={this.handleCancel}>
+      <ResponsiveSidebar onClose={done} onCancel={this.handleCancel}>
         <div className="flex justify-evenly border-bottom">
           <Radio
             options={tabs}
@@ -110,7 +110,7 @@ class ParameterSidebar extends React.Component {
             />
           )}
         </div>
-      </Sidebar>
+      </ResponsiveSidebar>
     );
   }
 }

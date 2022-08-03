@@ -2,6 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
+import { SidebarContainer } from "./Sidebar.styled";
 
 const WIDTH = 384;
 
@@ -10,6 +11,7 @@ const propTypes = {
   children: PropTypes.node,
   onClose: PropTypes.func,
   onCancel: PropTypes.func,
+  className: PropTypes.string,
 };
 
 export default function Sidebar({
@@ -17,12 +19,10 @@ export default function Sidebar({
   children,
   onClose,
   onCancel,
+  className,
 }) {
   return (
-    <aside
-      style={{ width: WIDTH, minWidth: WIDTH }}
-      className="flex flex-column border-left bg-white"
-    >
+    <SidebarContainer width={WIDTH} className={className}>
       <div className="flex flex-column flex-auto overflow-y-auto">
         {children}
       </div>
@@ -50,7 +50,7 @@ export default function Sidebar({
           )}
         </div>
       )}
-    </aside>
+    </SidebarContainer>
   );
 }
 

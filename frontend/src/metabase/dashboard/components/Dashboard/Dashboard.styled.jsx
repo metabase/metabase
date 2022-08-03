@@ -60,6 +60,10 @@ export const DashboardBody = styled.div`
     css`
       flex-basis: 0;
     `}
+
+  ${breakpointMaxSmall} {
+    flex-wrap: wrap;
+  }
 `;
 
 export const HeaderContainer = styled.header`
