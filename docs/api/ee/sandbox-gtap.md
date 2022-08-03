@@ -8,13 +8,13 @@ summary: |
 
 `/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies).
 
-  - [DELETE /api/ee/sandbox/gtap/:id](#delete-apieesandboxgtapid)
-  - [GET /api/ee/sandbox/gtap/](#get-apieesandboxgtap)
-  - [GET /api/ee/sandbox/gtap/:id](#get-apieesandboxgtapid)
-  - [POST /api/ee/sandbox/gtap/](#post-apieesandboxgtap)
-  - [PUT /api/ee/sandbox/gtap/:id](#put-apieesandboxgtapid)
+  - [DELETE /api/mt/gtap/:id](#delete-apimtgtapid)
+  - [GET /api/mt/gtap/](#get-apimtgtap)
+  - [GET /api/mt/gtap/:id](#get-apimtgtapid)
+  - [POST /api/mt/gtap/](#post-apimtgtap)
+  - [PUT /api/mt/gtap/:id](#put-apimtgtapid)
 
-## `DELETE /api/ee/sandbox/gtap/:id`
+## `DELETE /api/mt/gtap/:id`
 
 Delete a GTAP entry.
 
@@ -22,11 +22,11 @@ Delete a GTAP entry.
 
 *  **`id`**
 
-## `GET /api/ee/sandbox/gtap/`
+## `GET /api/mt/gtap/`
 
 Fetch a list of all the GTAPs currently in use.
 
-## `GET /api/ee/sandbox/gtap/:id`
+## `GET /api/mt/gtap/:id`
 
 Fetch GTAP by `id`.
 
@@ -34,7 +34,7 @@ Fetch GTAP by `id`.
 
 *  **`id`**
 
-## `POST /api/ee/sandbox/gtap/`
+## `POST /api/mt/gtap/`
 
 Create a new GTAP.
 
@@ -48,7 +48,7 @@ Create a new GTAP.
 
 *  **`attribute_remappings`**
 
-## `PUT /api/ee/sandbox/gtap/:id`
+## `PUT /api/mt/gtap/:id`
 
 Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the
   paramter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
