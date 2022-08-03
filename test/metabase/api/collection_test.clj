@@ -38,7 +38,7 @@
 
 (defn- do-with-french-user-and-personal-collection [f]
   (binding [collection/*allow-deleting-personal-collections* true]
-    (mt/with-mock-i18n-bundles {"fr" {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}
+    (mt/with-mock-i18n-bundles {"fr" {:messages {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}}
       (mt/with-temp* [User       [user {:locale     "fr"
                                         :first_name "Taco"
                                         :last_name  "Bell"}]

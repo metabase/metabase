@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 
 import SpecificDatePicker from "./SpecificDatePicker";

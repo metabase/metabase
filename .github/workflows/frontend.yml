@@ -6,6 +6,13 @@ on:
       - 'master'
       - 'release-**'
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "**_test.clj"
+      - "**.cy.*.js" # .cy.spec.js, .cy.snap.js
+      - "frontend/test/__support__/e2e/**"
+      - "frontend/test/__runner__/*cypress*"
 
 jobs:
   fe-linter-prettier:

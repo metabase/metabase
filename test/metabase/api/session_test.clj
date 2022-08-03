@@ -362,7 +362,7 @@
 (deftest properties-i18n-test
   (testing "GET /session/properties"
     (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
-      (mt/with-mock-i18n-bundles {"es" {"Connection String" "Cadena de conexión !"}}
+      (mt/with-mock-i18n-bundles {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
         (is (= "Cadena de conexión !"
                (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"X-Metabase-Locale" "es"}}})
                    :engines :h2 :details-fields first :display-name)))))))

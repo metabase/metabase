@@ -1,6 +1,6 @@
 import React from "react";
 import { render } from "@testing-library/react";
-import moment from "moment";
+import moment from "moment-timezone";
 
 import {
   DEFAULT_DATE_STYLE,

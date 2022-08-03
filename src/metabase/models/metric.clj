@@ -2,7 +2,8 @@
   "A Metric is a saved MBQL 'macro' expanding to a combination of `:aggregation` and/or `:filter` clauses.
   It is passed in as an `:aggregation` clause but is replaced by the `expand-macros` middleware with the appropriate
   clauses."
-  (:require [medley.core :as m]
+  (:require [clojure.set :as set]
+            [medley.core :as m]
             [metabase.models.interface :as mi]
             [metabase.models.revision :as revision]
             [metabase.models.serialization.base :as serdes.base]
@@ -90,16 +91,19 @@
   [_model-name _opts metric]
   (-> (serdes.base/extract-one-basics "Metric" metric)
       (update :table_id   serdes.util/export-table-fk)
-      (update :creator_id serdes.util/export-fk-keyed 'User :email)))
+      (update :creator_id serdes.util/export-fk-keyed 'User :email)
+      (update :definition serdes.util/export-json-mbql)))
 
 (defmethod serdes.base/load-xform "Metric" [metric]
   (-> metric
       serdes.base/load-xform-basics
       (update :table_id   serdes.util/import-table-fk)
-      (update :creator_id serdes.util/import-fk-keyed 'User :email)))
+      (update :creator_id serdes.util/import-fk-keyed 'User :email)
+      (update :definition serdes.util/import-json-mbql)))
 
-(defmethod serdes.base/serdes-dependencies "Metric" [{:keys [table_id]}]
-  [(serdes.util/table->path table_id)])
+(defmethod serdes.base/serdes-dependencies "Metric" [{:keys [definition table_id]}]
+  (into [] (set/union #{(serdes.util/table->path table_id)}
+                      (serdes.util/mbql-deps definition))))
 
 ;;; ----------------------------------------------------- OTHER ------------------------------------------------------
 

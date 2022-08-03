@@ -2,7 +2,7 @@ import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
 import { parseTimestamp } from "metabase/lib/time";
 import MetabaseUtils from "metabase/lib/utils";
-import moment from "moment";
+import moment from "moment-timezone";
 
 const n2w = (n: number) => MetabaseUtils.numberToWord(n);
 

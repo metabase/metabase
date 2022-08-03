@@ -23,7 +23,7 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 ### Data permissions
 
-- [Databases connected to Metabase][data-permissions]
+- [Databases connected to Metabase](./data-permissions.md)
 - [Tables and schemas][table-permissions] in those databases
 - [Rows and columns][data-sandboxing], a.k.a. data sandboxing (available on paid plans)
 
@@ -59,7 +59,7 @@ Whenever you change permissions for a group, make sure you:
 ## Further reading
 
 - [Managing people and groups](04-managing-users.md)
-- [Permissions guide][permissions] in Learn Metabase
+- [Permissions guide][permissions]
 - [Troubleshooting permissions][troubleshooting-permissions]
 
 [collections]: 06-collections.md

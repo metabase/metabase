@@ -405,8 +405,8 @@ export class DeleteAlertSection extends Component {
             <ModalWithTrigger
               ref={ref => (this.deleteModal = ref)}
               as={Button}
-              triggerClasses="Button--danger flex-align-right flex-no-shrink"
-              triggerElement={t`Delete this Alert`}
+              triggerClasses="Button--danger flex-align-right flex-no-shrink align-self-end"
+              triggerElement={t`Delete this alert`}
             >
               <DeleteModalWithConfirm
                 objectType="alert"
