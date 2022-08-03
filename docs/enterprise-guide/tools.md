@@ -4,13 +4,14 @@ title: Admin tools
 
 # Admin tools
 
-{% include plans-blockquote.html features="Admin tools" %}
 
 The Admin **Tools** tab contains features for troubleshooting. To get to the Admin tools sections, go to the top right of the screen and click on the **gear** icon > **Admin settings** > **Tools**.
 
-## Questions that errored when last run
+## Question error logs 
 
-Metabase will list the questions that returned errors, including the:
+{% include plans-blockquote.html feature="Question error logs" %}
+
+Metabase will list the questions that returned errors when last run, including the:
 
 - Error message,
 - Database that returned the error,
