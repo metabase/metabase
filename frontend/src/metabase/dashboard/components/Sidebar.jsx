@@ -12,7 +12,12 @@ const propTypes = {
   onCancel: PropTypes.func,
 };
 
-function Sidebar({ closeIsDisabled, children, onClose, onCancel }) {
+export default function Sidebar({
+  closeIsDisabled,
+  children,
+  onClose,
+  onCancel,
+}) {
   return (
     <aside
       style={{ width: WIDTH, minWidth: WIDTH }}
@@ -50,5 +55,3 @@ function Sidebar({ closeIsDisabled, children, onClose, onCancel }) {
 }
 
 Sidebar.propTypes = propTypes;
-
-export default Sidebar;
