@@ -303,7 +303,8 @@ saved later when it is ready."
                                                  (not timed-out?)
                                                  (assoc :result_metadata metadata))))]
     (events/publish-event! :card-create card)
-    (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata"))
+    (when timed-out?
+      (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata")))
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
     ;; returned one -- See #4283
     (u/prog1 (-> card
