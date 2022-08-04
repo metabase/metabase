@@ -1,28 +1,47 @@
-/* eslint-disable react/prop-types */
-
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import Mustache from "mustache";
+import moment, { Moment } from "moment-timezone";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { rangeForValue } from "metabase/lib/dataset";
 import {
   clickBehaviorIsValid,
   getDataFromClicked,
 } from "metabase/lib/click-behavior";
-import { isBoolean, isCoordinate } from "metabase/lib/schema_metadata";
+import {
+  isBoolean,
+  isCoordinate,
+  isDate,
+  isEmail,
+  isNumber,
+  isTime,
+  isURL,
+} from "metabase/lib/schema_metadata";
+import { formatEmail } from "./email";
+import { formatTime } from "./time";
+import { formatUrl } from "./url";
+import { formatDateTimeWithUnit, formatRange } from "./date";
+import { formatNumber } from "./numbers";
+import { formatCoordinate } from "./geography";
+import { formatStringFallback } from "./strings";
 import { renderLinkTextForClick } from "metabase/lib/formatting/link";
 import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 
 import { OptionsType } from "./types";
 
+interface MARKDOWN_RENDERERS_PROP_TYPE {
+  children: React.ReactElement;
+  href: string;
+}
 const MARKDOWN_RENDERERS = {
   // eslint-disable-next-line react/display-name
-  a: ({ href, children }) => (
+  a: ({ href, children }: MARKDOWN_RENDERERS_PROP_TYPE) => (
     <ExternalLink href={href}>{children}</ExternalLink>
   ),
 };
 
-export function formatValue(value, options = {}) {
+export function formatValue(value: string, options: OptionsType = {}) {
   // avoid rendering <ExternalLink> if we have click_behavior set
   if (
     options.click_behavior &&
@@ -34,7 +53,7 @@ export function formatValue(value, options = {}) {
       view_as: null, // turns off any link rendering
     };
   }
-  const formatted = formatValueRaw(value, options);
+  const formatted: any = formatValueRaw(value, options);
   let maybeJson = {};
   try {
     maybeJson = JSON.parse(value);
@@ -79,7 +98,10 @@ export function formatValue(value, options = {}) {
   }
 }
 
-export function getRemappedValue(value, { remap, column }: OptionsType = {}) {
+export function getRemappedValue(
+  value: string | number,
+  { remap, column }: OptionsType = {},
+) {
   if (remap && column) {
     if (column.hasRemappedValue && column.hasRemappedValue(value)) {
       return column.remappedValue(value);
@@ -92,7 +114,10 @@ export function getRemappedValue(value, { remap, column }: OptionsType = {}) {
   }
 }
 
-export function formatValueRaw(value, options = {}) {
+export function formatValueRaw(
+  value: string | number | Moment,
+  options: OptionsType = {},
+) {
   options = {
     jsx: false,
     remap: true,
@@ -101,7 +126,7 @@ export function formatValueRaw(value, options = {}) {
 
   const { column } = options;
 
-  const remapped = getRemappedValue(value, options);
+  const remapped = getRemappedValue(value as string | number, options);
   if (remapped !== undefined && options.view_as !== "link") {
     return remapped;
   }
@@ -135,11 +160,11 @@ export function formatValueRaw(value, options = {}) {
     (isURL(column) && options.view_as !== null) ||
     options.view_as === "link"
   ) {
-    return formatUrl(value, options);
+    return formatUrl(value as string, options);
   } else if (isEmail(column)) {
-    return formatEmail(value, options);
+    return formatEmail(value as string, options);
   } else if (isTime(column)) {
-    return formatTime(value);
+    return formatTime(value as Moment);
   } else if (column && column.unit != null) {
     return formatDateTimeWithUnit(value, column.unit, options);
   } else if (

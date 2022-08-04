@@ -37,7 +37,7 @@ export function formatTime(time: Moment) {
 
 interface TimeWithUnitType {
   local?: boolean;
-  time_enabled?: boolean;
+  time_enabled?: "minutes" | "milliseconds" | "seconds" | boolean;
   time_format?: string;
   time_style?: string;
 }

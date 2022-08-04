@@ -2,11 +2,19 @@ import React from "react";
 import d3 from "d3";
 import Humanize from "humanize-plus";
 
+import { getCurrencySymbol } from "./currency";
+
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
 const FIXED_NUMBER_FORMATTER = d3.format(",.f");
 const PRECISION_NUMBER_FORMATTER = d3.format(".2f");
 
-const DEFAULT_NUMBER_OPTIONS = {
+interface DEFAULT_NUMBER_OPTIONS_TYPE {
+  compact: boolean;
+  maximumFractionDigits: number;
+  minimumFractionDigits?: number;
+}
+
+const DEFAULT_NUMBER_OPTIONS: DEFAULT_NUMBER_OPTIONS_TYPE = {
   compact: false,
   maximumFractionDigits: 2,
 };
@@ -18,7 +26,7 @@ const NUMBER_REGEX = /([\+\-])?[^0-9]*([0-9\., ]+)/;
 
 const DEFAULT_NUMBER_SEPARATORS = ".,";
 
-function getDefaultNumberOptions(options) {
+function getDefaultNumberOptions(options: { decimals?: string | number }) {
   const defaults = { ...DEFAULT_NUMBER_OPTIONS };
 
   // decimals sets the exact number of digits after the decimal place
@@ -30,7 +38,29 @@ function getDefaultNumberOptions(options) {
   return defaults;
 }
 
-export function formatNumber(number, options = {}) {
+interface FormatNumberOptionsType {
+  _numberFormatter?: any;
+  compact?: boolean;
+  currency?: string;
+  currency_in_header?: boolean;
+  currency_style?: string;
+  decimals?: string | number;
+  maximumFractionDigits?: number;
+  minimumFractionDigits?: number;
+  minimumIntegerDigits?: number;
+  maximumSignificantDigits?: number;
+  minimumSignificantDigits?: number;
+  negativeInParentheses?: boolean;
+  number_separators?: string;
+  number_style?: string;
+  scale?: string;
+  type?: string;
+}
+
+export function formatNumber(
+  number: number,
+  options: FormatNumberOptionsType = {},
+): any {
   options = { ...getDefaultNumberOptions(options), ...options };
 
   if (typeof options.scale === "number" && !isNaN(options.scale)) {
@@ -96,7 +126,7 @@ export function formatNumber(number, options = {}) {
       if (options["currency_style"] === "symbol") {
         formatted = formatted.replace(
           options["currency"],
-          getCurrencySymbol(options["currency"]),
+          getCurrencySymbol(options["currency"] as string),
         );
       }
 
@@ -112,7 +142,7 @@ export function formatNumber(number, options = {}) {
   }
 }
 
-export function numberFormatterForOptions(options) {
+export function numberFormatterForOptions(options: FormatNumberOptionsType) {
   options = { ...getDefaultNumberOptions(options), ...options };
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?

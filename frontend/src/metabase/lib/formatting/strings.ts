@@ -1,6 +1,6 @@
 import inflection from "inflection";
 
-import { formatUrl } from "./url";
+import { formatUrl, renderLinkTextForClick } from "./url";
 import { formatEmail } from "./email";
 import { formatImage } from "./image";
 
@@ -41,7 +41,7 @@ export function humanize(str: string, lowFirstLetter?: boolean) {
 }
 
 // fallback for formatting a string without a column semantic_type
-function formatStringFallback(value: any, options: OptionsType = {}) {
+export function formatStringFallback(value: any, options: OptionsType = {}) {
   if (options.view_as !== null) {
     value = formatUrl(value, options);
     if (typeof value === "string") {
@@ -64,4 +64,20 @@ export function conjunct(list: string[], conjunction: string) {
 // Removes trailing "id" from field names
 export function stripId(name: string) {
   return name?.replace(/ id$/i, "").trim();
+}
+
+function getLinkText(value: string, options: OptionsType) {
+  const { view_as, link_text, clicked } = options;
+
+  const isExplicitLink = view_as === "link";
+  const hasCustomizedText = link_text && clicked;
+
+  if (isExplicitLink && hasCustomizedText) {
+    return renderLinkTextForClick(link_text, getDataFromClicked(clicked));
+  }
+
+  return (
+    getRemappedValue(value, options) ||
+    formatValue(value, { ...options, view_as: null })
+  );
 }

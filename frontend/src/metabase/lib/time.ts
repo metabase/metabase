@@ -189,7 +189,7 @@ export function parseTimestamp(
   } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
     m = TEXT_UNIT_FORMATS[unit as "day-of-week"](value);
   } else if (unit && unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
-    m = NUMERIC_UNIT_FORMATS[unit](value);
+    m = NUMERIC_UNIT_FORMATS[unit as DatetimeUnit](value);
   } else if (typeof value === "number") {
     m = moment.utc(value, moment.ISO_8601);
   } else {
