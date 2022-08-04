@@ -1,13 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
-import cx from "classnames";
 import { t } from "ttag";
-
-import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
-
 import AlertListPopoverContent from "../AlertListPopoverContent";
+import { CreateAlertIcon, ViewAlertIcon } from "./QuestionAlertWidget.styled";
 
 export default class QuestionAlertWidget extends React.Component {
   state = {
@@ -42,10 +38,7 @@ export default class QuestionAlertWidget extends React.Component {
     if (question.isSaved() && Object.values(questionAlerts).length > 0) {
       return (
         <span onClick={this.open}>
-          <Icon
-            name="bell"
-            className={cx(className, "text-brand cursor-pointer")}
-          />
+          <ViewAlertIcon name="bell" className={className} />
           <Popover
             isOpen={isOpen}
             className={isFrozen ? "hide" : null}
@@ -60,10 +53,10 @@ export default class QuestionAlertWidget extends React.Component {
       );
     } else {
       return (
-        <Icon
+        <CreateAlertIcon
           name="bell"
           tooltip={t`Get alerts`}
-          className={cx(className, "text-brand-hover cursor-pointer")}
+          className={className}
           onClick={onCreateAlert}
         />
       );
