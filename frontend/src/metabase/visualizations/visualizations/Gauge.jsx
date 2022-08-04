@@ -270,8 +270,8 @@ export default class Gauge extends Component {
                   segment={segment}
                   column={column}
                   settings={settings}
-                  onClick={onVisualizationClick}
                   onHoverChange={!showLabels ? onHoverChange : null}
+                  onVisualizationClick={onVisualizationClick}
                   testId={"gauge-arc-" + index}
                 />
               ))}
@@ -340,6 +340,7 @@ const GaugeArc = ({
   fill,
   segment,
   onHoverChange,
+  onVisualizationClick,
   settings,
   column,
   testId,
@@ -349,8 +350,20 @@ const GaugeArc = ({
     .outerRadius(OUTER_RADIUS)
     .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
 
+  const handleClick = useCallback(
+    event => {
+      if (onVisualizationClick) {
+        onVisualizationClick({
+          settings,
+          event: event.nativeEvent,
+        });
+      }
+    },
+    [settings, onVisualizationClick],
+  );
+
   const handleMouseMove = useCallback(
-    e => {
+    event => {
       if (onHoverChange) {
         const options =
           settings && settings.column && column ? settings.column(column) : {};
@@ -363,7 +376,7 @@ const GaugeArc = ({
                 .join(" - "),
             },
           ],
-          event: e.nativeEvent,
+          event: event.nativeEvent,
         });
       }
     },
@@ -384,6 +397,7 @@ const GaugeArc = ({
       })}
       fill={fill}
       data-testid={testId}
+      onClick={handleClick}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     />
