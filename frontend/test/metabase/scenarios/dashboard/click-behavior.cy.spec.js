@@ -159,7 +159,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
   });
 
-  it("should navigate to a target from a gauge card", () => {
+  it("should navigate to a target from a gauge card (metabase#23137)", () => {
     const target_id = 1;
 
     cy.createQuestionAndDashboard({
@@ -177,7 +177,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     cy.findByText("Orders");
   });
 
-  it("should navigate to a target from a progress card", () => {
+  it("should navigate to a target from a progress card (metabase#23137)", () => {
     const target_id = 1;
 
     cy.createQuestionAndDashboard({
