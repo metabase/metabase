@@ -219,11 +219,13 @@
                    [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
                    [:is :coll.personal_owner_id nil])}))
 
-(defmethod serdes.base/serdes-dependencies "DashboardCard" [{:keys [card_id dashboard_id parameter_mappings]}]
+(defmethod serdes.base/serdes-dependencies "DashboardCard"
+  [{:keys [card_id dashboard_id parameter_mappings visualization_settings]}]
   (->> (mapcat serdes.util/mbql-deps parameter_mappings)
-       set
-       (into [[{:model "Dashboard" :id dashboard_id}]
-              [{:model "Card"      :id card_id}]])))
+       (concat (serdes.util/visualization-settings-deps visualization_settings))
+       (concat #{[{:model "Dashboard" :id dashboard_id}]
+                 [{:model "Card"      :id card_id}]})
+       set))
 
 (defmethod serdes.base/serdes-generate-path "DashboardCard" [_ dashcard]
   [(serdes.base/infer-self-path "Dashboard" (db/select-one 'Dashboard :id (:dashboard_id dashcard)))
@@ -232,13 +234,15 @@
 (defmethod serdes.base/extract-one "DashboardCard"
   [_model-name _opts dashcard]
   (-> (serdes.base/extract-one-basics "DashboardCard" dashcard)
-      (update :card_id            serdes.util/export-fk 'Card)
-      (update :dashboard_id       serdes.util/export-fk 'Dashboard)
-      (update :parameter_mappings serdes.util/export-parameter-mappings)))
+      (update :card_id                serdes.util/export-fk 'Card)
+      (update :dashboard_id           serdes.util/export-fk 'Dashboard)
+      (update :parameter_mappings     serdes.util/export-parameter-mappings)
+      (update :visualization_settings serdes.util/export-visualization-settings)))
 
 (defmethod serdes.base/load-xform "DashboardCard"
   [dashcard]
   (-> (serdes.base/load-xform-basics dashcard)
-      (update :card_id            serdes.util/import-fk 'Card)
-      (update :dashboard_id       serdes.util/import-fk 'Dashboard)
-      (update :parameter_mappings serdes.util/import-parameter-mappings)))
+      (update :card_id                serdes.util/import-fk 'Card)
+      (update :dashboard_id           serdes.util/import-fk 'Dashboard)
+      (update :parameter_mappings     serdes.util/import-parameter-mappings)
+      (update :visualization_settings serdes.util/import-visualization-settings)))

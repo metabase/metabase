@@ -21,11 +21,12 @@
   or identity hash.
   Unusual parameter order means this can be used as `(update x :some_id export-fk 'SomeModel)`."
   [id model]
-  (let [model-name (name model)
-        model      (db/resolve-model (symbol model-name))
-        entity     (db/select-one model (models/primary-key model) id)
-        {eid :id}  (serdes.base/infer-self-path model-name entity)]
-    eid))
+  (when id
+    (let [model-name (name model)
+          model      (db/resolve-model (symbol model-name))
+          entity     (db/select-one model (models/primary-key model) id)
+          {eid :id}  (serdes.base/infer-self-path model-name entity)]
+      eid)))
 
 (defn import-fk
   "Given an entity ID or identity hash, and the model it represents (symbol, name or IModel), looks up the corresponding
@@ -35,13 +36,14 @@
 
   Unusual parameter order means this can be used as `(update x :some_id import-fk 'SomeModel)`."
   [eid model]
-  (let [model-name (name model)
-        model      (db/resolve-model (symbol model-name))
-        entity     (serdes.base/lookup-by-id model eid)]
-    (if entity
-      (get entity (models/primary-key model))
-      (throw (ex-info "Could not find foreign key target - bad serdes-dependencies or other serialization error"
-                      {:entity_id eid :model (name model)})))))
+  (when eid
+    (let [model-name (name model)
+          model      (db/resolve-model (symbol model-name))
+          entity     (serdes.base/lookup-by-id model eid)]
+      (if entity
+        (get entity (models/primary-key model))
+        (throw (ex-info "Could not find foreign key target - bad serdes-dependencies or other serialization error"
+                        {:entity_id eid :model (name model)}))))))
 
 (defn export-fk-keyed
   "Given a numeric ID, look up a different identifying field for that entity, and return it as a portable ID.
@@ -243,7 +245,10 @@
 
 (defn- mbql-deps-vector [entity]
   (match entity
-         [:field (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
+         [:field     (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
+         ["field"    (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
+         [:field-id  (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
+         ["field-id" (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
          :else (reduce #(cond
                           (map? %2)    (into %1 (mbql-deps-map %2))
                           (vector? %2) (into %1 (mbql-deps-vector %2))
@@ -266,7 +271,10 @@
   raw IDs, return the corresponding set of serdes-dependencies. The query can't be imported until all the referenced
   databases, tables and fields are loaded."
   [entity]
-  (mbql-deps-map entity)) ;; process other keys
+  (cond
+    (map? entity)     (mbql-deps-map entity)
+    (seqable? entity) (mbql-deps-vector entity)
+    :else             (mbql-deps-vector [entity])))
 
 (defn export-parameter-mappings
   "Given the :parameter_mappings field of a `Card` or `DashboardCard`, as a JSON-encoded list of objects, converts
@@ -283,3 +291,83 @@
        (map mbql-fully-qualified-names->ids)
        (map #(m/update-existing % :card_id import-fk 'Card))
        json/generate-string))
+
+(defn- export-visualizations [entity]
+  (mbql.u/replace
+    entity
+    ["field-id" (id :guard number?) tail]
+    ["field-id" (export-field-fk id) (export-visualizations tail)]
+
+    ["field" (id :guard number?) tail]
+    ["field" (export-field-fk id) (export-visualizations tail)]
+
+    (_ :guard map?)
+    (m/map-vals export-visualizations &match)
+
+    (_ :guard vector?)
+    (mapv export-visualizations &match)))
+
+(defn- export-column-settings
+  "Column settings use a JSON-encoded string as a map key, and it contains field numbers.
+  This function parses those keys, converts the IDs to portable values, and serializes them back to JSON."
+  [settings]
+  (when settings
+    (update-keys settings #(-> % json/parse-string export-visualizations json/generate-string))))
+
+(defn export-visualization-settings
+  "Given a JSON string encoding the visualization settings for a `Card` or `DashboardCard`, transform it to EDN and
+  convert all field-ids to portable `[db schema table field]` form."
+  [settings]
+  (when settings
+    (-> settings
+        (json/parse-string (fn [k] (if (re-matches #"^[a-zA-Z0-9_\.\-]+$" k)
+                                     (keyword k)
+                                     k)))
+        export-visualizations
+        (update :column_settings export-column-settings))))
+
+(defn- import-visualizations [entity]
+  (mbql.u/replace
+    entity
+    [:field-id (fully-qualified-name :guard vector?) tail]
+    [:field-id (import-field-fk fully-qualified-name) (import-visualizations tail)]
+
+    ["field-id" (fully-qualified-name :guard vector?) tail]
+    ["field-id" (import-field-fk fully-qualified-name) (import-visualizations tail)]
+
+    [:field (fully-qualified-name :guard vector?) tail]
+    [:field (import-field-fk fully-qualified-name) (import-visualizations tail)]
+
+    ["field" (fully-qualified-name :guard vector?) tail]
+    ["field" (import-field-fk fully-qualified-name) (import-visualizations tail)]
+
+    (_ :guard map?)
+    (m/map-vals import-visualizations &match)
+
+    (_ :guard vector?)
+    (mapv import-visualizations &match)))
+
+(defn- import-column-settings [settings]
+  (when settings
+    (update-keys settings #(-> % json/parse-string import-visualizations json/generate-string))))
+
+(defn import-visualization-settings
+  "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`
+  references into Field IDs and serialize back to JSON."
+  [settings]
+  (when settings
+    (-> settings
+        import-visualizations
+        (update :column_settings import-column-settings)
+        json/generate-string)))
+
+(defn visualization-settings-deps
+  "Given the :visualization_settings (possibly nil) for an entity, return any embedded serdes-deps as a set.
+  Always returns an empty set even if the input is nil."
+  [viz]
+  (let [vis-column-settings (some->> viz
+                                     :column_settings
+                                     keys
+                                     (map (comp mbql-deps json/parse-string)))]
+    (reduce set/union (cons (mbql-deps viz)
+                            vis-column-settings))))

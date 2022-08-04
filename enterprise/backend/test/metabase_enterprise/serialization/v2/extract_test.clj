@@ -127,6 +127,33 @@
                                                                  :card_id      c1-id
                                                                  :target [:dimension [:field field-id
                                                                                       {:source-field field2-id}]]}]}]
+                       Card       [{c3-id  :id
+                                    c3-eid :entity_id}        {:name          "Third Question"
+                                                               :database_id   db-id
+                                                               :table_id      schema-id
+                                                               :collection_id coll-id
+                                                               :creator_id    mark-id
+                                                               :visualization_settings
+                                                               {:table.pivot_column "SOURCE"
+                                                                :table.cell_column "sum"
+                                                                :table.columns
+                                                                [{:name "SOME_FIELD"
+                                                                  :fieldRef [:field field-id nil]
+                                                                  :enabled true}
+                                                                 {:name "OTHER_FIELD"
+                                                                  :fieldRef [:field field2-id nil]
+                                                                  :enabled true}
+                                                                 {:name "sum"
+                                                                  :fieldRef [:field "sum" {:base-type :type/Float}]
+                                                                  :enabled true}
+                                                                 {:name "count"
+                                                                  :fieldRef [:field "count" {:base-type :type/BigInteger}]
+                                                                  :enabled true}
+                                                                 {:name "Average order total"
+                                                                  :fieldRef [:field "Average order total" {:base-type :type/Float}]
+                                                                  :enabled true}]
+                                                                :column_settings
+                                                                {(str "[\"ref\",[\"field\"," field2-id ",null]]") {:column_title "Locus"}}}}]
                        Dashboard  [{dash-id  :id
                                     dash-eid :entity_id}      {:name          "Shared Dashboard"
                                                                :collection_id coll-id
@@ -145,8 +172,27 @@
                                                                  :card_id      c1-id
                                                                  :target [:dimension [:field field-id
                                                                                       {:source-field field2-id}]]}]}]
-                       DashboardCard [{dc2-eid :entity_id}    {:card_id      c2-id
-                                                               :dashboard_id other-dash-id}]]
+                       DashboardCard [{dc2-id  :id
+                                       dc2-eid :entity_id}    {:card_id      c2-id
+                                                               :dashboard_id other-dash-id
+                                                               :visualization_settings
+                                                               {:table.pivot_column "SOURCE"
+                                                                :table.cell_column "sum"
+                                                                :table.columns
+                                                                [{:name "SOME_FIELD"
+                                                                  :fieldRef [:field field-id nil]
+                                                                  :enabled true}
+                                                                 {:name "sum"
+                                                                  :fieldRef [:field "sum" {:base-type :type/Float}]
+                                                                  :enabled true}
+                                                                 {:name "count"
+                                                                  :fieldRef [:field "count" {:base-type :type/BigInteger}]
+                                                                  :enabled true}
+                                                                 {:name "Average order total"
+                                                                  :fieldRef [:field "Average order total" {:base-type :type/Float}]
+                                                                  :enabled true}]
+                                                                :column_settings
+                                                                {(str "[\"ref\",[\"field\"," field2-id ",null]]") {:column_title "Locus"}}}}]]
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c1-id]))]
           (is (schema= {:serdes/meta                 (s/eq [{:model "Card" :id c1-eid}])
@@ -203,6 +249,53 @@
                       {:model "Field"      :id "Other Field"}]}
                    (set (serdes.base/serdes-dependencies ser))))))
 
+        (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c3-id]))]
+          (is (schema= {:serdes/meta                 (s/eq [{:model "Card" :id c3-eid}])
+                        :table_id                    (s/eq ["My Database" "PUBLIC" "Schema'd Table"])
+                        :creator_id                  (s/eq "mark@direstrai.ts")
+                        :collection_id               (s/eq coll-eid)
+                        :dataset_query               (s/eq {})
+                        :visualization_settings
+                        (s/eq {:table.pivot_column "SOURCE"
+                               :table.cell_column "sum"
+                               :table.columns
+                               [{:name "SOME_FIELD"
+                                 :fieldRef ["field" ["My Database" nil "Schemaless Table" "Some Field"] nil]
+                                 :enabled true}
+                                {:name "OTHER_FIELD"
+                                 :fieldRef ["field" ["My Database" "PUBLIC" "Schema'd Table" "Other Field"] nil]
+                                 :enabled true}
+                                {:name "sum"
+                                 :fieldRef ["field" "sum" {:base-type "type/Float"}]
+                                 :enabled true}
+                                {:name "count"
+                                 :fieldRef ["field" "count" {:base-type "type/BigInteger"}]
+                                 :enabled true}
+                                {:name "Average order total"
+                                 :fieldRef ["field" "Average order total" {:base-type "type/Float"}]
+                                 :enabled true}]
+                               :column_settings
+                               {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}})
+                        :created_at                  LocalDateTime
+                        (s/optional-key :updated_at) LocalDateTime
+                        s/Keyword      s/Any}
+                       ser))
+          (is (not (contains? ser :id)))
+
+          (testing "cards depend on their Table and Collection, and any fields in their visualization_settings"
+            (is (= #{[{:model "Database"   :id "My Database"}
+                      {:model "Schema"     :id "PUBLIC"}
+                      {:model "Table"      :id "Schema'd Table"}]
+                     [{:model "Collection" :id coll-eid}]
+                     [{:model "Database"   :id "My Database"}
+                      {:model "Table"      :id "Schemaless Table"}
+                      {:model "Field"      :id "Some Field"}]
+                     [{:model "Database"   :id "My Database"}
+                      {:model "Schema"     :id "PUBLIC"}
+                      {:model "Table"      :id "Schema'd Table"}
+                      {:model "Field"      :id "Other Field"}]}
+                   (set (serdes.base/serdes-dependencies ser))))))
+
         (let [ser (serdes.base/extract-one "DashboardCard" {} (select-one "DashboardCard" [:= :id dc1-id]))]
           (is (schema= {:serdes/meta                 (s/eq [{:model "Dashboard" :id dash-eid}
                                                             {:model "DashboardCard" :id dc1-eid}])
@@ -218,6 +311,44 @@
           (testing "cards depend on their Dashboard and Card, and any fields in their parameter_mappings"
             (is (= #{[{:model "Card"       :id c1-eid}]
                      [{:model "Dashboard"  :id dash-eid}]
+                     [{:model "Database"   :id "My Database"}
+                      {:model "Table"      :id "Schemaless Table"}
+                      {:model "Field"      :id "Some Field"}]
+                     [{:model "Database"   :id "My Database"}
+                      {:model "Schema"     :id "PUBLIC"}
+                      {:model "Table"      :id "Schema'd Table"}
+                      {:model "Field"      :id "Other Field"}]}
+                   (set (serdes.base/serdes-dependencies ser)))))))
+
+      (testing "Dashcard :visualization_settings are included in their deps"
+        (let [ser (serdes.base/extract-one "DashboardCard" {} (select-one "DashboardCard" [:= :id dc2-id]))]
+          (is (schema= {:serdes/meta            (s/eq [{:model "Dashboard" :id other-dash}
+                                                       {:model "DashboardCard" :id dc2-eid}])
+                        :dashboard_id           (s/eq other-dash)
+                        :visualization_settings (s/eq {:table.pivot_column "SOURCE"
+                                                       :table.cell_column "sum"
+                                                       :table.columns
+                                                       [{:name "SOME_FIELD"
+                                                         :fieldRef ["field" ["My Database" nil "Schemaless Table" "Some Field"] nil]
+                                                         :enabled true}
+                                                        {:name "sum"
+                                                         :fieldRef ["field" "sum" {:base-type "type/Float"}]
+                                                         :enabled true}
+                                                        {:name "count"
+                                                         :fieldRef ["field" "count" {:base-type "type/BigInteger"}]
+                                                         :enabled true}
+                                                        {:name "Average order total"
+                                                         :fieldRef ["field" "Average order total" {:base-type "type/Float"}]
+                                                         :enabled true}]
+                                                       :column_settings
+                                                       {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}})
+                        s/Keyword      s/Any}
+                       ser))
+          (is (not (contains? ser :id)))
+
+          (testing "DashboardCard depend on their Dashboard and Card, and any fields in their visualization_settings"
+            (is (= #{[{:model "Card"       :id c2-eid}]
+                     [{:model "Dashboard"  :id other-dash}]
                      [{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]
