@@ -123,13 +123,13 @@
   (let [field-name (str \$ (field->name field "."))]
     (cond
       (isa? coercion :Coercion/UNIXMicroSeconds->DateTime)
-      {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970}}
+      {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/UNIXMilliSeconds->DateTime)
-      {:$dateFromParts {:millisecond field-name, :year 1970}}
+      {:$dateFromParts {:millisecond field-name, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/UNIXSeconds->DateTime)
-      {:$dateFromParts {:second field-name, :year 1970}}
+      {:$dateFromParts {:second field-name, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/YYYYMMDDHHMMSSString->Temporal)
       {"$dateFromString" {:dateString field-name
