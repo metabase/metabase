@@ -230,7 +230,7 @@
 
 (deftest multilevel-nested-questions-with-joins
   (testing "Multilevel nested questions with joins work (#22859)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
       (mt/dataset sample-dataset
         (mt/with-temp* [Card [inner-card
                               {:dataset_query
