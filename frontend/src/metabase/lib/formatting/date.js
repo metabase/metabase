@@ -4,6 +4,7 @@ import moment from "moment-timezone";
 import { parseTimestamp } from "metabase/lib/time";
 import { isDateWithoutTime } from "metabase/lib/schema_metadata";
 import {
+  DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
   getTimeFormatFromStyle,
   hasHour,
@@ -46,8 +47,6 @@ const DATE_STYLE_TO_FORMAT = {
     month: "MMMM, YYYY",
   },
 };
-
-export const DEFAULT_DATE_STYLE = "MMMM D, YYYY";
 
 const getDayFormat = options =>
   options.compact || options.date_abbreviate ? "ddd" : "dddd";

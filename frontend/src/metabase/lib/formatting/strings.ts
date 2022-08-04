@@ -49,6 +49,8 @@ export function formatStringFallback(value: any, options: OptionsType = {}) {
     value = formatUrl(value, options);
     if (typeof value === "string") {
       value = formatEmail(value, options);
+    }
+    if (typeof value === "string") {
       value = formatImage(value, options);
     }
   }

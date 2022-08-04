@@ -41,13 +41,6 @@ const NUMERIC_UNIT_FORMATS = {
       .startOf("month"),
   "quarter-of-year": (value: number) =>
     moment().quarter(value).startOf("quarter"),
-  default: (value: number) => value,
-  hour: (value: number) => value,
-  minute: (value: number) => value,
-  day: (value: number) => value,
-  week: (value: number) => value,
-  month: (value: number) => value,
-  quarter: (value: number) => value,
   year: (value: number) => moment().year(value).startOf("year"),
 };
 

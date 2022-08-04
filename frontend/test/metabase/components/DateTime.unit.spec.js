@@ -5,7 +5,7 @@ import moment from "moment-timezone";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
-} from "metabase/lib/formatting";
+} from "metabase/lib/formatting/dateTimeUtils";
 import MetabaseSettings from "metabase/lib/settings";
 
 import DateTime from "metabase/components/DateTime";
