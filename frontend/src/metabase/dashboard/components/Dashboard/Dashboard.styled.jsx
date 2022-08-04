@@ -64,6 +64,10 @@ export const DashboardBody = styled.div`
   ${breakpointMaxSmall} {
     overflow-y: auto;
     flex-wrap: wrap;
+
+    ${ParametersAndCardsContainer} {
+      order: 1;
+    }
   }
 `;
 
