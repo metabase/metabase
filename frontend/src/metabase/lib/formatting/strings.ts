@@ -1,6 +1,9 @@
 import inflection from "inflection";
 
-import { formatUrl, renderLinkTextForClick } from "./url";
+import { getDataFromClicked } from "metabase/lib/click-behavior";
+import { formatUrl } from "./url";
+import { renderLinkTextForClick } from "./link";
+import { formatValue, getRemappedValue } from "./value";
 import { formatEmail } from "./email";
 import { formatImage } from "./image";
 

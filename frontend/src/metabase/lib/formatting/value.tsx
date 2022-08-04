@@ -32,16 +32,16 @@ import { OptionsType } from "./types";
 
 interface MARKDOWN_RENDERERS_PROP_TYPE {
   children: React.ReactElement;
-  href: string;
+  href?: string;
 }
 const MARKDOWN_RENDERERS = {
   // eslint-disable-next-line react/display-name
-  a: ({ href, children }: MARKDOWN_RENDERERS_PROP_TYPE) => (
+  a: ({ href, children }: any) => (
     <ExternalLink href={href}>{children}</ExternalLink>
   ),
 };
 
-export function formatValue(value: string, options: OptionsType = {}) {
+export function formatValue(value: unknown, options: OptionsType = {}) {
   // avoid rendering <ExternalLink> if we have click_behavior set
   if (
     options.click_behavior &&
@@ -56,7 +56,7 @@ export function formatValue(value: string, options: OptionsType = {}) {
   const formatted: any = formatValueRaw(value, options);
   let maybeJson = {};
   try {
-    maybeJson = JSON.parse(value);
+    maybeJson = JSON.parse(value as string);
   } catch {
     // do nothing
   }
@@ -114,10 +114,7 @@ export function getRemappedValue(
   }
 }
 
-export function formatValueRaw(
-  value: string | number | Moment,
-  options: OptionsType = {},
-) {
+export function formatValueRaw(value: unknown, options: OptionsType = {}) {
   options = {
     jsx: false,
     remap: true,
@@ -171,7 +168,7 @@ export function formatValueRaw(
     isDate(column) ||
     moment.isDate(value) ||
     moment.isMoment(value) ||
-    moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
+    moment(value as string, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
   ) {
     return formatDateTimeWithUnit(value, "minute", options);
   } else if (typeof value === "string") {

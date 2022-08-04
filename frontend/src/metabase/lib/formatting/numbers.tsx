@@ -2,11 +2,31 @@ import React from "react";
 import d3 from "d3";
 import Humanize from "humanize-plus";
 
-import { getCurrencySymbol } from "./currency";
+import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
 const FIXED_NUMBER_FORMATTER = d3.format(",.f");
 const PRECISION_NUMBER_FORMATTER = d3.format(".2f");
+
+interface FormatNumberOptionsType {
+  _numberFormatter?: any;
+  compact?: boolean;
+  currency?: string;
+  currency_in_header?: boolean;
+  currency_style?: string;
+  decimals?: string | number;
+  jsx?: any;
+  maximumFractionDigits?: number;
+  minimumFractionDigits?: number;
+  minimumIntegerDigits?: number;
+  maximumSignificantDigits?: number;
+  minimumSignificantDigits?: number;
+  negativeInParentheses?: boolean;
+  number_separators?: string;
+  number_style?: string;
+  scale?: string;
+  type?: string;
+}
 
 interface DEFAULT_NUMBER_OPTIONS_TYPE {
   compact: boolean;
@@ -36,25 +56,6 @@ function getDefaultNumberOptions(options: { decimals?: string | number }) {
   }
 
   return defaults;
-}
-
-interface FormatNumberOptionsType {
-  _numberFormatter?: any;
-  compact?: boolean;
-  currency?: string;
-  currency_in_header?: boolean;
-  currency_style?: string;
-  decimals?: string | number;
-  maximumFractionDigits?: number;
-  minimumFractionDigits?: number;
-  minimumIntegerDigits?: number;
-  maximumSignificantDigits?: number;
-  minimumSignificantDigits?: number;
-  negativeInParentheses?: boolean;
-  number_separators?: string;
-  number_style?: string;
-  scale?: string;
-  type?: string;
 }
 
 export function formatNumber(
@@ -160,7 +161,7 @@ export function numberFormatterForOptions(options: FormatNumberOptionsType) {
   });
 }
 
-function formatNumberCompact(value, options) {
+function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
   if (options.number_style === "percent") {
     return formatNumberCompactWithoutOptions(value * 100) + "%";
   }
@@ -194,7 +195,7 @@ function formatNumberCompact(value, options) {
   return formatNumberCompactWithoutOptions(value);
 }
 
-function formatNumberCompactWithoutOptions(value) {
+function formatNumberCompactWithoutOptions(value: number) {
   if (value === 0) {
     // 0 => 0
     return "0";
@@ -209,7 +210,7 @@ function formatNumberCompactWithoutOptions(value) {
 }
 
 // replaces the decimale and grouping separators with those specified by a NumberSeparators option
-function replaceNumberSeparators(formatted, separators) {
+function replaceNumberSeparators(formatted: any, separators: any) {
   const [decimalSeparator, groupingSeparator] = (separators || ".,").split("");
 
   const separatorMap = {
@@ -220,7 +221,10 @@ function replaceNumberSeparators(formatted, separators) {
   return formatted.replace(/,|\./g, separator => separatorMap[separator]);
 }
 
-function formatNumberScientific(value, options) {
+function formatNumberScientific(
+  value: number,
+  options: FormatNumberOptionsType,
+) {
   if (options.maximumFractionDigits) {
     value = d3.round(value, options.maximumFractionDigits);
   }

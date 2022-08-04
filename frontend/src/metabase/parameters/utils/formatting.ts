@@ -51,7 +51,7 @@ export function formatParameterValue(value: unknown, parameter: UiParameter) {
       // which parameter the value is associated with, meaning we
       // are unable to remap the value to the correct field
       const remap = parameter.fields.length === 1;
-      return formatValue(value, {
+      return formatValue(value as string, {
         column: firstField,
         maximumFractionDigits: 20,
         remap,
