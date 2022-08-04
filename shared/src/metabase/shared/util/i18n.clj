@@ -33,3 +33,14 @@
 
     :cljs
     `(js-i18n ~format-string ~@args)))
+
+(defmacro trsn
+  [format-string format-string-pl n]
+  (macros/case
+    :clj
+    (do
+      (require 'metabase.util.i18n)
+      `(metabase.util.i18n/trsn ~format-string ~format-string-pl ~n))
+
+    :cljs
+    `(js-i18n-n ~format-string ~format-string-pl ~n)))

@@ -2,19 +2,19 @@
   "Util functions for dealing with parameters. Primarily used for substituting parameters into variables in Markdown
   dashboard cards."
   #?@
-      (:clj
-       [(:require [clojure.string :as str]
-                  [metabase.mbql.normalize :as mbql.normalize]
-                  [metabase.shared.util.i18n :refer [trs]]
-                  [metabase.util.date-2 :as u.date]
-                  [metabase.util.date-2.parse.builder :as b]
-                  [metabase.util.i18n.impl :as i18n.impl])
-        (:import java.time.format.DateTimeFormatter)]
-       :cljs
-       [(:require ["moment" :as moment]
-                  [clojure.string :as str]
-                  [metabase.mbql.normalize :as mbql.normalize]
-                  [metabase.shared.util.i18n :refer [trs]])]))
+   (:clj
+    [(:require [clojure.string :as str]
+               [metabase.mbql.normalize :as mbql.normalize]
+               [metabase.shared.util.i18n :refer [trs trsn]]
+               [metabase.util.date-2 :as u.date]
+               [metabase.util.date-2.parse.builder :as b]
+               [metabase.util.i18n.impl :as i18n.impl])
+     (:import java.time.format.DateTimeFormatter)]
+    :cljs
+    [(:require ["moment" :as moment]
+               [clojure.string :as str]
+               [metabase.mbql.normalize :as mbql.normalize]
+               [metabase.shared.util.i18n :refer [trs trsn]])]))
 
 ;; Without this comment, the namespace-checker linter incorrectly detects moment as unused
 #?(:cljs (comment moment/keep-me))
@@ -38,7 +38,7 @@
      :clj  (u.date/format "MMMM, yyyy" (u.date/parse value) locale)))
 
 #?(:clj
-   (def ^:private quarter-formatter-in
+    (def ^:private quarter-formatter-in
      (b/formatter
       "Q" (b/value :iso/quarter-of-year 1) "-" (b/value :year 4))))
 
@@ -63,24 +63,36 @@
            (formatted-value :date/single end locale))
       "")))
 
-(defn- time-intervals
-  [interval plural?]
+; (defn- time-intervals-2
+;   [interval plural?]
+;   (get
+;    {["minutes" false]  (trs "Minute")
+;     ["minutes" true]   (trs "Minutes")
+;     ["hours" false]    (trs "Hour")
+;     ["hours" true]     (trs "Hours")
+;     ["days" false]     (trs "Day")
+;     ["days" true]      (trs "Days")
+;     ["weeks" false]    (trs "Week")
+;     ["weeks" true]     (trs "Weeks")
+;     ["months" false]   (trs "Month")
+;     ["months" true]    (trs "Months")
+;     ["quarters" false] (trs "Quarter")
+;     ["quarters" true]  (trs "Quarters")
+;     ["years" false]    (trs "Year")
+;     ["years" true]     (trs "Years")}
+;    [interval plural?]))
+
+(defn- translated-interval
+  [interval n]
   (get
-   {["minutes" false]  (trs "Minute")
-    ["minutes" true]   (trs "Minutes")
-    ["hours" false]    (trs "Hour")
-    ["hours" true]     (trs "Hours")
-    ["days" false]     (trs "Day")
-    ["days" true]      (trs "Days")
-    ["weeks" false]    (trs "Week")
-    ["weeks" true]     (trs "Weeks")
-    ["months" false]   (trs "Month")
-    ["months" true]    (trs "Months")
-    ["quarters" false] (trs "Quarter")
-    ["quarters" true]  (trs "Quarters")
-    ["years" false]    (trs "Year")
-    ["years" true]     (trs "Years")}
-   [interval plural?]))
+   {"minutes"  (trsn "Minute{0}" "Minutes" n)
+    "hours"    (trsn "Hour" "Hours" n)
+    "days"     (trsn "Day" "Days" n)
+    "weeks"    (trsn "Week" "Weeks" n)
+    "months"   (trsn "Month" "Months" n)
+    "quarters" (trsn "Quarter" "Quarters" n)
+    "years"    (trsn "Year" "Years" n)}
+   interval))
 
 (defmethod formatted-value :date/relative
   [_ value _]
@@ -94,11 +106,11 @@
     #"^past1days$"                         (trs "Yesterday")
     #"^next1days$"                         (trs "Tomorrow")
     #"^(past|next)([0-9]+)([a-z]+)~?$" :>> (fn [[prefix n interval]]
-                                             (let [n        (when (not= n "1") n)
-                                                   interval (time-intervals interval (boolean n))]
-                                               (case prefix
-                                                 "past" (trs "Previous {0} {1}" n interval)
-                                                 "next" (trs "Next {0} {1}" n interval))))))
+                                             (let [n        #?(:clj (Integer. n) :cljs(js/parseInt n))
+                                                   interval (translated-interval interval n)]
+                                                 (case prefix
+                                                   "past" (trs "Previous {0} {1}" n interval)
+                                                   "next" (trs "Next {0} {1}" n interval))))))
 
 (defmethod formatted-value :date/all-options
   [_ value locale]
@@ -262,7 +274,7 @@
        ;;      ("[[a " {:tag "b" :source "{{b}}"} "]] [[" {:tag "c" :source "{{c}}"} "]]")
        ;; 2. `add-values-to-variables` =>
        ;;      ("[[a " {:tag "b" :source "{{b}}" :value nil} "]] [[" {:tag "c" :source "{{c}}" :value 3} "]]")
-       ;; 3. `join-consecutive-strings` => ("[[a {{b}}]] [[" {:tag "b" :source "{{c}}" :value 3} "]])
+       ;; 3. `join-consecutive-strings` => ("[[a {{b}}]] [[" {:tag "b" :source "{{c}}" :value 3} "]]")
        ;; 4. `strip-optional-blocks` => "3"
        (->> text
             split-on-tags
