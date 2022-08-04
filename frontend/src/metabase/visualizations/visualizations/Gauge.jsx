@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component, useCallback } from "react";
+import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 import d3 from "d3";
@@ -13,6 +13,7 @@ import { isNumeric } from "metabase/lib/schema_metadata";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
+import { GaugeArcPath } from "./Gauge.styled";
 
 const MAX_WIDTH = 500;
 const PADDING_BOTTOM = 10;
@@ -169,6 +170,7 @@ export default class Gauge extends Component {
       className,
       isSettings,
       onHoverChange,
+      visualizationIsClickable,
       onVisualizationClick,
     } = this.props;
 
@@ -270,9 +272,10 @@ export default class Gauge extends Component {
                   segment={segment}
                   column={column}
                   settings={settings}
+                  visualizationIsClickable={visualizationIsClickable}
+                  testId={"gauge-arc-" + index}
                   onHoverChange={!showLabels ? onHoverChange : null}
                   onVisualizationClick={onVisualizationClick}
-                  testId={"gauge-arc-" + index}
                 />
               ))}
               {/* NEEDLE */}
@@ -339,65 +342,51 @@ const GaugeArc = ({
   end,
   fill,
   segment,
-  onHoverChange,
-  onVisualizationClick,
   settings,
   column,
+  visualizationIsClickable,
   testId,
+  onHoverChange,
+  onVisualizationClick,
 }) => {
   const arc = d3.svg
     .arc()
     .outerRadius(OUTER_RADIUS)
     .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
 
-  const handleClick = useCallback(
-    event => {
-      if (onVisualizationClick) {
-        onVisualizationClick({
-          value: segment.min,
-          column,
-          settings,
-          event: event.nativeEvent,
-        });
-      }
-    },
-    [segment, column, settings, onVisualizationClick],
-  );
+  const clicked = segment && { value: segment.min, column, settings };
+  const isClickable = clicked && visualizationIsClickable(clicked);
+  const options = column && settings?.column ? column.settings(column) : {};
+  const range = segment ? [segment.min, segment.max] : [];
+  const value = range.map(v => formatValue(v, options)).join(" - ");
+  const hovered = segment ? { data: [{ key: segment.label, value }] } : {};
 
-  const handleMouseMove = useCallback(
-    event => {
-      if (onHoverChange) {
-        const options =
-          settings && settings.column && column ? settings.column(column) : {};
-        onHoverChange({
-          data: [
-            {
-              key: segment.label,
-              value: [segment.min, segment.max]
-                .map(n => formatValue(n, options))
-                .join(" - "),
-            },
-          ],
-          event: event.nativeEvent,
-        });
-      }
-    },
-    [column, segment, settings, onHoverChange],
-  );
+  const handleClick = e => {
+    if (onVisualizationClick) {
+      onVisualizationClick({ ...clicked, event: e.nativeEvent });
+    }
+  };
 
-  const handleMouseLeave = useCallback(() => {
+  const handleMouseMove = e => {
+    if (onHoverChange) {
+      onHoverChange({ ...hovered, event: e.nativeEvent });
+    }
+  };
+
+  const handleMouseLeave = () => {
     if (onHoverChange) {
       onHoverChange(null);
     }
-  }, [onHoverChange]);
+  };
 
   return (
-    <path
+    <GaugeArcPath
       d={arc({
         startAngle: start,
         endAngle: end,
       })}
       fill={fill}
+      isClickable={isClickable}
       data-testid={testId}
       onClick={handleClick}
       onMouseMove={handleMouseMove}
