@@ -94,7 +94,7 @@
     (name a-namespace)))
 
 (defn- logger-context ^LoggerContext []
-  (LogManager/getContext false))
+  (LogManager/getContext true))
 
 (defn- configuration ^Configuration []
   (.getConfiguration (logger-context)))
