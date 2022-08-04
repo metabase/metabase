@@ -2,6 +2,18 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
+export const FooterContainer = styled.div`
+  display: flex;
+  padding: 1rem;
+  color: ${color("text-medium")};
+  font-size: 0.875em;
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
 export interface ShowSearchIconProps {
   isVisible: boolean;
 }

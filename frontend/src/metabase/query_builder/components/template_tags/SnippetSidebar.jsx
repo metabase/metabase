@@ -26,6 +26,7 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import Search from "metabase/entities/search";
 import {
   CloseIconContainer,
+  FooterContainer,
   HideSearchIcon,
   ShowSearchIcon,
 } from "./SnippetSidebar.styled";
@@ -57,8 +58,8 @@ class SnippetSidebar extends React.Component {
   };
 
   footer = () => (
-    <div
-      className="p2 flex text-small text-medium cursor-pointer text-brand-hover hover-parent hover--display"
+    <FooterContainer
+      className="hover-parent hover--display"
       onClick={() => this.setState({ showArchived: true })}
     >
       <Icon
@@ -72,7 +73,7 @@ class SnippetSidebar extends React.Component {
         size={ICON_SIZE}
       />
       {t`Archived snippets`}
-    </div>
+    </FooterContainer>
   );
 
   render() {
