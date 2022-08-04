@@ -783,12 +783,12 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   /**
-   * @param includedBreakout The breakout to include in the options even if it's already used. If true, include all all options.
+   * @param includedBreakout The breakout to include in the options even if it's already used. If true, include all options.
    * @param fieldFilter An option @type {Field} predicate to filter out options
    * @returns @type {DimensionOptions} that can be used as breakouts, excluding used breakouts, unless @param {breakout} is provided.
    */
   breakoutOptions(includedBreakout?: any, fieldFilter = () => true) {
-    // the collection of field MBQL
+    // the collection of field dimensions
     const breakoutDimensions =
       includedBreakout === true
         ? []
