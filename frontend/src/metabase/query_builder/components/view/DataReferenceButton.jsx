@@ -1,13 +1,10 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
-import cx from "classnames";
-
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { ReferenceIconContainer } from "./DataReferenceButton.styled";
 
 const DataReferenceButton = ({
   isShowingDataReference,
@@ -16,13 +13,12 @@ const DataReferenceButton = ({
   className,
 }) => (
   <Tooltip tooltip={t`Learn about your data`}>
-    <a
-      className={cx(className, "transition-color text-brand-hover", {
-        "text-brand": isShowingDataReference,
-      })}
+    <ReferenceIconContainer
+      className={className}
+      isShowingDataReference={isShowingDataReference}
     >
       <Icon name="reference" size={size} onClick={toggleDataReference} />
-    </a>
+    </ReferenceIconContainer>
   </Tooltip>
 );
 
