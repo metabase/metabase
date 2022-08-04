@@ -201,6 +201,7 @@ export default class Progress extends Component {
               borderRadius: BORDER_RADIUS,
               overflow: "hidden",
             }}
+            data-testid="progress-bar"
             onClick={
               isClickable &&
               (e => onVisualizationClick({ ...clicked, event: e.nativeEvent }))
