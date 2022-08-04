@@ -356,7 +356,7 @@ const GaugeArc = ({
 
   const clicked = segment && { value: segment.min, column, settings };
   const isClickable = clicked && visualizationIsClickable(clicked);
-  const options = column && settings?.column ? column.settings(column) : {};
+  const options = column && settings?.column ? settings.column(column) : {};
   const range = segment ? [segment.min, segment.max] : [];
   const value = range.map(v => formatValue(v, options)).join(" - ");
   const hovered = segment ? { data: [{ key: segment.label, value }] } : {};
