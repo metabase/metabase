@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         upgrade: [
-          { source: v0.41.3, target: v0.42.2 },
+          { source: v0.41.3.1, target: v0.42.2 },
           { source: v0.42.0, target: v0.43.4 }
         ]
     steps:

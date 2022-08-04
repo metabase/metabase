@@ -1,4 +1,4 @@
-describe("setup on version 42.0", () => {
+describe("setup on v0.41.3.1", () => {
   it("should set up metabase", () => {
     cy.visit("/");
     cy.findByText("Welcome to Metabase");
@@ -8,7 +8,7 @@ describe("setup on version 42.0", () => {
     cy.findByLabelText("First name").type("admin");
     cy.findByLabelText("Last name").type("user");
     cy.findByLabelText("Email").type("admin@metabase.test");
-    cy.findByLabelText("Company or team name").type("Metabase");
+    cy.findByLabelText("Your company or team name").type("Metabase");
     cy.findByLabelText("Create a password").type("12341234");
     cy.findByLabelText("Confirm your password").type("12341234");
     cy.button("Next").click();
