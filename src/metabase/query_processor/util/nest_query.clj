@@ -100,13 +100,14 @@
   "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a
   `:source-query` and updates `:expression` references and `:field` clauses with `:join-alias`es accordingly. See
   tests for examples. This is used by the SQL QP to make sure expressions happen in a subselect."
-  [{:keys [expressions], :as query}]
-  (if (empty? expressions)
-    query
-    (let [{:keys [source-query], :as query} (nest-source query)
-          query                             (rewrite-fields-and-expressions query)
-          source-query                      (assoc source-query :expressions expressions)]
-      (-> query
-          (dissoc :source-query :expressions)
-          (assoc :source-query source-query)
-          add/add-alias-info))))
+  [query]
+  (let [{:keys [expressions], :as query} (m/update-existing query :source-query nest-expressions)]
+    (if (empty? expressions)
+      query
+      (let [{:keys [source-query], :as query} (nest-source query)
+            query                             (rewrite-fields-and-expressions query)
+            source-query                      (assoc source-query :expressions expressions)]
+        (-> query
+            (dissoc :source-query :expressions)
+            (assoc :source-query source-query)
+            add/add-alias-info)))))
