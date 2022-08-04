@@ -1,5 +1,6 @@
 (ns metabase.logger-test
   (:require [clojure.core.memoize :as memoize]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
             [clojure.tools.logging.impl :as log.impl]
@@ -18,7 +19,7 @@
 
 (deftest memoized-logger-test
   (testing "Installed custom logger"
-    (is (= (log.impl/name log/*logger-factory*) "metabase.logger.MetabaseLoggerFactory")
+    (is (str/includes? (log.impl/name log/*logger-factory*) "MetabaseLoggerFactory")
         "Custom `metabase.logger.MetabaseLoggerFactory` logger not installed"))
   (testing "memoizes loggers for namespaces"
     (log.impl/get-logger log/*logger-factory* *ns*)
