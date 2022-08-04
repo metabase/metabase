@@ -2,6 +2,20 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
+export interface ShowSearchIconProps {
+  isVisible: boolean;
+}
+
+export const ShowSearchIcon = styled(Icon)<ShowSearchIconProps>`
+  display: ${props => !props.isVisible && "none"};
+  margin-right: 0.5rem;
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
 export interface HideSearchIconProps {
   isVisible: boolean;
 }
