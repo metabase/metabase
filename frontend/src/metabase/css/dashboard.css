@@ -293,17 +293,6 @@
   }
 }
 
-@media print and (orientation: portrait) {
-  html {
-    width: 8.5in;
-  }
-}
-@media print and (orientation: landscape) {
-  html {
-    width: 11in;
-  }
-}
-
 @page {
   margin: 1cm;
 }
