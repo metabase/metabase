@@ -29,7 +29,7 @@ const questionDetails = {
   },
 };
 
-describe.skip("issue 22859 - multiple levels of nesting", () => {
+describe("issue 22859 - multiple levels of nesting", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/card").as("saveQuestion");
 
