@@ -51,7 +51,6 @@
     metabase.models.emitter.CardEmitterInstance
     metabase.models.emitter.DashboardEmitterInstance
     metabase.models.emitter.EmitterInstance
-    metabase.models.emitter.EmitterActionInstance
     metabase.models.field_values.FieldValuesInstance
     metabase.models.login_history.LoginHistoryInstance
     metabase.models.metric_important_field.MetricImportantFieldInstance

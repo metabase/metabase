@@ -5,7 +5,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.http-client :as client]
    [metabase.models :refer [Action Card CardEmitter Dashboard DashboardEmitter
-                            Database Emitter EmitterAction QueryAction]]
+                            Database Emitter QueryAction]]
    [metabase.models.action :as action]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
@@ -171,7 +171,8 @@
   (let [parent-model (db/resolve-model card-or-dashboard-model)]
     (mt/with-temp* [parent-model [{emitter-parent-id :id}]
                     Emitter [{emitter-id :id} {:parameter_mappings {"my_id" [:variable [:template-tag "id"]]
-                                                                    "my_fail" [:variable [:template-tag "fail"]]}}]]
+                                                                    "my_fail" [:variable [:template-tag "fail"]]}
+                                               :action_id action-id}]]
       (testing "Sanity check: emitter-id should be non-nil"
         (is (integer? emitter-id)))
       (testing "Sanity check: make sure parameter mappings were defined the way we'd expect"
@@ -180,8 +181,6 @@
                (db/select-one-field :parameter_mappings Emitter :id emitter-id))))
       ;; these are tied to the Card or Dashboad and Emitter above and will get cascade deleted. We can't use `with-temp*` for them
       ;; because it doesn't seem to work with tables with compound PKs
-      (db/insert! EmitterAction {:emitter_id emitter-id
-                                 :action_id action-id})
       (condp = (type parent-model)
         (type Card)
         (db/insert! CardEmitter {:card_id    emitter-parent-id

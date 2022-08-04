@@ -15,6 +15,7 @@
                                      DashboardCard
                                      DashboardCardSeries
                                      DashboardEmitter
+                                     Emitter
                                      Field
                                      FieldValues
                                      Pulse
@@ -345,8 +346,9 @@
   (testing "GET /api/dashboard/:id"
     (testing "Fetch dashboard with an emitter"
       (mt/with-temp* [Dashboard [dashboard {:name "Test Dashboard"}]
-                      Card [write-card {:is_write true :name "Test Write Card"}]]
-        (db/insert! DashboardEmitter {:action_id    (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))
+                      Card [write-card {:is_write true :name "Test Write Card"}]
+                      Emitter [{emitter-id :id} {:action_id (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))}]]
+        (db/insert! DashboardEmitter {:emitter_id emitter-id
                                       :dashboard_id (u/the-id dashboard)})
         (testing "admin sees emitters"
           (is (partial=
