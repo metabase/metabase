@@ -92,5 +92,12 @@ This enables Metabase to scan for additional field values during syncs allowing 
 
 The problem is that if the keys in the JSON vary record to record, the first five hundred rows may not capture all the keys used by JSON objects in that JSON field. To get Metabase to infer all the JSON keys for that table, you'll need to add the additional keys to the JSON objects in the first five hundred rows.
 
+## Model caching
+
+Metabase can create tables with model data in your database and refresh them on a schedule you define. Metabase's connection's credentials to that database must be able to read and write to the schema displayed in the info tooltip.
+
+See [Models](../../users-guide/models.md).
+
 [ssl-modes]: https://jdbc.postgresql.org/documentation/head/ssl-client.html
 [ssh-tunnel]: ../ssh-tunnel-for-database-connections.html
+
