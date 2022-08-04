@@ -1,9 +1,13 @@
 import Field from "metabase-lib/lib/metadata/Field";
+
 import { SavedCard, NativeDatasetQuery } from "metabase-types/types/Card";
+import { DashboardWithCards } from "metabase-types/types/Dashboard";
+import { Column } from "metabase-types/types/Dataset";
 import {
   Parameter,
   ParameterId,
   ParameterTarget,
+  ParameterValueOrArray,
 } from "metabase-types/types/Parameter";
 
 export interface CategoryWidgetProps {
@@ -69,3 +73,41 @@ export interface WritebackActionEmitter {
 }
 
 export type ActionType = "http" | "query";
+
+export type ParameterMappings = Record<ParameterId, ParameterTarget>;
+
+export type ActionClickBehaviorData = {
+  column: Partial<Column>;
+  parameter: Record<ParameterId, { value: ParameterValueOrArray }>;
+  parameterByName: Record<string, { value: ParameterValueOrArray }>;
+  parameterBySlug: Record<string, { value: ParameterValueOrArray }>;
+  userAttributes: Record<string, unknown>;
+};
+
+export type ActionClickBehavior = {
+  action: number; // action id
+  emitter_id: number;
+  type: "action";
+  parameterMapping: ParameterMappings;
+};
+
+export type ActionClickExtraData = {
+  actions: Record<number, WritebackAction>;
+  dashboard: DashboardWithCards;
+  parameterBySlug: Record<string, { value: ParameterValueOrArray }>;
+  userAttributes: unknown[];
+};
+
+export type ParametersSourceTargetMap = Record<
+  ParameterId,
+  {
+    id: ParameterId;
+    source: { id: string; type: string; name: string };
+    target: { id: string; type: string };
+  }
+>;
+
+export type ParametersMappedToValues = Record<
+  ParameterId,
+  { type: string; value: string | number }
+>;

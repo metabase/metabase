@@ -1,24 +1,31 @@
 import { TYPE } from "metabase/lib/types";
+import { formatSourceForTarget } from "metabase/lib/click-behavior";
 
 import {
   getTemplateTagParameterTarget,
   getTemplateTagType,
 } from "metabase/parameters/utils/cards";
+import { ParameterWithTarget } from "metabase/parameters/types";
 
 import Database from "metabase-lib/lib/metadata/Database";
 import Field from "metabase-lib/lib/metadata/Field";
 
 import { Database as IDatabase } from "metabase-types/types/Database";
-import { TemplateTag } from "metabase-types/types/Query";
 import { DashCard } from "metabase-types/types/Dashboard";
-import {
-  Parameter,
-  ParameterId,
-  ParameterTarget,
-} from "metabase-types/types/Parameter";
+import { Parameter, ParameterId } from "metabase-types/types/Parameter";
+import { TemplateTag } from "metabase-types/types/Query";
 
-import { WritebackAction, HttpAction, RowAction } from "./types";
-import { ParameterWithTarget } from "metabase/parameters/types";
+import {
+  WritebackAction,
+  HttpAction,
+  RowAction,
+  ParameterMappings,
+  ParametersMappedToValues,
+  ParametersSourceTargetMap,
+  ActionClickBehaviorData,
+  ActionClickExtraData,
+  ActionClickBehavior,
+} from "./types";
 
 const DB_WRITEBACK_FEATURE = "actions";
 const DB_WRITEBACK_SETTING = "database-enable-actions";
@@ -46,7 +53,7 @@ const AUTOMATIC_DATE_TIME_FIELDS = [
   TYPE.UpdatedTimestamp,
 ];
 
-export const isAutomaticDateTimeField = (field: Field) => {
+const isAutomaticDateTimeField = (field: Field) => {
   return AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type);
 };
 
@@ -120,7 +127,7 @@ export const getQueryActionParameterMappings = (
     action.card.dataset_query.native["template-tags"],
   );
 
-  const parameterMappings: Record<ParameterId, ParameterTarget> = {};
+  const parameterMappings: ParameterMappings = {};
 
   templateTags.forEach(tag => {
     parameterMappings[tag.id] = getTemplateTagParameterTarget(tag);
@@ -133,7 +140,7 @@ const getHttpActionParameterMappings = (
   action: WritebackAction & HttpAction,
 ) => {
   const parameters = Object.values(action.template.parameters);
-  const parameterMappings: Record<ParameterId, ParameterTarget> = {};
+  const parameterMappings: ParameterMappings = {};
 
   parameters.forEach(parameter => {
     parameterMappings[parameter.id] = [
@@ -162,4 +169,106 @@ export function getHttpActionTemplateTagParameter(
     slug: tag.name,
     default: tag.default,
   };
+}
+
+export function getActionParameters(
+  parameterMapping: ParametersSourceTargetMap = {},
+  {
+    data,
+    extraData,
+    clickBehavior,
+  }: {
+    data: ActionClickBehaviorData;
+    extraData: ActionClickExtraData;
+    clickBehavior: ActionClickBehavior;
+  },
+) {
+  const action = extraData.actions[clickBehavior.action];
+
+  const isQueryAction = action.type === "query";
+  const tagsMap = isQueryAction
+    ? action.card.dataset_query.native["template-tags"]
+    : action.template.parameters;
+  const templateTags = Object.values(tagsMap);
+
+  const parameters: ParametersMappedToValues = {};
+
+  Object.values(parameterMapping).forEach(({ id, source, target }) => {
+    const targetTemplateTag = templateTags.find(tag => tag.id === id);
+
+    const result = formatSourceForTarget(source, target, {
+      data,
+      extraData,
+      clickBehavior,
+    });
+    // For some reason it's sometimes [1] and sometimes just 1
+    const value = Array.isArray(result) ? result[0] : result;
+
+    parameters[id] = {
+      value,
+      type: isQueryAction
+        ? getActionTemplateTagType(targetTemplateTag)
+        : getActionParameterType(targetTemplateTag),
+    };
+  });
+
+  return parameters;
+}
+
+function getNotProvidedQueryActionParameters(
+  action: RowAction,
+  parameters: ParametersMappedToValues,
+) {
+  const mappedParameterIDs = Object.keys(parameters);
+
+  const emptyParameterIDs: ParameterId[] = [];
+  mappedParameterIDs.forEach(parameterId => {
+    const { value } = parameters[parameterId];
+    if (value === undefined) {
+      emptyParameterIDs.push(parameterId);
+    }
+  });
+
+  const tagsMap = action.card.dataset_query.native["template-tags"];
+  const templateTags = Object.values(tagsMap);
+
+  return templateTags.filter(tag => {
+    if (!tag.required) {
+      return false;
+    }
+    const isNotMapped = !mappedParameterIDs.includes(tag.id);
+    const isMappedButNoValue = emptyParameterIDs.includes(tag.id);
+    return isNotMapped || isMappedButNoValue;
+  });
+}
+
+function getNotProvidedHTTPActionParameters(
+  action: HttpAction,
+  parameters: ParametersMappedToValues,
+) {
+  const mappedParameterIDs = Object.keys(parameters);
+
+  const emptyParameterIDs: ParameterId[] = [];
+  mappedParameterIDs.forEach(parameterId => {
+    const { value } = parameters[parameterId];
+    if (value === undefined) {
+      emptyParameterIDs.push(parameterId);
+    }
+  });
+
+  const allParameters = Object.values(action.parameters);
+  return allParameters.filter(parameter => {
+    const isNotMapped = !mappedParameterIDs.includes(parameter.id);
+    const isMappedButNoValue = emptyParameterIDs.includes(parameter.id);
+    return isNotMapped || isMappedButNoValue;
+  });
+}
+
+export function getNotProvidedActionParameters(
+  action: WritebackAction,
+  parameters: ParametersMappedToValues,
+) {
+  return action.type === "query"
+    ? getNotProvidedQueryActionParameters(action, parameters)
+    : getNotProvidedHTTPActionParameters(action, parameters);
 }
