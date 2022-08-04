@@ -174,6 +174,17 @@ export function parseTime(value: moment.Moment | string) {
   return moment.utc(value);
 }
 
+type NUMERIC_UNIT_FORMATS_KEY_TYPE =
+  | "minute-of-hour"
+  | "hour-of-day"
+  | "day-of-week"
+  | "day-of-month"
+  | "day-of-year"
+  | "week-of-year"
+  | "month-of-year"
+  | "quarter-of-year"
+  | "year";
+
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
 export function parseTimestamp(
@@ -189,7 +200,7 @@ export function parseTimestamp(
   } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
     m = TEXT_UNIT_FORMATS[unit as "day-of-week"](value);
   } else if (unit && unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
-    m = NUMERIC_UNIT_FORMATS[unit](value);
+    m = NUMERIC_UNIT_FORMATS[unit as NUMERIC_UNIT_FORMATS_KEY_TYPE](value);
   } else if (typeof value === "number") {
     m = moment.utc(value, moment.ISO_8601);
   } else {
