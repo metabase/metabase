@@ -354,12 +354,14 @@ const GaugeArc = ({
     event => {
       if (onVisualizationClick) {
         onVisualizationClick({
+          value: segment.min,
+          column,
           settings,
           event: event.nativeEvent,
         });
       }
     },
-    [settings, onVisualizationClick],
+    [segment, column, settings, onVisualizationClick],
   );
 
   const handleMouseMove = useCallback(

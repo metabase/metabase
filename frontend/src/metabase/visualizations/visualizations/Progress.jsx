@@ -160,7 +160,7 @@ export default class Progress extends Component {
       barMessage = t`Goal exceeded`;
     }
 
-    const clicked = { value, column };
+    const clicked = { value, column, settings };
     const isClickable = visualizationIsClickable(clicked);
 
     return (
