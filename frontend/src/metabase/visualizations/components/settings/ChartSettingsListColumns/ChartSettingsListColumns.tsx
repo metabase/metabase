@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, ChangeEvent } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -35,11 +35,18 @@ interface Props {
 
 type ListColumnSlot = "left" | "right";
 
-type WrappedEvent = {
-  target: {
-    value: FieldIdOrFieldRef;
-  };
-};
+function formatValueForSelect(value: FieldIdOrFieldRef): string | number {
+  const isFieldReference = Array.isArray(value);
+  return isFieldReference ? JSON.stringify(value) : value;
+}
+
+function parseSelectValue(
+  event: ChangeEvent<HTMLSelectElement>,
+): FieldIdOrFieldRef {
+  const eventValue = event.target.value;
+  const isFieldReference = typeof eventValue === "string";
+  return isFieldReference ? JSON.parse(eventValue) : eventValue;
+}
 
 function ChartSettingsListColumns({
   value,
@@ -82,7 +89,7 @@ function ChartSettingsListColumns({
 
   const columnOptions = columns.map(column => ({
     name: column.display_name,
-    value: column.id || column.field_ref,
+    value: column.id || JSON.stringify(column.field_ref),
   }));
 
   const options = [
@@ -99,11 +106,11 @@ function ChartSettingsListColumns({
       {value.left.map((fieldIdOrFieldRef, index) => (
         <ColumnItemContainer key={index}>
           <StyledSelect
-            value={fieldIdOrFieldRef}
+            value={formatValueForSelect(fieldIdOrFieldRef)}
             options={options}
-            onChange={(e: WrappedEvent) =>
-              onChangeColumn("left", index, e.target.value)
-            }
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+              onChangeColumn("left", index, parseSelectValue(e));
+            }}
           />
           <Button
             icon="gear"
@@ -118,11 +125,11 @@ function ChartSettingsListColumns({
         <ColumnItemContainer key={index}>
           <StyledSelect
             key={index}
-            value={fieldIdOrFieldRef}
+            value={formatValueForSelect(fieldIdOrFieldRef)}
             options={options}
-            onChange={(e: WrappedEvent) =>
-              onChangeColumn("right", index, e.target.value)
-            }
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+              onChangeColumn("right", index, parseSelectValue(e));
+            }}
           />
           <Button
             icon="gear"
