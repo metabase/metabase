@@ -22,8 +22,10 @@ import {
 } from "metabase/lib/data_grid";
 import { keyForColumn } from "metabase/lib/dataset";
 import {
+  ExpandIconContainer,
   FormattingOptionsRoot,
   ShowTotalsOptionRoot,
+  SortButtonIcon,
   SortOrderOptionRoot,
 } from "./ChartSettingFieldsPartition.styled";
 
@@ -51,14 +53,12 @@ function ShowTotalsOption({ value, onChange }) {
 function SortButton({ iconName, onChange, currentValue, buttonValue }) {
   const isSelected = buttonValue === currentValue;
   return (
-    <Icon
+    <SortButtonIcon
+      className="sort"
       name={iconName}
-      onClick={() => onChange(isSelected ? undefined : buttonValue)}
       size={16}
-      className={cx("sort cursor-pointer", {
-        "text-brand": isSelected,
-        "text-medium text-brand-hover": !isSelected,
-      })}
+      isSelected={isSelected}
+      onClick={() => onChange(isSelected ? undefined : buttonValue)}
     />
   );
 }
@@ -333,9 +333,9 @@ class ColumnInner extends React.Component {
                 "text-dark text-bold cursor-grab flex justify-between",
               )}
             >
-              <span
+              <ExpandIconContainer
                 onClick={this.toggleExpand}
-                className="cursor-pointer text-brand-hover hover-parent hover--inherit"
+                className="hover-parent hover--inherit"
               >
                 {column.display_name}
                 <Icon
@@ -343,7 +343,7 @@ class ColumnInner extends React.Component {
                   size="10"
                   className="text-light hover-child hover--inherit ml1"
                 />
-              </span>
+              </ExpandIconContainer>
               <Grabber style={{ width: 10 }} />
             </div>
             {showOptionsPanel && (
