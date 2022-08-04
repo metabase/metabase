@@ -42,6 +42,14 @@ export const HideSearchIcon = styled(Icon)<HideSearchIconProps>`
   }
 `;
 
+export const ExpandIconContainer = styled.span`
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
 export const CloseIconContainer = styled.div`
   display: flex;
   padding: 1rem;

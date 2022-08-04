@@ -26,6 +26,7 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import Search from "metabase/entities/search";
 import {
   CloseIconContainer,
+  ExpandIconContainer,
   FooterContainer,
   HideSearchIcon,
   ShowSearchIcon,
@@ -153,8 +154,7 @@ class SnippetSidebar extends React.Component {
                   {snippetCollection.id === "root" ? (
                     t`Snippets`
                   ) : (
-                    <span
-                      className="text-brand-hover cursor-pointer"
+                    <ExpandIconContainer
                       onClick={() => {
                         const parentId = snippetCollection.parent_id;
                         this.props.setSnippetCollectionId(
@@ -171,7 +171,7 @@ class SnippetSidebar extends React.Component {
                     >
                       <Icon name="chevronleft" className="mr1" />
                       {snippetCollection.name}
-                    </span>
+                    </ExpandIconContainer>
                   )}
                 </span>
               </div>
