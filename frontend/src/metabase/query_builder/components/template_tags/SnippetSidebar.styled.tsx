@@ -15,3 +15,14 @@ export const HideSearchIcon = styled(Icon)<HideSearchIconProps>`
     color: ${color("brand")};
   }
 `;
+
+export const CloseIconContainer = styled.div`
+  display: flex;
+  padding: 1rem;
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("brand")};
+    background-color: ${color("bg-medium")};
+  }
+`;

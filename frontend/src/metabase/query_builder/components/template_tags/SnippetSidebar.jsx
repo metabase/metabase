@@ -24,7 +24,7 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import Search from "metabase/entities/search";
-import { HideSearchIcon } from "./SnippetSidebar.styled";
+import { CloseIconContainer, HideSearchIcon } from "./SnippetSidebar.styled";
 
 const ICON_SIZE = 16;
 const HEADER_ICON_SIZE = 18;
@@ -214,9 +214,8 @@ class SnippetSidebar extends React.Component {
                             f(this),
                           ),
                         ].map(({ icon, name, onClick }) => (
-                          <div
+                          <CloseIconContainer
                             key={name}
-                            className="p2 bg-medium-hover flex cursor-pointer text-brand-hover"
                             onClick={() => {
                               onClick();
                               closePopover();
@@ -228,7 +227,7 @@ class SnippetSidebar extends React.Component {
                               className="mr2"
                             />
                             <h4>{name}</h4>
-                          </div>
+                          </CloseIconContainer>
                         ))}
                       </div>
                     )}
