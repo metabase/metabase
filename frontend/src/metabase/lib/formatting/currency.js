@@ -1,8 +1,8 @@
 import { currency } from "cljs/metabase.shared.util.currency";
 
-let currencyMapCache: { [value: string]: any };
+let currencyMapCache;
 
-export function getCurrencySymbol(currencyCode: string) {
+export function getCurrencySymbol(currencyCode) {
   if (!currencyMapCache) {
     // only turn the array into a map if we call this function
     currencyMapCache = Object.fromEntries(currency);
