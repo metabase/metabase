@@ -3,6 +3,7 @@
   (:require [clojure.test :refer :all]
             [clojure.tools.logging :as log]
             [clojure.tools.logging.impl :as log.impl]
+            [metabase.logger :as mb.logger]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [potemkin :as p]
             [schema.core :as s])
@@ -11,12 +12,6 @@
            [org.apache.logging.log4j Level LogManager]
            [org.apache.logging.log4j.core Appender LifeCycle LogEvent Logger LoggerContext]
            [org.apache.logging.log4j.core.config Configuration LoggerConfig]))
-
-;; make sure [[clojure.tools.logging]] is using the Log4j2 factory, otherwise the swaps we attempt to do here don't seem
-;; to work.
-(when-not (= (log.impl/name log/*logger-factory*) "org.apache.logging.log4j")
-  (alter-var-root #'log/*logger-factory* (constantly (log.impl/log4j2-factory)))
-  (log/infof "Setting clojure.tools.logging factory to %s" `log.impl/log4j2-factory))
 
 (def ^:private ^:deprecated logger->original-level
   (delay
@@ -107,7 +102,6 @@
 (defn- effective-ns-logger
   "Get the logger that will be used for the namespace named by `a-namespace`."
   ^LoggerConfig [a-namespace]
-  (assert (= (log.impl/name log/*logger-factory*) "org.apache.logging.log4j"))
   (let [^Logger logger (log.impl/get-logger log/*logger-factory* (logger-name a-namespace))]
     (.get logger)))
 
@@ -147,6 +141,7 @@
                          (.getFilter parent-logger))]
       (.addLogger (configuration) (logger-name a-namespace) new-logger)
       (.updateLoggers (logger-context))
+      (mb.logger/clear-memoized-ns-loggers!)
       (println "Created a new logger for" (logger-name a-namespace)))))
 
 (s/defn set-ns-log-level!
@@ -282,7 +277,6 @@
          (fn [logs#]
            ~@body
            (logs#)))))))
-
 
 
 ;;;; tests

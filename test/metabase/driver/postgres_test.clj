@@ -289,12 +289,12 @@
 (deftest ^:parallel json-query-test
   (let [boop-identifier (:form (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {}))]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
-      (let [boop-field {:nfc_path [:bleh :meh] :database_type "integer"}]
-        (is (= ["(boop.bleh#>> ?::text[])::integer " "{meh}"]
+      (let [boop-field {:nfc_path [:bleh :meh] :database_type "bigint"}]
+        (is (= ["(boop.bleh#>> ?::text[])::bigint " "{meh}"]
                (hsql/format (#'sql.qp/json-query :postgres boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
-      (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "integer"}]
-        (is (= ["(boop.bleh#>> ?::text[])::integer " "{meh,foobar,1234}"]
+      (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "bigint"}]
+        (is (= ["(boop.bleh#>> ?::text[])::bigint " "{meh,foobar,1234}"]
                (hsql/format (#'sql.qp/json-query :postgres boop-identifier weird-field))))))
     (testing "Give us a boolean cast when the field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
@@ -385,13 +385,13 @@
                      :nfc-path          [:incoherent_json_val "b"]
                      :visibility-type   :normal}
                     {:name              "coherent_json_val → a",
-                     :database-type     "integer",
+                     :database-type     "bigint",
                      :base-type         :type/Integer,
                      :database-position 0,
                      :nfc-path          [:coherent_json_val "a"]
                      :visibility-type   :normal}
                     {:name              "coherent_json_val → b",
-                     :database-type     "integer",
+                     :database-type     "bigint",
                      :base-type         :type/Integer,
                      :database-position 0,
                      :nfc-path          [:coherent_json_val "b"]
@@ -409,7 +409,7 @@
                      :visibility-type   :normal,
                      :nfc-path          [:incoherent_json_val "c"]}
                     {:name              "incoherent_json_val → d",
-                     :database-type     "integer",
+                     :database-type     "bigint",
                      :base-type         :type/Integer,
                      :database-position 0,
                      :visibility-type   :normal,
@@ -432,7 +432,7 @@
                                     "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
           (is (= #{{:name "trivial_json → a",
-                    :database-type "integer",
+                    :database-type "bigint",
                     :base-type :type/Integer,
                     :database-position 0,
                     :visibility-type :normal,
@@ -455,7 +455,7 @@
                                     "INSERT INTO \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json) VALUES ('{\"a\": 1}');")]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
           (is (= #{{:name "trivial_json → a",
-                    :database-type "integer",
+                    :database-type "bigint",
                     :base-type :type/Integer,
                     :database-position 0,
                     :visibility-type :normal,

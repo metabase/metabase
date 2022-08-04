@@ -1,9 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-
 import cx from "classnames";
-
-import CopyButton from "./CopyButton";
+import { CopyWidgetButton } from "./CopyWidget.styled";
 
 export default class CopyWidget extends Component {
   render() {
@@ -24,17 +22,7 @@ export default class CopyWidget extends Component {
           onChange={onChange}
           {...props}
         />
-        <CopyButton
-          value={value}
-          className="absolute top bottom right Form-input-border p1 flex align-center text-brand bg-brand-hover text-white-hover"
-          style={{
-            borderBottomLeftRadius: 0,
-            borderTopLeftRadius: 0,
-            borderTop: "none",
-            borderRight: "none",
-            borderBottom: "none",
-          }}
-        />
+        <CopyWidgetButton value={value} />
       </div>
     );
   }

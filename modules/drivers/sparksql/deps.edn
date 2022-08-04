@@ -5,7 +5,7 @@
  ;; implementations of things like log4j <-> slf4j, or are part of both hadoop-common and hive-jdbc;
  :deps
  {org.apache.hive/hive-jdbc
-  {:mvn/version "3.1.2"
+  {:mvn/version "3.1.3"
    :exclusions  [aopalliance/aopalliance
                  ch.qos.logback/logback-classic
                  ch.qos.logback/logback-core

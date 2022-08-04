@@ -318,7 +318,7 @@
 
 (deftest validate-description-test
   (testing "Validate setting description with i18n string"
-    (mt/with-mock-i18n-bundles {"zz" {"Test setting - with i18n" "TEST SETTING - WITH I18N"}}
+    (mt/with-mock-i18n-bundles {"zz" {:messages {"Test setting - with i18n" "TEST SETTING - WITH I18N"}}}
       (letfn [(description []
                 (some (fn [{:keys [key description]}]
                         (when (= :test-i18n-setting key)

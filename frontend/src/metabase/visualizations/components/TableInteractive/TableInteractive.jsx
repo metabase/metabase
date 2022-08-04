@@ -38,7 +38,7 @@ import MiniBar from "../MiniBar";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
-import { ExpandButton } from "./TableInteractive.styled";
+import { ExpandButton, ResizeHandle } from "./TableInteractive.styled";
 
 // approximately 120 chars
 const TRUNCATE_WIDTH = 780;
@@ -834,8 +834,7 @@ class TableInteractive extends Component {
               this.setState({ dragColIndex: null });
             }}
           >
-            <div
-              className="bg-brand-hover bg-brand-active"
+            <ResizeHandle
               style={{
                 zIndex: 99,
                 position: "absolute",

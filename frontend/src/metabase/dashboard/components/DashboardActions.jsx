@@ -119,13 +119,15 @@ export const getDashboardActions = (
         tooltip={isNightMode ? t`Daytime mode` : t`Nighttime mode`}
       >
         <span data-metabase-event={"Dashboard;Night Mode;" + !isNightMode}>
-          <DashboardHeaderButton>
-            <NightModeIcon
-              className="text-brand-hover cursor-pointer"
-              isNightMode={isNightMode}
-              onClick={() => onNightModeChange(!isNightMode)}
-            />
-          </DashboardHeaderButton>
+          <DashboardHeaderButton
+            icon={
+              <NightModeIcon
+                className="text-brand-hover cursor-pointer"
+                isNightMode={isNightMode}
+                onClick={() => onNightModeChange(!isNightMode)}
+              />
+            }
+          />
         </span>
       </Tooltip>,
     );
@@ -142,13 +144,14 @@ export const getDashboardActions = (
           data-metabase-event={"Dashboard;Fullscreen Mode;" + !isFullscreen}
         >
           <DashboardHeaderButton
+            icon={
+              <FullscreenIcon
+                className="text-brand-hover"
+                isFullscreen={isFullscreen}
+              />
+            }
             onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
-          >
-            <FullscreenIcon
-              className="text-brand-hover"
-              isFullscreen={isFullscreen}
-            />
-          </DashboardHeaderButton>
+          />
         </span>
       </Tooltip>,
     );

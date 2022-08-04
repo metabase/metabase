@@ -135,7 +135,7 @@ describe("scenarios > dashboard > parameters in text cards", () => {
 
       cy.findByText("Single Date").click();
       popover().within(() => {
-        cy.findByRole("textbox").click().clear().type("07/19/2017");
+        cy.findByRole("textbox").click().clear().type("07/19/2017").blur();
         cy.button("Update filter").click();
       });
 

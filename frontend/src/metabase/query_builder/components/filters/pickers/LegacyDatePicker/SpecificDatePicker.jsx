@@ -10,7 +10,7 @@ import Icon from "metabase/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
 import HoursMinutesInput from "../DatePicker/HoursMinutesInput";
 
-import moment from "moment";
+import moment from "moment-timezone";
 import cx from "classnames";
 import { CalendarIcon, TimeLabel } from "./SpecificDatePicker.styled";
 
