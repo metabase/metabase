@@ -5,6 +5,7 @@
             [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.models :refer [Field Table]]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
@@ -87,16 +88,22 @@
                         :query       [{"$match"
                                        {:$expr
                                         {"$eq"
-                                         [{:$let {:vars {:parts {:$dateToParts {:date "$datetime"}}}
-                                                  :in   {:$dateFromParts {:year "$$parts.year", :month "$$parts.month"}}}}
+                                         [{:$let {:vars {:parts {:$dateToParts {:date "$datetime"
+                                                                                :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}
+                                                  :in   {:$dateFromParts {:year "$$parts.year", :month "$$parts.month"
+                                                                                :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}}
                                           {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}}
-                                      {"$group" {"_id"   {"datetime~~~month" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"}}}
-                                                                                     :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                             :month "$$parts.month"}}}},
-                                                          "datetime~~~day"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"}}}
+                                      {"$group" {"_id"   {"datetime~~~month" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
+                                                                                                                   :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}
                                                                                      :in   {:$dateFromParts {:year  "$$parts.year"
                                                                                                              :month "$$parts.month"
-                                                                                                             :day   "$$parts.day"}}}}}
+                                                                                                             :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}},
+                                                          "datetime~~~day"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
+                                                                                                                   :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}
+                                                                                     :in   {:$dateFromParts {:year  "$$parts.year"
+                                                                                                             :month "$$parts.month"
+                                                                                                             :day   "$$parts.day"
+                                                                                                             :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}}}
                                                  "count" {"$sum" 1}}}
                                       {"$sort" {"_id" 1}}
                                       {"$project" {"_id"              false
@@ -110,6 +117,33 @@
                   (is (schema= {:status   (s/eq :completed)
                                 s/Keyword s/Any}
                                (qp/process-query (mt/native-query query)))))))))))))
+
+(deftest grouping-with-timezone-test
+  (mt/test-driver :mongo
+    (testing "Result timezone is respected when grouping by hour (#11149)"
+      (mt/dataset attempted-murders
+        (testing "Querying in UTC works"
+          (mt/with-system-timezone-id "UTC"
+            (is (= [["2019-11-20T20:00:00Z" 1]
+                    ["2019-11-19T00:00:00Z" 1]
+                    ["2019-11-18T20:00:00Z" 1]
+                    ["2019-11-17T14:00:00Z" 1]]
+                   (mt/rows (mt/run-mbql-query attempts
+                              {:aggregation [[:count]]
+                               :breakout [[:field %datetime {:temporal-unit :hour}]]
+                               :order-by [[:desc [:field %datetime {:temporal-unit :hour}]]]
+                               :limit 4}))))))
+        (testing "Querying in Kathmandu works"
+          (mt/with-system-timezone-id "Asia/Kathmandu"
+            (is (= [["2019-11-21T01:00:00+05:45" 1]
+                    ["2019-11-19T06:00:00+05:45" 1]
+                    ["2019-11-19T02:00:00+05:45" 1]
+                    ["2019-11-17T19:00:00+05:45" 1]]
+                   (mt/rows (mt/run-mbql-query attempts
+                              {:aggregation [[:count]]
+                               :breakout [[:field %datetime {:temporal-unit :hour}]]
+                               :order-by [[:desc [:field %datetime {:temporal-unit :hour}]]]
+                               :limit 4}))))))))))
 
 (deftest nested-columns-test
   (mt/test-driver :mongo
@@ -262,8 +296,10 @@
                    {"_id"
                     {"date~~~day"
                      {:$let
-                      {:vars {:parts {:$dateToParts {:date "$date"}}},
-                       :in   {:$dateFromParts {:year "$$parts.year", :month "$$parts.month", :day "$$parts.day"}}}}}}}
+                      {:vars {:parts {:$dateToParts {:date "$date"
+                                                     :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}},
+                       :in   {:$dateFromParts {:year "$$parts.year", :month "$$parts.month", :day "$$parts.day"
+                                               :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}}}}}
                   {"$sort" {"_id" 1}}
                   {"$project" {"_id" false, "date~~~day" "$_id.date~~~day"}}
                   {"$sort" {"date~~~day" 1}}
