@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import LegendItem from "./LegendItem";
 
 export const AddSeriesIcon = styled(Icon)`
   margin: 0 0.5rem;
@@ -13,5 +14,15 @@ export const AddSeriesIcon = styled(Icon)`
 
   &:hover {
     color: ${color("brand")};
+  }
+`;
+
+export interface LegendHeaderItemProps {
+  isBreakoutSeries: boolean;
+}
+
+export const LegendHeaderItem = styled(LegendItem)<LegendHeaderItemProps>`
+  &:hover {
+    color: ${props => !props.isBreakoutSeries && color("brand")};
   }
 `;

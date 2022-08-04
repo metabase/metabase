@@ -5,9 +5,8 @@ import cx from "classnames";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import Icon, { iconPropTypes } from "metabase/components/Icon";
 import ExplicitSize from "../../components/ExplicitSize";
-import LegendItem from "./LegendItem";
 import styles from "./Legend.css";
-import { AddSeriesIcon } from "./LegendHeader.styled";
+import { AddSeriesIcon, LegendHeaderItem } from "./LegendHeader.styled";
 
 const DEFAULT_COLORS = getAccentColors();
 const MIN_WIDTH_PER_SERIES = 100;
@@ -79,18 +78,18 @@ class LegendHeader extends Component {
         )}
       >
         {series.map((s, index) => [
-          <LegendItem
+          <LegendHeaderItem
             key={index}
             title={titles[index]}
             icon={icon}
             description={description}
             color={colors[index % colors.length]}
-            className={cx({ "text-brand-hover": !isBreakoutSeries })}
             showDot={showDots}
             showTitle={showTitles}
             isMuted={
               hovered && hovered.index != null && index !== hovered.index
             }
+            isBreakoutSeries={isBreakoutSeries}
             onMouseEnter={() => onHoverChange && onHoverChange({ index })}
             onMouseLeave={() => onHoverChange && onHoverChange(null)}
             onClick={
