@@ -7,6 +7,7 @@ import Icon, { iconPropTypes } from "metabase/components/Icon";
 import ExplicitSize from "../../components/ExplicitSize";
 import LegendItem from "./LegendItem";
 import styles from "./Legend.css";
+import { AddSeriesIcon } from "./LegendHeader.styled";
 
 const DEFAULT_COLORS = getAccentColors();
 const MIN_WIDTH_PER_SERIES = 100;
@@ -122,13 +123,7 @@ class LegendHeader extends Component {
           ),
         ])}
         {onAddSeries && (
-          <Icon
-            name="add"
-            className="mx1 flex-no-shrink text-medium text-brand-hover bg-medium rounded cursor-pointer"
-            size={12}
-            style={{ padding: 5 }}
-            onClick={e => onAddSeries(e)}
-          />
+          <AddSeriesIcon name="add" size={12} onClick={e => onAddSeries(e)} />
         )}
         {actionButtons && (
           <span
