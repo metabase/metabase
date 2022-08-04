@@ -118,7 +118,7 @@
                                 s/Keyword s/Any}
                                (qp/process-query (mt/native-query query)))))))))))))
 
-(deftest gruping-with-timezone-test
+(deftest grouping-with-timezone-test
   (mt/test-driver :mongo
     (testing "Result timezone is respected when grouping by hour (#11149)"
       (mt/dataset attempted-murders
