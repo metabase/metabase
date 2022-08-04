@@ -227,6 +227,31 @@
   ([card k v & {:as more}]
    (query-with-source-card card (merge {k v} more))))
 
+(deftest multilevel-nested-questions-with-joins
+  (testing "Multilevel nested questions with joins work (#22859)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset sample-dataset
+        (mt/with-temp* [Card [inner-card
+                              {:dataset_query
+                               (mt/mbql-query reviews
+                                 {:fields [$id]
+                                  :joins [{:source-table $$products
+                                           :alias "P"
+                                           :fields [&P.products.id &P.products.ean]
+                                           :condition [:= $product_id &P.products.id]}]})}]
+                        Card [outer-card
+                              {:dataset_query
+                               (mt/mbql-query orders
+                                 {:fields [$id]
+                                  :joins [{:source-table (str "card__" (:id inner-card))
+                                           :alias "RP"
+                                           :fields [&RP.reviews.id &RP.products.id &RP.products.ean]
+                                           :condition [:= $product_id &RP.products.id]}]})}]]
+          (is (= :completed
+                 (-> (query-with-source-card outer-card :limit 1)
+                     qp/process-query
+                     :status))))))))
+
 (deftest source-card-id-test
   (testing "Make sure we can run queries using source table `card__id` format."
     ;; This is the format that is actually used by the frontend; it gets translated to the normal `source-query`
