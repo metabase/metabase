@@ -97,7 +97,7 @@
   so the logger factory will pick them up."
   (memoize/memo
    (fn [a-namespace]
-     (.getLogger (LogManager/getContext false) (str a-namespace)))))
+     (.getLogger (LogManager/getContext true) (str a-namespace)))))
 
 (defn clear-memoized-ns-loggers!
   "Clear the memoization cache for [[ns-logger]]. This is used when [[metabase.test.util.log/set-ns-log-level!]]
