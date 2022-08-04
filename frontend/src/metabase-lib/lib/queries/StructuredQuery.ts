@@ -789,17 +789,19 @@ class StructuredQueryInner extends AtomicQuery {
    */
   breakoutOptions(includedBreakout?: any, fieldFilter = () => true) {
     // the collection of field MBQL
-    const breakoutMBQL =
+    const breakoutDimensions =
       includedBreakout === true
         ? []
         : this.breakouts()
             .filter(breakout => !_.isEqual(breakout, includedBreakout))
-            .map(breakout => breakout.dimension().mbql());
+            .map(breakout => breakout.dimension());
 
     return this.dimensionOptions(
       dimension =>
         fieldFilter(dimension.field()) &&
-        !breakoutMBQL.some(mbql => _.isEqual(mbql, dimension.mbql())),
+        !breakoutDimensions.some(breakoutDimension =>
+          breakoutDimension.isSameBaseDimension(dimension),
+        ),
     );
   }
 

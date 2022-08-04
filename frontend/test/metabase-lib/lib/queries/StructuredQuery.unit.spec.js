@@ -338,6 +338,17 @@ describe("StructuredQuery", () => {
         expect(query.breakout(ORDERS.PRODUCT_ID).hasValidBreakout()).toBe(true);
       });
     });
+
+    describe("excludes breakout that has the same base dimension as what is already used", () => {
+      const breakout = [
+        "field",
+        ORDERS.CREATED_AT.id,
+        { "temporal-unit": "month" },
+      ];
+      const queryWithBreakout = query.breakout(breakout);
+      expect(queryWithBreakout.breakoutOptions().all().length).toBe(27);
+      expect(queryWithBreakout.breakoutOptions(breakout).all().length).toBe(28);
+    });
   });
 
   // FILTERS:
