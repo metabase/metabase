@@ -5,7 +5,7 @@ import { t } from "ttag";
 import cx from "classnames";
 import Icon from "metabase/components/Icon";
 import Snippets from "metabase/entities/snippets";
-import { SnippetButton } from "./SnippetRow.styled";
+import { SnippetButton, SnippetContainer } from "./SnippetRow.styled";
 
 const ICON_SIZE = 16;
 
@@ -31,8 +31,7 @@ class SnippetRowInner extends React.Component {
           className="cursor-pointer bg-light-hover text-bold flex align-center justify-between py2 px3 hover-parent hover--display"
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
-          <div
-            className="flex text-brand-hover"
+          <SnippetContainer
             onClick={
               snippet.archived
                 ? () => this.setState({ isOpen: true })
@@ -53,7 +52,7 @@ class SnippetRowInner extends React.Component {
               className="hover-child"
             />
             <span className="flex-full ml1">{snippet.name}</span>
-          </div>
+          </SnippetContainer>
           <Icon
             name={isOpen ? "chevronup" : "chevrondown"}
             size={ICON_SIZE}
