@@ -1,4 +1,5 @@
 import Field from "metabase-lib/lib/metadata/Field";
+import { createMockUiParameter } from "metabase/parameters/mock";
 import { hasFieldValues, hasFields } from "./fields";
 
 describe("parameters/utils/fields", () => {
@@ -9,33 +10,41 @@ describe("parameters/utils/fields", () => {
     const fieldWithoutValues = new Field();
 
     it("should be false when the parameter has no fields", () => {
-      expect(hasFieldValues({ fields: [] })).toBe(false);
+      expect(hasFieldValues(createMockUiParameter({ fields: [] }))).toBe(false);
     });
 
     it("should be false when fields on the parameter have no values", () => {
-      expect(hasFieldValues({ fields: [fieldWithoutValues] })).toBe(false);
+      expect(
+        hasFieldValues(createMockUiParameter({ fields: [fieldWithoutValues] })),
+      ).toBe(false);
     });
 
     it("should be true when a field on the parameter has values", () => {
       expect(
-        hasFieldValues({ fields: [fieldWithoutValues, fieldWithValues] }),
+        hasFieldValues(
+          createMockUiParameter({
+            fields: [fieldWithoutValues, fieldWithValues],
+          }),
+        ),
       ).toBe(true);
     });
 
     it("should handle a parameter with no fields", () => {
-      expect(hasFieldValues({})).toBe(false);
+      expect(hasFieldValues(createMockUiParameter())).toBe(false);
     });
   });
 
   describe("hasFields", () => {
     it("should be false when the parameter has no fields", () => {
-      expect(hasFields({ fields: [] })).toBe(false);
-      expect(hasFields({})).toBe(false);
+      expect(hasFields(createMockUiParameter({ fields: [] }))).toBe(false);
+      expect(hasFields(createMockUiParameter())).toBe(false);
     });
 
     it("should be true when a field on the parameter has values", () => {
       const mockField = new Field({ id: 1, name: "foo" });
-      expect(hasFields({ fields: [mockField] })).toBe(true);
+      expect(hasFields(createMockUiParameter({ fields: [mockField] }))).toBe(
+        true,
+      );
     });
   });
 });
