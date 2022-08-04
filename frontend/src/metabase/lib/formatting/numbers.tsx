@@ -158,7 +158,7 @@ export function numberFormatterForOptions(options: FormatNumberOptionsType) {
     maximumFractionDigits: options.maximumFractionDigits,
     minimumSignificantDigits: options.minimumSignificantDigits,
     maximumSignificantDigits: options.maximumSignificantDigits,
-  });
+  }) as any;
 }
 
 function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
@@ -177,7 +177,7 @@ function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
       }
       const { value: currency } = nf
         .formatToParts(value)
-        .find(p => p.type === "currency");
+        .find((p: any) => p.type === "currency");
       return currency + formatNumberCompactWithoutOptions(value);
     } catch (e) {
       // Intl.NumberFormat failed, so we fall back to a non-currency number
@@ -218,7 +218,10 @@ function replaceNumberSeparators(formatted: any, separators: any) {
     ".": decimalSeparator,
   };
 
-  return formatted.replace(/,|\./g, separator => separatorMap[separator]);
+  return formatted.replace(
+    /,|\./g,
+    (separator: "." | ",") => separatorMap[separator],
+  );
 }
 
 function formatNumberScientific(

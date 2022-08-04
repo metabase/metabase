@@ -20,7 +20,6 @@ const TEXT_UNIT_FORMATS = {
 
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
-  year: (value: number) => moment().year(value).startOf("year"),
   "minute-of-hour": (value: number) => moment().minute(value).startOf("minute"),
   "hour-of-day": (value: number) => moment().hour(value).startOf("hour"),
   "day-of-week": (value: number) =>
@@ -42,6 +41,14 @@ const NUMERIC_UNIT_FORMATS = {
       .startOf("month"),
   "quarter-of-year": (value: number) =>
     moment().quarter(value).startOf("quarter"),
+  default: (value: number) => value,
+  hour: (value: number) => value,
+  minute: (value: number) => value,
+  day: (value: number) => value,
+  week: (value: number) => value,
+  month: (value: number) => value,
+  quarter: (value: number) => value,
+  year: (value: number) => moment().year(value).startOf("year"),
 };
 
 // when you define a custom locale, moment automatically makes it the active global locale,
@@ -181,7 +188,7 @@ export function parseTimestamp(
   unit: DatetimeUnit | null = null,
   local: boolean = false,
 ) {
-  let m;
+  let m: any;
   if (moment.isMoment(value)) {
     m = value;
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
@@ -189,7 +196,7 @@ export function parseTimestamp(
   } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
     m = TEXT_UNIT_FORMATS[unit as "day-of-week"](value);
   } else if (unit && unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
-    m = NUMERIC_UNIT_FORMATS[unit as DatetimeUnit](value);
+    m = NUMERIC_UNIT_FORMATS[unit](value);
   } else if (typeof value === "number") {
     m = moment.utc(value, moment.ISO_8601);
   } else {

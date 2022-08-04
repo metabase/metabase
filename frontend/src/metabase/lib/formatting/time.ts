@@ -64,7 +64,7 @@ export function formatTimeWithUnit(
 
   const timeFormat = options.time_format
     ? options.time_format
-    : getTimeFormatFromStyle(timeStyle, unit, timeEnabled);
+    : getTimeFormatFromStyle(timeStyle, unit, timeEnabled as any);
 
   return m.format(timeFormat);
 }
