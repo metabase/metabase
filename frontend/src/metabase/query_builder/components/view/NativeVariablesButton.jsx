@@ -2,12 +2,12 @@
 import React from "react";
 
 import { t } from "ttag";
-import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { VariableIconContainer } from "./NativeVariablesButton.styled";
 
 const NativeVariablesButton = ({
   toggleTemplateTagsEditor,
@@ -16,13 +16,12 @@ const NativeVariablesButton = ({
   size,
 }) => (
   <Tooltip tooltip={t`Variables`}>
-    <a
-      className={cx(className, "transition-color text-brand-hover", {
-        "text-brand": isShowingTemplateTagsEditor,
-      })}
+    <VariableIconContainer
+      className={className}
+      isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
     >
       <Icon name="variable" size={size} onClick={toggleTemplateTagsEditor} />
-    </a>
+    </VariableIconContainer>
   </Tooltip>
 );
 
