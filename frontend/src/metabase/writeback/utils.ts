@@ -57,7 +57,7 @@ const isAutomaticDateTimeField = (field: Field) => {
   return AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type);
 };
 
-export const isEditableField = (field: Field) => {
+const isEditableField = (field: Field) => {
   const isRealField = typeof field.id === "number";
   if (!isRealField) {
     // Filters out custom, aggregated columns, etc.
@@ -78,13 +78,13 @@ export const isEditableField = (field: Field) => {
   return true;
 };
 
-export const isQueryAction = (
+const isQueryAction = (
   action: WritebackAction,
 ): action is WritebackAction & RowAction => {
   return action.type === "query";
 };
 
-export const isHttpAction = (
+const isHttpAction = (
   action: WritebackAction,
 ): action is WritebackAction & HttpAction => {
   return action.type === "http";
@@ -120,7 +120,7 @@ export function getActionParameterType(parameter: Parameter) {
   return type;
 }
 
-export const getQueryActionParameterMappings = (
+const getQueryActionParameterMappings = (
   action: WritebackAction & RowAction,
 ) => {
   const templateTags = Object.values(
