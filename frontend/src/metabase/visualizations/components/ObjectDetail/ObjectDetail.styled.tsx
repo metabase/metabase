@@ -66,11 +66,13 @@ export const GridContainer = styled.div<GridContainerProps>`
 
 export interface GridItemProps {
   colSpan?: number;
+  backgroundColor?: string;
 }
 
 export const GridCell = styled.div<GridItemProps>`
   grid-column: span ${props => props.colSpan || 1} / span
     ${props => props.colSpan || 1};
+  background-color: ${props => props.backgroundColor || "transparent"};
 `;
 
 export const RootModal = styled(Modal)`

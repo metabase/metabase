@@ -10,9 +10,7 @@ const GRADIENT_ALPHA = 0.75;
 
 // for simplicity wheb typing assume all values are numbers, since you can only pick numeric columns
 
-export function makeCellBackgroundGetter(rows, cols, settings) {
-  const formats = settings["table.column_formatting"] || [];
-  const pivot = settings["table.pivot"];
+function makeBackgroundGetter(rows, cols, formats, pivot) {
   let formatters = {};
   let rowFormatters = [];
   const colIndexes = getColumnIndexesByName(cols);
@@ -50,6 +48,17 @@ export function makeCellBackgroundGetter(rows, cols, settings) {
       return null;
     };
   }
+}
+
+export function makeCellBackgroundGetter(rows, cols, settings) {
+  const formats = settings["table.column_formatting"] || [];
+  const pivot = settings["table.pivot"];
+  return makeBackgroundGetter(rows, cols, formats, pivot);
+}
+
+export function makeDetailBackgroundGetter(rows, cols, settings) {
+  const formats = settings["detail.column_formatting"] || [];
+  return makeBackgroundGetter(rows, cols, formats, false);
 }
 
 function getColumnIndexesByName(cols) {

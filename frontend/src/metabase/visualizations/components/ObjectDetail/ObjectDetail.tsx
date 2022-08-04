@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import Question from "metabase-lib/lib/Question";
 import { isPK } from "metabase/lib/schema_metadata";
@@ -8,7 +9,7 @@ import Table from "metabase-lib/lib/metadata/Table";
 
 import { State } from "metabase-types/store";
 import { ForeignKey } from "metabase-types/api";
-import { DatasetData } from "metabase-types/types/Dataset";
+import { Column, DatasetData } from "metabase-types/types/Dataset";
 import { ObjectId, OnVisualizationClickType } from "./types";
 
 import Button from "metabase/core/components/Button";
@@ -16,6 +17,15 @@ import { NotFound } from "metabase/containers/ErrorPages";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePrevious } from "metabase/hooks/use-previous";
 
+import {
+  isMetric,
+  isDimension,
+  isNumber,
+  isURL,
+  isEmail,
+  isImageURL,
+  isAvatarURL,
+} from "metabase/lib/schema_metadata";
 import Tables from "metabase/entities/tables";
 import {
   loadObjectDetailFKReferences,
@@ -37,6 +47,11 @@ import {
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
+
+import { makeDetailBackgroundGetter } from "metabase/visualizations/lib/table_format";
+import ChartSettingsTableFormatting, {
+  isFormattable,
+} from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
 import {
   getObjectName,
@@ -496,6 +511,36 @@ export const ObjectDetailProperties = {
       }),
     },
 
+    "detail.column_formatting": {
+      section: t`Conditional Formatting`,
+      widget: ChartSettingsTableFormatting,
+      default: [],
+      getProps: (series: any) => ({
+        cols: series[0].data.cols.filter(isFormattable),
+        isDetail: true,
+      }),
+
+      getHidden: ([
+        {
+          data: { cols },
+        },
+      ]: any) => cols.filter(isFormattable).length === 0,
+      readDependencies: [],
+    },
+
+    "detail._cell_background_getter": {
+      getValue(
+        [
+          {
+            data: { rows, cols },
+          },
+        ]: any,
+        settings: any,
+      ) {
+        return makeDetailBackgroundGetter(rows, cols, settings);
+      },
+      readDependencies: ["detail.column_formatting"],
+    },
   },
   isSensible: () => true,
 };

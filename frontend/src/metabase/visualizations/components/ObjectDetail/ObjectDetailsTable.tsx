@@ -104,7 +104,7 @@ export function DetailsTableCell({
 export interface DetailsTableProps {
   data: DatasetData;
   zoomedRow: unknown[];
-  settings: unknown;
+  settings: any;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
 }
