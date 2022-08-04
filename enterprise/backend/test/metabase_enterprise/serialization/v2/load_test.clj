@@ -659,10 +659,3 @@
                        :card_id      (:id @card1d)
                        :target       [:dimension [:field (:id @field1d) {:source-field (:id @field2d)}]]}]
                      (:parameter_mappings @dashcard1d))))))))))
-
-
-(comment
-  (doseq [_ (range 100)]
-    (run-test dashboard-card-test)))
-
-
