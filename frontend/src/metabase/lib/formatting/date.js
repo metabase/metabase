@@ -197,6 +197,7 @@ function replaceDateFormatNames(format, options) {
     .replace(/\bMMMM\b/g, getMonthFormat(options))
     .replace(/\bdddd\b/g, getDayFormat(options));
 }
+
 function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
   const m = parseTimestamp(
     value,
