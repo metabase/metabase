@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { Component, useCallback } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 import d3 from "d3";
@@ -168,6 +168,8 @@ export default class Gauge extends Component {
       settings,
       className,
       isSettings,
+      onHoverChange,
+      onVisualizationClick,
     } = this.props;
 
     const width = this.props.width;
@@ -268,7 +270,8 @@ export default class Gauge extends Component {
                   segment={segment}
                   column={column}
                   settings={settings}
-                  onHoverChange={!showLabels ? this.props.onHoverChange : null}
+                  onClick={onVisualizationClick}
+                  onHoverChange={!showLabels ? onHoverChange : null}
                   testId={"gauge-arc-" + index}
                 />
               ))}
@@ -345,6 +348,34 @@ const GaugeArc = ({
     .arc()
     .outerRadius(OUTER_RADIUS)
     .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
+
+  const handleMouseMove = useCallback(
+    e => {
+      if (onHoverChange) {
+        const options =
+          settings && settings.column && column ? settings.column(column) : {};
+        onHoverChange({
+          data: [
+            {
+              key: segment.label,
+              value: [segment.min, segment.max]
+                .map(n => formatValue(n, options))
+                .join(" - "),
+            },
+          ],
+          event: e.nativeEvent,
+        });
+      }
+    },
+    [column, segment, settings, onHoverChange],
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    if (onHoverChange) {
+      onHoverChange(null);
+    }
+  }, [onHoverChange]);
+
   return (
     <path
       d={arc({
@@ -353,30 +384,8 @@ const GaugeArc = ({
       })}
       fill={fill}
       data-testid={testId}
-      onMouseMove={e => {
-        if (onHoverChange) {
-          const options =
-            settings && settings.column && column
-              ? settings.column(column)
-              : {};
-          onHoverChange({
-            data: [
-              {
-                key: segment.label,
-                value: [segment.min, segment.max]
-                  .map(n => formatValue(n, options))
-                  .join(" - "),
-              },
-            ],
-            event: e.nativeEvent,
-          });
-        }
-      }}
-      onMouseLeave={() => {
-        if (onHoverChange) {
-          onHoverChange(null);
-        }
-      }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
     />
   );
 };
