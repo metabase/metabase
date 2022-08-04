@@ -25,12 +25,10 @@ import {
   formatColumn,
   numberFormatterForOptions,
   getCurrencySymbol,
-} from "metabase/lib/formatting";
-import {
   getDateFormatFromStyle,
   hasDay,
   hasHour,
-} from "metabase/lib/formatting/date";
+} from "metabase/lib/formatting";
 
 import { currency } from "cljs/metabase.shared.util.currency";
 
