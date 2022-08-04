@@ -94,7 +94,7 @@ The problem is that if the keys in the JSON vary record to record, the first fiv
 
 ## Model caching
 
-We'll create tables with model data and refresh them on a schedule you define. To enable it, you need to grant this connection's credentials read and write permissions for the schema displayed in the info tooltip, or grant create schema permissions.
+Metabase can create tables with model data in your database and refresh them on a schedule you define. Metabase's connection's credentials to that database must be able to read and write to the schema displayed in the info tooltip.
 
 See [Models](../../users-guide/models.md).
 
