@@ -84,6 +84,11 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
         this._refreshMode = nextMode;
       };
 
+      _updateSizeAndRefreshMode = () => {
+        this._updateRefreshMode();
+        this._updateSize();
+      };
+
       // ResizeObserver, ensure re-layout when container element changes size
       _initResizeObserver() {
         this._currentElement = this._getElement();
@@ -107,13 +112,13 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
       _initMediaQueryListener() {
         this._printMediaQuery?.addEventListener(
           "change",
-          this._updateRefreshMode,
+          this._updateSizeAndRefreshMode,
         );
       }
       _teardownQueryMediaListener() {
         this._printMediaQuery?.removeEventListener(
           "change",
-          this._updateRefreshMode,
+          this._updateSizeAndRefreshMode,
         );
       }
 
