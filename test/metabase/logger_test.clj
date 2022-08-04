@@ -3,7 +3,8 @@
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
             [clojure.tools.logging.impl :as log.impl]
-            [metabase.logger :as mb.logger]))
+            [metabase.logger :as mb.logger]
+            [metabase.test :as mt]))
 
 (deftest added-appender-tests
   (testing "appender is added to the logger"
@@ -11,8 +12,9 @@
       (is (contains? (.getAppenders logger) "metabase-appender")
           "Logger does not contain `metabase-appender` logger")))
   (testing "logging adds to in-memory ringbuffer"
-    (log/warn "testing in-memory logger")
-    (is (pos? (count (mb.logger/messages))))))
+    (mt/with-log-level :warn
+      (log/warn "testing in-memory logger")
+      (is (pos? (count (mb.logger/messages)))))))
 
 (deftest memoized-logger-test
   (testing "Installed custom logger"

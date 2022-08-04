@@ -20,7 +20,7 @@
 
 (deftest logs-test
   (testing "Call includes recent logs (#24616)"
-    (mt/with-log-messages-for-level :warn
+    (mt/with-log-level :warn
       (let [message "Sample warning message for test"]
         (log/warn message)
         (let [logs (mt/user-http-request :crowberto :get 200 "util/logs")]
