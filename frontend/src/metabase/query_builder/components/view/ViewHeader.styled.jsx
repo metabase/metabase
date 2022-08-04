@@ -10,6 +10,7 @@ import { color, alpha } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
 import QuestionDataSource from "./QuestionDataSource";
+import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
 export const ViewHeaderContainer = styled(ViewSection)`
   border-bottom: 1px solid ${color("border")};
@@ -210,5 +211,13 @@ export const ViewHeaderIconButtonContainer = styled.div`
       color: ${color("brand")};
       background-color: ${color("bg-medium")};
     }
+  }
+`;
+
+export const ViewHeaderRunButton = styled(RunButtonWithTooltip)`
+  color: ${color("text-dark")};
+
+  &:hover {
+    color: ${props => (props.isDirty ? color("white") : color("brand"))};
   }
 `;

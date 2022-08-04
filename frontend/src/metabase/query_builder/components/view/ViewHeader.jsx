@@ -1,7 +1,6 @@
 import React, { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import cx from "classnames";
 
 import * as Urls from "metabase/lib/urls";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
@@ -17,8 +16,6 @@ import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
-
-import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
@@ -46,6 +43,7 @@ import {
   HeaderDivider,
   ViewHeaderActionPanel,
   ViewHeaderIconButtonContainer,
+  ViewHeaderRunButton,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -471,10 +469,7 @@ function ViewTitleHeaderRightSide(props) {
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
         <ViewHeaderIconButtonContainer>
-          <RunButtonWithTooltip
-            className={cx("text-brand-hover text-dark", {
-              "text-white-hover": isResultDirty,
-            })}
+          <ViewHeaderRunButton
             iconSize={16}
             onlyIcon
             medium
