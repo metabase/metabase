@@ -10,6 +10,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import { LimitPopoverTrigger } from "./QuestionRowCount.styled";
 
 const QuestionRowCount = ({
   question,
@@ -60,9 +61,7 @@ const QuestionRowCount = ({
     const limit = query.limit();
     content = (
       <PopoverWithTrigger
-        triggerElement={
-          <span className="text-brand-hover text-bold">{message}</span>
-        }
+        triggerElement={<LimitPopoverTrigger>{message}</LimitPopoverTrigger>}
         triggerClasses={limit != null ? "text-brand" : ""}
       >
         {({ onClose }) => (
