@@ -64,10 +64,6 @@ export const DashboardBody = styled.div`
   ${breakpointMaxSmall} {
     overflow-y: auto;
     flex-wrap: wrap;
-
-    ${ParametersAndCardsContainer} {
-      order: 1;
-    }
   }
 `;
 
@@ -95,6 +91,10 @@ export const ParametersAndCardsContainer = styled.div`
   flex: auto;
   overflow-x: hidden;
   padding-bottom: 40px;
+
+  ${breakpointMaxSmall} {
+    order: 1;
+  }
 `;
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)`

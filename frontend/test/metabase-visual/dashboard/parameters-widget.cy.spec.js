@@ -103,6 +103,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         cy.icon("pencil").click();
 
         cy.findByTestId("dashboard-parameters-and-cards")
+          .parent()
           .scrollTo(0, 464)
           .then(() => {
             cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
@@ -201,6 +202,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         cy.icon("pencil").click();
 
         cy.findByTestId("dashboard-parameters-and-cards")
+          .parent()
           .scrollTo(0, 464)
           .then(() => {
             cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
