@@ -38,7 +38,7 @@ Save the downloaded certificate in the same directory where you keep your metaba
 
 You'll need to complete [Step 3: Add your database](#step-3-add-your-database) first.
 
-Once you've done that, you can go to **Admin** > **Databases** and select your database. Find the section named **SSL Client Certificate** and click **Select a file** to save your downloaded certificate.
+Once you've done that, you can go to **Admin** > **Databases** and select your database. Find the section named **SSL Client Certificate** and click **Select a file** to upload your downloaded certificate.
 
 ### Step 3: Add your database
 
