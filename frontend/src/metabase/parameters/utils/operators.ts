@@ -1,4 +1,5 @@
-import { getParameterType, getParameterSubType } from "./parameter-type";
+import { UiParameter } from "metabase/parameters/types";
+
 import {
   doesOperatorExist,
   getOperatorByTypeAndName,
@@ -6,9 +7,16 @@ import {
   STRING,
   PRIMARY_KEY,
 } from "metabase/lib/schema_metadata";
+import { getParameterType, getParameterSubType } from "./parameter-type";
 import { PARAMETER_OPERATOR_TYPES } from "../constants";
 
-export function getOperatorDisplayName(option, operatorType, sectionName) {
+type OperatorType = "date" | "number" | "string";
+
+export function getOperatorDisplayName(
+  option: { type: string; name: string; operator: string },
+  operatorType: OperatorType,
+  sectionName?: string,
+) {
   if (operatorType === "date" || operatorType === "number") {
     return option.name;
   } else if (operatorType === "string" && option.operator === "=") {
@@ -18,11 +26,11 @@ export function getOperatorDisplayName(option, operatorType, sectionName) {
   }
 }
 
-export function getParameterOperatorName(maybeOperatorName) {
+export function getParameterOperatorName(maybeOperatorName?: string) {
   return doesOperatorExist(maybeOperatorName) ? maybeOperatorName : "=";
 }
 
-export function deriveFieldOperatorFromParameter(parameter) {
+export function deriveFieldOperatorFromParameter(parameter: UiParameter) {
   const type = getParameterType(parameter);
   const subtype = getParameterSubType(parameter);
   const operatorType = getParameterOperatorType(type);
@@ -31,7 +39,7 @@ export function deriveFieldOperatorFromParameter(parameter) {
   return getOperatorByTypeAndName(operatorType, operatorName);
 }
 
-function getParameterOperatorType(parameterType) {
+function getParameterOperatorType(parameterType?: string) {
   switch (parameterType) {
     case "number":
       return NUMBER;
@@ -48,9 +56,9 @@ function getParameterOperatorType(parameterType) {
 }
 
 export function buildTypedOperatorOptions(
-  operatorType,
-  sectionId,
-  sectionName,
+  operatorType: OperatorType,
+  sectionId: string,
+  sectionName: string,
 ) {
   return PARAMETER_OPERATOR_TYPES[operatorType].map(operatorOption => {
     return {
@@ -65,7 +73,7 @@ export function buildTypedOperatorOptions(
   });
 }
 
-export function getNumberParameterArity(parameter) {
+export function getNumberParameterArity(parameter: UiParameter) {
   switch (parameter.type) {
     case "number/=":
     case "number/!=":
@@ -77,7 +85,7 @@ export function getNumberParameterArity(parameter) {
   }
 }
 
-export function getStringParameterArity(parameter) {
+export function getStringParameterArity(parameter: UiParameter) {
   switch (parameter.type) {
     case "string/=":
     case "string/!=":
