@@ -2,10 +2,9 @@
 import React from "react";
 
 import { t } from "ttag";
-import cx from "classnames";
 
 import Tooltip from "metabase/components/Tooltip";
-import Button from "metabase/core/components/Button";
+import { NotebookButton } from "./QuestionNotebookButton.styled";
 
 export default function QuestionNotebookButton({
   className,
@@ -19,13 +18,11 @@ export default function QuestionNotebookButton({
       tooltip={isShowingNotebook ? t`Hide editor` : t`Show editor`}
       placement="bottom"
     >
-      <Button
+      <NotebookButton
         borderless={!isShowingNotebook}
         primary={isShowingNotebook}
         medium
-        className={cx(className, isShowingNotebook ? undefined : "text-dark", {
-          "text-brand-hover": !isShowingNotebook,
-        })}
+        className={className}
         icon="notebook"
         onClick={() =>
           setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
