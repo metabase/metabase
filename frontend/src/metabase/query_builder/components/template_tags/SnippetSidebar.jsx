@@ -24,6 +24,7 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import Search from "metabase/entities/search";
+import { HideSearchIcon } from "./SnippetSidebar.styled";
 
 const ICON_SIZE = 16;
 const HEADER_ICON_SIZE = 18;
@@ -233,14 +234,11 @@ class SnippetSidebar extends React.Component {
                     )}
                   />
                 )}
-                <Icon
-                  className={cx(
-                    { hide: !showSearch },
-                    "p1 text-brand-hover cursor-pointer",
-                  )}
-                  onClick={this.hideSearch}
+                <HideSearchIcon
                   name="close"
                   size={HEADER_ICON_SIZE}
+                  isVisible={showSearch}
+                  onClick={this.hideSearch}
                 />
               </div>
             </div>
