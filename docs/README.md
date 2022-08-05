@@ -55,11 +55,11 @@ title: Metabase documentation
 
 ## Dashboards
 
-- [Creating dashboards](./users-guide/07-dashboards.md)
-- [Dashboard filters](./users-guide/08-dashboard-filters.md)
-- [Interactive dashboards](./users-guide/interactive-dashboards.md)
-- [Dashboard charts with multiple series](./users-guide/09-multi-series-charting.md)
-- [Setting up dashboard subscriptions](./users-guide/dashboard-subscriptions.md)
+- [Creating dashboards](./dashboards/introduction.md)
+- [Dashboard filters](./dashboards/filters.md)
+- [Interactive dashboards](./dashboards/interactive.md)
+- [Dashboard charts with multiple series](./dashboards/multiple-series.md)
+- [Setting up dashboard subscriptions](./dashboards/subscriptions.md)
 
 ## Models
 

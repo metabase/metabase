@@ -14,7 +14,7 @@ An important distinction to keep in mind is the difference between Metabase and 
 
 ### Parameters
 
-Some dashboards and questions have the ability to accept [parameters](../users-guide/13-sql-parameters). In dashboards, these are synonymous with [dashboard filters](../users-guide/08-dashboard-filters). For example, if you have a dashboard with a filter on `Publisher ID`, this can be specified as a parameter when embedding, so that you could insert the dashboard filtered down to a specific `Publisher ID`.
+Some dashboards and questions have the ability to accept [parameters](../users-guide/13-sql-parameters). In dashboards, these are synonymous with [dashboard filters](../dashboards/filters.md). For example, if you have a dashboard with a filter on `Publisher ID`, this can be specified as a parameter when embedding, so that you could insert the dashboard filtered down to a specific `Publisher ID`.
 
 SQL-based questions with template variables can also accept parameters for each variable. So for a query like:
 
