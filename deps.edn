@@ -190,6 +190,9 @@
                  "-Dfile.encoding=UTF-8"
                  "-Duser.language=en"
                  "-Duser.country=US"
+                 ;; set the logging properties set in metabase.bootstrap. calling (dev) will load it but putting here to be sure
+                 "-Dlog4j2.contextSelector=org.apache.logging.log4j.core.selector.BasicContextSelector"
+                 "-Dclojure.tools.logging.factory=clojure.tools.logging.impl/log4j2-factory"
                  ;; If Clojure fails to start (e.g. because of a compilation error somewhere) print the error
                  ;; report/stacktrace to stderr rather than to a random EDN file in /tmp/
                  "-Dclojure.main.report=stderr"
