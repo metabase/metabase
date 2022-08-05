@@ -26,7 +26,6 @@ export type Column = {
   expression_name?: any;
   settings?: ColumnSettings;
   field_ref?: Field;
-  remapped_to_column?: Column;
 };
 
 export type Value =
