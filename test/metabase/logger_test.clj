@@ -12,8 +12,13 @@
           "Logger does not contain `metabase-appender` logger")))
   (testing "logging adds to in-memory ringbuffer"
     (mt/with-log-level :warn
-      (log/warn "testing in-memory logger")
-      (is (pos? (count (mb.logger/messages)))))))
+      (let [before (count (mb.logger/messages))]
+        (log/warn "testing in-memory logger")
+        (let [after (count (mb.logger/messages))]
+          ;; it either increases (could have many logs from other tests) or it is the max capacity of the ring buffer
+          (is (or (> after before)
+                  (= before (var-get #'mb.logger/max-log-entries)))
+              "In memory ring buffer did not receive log message"))))))
 
 (deftest memoized-logger-test
   (testing "Using log4j2 logger"
