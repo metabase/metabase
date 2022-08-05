@@ -1,7 +1,7 @@
 (ns metabase.logger
-  "Configures the logger system for Metabase. Should be required at least once. Sets up an in-memory logger in a ring
-  buffer for showing in the UI. Other logging options are set in [[metabase.bootstrap]]: the context locator for
-  log4j2 and ensuring log4j2 is the logger that clojure.tools.logging uses."
+  "Configures the logger system for Metabase. Sets up an in-memory logger in a ring buffer for showing in the UI. Other
+  logging options are set in [[metabase.bootstrap]]: the context locator for log4j2 and ensuring log4j2 is the logger
+  that clojure.tools.logging uses."
   (:require [amalloy.ring-buffer :refer [ring-buffer]]
             [clj-time.coerce :as time.coerce]
             [clj-time.format :as time.format]
