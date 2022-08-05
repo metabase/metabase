@@ -346,8 +346,25 @@ describe("StructuredQuery", () => {
         { "temporal-unit": "month" },
       ];
       const queryWithBreakout = query.breakout(breakout);
-      expect(queryWithBreakout.breakoutOptions().all().length).toBe(27);
-      expect(queryWithBreakout.breakoutOptions(breakout).all().length).toBe(28);
+      const createdAtBreakoutDimension = queryWithBreakout
+        .breakouts()
+        .map(breakout => breakout.dimension());
+
+      //Ensure dimension added is not present in breakout options
+      expect(queryWithBreakout.breakoutOptions().all()).toEqual(
+        expect.not.arrayContaining(createdAtBreakoutDimension),
+      );
+      expect(
+        queryWithBreakout
+          .breakoutOptions()
+          .all()
+          .some(dimension => dimension.field().id === ORDERS.CREATED_AT.id),
+      ).toBe(false);
+
+      //Ensure that only 1 breakout option was removed after adding our breakout
+      expect(queryWithBreakout.breakoutOptions().all().length).toBe(
+        query.breakoutOptions().all().length - 1,
+      );
     });
   });
 
