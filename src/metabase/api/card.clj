@@ -151,7 +151,8 @@
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id ignore_view]
-  (let [card (-> (Card id)
+  (let [raw-card (Card id)
+        card (-> raw-card
                  (hydrate :creator
                           :bookmarked
                           :dashboard_count
@@ -159,10 +160,13 @@
                           :average_query_time
                           :last_query_start
                           :collection [:moderation_reviews :moderator_details])
-                 (cond-> api/*is-superuser?* (hydrate [:emitters [:action :card]]))
+                 (cond-> ;; card
+                   api/*is-superuser?* (hydrate [:emitters [:action :card]])
+                   (:dataset raw-card) (hydrate :persisted)
+                   (:is_write raw-card) (hydrate :card/emitter-usages))
                  api/read-check
                  (last-edit/with-last-edit-info :card))]
-    (u/prog1 (cond-> card (:dataset card) (hydrate :persisted))
+    (u/prog1 card
       (when-not (Boolean/parseBoolean ignore_view)
         (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))))
 
@@ -590,7 +594,9 @@ saved later when it is ready."
                  :average_query_time
                  :last_query_start
                  :collection [:moderation_reviews :moderator_details])
-        (cond-> (:dataset card) (hydrate :persisted))
+        (cond-> ;; card
+          (:dataset card) (hydrate :persisted)
+          (:is_write card) (hydrate :card/emitter-usages))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 (api/defendpoint PUT "/:id"
