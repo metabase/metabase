@@ -1,4 +1,4 @@
-import type { DatetimeUnit } from "metabase-types/types/Query";
+import type { DatetimeUnit } from "metabase-types/api/query";
 
 export const DEFAULT_TIME_STYLE = "h:mm A";
 export const DEFAULT_DATE_STYLE = "MMMM D, YYYY";
