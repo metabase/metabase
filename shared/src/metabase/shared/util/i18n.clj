@@ -35,6 +35,9 @@
     `(js-i18n ~format-string ~@args)))
 
 (defmacro trsn
+  "i18n a string with both singular and plural forms, using the site's locale. The appropriate plural form will be
+  returned based on the value of `n`. `n` can be interpolated into the format strings using the `{0}` syntax. (Other
+  placeholders are not supported). "
   [format-string format-string-pl n]
   (macros/case
     :clj
