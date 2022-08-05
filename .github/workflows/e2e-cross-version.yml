@@ -14,6 +14,9 @@ jobs:
           { source: v0.42.0, target: v0.43.4 }
         ]
       fail-fast: false
+    env:
+      CROSS_VERSION_SOURCE: ${{ matrix.version.source }}
+      CROSS_VERSION_TARGET: ${{ matrix.version.target }}
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -23,14 +26,14 @@ jobs:
       run: docker run -d -v $PWD/my-metabase:/metabase.db -p 3000:3000 --name metabase-${{ matrix.version.source }} metabase/metabase:${{ matrix.version.source }}
     - name: Wait for Metabase to start on port 3000
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-    - name: Prepare cypress environment
+    - name: Prepare Cypress environment
       uses: ./.github/actions/prepare-cypress
     - name: Run Cypress on the source
       run: |
         yarn cypress run \
           --browser chrome \
           --config-file frontend/test/metabase/scenarios/cross-version/source/cypress.json \
-          --spec frontend/test/metabase/scenarios/cross-version/source/${{ matrix.version.source }}/**/*.cy.spec.js
+          --spec frontend/test/metabase/scenarios/cross-version/source/**/*.cy.spec.js
     - name: Stop Metabase ${{ matrix.version.source }}
       run: docker stop metabase-${{ matrix.version.source }}
 
@@ -43,4 +46,4 @@ jobs:
         yarn cypress run \
           --browser chrome \
           --config-file frontend/test/metabase/scenarios/cross-version/target/cypress.json \
-          --spec frontend/test/metabase/scenarios/cross-version/target/${{ matrix.version.target }}/**/*.cy.spec.js
+          --spec frontend/test/metabase/scenarios/cross-version/target/**/*.cy.spec.js
