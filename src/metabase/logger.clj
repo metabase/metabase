@@ -14,8 +14,6 @@
   (:require [amalloy.ring-buffer :refer [ring-buffer]]
             [clj-time.coerce :as time.coerce]
             [clj-time.format :as time.format]
-            [clojure.tools.logging :as log]
-            [clojure.tools.logging.impl :as log.impl]
             [metabase.config :as config])
   (:import org.apache.commons.lang3.exception.ExceptionUtils
            [org.apache.logging.log4j.core Appender LogEvent LoggerContext]

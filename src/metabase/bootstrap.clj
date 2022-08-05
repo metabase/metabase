@@ -10,5 +10,7 @@
 ;; ensure the [[clojure.tools.logging]] logger factory is the log4j2 version (slf4j is far slower and identified first)
 (System/setProperty "clojure.tools.logging.factory" "clojure.tools.logging.impl/log4j2-factory")
 
-(defn -main [& args]
+(defn -main
+  "Main entrypoint. Invokes [[metabase.core/-main]]"
+  [& args]
   ((requiring-resolve 'metabase.core/-main) args))
