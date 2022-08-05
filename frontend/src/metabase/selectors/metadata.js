@@ -41,6 +41,7 @@ export const getNormalizedFields = createSelector(
 );
 export const getNormalizedMetrics = state => state.entities.metrics;
 export const getNormalizedSegments = state => state.entities.segments;
+export const getNormalizedCards = state => state.entities.questions;
 
 // TODO: these should be denomalized but non-cylical, and only to the same "depth" previous "tableMetadata" was, e.x.
 //
@@ -89,8 +90,9 @@ export const getMetadata = createSelector(
     getNormalizedFields,
     getNormalizedSegments,
     getNormalizedMetrics,
+    getNormalizedCards,
   ],
-  (databases, schemas, tables, fields, segments, metrics) => {
+  (databases, schemas, tables, fields, segments, metrics, cards) => {
     const meta = new Metadata();
     meta.databases = copyObjects(meta, databases, instantiateDatabase);
     meta.schemas = copyObjects(meta, schemas, instantiateSchema);
@@ -98,6 +100,7 @@ export const getMetadata = createSelector(
     meta.fields = copyObjects(meta, fields, instantiateField);
     meta.segments = copyObjects(meta, segments, instantiateSegment);
     meta.metrics = copyObjects(meta, metrics, instantiateMetric);
+    meta.cards = copyObjects(meta, cards, _.identity);
 
     // database
     hydrate(meta.databases, "tables", database => {
