@@ -63,29 +63,10 @@
            (formatted-value :date/single end locale))
       "")))
 
-; (defn- time-intervals-2
-;   [interval plural?]
-;   (get
-;    {["minutes" false]  (trs "Minute")
-;     ["minutes" true]   (trs "Minutes")
-;     ["hours" false]    (trs "Hour")
-;     ["hours" true]     (trs "Hours")
-;     ["days" false]     (trs "Day")
-;     ["days" true]      (trs "Days")
-;     ["weeks" false]    (trs "Week")
-;     ["weeks" true]     (trs "Weeks")
-;     ["months" false]   (trs "Month")
-;     ["months" true]    (trs "Months")
-;     ["quarters" false] (trs "Quarter")
-;     ["quarters" true]  (trs "Quarters")
-;     ["years" false]    (trs "Year")
-;     ["years" true]     (trs "Years")}
-;    [interval plural?]))
-
 (defn- translated-interval
   [interval n]
   (get
-   {"minutes"  (trsn "Minute{0}" "Minutes" n)
+   {"minutes"  (trsn "Minute" "Minutes" n)
     "hours"    (trsn "Hour" "Hours" n)
     "days"     (trsn "Day" "Days" n)
     "weeks"    (trsn "Week" "Weeks" n)
@@ -93,6 +74,16 @@
     "quarters" (trsn "Quarter" "Quarters" n)
     "years"    (trsn "Year" "Years" n)}
    interval))
+
+(defn- format-relative-date
+  [prefix n interval]
+  (let [n        #?(:clj (Integer. n) :cljs (js/parseInt n))
+        interval (translated-interval interval n)]
+    (case [prefix (= n 1)]
+      ["past" true]  (trs "Previous {0}" interval)
+      ["past" false] (trs "Previous {0} {1}" n interval)
+      ["next" true]  (trs "Next {0}" interval)
+      ["next" false] (trs "Next {0} {1}" n interval))))
 
 (defmethod formatted-value :date/relative
   [_ value _]
@@ -105,12 +96,7 @@
     #"^thisyear$"                          (trs "This Year")
     #"^past1days$"                         (trs "Yesterday")
     #"^next1days$"                         (trs "Tomorrow")
-    #"^(past|next)([0-9]+)([a-z]+)~?$" :>> (fn [[prefix n interval]]
-                                             (let [n        #?(:clj (Integer. n) :cljs(js/parseInt n))
-                                                   interval (translated-interval interval n)]
-                                                 (case prefix
-                                                   "past" (trs "Previous {0} {1}" n interval)
-                                                   "next" (trs "Next {0} {1}" n interval))))))
+    #"^(past|next)([0-9]+)([a-z]+)~?$" :>> (fn [matches] (apply format-relative-date matches))))
 
 (defmethod formatted-value :date/all-options
   [_ value locale]
