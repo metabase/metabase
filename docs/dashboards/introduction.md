@@ -62,7 +62,7 @@ To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.c
 
 ### Including variables in text cards
 
-You can include a variable in a text card, then wire that variable up to a dashboard filter. All you need to do to create a variable is to wrap a word in double braces, `{{` and `}}` (the variable can't contain any spaces). For example, you could add a text card with the following text:
+You can include a variable in a text card, then wire that variable up to a dashboard filter. All you need to do to create a variable is to wrap a word in double braces,% `{% raw %}{{{% endraw %}` and `{% raw %}}}{%endraw%}` (the variable can't contain any spaces). For example, you could add a text card with the following text:
 
 ```
 {% raw %}
@@ -82,7 +82,7 @@ You can also make text options by wrapping the text in double brackets, `[[` and
 
 In this case, the phrase `{% raw %}from {{state}}{%endraw%}` would only display if someone selected a value (or values) in the filter widget.
 
-To see how to wire up a filter to a card, see [dashboard filters](./filters.md)
+To see how to wire up a filter to a card, see [dashboard filters](./filters.md).
 
 ## Arranging cards
 
@@ -154,9 +154,17 @@ Public links can be viewed by anyone, even if they don't have access to Metabase
 
 You can amend the URL of a dashboard to automatically enter fullscreen, enable night mode, or auto-refresh the dashboard. Customizing the dashboard's URL allows you to configure the dashboard - even when you do not have any input access to the device where the dashboard will be displayed, like scripted screens, for example.
 
-To configure a dashboard using its URL, you can add the following optional keywords: `fullscreen`, `night`, or `refresh`. Here's an example:
+To configure a dashboard using its URL, you can add the following optional keywords:
 
-`https://metabase.mydomain.com/dash/2#refresh=60&fullscreen&night`
+- `fullscreen`
+- `night`
+- `refresh`
+
+Here's an example URL:
+
+```
+https://metabase.mydomain.com/dash/2#refresh=60&fullscreen&night
+```
 
 The part that says `refresh=60` sets the dashboard to automatically refresh every 60 seconds, `fullscreen` sets it to fullscreen mode, and `night` sets it to night mode (night mode only works when using fullscreen). Use an ampersand, `&`, in between keywords, and make sure there's a hash, `#`, after the dashboard's ID number.
 
