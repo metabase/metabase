@@ -66,6 +66,3 @@
       (doseq [[_ ^LoggerConfig logger-config] (.getLoggers config)]
         (.addAppender logger-config appender level filter))
       (.updateLoggers ctx))))
-
-;; ensure the [[clojure.tools.logging]] logger factory is the log4j2 version (slf4j is far slower and identified first)
-(alter-var-root #'log/*logger-factory* (constantly (log.impl/log4j2-factory)))
