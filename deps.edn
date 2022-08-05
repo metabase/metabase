@@ -116,7 +116,7 @@
   org.graalvm.js/js                         {:mvn/version "22.0.0.2"}           ; JavaScript engine
   org.liquibase/liquibase-core              {:mvn/version "4.10.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
-  org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.5"}              ; MySQL/MariaDB driver
+  org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.6"}              ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
   org.postgresql/postgresql                 {:mvn/version "42.3.5"}             ; Postgres driver
   org.quartz-scheduler/quartz               {:mvn/version "2.3.2"}              ; Quartz job scheduler, provided by quartzite but this is a newer version.
