@@ -25,14 +25,24 @@ jobs:
       run: |
         echo "MB_PREMIUM_EMBEDDING_TOKEN=${{ secrets.ENTERPRISE_TOKEN }}" >> $GITHUB_ENV
       if: startsWith(matrix.version.source, 'v1') || startsWith(matrix.version.target, 'v1')
+    - name: Set source Docker image to OSS
+      run: |
+        echo "DOCKER_SOURCE_IMAGE=metabase/metabase:${{ matrix.version.source }}" >> $GITHUB_ENV
+      if: startsWith(matrix.version.source, 'v0')
+    - name: Set source Docker image to EE
+      run: |
+        echo "DOCKER_SOURCE_IMAGE=metabase/metabase-enterprise:${{ matrix.version.source }}" >> $GITHUB_ENV
+      if: startsWith(matrix.version.source, 'v1')
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
-    - name: Start Metabase OSS ${{ matrix.version.source }}
-      run: docker run -d -v $PWD/my-metabase:/metabase.db -p 3000:3000 --name metabase-${{ matrix.version.source }} metabase/metabase:${{ matrix.version.source }}
-      if: startsWith(matrix.version.source, 'v0')
-    - name: Start Metabase EE ${{ matrix.version.source }}
-      run: docker run -d -v $PWD/my-metabase:/metabase.db -p 3000:3000 --name metabase-${{ matrix.version.source }} metabase/metabase-enterprise:${{ matrix.version.source }}
-      if: startsWith(matrix.version.source, 'v1')
+    - name: Start Metabase ${{ matrix.version.source }}
+      run: |
+        docker run -d \
+        -v $PWD/my-metabase:/metabase.db \
+        -p 3000:3000 \
+        -e MB_PREMIUM_EMBEDDING_TOKEN \
+        --name metabase-${{ matrix.version.source }} \
+        ${{ env.DOCKER_SOURCE_IMAGE }}
     - name: Wait for Metabase to start on port 3000
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
     - name: Prepare Cypress environment
@@ -46,12 +56,22 @@ jobs:
     - name: Stop Metabase ${{ matrix.version.source }}
       run: docker stop metabase-${{ matrix.version.source }}
 
-    - name: Start Metabase OSS ${{ matrix.version.target }}
-      run: docker run -d -v $PWD/my-metabase:/metabase.db -p 3001:3000 --name metabase-${{ matrix.version.target }} metabase/metabase:${{ matrix.version.target }}
-      if: startsWith(matrix.version.target, 'v0')
-    - name: Start Metabase EE ${{ matrix.version.target }}
-      run: docker run -d -v $PWD/my-metabase:/metabase.db -p 3001:3000 --name metabase-${{ matrix.version.target }} metabase/metabase-enterprise:${{ matrix.version.target }}
-      if: startsWith(matrix.version.target, 'v1')
+    - name: Set target Docker image to OSS
+      run: |
+        echo "DOCKER_TARGET_IMAGE=metabase/metabase:${{ matrix.version.source }}" >> $GITHUB_ENV
+      if: startsWith(matrix.version.source, 'v0')
+    - name: Set target Docker image to EE
+      run: |
+        echo "DOCKER_TARGET_IMAGE=metabase/metabase-enterprise:${{ matrix.version.source }}" >> $GITHUB_ENV
+      if: startsWith(matrix.version.source, 'v1')
+    - name: Start Metabase ${{ matrix.version.target }}
+      run: |
+        docker run -d \
+          -v $PWD/my-metabase:/metabase.db \
+          -p 3001:3000 \
+          -e MB_PREMIUM_EMBEDDING_TOKEN \
+          --name metabase-${{ matrix.version.target }} \
+          ${{ env.DOCKER_TARGET_IMAGE }}
     - name: Wait for Metabase to start on port 3001
       run: while ! curl -s 'http://localhost:3001/api/health' | grep '{"status":"ok"}'; do sleep 1; done
     - name: Run Cypress on the target
@@ -60,3 +80,11 @@ jobs:
           --browser chrome \
           --config-file frontend/test/metabase/scenarios/cross-version/target/cypress.json \
           --spec frontend/test/metabase/scenarios/cross-version/target/**/*.cy.spec.js
+    - name: Upload Cypress Artifacts upon failure
+      uses: actions/upload-artifact@v2
+      if: failure()
+      with:
+        name: cypress-artifacts
+        path: |
+          ./cypress
+        if-no-files-found: ignore

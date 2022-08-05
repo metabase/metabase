@@ -16,13 +16,15 @@ describe(`setup on ${version}`, () => {
     setupInstance(version);
 
     // Quick and dirty sanity check for EE version
-    cy.visit("/admin/settings/license");
+    // TODO: Remove or refactor properly
     if (version.startsWith("v1")) {
+      cy.visit("/admin/settings/license");
       cy.findByPlaceholderText("Using MB_PREMIUM_EMBEDDING_TOKEN").should(
         "be.disabled",
       );
     } else {
-      cy.findByText("Explore our paid plans");
+      cy.visit("/admin");
+      cy.icon("store");
     }
   });
 });
