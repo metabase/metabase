@@ -77,7 +77,7 @@
 
 (defn- format-relative-date
   [prefix n interval]
-  (let [n        #?(:clj (Integer. n) :cljs (js/parseInt n))
+  (let [n        #?(:clj (Integer. ^String n) :cljs (js/parseInt n))
         interval (translated-interval interval n)]
     (case [prefix (= n 1)]
       ["past" true]  (trs "Previous {0}" interval)
