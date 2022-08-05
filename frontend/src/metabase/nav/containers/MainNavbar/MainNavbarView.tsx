@@ -12,7 +12,7 @@ import {
   getCollectionIcon,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
-import { IFRAMED, isSmallScreen } from "metabase/lib/dom";
+import { isSmallScreen } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
 
 import { SelectedItem } from "./types";
@@ -128,7 +128,7 @@ function MainNavbarView({
           />
         </SidebarSection>
         <ul>
-          {hasDataAccess && !IFRAMED && (
+          {hasDataAccess && (
             <SidebarSection>
               <SidebarHeadingWrapper>
                 <SidebarHeading>{t`Data`}</SidebarHeading>
