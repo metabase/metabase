@@ -8,9 +8,5 @@
   "chromeWebSecurity": false,
   "modifyObstructiveCode": false,
   "viewportHeight": 800,
-  "viewportWidth": 1280,
-  "retries": {
-    "runMode": 2,
-    "openMode": 0
-  }
+  "viewportWidth": 1280
 }
