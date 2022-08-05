@@ -10,8 +10,14 @@ jobs:
     strategy:
       matrix:
         version: [
+          # OSS upgrade
           { source: v0.41.3.1, target: v0.42.2 },
-          { source: v1.42.0, target: v1.43.4 }
+          # EE upgrade
+          { source: v1.43.4, target: v1.44.0 },
+          # EE downgrade
+          { source: v1.42.0, target: v1.41.3.1 },
+          # Cross-edition upgrade
+          { source: v0.41.3.1, target: v1.42.2 }
         ]
       fail-fast: false
     env:
