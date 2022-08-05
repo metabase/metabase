@@ -86,4 +86,3 @@
                      (remove entities-not-exported))]
     (testing (format "Model %s should implement IdentityHashable" (.getSimpleName model))
       (is (extends? metabase.models.serialization.hash/IdentityHashable model)))))
-etabase/visualizations/components/ObjectDetail/ObjectDetail.styled.tsx
