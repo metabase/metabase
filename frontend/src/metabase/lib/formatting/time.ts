@@ -7,10 +7,10 @@ import {
   DEFAULT_DATE_STYLE,
   getTimeFormatFromStyle,
   hasHour,
-} from "./dateTimeUtils";
+} from "./datetime-utils";
 
 import type { Value } from "metabase-types/types/Dataset";
-import type { DatetimeUnit } from "metabase-types/types/Query";
+import type { DatetimeUnit } from "metabase-types/api/query";
 
 export function duration(milliseconds: number) {
   const SECOND = 1000;

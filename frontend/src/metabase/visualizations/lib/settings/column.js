@@ -28,7 +28,7 @@ import {
   getDateFormatFromStyle,
 } from "metabase/lib/formatting";
 
-import { hasDay, hasHour } from "metabase/lib/formatting/dateTimeUtils";
+import { hasDay, hasHour } from "metabase/lib/formatting/datetime-utils";
 
 import { currency } from "cljs/metabase.shared.util.currency";
 

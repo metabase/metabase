@@ -8,7 +8,7 @@ import {
   DEFAULT_TIME_STYLE,
   getTimeFormatFromStyle,
   hasHour,
-} from "./dateTimeUtils";
+} from "./datetime-utils";
 
 const RANGE_SEPARATOR = ` – `;
 

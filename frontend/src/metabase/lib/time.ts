@@ -7,7 +7,7 @@ import moment, {
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import type { DatetimeUnit } from "metabase-types/types/Query";
+import type { DatetimeUnit } from "metabase-types/api/query";
 
 addAbbreviatedLocale();
 
