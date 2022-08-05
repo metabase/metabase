@@ -65,6 +65,30 @@ Click the **eye** icon to see what your formatted Markdown will look like when y
 
 To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.com/blog/markdown-in-dashboards/index.html).
 
+### Including variables in text cards
+
+You can include a variable in a text card, then wire that variable up to a dashboard filter. All you need to do to create a variable is to wrap a word in double braces, `{{` and `}}` (the variable can't contain any spaces). For example, you could add a text card with the following text:
+
+```
+{% raw %}
+# {{state}} orders
+{% endraw %}
+```
+
+And connect that variable to a dashboard filter widget that filters for states. If someone selected `WI` in the state filter, the text in the markdown card would read: **WI orders**.
+
+You can also make text options by wrapping the text in double brackets, `[[` and `]]`:
+
+```
+{% raw %}
+# Orders [[from {{state}}]
+{% endraw %}
+```
+
+In this case, the phrase `{% raw %}from {{state}}{%endraw%}` would only display if someone selected a value (or values) in the filter widget.
+
+To see how to wire up a filter to a card, see [dashboard filters](./08-dashboard-filters.md)
+
 ## Arranging cards
 
 Each question on a dashboard is in its own card that you can move around or resize as you see fit. Just click the **pencil** icon in the top right of a dashboard to enter the dashboard's editing interface.

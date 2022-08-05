@@ -22,7 +22,6 @@
                                      DashboardCard
                                      DashboardCardSeries
                                      Database
-                                     Dependency
                                      Dimension
                                      Emitter
                                      Field
@@ -82,7 +81,6 @@
   [Database
    User
    Setting
-   Dependency
    Table
    Field
    FieldValues

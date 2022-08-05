@@ -1,6 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
+import { DimensionListItem } from "./DimensionPicker.styled";
 
 const propTypes = {
   style: PropTypes.object,
@@ -22,7 +23,7 @@ export const DimensionPicker = ({
       {dimensions.map((d, index) => {
         const isSelected = d.isEqual(dimension);
         return (
-          <li
+          <DimensionListItem
             aria-selected={isSelected}
             key={index}
             className={cx("List-item", {
@@ -35,7 +36,7 @@ export const DimensionPicker = ({
             >
               {d.subDisplayName()}
             </a>
-          </li>
+          </DimensionListItem>
         );
       })}
     </ul>

@@ -18,9 +18,11 @@ Paid plans include more ways to authenticate people and manage groups.
 
 - [Authenticating with SAML](authenticating-with-saml.html)
   - [Setting up SAML with Auth0](saml-auth0.html)
+  - [Setting up SAML with Azure AD](authenticating-with-saml-azure-ad.html)
   - [Setting up SAML with Google](saml-google.html)
   - [Setting up SAML with Keycloak](saml-keycloak.html)
-  - [Documentation for other common IdPs](../enterprise-guide/authenticating-with-saml.html#documentation-for-other-common-idps)
+  - [Setting up SAML with Okta](saml-okta.html)
+- [Authenticating with JWT](authenticating-with-jwt.html)
 
 ## Permissions
 

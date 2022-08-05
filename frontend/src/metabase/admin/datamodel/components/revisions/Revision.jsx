@@ -6,7 +6,7 @@ import RevisionDiff from "./RevisionDiff";
 import { t } from "ttag";
 import UserAvatar from "metabase/components/UserAvatar";
 
-import moment from "moment";
+import moment from "moment-timezone";
 
 export default class Revision extends Component {
   static propTypes = {

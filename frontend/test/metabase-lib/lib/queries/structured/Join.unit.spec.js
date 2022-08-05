@@ -530,6 +530,16 @@ describe("Join", () => {
   });
 
   describe("setOperator", () => {
+    it("changes the operator without fields selected", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({}),
+      });
+
+      join = join.setOperator(0, "!=");
+
+      expect(join.getConditions()).toEqual([["!=", null, null]]);
+    });
+
     it("changes the operator of a single condition join", () => {
       let join = getJoin({
         query: getOrdersJoinQuery({

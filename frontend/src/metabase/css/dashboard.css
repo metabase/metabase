@@ -285,26 +285,11 @@
   nav {
     display: none;
   }
-  .DashCard .Card {
-    box-shadow: none;
-    border-color: var(--color-border);
-  }
   /* improve label contrast */
   .dc-chart .axis .tick text,
   .dc-chart .x-axis-label,
   .dc-chart .y-axis-label {
     fill: var(--color-text-dark);
-  }
-}
-
-@media print and (orientation: portrait) {
-  html {
-    width: 8.5in;
-  }
-}
-@media print and (orientation: landscape) {
-  html {
-    width: 11in;
   }
 }
 

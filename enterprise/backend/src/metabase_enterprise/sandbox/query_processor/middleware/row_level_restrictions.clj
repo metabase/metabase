@@ -58,7 +58,7 @@
      ;; User does have segmented access
      (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/table-segmented-query-path table)))))
 
-(defn- assert-one-gtap-per-table
+(defn assert-one-gtap-per-table
   "Make sure all referenced Tables have at most one GTAP."
   [gtaps]
   (doseq [[table-id gtaps] (group-by :table_id gtaps)

@@ -15,7 +15,7 @@ describe("issue 17160", () => {
   });
 
   it("should pass multiple filter values to questions and dashboards (metabase#17160-1)", () => {
-    setupRegularDashboards();
+    setup();
 
     // 1. Check click behavior connected to a question
     visitSourceDashboard();
@@ -46,8 +46,9 @@ describe("issue 17160", () => {
     assertMultipleValuesFilterState();
   });
 
-  it("should pass multiple filter values to public questions and dashboards (metabase#17160-2)", () => {
-    setupPublicDashboards();
+  it.skip("should pass multiple filter values to public questions and dashboards (metabase#17160-2)", () => {
+    // FIXME: setup public dashboards
+    setup();
 
     // 1. Check click behavior connected to a public question
     visitPublicSourceDashboard();
@@ -83,7 +84,7 @@ function assertMultipleValuesFilterState() {
   );
 }
 
-function setup(shouldUsePublicLinks) {
+function setup() {
   cy.createNativeQuestion({
     name: `17160Q`,
     native: {
@@ -155,7 +156,6 @@ function setup(shouldUsePublicLinks) {
                   visualization_settings: getVisualSettingsWithClickBehavior(
                     questionId,
                     targetDashboardId,
-                    shouldUsePublicLinks,
                   ),
                 },
               ],
@@ -167,16 +167,11 @@ function setup(shouldUsePublicLinks) {
   });
 }
 
-function getVisualSettingsWithClickBehavior(
-  questionTarget,
-  dashboardTarget,
-  shouldUsePublicLinks = false,
-) {
+function getVisualSettingsWithClickBehavior(questionTarget, dashboardTarget) {
   return {
     column_settings: {
       '["name","ID"]': {
         click_behavior: {
-          use_public_link: shouldUsePublicLinks,
           targetId: questionTarget,
           parameterMapping: {
             "6b8b10ef-0104-1047-1e1b-2492d5954322": {
@@ -200,7 +195,6 @@ function getVisualSettingsWithClickBehavior(
 
       '["name","EAN"]': {
         click_behavior: {
-          use_public_link: shouldUsePublicLinks,
           targetId: dashboardTarget,
           parameterMapping: {
             dd19ec03: {
@@ -279,14 +273,6 @@ function createTargetDashboard() {
           return dashboard_id;
         });
     });
-}
-
-function setupRegularDashboards() {
-  return setup(false);
-}
-
-function setupPublicDashboards() {
-  return setup(true);
 }
 
 function visitSourceDashboard() {

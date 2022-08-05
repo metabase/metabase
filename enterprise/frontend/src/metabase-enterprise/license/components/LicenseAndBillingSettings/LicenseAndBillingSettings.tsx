@@ -1,7 +1,7 @@
 import React from "react";
 import { t, jt } from "ttag";
 import { connect } from "react-redux";
-import moment from "moment";
+import moment from "moment-timezone";
 import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
 import {
   TokenStatus,
