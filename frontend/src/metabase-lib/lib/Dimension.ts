@@ -27,6 +27,7 @@ import ValidationError, {
 import { IconName } from "metabase-types/types";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
+import { getQuestionIdFromVirtualTableId } from "metabase/lib/saved-questions";
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
@@ -796,7 +797,9 @@ export class FieldDimension extends Dimension {
     // we need to repeat the hydration again.
     // We should definitely move it out of there
     if (hydrate) {
-      field.table = this._metadata.table(field.table_id);
+      field.table =
+        this.query()?.table() ?? this._metadata.table(field.table_id);
+      field.table_id = field.table?.id;
 
       if (field.isFK()) {
         field.target = this._metadata.field(field.fk_target_field_id);
@@ -823,17 +826,36 @@ export class FieldDimension extends Dimension {
       return this._fieldInstance;
     }
 
-    const question = this.query()?.question();
     const lookupField = this.isIntegerFieldId() ? "id" : "name";
-    const fieldMetadata = question
-      ? _.findWhere(question.getResultMetadata(), {
-          [lookupField]: this.fieldIdOrName(),
-        })
-      : null;
+    let fieldMetadata;
+    const questionAssociatedWithDimension = this.query()?.question();
+    if (
+      questionAssociatedWithDimension &&
+      questionAssociatedWithDimension.card().id != null
+    ) {
+      const question = this.query()?.question();
+      fieldMetadata = _.findWhere(question.getResultMetadata(), {
+        [lookupField]: this.fieldIdOrName(),
+      });
+    }
+
+    const virtualTableCardId = getQuestionIdFromVirtualTableId(
+      this.query()?.sourceTableId(),
+    );
+    if (virtualTableCardId != null) {
+      const card = this._metadata?.card(virtualTableCardId);
+      fieldMetadata = card
+        ? _.findWhere(card.result_metadata, {
+            [lookupField]: this.fieldIdOrName(),
+          })
+        : null;
+    }
 
     // Field result metadata can be overwritten for models,
     // so we need to merge regular field object with the model overwrites
-    const shouldMergeFieldResultMetadata = question?.isDataset();
+    const shouldMergeFieldResultMetadata =
+      questionAssociatedWithDimension?.isDataset() ||
+      virtualTableCardId != null;
 
     if (this.isIntegerFieldId()) {
       const field = this._metadata?.field(this.fieldIdOrName());
