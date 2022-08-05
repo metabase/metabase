@@ -6,6 +6,7 @@ import _ from "underscore";
 import Question from "metabase-lib/lib/Question";
 import { isPK } from "metabase/lib/schema_metadata";
 import Table from "metabase-lib/lib/metadata/Table";
+import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
 
 import { State } from "metabase-types/store";
 import { ForeignKey } from "metabase-types/api";
@@ -70,6 +71,7 @@ import {
   CloseButton,
   ErrorWrapper,
 } from "./ObjectDetail.styled";
+import { formatColumn } from "metabase/lib/formatting";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
   let zoomedRowID = getZoomedObjectId(state);
@@ -542,11 +544,84 @@ export const ObjectDetailProperties = {
       readDependencies: ["detail.column_formatting"],
     },
   },
+
+  columnSettings: (column: Column) => {
+    const settings: any = {
+      column_title: {
+        title: t`Column title`,
+        widget: "input",
+        getDefault: (column: Column) => formatColumn(column),
+      },
+      click_behavior: {},
+    };
+    if (isNumber(column)) {
+      settings["show_mini_bar"] = {
+        title: t`Show a mini bar chart`,
+        widget: "toggle",
+      };
+    }
+
+    let defaultValue = !column.semantic_type || isURL(column) ? "link" : null;
+
+    const options = [
+      { name: t`Text`, value: null },
+      { name: t`Link`, value: "link" },
+    ];
+
+    if (!column.semantic_type || isEmail(column)) {
+      defaultValue = "email_link";
+      options.push({ name: t`Email link`, value: "email_link" });
+    }
+    if (!column.semantic_type || isImageURL(column) || isAvatarURL(column)) {
+      defaultValue = isAvatarURL(column) ? "image" : "link";
+      options.push({ name: t`Image`, value: "image" });
+    }
+    if (!column.semantic_type) {
+      defaultValue = "auto";
+      options.push({ name: t`Automatic`, value: "auto" });
+    }
+
+    if (options.length > 1) {
+      settings["view_as"] = {
+        title: t`Display as`,
+        widget: options.length === 2 ? "radio" : "select",
+        default: defaultValue,
+        props: {
+          options,
+        },
+      };
+    }
+
+    const linkFieldsHint = t`You can use the value of any column here like this: {{COLUMN}}`;
+
+    settings["link_text"] = {
+      title: t`Link text`,
+      widget: "input",
+      hint: linkFieldsHint,
+      default: null,
+      getHidden: (_: any, settings: any) =>
+        settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
+      readDependencies: ["view_as"],
+    };
+
+    settings["link_url"] = {
+      title: t`Link URL`,
+      widget: "input",
+      hint: linkFieldsHint,
+      default: null,
+      getHidden: (_: any, settings: any) => settings["view_as"] !== "link",
+      readDependencies: ["view_as"],
+    };
+
+    return settings;
+  },
   isSensible: () => true,
 };
 
 const ObjectDetail = Object.assign(
-  connect(mapStateToProps, mapDispatchToProps)(ObjectDetailWrapper),
+  WithVizSettingsData(
+    connect(mapStateToProps, mapDispatchToProps)(ObjectDetailWrapper),
+  ),
   ObjectDetailProperties,
 );
 

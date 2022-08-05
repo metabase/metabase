@@ -94,7 +94,7 @@ export default class ChartSettingsTableFormatting extends React.Component {
     editingRuleIsNew: null,
   };
   render() {
-    const { value, onChange, cols } = this.props;
+    const { value, onChange, cols, isDetail } = this.props;
     const { editingRule, editingRuleIsNew } = this.state;
     if (editingRule !== null && value[editingRule]) {
       return (
@@ -102,6 +102,7 @@ export default class ChartSettingsTableFormatting extends React.Component {
           rule={value[editingRule]}
           cols={cols}
           isNew={editingRuleIsNew}
+          isDetail={isDetail}
           onChange={rule =>
             onChange([
               ...value.slice(0, editingRule),
@@ -297,7 +298,15 @@ const RuleDescription = ({ rule }) => {
   );
 };
 
-const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
+const RuleEditor = ({
+  rule,
+  cols,
+  isNew,
+  onChange,
+  onDone,
+  onRemove,
+  isDetail,
+}) => {
   const selectedColumns = rule.columns.map(name => _.findWhere(cols, { name }));
   const isStringRule =
     selectedColumns.length > 0 && _.all(selectedColumns, isString);
@@ -348,7 +357,9 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
       )}
       {rule.type === "single" ? (
         <div>
-          <h3 className="mt3 mb1">{t`When a cell in this column…`}</h3>
+          <h3 className="mt3 mb1">
+            {isDetail ? t`When this column...` : t`When a cell in this column…`}
+          </h3>
           <Select
             value={rule.operator}
             onChange={e => onChange({ ...rule, operator: e.target.value })}
@@ -381,11 +392,15 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
             colors={COLORS}
             onChange={color => onChange({ ...rule, color })}
           />
-          <h3 className="mt3 mb1">{t`Highlight the whole row`}</h3>
-          <Toggle
-            value={rule.highlight_row}
-            onChange={highlight_row => onChange({ ...rule, highlight_row })}
-          />
+          {isDetail ? null : (
+            <>
+              <h3 className="mt3 mb1">{t`Highlight the whole row`}</h3>
+              <Toggle
+                value={rule.highlight_row}
+                onChange={highlight_row => onChange({ ...rule, highlight_row })}
+              />
+            </>
+          )}
         </div>
       ) : rule.type === "range" ? (
         <div>

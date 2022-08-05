@@ -18,13 +18,16 @@ import {
   GridContainer,
   GridCell,
 } from "./ObjectDetail.styled";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 export interface DetailsTableCellProps {
   column: any;
   value: any;
+  row: any;
   isColumnName: boolean;
   settings: any;
   className?: string;
+  getExtraDataForClick?: (clicked: any) => any;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
 }
@@ -32,20 +35,41 @@ export interface DetailsTableCellProps {
 export function DetailsTableCell({
   column,
   value,
+  row,
   isColumnName,
   settings,
+  getExtraDataForClick,
   className = "",
   onVisualizationClick,
   visualizationIsClickable,
 }: DetailsTableCellProps): JSX.Element {
   let cellValue;
-  const clicked = { column: null, value: null };
+  const clicked: any = { column: null, value: null };
   let isLink;
 
-  if (isColumnName) {
-    cellValue = column !== null ? formatColumn(column) : null;
-    clicked.column = column;
-    isLink = false;
+  if (isColumnName && column !== null) {
+    const columnSettings = settings.column(column);
+    const clicked = {
+      row,
+      column,
+      value,
+      settings,
+      origin: { rowIndex: 0, row },
+    };
+    cellValue = formatValue(
+      columnSettings["_column_title_full"] || formatColumn(column),
+      {
+        ...columnSettings,
+        type: "cell",
+        jsx: true,
+        rich: true,
+        clicked: {
+          ...clicked,
+          ...(getExtraDataForClick?.(clicked) || {}),
+        },
+      },
+    );
+    isLink = cellValue && cellValue.type === ExternalLink;
   } else {
     if (value === null || value === undefined || value === "") {
       cellValue = <span className="text-light">{t`Empty`}</span>;
@@ -146,6 +170,7 @@ export function DetailsTable({
             <GridCell>
               <DetailsTableCell
                 column={column}
+                row={row}
                 value={row[columnIndex] ?? t`Empty`}
                 isColumnName
                 settings={settings}
@@ -157,6 +182,7 @@ export function DetailsTable({
             <GridCell colSpan={2}>
               <DetailsTableCell
                 column={column}
+                row={row}
                 value={row[columnIndex]}
                 isColumnName={false}
                 settings={settings}
