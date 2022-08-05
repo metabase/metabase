@@ -30,7 +30,7 @@
 (deftest list-actions-test
   (testing "GET /api/action"
     (actions.test-util/with-actions-enabled
-      (actions.test-util/with-query-action [{:keys [action-id]}]
+      (actions.test-util/with-action [{:keys [action-id]} {}]
         (let [response (mt/user-http-request :crowberto :get 200 "action")]
           (is (schema= [{:id       su/IntGreaterThanZero
                          s/Keyword s/Any}]
@@ -47,7 +47,7 @@
   (testing "GET /api/action/:id"
     (testing "Should return Card dataset_query deserialized (#23201)"
       (actions.test-util/with-actions-enabled
-        (actions.test-util/with-query-action [{:keys [action-id]}]
+        (actions.test-util/with-action [{:keys [action-id]} {}]
           (let [action (mt/user-http-request :crowberto :get 200 (format "action/%d" action-id))]
             (testing "Should return Card dataset_query deserialized (#23201)"
               (is (schema= ExpectedGetCardActionAPIResponse

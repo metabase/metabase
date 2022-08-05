@@ -12,7 +12,7 @@
   (testing "POST /api/emitter"
     (testing "Creating an emitter with the POST endpoint should return the newly created Emitter"
       (actions.test-util/with-actions-test-data-and-actions-enabled
-        (actions.test-util/with-query-action [{:keys [action-id query-action-card-id]}]
+        (actions.test-util/with-action [{:keys [action-id query-action-card-id]} {}]
           (let [expected-response {:id                 su/IntGreaterThanZero
                                    :parameter_mappings (s/eq nil)
                                    :action_id          (s/eq action-id)
@@ -36,7 +36,7 @@
   (testing "PUT /api/emitter/:id"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
       (actions.test-util/with-actions-test-data-and-actions-enabled
-        (actions.test-util/with-query-action [action]
+        (actions.test-util/with-action [action {}]
           (actions.test-util/with-card-emitter [{:keys [emitter-id]} action]
             (testing "Should be able to update an emitter"
               (mt/user-http-request :crowberto :put 204 (format "emitter/%d" emitter-id)
@@ -51,8 +51,8 @@
   (testing "DELETE /api/emitter/:id"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
       (actions.test-util/with-actions-test-data-and-actions-enabled
-        (actions.test-util/with-query-action [action]
-          (actions.test-util/with-card-emitter [{:keys [emitter-id]} action]
+        (actions.test-util/with-action [context {}]
+          (actions.test-util/with-card-emitter [{:keys [emitter-id]} context]
             (testing "Should be able to delete an emitter"
               (is (nil? (mt/user-http-request :crowberto :delete 204 (format "emitter/%d" emitter-id)))))
             (testing "Should 404 if bad emitter-id"
@@ -63,8 +63,8 @@
 (deftest execute-query-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (actions.test-util/with-actions-test-data-and-actions-enabled
-      (actions.test-util/with-query-action [action]
-        (actions.test-util/with-card-emitter [{:keys [emitter-id]} action]
+      (actions.test-util/with-action [context {}]
+        (actions.test-util/with-card-emitter [{:keys [emitter-id]} context]
           (let [emitter-path  (format "emitter/%d/execute" emitter-id)]
             (testing "Should be able to execute an emitter"
               (is (= {:rows-affected 1}
@@ -96,7 +96,7 @@
 (deftest execute-http-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (actions.test-util/with-actions-test-data-and-actions-enabled
-      (actions.test-util/with-http-action [context]
+      (actions.test-util/with-action [context {:type :http}]
         (actions.test-util/with-card-emitter [{:keys [emitter-id]} context]
           (let [emitter-path (format "emitter/%d/execute" emitter-id)]
             (testing "Should be able to execute an emitter"

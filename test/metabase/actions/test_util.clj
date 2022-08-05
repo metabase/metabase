@@ -92,8 +92,7 @@
   `(do-with-actions-test-data (fn [] ~@body)))
 
 (deftest with-actions-test-data-test
-  ;; TODO -- use the feature `:actions` once #22691 is merged in
-  (mt/test-drivers #{:h2 :postgres}
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (dotimes [i 2]
       (testing (format "Iteration %d" i)
         (with-actions-test-data
@@ -110,60 +109,58 @@
               (is (= [[74]]
                      (row-count))))))))))
 
-(defn do-with-query-action
-  "Impl for [[with-query-action]]."
-  [f]
-  (mt/with-temp* [Card [{card-id :id} {:database_id   (mt/id)
-                                       :dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query         (str "UPDATE categories\n"
-                                                                                      "SET name = 'Bird Shop'\n"
-                                                                                      "WHERE id = {{id}}")
-                                                                  :template-tags {"id" {:name         "id"
-                                                                                        :display-name "ID"
-                                                                                        :type         :number
-                                                                                        :required     true}}}}
-                                       :name          "Query Example"
-                                       :parameters    [{:id "id" :type "number"}]
-                                       :is_write      true}]]
-    (let [action-id (db/select-one-field :action_id QueryAction :card_id card-id)]
-      (f {:query-action-card-id card-id
-          :action-id            action-id}))))
-
-(defmacro with-query-action
-  "Execute `body` with a newly created QueryAction. `bindings` is a map with keys `:action-id` and
-  `:query-action-card-id`.
-
-    (with-query-action [{:keys [action-id query-action-card-id], :as context}]
-      (do-something))"
-  {:style/indent 1}
-  [[bindings] & body]
-  `(do-with-query-action (fn [~bindings] ~@body)))
-
-(defn do-with-http-action
-  "Impl for [[with-http-action]]."
-  [f]
+(defn do-with-action
+  "Impl for [[with-action]]."
+  [options-map f]
   (initialize/initialize-if-needed! :web-server)
-  (mt/with-model-cleanup [Action]
-    (let [action-id (action/insert! {:type :http
-                                     :name "Echo Example"
-                                     :template {:url (client/build-url "testing/echo[[?fail={{fail}}]]" {})
-                                                :method "POST"
-                                                :body "{\"the_parameter\": {{id}}}"
-                                                :headers "{\"x-test\": \"{{id}}\"}"
-                                                :parameters [{:id "id" :type "number"}
-                                                             {:id "fail" :type "text"}]}
-                                     :response_handle ".body"})]
-      (f {:action-id action-id}))))
+  (case (:type options-map)
+    :query
+    (mt/with-temp* [Card [{card-id :id} (merge
+                                          {:database_id   (mt/id)
+                                           :dataset_query {:database (mt/id)
+                                                           :type     :native
+                                                           :native   {:query         (str "UPDATE categories\n"
+                                                                                          "SET name = 'Bird Shop'\n"
+                                                                                          "WHERE id = {{id}}")
+                                                                      :template-tags {"id" {:name         "id"
+                                                                                            :display-name "ID"
+                                                                                            :type         :number
+                                                                                            :required     true}}}}
+                                           :name          "Query Example"
+                                           :parameters    [{:id "id" :type "number"}]
+                                           :is_write      true}
+                                          (dissoc options-map :type))]]
+      (let [action-id (db/select-one-field :action_id QueryAction :card_id card-id)]
+        (f {:query-action-card-id card-id
+            :action-id            action-id})))
 
-(defmacro with-http-action
-  "Execute `body` with a newly created QueryAction. `bindings` is a map with key `:action-id`.
+    :http
+    (mt/with-model-cleanup [Action]
+      (let [action-id (action/insert! (merge
+                                        {:type :http
+                                         :name "Echo Example"
+                                         :template {:url (client/build-url "testing/echo[[?fail={{fail}}]]" {})
+                                                    :method "POST"
+                                                    :body "{\"the_parameter\": {{id}}}"
+                                                    :headers "{\"x-test\": \"{{id}}\"}"
+                                                    :parameters [{:id "id" :type "number"}
+                                                                 {:id "fail" :type "text"}]}
+                                         :response_handle ".body"}
+                                        options-map))]
+        (f {:action-id action-id})))))
 
-    (with-http-action [{:keys [action-id], :as context}]
+(defmacro with-action
+  "Execute `body` with a newly created Action.
+   `binding-form` is a returned map with key `:action-id`, and `:query-action-card-id` for QueryActions.
+   `options-map` contains overrides for the action. Defaults to a sane QueryAction.
+
+    (with-action [{:keys [action-id], :as context} {:type :http :name \"Temp HTTP Action\"}]
       (do-something))"
   {:style/indent 1}
-  [[bindings] & body]
-  `(do-with-http-action (fn [~bindings] ~@body)))
+  [[binding-form options-map] & body]
+  `(do-with-action
+     (merge {:type :query} ~options-map)
+     (fn [~binding-form] ~@body)))
 
 (defn do-with-emitter
   "Impl for [[with-emitter]]."
