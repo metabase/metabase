@@ -214,41 +214,68 @@
                    :limit        1})]
       (mt/with-native-query-testing-context query
         (is (partial= (mt/$ids venues
-                        {:fields       [[:field %id {::add/source-table  ::add/source
-                                                     ::add/source-alias  "ID"
-                                                     ::add/desired-alias "ID"
-                                                     ::add/position      0}]
-                                        [:field "x_2" {:base-type          :type/Float
-                                                       ::add/source-table  ::add/source
-                                                       ::add/source-alias  "x_2"
-                                                       ::add/desired-alias "x_2"
-                                                       ::add/position      1}]]
-                         :source-query {:expressions  {"x" [:*
-                                                            [:field %price {::add/source-table ::add/source
-                                                                            ::add/source-alias "PRICE"}]
-                                                            4]}
-                                        :fields       [[:field %id {::add/source-table  ::add/source
-                                                                    ::add/source-alias  "ID"
-                                                                    ::add/desired-alias "ID"
-                                                                    ::add/position      0}]
-                                                       [:field "x" {:base-type          :type/Float
-                                                                    ::add/source-table  ::add/source
-                                                                    ::add/source-alias  "x"
-                                                                    ::add/desired-alias "x"
-                                                                    ::add/position      1}]
-                                                       [:expression "x" {::add/desired-alias "x_2"
-                                                                         ::add/position      2}]]
-                                        :source-query {:source-table $$venues
-                                                       :expressions  {"x" [:*
-                                                                           [:field %price {::add/source-table $$venues
-                                                                                           ::add/source-alias "PRICE"}]
-                                                                           2]}
-                                                       :fields       [[:field %id {::add/source-table  $$venues
-                                                                                   ::add/source-alias  "ID"
-                                                                                   ::add/desired-alias "ID"
-                                                                                   ::add/position      0}]
-                                                                      [:expression "x" {::add/desired-alias "x"
-                                                                                        ::add/position      1}]]}}
+                        {:fields
+                         [[:field %id #::add{:source-table  ::add/source
+                                             :source-alias  "ID"
+                                             :desired-alias "ID"
+                                             :position      0}]
+                          [:field "x_2" {:base-type          :type/Float
+                                         ::add/source-table  ::add/source
+                                         ::add/source-alias  "x_2"
+                                         ::add/desired-alias "x_2"
+                                         ::add/position      1}]]
+                         :source-query
+                         {:expressions
+                          {"x" [:*
+                                [:field %price #::add{:source-table ::add/source
+                                                      :source-alias "PRICE"}]
+                                4]}
+                          :fields
+                          [[:field %id #::add{:source-table  ::add/source
+                                              :source-alias  "ID"
+                                              :desired-alias "ID"}]
+                           [:field "x" {:base-type          :type/Float
+                                        ::add/source-table  ::add/source
+                                        ::add/source-alias  "x"
+                                        ::add/desired-alias "x"}]
+                           [:expression "x" #::add{:desired-alias "x_2"}]]
+                          :source-query
+                          {:fields
+                           [[:field %id #::add{:source-table  ::add/source
+                                               :source-alias  "ID"
+                                               :desired-alias "ID"}]
+                            [:field "x" {:base-type          :type/Float
+                                         ::add/source-table  ::add/source
+                                         ::add/source-alias  "x"
+                                         ::add/desired-alias "x"}]]
+                           :source-query
+                           {:source-table $$venues
+                            :expressions
+                            {"x" [:*
+                                  [:field %price #::add{:source-table  $$venues
+                                                        :source-alias  "PRICE"
+                                                        :desired-alias "PRICE"}]
+                                  2]}
+                            :fields
+                            [[:field %id #::add{:source-table  $$venues
+                                                :source-alias  "ID"
+                                                :desired-alias "ID"}]
+                             [:field %name #::add{:source-table  $$venues
+                                                  :source-alias  "NAME"
+                                                  :desired-alias "NAME"}]
+                             [:field %category_id #::add{:source-table  $$venues
+                                                         :source-alias  "CATEGORY_ID"
+                                                         :desired-alias "CATEGORY_ID"}]
+                             [:field %latitude #::add{:source-table  $$venues
+                                                      :source-alias  "LATITUDE"
+                                                      :desired-alias "LATITUDE"}]
+                             [:field %longitude #::add{:source-table  $$venues
+                                                       :source-alias  "LONGITUDE"
+                                                       :desired-alias "LONGITUDE"}]
+                             [:field %price #::add{:source-table  $$venues
+                                                   :source-alias  "PRICE"
+                                                   :desired-alias "PRICE"}]
+                             [:expression "x" #::add{:desired-alias "x"}]]}}}
                          :limit        1})
                       (nest-expressions query))))))
   (testing "Ignores source-query from joins (#20809)"

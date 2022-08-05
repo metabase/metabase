@@ -1,15 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
-
-import Icon from "metabase/components/Icon";
-
-import ChartSettingSelect from "./ChartSettingSelect";
-
 import { keyForColumn } from "metabase/lib/dataset";
+import ChartSettingSelect from "./ChartSettingSelect";
+import { SettingsIcon } from "./ChartSettingFieldPicker.styled";
 
 const ChartSettingFieldPicker = ({
   value,
@@ -40,9 +36,8 @@ const ChartSettingFieldPicker = ({
         isInitiallyOpen={value === undefined}
       />
       {columnKey && (
-        <Icon
+        <SettingsIcon
           name="gear"
-          className="ml1 text-medium text-brand-hover cursor-pointer"
           onClick={() => {
             onShowWidget({
               id: "column_settings",
@@ -53,12 +48,9 @@ const ChartSettingFieldPicker = ({
           }}
         />
       )}
-      <Icon
+      <SettingsIcon
         data-testid={`remove-${value}`}
         name="close"
-        className={cx("ml1 text-medium text-brand-hover cursor-pointer", {
-          "disabled hidden": !onRemove,
-        })}
         onClick={onRemove}
       />
     </div>

@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import moment from "moment";
+import moment from "moment-timezone";
 
 import { Field } from "metabase-types/types/Field";
 import { FieldDimension } from "metabase-lib/lib/Dimension";

@@ -91,6 +91,23 @@
      :else
      (t/format formatter t))))
 
+(defn format-rfc3339
+  "Format temporal value `t`, as an RFC3339 datetime string."
+  [t]
+  (cond
+    (instance? Instant t)
+    (recur (t/zoned-date-time t (t/zone-id "UTC")))
+
+    ;; the rfc3339 format requires a timezone component so convert any local datetime/date to zoned
+    (instance? LocalDateTime t)
+    (recur (t/zoned-date-time t (t/zone-id)))
+
+    (instance? LocalDate t)
+    (recur (t/zoned-date-time t (t/local-time 0) (t/zone-id)))
+
+    :else
+    (t/format "yyyy-MM-dd'T'hh:mm:ss.SSXXX" t)))
+
 (defn format-sql
   "Format a temporal value `t` as a SQL-style literal string (for most SQL databases). This is the same as ISO-8601 but
   uses a space rather than of a `T` to separate the date and time components."

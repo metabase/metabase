@@ -1,6 +1,7 @@
 ---
 title: "Timeline"
-summary: "/api/timeline endpoints."
+summary: |
+  /api/timeline endpoints.
 ---
 
 # Timeline

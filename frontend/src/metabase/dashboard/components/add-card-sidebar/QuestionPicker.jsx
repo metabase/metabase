@@ -6,6 +6,7 @@ import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { getCrumbs } from "metabase/lib/collections";
@@ -22,8 +23,6 @@ import {
 } from "./QuestionPicker.styled";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import SelectList from "metabase/components/SelectList";
-
-const { isRegularCollection } = PLUGIN_COLLECTIONS;
 
 QuestionPicker.propTypes = {
   onSelect: PropTypes.func.isRequired,
@@ -75,7 +74,9 @@ function QuestionPicker({
             <SelectList>
               {collections.map(collection => {
                 const icon = getCollectionIcon(collection);
-                const iconColor = isRegularCollection(collection)
+                const iconColor = PLUGIN_COLLECTIONS.isRegularCollection(
+                  collection,
+                )
                   ? "text-light"
                   : icon.color;
                 return (
@@ -110,6 +111,11 @@ function QuestionPicker({
 }
 
 export default _.compose(
+  entityObjectLoader({
+    id: () => "root",
+    entityType: "collections",
+    loadingAndErrorWrapper: false,
+  }),
   entityListLoader({
     entityType: "collections",
     loadingAndErrorWrapper: false,

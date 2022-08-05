@@ -1,6 +1,7 @@
 ---
 title: "GeoJSON"
-summary: "API endpoints for GeoJSON."
+summary: |
+  API endpoints for GeoJSON.
 ---
 
 # GeoJSON

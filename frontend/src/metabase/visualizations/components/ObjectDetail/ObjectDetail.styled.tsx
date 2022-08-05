@@ -64,7 +64,9 @@ export const GridContainer = styled.div<GridContainerProps>`
   gap: 1rem;
 `;
 
-type GridItemProps = { colSpan?: number };
+export interface GridItemProps {
+  colSpan?: number;
+}
 
 export const GridCell = styled.div<GridItemProps>`
   grid-column: span ${props => props.colSpan || 1} / span
@@ -104,5 +106,23 @@ export const RootModal = styled(Modal)`
       flex: 0 0 33.3333%;
       max-height: calc(80vh - 4rem);
     }
+  }
+`;
+
+export interface ObjectRelationshipContentProps {
+  isClickable: boolean;
+}
+
+export const ObjectRelationContent = styled.div<ObjectRelationshipContentProps>`
+  display: flex;
+  align-items: center;
+  margin: 1rem 0;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid ${color("border")};
+  color: ${props => color(props.isClickable ? "text-dark" : "text-medium")};
+  cursor: ${props => props.isClickable && "pointer"};
+
+  &:hover {
+    color: ${props => props.isClickable && color("brand")};
   }
 `;

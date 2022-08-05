@@ -2,9 +2,10 @@ import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
-import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
+import { pluralize } from "metabase/lib/formatting";
+
 import StructuredQuery, {
   FilterSection,
   DimensionOption,
@@ -17,7 +18,6 @@ import Tab from "metabase/core/components/Tab";
 import TabContent from "metabase/core/components/TabContent";
 import Icon from "metabase/components/Icon";
 import BulkFilterList from "../BulkFilterList";
-import TextInput from "metabase/components/TextInput";
 import {
   ModalBody,
   ModalCloseButton,
@@ -25,11 +25,13 @@ import {
   ModalFooter,
   ModalHeader,
   ModalRoot,
+  ModalMain,
   ModalTabList,
   ModalTabPanel,
   ModalTitle,
-  SearchContainer,
 } from "./BulkFilterModal.styled";
+
+import { FieldSearch } from "./BulkFilterFieldSearch";
 
 import { fixBetweens, getSearchHits } from "./utils";
 
@@ -44,20 +46,8 @@ const BulkFilterModal = ({
 }: BulkFilterModalProps): JSX.Element | null => {
   const [query, setQuery] = useState(getQuery(question));
   const [isChanged, setIsChanged] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
-
-  useOnMount(() => {
-    const searchToggleListener = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        setSearchQuery("");
-        setShowSearch(showSearch => !showSearch);
-      }
-    };
-    window.addEventListener("keydown", searchToggleListener);
-    return () => window.removeEventListener("keydown", searchToggleListener);
-  });
 
   const filters = useMemo(() => {
     return query.topLevelFilters();
@@ -107,40 +97,43 @@ const BulkFilterModal = ({
     setIsChanged(true);
   };
 
+  const hasSideNav = sections.length > 1;
+
   return (
-    <ModalRoot>
+    <ModalRoot hasSideNav={hasSideNav}>
       <ModalHeader>
         <ModalTitle>{getTitle(query, sections.length === 1)}</ModalTitle>
-        {showSearch ? (
-          <FieldSearch value={searchQuery} onChange={setSearchQuery} />
-        ) : (
-          <ModalCloseButton onClick={onClose}>
-            <Icon name="close" />
-          </ModalCloseButton>
-        )}
+
+        <FieldSearch value={searchQuery} onChange={setSearchQuery} />
+
+        <ModalCloseButton onClick={onClose}>
+          <Icon name="close" />
+        </ModalCloseButton>
       </ModalHeader>
-      {sections.length === 1 || searchItems ? (
-        <BulkFilterModalSection
-          query={query}
-          filters={filters}
-          items={searchItems ?? sections[0].items}
-          isSearch={!!searchItems}
-          onAddFilter={handleAddFilter}
-          onChangeFilter={handleChangeFilter}
-          onRemoveFilter={handleRemoveFilter}
-          onClearSegments={handleClearSegments}
-        />
-      ) : (
-        <BulkFilterModalSectionList
-          query={query}
-          filters={filters}
-          sections={sections}
-          onAddFilter={handleAddFilter}
-          onChangeFilter={handleChangeFilter}
-          onRemoveFilter={handleRemoveFilter}
-          onClearSegments={handleClearSegments}
-        />
-      )}
+      <ModalMain>
+        {!hasSideNav || searchItems ? (
+          <BulkFilterModalSection
+            query={query}
+            filters={filters}
+            items={searchItems ?? sections[0].items}
+            isSearch={!!searchItems}
+            onAddFilter={handleAddFilter}
+            onChangeFilter={handleChangeFilter}
+            onRemoveFilter={handleRemoveFilter}
+            onClearSegments={handleClearSegments}
+          />
+        ) : (
+          <BulkFilterModalSectionList
+            query={query}
+            filters={filters}
+            sections={sections}
+            onAddFilter={handleAddFilter}
+            onChangeFilter={handleChangeFilter}
+            onRemoveFilter={handleRemoveFilter}
+            onClearSegments={handleClearSegments}
+          />
+        )}
+      </ModalMain>
       <ModalDivider />
       <ModalFooter>
         <Button
@@ -260,33 +253,10 @@ const getTitle = (query: StructuredQuery, singleTable: boolean) => {
   const table = query.table();
 
   if (singleTable) {
-    return t`Filter by ${table.displayName()}`;
+    return t`Filter ${pluralize(table.displayName())} by`;
   } else {
     return t`Filter by`;
   }
-};
-
-const FieldSearch = ({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}): JSX.Element => {
-  return (
-    <SearchContainer>
-      <TextInput
-        hasClearButton
-        placeholder={t`Search for a column...`}
-        value={value}
-        onChange={onChange}
-        padding="sm"
-        borderRadius="md"
-        autoFocus
-        icon={<Icon name="search" size={13} style={{ marginTop: 2 }} />}
-      />
-    </SearchContainer>
-  );
 };
 
 export default BulkFilterModal;

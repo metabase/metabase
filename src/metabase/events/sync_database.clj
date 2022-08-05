@@ -8,7 +8,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
 
-(def ^:const sync-database-topics
+(def ^:private sync-database-topics
   "The `Set` of event topics which are subscribed to for use in database syncing."
   #{:database-create
     ;; published by POST /api/database/:id/sync -- a message to start syncing the DB right away

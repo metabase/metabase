@@ -26,6 +26,8 @@ import {
   NumericInput,
 } from "./RelativeDatePicker.styled";
 
+import { DurationInputArg2 } from "moment-timezone";
+
 type RelativeDatePickerProps = {
   className?: string;
   filter: Filter;
@@ -34,6 +36,7 @@ type RelativeDatePickerProps = {
   offsetFormatter: (value: number) => number;
   primaryColor?: string;
   reverseIconDirection?: boolean;
+  supportsExpressions?: boolean;
 };
 
 type OptionsContentProps = RelativeDatePickerProps & {
@@ -104,6 +107,7 @@ const OptionsContent: React.FC<OptionsContentProps> = ({
   onFilterChange,
   reverseIconDirection,
   setOptionsVisible,
+  supportsExpressions,
 }) => {
   const options = filter[4] || {};
   const includeCurrent = !!options["include-current"];
@@ -126,14 +130,16 @@ const OptionsContent: React.FC<OptionsContentProps> = ({
 
   return (
     <OptionsContainer>
-      <OptionButton
-        icon="arrow_left_to_line"
-        primaryColor={primaryColor}
-        reverseIconDirection={reverseIconDirection}
-        onClick={handleClickOnStartingFrom}
-      >
-        {t`Starting from...`}
-      </OptionButton>
+      {supportsExpressions && (
+        <OptionButton
+          icon="arrow_left_to_line"
+          primaryColor={primaryColor}
+          reverseIconDirection={reverseIconDirection}
+          onClick={handleClickOnStartingFrom}
+        >
+          {t`Starting from...`}
+        </OptionButton>
+      )}
       <OptionButton
         selected={includeCurrent}
         primaryColor={primaryColor}
@@ -155,7 +161,6 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
     offsetFormatter = value => value,
     className,
     primaryColor,
-    reverseIconDirection,
   } = props;
 
   const startingFrom = getStartingFrom(filter);
@@ -177,7 +182,7 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
     onFilterChange(setRelativeDatetimeValue(filter, formatter(valueToUse)));
   };
 
-  const handleChangeUnitInput = (newUnit: string) => {
+  const handleChangeUnitInput = (newUnit: DurationInputArg2) => {
     const timeSpanTooGreat = checkIfTimeSpanTooGreat(intervals, newUnit);
     const unitToUse = timeSpanTooGreat ? unit : newUnit;
 
@@ -206,7 +211,9 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
       <DateUnitSelector
         value={unit}
         primaryColor={primaryColor}
-        onChange={newUnit => handleChangeUnitInput(newUnit as string)}
+        onChange={newUnit =>
+          handleChangeUnitInput(newUnit as DurationInputArg2)
+        }
         testId="relative-datetime-unit"
         intervals={intervals}
         formatter={formatter}

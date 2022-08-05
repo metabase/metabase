@@ -168,13 +168,12 @@ const SegmentListItem = ({
   onRemoveFilter,
   onClearSegments,
 }: SegmentListItemProps): JSX.Element => (
-  <>
-    <ListRow data-testid="filter-field-segments">
+  <ListRow>
+    <FilterContainer data-testid="filter-field-segments">
       <InlineOperatorSelector
-        fieldName={t`Segments`}
+        fieldName={t`Filter down to a segment`}
         iconName="filter"
         tableName={isSearch ? query.table().displayName() : undefined}
-        value="is"
       />
       <SegmentFilterSelect
         query={query}
@@ -183,8 +182,8 @@ const SegmentListItem = ({
         onRemoveFilter={onRemoveFilter}
         onClearSegments={onClearSegments}
       />
-    </ListRow>
-  </>
+    </FilterContainer>
+  </ListRow>
 );
 
 export default BulkFilterList;

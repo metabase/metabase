@@ -13,6 +13,8 @@ import {
   NumberSeparator,
 } from "./InlineValuePicker.styled";
 
+import { getFieldWidth } from "./utils";
+
 interface InlineValuePickerProps {
   filter: Filter;
   field: Field;
@@ -40,18 +42,17 @@ export function InlineValuePicker({
     "not-empty",
   ].includes(filter.operatorName());
 
+  const containerWidth = getFieldWidth(field, filter);
+
   return (
-    <>
-      <ValuesPickerContainer data-testid="value-picker">
-        {!hideArgumentSelector && (
-          <ValuesInput
-            filter={filter}
-            field={field}
-            onChange={changeArguments}
-          />
-        )}
-      </ValuesPickerContainer>
-    </>
+    <ValuesPickerContainer
+      data-testid="value-picker"
+      fieldWidth={containerWidth}
+    >
+      {!hideArgumentSelector && (
+        <ValuesInput filter={filter} field={field} onChange={changeArguments} />
+      )}
+    </ValuesPickerContainer>
   );
 }
 

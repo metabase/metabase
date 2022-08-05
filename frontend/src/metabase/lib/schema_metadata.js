@@ -231,6 +231,9 @@ export const isCurrency = field =>
 export const isDescription = field =>
   field && isa(field.semantic_type, TYPE.Description);
 
+export const isComment = field =>
+  field && isa(field.semantic_type, TYPE.Comment);
+
 export const isID = field => isFK(field) || isPK(field);
 
 export const isURL = field => field && isa(field.semantic_type, TYPE.URL);

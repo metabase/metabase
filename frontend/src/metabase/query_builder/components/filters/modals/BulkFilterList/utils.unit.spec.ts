@@ -1,5 +1,5 @@
 import { sortDimensions } from "./utils";
-import Dimension from "metabase-lib/lib/Dimension";
+import Field from "metabase-lib/lib/metadata/Field";
 import { DimensionOption } from "metabase-lib/lib/queries/StructuredQuery";
 
 const mockDimensionOption = (
@@ -8,17 +8,18 @@ const mockDimensionOption = (
   text_length: number = 0,
 ): DimensionOption => {
   const dimension = {
-    field: () => ({
-      semantic_type,
-      base_type,
-      fingerprint: {
-        type: {
-          "type/Text": {
-            "average-length": text_length,
+    field: () =>
+      new Field({
+        semantic_type,
+        base_type,
+        fingerprint: {
+          type: {
+            "type/Text": {
+              "average-length": text_length,
+            },
           },
         },
-      },
-    }),
+      }),
   } as any;
   return { dimension } as DimensionOption;
 };
@@ -81,5 +82,17 @@ describe("sortDimensionOptions", () => {
         "average-length"
       ],
     ).toBe(400);
+  });
+
+  it("should sort title fields before description and comment fields", () => {
+    const [first, second, third] = [
+      mockDimensionOption("type/Description", "type/Text", 60),
+      mockDimensionOption("type/Title", "type/Text", 60),
+      mockDimensionOption("type/Comment", "type/Text", 60),
+    ].sort(sortDimensions);
+
+    expect(first.dimension.field().semantic_type).toBe("type/Title");
+    expect(second.dimension.field().semantic_type).toBe("type/Description");
+    expect(third.dimension.field().semantic_type).toBe("type/Comment");
   });
 });

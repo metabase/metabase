@@ -44,7 +44,7 @@
       (.getMessage e))))
 
 (deftest translate-exception-message-test
-  (mt/with-mock-i18n-bundles {"zz" {"Integer greater than zero" "INTEGER GREATER THAN ZERO"}}
+  (mt/with-mock-i18n-bundles {"zz" {:messages {"Integer greater than zero" "INTEGER GREATER THAN ZERO"}}}
     (is (re= #".*Integer greater than zero.*"
              (ex-info-msg #(s/validate su/IntGreaterThanZero -1))))
     (mt/with-user-locale "zz"

@@ -10,7 +10,6 @@
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-card-series :as dashboard-card-series]
             [metabase.models.database :as database]
-            [metabase.models.dependency :as dependency]
             [metabase.models.dimension :as dimension]
             [metabase.models.emitter :as emitter]
             [metabase.models.field :as field]
@@ -55,7 +54,6 @@
          dashboard-card/keep-me
          dashboard-card-series/keep-me
          database/keep-me
-         dependency/keep-me
          dimension/keep-me
          emitter/keep-me
          field/keep-me
@@ -103,7 +101,6 @@
  [dashboard-card DashboardCard]
  [dashboard-card-series DashboardCardSeries]
  [database Database]
- [dependency Dependency]
  [dimension Dimension]
  [emitter CardEmitter]
  [emitter DashboardEmitter]

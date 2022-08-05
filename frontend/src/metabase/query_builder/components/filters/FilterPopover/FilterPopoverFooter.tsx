@@ -9,7 +9,6 @@ import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 type Props = {
   className?: string;
-  primaryColor?: string;
   filter: Filter;
   onFilterChange: (filter: any[]) => void;
   onCommit?: (() => void) | null;
@@ -25,7 +24,6 @@ export default function FilterPopoverFooter({
   onFilterChange,
   onCommit,
   className,
-  primaryColor,
 }: Props) {
   const containerClassName = cx(className, "flex align-center PopoverFooter");
   return (
@@ -38,8 +36,7 @@ export default function FilterPopoverFooter({
       {onCommit && (
         <Button
           data-ui-tag="add-filter"
-          purple
-          style={{ backgroundColor: primaryColor }}
+          primary
           disabled={!filter.isValid()}
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
