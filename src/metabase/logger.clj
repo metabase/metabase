@@ -1,16 +1,7 @@
 (ns metabase.logger
-  "Configures the logger system for Metabase. Should be required at least once.
-
-  - Sets up an in-memory logger in a ring buffer for showing in the UI
-  - ensures uses the log4j2 factory for c.t.logging (two orders of magnitude penalty for using the default slf4j
-    factory)
-
-  Important to use `(LogManager/getContext false)`. This importance goes away if we can configure the
-  \"log4j2.contextSelector\" to be the `BasicContextSelector` instead of the default
-  `ClassLoaderContextSelector`. This is only configurable by system properties and seemingly not in our log4j2.xml
-  config. Under the classloaded selector we have two contexts: a default and a classloader version. We ideally just
-  want a single context for all purposes, but the log4j2 factory uses a closed over `(LogManager/getContext false)` so
-  we continue with that version."
+  "Configures the logger system for Metabase. Should be required at least once. Sets up an in-memory logger in a ring
+  buffer for showing in the UI. Other logging options are set in [[metabase.bootstrap]]: the context locator for
+  log4j2 and ensuring log4j2 is the logger that clojure.tools.logging uses."
   (:require [amalloy.ring-buffer :refer [ring-buffer]]
             [clj-time.coerce :as time.coerce]
             [clj-time.format :as time.format]
