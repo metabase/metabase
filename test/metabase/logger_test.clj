@@ -20,7 +20,7 @@
                   (= before (var-get #'mb.logger/max-log-entries)))
               "In memory ring buffer did not receive log message"))))))
 
-(deftest memoized-logger-test
+(deftest logger-test
   (testing "Using log4j2 logger"
     (is (= (log.impl/name log/*logger-factory*)
            "org.apache.logging.log4j")
