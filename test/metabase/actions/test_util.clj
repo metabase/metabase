@@ -166,7 +166,7 @@
   "Impl for [[with-emitter]]."
   [card-or-dashboard-model {:keys [action-id], :as context} f]
   (let [parent-model (db/resolve-model card-or-dashboard-model)]
-    (mt/with-temp* [parent-model [{emitter-parent-id :id}]
+    (mt/with-temp* [parent-model [{emitter-parent-id :id} {:name (str (name parent-model) " " action-id)}]
                     Emitter [{emitter-id :id} {:parameter_mappings {"my_id" [:variable [:template-tag "id"]]
                                                                     "my_fail" [:variable [:template-tag "fail"]]}
                                                :action_id action-id}]]
