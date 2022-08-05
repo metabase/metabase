@@ -12,7 +12,7 @@ describe("issue 11580", () => {
     openNativeEditor();
     SQLFilter.enterParameterizedQuery("{{foo}} {{bar}}");
 
-    cy.findByTestId("sidebar-right").find(".text-brand").as("variableLabels");
+    cy.findAllByText("Variable name").next().as("variableLabels");
 
     // ensure they're in the right order to start
     assertVariablesOrder();

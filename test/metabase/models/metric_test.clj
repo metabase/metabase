@@ -134,37 +134,6 @@
                                      :description "Unchanged"
                                      :definition  {:filter [:and [:> 4 "2014-10-19"]]}}))))))
 
-(deftest metric-dependencies-test
-  (is (= {:Segment #{2 3}}
-         (metric/metric-dependencies
-          Metric
-          12
-          {:definition {:breakout [[:field 4 nil] [:field 5 nil]]
-                        :filter   [:and
-                                   [:> 4 "2014-10-19"]
-                                   [:= 5 "yes"]
-                                   [:segment 2]
-                                   [:segment 3]]}})))
-
-  (is (= {:Segment #{1}}
-         (metric/metric-dependencies
-          Metric
-          12
-          {:definition {:aggregation [:metric 7]
-                        :filter      [:and
-                                      [:> 4 "2014-10-19"]
-                                      [:= 5 "yes"]
-                                      [:or
-                                       [:segment 1]
-                                       [:!= 5 "5"]]]}})))
-
-  (is (= {:Segment #{}}
-         (metric/metric-dependencies
-          Metric
-          12
-          {:definition {:aggregation nil
-                        :filter      nil}}))))
-
 (deftest identity-hash-test
   (testing "Metric hashes are composed of the metric name and table identity-hash"
     (mt/with-temp* [Database [db    {:name "field-db" :engine :h2}]

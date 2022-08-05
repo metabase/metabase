@@ -20,9 +20,15 @@ function hasGreaterPermissions(
   b: string,
   descendingPermissions = PERM_LEVELS,
 ) {
-  return (
-    descendingPermissions.indexOf(a) - descendingPermissions.indexOf(b) < 0
-  );
+  // Avoids scenario where the logic of the PERM_LEVELS ordering suggests that
+  // a default group permission of "none" would overrule "block".
+  if (a === "none" && b === "block") {
+    return false;
+  } else {
+    return (
+      descendingPermissions.indexOf(a) - descendingPermissions.indexOf(b) < 0
+    );
+  }
 }
 
 export function getPermissionWarning(

@@ -2,9 +2,8 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-import Button from "metabase/core/components/Button";
 
-import { color } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
@@ -35,8 +34,8 @@ export const HeaderRoot = styled(
   ${breakpointMaxSmall} {
     flex-direction: column;
     align-items: baseline;
-    padding-left: 0px;
-    padding-right: 0px;
+    padding-left: 0;
+    padding-right: 0;
   }
 `;
 
@@ -90,7 +89,7 @@ export const HeaderContent = styled.div<HeaderContentProps>`
   &:hover,
   &:focus-within {
     ${HeaderCaptionContainer} {
-      top: 0px;
+      top: 0;
     }
     ${HeaderLastEditInfoLabel} {
       opacity: 1;
@@ -103,23 +102,11 @@ export const HeaderContent = styled.div<HeaderContentProps>`
     padding-right: 1rem;
 
     ${HeaderCaptionContainer} {
-      top: 0px;
+      top: 0;
     }
     ${HeaderLastEditInfoLabel} {
       opacity: 1;
     }
-  }
-`;
-
-export const HeaderBadgesDivider = styled.span`
-  color: ${color("text-light")};
-  font-size: 0.8em;
-
-  margin-left: 0.5rem;
-  margin-right: 0.5rem;
-
-  ${breakpointMaxSmall} {
-    display: none;
   }
 `;
 

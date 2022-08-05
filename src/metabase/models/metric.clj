@@ -2,9 +2,8 @@
   "A Metric is a saved MBQL 'macro' expanding to a combination of `:aggregation` and/or `:filter` clauses.
   It is passed in as an `:aggregation` clause but is replaced by the `expand-macros` middleware with the appropriate
   clauses."
-  (:require [medley.core :as m]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.dependency :as dependency :refer [Dependency]]
+  (:require [clojure.set :as set]
+            [medley.core :as m]
             [metabase.models.interface :as mi]
             [metabase.models.revision :as revision]
             [metabase.models.serialization.base :as serdes.base]
@@ -19,9 +18,6 @@
             [toucan.models :as models]))
 
 (models/defmodel Metric :metric)
-
-(defn- pre-delete [{:keys [id]}]
-  (db/delete! Dependency :model "Metric", :model_id id))
 
 (defn- pre-update [{:keys [creator_id id], :as updates}]
   (u/prog1 updates
@@ -42,8 +38,7 @@
    {:types      (constantly {:definition :metric-segment-definition})
     :properties (constantly {:timestamped? true
                              :entity_id    true})
-    :pre-update pre-update
-    :pre-delete pre-delete})
+    :pre-update pre-update})
   mi/IObjectPermissions
   (merge
    mi/IObjectPermissionsDefaults
@@ -85,18 +80,6 @@
           :diff-map           diff-metrics}))
 
 
-;;; -------------------------------------------------- DEPENDENCIES --------------------------------------------------
-
-(defn metric-dependencies
-  "Calculate any dependent objects for a given Metric."
-  [_ _ {:keys [definition]}]
-  (when definition
-    {:Segment (set (mbql.u/match definition [:segment id] id))}))
-
-(u/strict-extend (class Metric)
-  dependency/IDependent
-  {:dependencies metric-dependencies})
-
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
 
 (defmethod serdes.base/serdes-generate-path "Metric"
@@ -108,16 +91,19 @@
   [_model-name _opts metric]
   (-> (serdes.base/extract-one-basics "Metric" metric)
       (update :table_id   serdes.util/export-table-fk)
-      (update :creator_id serdes.util/export-fk-keyed 'User :email)))
+      (update :creator_id serdes.util/export-fk-keyed 'User :email)
+      (update :definition serdes.util/export-json-mbql)))
 
 (defmethod serdes.base/load-xform "Metric" [metric]
   (-> metric
       serdes.base/load-xform-basics
       (update :table_id   serdes.util/import-table-fk)
-      (update :creator_id serdes.util/import-fk-keyed 'User :email)))
+      (update :creator_id serdes.util/import-fk-keyed 'User :email)
+      (update :definition serdes.util/import-json-mbql)))
 
-(defmethod serdes.base/serdes-dependencies "Metric" [{:keys [table_id]}]
-  [(serdes.util/table->path table_id)])
+(defmethod serdes.base/serdes-dependencies "Metric" [{:keys [definition table_id]}]
+  (into [] (set/union #{(serdes.util/table->path table_id)}
+                      (serdes.util/mbql-deps definition))))
 
 ;;; ----------------------------------------------------- OTHER ------------------------------------------------------
 

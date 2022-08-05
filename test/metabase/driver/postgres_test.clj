@@ -289,12 +289,12 @@
 (deftest ^:parallel json-query-test
   (let [boop-identifier (:form (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {}))]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
-      (let [boop-field {:nfc_path [:bleh :meh] :database_type "integer"}]
-        (is (= ["(boop.bleh#>> ?::text[])::integer " "{meh}"]
+      (let [boop-field {:nfc_path [:bleh :meh] :database_type "bigint"}]
+        (is (= ["(boop.bleh#>> ?::text[])::bigint " "{meh}"]
                (hsql/format (#'sql.qp/json-query :postgres boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
-      (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "integer"}]
-        (is (= ["(boop.bleh#>> ?::text[])::integer " "{meh,foobar,1234}"]
+      (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "bigint"}]
+        (is (= ["(boop.bleh#>> ?::text[])::bigint " "{meh,foobar,1234}"]
                (hsql/format (#'sql.qp/json-query :postgres boop-identifier weird-field))))))
     (testing "Give us a boolean cast when the field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
@@ -348,17 +348,33 @@
                                                           "injection' OR 1=1--' AND released = 1"
                                                           (keyword "injection' OR 1=1--' AND released = 1")],
                                                :name     "json_alias_test"}]]
-          (let [compile-res (qp/compile
+          (let [field-bucketed [:field (u/the-id field)
+                                {:temporal-unit :month,
+                                 :metabase.query-processor.util.add-alias-info/source-table (u/the-id table),
+                                 :metabase.query-processor.util.add-alias-info/source-alias "dontwannaseethis",
+                                 :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis",
+                                 :metabase.query-processor.util.add-alias-info/position 1}]
+                field-ordinary [:field (u/the-id field) nil]
+                compile-res (qp/compile
                               {:database (u/the-id database)
                                :type     :query
                                :query    {:source-table (u/the-id table)
                                           :aggregation  [[:count]]
-                                          :breakout     [[:field (u/the-id field) nil]]}})]
-            (is (= (str "SELECT (\"json_alias_test\".\"bob\"#>> ?::text[])::VARCHAR  "
+                                          :breakout     [field-bucketed]
+                                          :order-by     [[:asc field-bucketed]]}})
+                only-order  (qp/compile
+                              {:database (u/the-id database)
+                               :type     :query
+                               :query    {:source-table (u/the-id table)
+                                          :order-by     [[:asc field-ordinary]]}})]
+            (is (= (str "SELECT date_trunc('month', CAST((\"json_alias_test\".\"bob\"#>> ?::text[])::VARCHAR  AS timestamp)) "
                         "AS \"json_alias_test\", count(*) AS \"count\" FROM \"json_alias_test\" "
                         "GROUP BY \"json_alias_test\" ORDER BY \"json_alias_test\" ASC")
                    (:query compile-res)))
-            (is (= '("{injection' OR 1=1--' AND released = 1,injection' OR 1=1--' AND released = 1}") (:params compile-res)))))))))
+            (is (= '("{injection' OR 1=1--' AND released = 1,injection' OR 1=1--' AND released = 1}") (:params compile-res)))
+            (is (= (str "SELECT (\"json_alias_test\".\"bob\"#>> ?::text[])::VARCHAR  AS \"json_alias_test\" FROM \"json_alias_test\" "
+                        "ORDER BY \"json_alias_test\" ASC LIMIT 1048575")
+                   (:query only-order)))))))))
 
 (deftest describe-nested-field-columns-test
   (mt/test-driver :postgres
@@ -385,13 +401,13 @@
                      :nfc-path          [:incoherent_json_val "b"]
                      :visibility-type   :normal}
                     {:name              "coherent_json_val → a",
-                     :database-type     "integer",
+                     :database-type     "bigint",
                      :base-type         :type/Integer,
                      :database-position 0,
                      :nfc-path          [:coherent_json_val "a"]
                      :visibility-type   :normal}
                     {:name              "coherent_json_val → b",
-                     :database-type     "integer",
+                     :database-type     "bigint",
                      :base-type         :type/Integer,
                      :database-position 0,
                      :nfc-path          [:coherent_json_val "b"]
@@ -409,7 +425,7 @@
                      :visibility-type   :normal,
                      :nfc-path          [:incoherent_json_val "c"]}
                     {:name              "incoherent_json_val → d",
-                     :database-type     "integer",
+                     :database-type     "bigint",
                      :base-type         :type/Integer,
                      :database-position 0,
                      :visibility-type   :normal,
@@ -432,7 +448,7 @@
                                     "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
           (is (= #{{:name "trivial_json → a",
-                    :database-type "integer",
+                    :database-type "bigint",
                     :base-type :type/Integer,
                     :database-position 0,
                     :visibility-type :normal,
@@ -455,7 +471,7 @@
                                     "INSERT INTO \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json) VALUES ('{\"a\": 1}');")]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
           (is (= #{{:name "trivial_json → a",
-                    :database-type "integer",
+                    :database-type "bigint",
                     :base-type :type/Integer,
                     :database-position 0,
                     :visibility-type :normal,
@@ -467,7 +483,7 @@
 
 (deftest describe-big-nested-field-columns-test
   (mt/test-driver :postgres
-    (testing "blank out if huge. blank out instead of silently limiting"
+    (testing "limit if huge. limit it and yell warning (#23635)"
       (drop-if-exists-and-create-db! "big-json-test")
       (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "big-json-test"
                                                                   :json-unfolding true})
@@ -479,11 +495,19 @@
         (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [sql]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= #{}
-                 (sql-jdbc.sync/describe-nested-field-columns
-                  :postgres
-                  database
-                  {:name "big_json_table"}))))))))
+          (is (= metabase.driver.sql-jdbc.sync.describe-table/max-nested-field-columns
+                 (count
+                   (sql-jdbc.sync/describe-nested-field-columns
+                     :postgres
+                     database
+                     {:name "big_json_table"}))))
+          (is (str/includes?
+                (get-in (mt/with-log-messages-for-level :warn
+                              (sql-jdbc.sync/describe-nested-field-columns
+                                :postgres
+                                database
+                                {:name "big_json_table"})) [0 2])
+                "More nested field columns detected than maximum.")))))))
 
 (mt/defdataset with-uuid
   [["users"

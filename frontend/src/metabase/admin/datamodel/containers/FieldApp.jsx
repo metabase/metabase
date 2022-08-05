@@ -5,7 +5,6 @@
  */
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Link } from "react-router";
 import { connect } from "react-redux";
 
 import _ from "underscore";
@@ -51,6 +50,7 @@ import { isCurrency } from "metabase/lib/schema_metadata";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
+import { BackButtonLink, FieldNameInput } from "./FieldApp.styled";
 
 const mapStateToProps = (state, props) => {
   const databaseId = parseInt(props.params.databaseId);
@@ -395,12 +395,11 @@ const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
 // TODO: Should this invoke goBack() instead?
 // not sure if it's possible to do that neatly with Link component
 export const BackButton = ({ databaseId, tableId }) => (
-  <Link
+  <BackButtonLink
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
-    className="circle text-white p2 flex align-center justify-center bg-dark bg-brand-hover"
   >
     <Icon name="arrow_left" />
-  </Link>
+  </BackButtonLink>
 );
 
 export class FieldHeader extends React.Component {
@@ -432,9 +431,9 @@ export class FieldHeader extends React.Component {
   render() {
     return (
       <div>
-        <InputBlurChange
+        <FieldNameInput
           name="display_name"
-          className="h2 AdminInput bordered rounded border-dark block mb1"
+          className="h2 AdminInput"
           value={this.props.field.display_name}
           onBlurChange={this.onNameChange}
           placeholder={this.props.field.name}

@@ -21,7 +21,6 @@ export const RadioContainer = styled.div`
 `;
 
 export const CheckboxContainer = styled.div`
-  min-height: 2.25rem;
   display: flex;
   align-items: center;
   gap: 1rem;

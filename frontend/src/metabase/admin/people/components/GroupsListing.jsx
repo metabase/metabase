@@ -27,6 +27,7 @@ import AdminContentTable from "metabase/components/AdminContentTable";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 
 import { AddRow } from "./AddRow";
+import { DeleteModalTrigger, EditGroupButton } from "./GroupsListing.styled";
 
 // ------------------------------------------------------------ Add Group ------------------------------------------------------------
 
@@ -87,15 +88,11 @@ function ActionsPopover({ group, onEditGroupClicked, onDeleteGroupClicked }) {
       triggerElement={<Icon className="text-light" name="ellipsis" />}
     >
       <ul className="UserActionsSelect py1">
-        <li
-          className="py1 px2 bg-brand-hover text-white-hover cursor-pointer"
-          onClick={onEditGroupClicked.bind(null, group)}
-        >
+        <EditGroupButton onClick={onEditGroupClicked.bind(null, group)}>
           {t`Edit Name`}
-        </li>
+        </EditGroupButton>
         <ModalWithTrigger
-          as="li"
-          triggerClasses="py1 px2 bg-brand-hover text-white-hover cursor-pointer text-error"
+          as={DeleteModalTrigger}
           triggerElement={t`Remove Group`}
         >
           <DeleteGroupModal group={group} onConfirm={onDeleteGroupClicked} />

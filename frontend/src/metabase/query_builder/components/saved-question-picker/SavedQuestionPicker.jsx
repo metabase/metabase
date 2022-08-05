@@ -34,7 +34,7 @@ const propTypes = {
   databaseId: PropTypes.string,
   tableId: PropTypes.string,
   collectionName: PropTypes.string,
-  collection: PropTypes.object,
+  rootCollection: PropTypes.object,
 };
 
 const getOurAnalyticsCollection = collectionEntity => {
@@ -58,7 +58,7 @@ function SavedQuestionPicker({
   databaseId,
   tableId,
   collectionName,
-  collection: rootCollection,
+  rootCollection,
 }) {
   const collectionTree = useMemo(() => {
     const targetModels = isDatasets ? ["dataset"] : null;
@@ -146,6 +146,7 @@ const mapStateToProps = ({ currentUser }) => ({ currentUser });
 export default _.compose(
   Collection.load({
     id: () => "root",
+    entityAlias: "rootCollection",
     loadingAndErrorWrapper: false,
   }),
   Collection.loadList({

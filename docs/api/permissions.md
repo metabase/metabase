@@ -1,6 +1,7 @@
 ---
 title: "Permissions"
-summary: "/api/permissions endpoints."
+summary: |
+  /api/permissions endpoints.
 ---
 
 # Permissions

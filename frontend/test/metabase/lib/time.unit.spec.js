@@ -8,7 +8,7 @@ import {
   msToHours,
   hoursToSeconds,
 } from "metabase/lib/time";
-import moment from "moment";
+import moment from "moment-timezone";
 
 describe("time", () => {
   describe("parseTimestamp", () => {

@@ -8,7 +8,7 @@
             [metabase.models.revision :refer [push-revision!]]
             [metabase.models.segment :refer [Segment]]))
 
-(def ^:const revisions-topics
+(def ^:private revisions-topics
   "The `Set` of event topics which are subscribed to for use in revision tracking."
   #{:card-create
     :card-update

@@ -4,6 +4,29 @@ import { COMPACT_CURRENCY_OPTIONS } from "metabase/lib/formatting";
 import { moveToFront } from "metabase/lib/dom";
 import { isHistogramBar, xValueForWaterfallTotal } from "./renderer_utils";
 
+const sumY = data => data.reduce((sum, [, y]) => sum + y, 0);
+
+const calculateMultiseriesYValues = data => {
+  const [positiveData, negativeData] = _.partition(
+    data.filter(([, y]) => y != null),
+    ([, y]) => y >= 0,
+  );
+
+  const yPositive = positiveData.length > 0 ? sumY(positiveData) : null;
+  const yNegative = negativeData.length > 0 ? sumY(negativeData) : null;
+
+  const yTotal =
+    yPositive != null || yNegative != null
+      ? yPositive ?? 0 + yNegative ?? 0
+      : null;
+
+  return {
+    yPositive,
+    yNegative,
+    yTotal,
+  };
+};
+
 /*
 There's a lot of messy logic in this function. Its purpose is to place text labels at the appropriate place over a chart.
 To do this it has to match the behavior in dc.js and our own hacks on top of that. Here are some things it does:
@@ -86,22 +109,18 @@ export function onRenderValueLabels(
       .values()
       .map(data => {
         const [[x]] = data;
-        const yp = data
-          .filter(([, y]) => y >= 0)
-          .reduce((sum, [, y]) => sum + y, 0);
-        const yn = data
-          .filter(([, y]) => y < 0)
-          .reduce((sum, [, y]) => sum + y, 0);
+        const { yPositive, yNegative, yTotal } =
+          calculateMultiseriesYValues(data);
 
         if (!isStacked) {
-          return [[x, yp + yn, 1]];
-        } else if (yp !== yn) {
+          return [[x, yTotal, 1]];
+        } else if (yPositive !== yNegative) {
           return [
-            [x, yp, 2],
-            [x, yn, 2],
-          ];
+            yPositive != null ? [x, yPositive, 2] : null,
+            yNegative != null ? [x, yNegative, 2] : null,
+          ].filter(Boolean);
         } else {
-          return [[x, yp, 1]];
+          return [[x, yTotal, 1]];
         }
       })
       .flatten(1)

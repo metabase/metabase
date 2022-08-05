@@ -913,13 +913,9 @@
 ;;
 ;; Field filters and raw values usually have their value specified by `:parameters` (see [[Parameters]] below).
 
-(def template-tag-types
-  "List of valid template tag types."
-  [:snippet :card :dimension :number :text :date])
-
 (def TemplateTagType
   "Schema for valid values of template tag `:type`."
-  (apply s/enum template-tag-types))
+  (s/enum :snippet :card :dimension :number :text :date))
 
 (def ^:private TemplateTag:Common
   "Things required by all template tag types."

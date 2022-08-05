@@ -9,6 +9,17 @@ html {
   width: 100%;
 }
 
+@media print and (orientation: portrait) {
+  html {
+    width: 8.5in;
+  }
+}
+@media print and (orientation: landscape) {
+  html {
+    width: 11in;
+  }
+}
+
 body {
   font-family: var(--default-font-family), sans-serif;
   font-size: var(--default-font-size);

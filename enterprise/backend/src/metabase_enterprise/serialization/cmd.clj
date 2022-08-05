@@ -55,8 +55,7 @@
       (let [all-res    [(load/load (str path "/users") context)
                         (load/load (str path "/databases") context)
                         (load/load (str path "/collections") context)
-                        (load/load-settings path context)
-                        (load/load-dependencies path context)]
+                        (load/load-settings path context)]
             reload-fns (filter fn? all-res)]
         (when (seq reload-fns)
           (log/info (trs "Finished first pass of load; now performing second pass"))
@@ -171,7 +170,6 @@
                (select-entities-in-collections Pulse collections state)
                users))
   (dump/dump-settings path)
-  (dump/dump-dependencies path)
   (dump/dump-dimensions path)
   (log/info (trs "END DUMP to {0} via user {1}" path user)))
 

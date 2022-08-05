@@ -36,12 +36,6 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.AdminBadge {
-  background-color: var(--color-accent2);
-  border-radius: 4px;
-  color: var(--color-text-white);
-  padding: 0.25em;
-}
 .PageHeader {
   padding-top: var(--page-header-padding);
   padding-bottom: var(--page-header-padding);
@@ -224,10 +218,6 @@
 .TableEditor-field-visibility .ColumnarSelector-row:hover {
   background-color: var(--color-brand) !important;
   color: white !important;
-}
-
-.TableEditor-field-type {
-  /*color: var(--color-accent2);*/
 }
 
 .TableEditor-field-type .ColumnarSelector-row:hover {

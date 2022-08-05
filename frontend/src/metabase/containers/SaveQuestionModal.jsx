@@ -126,6 +126,7 @@ class SaveQuestionModal extends Component {
 
     const canUpdateExistingCard =
       originalCard && !originalCard.dataset && originalCard.can_write;
+    const isReadonly = originalCard != null && !originalCard.can_write;
 
     const initialValues = {
       name:
@@ -134,7 +135,7 @@ class SaveQuestionModal extends Component {
           : "",
       description: card.description || "",
       collection_id:
-        card.collection_id === undefined
+        card.collection_id === undefined || isReadonly
           ? initialCollectionId
           : card.collection_id,
       saveType: canUpdateExistingCard ? "overwrite" : "create",
