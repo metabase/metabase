@@ -1,7 +1,5 @@
 (ns metabase.logger-test
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [clojure.tools.logging :as log]
             [clojure.tools.logging.impl :as log.impl]
             [metabase.logger :as mb.logger]
@@ -18,12 +16,7 @@
       (is (pos? (count (mb.logger/messages)))))))
 
 (deftest memoized-logger-test
-  (testing "Installed custom logger"
-    (is (str/includes? (log.impl/name log/*logger-factory*) "MetabaseLoggerFactory")
-        "Custom `metabase.logger.MetabaseLoggerFactory` logger not installed"))
-  (testing "memoizes loggers for namespaces"
-    (log.impl/get-logger log/*logger-factory* *ns*)
-    (is (contains? (memoize/snapshot (var-get #'mb.logger/ns-logger))
-                   ;; memoization cache keeps the args vector
-                   [*ns*])
-        "Memoization cache does not include `*ns*`")))
+  (testing "Using log4j2 logger"
+    (is (= (log.impl/name log/*logger-factory*)
+           "org.apache.logging.log4j")
+        "Not using log4j2 logger factory. This could add two orders of magnitude of time to logging calls")))

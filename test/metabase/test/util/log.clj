@@ -94,7 +94,7 @@
     (name a-namespace)))
 
 (defn- logger-context ^LoggerContext []
-  (LogManager/getContext true))
+  (LogManager/getContext false))
 
 (defn- configuration ^Configuration []
   (.getConfiguration (logger-context)))
@@ -141,7 +141,6 @@
                          (.getFilter parent-logger))]
       (.addLogger (configuration) (logger-name a-namespace) new-logger)
       (.updateLoggers (logger-context))
-      (mb.logger/clear-memoized-ns-loggers!)
       (println "Created a new logger for" (logger-name a-namespace)))))
 
 (s/defn set-ns-log-level!
