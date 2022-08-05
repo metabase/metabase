@@ -3,7 +3,6 @@
   (:require [clojure.test :refer :all]
             [clojure.tools.logging :as log]
             [clojure.tools.logging.impl :as log.impl]
-            [metabase.logger :as mb.logger]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [potemkin :as p]
             [schema.core :as s])
