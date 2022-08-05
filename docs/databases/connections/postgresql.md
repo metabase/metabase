@@ -100,6 +100,6 @@ Metabase can create tables with model data in your database and refresh them on 
 
 See [Models](../../users-guide/models.md).
 
-[ssl-modes]: https://jdbc.postgresql.org/documentation/head/ssl-client.html
-[ssh-tunnel]: ../ssh-tunnel-for-database-connections.html
+[ssl-modes]: https://jdbc.postgresql.org/documentation/head/ssl-client
+[ssh-tunnel]: ./ssh-tunnel.md
 

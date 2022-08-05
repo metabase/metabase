@@ -8,7 +8,7 @@ title: Databases overview
 
 Connect to and manage your databases.
 
-## [Encrypting your database connection](./encrypting-database-details-at-rest.md)
+## [Encrypting your database connection](./encrypting-details-at-rest.md)
 
 Learn how to encrypt your database connection credentials at rest.
 

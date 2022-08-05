@@ -39,7 +39,7 @@ The following databases have official drivers maintained by the Metabase team. C
 - [Google Analytics](./connections/google-analytics.md)
 - H2
 - [MongoDB (version 3.6 or higher)](./connections/mongodb.md) <!-- MongoDB supported version is from https://www.mongodb.com/support-policy -->
-- [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](databases/mysql.md)
+- [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](./connections/mysql.md)
 - [Oracle](./connections/oracle.md)
 - [PostgreSQL](connections/postgresql.md)
 - Presto
@@ -71,7 +71,7 @@ Metabase automatically tries to connect to databases with SSL first, then withou
 
 ### Use an SSH tunnel for database connections
 
-See our [guide to SSH tunneling](ssh-tunnel-for-database-connections.md).
+See our [guide to SSH tunneling](./ssh-tunnel.md).
 
 ### Choose when Metabase syncs and scans
 
@@ -126,7 +126,7 @@ On either the table settings or field settings page, you'll see these options:
 
 ![Re-scan options](./images/re-scan-options.png)
 
-For more on editing metadata, check out [the Data Model page: editing metadata](03-metadata-editing.md).
+For more on editing metadata, check out [the Data Model page: editing metadata](./metadata-editing.md).
 
 ## Deleting databases
 

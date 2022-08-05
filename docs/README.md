@@ -55,6 +55,7 @@ title: Metabase documentation
 
 ## Dashboards
 
+- [Overview](./dashboards/start.md)
 - [Creating dashboards](./dashboards/introduction.md)
 - [Dashboard filters](./dashboards/filters.md)
 - [Interactive dashboards](./dashboards/interactive.md)
@@ -103,12 +104,13 @@ title: Metabase documentation
 
 ## Databases
 
-- [Adding data sources](./administration-guide/01-managing-databases.md)
-- [Encrypting your database connection](./operations-guide/encrypting-database-details-at-rest.md)
-- [Editing your database metadata](./administration-guide/03-metadata-editing.md)
-- [Creating segments and metrics](./administration-guide/07-segments-and-metrics.md)
-- [SSH tunneling](./administration-guide/ssh-tunnel-for-database-connections.md)
-- [SSL certificate](./administration-guide/secure-database-connections-with-ssl-certificates.md)
+- [Overview](./databases/start.md)
+- [Adding data sources](./databases/connecting.md)
+- [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
+- [Editing your database metadata](./databases/metadata-editing.md)
+- [Creating segments and metrics](./databases/segments-and-metrics.md)
+- [SSH tunneling](./databases/ssh-tunnels.md)
+- [SSL certificate](./databases/ssl-certificates.md)
 
 ## Configuring Metabase
 

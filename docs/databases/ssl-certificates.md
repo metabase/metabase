@@ -1,7 +1,7 @@
 ---
 title: Securing database connections using an SSL certificate
 redirect_from:
-  - /docs/latest/administration-guide/secure-database-connections-with-ssl-certificates.md
+  - /docs/latest/administration-guide/secure-database-connections-with-ssl-certificates
 ---
 
 ## Securing database connections using an SSL certificate
@@ -44,7 +44,7 @@ Once you've done that, you can go to **Admin** > **Databases** and select your d
 
 ### Step 3: Add your database
 
-For example, let's say you want to secure a connection to a PostgreSQL database. Follow the instructions in the app to add the database. For more on setting up a database connection, check out our docs for [adding a database](01-managing-databases.md).
+For example, let's say you want to secure a connection to a PostgreSQL database. Follow the instructions in the app to add the database. For more on setting up a database connection, check out our docs for [adding a database](./connecting.md).
 
 ### Step 4: Toggle on the "Use a secure connection (SSL)" option
 
