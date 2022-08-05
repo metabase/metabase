@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -23,11 +23,11 @@ import {
 import Question from "metabase-lib/lib/Question";
 
 import {
-  QuestionActionsContainer,
-  BookmarkButton,
-  AnimationStates,
+  QuestionActionsDivider,
   StrengthIndicator,
 } from "./QuestionActions.styled";
+import BookmarkToggle from "metabase/core/components/BookmarkToggle";
+import { ViewHeaderIconButtonContainer } from "./view/ViewHeader.styled";
 
 const HEADER_ICON_SIZE = 16;
 
@@ -76,13 +76,6 @@ const QuestionActions = ({
   isModerator,
   softReloadCard,
 }: Props) => {
-  const [animation, setAnimation] = useState<AnimationStates>(null);
-
-  const handleClickBookmark = () => {
-    handleBookmark();
-    setAnimation(isBookmarked ? "shrink" : "expand");
-  };
-  const bookmarkButtonColor = isBookmarked ? color("brand") : undefined;
   const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
 
   const infoButtonColor = isShowingQuestionInfoSidebar
@@ -185,12 +178,18 @@ const QuestionActions = ({
         action: turnDatasetIntoQuestion,
       });
     }
+  }
+
+  if (!question.query().readOnly()) {
     extraButtons.push({
       title: t`Duplicate`,
       icon: "segment",
       action: () => onOpenModal(MODAL_TYPES.CLONE),
       testId: CLONE_TESTID,
     });
+  }
+
+  if (canWrite) {
     extraButtons.push({
       title: t`Archive`,
       icon: "view_archive",
@@ -200,33 +199,33 @@ const QuestionActions = ({
   }
 
   return (
-    <QuestionActionsContainer data-testid="question-action-buttons-container">
+    <>
+      <QuestionActionsDivider />
       <Tooltip tooltip={bookmarkTooltip}>
-        <BookmarkButton
-          animation={animation}
+        <BookmarkToggle
+          onCreateBookmark={handleBookmark}
+          onDeleteBookmark={handleBookmark}
           isBookmarked={isBookmarked}
-          onlyIcon
-          icon="bookmark"
-          iconSize={HEADER_ICON_SIZE}
-          onClick={handleClickBookmark}
-          color={bookmarkButtonColor}
         />
       </Tooltip>
       <Tooltip tooltip={t`More info`}>
-        <Button
-          onlyIcon
-          icon="info"
-          iconSize={HEADER_ICON_SIZE}
-          onClick={onInfoClick}
-          color={infoButtonColor}
-        />
+        <ViewHeaderIconButtonContainer>
+          <Button
+            onlyIcon
+            icon="info"
+            iconSize={HEADER_ICON_SIZE}
+            onClick={onInfoClick}
+            color={infoButtonColor}
+            data-testId="qb-header-info-button"
+          />
+        </ViewHeaderIconButtonContainer>
       </Tooltip>
       <EntityMenu
         items={extraButtons}
         triggerIcon="ellipsis"
         tooltip={t`Move, archive, and more...`}
       />
-    </QuestionActionsContainer>
+    </>
   );
 };
 

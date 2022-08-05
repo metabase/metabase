@@ -148,10 +148,6 @@ jobs:
       env:
         TERM: xterm
 
-    - name: Generate Mochawesome Reports
-      if: failure()
-      run: yarn generate-cypress-html-report
-
     - name: Upload Cypress Artifacts upon failure
       uses: actions/upload-artifact@v2
       if: failure()
@@ -163,7 +159,7 @@ jobs:
         if-no-files-found: ignore
 
   visual-regression-tests:
-    if: env.PERCY_TOKEN != null && ${{ github.ref == 'refs/heads/master' }}
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     needs: build

@@ -27,6 +27,8 @@ export const PLUGIN_APP_INIT_FUCTIONS = [];
 // function to determine the landing page
 export const PLUGIN_LANDING_PAGE = [];
 
+export const PLUGIN_REDUX_MIDDLEWARES = [];
+
 // override for LogoIcon
 export const PLUGIN_LOGO_ICON_COMPONENTS = [];
 
@@ -77,9 +79,7 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   getHasCustomColors: (state: State) => false,
-  getHasCustomBranding: (state: State) => false,
   canWhitelabel: (state: State) => false,
-  getHideMetabot: (state: State) => false,
   getLoadingMessage: (state: State) => t`Doing science...`,
 };
 

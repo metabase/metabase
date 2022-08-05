@@ -360,7 +360,7 @@
                   Table    [table {:db_id (u/the-id db)}]
                   Field    [field {:table_id (u/the-id table)}]]
     (let [cnt (->> (mt/user-http-request
-                    :crowberto :post 202 "card"
+                    :crowberto :post 200 "card"
                     {:name                   "Metabase Websites, Sessions and 1 Day Active Users, Grouped by Date (day)"
                      :display                :table
                      :visualization_settings {}

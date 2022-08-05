@@ -324,45 +324,48 @@
 (s/defn ^:private check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
-  [parameter-mappings :- [{:target   s/Any
-                           :card-id  su/IntGreaterThanZero
-                           s/Keyword s/Any}]]
+  [parameter-mappings :- [dashboard-card/ParamMapping]]
   (when (seq parameter-mappings)
     ;; calculate a set of all Field IDs referenced by parameter mappings; then from those Field IDs calculate a set of
     ;; all Table IDs to which those Fields belong. This is done in a batched fashion so we can avoid N+1 query issues
     ;; if there happen to be a lot of parameters
-    (let [card-ids              (into #{} (map :card-id) parameter-mappings)
-          card-id->query        (db/select-id->field :dataset_query Card :id [:in card-ids])
-          field-ids             (set (for [{:keys [target card-id]} parameter-mappings
-                                           :let                     [query    (or (card-id->query card-id)
-                                                                                  (throw (ex-info (tru "Card {0} does not exist or does not have a valid query."
-                                                                                                       card-id)
-                                                                                                  {:status-code 404
-                                                                                                   :card-id     card-id})))
-                                                                     field-id (param-target->field-id target query)]
-                                           :when                    field-id]
-                                       field-id))
-          table-ids             (when (seq field-ids)
-                                  (db/select-field :table_id Field :id [:in field-ids]))
-          table-id->database-id (when (seq table-ids)
-                                  (db/select-id->field :db_id Table :id [:in table-ids]))]
-      (doseq [table-id table-ids
-              :let     [database-id (table-id->database-id table-id)]]
-        ;; check whether we'd actually be able to query this Table (do we have ad-hoc data perms for it?)
-        (when-not (query-perms/can-query-table? database-id table-id)
-          (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
-                               (pr-str (db/select-one-field :name Table :id table-id)))
-                          {:status-code        403
-                           :database-id        database-id
-                           :table-id           table-id
-                           :actual-permissions @api/*current-user-permissions-set*})))))))
+    (let [card-ids              (into #{}
+                                      (comp (map :card-id)
+                                            (remove nil?))
+                                      parameter-mappings)]
+      (when (seq card-ids)
+        (let [card-id->query        (db/select-id->field :dataset_query Card :id [:in card-ids])
+              field-ids             (set (for [{:keys [target card-id]} parameter-mappings
+                                               :when                    card-id
+                                               :let                     [query    (or (card-id->query card-id)
+                                                                                      (throw (ex-info (tru "Card {0} does not exist or does not have a valid query."
+                                                                                                           card-id)
+                                                                                                      {:status-code 404
+                                                                                                       :card-id     card-id})))
+                                                                         field-id (param-target->field-id target query)]
+                                               :when                    field-id]
+                                           field-id))
+              table-ids             (when (seq field-ids)
+                                      (db/select-field :table_id Field :id [:in field-ids]))
+              table-id->database-id (when (seq table-ids)
+                                      (db/select-id->field :db_id Table :id [:in table-ids]))]
+          (doseq [table-id table-ids
+                  :let     [database-id (table-id->database-id table-id)]]
+            ;; check whether we'd actually be able to query this Table (do we have ad-hoc data perms for it?)
+            (when-not (query-perms/can-query-table? database-id table-id)
+              (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
+                                   (pr-str (db/select-one-field :name Table :id table-id)))
+                              {:status-code        403
+                               :database-id        database-id
+                               :table-id           table-id
+                               :actual-permissions @api/*current-user-permissions-set*})))))))))
 
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 (api/defendpoint POST "/:id/cards"
   "Add a `Card` to a Dashboard."
   [id :as {{:keys [cardId parameter_mappings], :as dashboard-card} :body}]
   {cardId             (s/maybe su/IntGreaterThanZero)
-   parameter_mappings [su/Map]}
+   parameter_mappings (s/maybe [dashboard-card/ParamMapping])}
   (api/check-not-archived (api/write-check Dashboard id))
   (when cardId
     (api/check-not-archived (api/read-check Card cardId)))
@@ -397,16 +400,16 @@
                                                existing-mappings (get dashcard-id->existing-mappings dashcard-id)]
                                            (contains? existing-mappings (select-keys mapping [:target :parameter_id]))))
         new-mappings                   (for [{mappings :parameter_mappings, dashcard-id :id} dashcards
-                                             mapping                                         mappings
-                                             :when                                           (not (existing-mapping? dashcard-id mapping))]
+                                             mapping mappings
+                                             :when (not (existing-mapping? dashcard-id mapping))]
                                          (assoc mapping :dashcard-id dashcard-id))
         ;; need to add the appropriate `:card-id` for all the new mappings we're going to check.
         dashcard-id->card-id           (when (seq new-mappings)
                                          (db/select-id->field :card_id DashboardCard
                                            :dashboard_id dashboard-id
                                            :id           [:in (set (map :dashcard-id new-mappings))]))
-        new-mappings (for [{:keys [dashcard-id], :as mapping} new-mappings]
-                       (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
+        new-mappings                   (for [{:keys [dashcard-id], :as mapping} new-mappings]
+                                         (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
     (check-parameter-mapping-permissions new-mappings)))
 
 (def ^:private UpdatedDashboardCard
@@ -575,11 +578,13 @@
 
     ;; show me categories
     (chain-filter 62 \"ee876336\" {})
-    ;; -> (\"African\" \"American\" \"Artisan\" ...)
+    ;; -> {:values          (\"African\" \"American\" \"Artisan\" ...)
+           :has_more_values false}
 
     ;; show me categories that have expensive restaurants
     (chain-filter 62 \"ee876336\" {\"6f10a41f\" 4})
-    ;; -> (\"Japanese\" \"Steakhouse\")"
+    ;; -> {:values          (\"Japanese\" \"Steakhouse\")
+           :has_more_values false}"
   ([dashboard param-key constraint-param-key->value]
    (chain-filter dashboard param-key constraint-param-key->value nil))
 
@@ -594,25 +599,28 @@
                         :status-code     400})))
      (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
            field-ids   (param-key->field-ids dashboard param-key)]
-       (when (empty? field-ids)
-         (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                         {:param       (get (:resolved-params dashboard) param-key)
-                          :status-code 400})))
+      (when (empty? field-ids)
+        (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
+                        {:param       (get (:resolved-params dashboard) param-key)
+                         :status-code 400})))
        ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
        ;; separate query for each Field (for parameters that are mapped to more than one Field)
-       (try
-         (let [results (distinct (mapcat (if (seq query)
-                                           #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                           #(chain-filter/chain-filter % constraints :limit result-limit))
-                                         field-ids))]
-           ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
-           (if (sequential? (first results))
-             (sort-by second results)
-             (sort results)))
-         (catch clojure.lang.ExceptionInfo e
-           (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-             (api/throw-403 e)
-             (throw e))))))))
+      (try
+        (let [results (map (if (seq query)
+                               #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                                #(chain-filter/chain-filter % constraints :limit result-limit))
+                           field-ids)
+              values (distinct (mapcat :values results))
+              has_more_values (boolean (some true? (map :has_more_values results)))]
+          ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
+          {:values          (if (sequential? (first values))
+                              (sort-by second values)
+                              (sort values))
+           :has_more_values has_more_values})
+        (catch clojure.lang.ExceptionInfo e
+          (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+            (api/throw-403 e)
+            (throw e))))))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query

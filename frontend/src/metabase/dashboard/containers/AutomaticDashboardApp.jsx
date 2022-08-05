@@ -39,6 +39,7 @@ import {
   ListRoot,
   SidebarHeader,
   SidebarRoot,
+  XrayIcon,
 } from "./AutomaticDashboardApp.styled";
 
 const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
@@ -121,7 +122,7 @@ class AutomaticDashboardAppInner extends React.Component {
           {isHeaderVisible && (
             <div className="bg-white border-bottom py2">
               <div className="wrapper flex align-center">
-                <Icon name="bolt" className="text-gold mr2" size={24} />
+                <XrayIcon name="bolt" size={24} />
                 <div>
                   <h2 className="text-wrap mr2">
                     {dashboard && <TransientTitle dashboard={dashboard} />}

@@ -14,6 +14,7 @@
             [metabase.api.public-test :as public-test]
             [metabase.http-client :as client]
             [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+            [metabase.models.params.chain-filter-test :as chain-filer-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor-test :as qp.test]
@@ -419,6 +420,23 @@
         (is (= [{:id "_d", :slug "d", :name "d", :type "date"}]
                (:parameters (client/client :get 200 (dashboard-url dash {:params {:c 100}})))))))))
 
+(deftest locked-params-are-substituted-into-text-cards
+  (testing "check that locked params are substituted into text cards with mapped variables on the backend"
+    (with-embedding-enabled-and-new-secret-key
+      (mt/with-temp* [Dashboard     [dash {:enable_embedding true
+                                           :parameters       [{:id "_a" :slug "a", :name "a", :type :string/=}]}]
+                      DashboardCard [_ {:dashboard_id           (:id dash)
+                                        :parameter_mappings     [{:parameter_id "_a",
+                                                                  :target       [:text-tag "foo"]}]
+                                        :visualization_settings {:virtual_card {:display "text"}
+                                                                 :text         "Text card with variable: {{foo}}"}}]]
+        (is (= "Text card with variable: bar"
+               (-> (client/client :get 200 (dashboard-url dash {:params {:a "bar"}}))
+                   :ordered_cards
+                   first
+                   :visualization_settings
+                   :text)))))))
+
 
 ;;; ---------------------- GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -----------------------
 
@@ -812,26 +830,32 @@
       :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
     (testing "Should work if the param we're fetching values for is enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= [2 3 4 5 6]
-               (take 5 (client/client :get 200 (values-url))))))
+        (is (= {:values          [2 3 4 5 6]
+                :has_more_values false}
+               (chain-filer-test/take-n-values 5 (client/client :get 200 (values-url))))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-        (is (= ["Fast Food" "Food Truck" "Seafood"]
-               (take 3 (client/client :get 200 (search-url)))))))
+        (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                :has_more_values false}
+               (chain-filer-test/take-n-values 3 (client/client :get 200 (search-url)))))))
 
     (testing "If an ENABLED constraint param is present in the JWT, that's ok"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= [40 67]
+        (is (= {:values          [40 67]
+                :has_more_values false}
                (client/client :get 200 (values-url {"price" 4})))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-        (is (= []
+        (is (= {:values          []
+                :has_more_values false}
                (client/client :get 200 (search-url {"price" 4}))))))
 
     (testing "If an ENABLED param is present in query params but *not* the JWT, that's ok"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= [40 67]
+        (is (= {:values          [40 67]
+                :has_more_values false}
                (client/client :get 200 (str (values-url) "?_PRICE_=4")))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-        (is (= []
+        (is (= {:values          []
+                :has_more_values false}
                (client/client :get 200 (str (search-url) "?_PRICE_=4"))))))
 
     (testing "If ENABLED param is present in both JWT and the URL, the request should fail"
@@ -850,11 +874,13 @@
           :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
         (testing "Should work if the param we're fetching values for is enabled"
           (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-            (is (= [2 3 4 5 6]
-                   (take 5 (mt/user-http-request :rasta :get 200 (values-url))))))
+            (is (= {:values          [2 3 4 5 6]
+                    :has_more_values false}
+                   (chain-filer-test/take-n-values 5 (mt/user-http-request :rasta :get 200 (values-url))))))
           (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-            (is (= ["Fast Food" "Food Truck" "Seafood"]
-                   (take 3 (mt/user-http-request :rasta :get 200 (search-url)))))))))))
+            (is (= {:values          ["Fast Food" "Food Truck" "Seafood"]
+                    :has_more_values false}
+                   (chain-filer-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (search-url)))))))))))
 
 (deftest chain-filter-locked-params-test
   (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
@@ -878,10 +904,12 @@
 
       (testing "if `:locked` param is supplied, request should succeed"
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-          (is (= [40 67]
+          (is (= {:values          [40 67]
+                  :has_more_values false}
                  (client/client :get 200 (values-url {"price" 4})))))
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-          (is (= []
+          (is (= {:values          []
+                  :has_more_values false}
                  (client/client :get 200 (search-url {"price" 4}))))))
 
       (testing "if `:locked` parameter is present in URL params, request should fail"

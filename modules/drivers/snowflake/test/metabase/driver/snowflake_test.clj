@@ -11,6 +11,7 @@
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.dataset-definitions :as defs]
+            [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql.ddl :as ddl]
             [metabase.util :as u]
@@ -117,17 +118,30 @@
                 :dest-column-name "id"}}
              (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (Table (mt/id :venues))))))))
 
+(defn- format-env-key [env-key]
+  (let [[_ header body footer]
+        (re-find #"(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
+    (str header (str/replace body #"\s+" "\n") footer)))
+
 (deftest can-connect-test
   (mt/test-driver :snowflake
-    (letfn [(can-connect? [details]
-              (driver/can-connect? :snowflake details))]
+    (let [can-connect? (partial driver/can-connect? :snowflake)]
       (is (= true
              (can-connect? (:details (mt/db))))
           "can-connect? should return true for normal Snowflake DB details")
       (is (thrown?
            net.snowflake.client.jdbc.SnowflakeSQLException
            (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
-          "can-connect? should throw for Snowflake databases that don't exist (#9511)"))))
+          "can-connect? should throw for Snowflake databases that don't exist (#9511)")
+      (let [pk-user (tx/db-test-env-var-or-throw :snowflake :pk-user)
+            pk-key  (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))]
+        (is (= true
+               (-> (:details (mt/db))
+                   (dissoc :password)
+                   (assoc :user pk-user
+                          :private-key-value pk-key)
+                   can-connect?))
+            "can-connect? should return true when authenticating with private key")))))
 
 (deftest report-timezone-test
   (mt/test-driver :snowflake

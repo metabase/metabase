@@ -92,6 +92,7 @@ const SidebarCollectionLink = React.forwardRef<HTMLLIElement, Props>(
       <CollectionNodeRoot
         role="treeitem"
         depth={depth}
+        aria-selected={isSelected}
         isSelected={isSelected}
         hovered={isHovered}
         onClick={onToggleExpand}

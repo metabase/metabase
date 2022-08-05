@@ -21,7 +21,7 @@ As time goes on we may add other auth providers. If you have a service you’d l
   - [Syncing user attributes with Google](#syncing-user-attributes-with-google)
   - [Syncing user attributes with LDAP](#syncing-user-attributes-with-ldap)
 - [Changing an account's login method from email to SSO](#changing-an-accounts-login-method-from-email-to-sso)
-- [Checking if SSO is working correctly](#checking-if-sso-is-working-correctly)
+- [Troubleshooting login issues](#troubleshooting-login-issues)
 
 ## Enabling Google Sign-In
 
@@ -136,7 +136,7 @@ Note that you must have at least one account with email and password login. This
 
 ## Troubleshooting login issues
 
-For common issues, go to [Troubleshooting logins](../troubleshooting-guide/cant-log-in.html).
+See [Troubleshooting logins](../troubleshooting-guide/cant-log-in.md).
 
 [data-sandboxing-docs]: ../enterprise-guide/data-sandboxes.html
 [google-saml-docs]: ../enterprise-guide/saml-google.html

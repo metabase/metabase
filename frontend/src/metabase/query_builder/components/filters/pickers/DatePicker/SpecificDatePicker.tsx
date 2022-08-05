@@ -5,16 +5,15 @@ import { t } from "ttag";
 import { getDateStyleFromSettings } from "metabase/lib/time";
 import Calendar, { SelectAll } from "metabase/components/Calendar";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import Icon from "metabase/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
 import HoursMinutesInput from "./HoursMinutesInput";
 
-import moment from "moment";
+import moment, { Moment } from "moment-timezone";
 import { getTimeComponent, setTimeComponent } from "metabase/lib/query_time";
+import { CalendarIcon } from "./SpecificDatePicker.styled";
 
 type Props = {
   className?: string;
-  isSidebar?: boolean;
   primaryColor?: string;
   calendar?: boolean;
   selectAll?: SelectAll;
@@ -27,7 +26,7 @@ type Props = {
 
 const SpecificDatePicker: React.FC<Props> = props => {
   const onChange = (
-    date?: string | moment.Moment,
+    date?: string | Moment,
     hours?: number | null,
     minutes?: number | null,
   ) => {
@@ -54,7 +53,7 @@ const SpecificDatePicker: React.FC<Props> = props => {
   const dateFormat = getDateStyleFromSettings() || "MM/DD/YYYY";
 
   return (
-    <div className={className}>
+    <div className={className} data-testid="specific-date-picker">
       <div className="mb2 full bordered rounded flex align-center">
         <InputBlurChange
           placeholder={moment().format(dateFormat)}
@@ -74,8 +73,7 @@ const SpecificDatePicker: React.FC<Props> = props => {
         />
 
         {calendar && (
-          <Icon
-            className="mr1 text-purple-hover cursor-pointer"
+          <CalendarIcon
             name="calendar"
             onClick={() => setShowCalendar(!showCalendar)}
             tooltip={showCalendar ? t`Hide calendar` : t`Show calendar`}

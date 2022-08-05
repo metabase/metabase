@@ -74,6 +74,14 @@ export function isAdHocModelQuestion(
 export function checkCanRefreshModelCache(
   refreshInfo: ModelCacheRefreshStatus,
 ) {
+  if (refreshInfo.card_archived === true) {
+    return false;
+  }
+
+  if (refreshInfo.card_dataset === false) {
+    return false;
+  }
+
   return refreshInfo.state === "persisted" || refreshInfo.state === "error";
 }
 

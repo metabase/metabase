@@ -151,13 +151,11 @@ export function DashboardSidebars({
       );
     case SIDEBAR_NAME.info:
       return (
-        <aside data-testid="sidebar-right">
-          <DashboardInfoSidebar
-            dashboard={dashboard}
-            saveDashboardAndCards={saveDashboardAndCards}
-            setDashboardAttribute={setDashboardAttribute}
-          />
-        </aside>
+        <DashboardInfoSidebar
+          dashboard={dashboard}
+          saveDashboardAndCards={saveDashboardAndCards}
+          setDashboardAttribute={setDashboardAttribute}
+        />
       );
     default:
       return null;

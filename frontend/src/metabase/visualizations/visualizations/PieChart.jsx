@@ -490,12 +490,15 @@ export default class PieChart extends Component {
                       "cursor-pointer": getSliceIsClickable(index),
                     })}
                     onClick={
-                      getSliceIsClickable(index) &&
-                      (e =>
-                        onVisualizationClick({
-                          ...getSliceClickObject(index),
-                          event: e.nativeEvent,
-                        }))
+                      // We use a ternary here because using
+                      // `condition && function` yields a console warning.
+                      getSliceIsClickable(index)
+                        ? e =>
+                            onVisualizationClick({
+                              ...getSliceClickObject(index),
+                              event: event.nativeEvent,
+                            })
+                        : undefined
                     }
                   />
                 ))}

@@ -3,7 +3,7 @@ import React from "react";
 
 import Calendar from "metabase/components/Calendar";
 
-import moment from "moment";
+import moment from "moment-timezone";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { TimeContainer } from "./RangeDatePicker.styled";
 import {
@@ -16,7 +16,6 @@ import SingleDatePicker, { SingleDatePickerProps } from "./SingleDatePicker";
 import SpecificDatePicker from "./SpecificDatePicker";
 
 type BetweenPickerProps = {
-  isSidebar?: boolean;
   className?: string;
   primaryColor?: string;
   filter: Filter;
@@ -27,7 +26,6 @@ type BetweenPickerProps = {
 
 export const BetweenPicker = ({
   className,
-  isSidebar,
   filter: [op, field, startValue, endValue],
   onFilterChange,
   hideTimeSelectors,
@@ -42,8 +40,8 @@ export const BetweenPicker = ({
     );
   }
   return (
-    <div className={className}>
-      <TimeContainer isSidebar={isSidebar}>
+    <div className={className} data-testid="between-date-picker">
+      <TimeContainer>
         <div>
           <SpecificDatePicker
             value={startValue}

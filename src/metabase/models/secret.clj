@@ -1,5 +1,6 @@
 (ns metabase.models.secret
   (:require [cheshire.generate :refer [add-encoder encode-map]]
+            [clojure.core.memoize :as memoize]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -54,7 +55,7 @@
   (->> (filter #(= :secret (keyword (:type %))) conn-props)
     (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {})))
 
-(defn value->file!
+(defn value->file!*
   "Returns the value of the given `secret` instance in the form of a file. If the given instance has a `:file-path` as
   its source, a `File` referring to that is returned. Otherwise, the `:value` is written to a temporary file, which is
   then returned.
@@ -63,7 +64,7 @@
   resolved, in order to render a more user-friendly error message (by looking up the display names of the connection
   properties involved)."
   {:added "0.42.0"}
-  [{:keys [connection-property-name id value] :as secret} driver?]
+  ^File [{:keys [connection-property-name id value] :as secret} driver?]
   (if (= :file-path (:source secret))
     (let [secret-val          (value->string secret)
           ^File existing-file (File. secret-val)]
@@ -100,6 +101,31 @@
           (.write out v)))
       tmp-file)))
 
+(def
+  ^java.io.File
+  ^{:arglists '([{:keys [connection-property-name id value] :as secret} driver?])}
+  value->file!
+  "Returns the value of the given `secret` instance in the form of a file. If the given instance has a `:file-path` as
+  its source, a `File` referring to that is returned. Otherwise, the `:value` is written to a temporary file, which is
+  then returned.
+
+  `driver?` is an optional argument that is only used if an ostensibly existing file value (i.e. `:file-path`) can't be
+  resolved, in order to render a more user-friendly error message (by looking up the display names of the connection
+  properties involved)."
+  (memoize/memo
+   (with-meta value->file!*
+     {::memoize/args-fn (fn [[secret _driver?]]
+                          ;; not clear if value->string could return nil due to the cond so we'll just cache on a key
+                          ;; that is unique
+                          [(vec (:value secret))])})))
+
+(defn get-sub-props
+  "Return a map of secret subproperties for the property `connection-property-name`."
+  [connection-property-name]
+  (let [sub-prop-types [:path :value :options :id]
+        sub-prop #(keyword (str connection-property-name "-" (name %)))]
+    (zipmap sub-prop-types (map sub-prop sub-prop-types))))
+
 (def ^:private uploaded-base-64-pattern #"^data:application/([^;]*);base64,")
 
 (defn db-details-prop->secret-map
@@ -118,37 +144,33 @@
                 intermediate subproperties are removed from the connection-properties before building the JDBC spec)."
   {:added "0.42.0"}
   [details conn-prop-nm]
-  (let [sub-prop   (fn [suffix]
-                     (keyword (str conn-prop-nm suffix)))
-        path-kw    (sub-prop "-path")
-        value-kw   (sub-prop "-value")
-        options-kw (sub-prop "-options")
-        id-kw      (sub-prop "-id")
-        value      (cond
-                     ;; ssl-root-certs will need their prefix removed, and to be base 64 decoded (#20319)
-                     (and (value-kw details) (#{"ssl-client-cert" "ssl-root-cert"} conn-prop-nm)
-                          (re-find uploaded-base-64-pattern (value-kw details)))
-                     (-> (value-kw details) (str/replace-first uploaded-base-64-pattern "") u/decode-base64)
+  (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id}
+        (get-sub-props conn-prop-nm)
+        value  (cond
+                 ;; ssl-root-certs will need their prefix removed, and to be base 64 decoded (#20319)
+                 (and (value-kw details) (#{"ssl-client-cert" "ssl-root-cert"} conn-prop-nm)
+                      (re-find uploaded-base-64-pattern (value-kw details)))
+                 (-> (value-kw details) (str/replace-first uploaded-base-64-pattern "") u/decode-base64)
 
-                     (and (value-kw details) (#{"ssl-key"} conn-prop-nm)
-                          (re-find uploaded-base-64-pattern (value-kw details)))
-                     (.decode (java.util.Base64/getDecoder)
-                              (str/replace-first (value-kw details) uploaded-base-64-pattern ""))
+                 (and (value-kw details) (#{"ssl-key"} conn-prop-nm)
+                      (re-find uploaded-base-64-pattern (value-kw details)))
+                 (.decode (java.util.Base64/getDecoder)
+                          (str/replace-first (value-kw details) uploaded-base-64-pattern ""))
 
-                     ;; the -value suffix was specified; use that
-                     (value-kw details)
-                     (value-kw details)
+                 ;; the -value suffix was specified; use that
+                 (value-kw details)
+                 (value-kw details)
 
-                     ;; the -path suffix was specified; this is actually a :file-path
-                     (path-kw details)
-                     (u/prog1 (path-kw details)
-                       (when (premium-features/is-hosted?)
-                         (throw (ex-info
-                                 (tru "{0} (a local file path) cannot be used in Metabase hosted environment" path-kw)
-                                 {:invalid-db-details-entry (select-keys details [path-kw])}))))
+                 ;; the -path suffix was specified; this is actually a :file-path
+                 (path-kw details)
+                 (u/prog1 (path-kw details)
+                   (when (premium-features/is-hosted?)
+                     (throw (ex-info
+                             (tru "{0} (a local file path) cannot be used in Metabase hosted environment" path-kw)
+                             {:invalid-db-details-entry (select-keys details [path-kw])}))))
 
-                     (id-kw details)
-                     (:value (Secret (id-kw details))))
+                 (id-kw details)
+                 (:value (Secret (id-kw details))))
         source (cond
                  ;; set the :source due to the -path suffix (see above))
                  (and (not= "uploaded" (options-kw details)) (path-kw details))
@@ -164,17 +186,14 @@
 (defn get-secret-string
   "Get the value of a secret property from the database details as a string."
   [details secret-property]
-  (let [value-key (keyword (str secret-property "-value"))
-        options-key (keyword (str secret-property "-options"))
-        path-key (keyword (str secret-property "-path"))
-        id-key (keyword (str secret-property "-id"))
-        id (id-key details)
+  (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id} (get-sub-props secret-property)
+        id (id-kw details)
         value (if id
                 (String. ^bytes (:value (Secret id)) "UTF-8")
-                (value-key details))]
-    (case (options-key details)
+                (value-kw details))]
+    (case (options-kw details)
       "uploaded" (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
-      "local" (slurp (if id value (path-key details)))
+      "local" (slurp (if id value (path-kw details)))
       value)))
 
 (def

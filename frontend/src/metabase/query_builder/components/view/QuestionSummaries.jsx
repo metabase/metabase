@@ -39,7 +39,6 @@ export function QuestionSummarizeWidget({
   return (
     <HeaderButton
       large
-      data-testid="toggle-summarize-sidebar-button"
       color={color("summarize")}
       labelBreakpoint="sm"
       onClick={async () => {

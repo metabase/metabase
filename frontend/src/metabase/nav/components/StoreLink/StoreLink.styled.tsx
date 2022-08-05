@@ -14,7 +14,7 @@ export const StoreIconWrapper = styled(IconWrapper)`
 
   &:hover {
     color: ${color("white")};
-    background-color: ${darken(color("accent7"))};
+    background-color: ${darken(color("filter"))};
   }
 `;
 

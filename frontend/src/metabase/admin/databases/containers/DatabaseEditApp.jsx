@@ -32,8 +32,6 @@ import {
   discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
-  persistDatabase,
-  unpersistDatabase,
 } from "../database";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
@@ -65,8 +63,6 @@ const mapDispatchToProps = {
   dismissSyncSpinner,
   rescanDatabaseFields,
   discardSavedFieldValues,
-  persistDatabase,
-  unpersistDatabase,
   deleteDatabase,
   selectEngine,
 };
@@ -86,8 +82,6 @@ class DatabaseEditApp extends Component {
     dismissSyncSpinner: PropTypes.func.isRequired,
     rescanDatabaseFields: PropTypes.func.isRequired,
     discardSavedFieldValues: PropTypes.func.isRequired,
-    persistDatabase: PropTypes.func.isRequired,
-    unpersistDatabase: PropTypes.func.isRequired,
     deleteDatabase: PropTypes.func.isRequired,
     saveDatabase: PropTypes.func.isRequired,
     selectEngine: PropTypes.func.isRequired,
@@ -110,8 +104,6 @@ class DatabaseEditApp extends Component {
       rescanDatabaseFields,
       syncDatabaseSchema,
       dismissSyncSpinner,
-      persistDatabase,
-      unpersistDatabase,
       isAdmin,
       isModelPersistenceEnabled,
     } = this.props;
@@ -208,8 +200,6 @@ class DatabaseEditApp extends Component {
               rescanDatabaseFields={rescanDatabaseFields}
               syncDatabaseSchema={syncDatabaseSchema}
               dismissSyncSpinner={dismissSyncSpinner}
-              persistDatabase={persistDatabase}
-              unpersistDatabase={unpersistDatabase}
             />
           )}
         </DatabaseEditMain>

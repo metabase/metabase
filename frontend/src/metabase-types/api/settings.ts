@@ -27,6 +27,11 @@ export interface Version {
 
 export type LocaleData = [string, string];
 
+export type LoadingMessage =
+  | "doing-science"
+  | "running-query"
+  | "loading-results";
+
 export interface Settings {
   "application-font": string;
   "application-font-files": FontFile[] | null;
@@ -37,10 +42,13 @@ export interface Settings {
   engines: Record<string, Engine>;
   "is-hosted?": boolean;
   "deprecation-notice-version": string | undefined;
+  "loading-message": LoadingMessage;
   "show-database-syncing-modal": boolean;
   "show-homepage-data": boolean;
   "show-homepage-xrays": boolean;
   "show-homepage-pin-message": boolean;
+  "show-lighthouse-illustration": boolean;
+  "show-metabot": boolean;
   "slack-token": string | undefined;
   "slack-token-valid?": boolean;
   "slack-app-token": string | undefined;

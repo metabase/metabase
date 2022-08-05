@@ -190,7 +190,9 @@
   "Creates a default email map for `user-kwd` via `test.users/fetch-user`, as would be returned by `with-fake-inbox`"
   [user-kwd & [email-map]]
   (let [{:keys [email]} (test.users/fetch-user user-kwd)]
-    {email [(merge {:from (email/email-from-address)
+    {email [(merge {:from (if-let [from-name (email/email-from-name)]
+                            (str from-name " <" (email/email-from-address) ">")
+                            (email/email-from-address))
                     :to #{email}}
                    email-map)]}))
 

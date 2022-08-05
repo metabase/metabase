@@ -36,17 +36,21 @@ const getFontFile = (src: string, option: FontFileOption): FontFile => {
 };
 
 const getFontFormat = (src: string): FontFormat => {
-  const match = src.match(/.*\.(\w+)/);
-  const extension = match ? match[1] : null;
+  try {
+    const url = new URL(src);
+    const extension = url.pathname.substring(url.pathname.lastIndexOf("."));
 
-  switch (extension) {
-    case "woff":
-      return "woff";
-    case "woff2":
-      return "woff2";
-    case "ttf":
-      return "truetype";
-    default:
-      return "woff2";
+    switch (extension) {
+      case ".woff":
+        return "woff";
+      case ".woff2":
+        return "woff2";
+      case ".ttf":
+        return "truetype";
+      default:
+        return "woff2";
+    }
+  } catch {
+    return "woff2";
   }
 };

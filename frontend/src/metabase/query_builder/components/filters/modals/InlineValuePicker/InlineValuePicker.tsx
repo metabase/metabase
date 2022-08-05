@@ -1,16 +1,19 @@
 import React, { useCallback, useMemo } from "react";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-import Field from "metabase-lib/lib/metadata/Field";
 import { t } from "ttag";
 
+import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Field from "metabase-lib/lib/metadata/Field";
+
+import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+
 import {
-  OperatorSelector,
-  ArgumentSelector,
   ValuesPickerContainer,
   BetweenContainer,
   NumberInput,
   NumberSeparator,
 } from "./InlineValuePicker.styled";
+
+import { getFieldWidth } from "./utils";
 
 interface InlineValuePickerProps {
   filter: Filter;
@@ -23,13 +26,6 @@ export function InlineValuePicker({
   field,
   handleChange,
 }: InlineValuePickerProps) {
-  const changeOperator = useCallback(
-    (newOperator: any) => {
-      handleChange(filter.setOperator(newOperator));
-    },
-    [filter, handleChange],
-  );
-
   const changeArguments = useCallback(
     (newArguments: (string | number)[]) => {
       handleChange(
@@ -39,8 +35,6 @@ export function InlineValuePicker({
     [filter, handleChange],
   );
 
-  const filterOperators = field.filterOperators(filter.operatorName());
-
   const hideArgumentSelector = [
     "is-null",
     "not-null",
@@ -48,16 +42,13 @@ export function InlineValuePicker({
     "not-empty",
   ].includes(filter.operatorName());
 
+  const containerWidth = getFieldWidth(field, filter);
+
   return (
     <ValuesPickerContainer
       data-testid="value-picker"
-      aria-label={field.displayName()}
+      fieldWidth={containerWidth}
     >
-      <OperatorSelector
-        operator={filter.operatorName() ?? "="}
-        operators={filterOperators}
-        onOperatorChange={changeOperator}
-      />
       {!hideArgumentSelector && (
         <ValuesInput filter={filter} field={field} onChange={changeArguments} />
       )}
@@ -84,15 +75,19 @@ function ValuesInput({
 
   if (!isBetween) {
     return (
-      <ArgumentSelector
+      <FieldValuesWidget
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore: this component doesn't have types or propTypes
         value={filterArguments}
+        color="brand"
         onChange={onChange}
         className="input"
         fields={[field]}
         multi={!!filter?.operator()?.multi}
+        expand={false}
+        maxWidth="100%"
         showOptionsInPopover
+        disableList
       />
     );
   }
@@ -100,14 +95,14 @@ function ValuesInput({
   return (
     <BetweenContainer>
       <NumberInput
-        placeholder={t`min`}
+        placeholder={t`Min`}
         value={filterArguments[0] ?? ""}
         onChange={val => onChange([val, filterArguments[1]])}
         fullWidth
       />
       <NumberSeparator>{t`and`}</NumberSeparator>
       <NumberInput
-        placeholder={t`max`}
+        placeholder={t`Max`}
         value={filterArguments[1] ?? ""}
         onChange={val => onChange([filterArguments[0], val])}
         fullWidth

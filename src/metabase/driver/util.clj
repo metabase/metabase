@@ -435,7 +435,7 @@
 
 (def partner-drivers
   "The set of other drivers in the partnership program"
-  #{"firebolt" "starburst"})
+  #{"exasol" "firebolt" "starburst"})
 
 (defn driver-source
   "Return the source type of the driver: official, partner, or community"
@@ -548,10 +548,10 @@
 
 (defn ssl-socket-factory
   "Generates an `SocketFactory` with the custom certificates added"
-  ^SocketFactory [& {:keys [private-key password own-cert trust-cert]}]
+  ^SocketFactory [& {:keys [private-key own-cert trust-cert]}]
   (let [ssl-context (SSLContext/getInstance "TLS")]
     (.init ssl-context
-           (when (and private-key password own-cert) (key-managers private-key password own-cert))
+           (when (and private-key own-cert) (key-managers private-key (str (random-uuid)) own-cert))
            (when trust-cert (trust-managers trust-cert))
            nil)
     (.getSocketFactory ssl-context)))

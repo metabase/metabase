@@ -67,7 +67,7 @@ export function filterWidget() {
 }
 
 export const openQuestionActions = () => {
-  cy.findByTestId("question-action-buttons-container").within(() => {
+  cy.findByTestId("qb-header-action-panel").within(() => {
     cy.icon("ellipsis").click();
   });
 };
@@ -77,7 +77,5 @@ export const closeQuestionActions = () => {
 };
 
 export const questionInfoButton = () => {
-  return cy.findByTestId("question-action-buttons-container").within(() => {
-    return cy.icon("info");
-  });
+  return cy.findByTestId("qb-header-info-button");
 };

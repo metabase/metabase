@@ -10,35 +10,29 @@ import Modal from "metabase/components/Modal";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import Question from "metabase-lib/lib/Question";
-import {
-  Bookmark,
-  BookmarksType,
-  Collection,
-  Dashboard,
-  User,
-} from "metabase-types/api";
+import { Bookmark, Collection, Dashboard, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import Collections, {
-  ROOT_COLLECTION,
-  getCollectionIcon,
   buildCollectionTree,
+  getCollectionIcon,
+  ROOT_COLLECTION,
 } from "metabase/entities/collections";
-import { openNavbar, closeNavbar } from "metabase/redux/app";
+import { closeNavbar, openNavbar } from "metabase/redux/app";
 import { logout } from "metabase/auth/actions";
-import { getUserIsAdmin, getUser } from "metabase/selectors/user";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import {
-  getHasOwnDatabase,
   getHasDataAccess,
+  getHasOwnDatabase,
 } from "metabase/new_query/selectors";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { getDashboard } from "metabase/dashboard/selectors";
 
 import {
-  nonPersonalOrArchivedCollection,
-  currentUserPersonalCollections,
   coerceCollectionId,
+  currentUserPersonalCollections,
+  nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import * as Urls from "metabase/lib/urls";
 
@@ -47,10 +41,10 @@ import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import { SelectedItem } from "./types";
 import MainNavbarView from "./MainNavbarView";
 import {
-  Sidebar,
-  NavRoot,
   LoadingContainer,
   LoadingTitle,
+  NavRoot,
+  Sidebar,
 } from "./MainNavbar.styled";
 
 type NavbarModal = "MODAL_NEW_COLLECTION" | null;
@@ -84,7 +78,7 @@ type Props = {
   isOpen: boolean;
   isAdmin: boolean;
   currentUser: User;
-  bookmarks: BookmarksType;
+  bookmarks: Bookmark[];
   collections: Collection[];
   rootCollection: Collection;
   question?: Question;
@@ -190,10 +184,6 @@ function MainNavbarContainer({
   }, [location, params, question, dashboard]);
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
-    if (!rootCollection) {
-      return [];
-    }
-
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
       collections,
@@ -206,13 +196,18 @@ function MainNavbarContainer({
     preparedCollections.push(...userPersonalCollections);
     preparedCollections.push(...nonPersonalOrArchivedCollections);
 
-    const root: CollectionTreeItem = {
-      ...rootCollection,
-      icon: getCollectionIcon(rootCollection),
-      children: [],
-    };
+    const tree = buildCollectionTree(preparedCollections);
 
-    return [root, ...buildCollectionTree(preparedCollections)];
+    if (rootCollection) {
+      const root: CollectionTreeItem = {
+        ...rootCollection,
+        icon: getCollectionIcon(rootCollection),
+        children: [],
+      };
+      return [root, ...tree];
+    } else {
+      return tree;
+    }
   }, [rootCollection, collections, currentUser]);
 
   const reorderBookmarks = useCallback(
@@ -253,7 +248,7 @@ function MainNavbarContainer({
     <>
       <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
         <NavRoot isOpen={isOpen}>
-          {allFetched && rootCollection ? (
+          {allFetched ? (
             <MainNavbarView
               {...props}
               bookmarks={bookmarks}
@@ -292,7 +287,7 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   Collections.loadList({
-    query: () => ({ tree: true }),
+    query: () => ({ tree: true, "exclude-archived": true }),
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),

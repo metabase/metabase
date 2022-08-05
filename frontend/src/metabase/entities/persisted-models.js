@@ -36,8 +36,8 @@ const PersistedModels = createEntity({
     getByModelId: getPersistedModelInfoByModelId,
   },
 
-  reducer: (state = {}, { type, payload }) => {
-    if (type === REFRESH_CACHE) {
+  reducer: (state = {}, { type, payload, error }) => {
+    if (type === REFRESH_CACHE && !error) {
       return {
         ...state,
         [payload.id]: {

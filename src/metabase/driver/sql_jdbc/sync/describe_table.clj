@@ -316,7 +316,7 @@
   This is the lowest common denominator of types, hopefully,
   although as of writing this is just geared towards Postgres types"
   {:type/Text       "text"
-   :type/Integer    "integer"
+   :type/Integer    "bigint"
    ;; You might think that the ordinary 'bigint' type in Postgres and MySQL should be this.
    ;; However, Bigint in those DB's maxes out at 2 ^ 64.
    ;; JSON, like Javascript itself, will happily represent 1.8 * (10^308),
@@ -371,5 +371,10 @@
               field-types      (transduce describe-json-xform describe-json-rf query)
               fields           (field-types->fields field-types)]
           (if (> (count fields) max-nested-field-columns)
-            #{}
+            (do
+              (log/warn
+                (format
+                  "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
+                  max-nested-field-columns))
+              (set (take max-nested-field-columns fields)))
             fields))))))

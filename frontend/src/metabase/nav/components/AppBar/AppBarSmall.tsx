@@ -92,7 +92,7 @@ const AppBarSmall = ({
         </AppBarLogoContainer>
       </AppBarHeader>
       {isSubheaderVisible && (
-        <AppBarSubheader>
+        <AppBarSubheader isNavBarOpen={isNavBarOpen}>
           {isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (

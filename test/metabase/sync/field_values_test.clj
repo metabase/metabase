@@ -158,7 +158,7 @@
 
     (testing (str "If the total length of all values exceeded the length threshold, it should get unmarked as auto list "
                   "and set back to `nil`")
-      (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 field-values/total-max-length) "A"))])
+      (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 field-values/*total-max-length*) "A"))])
       (testing "has_field_values should have been set to nil."
         (is (= nil
                (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
@@ -211,7 +211,7 @@
                (db/select-one-field :has_more_values FieldValues :field_id (mt/id :blueberries_consumed :str)))))
 
       (testing "insert a row with the value length exceeds our length limit\n"
-        (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 field-values/total-max-length) "A"))])
+        (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 field-values/*total-max-length*) "A"))])
         (testing "has_field_values shouldn't change and has_more_values should be true"
           (is (= :list
                  (db/select-one-field :has_field_values Field

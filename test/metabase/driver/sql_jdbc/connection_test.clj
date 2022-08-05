@@ -6,7 +6,7 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
             [metabase.driver.util :as driver.u]
-            [metabase.models.database :refer [Database]]
+            [metabase.models :refer [Database Secret]]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data :as data]
@@ -153,4 +153,24 @@
                     (is (not= db-hash-1 db-hash-2)))))))
           (finally
             ;; restore the original test DB details, no matter what just happened
-            (db/update! Database (mt/id) :details (:details db))))))))
+            (db/update! Database (mt/id) :details (:details db)))))))
+  (testing "postgres secrets are stable (#23034)"
+    (mt/with-temp* [Secret [secret {:name   "file based secret"
+                                    :kind   :perm-cert
+                                    :source nil
+                                    :value  (.getBytes "super secret")}]]
+      (let [db {:engine :postgres
+                :details {:ssl true
+                          :ssl-mode "verify-ca"
+                          :ssl-root-cert-options "uploaded"
+                          :ssl-root-cert-creator-id (mt/user->id :crowberto)
+                          :ssl-root-cert-source nil
+                          :ssl-root-cert-id (:id secret)
+                          :ssl-root-cert-created-at "2022-07-25T15:57:51.556-05:00"}}]
+        (is (instance? java.io.File
+                       (:sslrootcert (#'sql-jdbc.conn/connection-details->spec :postgres
+                                                                               (:details db))))
+            "Secrets not loaded for db connections")
+        (is (= (#'sql-jdbc.conn/jdbc-spec-hash db)
+               (#'sql-jdbc.conn/jdbc-spec-hash db))
+            "Same db produced different hashes due to secrets")))))

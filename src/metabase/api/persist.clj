@@ -3,6 +3,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST]]
             [honeysql.helpers :as hh]
+            [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.driver.ddl.interface :as ddl.i]
@@ -31,6 +32,8 @@
                              :p.refresh_begin :p.refresh_end
                              :p.table_name :p.creator_id
                              :p.card_id [:c.name :card_name]
+                             [:c.archived :card_archived]
+                             [:c.dataset :card_dataset]
                              [:db.name :database_name]
                              [:col.id :collection_id] [:col.name :collection_name]
                              [:col.authority_level :collection_authority_level]]
@@ -126,7 +129,7 @@
   - remove `:persist-models-enabled` from relevant [[Database]] options
   - schedule a task to [[metabase.driver.ddl.interface/unpersist]] each table"
   []
-  (let [id->db      (u/key-by :id (Database))
+  (let [id->db      (m/index-by :id (Database))
         enabled-dbs (filter (comp :persist-models-enabled :options) (vals id->db))]
     (log/info (tru "Disabling model persistence"))
     (doseq [db enabled-dbs]

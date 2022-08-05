@@ -8009,12 +8009,17 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - and:
             - dbms:
-                type: postgresql,mysql,mariadb
+                type: postgresql
+      # This has maybe never succeeded in creating the index because (at least with the current DB versions)
+      # the syntax was wrong on all requested databases (postgresql, mysql and mariadb). Since this change is
+      # not critical it's OK to ignore it.
+      validCheckSum: 8:9da2f706a7cd42b5101601e0106fa929
       changes:
         - createIndex:
             columns:
              - column:
                  name: lower(email)
+                 computed: true
                  type: varchar(254)
             tableName: core_user
             indexName: idx_lower_email
@@ -8062,6 +8067,7 @@ databaseChangeLog:
       comment: Added 0.37.0 # for H2 convert column to VARCHAR_IGNORECASE
       failOnError: false
       preConditions:
+         - onFail: MARK_RAN
          - or:
              - dbms:
                    type: h2
@@ -11931,6 +11937,62 @@ databaseChangeLog:
                   defaultValueBoolean: true
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v44.00-039
+      author: qnkhuat
+      comment: Added 0.44.0 - Add template_tags to native_query_snippet
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: template_tags
+                  type: ${text.type}
+                  remarks: Template tags for a snippet
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v44.00-041
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to PulseCard, PulseChannel
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse_card
+
+  - changeSet:
+      id: v44.00-042
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to PulseCard, PulseChannel
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse_channel
+
+  - changeSet:
+      id: v44.00-044
+      author: qnkhuat
+      comment: Added 0.44.0 - drop native_query_snippet.template_tags added in v44.00-039
+      changes:
+        - dropColumn:
+            tableName: native_query_snippet
+            columnName: template_tags
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

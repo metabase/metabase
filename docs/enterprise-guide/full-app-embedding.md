@@ -25,12 +25,13 @@ Once you do, you'll see a set of options:
 
 - **Embedding secret key:** You can ignore this setting, which is only for standalone chart or dashboard embeds.
 
-- **Embedding the entire Metabase app:** Here's where you'll enter the base URLs of the web applications that you want to allow to embed Metabase.
-  This value will be used to populate the `Content-Security-Policy` HTTP header's [`frame-ancestors` directive](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors), and should follow the same format.
+- **Embedding the entire Metabase app:** Here's where you'll enter the base URLs of the web applications that you want to allow to embed Metabase. This value will be used to populate the `Content-Security-Policy` HTTP header's [`frame-ancestors` directive](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors), and should follow the same format.
   For example, `https://*.metabase.com http://my-web-app.example.com:8080/`. Leaving this empty will default to a `frame-ancestors` value of `'none'`.
-  If you're a fancy person, you can specify this URL in the environment variable `MB_EMBEDDING_APP_ORIGIN`.
+  If you're a fancy person, you can specify this URL in the environment variable [`MB_EMBEDDING_APP_ORIGIN`](../operations-guide/environment-variables.md#mb_embedding_app_origin).
 
-**Note:** Some browsers, like Chrome, has `localStorage` is disabled in Incognito mode, so you won't be able to login via FullApp embedded iframe unless you explicitly allow cookies from Metabase. In Chrome go to chrome://settings/cookies and add the Metabase Site URL under "Sites that can always use cookies".
+### Note on incognito mode
+
+Some browsers, like Chrome, disable `localStorage` in Incognito mode, so people won't be able to login via FullApp embedded iframe unless they explicitly allow cookies from Metabase. You may want to remind Chrome users to go to chrome://settings/cookies and add the Metabase Site URL under "Sites that can always use cookies".
 
 ## Setting things up in your web app
 
@@ -62,6 +63,57 @@ The main elements you'll need to embed Metabase in your app are:
 - `location` message: change the URL of the embedded Metabase:
 
   { "metabase": { "type": "location", "location": LOCATION_OBJECT_OR_URL }}
+
+## Overriding selected full-app components with parameters
+
+You can add query parameters to the URL to toggle various full-app features.
+
+E.g., the URL
+
+```
+http://localhost:3000/?top-nav=false&side_nav=false
+```
+
+would disable the top and side nav:
+
+![Top nav and side nav disabled](./images/full-app-embedding/no-top-no-side.png)
+
+### `top_nav`
+
+Entire top navigation bar, with optional search and new button.
+
+![Top nav bar](./images/full-app-embedding/top-nav.png)
+
+The top bar is hidden by default. Additionally, if you enable the top bar (`top_bar=true`), you can turn on other hidden-by-default top bar options:
+
+- `search`: Search bar within the top nav.
+- `new_button`: “New” CTA that lets users create questions and more.
+
+### `side_nav`
+
+The main navigation bar.
+
+![Side nav](./images/full-app-embedding/side-nav.png)
+
+The navigation sidebar is hidden by default, aside from `/collection` and home page product routes. If you want people to be able to minimize the sidebar, you MUST enable the `top-nav`.
+
+### `header`
+
+The header, visible by default, only applies to dashboards and questions. The header refers to the info and buttons above a question or dashboard. The header includes the title, additional info, and the action buttons (Filter and Summarize).
+
+If you enable the header, these sub-components are visible by default:
+
+#### `additional_info`
+
+Applicable to dashboards and questions. Refers to the gray text “Edited X days ago by FirstName LastName”, as well as the collection, database, and table information.
+
+![Additional info](./images/full-app-embedding/additional-info.png)
+
+#### `action_buttons`
+
+Applicable to questions. Refers to the **Save**, **Summarize**, and **Filter** action buttons, as well as the icon to bring up the query builder.
+
+![Action buttons](./images/full-app-embedding/action-buttons.png)
 
 ## Choosing what to embed
 
@@ -102,16 +154,9 @@ Currently we use HTTP cookies to authenticate embedded Metabase users. A limitat
 
 When signing JWTs for either SSO (i.e., in full-app embedding) or standalone question/dashboard embedding, you should always include an expiration time `exp` property appropriate for your application. For SSO it can be very short (e.g., 1 minute) as the token is immediately used to create a session. For embedding it can be short if there are no parameters you expect the user to change, otherwise it should be as long as you expect the user to view and change parameters.
 
-## Learn More
+## Further reading
 
-Check out these articles:
-
-- [Deliver analytics to your customers](https://www.metabase.com/learn/building-analytics/dashboards/linking-filters.html).
-- [Embed Metabase in your app to deliver multi-tenant, self-service analytics](https://www.metabase.com/learn/developing-applications/advanced-metabase/multi-tenant-self-service-analytics.html).
-- [Create charts with explorable data](https://www.metabase.com/learn/developing-applications/advanced-metabase/multi-tenant-self-service-analytics.html).
-
----
-
-## Next: white labeling
-
-Learn how to quickly add your own logo and customize the way Metabase looks with [white labeling](whitelabeling.md).
+- [White labeling](whitelabeling.md)
+- [Deliver analytics to your customers](https://www.metabase.com/learn/building-analytics/dashboards/linking-filters.html)
+- [Embed Metabase in your app to deliver multi-tenant, self-service analytics](https://www.metabase.com/learn/developing-applications/advanced-metabase/multi-tenant-self-service-analytics.html)
+- [Create charts with explorable data](https://www.metabase.com/learn/developing-applications/advanced-metabase/multi-tenant-self-service-analytics.html)

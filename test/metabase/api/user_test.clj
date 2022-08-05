@@ -35,6 +35,7 @@
       :is_active        true
       :last_login       false
       :ldap_auth        false
+      :sso_source       nil
       :login_attributes nil
       :updated_at       true
       :locale           nil})))
@@ -640,6 +641,26 @@
                     :personal_collection_name "Blue's Personal Collection"}
                    (change-user-via-api! {:first_name "Blue"
                                           :last_name  nil})))))))))
+
+(deftest update-sso-user-test
+  (testing "PUT /api/user/:id"
+    (testing "Test that we do not update a user's first and last names if they are an SSO user."
+      (mt/with-temp User [{user-id :id} {:first_name   "SSO"
+                                         :last_name    "User"
+                                         :email        "sso-user@metabase.com"
+                                         :sso_source   "jwt"
+                                         :is_superuser true}]
+        (letfn [(change-user-via-api! [expected-status m]
+                  (mt/user-http-request :crowberto :put expected-status (str "user/" user-id) m))]
+          (testing "`:first_name` changes are rejected"
+            (is (= {:errors {:first_name "Editing first name is not allowed for SSO users."}}
+                   (change-user-via-api! 400 {:first_name "NOT-SSO"}))))
+          (testing "`:last_name` changes are rejected"
+            (is (= {:errors {:last_name "Editing last name is not allowed for SSO users."}}
+                   (change-user-via-api! 400 {:last_name "USER"}))))
+          (testing "New names that are the same as existing names succeed because there is no change."
+            (is (partial= {:first_name "SSO" :last_name  "User"}
+                          (change-user-via-api! 200 {:first_name "SSO" :last_name  "User"})))))))))
 
 (deftest update-email-check-if-already-used-test
   (testing "PUT /api/user/:id"

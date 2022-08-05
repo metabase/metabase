@@ -214,7 +214,7 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "string",
         required: false,
         widget: SettingCommaDelimitedInput,
-        validations: [["email_list", t`That's not a valid email addresses`]],
+        validations: [["email_list", t`That's not a valid email address`]],
       },
     ],
   },

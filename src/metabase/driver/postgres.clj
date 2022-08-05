@@ -13,7 +13,7 @@
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.ddl.postgres :as ddl.postgres]
+            [metabase.driver.postgres.ddl :as postgres.ddl]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -37,7 +37,7 @@
            metabase.util.honeysql_extensions.Identifier))
 
 (comment
-  ddl.postgres/keep-me)
+  postgres.ddl/keep-me)
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
@@ -166,12 +166,8 @@
      :visible-if   {"ssl-use-client-auth" true}}
     driver.common/ssh-tunnel-preferences
     driver.common/advanced-options-start
-    {:name         "json-unfolding"
-     :display-name (trs "Unfold JSON Columns")
-     :type         :boolean
-     :visible-if   {"advanced-options" true}
-     :description  (trs "We unfold JSON columns into component fields. This is on by default but you can turn it off if performance is slow.")
-     :default      true}
+    driver.common/json-unfolding
+
     (assoc driver.common/additional-options
            :placeholder "prepareThreshold=0")
     driver.common/default-advanced-options]
@@ -364,7 +360,7 @@
         qualified        (parent-method query)
         unqualified      (parent-method (update query
                                                 :breakout
-                                                sql.qp/rewrite-fields-to-force-using-column-aliases))]
+                                                #(sql.qp/rewrite-fields-to-force-using-column-aliases % {:is-breakout true})))]
     (if (some field/json-field? stored-fields)
       (merge qualified
              (select-keys unqualified #{:group-by}))

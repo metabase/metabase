@@ -1,21 +1,32 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { space, breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const ListRoot = styled.div`
-  margin-top: 1rem;
   margin-bottom: 1rem;
 `;
 
 export const ListRow = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-  padding: 0.375rem 0;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid ${color("border")};
+  &:last-of-type {
+    border-bottom: none;
+  }
+  &:hover,
+  :focus-within {
+    background-color: ${color("bg-light")};
+  }
 `;
 
-export const ListRowLabel = styled(Ellipsified)`
-  padding: 0.625rem 1rem 0.625rem 0;
-  color: ${color("black")};
-  line-height: 1rem;
-  font-weight: bold;
+export const FilterContainer = styled.div`
+  ${breakpointMinSmall} {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+  }
+  gap: 1rem;
+  &:not(:last-of-type) {
+    border-bottom: 1px solid ${color("border")};
+    margin-bottom: ${space(2)};
+    padding-bottom: ${space(2)};
+  }
 `;

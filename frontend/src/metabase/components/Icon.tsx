@@ -23,7 +23,7 @@ export const IconWrapper = styled.div<IconWrapperProps>`
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 99px;
+  border-radius: 6px;
   cursor: pointer;
   color: ${props => (props.open ? c("brand") : "inherit")};
   // special cases for certain icons

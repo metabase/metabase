@@ -98,6 +98,26 @@ For latin text, we'd copy the relevant src URLs for each style, in this case:
 
 And paste those URLS in the relevant input fields in **Admin settings** > **Settings** > **Appearance** > **Font** section where it says "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do."
 
+## Hosting fonts on GitHub
+
+If you host a font on GitHub, the font should be in a public repository, and you'll need to link to the raw font file(s) served from the raw.githubusercontent.com domain.
+
+For example, let's say you want to use the Inter typeface. The font is hosted at:
+
+[https://github.com/rsms/inter/blob/master/docs/font-files/Inter-Regular.woff2](https://github.com/rsms/inter/blob/master/docs/font-files/Inter-Regular.woff2)
+
+Then the link you'll need is:
+
+[https://raw.githubusercontent.com/rsms/inter/master/docs/font-files/Inter-Regular.woff2](https://raw.githubusercontent.com/rsms/inter/master/docs/font-files/Inter-Regular.woff2)
+
+Which follows the pattern:
+
+```
+raw.githubusercontent.com/${user}/${repo}/${branch}/${path}
+```
+
+Note that in the raw link, there is no `/blob/` directory in the URL.
+
 ## Supporting multiple languages
 
 To support multiple character sets, for example both Latin and Cyrillic, you'll need to merge font files.

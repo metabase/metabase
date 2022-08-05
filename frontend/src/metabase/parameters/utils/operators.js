@@ -76,3 +76,13 @@ export function getNumberParameterArity(parameter) {
       return 1;
   }
 }
+
+export function getStringParameterArity(parameter) {
+  switch (parameter.type) {
+    case "string/=":
+    case "string/!=":
+      return "n";
+    default:
+      return 1;
+  }
+}

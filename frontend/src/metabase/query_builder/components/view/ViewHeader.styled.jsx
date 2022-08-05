@@ -4,6 +4,8 @@ import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
+import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
+
 import { color, alpha } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
@@ -13,6 +15,14 @@ export const ViewHeaderContainer = styled(ViewSection)`
   border-bottom: 1px solid ${color("border")};
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
+
+  ${breakpointMaxSmall} {
+    flex-direction: column;
+    align-items: start;
+    padding: ${space(1)} 0;
+    ${({ isNavBarOpen }) =>
+      isNavBarOpen ? `margin-top: ${APP_SUBHEADER_HEIGHT};` : null}
+  }
 `;
 
 export const ViewHeaderMainLeftContentContainer = styled.div`
@@ -25,6 +35,11 @@ export const ViewHeaderLeftSubHeading = styled(ViewSubHeading)`
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+
+  ${breakpointMaxSmall} {
+    flex-direction: column;
+    align-items: start;
+  }
 `;
 
 export const AdHocViewHeading = styled(ViewHeading)`
@@ -56,7 +71,7 @@ export const HeaderButton = styled(Button)`
   color: ${({ active }) => (active ? "white" : color("text-dark"))};
   &:hover {
     background-color: ${({ color = getDefaultColor() }) => alpha(color, 0.15)};
-    color: ${color};
+    color: ${({ color }) => color};
   }
   transition: background 300ms linear, border 300ms linear;
   > .Icon {
@@ -98,10 +113,6 @@ export const FilterHeaderContainer = styled.div`
   border-bottom: 1px solid ${color("border")};
 `;
 
-export const ViewSubHeaderRoot = styled(ViewSection)`
-  padding-top: 0.5rem;
-`;
-
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
   color: ${color("text-light")};
   //margin-left: 4px;
@@ -122,11 +133,17 @@ export const StyledQuestionDataSource = styled(QuestionDataSource)`
   }
 `;
 
+export const AdHocLeftSideRoot = styled.div`
+  ${breakpointMaxSmall} {
+    padding: 0 1.25rem;
+  }
+`;
+
 export const SavedQuestionLeftSideRoot = styled.div`
   ${SavedQuestionHeaderButtonContainer} {
     transition: all 400ms ease;
     position: relative;
-    top: ${props => (props.showSubHeader ? "0" : "10px")};
+    top: ${props => (props.showSubHeader ? "0" : "0.5rem")};
   }
 
   ${ViewHeaderLeftSubHeading} {
@@ -144,6 +161,18 @@ export const SavedQuestionLeftSideRoot = styled.div`
       opacity: 1;
     }
   }
+
+  ${breakpointMaxSmall} {
+    padding: 0 1.25rem;
+
+    ${SavedQuestionHeaderButtonContainer} {
+      top: 0px;
+    }
+
+    ${ViewHeaderLeftSubHeading} {
+      opacity: 1;
+    }
+  }
 `;
 
 export const HeaderDivider = styled.span`
@@ -153,4 +182,33 @@ export const HeaderDivider = styled.span`
   color: ${color("text-medium")};
   padding-left: 0.5rem;
   padding-right: 0.25rem;
+`;
+
+export const ViewHeaderActionPanel = styled.div`
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 0.5rem;
+
+  ${breakpointMaxSmall} {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+    border-top: 1px solid ${color("border")};
+    margin-top: 1rem;
+    padding: 0.5rem 2.5rem 0 2rem;
+  }
+`;
+
+export const ViewHeaderIconButtonContainer = styled.div`
+  ${Button.Root} {
+    padding: 0.25rem 0.5rem;
+    height: 2rem;
+    width: 2rem;
+
+    &:hover {
+      color: ${color("brand")};
+      background-color: ${color("bg-medium")};
+    }
+  }
 `;

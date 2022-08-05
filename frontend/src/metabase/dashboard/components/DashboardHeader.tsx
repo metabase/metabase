@@ -32,7 +32,7 @@ interface DashboardHeaderProps {
   editingSubtitle: string;
   editingButtons: JSX.Element[];
   editWarning: string;
-  headerButtons: React.ReactNode[][];
+  headerButtons: React.ReactNode[];
   headerClassName: string;
   headerModalMessage: string;
   isEditing: boolean;
@@ -85,20 +85,14 @@ const DashboardHeader = ({
   }, [isModalOpened]);
 
   const _headerButtons = useMemo(
-    () =>
-      headerButtons.map((section, sectionIndex) => {
-        return (
-          section.length > 0 && (
-            <HeaderButtonSection
-              key={sectionIndex}
-              className="Header-buttonSection"
-              isNavBarOpen={isNavBarOpen}
-            >
-              {section}
-            </HeaderButtonSection>
-          )
-        );
-      }),
+    () => (
+      <HeaderButtonSection
+        className="Header-buttonSection"
+        isNavBarOpen={isNavBarOpen}
+      >
+        {headerButtons}
+      </HeaderButtonSection>
+    ),
     [headerButtons, isNavBarOpen],
   );
 

@@ -67,6 +67,19 @@
              mbql->native
              sql.qp-test-util/sql->sql-map))))
 
+(deftest case-test
+  (testing "Test that boolean case defaults are kept (#24100)"
+    (is (= [[1 1 true]
+            [2 0 false]]
+           (mt/rows
+            (mt/run-mbql-query venues
+              {:source-table $$venues
+               :order-by     [[:asc $id]]
+               :expressions  {"First int"  [:case [[[:= $id 1] 1]]    {:default 0}]
+                              "First bool" [:case [[[:= $id 1] true]] {:default false}]}
+               :fields       [$id [:expression "First int" nil] [:expression "First bool" nil]]
+               :limit        2}))))))
+
 (deftest join-test
   (testing "Test that correct identifiers are used for joins"
     (is (= '{:select    [VENUES.ID          AS ID
@@ -334,14 +347,22 @@
                     source.LONGITUDE   AS LONGITUDE
                     source.PRICE       AS PRICE
                     source.double_id   AS double_id]
-           :from   [{:select [VENUES.ID          AS ID
-                              VENUES.NAME        AS NAME
-                              VENUES.CATEGORY_ID AS CATEGORY_ID
-                              VENUES.LATITUDE    AS LATITUDE
-                              VENUES.LONGITUDE   AS LONGITUDE
-                              VENUES.PRICE       AS PRICE
-                              (VENUES.ID * 2)    AS double_id]
-                     :from   [VENUES]}
+           :from   [{:select [source.ID          AS ID
+                              source.NAME        AS NAME
+                              source.CATEGORY_ID AS CATEGORY_ID
+                              source.LATITUDE    AS LATITUDE
+                              source.LONGITUDE   AS LONGITUDE
+                              source.PRICE       AS PRICE
+                              source.double_id   AS double_id]
+                     :from   [{:select [VENUES.ID AS ID
+                                        VENUES.NAME AS NAME
+                                        VENUES.CATEGORY_ID AS CATEGORY_ID
+                                        VENUES.LATITUDE    AS LATITUDE
+                                        VENUES.LONGITUDE   AS LONGITUDE
+                                        VENUES.PRICE       AS PRICE
+                                        (VENUES.ID * 2)    AS double_id]
+                               :from   [VENUES]}
+                              source]}
                     source]
            :limit  [1]}
          (-> (mt/mbql-query venues
@@ -830,19 +851,24 @@
                            Q1.CC           AS Q1__CC]
                :from      [{:select [source.CATEGORY AS CATEGORY
                                      source.count    AS count
-                                     (1 + 1)         AS CC]
-                            :from   [{:select   [PRODUCTS.CATEGORY AS CATEGORY
-                                                 count (*)         AS count]
-                                      :from     [PRODUCTS]
-                                      :group-by [PRODUCTS.CATEGORY]
-                                      :order-by [PRODUCTS.CATEGORY ASC]}
-                                     source]} source]
-               :left-join [{:select [source.CATEGORY AS CATEGORY
-                                     source.count AS count
-                                     source.CC AS CC]
+                                     source.CC       AS CC]
                             :from   [{:select [source.CATEGORY AS CATEGORY
-                                               source.count AS count
-                                               (1 + 1) AS CC]
+                                               source.count    AS count
+                                               (1 + 1)         AS CC]
+                                      :from   [{:select   [PRODUCTS.CATEGORY AS CATEGORY
+                                                           count (*)         AS count]
+                                                :from     [PRODUCTS]
+                                                :group-by [PRODUCTS.CATEGORY]
+                                                :order-by [PRODUCTS.CATEGORY ASC]}
+                                               source]}
+                                     source]}
+                           source]
+               :left-join [{:select [source.CATEGORY AS CATEGORY
+                                     source.count    AS count
+                                     source.CC       AS CC]
+                            :from   [{:select [source.CATEGORY AS CATEGORY
+                                               source.count    AS count
+                                               (1 + 1)         AS CC]
                                       :from   [{:select   [PRODUCTS.CATEGORY AS CATEGORY
                                                            count (*)         AS count]
                                                 :from     [PRODUCTS]

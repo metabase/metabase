@@ -60,7 +60,7 @@ class DashboardSharingEmbeddingModal extends Component {
         full
         disabled={!isLinkEnabled}
         triggerElement={
-          <a
+          <span
             className={linkClassNames}
             aria-disabled={!isLinkEnabled}
             onClick={() => {
@@ -74,7 +74,7 @@ class DashboardSharingEmbeddingModal extends Component {
             }}
           >
             {linkText}
-          </a>
+          </span>
         }
         triggerClasses={cx(className, "text-brand-hover")}
         className="scroll-y"

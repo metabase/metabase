@@ -9,6 +9,7 @@ import {
   openNavigationSidebar,
   closeNavigationSidebar,
   openCollectionMenu,
+  visitCollection,
 } from "__support__/e2e/helpers";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
@@ -258,25 +259,19 @@ describe("scenarios > collection defaults", () => {
         cy.signIn("nocollection");
       });
 
-      it("should not render collections in items list if user doesn't have collection access (metabase#16555)", () => {
-        cy.visit("/collection/root");
-        // Since this user doesn't have access rights to the root collection, it should render empty
-        cy.findByTestId("collection-empty-state");
-      });
-
-      it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
+      it("should see a child collection in a sidebar even with revoked access to its parents (metabase#14114, metabase#16555, metabase#20716)", () => {
         cy.visit("/");
 
         navigationSidebar().within(() => {
-          cy.findByText("Our analytics").click();
-        });
-
-        navigationSidebar().within(() => {
-          cy.findByText("Our analytics");
-          cy.findByText("Child");
+          cy.findByText("Our analytics").should("not.exist");
           cy.findByText("Parent").should("not.exist");
+          cy.findByText("Child");
           cy.findByText("Your personal collection");
         });
+
+        // Even if user tries to navigate directly to the root collection, we have to make sure its content is not shown
+        cy.visit("/collection/root");
+        cy.findByText("You don't have permissions to do that.");
       });
 
       it("should be able to choose a child collection when saving a question (metabase#14052)", () => {
@@ -285,7 +280,7 @@ describe("scenarios > collection defaults", () => {
         // Click to choose which collection should this question be saved to
         cy.findByText(revokedUsersPersonalCollectionName).click();
         popover().within(() => {
-          cy.findByText(/Our analytics/i);
+          cy.findByText(/Collections/i);
           cy.findByText(/My personal collection/i);
           cy.findByText("Parent").should("not.exist");
           cy.log("Reported failing from v0.34.3");
@@ -478,16 +473,6 @@ function visitRootCollection() {
   cy.visit("/collection/root");
 
   cy.wait(["@fetchRootCollectionItems", "@fetchRootCollectionItems"]);
-}
-
-function visitCollection(id) {
-  const alias = `getCollection${id}Items`;
-
-  cy.intercept("GET", `/api/collection/${id}/items?**`).as(alias);
-
-  cy.visit(`/collection/${id}`);
-
-  cy.wait([`@${alias}`, `@${alias}`]);
 }
 
 function ensureCollectionHasNoChildren(collection) {

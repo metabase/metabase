@@ -2,6 +2,11 @@ import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
+import {
+  API_UPDATE_QUESTION,
+  SOFT_RELOAD_CARD,
+} from "metabase/query_builder/actions";
+
 import Collections, {
   getCollectionType,
   normalizedCollection,
@@ -9,6 +14,7 @@ import Collections, {
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import forms from "./questions/forms";
+import { updateIn } from "icepick";
 
 const Questions = createEntity({
   name: "questions",
@@ -42,6 +48,11 @@ const Questions = createEntity({
           Collections.actions.fetchList({ tree: true }, { reload: true }),
         );
 
+        const card = result?.payload?.question;
+        if (card) {
+          dispatch.action(API_UPDATE_QUESTION, card);
+        }
+
         return result;
       };
     },
@@ -70,6 +81,17 @@ const Questions = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
+    if (type === SOFT_RELOAD_CARD) {
+      const { id } = payload;
+      const latestReview = payload.moderation_reviews?.find(x => x.most_recent);
+
+      if (latestReview) {
+        return updateIn(state, [id], question => ({
+          ...question,
+          moderated_status: latestReview.status,
+        }));
+      }
+    }
     return state;
   },
 

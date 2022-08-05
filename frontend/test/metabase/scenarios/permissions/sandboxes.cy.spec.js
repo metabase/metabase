@@ -1013,6 +1013,8 @@ describeEE("formatting > sandboxes", () => {
       cy.findByText("Email it").click();
       cy.findByPlaceholderText("Enter user names or email addresses").click();
       cy.findByText("User 1").click();
+      // Click anywhere to close the popover that covers the "Send email now" button
+      cy.findByText("To:").click();
       cy.findByText("Send email now").click();
       cy.wait("@emailSent");
       cy.request("GET", "http://localhost:80/email").then(({ body }) => {

@@ -6,6 +6,7 @@ import React, {
   Ref,
   useCallback,
   useState,
+  useRef,
 } from "react";
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 
@@ -40,29 +41,37 @@ const EditableText = forwardRef(function EditableText(
   const [inputValue, setInputValue] = useState(initialValue ?? "");
   const [submitValue, setSubmitValue] = useState(initialValue ?? "");
   const displayValue = inputValue ? inputValue : placeholder;
+  const submitOnBlur = useRef(true);
 
-  const handleBlur = useCallback(() => {
-    if (!isOptional && !inputValue) {
-      setInputValue(submitValue);
-    } else if (inputValue !== submitValue) {
-      setSubmitValue(inputValue);
-      onChange?.(inputValue);
-    }
-  }, [inputValue, submitValue, isOptional, onChange]);
+  const handleBlur = useCallback(
+    e => {
+      if (!isOptional && !inputValue) {
+        setInputValue(submitValue);
+      } else if (inputValue !== submitValue && submitOnBlur.current) {
+        setSubmitValue(inputValue);
+        onChange?.(inputValue);
+      }
+    },
+    [inputValue, submitValue, isOptional, onChange],
+  );
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
       setInputValue(event.currentTarget.value);
+      submitOnBlur.current = true;
     },
-    [],
+    [submitOnBlur],
   );
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Escape") {
         setInputValue(submitValue);
+        submitOnBlur.current = false;
+        event.currentTarget.blur();
       } else if (event.key === "Enter" && !isMultiline) {
         event.preventDefault();
+        submitOnBlur.current = true;
         event.currentTarget.blur();
       }
     },

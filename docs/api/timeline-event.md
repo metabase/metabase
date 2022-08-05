@@ -1,6 +1,7 @@
 ---
 title: "Timeline event"
-summary: "/api/timeline-event endpoints."
+summary: |
+  /api/timeline-event endpoints.
 ---
 
 # Timeline event

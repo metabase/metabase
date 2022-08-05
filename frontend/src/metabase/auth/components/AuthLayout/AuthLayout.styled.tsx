@@ -1,24 +1,11 @@
 import styled from "@emotion/styled";
-import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import { color, hueRotate } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 
-export interface LayoutProps {
-  showScene?: boolean;
-}
-
-const sceneStyles = css`
-  background-color: ${color("bg-light")};
-  background-image: url("app/img/bridge.svg");
-  background-size: max(2592px, 100%) auto;
-  background-repeat: no-repeat;
-  background-position: right bottom;
-`;
-
-export const LayoutRoot = styled.div<LayoutProps>`
+export const LayoutRoot = styled.div`
+  position: relative;
   min-height: 100vh;
   background-color: ${color("bg-light")};
-  ${props => props.showScene && sceneStyles};
 `;
 
 export const LayoutBody = styled.div`
@@ -43,4 +30,17 @@ export const LayoutCard = styled.div`
     width: 30.875rem;
     padding: 2.5rem 3.5rem;
   }
+`;
+
+export const LayoutIllustration = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  filter: hue-rotate(${hueRotate("brand")}deg);
+  background-image: url("app/img/bridge.svg");
+  background-size: max(2592px, 100%) auto;
+  background-repeat: no-repeat;
+  background-position: right bottom;
 `;

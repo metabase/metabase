@@ -1,6 +1,7 @@
 ---
 title: "Pulse"
-summary: "/api/pulse endpoints."
+summary: |
+  /api/pulse endpoints.
 ---
 
 # Pulse

@@ -38,8 +38,7 @@ const STEPS = [
   },
   {
     type: "expression",
-    valid: query =>
-      query.hasData() && query.database().hasFeature("expressions"),
+    valid: query => query.hasData() && query.database().supportsExpressions(),
     active: query => query.hasExpressions(),
     revert: query => query.clearExpressions(),
     clean: query => query.cleanExpressions(),

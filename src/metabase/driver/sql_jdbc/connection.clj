@@ -249,24 +249,34 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn details->connection-spec-for-testing-connection
-  "Return an appropriate JDBC connection spec to test whether a set of connection details is valid (i.e., implementing
-  `can-connect?`)."
-  [driver details]
-  (let [details-with-tunnel (driver/incorporate-ssh-tunnel-details
-                             driver
-                             (update details :port #(or % (default-ssh-tunnel-target-port driver))))]
-    (connection-details->spec driver details-with-tunnel)))
+(defn do-with-connection-spec-for-testing-connection
+  "Impl for [[with-connection-spec-for-testing-connection]]."
+  [driver details f]
+  (let [details (update details :port #(or % (default-ssh-tunnel-target-port driver)))]
+    (ssh/with-ssh-tunnel [details-with-tunnel details]
+      (let [spec (connection-details->spec driver details-with-tunnel)]
+        (f spec)))))
+
+(defmacro with-connection-spec-for-testing-connection
+  "Execute `body` with an appropriate [[clojure.java.jdbc]] connection spec based on connection `details`. Handles SSH
+  tunneling as needed and properly cleans up after itself.
+
+    (with-connection-spec-for-testing-connection [jdbc-spec [:my-driver conn-details]]
+      (do-something-with-spec jdbc-spec)"
+  {:added "0.45.0", :style/indent 1}
+  [[jdbc-spec-binding [driver details]] & body]
+  `(do-with-connection-spec-for-testing-connection ~driver ~details (^:once fn* [~jdbc-spec-binding] ~@body)))
 
 (defn can-connect-with-spec?
-  "Can we connect to a JDBC database with `clojure.java.jdbc` `jdbc-spec` and run a simple query?"
+  "Can we connect to a JDBC database with [[clojure.java.jdbc]] `jdbc-spec` and run a simple query?"
   [jdbc-spec]
   (let [[first-row] (jdbc/query jdbc-spec ["SELECT 1"])
         [result]    (vals first-row)]
-    (= 1 result)))
+    (= result 1)))
 
 (defn can-connect?
-  "Default implementation of `driver/can-connect?` for SQL JDBC drivers. Checks whether we can perform a simple `SELECT
-  1` query."
+  "Default implementation of [[driver/can-connect?]] for SQL JDBC drivers. Checks whether we can perform a simple
+  `SELECT 1` query."
   [driver details]
-  (can-connect-with-spec? (details->connection-spec-for-testing-connection driver details)))
+  (with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
+    (can-connect-with-spec? jdbc-spec)))

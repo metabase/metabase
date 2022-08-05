@@ -11,6 +11,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
@@ -226,8 +227,8 @@
     -> returns Fieldvalues of type :full for fields: [(Field 1) (Field 2)] "
   [fields model & conditions]
   (let [field-ids (set (map :id fields))]
-    (u/key-by :field_id (when (seq field-ids)
-                          (apply db/select model :field_id [:in field-ids] conditions)))))
+    (m/index-by :field_id (when (seq field-ids)
+                            (apply db/select model :field_id [:in field-ids] conditions)))))
 
 (defn nfc-field->parent-identifier
   "Take a nested field column field corresponding to something like an inner key within a JSON column,
@@ -332,8 +333,8 @@
                                     :when (and (isa? (:semantic_type field) :type/FK)
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
-        id->target-field (u/key-by :id (when (seq target-field-ids)
-                                         (readable-fields-only (db/select Field :id [:in target-field-ids]))))]
+        id->target-field (m/index-by :id (when (seq target-field-ids)
+                                           (readable-fields-only (db/select Field :id [:in target-field-ids]))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
@@ -406,18 +407,14 @@
   [(pop (serdes.base/serdes-path field))])
 
 (defmethod serdes.base/extract-one "Field"
-  [_ _ {:keys [table_id] :as field}]
-  (let [table   (db/select-one 'Table :id table_id)
-        db-name (db/select-one-field :name 'Database :id (:db_id table))]
-    (-> (serdes.base/extract-one-basics "Field" field)
-        (assoc :table_id [db-name (:schema table) (:name table)]))))
+  [_model-name _opts field]
+  (-> (serdes.base/extract-one-basics "Field" field)
+      (update :table_id serdes.util/export-table-fk)))
 
 (defmethod serdes.base/load-xform "Field"
-  [{[db-name schema table-name] :table_id :as field}]
-  (let [db       (db/select-one 'Database :name db-name)
-        table-id (db/select-one-field :id 'Table :db_id (:id db) :name table-name :schema schema)]
-    (-> (serdes.base/load-xform-basics field)
-        (assoc :table_id table-id))))
+  [field]
+  (-> (serdes.base/load-xform-basics field)
+      (update :table_id serdes.util/import-table-fk)))
 
 (defmethod serdes.base/load-find-local "Field"
   [path]

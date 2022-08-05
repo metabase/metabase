@@ -38,6 +38,7 @@
   {:schedule_frame nil
    :schedule_hour  nil
    :schedule_day   nil
+   :entity_id      true
    :enabled        true})
 
 (def venue-fingerprints

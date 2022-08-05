@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { BookmarksType, Collection, User } from "metabase-types/api";
+import { Bookmark, Collection, User } from "metabase-types/api";
 
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
@@ -21,14 +21,14 @@ import { SidebarCollectionLink, SidebarLink } from "./SidebarItems";
 import {
   AddYourOwnDataLink,
   BrowseLink,
-  CollectionsMoreIconContainer,
-  CollectionsMoreIcon,
   CollectionMenuList,
+  CollectionsMoreIcon,
+  CollectionsMoreIconContainer,
   HomePageLink,
   SidebarContentRoot,
   SidebarHeading,
-  SidebarSection,
   SidebarHeadingWrapper,
+  SidebarSection,
 } from "./MainNavbar.styled";
 
 interface CollectionTreeItem extends Collection {
@@ -40,7 +40,7 @@ type Props = {
   isAdmin: boolean;
   isOpen: boolean;
   currentUser: User;
-  bookmarks: BookmarksType;
+  bookmarks: Bookmark[];
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   collections: CollectionTreeItem[];

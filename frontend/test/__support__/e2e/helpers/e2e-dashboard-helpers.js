@@ -18,11 +18,6 @@ export function editDashboard() {
   cy.icon("pencil").click();
 }
 
-export function cancelEditingDashboard() {
-  cy.findByText("Cancel").click();
-  cy.findByText("You're editing this dashboard.").should("not.exist");
-}
-
 export function saveDashboard() {
   cy.findByText("Save").click();
   cy.findByText("You're editing this dashboard.").should("not.exist");
@@ -46,4 +41,12 @@ export function setFilter(type, subType) {
       cy.findByText(subType).click();
     }
   });
+}
+
+export function addTextBox(string, options = {}) {
+  cy.icon("pencil").click();
+  cy.icon("string").click();
+  cy.findByPlaceholderText(
+    "You can use Markdown here, and include variables {{like_this}}",
+  ).type(string, options);
 }

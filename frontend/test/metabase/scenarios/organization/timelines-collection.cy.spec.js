@@ -91,7 +91,11 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByRole("button", { name: "calendar icon" }).click();
+
+      // New event modal
+      cy.get(".Modal").within(() => {
+        cy.findByRole("button", { name: "calendar icon" }).click();
+      });
       cy.findByText("15").click();
       cy.findByText("Done").click();
       cy.findByText("Create").click();
@@ -127,7 +131,11 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByRole("button", { name: "calendar icon" }).click();
+
+      // New event modal
+      cy.get(".Modal").within(() => {
+        cy.findByRole("button", { name: "calendar icon" }).click();
+      });
       cy.findByText("15").click();
       cy.findByText("Add time").click();
       cy.findByLabelText("Hours").clear().type("10");
@@ -148,7 +156,11 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByRole("button", { name: "calendar icon" }).click();
+
+      // New event modal
+      cy.get(".Modal").within(() => {
+        cy.findByRole("button", { name: "calendar icon" }).click();
+      });
       cy.findByText("15").click();
       cy.findByText("Add time").click();
       cy.findByText("Done").click();

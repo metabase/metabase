@@ -596,3 +596,16 @@
               (db/update! Pulse (:id pulse) :dashboard_id (:id dashboard))
               (is (= nil
                      (search-for-pulses pulse))))))))))
+
+(deftest card-dataset-query-test
+  (testing "Search results should match a native query's dataset_query column, but not an MBQL query's one."
+    ;; https://github.com/metabase/metabase/issues/24132
+    (mt/with-temp* [Card [mbql-card   {:name          "Venues Count"
+                                       :query_type    "query"
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                    Card [native-card {:name          "Another SQL query"
+                                       :query_type    "native"
+                                       :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]]
+      (is (= ["Another SQL query"]
+             (->> (search-request-data :rasta :q "aggregation")
+                  (map :name)))))))

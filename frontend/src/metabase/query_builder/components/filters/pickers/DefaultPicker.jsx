@@ -28,14 +28,14 @@ import {
 } from "./DefaultPicker.styled";
 
 const defaultPickerPropTypes = {
-  filter: PropTypes.object,
+  filter: PropTypes.array,
   setValue: PropTypes.func,
   setValues: PropTypes.func,
   onCommit: PropTypes.func,
   className: PropTypes.string,
-  isSidebar: PropTypes.bool,
   minWidth: PropTypes.number,
   maxWidth: PropTypes.number,
+  checkedColor: PropTypes.string,
 };
 
 const defaultLayoutPropTypes = {
@@ -51,7 +51,7 @@ export default function DefaultPicker({
   className,
   minWidth,
   maxWidth,
-  isSidebar,
+  checkedColor,
 }) {
   const operator = filter.operator();
   if (!operator) {
@@ -133,6 +133,7 @@ export default function DefaultPicker({
             disableSearch={disableSearch}
             minWidth={minWidth}
             maxWidth={maxWidth}
+            checkedColor={checkedColor}
           />
         );
       } else if (operatorField.type === "text") {
@@ -175,7 +176,7 @@ export default function DefaultPicker({
 
   return (
     <DefaultPickerContainer
-      limitHeight={!isSidebar}
+      limitHeight
       className={cx(className, "PopoverBody--marginBottom")}
     >
       {layout}

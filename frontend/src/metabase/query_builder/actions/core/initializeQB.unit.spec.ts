@@ -39,6 +39,7 @@ import * as navigation from "../navigation";
 import * as querying from "../querying";
 
 import * as core from "./core";
+import * as metadataActions from "./metadata";
 import { initializeQB } from "./initializeQB";
 
 type BaseSetupOpts = {
@@ -236,7 +237,7 @@ describe("QB Actions > initializeQB", () => {
 
         it("fetches question metadata", async () => {
           const loadMetadataForCardSpy = jest.spyOn(
-            core,
+            metadataActions,
             "loadMetadataForCard",
           );
 
@@ -767,7 +768,10 @@ describe("QB Actions > initializeQB", () => {
     });
 
     it("fetches question metadata", async () => {
-      const loadMetadataForCardSpy = jest.spyOn(core, "loadMetadataForCard");
+      const loadMetadataForCardSpy = jest.spyOn(
+        metadataActions,
+        "loadMetadataForCard",
+      );
 
       const { question } = await setupOrdersTable();
 

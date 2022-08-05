@@ -19,8 +19,6 @@ const propTypes = {
   dismissSyncSpinner: PropTypes.func.isRequired,
   rescanDatabaseFields: PropTypes.func.isRequired,
   discardSavedFieldValues: PropTypes.func.isRequired,
-  persistDatabase: PropTypes.func.isRequired,
-  unpersistDatabase: PropTypes.func.isRequired,
   isAdmin: PropTypes.bool,
   isModelPersistenceEnabled: PropTypes.bool,
 };
@@ -32,8 +30,6 @@ const DatabaseEditAppSidebar = ({
   dismissSyncSpinner,
   rescanDatabaseFields,
   discardSavedFieldValues,
-  persistDatabase,
-  unpersistDatabase,
   isAdmin,
   isModelPersistenceEnabled,
 }) => {
@@ -85,17 +81,7 @@ const DatabaseEditAppSidebar = ({
             )}
             {isModelPersistenceEnabled && database.supportsPersistence() && (
               <li className="mt2">
-                <ModelCachingControl
-                  databaseId={database.id}
-                  isEnabled={database.isPersisted()}
-                  onToggle={isEnabled => {
-                    if (isEnabled) {
-                      return persistDatabase(database.id);
-                    } else {
-                      return unpersistDatabase(database.id);
-                    }
-                  }}
-                />
+                <ModelCachingControl database={database} />
               </li>
             )}
           </ol>

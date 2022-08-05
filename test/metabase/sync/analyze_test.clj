@@ -1,5 +1,6 @@
 (ns metabase.sync.analyze-test
   (:require [clojure.test :refer :all]
+            [metabase.analytics.snowplow-test :as snowplow-test]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.table :refer [Table]]
@@ -98,8 +99,8 @@
 (defn- classified-semantic-type [values]
   (let [field (field/map->FieldInstance {:base_type :type/Text})]
     (:semantic_type (classifiers.text-fingerprint/infer-semantic-type
-                    field
-                    (transduce identity (fingerprinters/fingerprinter field) values)))))
+                     field
+                     (transduce identity (fingerprinters/fingerprinter field) values)))))
 
 (deftest classify-json-test
   (doseq [[group values->expected] {"When all the values are valid JSON dicts they're valid JSON"
@@ -252,3 +253,24 @@
         (is (= last-sync-time
                (latest-sync-time table))
             "sync time shouldn't change")))))
+
+(deftest analyze-should-send-a-snowplow-event-test
+  (testing "the recorded event should include db-id and db-engine"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/with-temp* [Table [table  (fake-table)]
+                      Field [_field (fake-field table)]]
+        (analyze-table! table)
+        (is (= {:data {"task_id"    true
+                       "event"      "new_task_history"
+                       "started_at" true
+                       "ended_at"   true
+                       "duration"   true
+                       "db_engine"  (name (db/select-one-field :engine Database :id (mt/id)))
+                       "db_id"      true
+                       "task_name"  "classify-tables"}
+                :user-id nil}
+               (-> (snowplow-test/pop-event-data-and-user-id!)
+                   last
+                   mt/boolean-ids-and-timestamps
+                   (update :data dissoc "task_details")
+                   (update-in [:data "duration"] some?))))))))

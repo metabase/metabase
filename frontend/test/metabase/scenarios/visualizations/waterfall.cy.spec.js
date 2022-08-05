@@ -195,7 +195,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.get("@labels").last().invoke("text").should("eq", "0.1");
   });
 
-  it("should display correct values when one of them is null (metabase#16246)", () => {
+  it("should now display null values (metabase#16246)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "native",
@@ -212,7 +212,7 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
-    cy.get(".value-label").as("labels").eq(-3).invoke("text").should("eq", "0");
+    cy.get(".value-label").as("labels").eq(-3).invoke("text").should("eq", "");
 
     cy.get("@labels").last().invoke("text").should("eq", "0.1");
   });

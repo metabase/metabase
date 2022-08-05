@@ -141,7 +141,7 @@
   [endpoint]
   (assoc endpoint
          :endpoint-str (endpoint-str endpoint)
-         :ns-name  (endpoint-ns-name endpoint)))
+         :ns-name (endpoint-ns-name endpoint)))
 
 (defn- api-namespaces []
   (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
@@ -167,7 +167,12 @@
 (defn- paid?
   "Is the endpoint a paid feature?"
   [ep-data]
-  (str/includes? (:endpoint-str (first ep-data)) "/api/ee"))
+  (or (str/includes? (:endpoint-str (first ep-data)) "/api/ee")
+      ;; some ee endpoints are inconsistent in naming, see #22687
+      (str/includes? (:endpoint-str (first ep-data)) "/api/mt")
+      (= 'metabase-enterprise.sandbox.api.table (ns-name (:ns (first ep-data))))
+      (str/includes? (:endpoint-str (first ep-data)) "/auth/sso")
+      (str/includes? (:endpoint-str (first ep-data)) "/api/moderation-review")))
 
 (defn endpoint-footer
   "Adds a footer with a link back to the API index."

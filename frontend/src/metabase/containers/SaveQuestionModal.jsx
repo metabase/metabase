@@ -79,6 +79,7 @@ export default class SaveQuestionModal extends Component {
       this.props;
 
     const isStructured = Q_DEPRECATED.isStructured(card.dataset_query);
+    const isReadonly = originalCard != null && !originalCard.can_write;
 
     const initialValues = {
       name:
@@ -87,7 +88,7 @@ export default class SaveQuestionModal extends Component {
           : "",
       description: card.description || "",
       collection_id:
-        card.collection_id === undefined
+        card.collection_id === undefined || isReadonly
           ? initialCollectionId
           : card.collection_id,
       saveType:

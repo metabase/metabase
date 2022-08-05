@@ -2,21 +2,23 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-import Button from "metabase/core/components/Button";
 
-import { color } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
   breakpointMaxMedium,
 } from "metabase/styled-components/theme";
 import EditableText from "metabase/core/components/EditableText";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;
 }
 
-export const HeaderRoot = styled.div<TypeForItemsThatRespondToNavBarOpen>`
+export const HeaderRoot = styled(
+  FullWidthContainer,
+)<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
 
@@ -32,6 +34,8 @@ export const HeaderRoot = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   ${breakpointMaxSmall} {
     flex-direction: column;
     align-items: baseline;
+    padding-left: 0;
+    padding-right: 0;
   }
 `;
 
@@ -40,6 +44,7 @@ export const HeaderCaptionContainer = styled.div`
   transition: top 400ms ease;
   display: flex;
   padding-right: 2rem;
+  right: 0.25rem;
 `;
 
 export const HeaderCaption = styled(EditableText)`
@@ -84,7 +89,20 @@ export const HeaderContent = styled.div<HeaderContentProps>`
   &:hover,
   &:focus-within {
     ${HeaderCaptionContainer} {
-      top: 0px;
+      top: 0;
+    }
+    ${HeaderLastEditInfoLabel} {
+      opacity: 1;
+    }
+  }
+
+  ${breakpointMaxSmall} {
+    padding-top: 0;
+    padding-left: 1rem;
+    padding-right: 1rem;
+
+    ${HeaderCaptionContainer} {
+      top: 0;
     }
     ${HeaderLastEditInfoLabel} {
       opacity: 1;
@@ -92,22 +110,11 @@ export const HeaderContent = styled.div<HeaderContentProps>`
   }
 `;
 
-export const HeaderBadgesDivider = styled.span`
-  color: ${color("text-light")};
-  font-size: 0.8em;
-
-  margin-left: 0.5rem;
-  margin-right: 0.5rem;
-
-  ${breakpointMaxSmall} {
-    display: none;
-  }
-`;
-
 export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
   color: ${color("text-dark")};
+  margin-right: -1rem;
 
   ${breakpointMinSmall} {
     margin-left: auto;
@@ -125,19 +132,17 @@ export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBar
   ${breakpointMaxSmall} {
     width: 100%;
     margin-bottom: 6px;
-  }
-
-  ${Button.Root} {
-    padding: 0.5rem 0.75rem;
-    &:hover {
-      color: ${color("brand")};
-    }
+    padding-top: 0.375rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    border-top: 1px solid ${color("border")};
   }
 `;
 
 export const HeaderButtonSection = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
+  gap: 0.5rem;
 
   ${breakpointMaxMedium} {
     ${props =>

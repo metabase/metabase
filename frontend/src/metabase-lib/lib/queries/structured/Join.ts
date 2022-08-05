@@ -339,7 +339,9 @@ export default class Join extends MBQLObjectClause {
 
   setOperator(index, operator) {
     if (index == null || !this.getConditionByIndex(index)) {
-      return this;
+      return this.setConditionByIndex({
+        condition: [operator, null, null],
+      });
     }
 
     const [_oldOperator, ...args] = this.getConditionByIndex(index);

@@ -167,6 +167,17 @@
                         "and cache field values?"))
    :visible-if   {"let-user-control-scheduling" true}})
 
+(def json-unfolding
+  "Map representing the `json-unfolding` option in a DB connection form"
+  {:name         "json-unfolding"
+   :display-name (deferred-tru "Unfold JSON Columns")
+   :type         :boolean
+   :visible-if   {"advanced-options" true}
+   :description  (deferred-tru
+                   (str "We unfold JSON columns into component fields."
+                        "This is on by default but you can turn it off if performance is slow."))
+   :default      true})
+
 (def refingerprint
   "Map representing the `refingerprint` option in a DB connection form."
   {:name         "refingerprint"

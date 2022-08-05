@@ -35,7 +35,7 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.request("PUT", "/api/setting", {
       "email-from-address": "admin@metabase.test",
       "email-from-name": "Metabase Admin",
-      "email-reply-to": "reply-to@metabase.test",
+      "email-reply-to": ["reply-to@metabase.test"],
       "email-smtp-host": "localhost",
       "email-smtp-password": null,
       "email-smtp-port": "1234",
