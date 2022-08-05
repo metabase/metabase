@@ -1,4 +1,4 @@
-import { Field } from "metabase-types/types/Field";
+import { Field } from "metabase-types/api/field";
 
 export function formatField(field: Field) {
   if (!field) {
