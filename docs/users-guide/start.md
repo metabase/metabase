@@ -28,10 +28,10 @@ title: User guide
 
 ## Dashboards
 
-- [Dashboard overview](../dashboards/README.md)
-- [Creating dashboards](../dashboards/dashboards.md)
+- [Dashboard overview](../dashboards/start.md)
+- [Creating dashboards](../dashboards/introduction.md)
 - [Adding filters to dashboards](../dashboards/filters.md)
-- [Making dashboards interactive](..dashboards/interactive.md)
+- [Making dashboards interactive](../dashboards/interactive.md)
 - [Creating dashboard charts with multiple series](../dashboards/multiple-series.md)
 
 ## Setting up subscriptions and alerts
