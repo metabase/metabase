@@ -8,7 +8,7 @@
 (deftest hydrate-query-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (actions.test-util/with-actions-test-data-and-actions-enabled
-      (actions.test-util/with-query-action [{:keys [query-action-card-id action-id] :as context}]
+      (actions.test-util/with-action [{:keys [query-action-card-id action-id] :as context} {}]
         (actions.test-util/with-card-emitter [{:keys [emitter-id]} context]
           (let [emitter (Emitter emitter-id)
                 hydrated-emitter (hydrate emitter :action)]
@@ -22,7 +22,7 @@
 (deftest hydrate-http-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (actions.test-util/with-actions-test-data-and-actions-enabled
-      (actions.test-util/with-http-action [{:keys [action-id] :as context}]
+      (actions.test-util/with-action [{:keys [action-id] :as context} {:type :http}]
         (actions.test-util/with-card-emitter [{:keys [emitter-id]} context]
           (let [emitter (Emitter emitter-id)
                 hydrated-emitter (hydrate emitter :action)]
