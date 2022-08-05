@@ -38,7 +38,7 @@
      :clj  (u.date/format "MMMM, yyyy" (u.date/parse value) locale)))
 
 #?(:clj
-    (def ^:private quarter-formatter-in
+   (def ^:private quarter-formatter-in
      (b/formatter
       "Q" (b/value :iso/quarter-of-year 1) "-" (b/value :year 4))))
 

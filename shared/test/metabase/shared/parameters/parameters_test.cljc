@@ -1,7 +1,6 @@
 (ns metabase.shared.parameters.parameters-test
   (:require [clojure.test :as t]
-            [metabase.shared.parameters.parameters :as params]
-            [metabase.test :as mt]))
+            [metabase.shared.parameters.parameters :as params]))
 
 (defn- tag-names
   [text]
@@ -220,30 +219,7 @@
 
       "{{foo}}"
       {"foo" {:type :date/month-year :value "2019-08"}}
-      "agosto\\, 2019"))
-
-  (t/testing "Relative date values are formatted using the site locale"
-    (mt/with-temporary-setting-values [site-locale "es"]
-      (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
-        "{{foo}}"
-        {"foo" {:type :date/all-options :value "thisday"}}
-        "Hoy"
-
-        "{{foo}}"
-        {"foo" {:type :date/all-options :value "past1weeks"}}
-        "Anterior Semana"
-
-        "{{foo}}"
-        {"foo" {:type :date/all-options :value "next1quarters"}}
-        "Siguiente Trimestre"
-
-        "{{foo}}"
-        {"foo" {:type :date/all-options :value "past60minutes"}}
-        "Anterior 60 Minuto"
-
-        "{{foo}}"
-        {"foo" {:type :date/all-options :value "next5years"}}
-        "Next 5 Año"))))
+      "agosto\\, 2019")))
 
 (t/deftest substitute-tags-optional-blocks-test
   (t/testing "Optional blocks are removed when necessary"
