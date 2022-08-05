@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
 
-  upgrade:
+  cross-version-testing:
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     strategy:
