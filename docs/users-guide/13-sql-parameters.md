@@ -279,7 +279,7 @@ Learn how to [refer to a saved question in a SQL query](referencing-saved-questi
 
 [sql-editor]: ./writing-sql.html
 [column-types]: ../administration-guide/03-metadata-editing.html#field-type
-[dashboard-filters]: 08-dashboard-filters.html
+[dashboard-filters]: ../dashboards/filters.html
 [field-filter]: /learn/sql-questions/field-filters.html
 [filtering-on-this-field]: ../administration-guide/03-metadata-editing.html#picking-the-filter-user-interface-for-a-column
 [sql-variables]: /learn/sql-questions/sql-variables.html
