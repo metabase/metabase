@@ -11,6 +11,7 @@
             metabase.driver.mysql
             metabase.driver.postgres
             [metabase.events :as events]
+            [metabase.logger :as mb.logger]
             [metabase.models.user :refer [User]]
             [metabase.plugins :as plugins]
             [metabase.plugins.classloader :as classloader]
@@ -25,10 +26,13 @@
             [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
 
+(comment
   ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
-(comment metabase.driver.h2/keep-me
-         metabase.driver.mysql/keep-me
-         metabase.driver.postgres/keep-me)
+  metabase.driver.h2/keep-me
+  metabase.driver.mysql/keep-me
+  metabase.driver.postgres/keep-me
+  ;; Make sure the custom Metabase logger code gets loaded up so we use our custom logger for performance reasons.
+  mb.logger/keep-me)
 
 ;; don't i18n this, it's legalese
 (log/info

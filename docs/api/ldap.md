@@ -1,6 +1,7 @@
 ---
 title: "LDAP"
-summary: "/api/ldap endpoints."
+summary: |
+  /api/ldap endpoints.
 ---
 
 # LDAP

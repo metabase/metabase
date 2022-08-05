@@ -1,5 +1,4 @@
-import React, { useMemo } from "react";
-import _ from "underscore";
+import React, { MouseEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -13,17 +12,17 @@ import {
   PaginationButton,
 } from "./TableSimple.styled";
 
-interface Props {
+interface TableFooterProps {
   className?: string;
   start: number;
   end: number;
   total: number;
   limit?: number;
-  handlePreviousPage: () => void;
-  handleNextPage: () => void;
+  onPreviousPage: () => void;
+  onNextPage: () => void;
 }
 
-const TableFooter = React.forwardRef<HTMLDivElement, Props>(
+const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
   function TableFooter(
     {
       className,
@@ -31,9 +30,9 @@ const TableFooter = React.forwardRef<HTMLDivElement, Props>(
       end,
       limit,
       total,
-      handlePreviousPage,
-      handleNextPage,
-    }: Props,
+      onPreviousPage,
+      onNextPage,
+    }: TableFooterProps,
     ref,
   ) {
     const paginateMessage = useMemo(() => {
@@ -42,6 +41,22 @@ const TableFooter = React.forwardRef<HTMLDivElement, Props>(
       }
       return t`Rows ${start + 1}-${end + 1} of ${total}`;
     }, [total, start, end, limit]);
+
+    const handlePreviousPage = useCallback(
+      (event: MouseEvent) => {
+        event.preventDefault();
+        onPreviousPage();
+      },
+      [onPreviousPage],
+    );
+
+    const handleNextPage = useCallback(
+      (event: MouseEvent) => {
+        event.preventDefault();
+        onNextPage();
+      },
+      [onNextPage],
+    );
 
     return (
       <TableFooterRoot

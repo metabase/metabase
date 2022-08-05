@@ -101,6 +101,7 @@
 
 (def manifest-entries
   {"Manifest-Version" "1.0"
+   "Multi-Release"    "true"
    "Created-By"       "Metabase build.clj"
    "Build-Jdk-Spec"   (System/getProperty "java.specification.version")
    "Main-Class"       "metabase.core"})

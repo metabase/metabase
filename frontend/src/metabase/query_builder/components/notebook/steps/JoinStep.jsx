@@ -246,7 +246,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
             {displayConditions.map((condition, index) => {
               const isFirst = index === 0;
               const isLast = index === displayConditions.length - 1;
-              const [operator] = condition;
+              const operator = condition[0] ?? "=";
               const operatorSymbol = JOIN_OPERATOR_OPTIONS.find(
                 o => o.value === operator,
               )?.name;
@@ -298,7 +298,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                       <Select
                         hiddenIcons
                         width={80}
-                        value={operator}
+                        value={operator ?? "="}
                         onChange={updateOperator}
                         options={JOIN_OPERATOR_OPTIONS}
                         triggerElement={

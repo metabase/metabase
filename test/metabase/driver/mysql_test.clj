@@ -391,7 +391,7 @@
                     :visibility-type :normal,
                     :nfc-path [:json_bit "genres"]}
                    {:name "json_bit → 1234",
-                    :database-type "integer",
+                    :database-type "bigint",
                     :base-type :type/Integer,
                     :database-position 0,
                     :visibility-type :normal,
@@ -436,25 +436,25 @@
     (mt/dataset json
       (when (not (is-mariadb? (u/id (mt/db))))
         (testing "Nested field column listing, but big"
-          (is (= #{}
-                 (sql-jdbc.sync/describe-nested-field-columns
-                   :mysql
-                   (mt/db)
-                   {:name "big_json"}))))))))
+          (is (= metabase.driver.sql-jdbc.sync.describe-table/max-nested-field-columns
+                 (count (sql-jdbc.sync/describe-nested-field-columns
+                          :mysql
+                          (mt/db)
+                          {:name "big_json"})))))))))
 
 (deftest json-query-test
   (let [boop-identifier (:form (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {}))]
     (testing "Transforming MBQL query with JSON in it to mysql query works"
-      (let [boop-field {:nfc_path [:bleh :meh] :database_type "integer"}]
-        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"meh\""]
+      (let [boop-field {:nfc_path [:bleh :meh] :database_type "bigint"}]
+        (is (= ["convert(json_extract(boop.bleh, ?), BIGINT)" "$.\"meh\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
-      (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "integer"}]
-        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"meh\".\"foobar\".\"1234\""]
+      (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "bigint"}]
+        (is (= ["convert(json_extract(boop.bleh, ?), BIGINT)" "$.\"meh\".\"foobar\".\"1234\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier weird-field))))))
     (testing "Doesn't complain when field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
-        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"boop\".\"foobar\".\"1234\""]
+        (is (= ["convert(json_extract(boop.bleh, ?), BOOLEAN)" "$.\"boop\".\"foobar\".\"1234\""]
                (hsql/format (#'sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
 
 (deftest json-alias-test
@@ -471,9 +471,9 @@
                                  :query    {:source-table (u/the-id table)
                                             :aggregation  [[:count]]
                                             :breakout     [[:field (u/the-id field) nil]]}})]
-              (is (= (str "SELECT JSON_EXTRACT(`json`.`json_bit`, ?) AS `json_bit → 1234`, "
-                          "count(*) AS `count` FROM `json` GROUP BY JSON_EXTRACT(`json`.`json_bit`, ?) "
-                          "ORDER BY JSON_EXTRACT(`json`.`json_bit`, ?) ASC")
+              (is (= (str "SELECT convert(json_extract(json.json_bit, ?), BIGINT) AS `json_bit → 1234`, "
+                          "count(*) AS `count` FROM `json` GROUP BY convert(json_extract(json.json_bit, ?), BIGINT) "
+                          "ORDER BY convert(json_extract(json.json_bit, ?), BIGINT) ASC")
                      (:query compile-res)))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
 
@@ -493,7 +493,7 @@
                                                               :min-value 0.75,
                                                               :max-value 54.0,
                                                               :bin-width 0.75}}]]
-                  (is (= ["((floor(((JSON_EXTRACT(json.json_bit, ?) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
+                  (is (= ["((floor(((convert(json_extract(json.json_bit, ?), BIGINT) - 0.75) / 0.75)) * 0.75) + 0.75)" "$.\"1234\""]
                          (hsql/format (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
 (deftest ddl.execute-with-timeout-test

@@ -7,7 +7,6 @@
             [metabase.config :as config]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.database :refer [Database]]
-            [metabase.models.dependency :refer [Dependency]]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
             [metabase.models.metric :refer [Metric]]
@@ -56,11 +55,6 @@
   (spit-yaml (str path "/manifest.yaml")
              {:serialization-version serialize/serialization-protocol-version
               :metabase-version      config/mb-version-info}))
-
-(defn dump-dependencies
-  "Combine all dependencies into a vector and dump it into YAML at `path`."
-  [path]
-  (spit-yaml (str path "/dependencies.yaml") (map serialize/serialize (Dependency))))
 
 (defn dump-settings
   "Combine all settings into a map and dump it into YAML at `path`."

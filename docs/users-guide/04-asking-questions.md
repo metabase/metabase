@@ -75,6 +75,14 @@ Once you're happy with your filter, click **Add filter**, and visualize your res
 
 If you want to edit your filter, just click the little purple filter at the top of the screen. If you click on the X, you'll remove your filter. You can add as many filters as you need.
 
+## Filter modal
+
+When viewing a table or chart, clicking on the **Filter** will bring up the filter modal:
+
+![Bulk filter modal](./images/asking-questions/bulk-filter-modal.png)
+
+Here you can add multiple filters to your question in one go. Filter options will differ depending on the [field type](./field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal. When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom right of the filter modal. Any filters you apply here will show up in the notebook editor, and vice versa.
+
 ### Filtering by date
 
 One important thing to understand when filtering on a date column is the difference between specific and relative dates:

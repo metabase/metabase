@@ -518,7 +518,7 @@
 (defmethod ->honeysql [:sql :case]
   [driver [_ cases options]]
   (->> (concat cases
-               (when (:default options)
+               (when (some? (:default options))
                  [[:else (:default options)]]))
        (apply concat)
        (mapv (partial ->honeysql driver))
@@ -621,19 +621,24 @@
 
 (defn rewrite-fields-to-force-using-column-aliases
   "Rewrite `:field` clauses to force them to use the column alias regardless of where they appear."
-  [form]
-  (mbql.u/replace form
-    [:field id-or-name opts]
-    [:field id-or-name (-> opts
-                           (assoc ::add/source-alias        (::add/desired-alias opts)
-                                  ::add/source-table        ::add/none
-                                  ;; sort of a HACK but this key will tell the SQL QP not to apply casting here either.
-                                  ::nest-query/outer-select true
-                                  ;; used to indicate that this is a forced alias
-                                  ::forced-alias            true)
-                           ;; don't want to do temporal bucketing or binning inside the order by or breakout either.
-                           ;; That happens inside the `SELECT`
-                           (dissoc :temporal-unit :binning))]))
+  ([form]
+   (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
+  ([form {is-breakout :is-breakout}]
+   (mbql.u/replace form
+     [:field id-or-name opts]
+     [:field id-or-name (cond-> opts
+                          true
+                          (assoc ::add/source-alias        (::add/desired-alias opts)
+                                 ::add/source-table        ::add/none
+                                 ;; sort of a HACK but this key will tell the SQL QP not to apply casting here either.
+                                 ::nest-query/outer-select true
+                                 ;; used to indicate that this is a forced alias
+                                 ::forced-alias            true)
+                          ;; don't want to do temporal bucketing or binning inside the order by only.
+                          ;; That happens inside the `SELECT`
+                          ;; (#22831) however, we do want it in breakout
+                          (not is-breakout)
+                          (dissoc :temporal-unit :binning))])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Clause Handlers                                                 |

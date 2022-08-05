@@ -1,6 +1,7 @@
 ---
 title: "Revision"
-summary: "API endpoints for Revision."
+summary: |
+  API endpoints for Revision.
 ---
 
 # Revision
