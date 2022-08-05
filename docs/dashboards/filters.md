@@ -1,5 +1,7 @@
 ---
 title: Dashboard filters
+redirect_from:
+  - /docs/latest/users-guide/08-dashboard-filters
 ---
 
 # Dashboard filters
