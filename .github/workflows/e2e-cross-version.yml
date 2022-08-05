@@ -11,19 +11,28 @@ jobs:
       matrix:
         version: [
           { source: v0.41.3.1, target: v0.42.2 },
-          { source: v0.42.0, target: v0.43.4 }
+          { source: v1.42.0, target: v1.43.4 }
         ]
       fail-fast: false
     env:
       CROSS_VERSION_SOURCE: ${{ matrix.version.source }}
       CROSS_VERSION_TARGET: ${{ matrix.version.target }}
+
     steps:
     - name: Checkout
       uses: actions/checkout@v3
+    - name: Set Metabase Enterprise License
+      run: |
+        echo "MB_PREMIUM_EMBEDDING_TOKEN=${{ secrets.ENTERPRISE_TOKEN }}" >> $GITHUB_ENV
+      if: startsWith(matrix.version.source, 'v1') || startsWith(matrix.version.target, 'v1')
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
-    - name: Start Metabase ${{ matrix.version.source }}
+    - name: Start Metabase OSS ${{ matrix.version.source }}
       run: docker run -d -v $PWD/my-metabase:/metabase.db -p 3000:3000 --name metabase-${{ matrix.version.source }} metabase/metabase:${{ matrix.version.source }}
+      if: startsWith(matrix.version.source, 'v0')
+    - name: Start Metabase EE ${{ matrix.version.source }}
+      run: docker run -d -v $PWD/my-metabase:/metabase.db -p 3000:3000 --name metabase-${{ matrix.version.source }} metabase/metabase-enterprise:${{ matrix.version.source }}
+      if: startsWith(matrix.version.source, 'v1')
     - name: Wait for Metabase to start on port 3000
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
     - name: Prepare Cypress environment
@@ -37,8 +46,12 @@ jobs:
     - name: Stop Metabase ${{ matrix.version.source }}
       run: docker stop metabase-${{ matrix.version.source }}
 
-    - name: Start Metabase ${{ matrix.version.target }}
+    - name: Start Metabase OSS ${{ matrix.version.target }}
       run: docker run -d -v $PWD/my-metabase:/metabase.db -p 3001:3000 --name metabase-${{ matrix.version.target }} metabase/metabase:${{ matrix.version.target }}
+      if: startsWith(matrix.version.target, 'v0')
+    - name: Start Metabase EE ${{ matrix.version.target }}
+      run: docker run -d -v $PWD/my-metabase:/metabase.db -p 3001:3000 --name metabase-${{ matrix.version.target }} metabase/metabase-enterprise:${{ matrix.version.target }}
+      if: startsWith(matrix.version.target, 'v1')
     - name: Wait for Metabase to start on port 3001
       run: while ! curl -s 'http://localhost:3001/api/health' | grep '{"status":"ok"}'; do sleep 1; done
     - name: Run Cypress on the target
