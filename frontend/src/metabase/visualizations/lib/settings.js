@@ -13,12 +13,14 @@ import ChartSettingFieldsPicker from "metabase/visualizations/components/setting
 import ChartSettingFieldsPartition from "metabase/visualizations/components/settings/ChartSettingFieldsPartition";
 import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
+import ChartSettingsTextArea from "metabase/visualizations/components/settings/ChartSettingsTextArea";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 const WIDGETS = {
   input: ChartSettingInput,
   inputGroup: ChartSettingInputGroup,
+  text: ChartSettingsTextArea,
   number: ChartSettingInputNumeric,
   radio: ChartSettingRadio,
   select: ChartSettingSelect,

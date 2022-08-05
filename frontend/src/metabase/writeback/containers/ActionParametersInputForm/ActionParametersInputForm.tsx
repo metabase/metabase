@@ -2,14 +2,17 @@ import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import { useDataAppContext } from "metabase/writeback/containers/DataAppContext";
 import {
   getActionTemplateTagType,
   getActionParameterType,
 } from "metabase/writeback/utils";
 
-import Form from "metabase/containers/Form";
+import RootForm from "metabase/containers/Form";
 import { TemplateTag } from "metabase-types/types/Query";
 import { Parameter, ParameterId } from "metabase-types/types/Parameter";
+
+import { FormDescription } from "./ActionParametersInputForm.styled";
 
 type MappedParameters = Record<
   string,
@@ -18,10 +21,12 @@ type MappedParameters = Record<
 
 interface Props {
   missingParameters: TemplateTag[] | Parameter[];
+  description?: string;
   onSubmit: (parameters: MappedParameters) => { type: string; payload: any };
   onSubmitSuccess: () => void;
   dispatch: (action: any) => void;
 }
+
 function isTemplateTag(
   tagOrParameter: TemplateTag | Parameter,
 ): tagOrParameter is TemplateTag {
@@ -103,11 +108,14 @@ function formatParametersBeforeSubmit(
 }
 
 function ActionParametersInputForm({
+  description,
   missingParameters,
   dispatch,
   onSubmit,
   onSubmitSuccess,
 }: Props) {
+  const dataAppContext = useDataAppContext();
+
   const form = useMemo(() => {
     return {
       fields: missingParameters.map(tagOrParameter => {
@@ -137,7 +145,23 @@ function ActionParametersInputForm({
     [missingParameters, onSubmit, onSubmitSuccess, dispatch],
   );
 
-  return <Form form={form} onSubmit={handleSubmit} submitTitle={t`Execute`} />;
+  return (
+    <RootForm form={form} onSubmit={handleSubmit} submitTitle={t`Execute`}>
+      {({ Form, FormField, FormFooter, formFields }: any) => (
+        <Form>
+          {description && (
+            <FormDescription>
+              {dataAppContext.format(description)}
+            </FormDescription>
+          )}
+          {formFields.map((field: any) => (
+            <FormField key={field.name} name={field.name} />
+          ))}
+          <FormFooter />
+        </Form>
+      )}
+    </RootForm>
+  );
 }
 
 export default connect()(ActionParametersInputForm);
