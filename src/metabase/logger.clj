@@ -6,9 +6,9 @@
             [clojure.tools.logging.impl :as log.impl]
             [metabase.config :as config])
   (:import org.apache.commons.lang3.exception.ExceptionUtils
-           [org.apache.logging.log4j LogManager]
            [org.apache.logging.log4j.core Appender LogEvent LoggerContext]
-           org.apache.logging.log4j.core.config.LoggerConfig))
+           org.apache.logging.log4j.core.config.LoggerConfig
+           org.apache.logging.log4j.LogManager))
 
 (def ^:private ^:const max-log-entries 2500)
 
