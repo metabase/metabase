@@ -536,30 +536,85 @@
             (reset! dash1s   (ts/create! Dashboard :name "My Dashboard" :collection_id (:id @coll1s) :creator_id (:id @user1s)))
             (reset! card1s   (ts/create! Card :name "The Card" :database_id (:id @db1s) :table_id (:id @table1s)
                                          :collection_id (:id @coll1s) :creator_id (:id @user1s)
+                                         :visualization_settings
+                                         {:table.pivot_column "SOURCE"
+                                          :table.cell_column "sum"
+                                          :table.columns
+                                          [{:name "SOME_FIELD"
+                                            :fieldRef [:field (:id @field1s) nil]
+                                            :enabled true}
+                                           {:name "sum"
+                                            :fieldRef [:field "sum" {:base-type :type/Float}]
+                                            :enabled true}
+                                           {:name "count"
+                                            :fieldRef [:field "count" {:base-type :type/BigInteger}]
+                                            :enabled true}
+                                           {:name "Average order total"
+                                            :fieldRef [:field "Average order total" {:base-type :type/Float}]
+                                            :enabled true}]
+                                          :column_settings
+                                          {(str "[\"ref\",[\"field\"," (:id @field2s) ",null]]") {:column_title "Locus"}}}
                                          :parameter_mappings [{:parameter_id "12345678"
                                                                :target [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
             (reset! dashcard1s (ts/create! DashboardCard :dashboard_id (:id @dash1s) :card_id (:id @card1s)
+                                           :visualization_settings
+                                           {:table.pivot_column "SOURCE"
+                                            :table.cell_column "sum"
+                                            :table.columns
+                                            [{:name "SOME_FIELD"
+                                              :fieldRef [:field (:id @field1s) nil]
+                                              :enabled true}
+                                             {:name "sum"
+                                              :fieldRef [:field "sum" {:base-type :type/Float}]
+                                              :enabled true}
+                                             {:name "count"
+                                              :fieldRef [:field "count" {:base-type :type/BigInteger}]
+                                              :enabled true}
+                                             {:name "Average order total"
+                                              :fieldRef [:field "Average order total" {:base-type :type/Float}]
+                                              :enabled true}]
+                                            :column_settings
+                                            {(str "[\"ref\",[\"field\"," (:id @field2s) ",null]]") {:column_title "Locus"}}}
                                            :parameter_mappings [{:parameter_id "deadbeef"
                                                                  :card_id (:id @card1s)
                                                                  :target [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
 
             (reset! serialized (into [] (serdes.extract/extract-metabase {})))
-            (testing "exported form is properly converted"
-              (is (= [{:parameter_id "12345678"
-                       :target [:dimension [:field ["my-db" nil "orders" "subtotal"]
-                                            {:source-field ["my-db" nil "orders" "invoice"]}]]}]
-                     (-> @serialized
-                         (by-model "Card")
-                         first
-                         :parameter_mappings)))
-              (is (= [{:parameter_id "deadbeef"
-                       :card_id (:entity_id @card1s)
-                       :target [:dimension [:field ["my-db" nil "orders" "subtotal"]
-                                            {:source-field ["my-db" nil "orders" "invoice"]}]]}]
-                     (-> @serialized
-                         (by-model "DashboardCard")
-                         first
-                         :parameter_mappings))))))
+            (let [card     (-> @serialized (by-model "Card") first)
+                  dashcard (-> @serialized (by-model "DashboardCard") first)]
+              (testing "exported :parameter_mappings are properly converted"
+                (is (= [{:parameter_id "12345678"
+                         :target [:dimension [:field ["my-db" nil "orders" "subtotal"]
+                                              {:source-field ["my-db" nil "orders" "invoice"]}]]}]
+                       (:parameter_mappings card)))
+                (is (= [{:parameter_id "deadbeef"
+                         :card_id (:entity_id @card1s)
+                         :target [:dimension [:field ["my-db" nil "orders" "subtotal"]
+                                              {:source-field ["my-db" nil "orders" "invoice"]}]]}]
+                       (:parameter_mappings dashcard))))
+
+              (testing "exported :visualization_settings are properly converted"
+                (let [expected {:table.pivot_column "SOURCE"
+                                :table.cell_column "sum"
+                                :table.columns
+                                [{:name "SOME_FIELD"
+                                  :fieldRef ["field" ["my-db" nil "orders" "subtotal"] nil]
+                                  :enabled true}
+                                 {:name "sum"
+                                  :fieldRef ["field" "sum" {:base-type "type/Float"}]
+                                  :enabled true}
+                                 {:name "count"
+                                  :fieldRef ["field" "count" {:base-type "type/BigInteger"}]
+                                  :enabled true}
+                                 {:name "Average order total"
+                                  :fieldRef ["field" "Average order total" {:base-type "type/Float"}]
+                                  :enabled true}]
+                                :column_settings
+                                {"[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]" {:column_title "Locus"}}}]
+                  (is (= expected
+                         (:visualization_settings card)))
+                  (is (= expected
+                         (:visualization_settings dashcard))))))))
 
 
 
