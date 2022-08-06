@@ -8,6 +8,7 @@ import {
   FilterButton,
   ParametersListHeader,
   StyledParametersList,
+  ResponsiveParametersListRoot,
   ParametersListContainer,
 } from "./ResponsiveParametersList.styled";
 
@@ -34,8 +35,8 @@ export const ResponsiveParametersList = ({
   }, [parameters]);
 
   return (
-    <ParametersListContainer isSmallScreen={isSmallScreen}>
-      {isSmallScreen && !mobileShowParameterList && (
+    <ResponsiveParametersListRoot isSmallScreen={isSmallScreen}>
+      {isSmallScreen && (
         <FilterButton
           borderless
           primary
@@ -45,7 +46,7 @@ export const ResponsiveParametersList = ({
           {activeFilters > 0 ? `${activeFilters} active filters` : `Filters`}
         </FilterButton>
       )}
-      {isSmallScreen && mobileShowParameterList && (
+      {/* {isSmallScreen && mobileShowParameterList && (
         <ParametersListHeader>
           <h3>Filters</h3>
           <Button
@@ -56,16 +57,30 @@ export const ResponsiveParametersList = ({
             iconSize={14}
           />
         </ParametersListHeader>
-      )}
+      )} */}
       {(!isSmallScreen || mobileShowParameterList) && (
-        <StyledParametersList
-          parameters={parameters}
-          setParameterValue={setParameterValue}
-          setParameterIndex={setParameterIndex}
-          isEditing
-          commitImmediately
-        />
+        <ParametersListContainer isSmallScreen={isSmallScreen}>
+          {isSmallScreen && (
+            <ParametersListHeader>
+              <h3>Filters</h3>
+              <Button
+                onlyIcon
+                borderless
+                icon="close"
+                onClick={handleFilterButtonClick}
+                iconSize={14}
+              />
+            </ParametersListHeader>
+          )}
+          <StyledParametersList
+            parameters={parameters}
+            setParameterValue={setParameterValue}
+            setParameterIndex={setParameterIndex}
+            isEditing
+            commitImmediately
+          />
+        </ParametersListContainer>
       )}
-    </ParametersListContainer>
+    </ResponsiveParametersListRoot>
   );
 };

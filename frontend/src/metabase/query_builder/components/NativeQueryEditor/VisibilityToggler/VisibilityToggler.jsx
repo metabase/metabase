@@ -29,7 +29,7 @@ const VisibilityToggler = ({
   );
 
   return (
-    <Container>
+    <Container className="hide sm-show">
       <a className={classNames} onClick={toggleEditor}>
         <Span>{text}</Span>
         <Icon name={icon} size={18} />

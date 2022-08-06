@@ -8,17 +8,28 @@ export const FilterButton = styled(Button)`
   color: ${color("brand")};
   margin: 0.5rem;
 `;
-interface ParametersListContainerProps {
+interface ResponsiveParametersListRootProps {
   isSmallScreen: boolean;
 }
-export const ParametersListContainer = styled.div<ParametersListContainerProps>`
+export const ResponsiveParametersListRoot = styled.div<ResponsiveParametersListRootProps>`
+  position: relative;
+  width: 100%;
+`;
+
+export const ParametersListContainer = styled.div`
+  background-color: ${color("bg-light")};
   ${props =>
     props.isSmallScreen &&
     `
-    max-height: 200px;
-    overflow-y: auto;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    border-bottom: 1px solid ${color("border")};
+    padding-bottom: 0.5rem;
   `}
 `;
+
 export const ParametersListHeader = styled.div`
   padding: 0.75rem 1rem;
   display: flex;
@@ -27,5 +38,5 @@ export const ParametersListHeader = styled.div`
 `;
 
 export const StyledParametersList = styled(SyncedParametersList)`
-  margin: 0 1rem 0.5rem 1rem;
+  margin: 0 1rem;
 `;
