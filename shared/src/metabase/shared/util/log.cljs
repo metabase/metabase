@@ -3,9 +3,7 @@
             [goog.string.format :as gstring.format]
             [lambdaisland.glogi :as log]
             [lambdaisland.glogi.console :as glogi-console])
-  (:require-macros metabase.shared.util.log)
-  (:import goog.debug.Logger
-           goog.debug.Logger.Level))
+  (:require-macros metabase.shared.util.log))
 
 (comment metabase.shared.util.log/keep-me
          gstring.format/keep-me)
@@ -37,4 +35,4 @@
 (defn is-loggable?
   "Part of the impl for [[metabase.shared.util.log/js-logp]] and [[metabase.shared.util.log/js-logf]]."
   [logger-name level]
-  (.isLoggable ^Logger (log/logger logger-name) ^Level (log/levels level)))
+  (.isLoggable (log/logger logger-name) (log/levels level)))
