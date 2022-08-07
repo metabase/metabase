@@ -292,9 +292,9 @@ export function formatDateTimeWithUnit(
 
   if (!dateFormat) {
     dateFormat = getDateFormatFromStyle(
-      options["date_style"] as string,
+      options.date_style as string,
       unit,
-      options["date_separator"] as string,
+      options.date_separator as string,
     );
   }
 
