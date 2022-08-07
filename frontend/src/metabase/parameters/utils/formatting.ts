@@ -26,7 +26,10 @@ function formatWithInferredType(value: any, parameter: UiParameter) {
   });
 }
 
-export function formatParameterValue(value: unknown, parameter: UiParameter) {
+export function formatParameterValue(
+  value: string | number | number[],
+  parameter: UiParameter,
+) {
   if (Array.isArray(value) && value.length > 1) {
     return renderNumberOfSelections(value.length);
   }

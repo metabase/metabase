@@ -190,7 +190,7 @@ type NUMERIC_UNIT_FORMATS_KEY_TYPE =
 export function parseTimestamp(
   value: MomentInput,
   unit: DatetimeUnit | null = null,
-  local: boolean = false,
+  local: unknown = false,
 ) {
   let m: any;
   if (moment.isMoment(value)) {

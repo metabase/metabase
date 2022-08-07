@@ -1,5 +1,5 @@
 import React from "react";
-import moment from "moment-timezone";
+import moment, { Moment } from "moment-timezone";
 
 import { parseTimestamp } from "metabase/lib/time";
 import { isDateWithoutTime } from "metabase/lib/schema_metadata";
@@ -10,9 +10,13 @@ import {
   hasHour,
 } from "./datetime-utils";
 
+import type { DatetimeUnit } from "metabase-types/api/query";
+import type { OptionsType } from "./types";
+
 const RANGE_SEPARATOR = ` – `;
 
-const DEFAULT_DATE_FORMATS = {
+type DEFAULT_DATE_FORMATS_TYPE = { [key: string]: string };
+const DEFAULT_DATE_FORMATS: DEFAULT_DATE_FORMATS_TYPE = {
   year: "YYYY",
   quarter: "[Q]Q - YYYY",
   "minute-of-hour": "m",
@@ -25,7 +29,10 @@ const DEFAULT_DATE_FORMATS = {
 };
 
 // a "date style" is essentially a "day" format with overrides for larger units
-const DATE_STYLE_TO_FORMAT = {
+
+type DATE_STYLE_TO_FORMAT_TYPE = { [key: string]: { [key: string]: string } };
+
+const DATE_STYLE_TO_FORMAT: DATE_STYLE_TO_FORMAT_TYPE = {
   "M/D/YYYY": {
     month: "M/YYYY",
   },
@@ -48,19 +55,24 @@ const DATE_STYLE_TO_FORMAT = {
   },
 };
 
-const getDayFormat = options =>
+const getDayFormat = (options: OptionsType) =>
   options.compact || options.date_abbreviate ? "ddd" : "dddd";
 
-const getMonthFormat = options =>
+const getMonthFormat = (options: OptionsType) =>
   options.compact || options.date_abbreviate ? "MMM" : "MMMM";
 
-export function getDateFormatFromStyle(style, unit, separator) {
-  const replaceSeparators = format =>
+export function getDateFormatFromStyle(
+  style: string,
+  unit: DatetimeUnit,
+  separator: string,
+) {
+  const replaceSeparators = (format: string) =>
     separator && format ? format.replace(/\//g, separator) : format;
 
   if (!unit) {
     unit = "default";
   }
+
   if (DATE_STYLE_TO_FORMAT[style]) {
     if (DATE_STYLE_TO_FORMAT[style][unit]) {
       return replaceSeparators(DATE_STYLE_TO_FORMAT[style][unit]);
@@ -74,7 +86,7 @@ export function getDateFormatFromStyle(style, unit, separator) {
   return replaceSeparators(style);
 }
 
-export function formatDateTimeForParameter(value, unit) {
+export function formatDateTimeForParameter(value: number, unit: DatetimeUnit) {
   const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);
@@ -103,7 +115,11 @@ export function formatDateTimeForParameter(value, unit) {
 }
 
 /** This formats a time with unit as a date range */
-export function formatDateTimeRangeWithUnit(value, unit, options = {}) {
+export function formatDateTimeRangeWithUnit(
+  value: string | number,
+  unit: DatetimeUnit,
+  options: OptionsType = {},
+) {
   const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
     return String(value);
@@ -150,7 +166,11 @@ export function formatDateTimeRangeWithUnit(value, unit, options = {}) {
   }
 }
 
-export function formatRange(range, formatter, options = {}) {
+export function formatRange(
+  range: any[],
+  formatter: any,
+  options: OptionsType = {},
+) {
   const [start, end] = range.map(value => formatter(value, options));
   if ((options.jsx && typeof start !== "string") || typeof end !== "string") {
     return (
@@ -163,11 +183,15 @@ export function formatRange(range, formatter, options = {}) {
   }
 }
 
-function formatWeek(m, options = {}) {
+function formatWeek(m: Moment, options: OptionsType = {}) {
   return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
 }
 
-function formatMajorMinor(major, minor, options = {}) {
+function formatMajorMinor(
+  major: string,
+  minor: string,
+  options: OptionsType = {},
+) {
   options = {
     jsx: false,
     majorWidth: 3,
@@ -191,13 +215,18 @@ function formatMajorMinor(major, minor, options = {}) {
   }
 }
 
-function replaceDateFormatNames(format, options) {
+function replaceDateFormatNames(format: string, options: OptionsType) {
   return format
     .replace(/\bMMMM\b/g, getMonthFormat(options))
     .replace(/\bdddd\b/g, getDayFormat(options));
 }
 
-function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
+function formatDateTimeWithFormats(
+  value: number,
+  dateFormat: string,
+  timeFormat: string,
+  options: OptionsType,
+) {
   const m = parseTimestamp(
     value,
     options.column && options.column.unit,
@@ -221,7 +250,11 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
   return m.format(format.join(", "));
 }
 
-export function formatDateTimeWithUnit(value, unit, options = {}) {
+export function formatDateTimeWithUnit(
+  value: number | string,
+  unit: DatetimeUnit,
+  options: OptionsType = {},
+) {
   if (options.isExclude && unit === "hour-of-day") {
     return moment.utc(value).format("h A");
   } else if (options.isExclude && unit === "day-of-week") {
@@ -259,15 +292,15 @@ export function formatDateTimeWithUnit(value, unit, options = {}) {
 
   if (!dateFormat) {
     dateFormat = getDateFormatFromStyle(
-      options["date_style"],
+      options.date_style as string,
       unit,
-      options["date_separator"],
+      options.date_separator as string,
     );
   }
 
   if (!timeFormat) {
     timeFormat = getTimeFormatFromStyle(
-      options.time_style,
+      options.time_style as string,
       unit,
       options.time_enabled,
     );
