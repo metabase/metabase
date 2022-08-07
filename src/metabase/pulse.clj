@@ -419,10 +419,57 @@
   :on-change reconfigure-retrying)
 
 (defsetting notification-retry-randomizaion-factor
+  (deferred-tru "Deprecated, use notification-retry-randomization-factor instead.")
+  :type :double
+  :on-change reconfigure-retrying
+  :deprecated "0.44.1"
+  :setter (fn notification-retry-randomizaion-factor-setter [new-value]
+            (when (some? new-value)
+              (throw (ex-info (trs (str "The setting :notification-retry-randomizaion-factor is deprecated, "
+                                        "please use :notification-retry-randomization-factor instead."))
+                              {})))
+            (setting/set-value-of-type! :double :notification-retry-randomizaion-factor nil)))
+
+(defn- notification-retry-randomization-factor-misspelled-env? []
+  (some? (setting/env-var-value :notification-retry-randomizaion-factor)))
+
+(defn- resolve-misspelled-randomization-factor!
+  "Returns the value of the :notification-retry-randomization-factor setting migrating
+  the mispelled variant :notification-retry-randomizaion-factor if possible. If the deprecated
+  setting is in use via the environment variable, it issues a warning and uses that value.
+
+  When we can get rid of the deprecated :notification-retry-randomization-factor setting,
+  we have to set the :default value (0.1) for :notification-retry-randomization-factor and
+  remove its :getter and :setter as well as this function."
+  []
+  (if-some [correct-spelling-value (setting/get-value-of-type :double :notification-retry-randomization-factor)]
+    correct-spelling-value
+    (if-some [misspelled-value (notification-retry-randomizaion-factor)]
+      (do
+        (if (notification-retry-randomization-factor-misspelled-env?)
+          (log/warn
+           (trs (str "The setting MB_NOTIFICATION_RETRY_RANDOMIZAION_FACTOR is deprecated, "
+                     "please set MB_NOTIFICATION_RETRY_RANDOMIZATION_FACTOR instead.")))
+          (do
+            (log/warn
+             (trs (str "Migrating deprecated setting notification-retry-randomizaion-factor "
+                       "to notification-retry-randomization-factor")))
+            (setting/set-value-of-type! :double :notification-retry-randomization-factor misspelled-value)
+            (notification-retry-randomizaion-factor! nil)))
+        misspelled-value)
+      0.1)))
+
+(defsetting notification-retry-randomization-factor
   (deferred-tru "The randomization factor of the retry delay when delivering notifications.")
   :type :double
-  :default 0.1
-  :on-change reconfigure-retrying)
+  :on-change reconfigure-retrying
+  :getter resolve-misspelled-randomization-factor!
+  :setter (fn notification-retry-randomization-factor-setter [new-value]
+            (when (notification-retry-randomization-factor-misspelled-env?)
+              (throw (ex-info (trs (str "The environment variable MB_NOTIFICATION_RETRY_RANDOMIZAION_FACTOR is set, "
+                                        "unset it to be able to set :notification-retry-randomization-factor."))
+                              {})))
+            (setting/set-value-of-type! :double :notification-retry-randomization-factor new-value)))
 
 (defsetting notification-retry-max-interval-millis
   (deferred-tru "The maximum delay between attempts to deliver a single notification.")
@@ -434,7 +481,7 @@
   (cond-> {:max-attempts (notification-retry-max-attempts)
            :initial-interval-millis (notification-retry-initial-interval)
            :multiplier (notification-retry-multiplier)
-           :randomization-factor (notification-retry-randomizaion-factor)
+           :randomization-factor (notification-retry-randomization-factor)
            :max-interval-millis (notification-retry-max-interval-millis)}
     (or config/is-dev? config/is-test?) (assoc :max-attempts 1)))
 
