@@ -1,3 +1,8 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 import { ISO8601Time } from ".";
 import { Table, TableId } from "./Table";
 import { Value } from "./Dataset";
