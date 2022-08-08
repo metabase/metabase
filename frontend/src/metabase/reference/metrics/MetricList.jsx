@@ -27,7 +27,7 @@ const emptyStateData = {
   image: "app/assets/img/metrics-list",
   adminAction: t`Learn how to create metrics`,
   adminLink: MetabaseSettings.docsUrl(
-    "databases/segments-and-metrics",
+    "data-modeling/segments-and-metrics",
     "creating-a-metric",
   ),
 };

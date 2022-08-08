@@ -26,7 +26,7 @@ const emptyStateData = {
   image: "app/assets/img/segments-list",
   adminAction: t`Learn how to create segments`,
   adminLink: MetabaseSettings.docsUrl(
-    "databases/segments-and-metrics",
+    "data-modeling/segments-and-metrics",
     "creating-a-segment",
   ),
 };
