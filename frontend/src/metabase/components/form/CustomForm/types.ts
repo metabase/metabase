@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import {
+  BaseFieldDefinition,
   FieldName,
   DefaultFieldValue,
   FieldValues,
@@ -10,21 +11,25 @@ import {
 
 export interface BaseFormProps {
   formKey?: string;
-  formName: string;
+  formName?: string;
   formObject: FormObject;
 
-  fields: FormField[];
+  formFields: FormFieldDefinition[];
+  formFieldsByName: Record<FieldName, FormFieldDefinition>;
+  disablePristineSubmit?: boolean;
+
+  fields: Record<string, FormField>;
   values: FieldValues;
   errors: Record<FieldName, string>;
 
   active?: boolean;
-  asyncValidating: boolean;
+  asyncValidating?: boolean;
   dirty: boolean;
   error?: string;
   invalid: boolean;
   overwriteOnInitialValuesChange?: boolean;
   pristine: boolean;
-  readonly: boolean;
+  readonly?: boolean;
   submitFailed: boolean;
   submitting: boolean;
   valid: boolean;
@@ -36,11 +41,6 @@ export interface BaseFormProps {
   onChangeField: (fieldName: FieldName, value: DefaultFieldValue) => void;
   onSubmitSuccess: () => void;
   resetForm: () => void;
-  submitPassback: () => void;
-  touch: () => void;
-  touchAll: () => void;
-  untouch: () => void;
-  untouchAll: () => void;
 }
 
 type RenderSubmitProps = {
@@ -56,10 +56,13 @@ export interface OptionalFormViewProps {
   style?: React.CSSProperties;
 }
 
-export interface FormLegacyContext
+export interface CustomFormLegacyContext
   extends OptionalFormViewProps,
     Pick<
       BaseFormProps,
+      | "formFields"
+      | "formFieldsByName"
+      | "disablePristineSubmit"
       | "handleSubmit"
       | "fields"
       | "values"
@@ -68,10 +71,11 @@ export interface FormLegacyContext
       | "pristine"
       | "error"
       | "onChangeField"
-    > {
-  formFields: FormFieldDefinition[];
-  formFieldsByName: Record<FieldName, FormFieldDefinition>;
-  disablePristineSubmit?: boolean;
+    > {}
+
+export interface FormContainerLegacyContext {
+  registerFormField: (fieldDef: BaseFieldDefinition) => void;
+  unregisterFormField: (fieldDef: BaseFieldDefinition) => void;
 }
 
 export const LegacyContextTypes = {

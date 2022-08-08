@@ -31,7 +31,7 @@ export type BaseFieldDefinition = {
 };
 
 export type StandardFormFieldDefinition = BaseFieldDefinition & {
-  type: string;
+  type: string | (() => JSX.Element);
 };
 
 export type CustomFormFieldDefinition = BaseFieldDefinition & {
@@ -49,8 +49,6 @@ export type FormField<Value = DefaultFieldValue> = {
   initialValue: Value;
 
   active: boolean;
-  autofilled: boolean;
-  checked: boolean;
   dirty: boolean;
   invalid: boolean;
   pristine: boolean;
@@ -58,14 +56,9 @@ export type FormField<Value = DefaultFieldValue> = {
   valid: boolean;
   visited: boolean;
 
-  autofill: () => void;
-
   onBlur: () => void;
-  onChange: () => void;
-  onDragStart: () => void;
-  onDrop: () => void;
   onFocus: () => void;
-  onUpdate: () => void;
+  onChange: (value: Value) => void;
 };
 
 export type FormObject = {

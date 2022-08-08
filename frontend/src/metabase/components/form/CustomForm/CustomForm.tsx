@@ -6,7 +6,7 @@ import { FormFieldDefinition, FormObject } from "metabase-types/forms";
 import {
   BaseFormProps,
   OptionalFormViewProps,
-  FormLegacyContext,
+  CustomFormLegacyContext,
   LegacyContextTypes,
 } from "./types";
 
@@ -50,7 +50,7 @@ function CustomForm(props: CustomFormProps) {
 class CustomFormWithLegacyContext extends React.Component<CustomFormProps> {
   static childContextTypes = LegacyContextTypes;
 
-  getChildContext(): FormLegacyContext {
+  getChildContext(): CustomFormLegacyContext {
     const {
       fields,
       values,
