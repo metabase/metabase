@@ -418,7 +418,7 @@
   :default 2.0
   :on-change reconfigure-retrying)
 
-(defsetting notification-retry-randomizaion-factor
+(defsetting notification-retry-randomization-factor
   (deferred-tru "The randomization factor of the retry delay when delivering notifications.")
   :type :double
   :default 0.1
@@ -434,7 +434,7 @@
   (cond-> {:max-attempts (notification-retry-max-attempts)
            :initial-interval-millis (notification-retry-initial-interval)
            :multiplier (notification-retry-multiplier)
-           :randomization-factor (notification-retry-randomizaion-factor)
+           :randomization-factor (notification-retry-randomization-factor)
            :max-interval-millis (notification-retry-max-interval-millis)}
     (or config/is-dev? config/is-test?) (assoc :max-attempts 1)))
 
