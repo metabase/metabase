@@ -66,9 +66,9 @@ title: Metabase documentation
 
 - [Overview](./data-modeling/start.md)
 - [Models](./data-modeling/models.md)
-- [Metadata-editing](/.data-modeling/metadata-editing.md)
+- [Metadata-editing](./data-modeling/metadata-editing.md)
 - [Field types](./data-modeling/field-types.md)
-- [Creating segments and metrics](./databases/segments-and-metrics.md)
+- [Creating segments and metrics](./data-modeling/segments-and-metrics.md)
 
 ## Finding things and keeping organized
 
