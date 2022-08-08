@@ -62,7 +62,6 @@ export type FormField<Value = DefaultFieldValue> = {
 
   onBlur: () => void;
   onFocus: () => void;
-  onChange: (value: Value) => void;
 };
 
 export type FormObject = {

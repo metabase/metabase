@@ -6,13 +6,12 @@ import {
   FieldValues,
   FormFieldDefinition,
   FormField,
-  FormObject,
-} from "metabase-types/forms";
+  PopulatedFormObject,
+} from "metabase-types/forms/legacy";
 
 export interface BaseFormProps {
   formKey?: string;
-  formName?: string;
-  formObject: FormObject;
+  formObject: PopulatedFormObject;
 
   formFields: FormFieldDefinition[];
   formFieldsByName: Record<FieldName, FormFieldDefinition>;
