@@ -413,5 +413,3 @@
                                                                                       :snippet-name "first 3 checkins"
                                                                                       :snippet-id   (:id snippet)}}}
                             :parameters []}))))))))
-
-
