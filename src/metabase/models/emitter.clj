@@ -76,6 +76,8 @@
     items))
 
 (defn card-emitter-usages
+  "Hydrates emitter usages given a list of cards, this is used e.g. to show the user what else deleting a card will
+  modify."
   {:batched-hydrate :card/emitter-usages}
   [cards]
   (if-let [card-ids (seq (map :id (filter :is_write cards)))]
@@ -100,6 +102,8 @@
     cards))
 
 (defn action-emitter-usages
+    "Hydrates emitter usages given a list of cards, this is used e.g. to show the user what else deleting a card will
+  modify."
   {:batched-hydrate :action/emitter-usages}
   [actions]
   (if-let [action-ids (seq (keep :id actions))]
