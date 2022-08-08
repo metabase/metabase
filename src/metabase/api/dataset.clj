@@ -10,6 +10,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.database :as database :refer [Database]]
+            [metabase.models.persisted-info :as persisted-info]
             [metabase.models.query :as query]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
@@ -149,8 +150,9 @@
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
   [:as {query :body}]
-  (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-  (qp/compile-and-splice-parameters query))
+  (binding [persisted-info/*allow-persisted-substitution* false]
+    (qp.perms/check-current-user-has-adhoc-native-query-perms query)
+    (qp/compile-and-splice-parameters query)))
 
 (api/defendpoint ^:streaming POST "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"

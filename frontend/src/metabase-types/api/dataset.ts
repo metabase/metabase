@@ -5,6 +5,8 @@ export interface DatasetColumn {
   display_name: string;
   source: string;
   name: string;
+  remapped_to_column?: DatasetColumn;
+  unit?: string;
 }
 
 export interface DatasetData {

@@ -109,6 +109,7 @@ function getNextTemplateTagEditorState({
 type UpdateQuestionOpts = {
   run?: boolean | "auto";
   shouldUpdateUrl?: boolean;
+  shouldStartAdHocQuestion?: boolean;
 };
 
 /**
@@ -117,13 +118,18 @@ type UpdateQuestionOpts = {
 export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
 export const updateQuestion = (
   newQuestion: Question,
-  { run = false, shouldUpdateUrl = false }: UpdateQuestionOpts = {},
+  {
+    run = false,
+    shouldStartAdHocQuestion = true,
+    shouldUpdateUrl = false,
+  }: UpdateQuestionOpts = {},
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     const currentQuestion = getQuestion(getState());
     const queryBuilderMode = getQueryBuilderMode(getState());
 
     const shouldTurnIntoAdHoc =
+      shouldStartAdHocQuestion &&
       newQuestion.isSaved() &&
       newQuestion.query().isEditable() &&
       queryBuilderMode !== "dataset";

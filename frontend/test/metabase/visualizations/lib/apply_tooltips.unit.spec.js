@@ -1,4 +1,4 @@
-import moment from "moment";
+import moment from "moment-timezone";
 
 import { getClickHoverObject } from "metabase/visualizations/lib/apply_tooltips";
 import { getDatas } from "metabase/visualizations/lib/renderer_utils";

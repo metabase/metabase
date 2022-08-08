@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
-import { Moment } from "moment";
+import { Moment } from "moment-timezone";
 import Question from "metabase-lib/lib/Question";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
