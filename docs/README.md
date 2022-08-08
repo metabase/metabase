@@ -55,15 +55,20 @@ title: Metabase documentation
 
 ## Dashboards
 
+- [Overview](./dashboards/start.md)
 - [Creating dashboards](./dashboards/introduction.md)
 - [Dashboard filters](./dashboards/filters.md)
 - [Interactive dashboards](./dashboards/interactive.md)
 - [Dashboard charts with multiple series](./dashboards/multiple-series.md)
 - [Setting up dashboard subscriptions](./dashboards/subscriptions.md)
 
-## Models
+## Data modeling
 
-- [Models](./users-guide/models.md)
+- [Overview](./data-modeling/start.md)
+- [Models](./data-modeling/models.md)
+- [Metadata-editing](./data-modeling/metadata-editing.md)
+- [Field types](./data-modeling/field-types.md)
+- [Creating segments and metrics](./data-modeling/segments-and-metrics.md)
 
 ## Finding things and keeping organized
 
@@ -103,12 +108,11 @@ title: Metabase documentation
 
 ## Databases
 
-- [Adding data sources](./administration-guide/01-managing-databases.md)
-- [Encrypting your database connection](./operations-guide/encrypting-database-details-at-rest.md)
-- [Editing your database metadata](./administration-guide/03-metadata-editing.md)
-- [Creating segments and metrics](./administration-guide/07-segments-and-metrics.md)
-- [SSH tunneling](./administration-guide/ssh-tunnel-for-database-connections.md)
-- [SSL certificate](./administration-guide/secure-database-connections-with-ssl-certificates.md)
+- [Overview](./databases/start.md)
+- [Adding data sources](./databases/connecting.md)
+- [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
+- [SSH tunneling](./databases/ssh-tunnel.md)
+- [SSL certificate](./databases/ssl-certificates.md)
 
 ## Configuring Metabase
 

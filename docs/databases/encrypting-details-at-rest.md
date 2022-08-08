@@ -1,5 +1,7 @@
 ---
 title: Encrypting your database connection details at rest
+redirect_from:
+  - /docs/latest/operations-guide/encrypting-database-details-at-rest
 ---
 
 # Encrypting your database connection details at rest
@@ -47,7 +49,7 @@ If you added databases before setting the `MB_ENCRYPTION_SECRET_KEY` value, you 
 
 ## Rotating an encryption key
 
-1. We recommend that you [backup](./backing-up-metabase-application-data.md) your data before doing a key rotation.
+1. We recommend that you [backup](../operations-guide/backing-up-metabase-application-data.md) your data before doing a key rotation.
 2. Stop running your Metabase app.
 3. Run the CLI command `rotate-encryption-key`.
    - Set the current encryption key as `MB_ENCRYPTION_SECRET_KEY`.

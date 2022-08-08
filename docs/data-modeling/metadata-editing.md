@@ -1,10 +1,12 @@
 ---
-title: The Data Model page
+title: "The data model page"
+redirect_from:
+  - /docs/latest/administration-guide/03-metadata-editing
 ---
 
 # The Data Model page
 
-Metabase allows you to annotate the data in your database. Annotations can give Metabase a better understanding of what the data actually means, which allows Metabase to make more intelligent decisions when processing and displaying that data.
+Metabase allows admins to annotate the data in your database. Annotations can give Metabase a better understanding of what the data actually means, which allows Metabase to make more intelligent decisions when processing and displaying that data.
 
 The **Data Model** section of the **Admin Panel** contains settings to edit metadata for:
 
@@ -13,9 +15,9 @@ The **Data Model** section of the **Admin Panel** contains settings to edit meta
 - **Segments**
 - **Metrics**
 
-This page focuses on editing table and column metadata; another page covers [segments and metrics](07-segments-and-metrics.md).
+This page focuses on editing table and column metadata; another page covers [segments and metrics](./segments-and-metrics.md).
 
-Or are you instead looking for docs on [models](../users-guide/models.md)?
+Or are you instead looking for docs on [models](./models.md)?
 
 ## Accessing the Data Model page
 
@@ -35,7 +37,7 @@ For table metadata, you can:
 
 You can set tables to be **Queryable** or **Hidden**. Setting table visibility can be especially useful if you have a lot of tables in your database but your users will only be interested in a subset of those tables. Table visibility can help keep your Metabase instance tidy by hiding unnecessary tables out of the user interface.
 
-Visibility settings are distinct from **permissions**. Users can still query hidden tables using the **SQL editor**. See [**permissions**](05-setting-permissions.md) for controlling access to data.
+Visibility settings are distinct from **permissions**. Users can still query hidden tables using the **SQL editor**. See [**permissions**](../administration-guide/05-setting-permissions.md) for controlling access to data.
 
 **Queryable tables** can be selected from the **notebook editor**, and all of the data in the table can be displayed (unless certain columns are excluded — more on that below).
 
@@ -115,17 +117,17 @@ One thing that happens commonly in tables is that you'll have a **foreign key co
 
 To remap column values, click on the gear icon to the right of a field's Type dropdown in the Data Model section of the Admin Panel. You'll see a form with these options:
 
-![Remapping form](./images/remapping/form.png)
+![Remapping form](./images/form.png)
 
 `Visibility` and `Type` are the same as on the main Data Model page, but `Display values` lets you choose to swap out a field's values with something else.
 
 **Foreign key remapping** lets you swap out a foreign key's values with the values of any other field in the connected table. In this example, we're swapping out the `Product ID` field's values with the values in the `Title` field in the Product table:
 
-![Remapping form](./images/remapping/fk-mapping.png)
+![Remapping form](./images/fk-mapping.png)
 
 Another option is **custom remapping**, which is currently only possible for numeric fields. This lets you map every number that occurs in this field to either a different numeric value or even to a text value, like in this example:
 
-![Remapping form](./images/remapping/custom-mapping.png)
+![Remapping form](./images/custom-mapping.png)
 
 ## Picking the filter user interface for a column
 
@@ -153,8 +155,3 @@ You can also select from several options:
 - **Alphabetical.** A, B, C... however the alphabet works.
 - **Custom.** You choose the order. Metabase will automatically switch to custom if you rearrange any of the columns.
 - **Smart.** Metabase chooses for you.
-
----
-
-## Next: creating segments and metrics
-Learn how to create canonical definitions of your commonly used [segments and metrics](07-segments-and-metrics.md).

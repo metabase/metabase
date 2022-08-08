@@ -106,4 +106,4 @@ Learn about how to easily and quickly see automatic explorations of your data wi
 
 
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte
-[model]: models.md
+[model]: ../data-modeling/models.md

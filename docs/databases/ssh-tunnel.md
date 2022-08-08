@@ -1,5 +1,7 @@
 ---
 title: SSH tunneling in Metabase
+redirect_from:
+  - /docs/latest/administration-guide/ssh-tunnel-for-database-connections
 ---
 
 # SSH tunneling in Metabase
@@ -75,4 +77,4 @@ This allows you to use the full array of features included in SSH. If you find y
 
 ## Further reading
 
-- [Adding and managing databases](01-managing-databases.md).
+- [Adding and managing databases](./connecting.md).

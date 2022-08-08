@@ -95,4 +95,4 @@ Some things to remember with bookmarks:
 
 [collections]: collections.md
 [dashboards]: 07-dashboards.md
-[models]: models.md
+[models]: ../data-modeling/models.md

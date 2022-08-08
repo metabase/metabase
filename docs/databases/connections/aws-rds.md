@@ -1,5 +1,7 @@
 ---
 title: "Connecting to AWS's Relational Database Service (RDS)"
+redirect_from:
+  - /docs/latest/administration-guide/databases/aws-rds
 ---
 
 # Connecting to AWS's Relational Database Service (RDS)
