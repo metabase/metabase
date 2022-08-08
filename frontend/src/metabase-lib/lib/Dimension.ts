@@ -826,14 +826,14 @@ export class FieldDimension extends Dimension {
       return this._fieldInstance;
     }
 
-    const lookupField = this.isIntegerFieldId() ? "id" : "name";
+    const identifierProp = this.isIntegerFieldId() ? "id" : "name";
 
     const getFieldMetadataFromSavedQuestion = () => {
       const questionAssociatedWithDimension = this.query()?.question();
       if (questionAssociatedWithDimension?.isSaved()) {
         const question = this.query()?.question();
         const field = _.findWhere(question.getResultMetadata(), {
-          [lookupField]: this.fieldIdOrName(),
+          [identifierProp]: this.fieldIdOrName(),
         });
 
         return field;
@@ -848,7 +848,7 @@ export class FieldDimension extends Dimension {
         const card = this._metadata?.card(virtualTableCardId);
         const field = card
           ? _.findWhere(card.result_metadata, {
-              [lookupField]: this.fieldIdOrName(),
+              [identifierProp]: this.fieldIdOrName(),
             })
           : undefined;
 
@@ -856,69 +856,55 @@ export class FieldDimension extends Dimension {
       }
     };
 
-    const fieldMetadata =
-      getFieldMetadataFromSavedQuestion() || getFieldMetadataFromNestedCard();
+    const getFieldMetadataFromQueryTable = () => {
+      const table = this.query()?.table();
+      return _.findWhere(table?.fields, {
+        [identifierProp]: this.fieldIdOrName(),
+      });
+    };
 
-    const combineGlobalAndLocalFields = (
-      maybeGlobalField: Field,
-      maybeLocalField,
-    ) => {
-      if (maybeGlobalField) {
-        if (!maybeLocalField) {
-          return maybeGlobalField;
+    const mergeFields = (field: Field, fieldMetadata) => {
+      if (field) {
+        if (!fieldMetadata) {
+          return field;
         }
 
         const fieldObject = merge(
-          maybeGlobalField instanceof Field
-            ? maybeGlobalField.getPlainObject()
-            : maybeGlobalField,
-          maybeLocalField,
+          field instanceof Field ? field.getPlainObject() : field,
+          fieldMetadata,
         );
         return this._createField(fieldObject, { hydrate: true });
       }
 
-      if (maybeLocalField) {
-        return this._createField(maybeLocalField);
+      if (fieldMetadata) {
+        return this._createField(fieldMetadata);
       }
     };
 
+    // the order matters here
+    // check the result_metadata of nested cards first
+    // before checking the fields on the associated Table
+    // because the Table fields are sometimes populated from the metadata object,
+    // so prioritize the LOCAL field metadata over the "global"
+    const fieldMetadata =
+      getFieldMetadataFromSavedQuestion() ||
+      getFieldMetadataFromNestedCard() ||
+      getFieldMetadataFromQueryTable();
+
     // Field result metadata can be overwritten for models,
     // so we need to merge regular field object with the model overwrites
-    // const shouldMergeFieldResultMetadata = fieldMetadata != null; // hasNestedQuery();
+    const field = this._metadata?.field(this.fieldIdOrName());
+    const combinedField = mergeFields(field, fieldMetadata);
 
-    if (this.isIntegerFieldId()) {
-      const globalField = this._metadata?.field(this.fieldIdOrName());
-      const field = combineGlobalAndLocalFields(globalField, fieldMetadata);
-
-      if (field) {
-        return field;
-      }
-
-      return this._createField({ id: this._fieldIdOrName });
-    }
-
-    // look for a "virtual" field on the query's table or question
-    // for example, fields from a question based on a nested question have fields
-    // that show up in a card's `result_metadata`
-    // note: this is explicitly for fields referenced via `name` and NOT `id`
-    // e.g. custom columns
-    if (this.query()) {
-      const table = this.query().table();
-      const tableField = _.findWhere(table?.fields, {
-        name: this.fieldIdOrName(),
-      });
-
-      const field = combineGlobalAndLocalFields(tableField, fieldMetadata);
-      if (field) {
-        return field;
-      }
+    if (combinedField) {
+      return combinedField;
     }
 
     // despite being unable to find a field, we _might_ still have enough data to know a few things about it
     // for example, if we have an mbql field reference, it might contain a `base-type`
     return this._createField({
-      id: this.mbql(),
-      name: this._fieldIdOrName,
+      id: this.isIntegerFieldId() ? this.fieldIdOrName() : this.mbql(),
+      name: this.isStringFieldName() && this.fieldIdOrName(),
       // NOTE: this display_name will likely be incorrect
       // if a `FieldDimension` isn't associated with a query then we don't know which table it belongs to
       display_name: this._fieldIdOrName,
