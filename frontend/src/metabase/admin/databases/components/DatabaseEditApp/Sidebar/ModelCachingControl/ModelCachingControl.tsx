@@ -35,7 +35,7 @@ function FeatureDescription({ schemaName }: { schemaName: string }) {
   const docsLink = (
     <ExternalLink
       key="model-caching-link"
-      href={MetabaseSettings.docsUrl("users-guide/models")}
+      href={MetabaseSettings.docsUrl("data-modeling/models")}
     >{t`Learn more.`}</ExternalLink>
   );
   return (

@@ -1,5 +1,7 @@
 ---
 title: Working with Google BigQuery in Metabase
+redirect_from:
+  - /docs/latest/administration-guide/databases/bigquery
 ---
 
 # Working with Google BigQuery in Metabase
@@ -177,5 +179,5 @@ If you're having trouble with your BigQuery connection, you can check out this [
 
 - [Managing databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html)
 - [Metadata editing](https://www.metabase.com/docs/latest/administration-guide/03-metadata-editing.html)
-- [Models](../../users-guide/models.md)
+- [Models](../../data-modeling/models.md)
 - [Setting data access permissions](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html)

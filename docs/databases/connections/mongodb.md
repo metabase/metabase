@@ -1,5 +1,7 @@
 ---
 title: Working with MongoDB in Metabase
+redirect_from:
+  - /docs/latest/administration-guide/databases/mongodb
 ---
 
 # Working with MongoDB in Metabase

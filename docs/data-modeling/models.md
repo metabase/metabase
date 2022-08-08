@@ -1,5 +1,7 @@
 ---
-title: Models
+title: "Models"
+redirect_from:
+  - /docs/latest/users-guide/models
 ---
 
 # Models
@@ -32,7 +34,7 @@ First, search for models that already exist. If you can't find one that meets yo
 2. Save the question.
 3. Click on the **...** > **Turn this into a model**.
 
-![Turn a saved question into a model](./images/models/turn-into-a-model.png)
+![Turn a saved question into a model](./images/turn-into-a-model.png)
 
 ## Add metadata to columns in a model
 
@@ -76,7 +78,7 @@ You can edit the model's query by clicking on the down arrow next to the model's
 
 See [asking questions][question].
 
-## [Refer to a model in the SQL query editor](./referencing-saved-questions-in-queries)
+## [Refer to a model in the SQL query editor](../users-guide/referencing-saved-questions-in-queries)
 
 You can refer to a model in a SQL query just like you can refer to a saved question:
 
@@ -123,7 +125,7 @@ There are two steps to enabling model caching for your database.
 
 To create the schema in your database, in your Metabase click on the **gear** icon in the upper right and select **Admin settings** > **Databases**, then select the relevant database connection. On the right, click on **Turn model caching on**.
 
-![Cache models UI](./images/models/cache-model-schema.png)
+![Cache models UI](./images/cache-model-schema.png)
 
 If the credentials you've given Metabase to connect to your database are permissive, Metabase should do all the work for you: Metabase will check if the schema exists, or otherwise attempt to create it. 
 
@@ -133,7 +135,7 @@ If the connection's credentials lack the necessary permissions to create the sch
 
 Once you've completed step one, return to the **Admin settings** > **Settings** > **Caching**.
 
-![Model caching](./images/models/model-caching-custom.png)
+![Model caching](./images/model-caching-custom.png)
 
 You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency. We recommend scheduling the cache to refresh on a frequency that makes sense with how often your source tables update with new data.
 
@@ -164,6 +166,6 @@ If you're having trouble with your model, go to the [Models troubleshooting guid
 [column-type]: ./field-types.md
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte
 [measures-dimensions]: https://www.metabase.com/learn/databases/dimensions-and-measures
-[question]: 04-asking-questions.md
+[question]: ../users-guide/04-asking-questions.md
 [learn-models]: /learn/getting-started/models
 [troubleshooting-models]: ../troubleshooting-guide/models.html

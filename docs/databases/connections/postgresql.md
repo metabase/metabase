@@ -1,5 +1,7 @@
 ---
 title: Connecting to a PostgreSQL database
+redirect_from:
+  - /docs/latest/administration-guide/databases/postgresql
 ---
 
 # Connecting to a PostgreSQL database
@@ -96,8 +98,8 @@ The problem is that if the keys in the JSON vary record to record, the first fiv
 
 Metabase can create tables with model data in your database and refresh them on a schedule you define. Metabase's connection's credentials to that database must be able to read and write to the schema displayed in the info tooltip.
 
-See [Models](../../users-guide/models.md).
+See [Models](../../data-modeling/models.md).
 
-[ssl-modes]: https://jdbc.postgresql.org/documentation/head/ssl-client.html
-[ssh-tunnel]: ../ssh-tunnel-for-database-connections.html
+[ssl-modes]: https://jdbc.postgresql.org/documentation/head/ssl-client
+[ssh-tunnel]: ../ssh-tunnel.md
 
