@@ -10,11 +10,13 @@ import {
 
 import FormFieldView from "./FormFieldView";
 
-type ReduxFormProps = Pick<FormFieldType, "name"> &
-  Partial<Pick<FormFieldType, "error" | "visited" | "active">>;
+type ReduxFormProps<Values> = Pick<FormFieldType<Values>, "name"> &
+  Partial<Pick<FormFieldType<Values>, "error" | "visited" | "active">>;
 
-interface FormFieldProps extends BaseFieldDefinition, ReduxFormProps {
-  field: FormFieldType;
+interface FormFieldProps<Values>
+  extends BaseFieldDefinition,
+    Omit<ReduxFormProps<Values>, "name"> {
+  field: FormFieldType<Values>;
   formField: FormFieldDefinition;
   values: FieldValues;
   className?: string;
@@ -58,12 +60,12 @@ function getHorizontalPropValue(
   return false;
 }
 
-function FormField({
+function FormField<Values>({
   className,
   formField,
   children,
   ...props
-}: FormFieldProps) {
+}: FormFieldProps<Values>) {
   const title = props.title ?? formField?.title;
   const type = props.type ?? formField.type;
   const description = props.description ?? formField?.description;

@@ -9,12 +9,12 @@ import { CustomFormProps } from "metabase/components/form/FormikCustomForm";
 
 import { usePrevious } from "metabase/hooks/use-previous";
 
-import { FieldName, FieldValues, FormField } from "metabase-types/forms";
+import { BaseFieldValues, FormField } from "metabase-types/forms";
 
 import FormView from "./FormView";
 
-type FormProps = Omit<
-  CustomFormProps,
+type FormProps<Values extends BaseFieldValues> = Omit<
+  CustomFormProps<Values>,
   | "fields"
   | "errors"
   | "formFields"
@@ -42,15 +42,15 @@ function getMaybeNestedValue<Value = string>(
   return isNestedField ? getIn(obj, fieldName.split(".")) : obj[fieldName];
 }
 
-interface FormikFormViewAdapterOwnProps {
-  onValuesChange: (values: FieldValues) => void;
+interface FormikFormViewAdapterOwnProps<Values> {
+  onValuesChange: (values: Values) => void;
 }
 
-type FormikFormViewAdapterProps = FormikProps<FieldValues> &
-  FormProps &
-  FormikFormViewAdapterOwnProps;
+type FormikFormViewAdapterProps<Values> = FormikProps<Values> &
+  FormProps<Values> &
+  FormikFormViewAdapterOwnProps<Values>;
 
-function FormikFormViewAdapter({
+function FormikFormViewAdapter<Values extends BaseFieldValues>({
   formObject,
   onValuesChange,
 
@@ -69,7 +69,7 @@ function FormikFormViewAdapter({
   initialValues,
   submitForm,
   ...rest
-}: FormikFormViewAdapterProps) {
+}: FormikFormViewAdapterProps<Values>) {
   const [active, setActive] = useState<string | null>(null);
   const previousValues = usePrevious(values);
 
@@ -82,13 +82,16 @@ function FormikFormViewAdapter({
   const fields = formObject.fields(values);
   const formFieldsByName = _.indexBy(fields, "name");
 
-  const smartFields: FormField[] = fields.map(field => {
+  const smartFields = fields.map(field => {
     const { name } = field;
 
     const value = getMaybeNestedValue(values, name);
     const initialValue = getMaybeNestedValue(initialValues, name);
-    const error = getMaybeNestedValue(errors, name);
-    const isTouched = !!getMaybeNestedValue(touched, name);
+    const error = getMaybeNestedValue(errors as Record<string, string>, name);
+    const isTouched = !!getMaybeNestedValue<boolean>(
+      touched as Record<string, boolean>,
+      name,
+    );
 
     return {
       ...field,
@@ -112,15 +115,19 @@ function FormikFormViewAdapter({
     };
   });
 
+  const smartFieldsByName = _.indexBy(smartFields, "name");
+
   return (
-    <FormView
+    <FormView<Values>
       {...rest}
-      fields={_.indexBy(smartFields, "name")}
+      fields={
+        smartFieldsByName as unknown as Record<keyof Values, FormField<Values>>
+      }
       formFields={fields}
       formFieldsByName={formFieldsByName}
       formObject={formObject}
       dirty={dirty}
-      errors={errors as Record<FieldName, string>}
+      errors={errors as Record<keyof Values, string>}
       invalid={!isValid}
       valid={isValid}
       pristine={!dirty}

@@ -6,9 +6,11 @@ import CustomForm, {
 } from "metabase/components/form/FormikCustomForm";
 import StandardForm from "metabase/components/form/FormikStandardForm";
 
-function FormView(
-  props: CustomFormProps & {
-    formComponent?: React.ComponentType<CustomFormProps>;
+import { BaseFieldValues } from "metabase-types/forms";
+
+function FormView<Values extends BaseFieldValues>(
+  props: CustomFormProps<Values> & {
+    formComponent?: React.ComponentType<CustomFormProps<Values>>;
   },
 ) {
   const FormComponent =
