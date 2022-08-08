@@ -62,9 +62,13 @@ title: Metabase documentation
 - [Dashboard charts with multiple series](./dashboards/multiple-series.md)
 - [Setting up dashboard subscriptions](./dashboards/subscriptions.md)
 
-## Models
+## Data modeling
 
-- [Models](./users-guide/models.md)
+- [Overview](./data-modeling/start.md)
+- [Models](./data-modeling/models.md)
+- [Metadata-editing](/.data-modeling/metadata-editing.md)
+- [Field types](./data-modeling/field-types.md)
+- [Creating segments and metrics](./databases/segments-and-metrics.md)
 
 ## Finding things and keeping organized
 
@@ -107,8 +111,6 @@ title: Metabase documentation
 - [Overview](./databases/start.md)
 - [Adding data sources](./databases/connecting.md)
 - [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
-- [Editing your database metadata](./databases/metadata-editing.md)
-- [Creating segments and metrics](./databases/segments-and-metrics.md)
 - [SSH tunneling](./databases/ssh-tunnel.md)
 - [SSL certificate](./databases/ssl-certificates.md)
 

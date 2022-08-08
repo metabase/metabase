@@ -14,6 +14,10 @@ Models curate data from another table or tables from the same database to antici
 
 Admins can edit the metadata for tables and fields in your database.
 
+## [Field types](./field-types.md)
+
+Field types dictate how Metabase displays its data, as well as the column’s special functionality, if any.
+
 ## [Creating segments and metrics](./segments-and-metrics.md)
 
 Admins can define segments to create official filters for your data, and metrics for official aggregations.

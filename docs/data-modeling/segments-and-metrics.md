@@ -6,7 +6,7 @@ redirect_from:
 
 # Creating custom segments and metrics
 
-Metabase allows you to create your own segments and metrics so you can quickly and easily reference them in the query builder. Just head over to the **Admin Panel** and select **Data Model** from the top menu.
+Metabase allows admins to create segments and metrics so people can quickly and easily reference them in the query builder. Just head over to the **Admin Panel** and select **Data Model** from the top menu.
 
 ## Creating a Segment
 

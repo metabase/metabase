@@ -220,4 +220,4 @@ If you find yourself using the same saved question as a starting point for multi
 - [Visualize results](05-visualizing-results.md).
 - [Asking questions](/learn/questions)
 
-[model]: models.md
+[model]: ../data-modeling/models.md

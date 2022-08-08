@@ -70,7 +70,7 @@ If you can’t solve your problem using the troubleshooting guides:
 [limit-data-learn]: /learn/administration/making-dashboards-faster.html#ask-for-less-data
 [materialize-views-learn]: /learn/administration/making-dashboards-faster.html#materialize-views-create-new-tables-to-store-query-results
 [model-button-image]: /learn/images/models/model-icon.png
-[model-docs]: ../users-guide/models.html
+[model-docs]: ../data-modeling/models.md
 [nested-query-settings-docs]: ../administration-guide/08-configuration-settings.html#enabled-nested-queries
 [replicate-database-learn]: /learn/administration/making-dashboards-faster.html#replicate-your-database
 [sql-explain-learn]: /learn/sql-questions/sql-best-practices.html#explain

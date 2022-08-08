@@ -6,7 +6,7 @@ redirect_from:
 
 # The Data Model page
 
-Metabase allows you to annotate the data in your database. Annotations can give Metabase a better understanding of what the data actually means, which allows Metabase to make more intelligent decisions when processing and displaying that data.
+Metabase allows admins to annotate the data in your database. Annotations can give Metabase a better understanding of what the data actually means, which allows Metabase to make more intelligent decisions when processing and displaying that data.
 
 The **Data Model** section of the **Admin Panel** contains settings to edit metadata for:
 
@@ -17,7 +17,7 @@ The **Data Model** section of the **Admin Panel** contains settings to edit meta
 
 This page focuses on editing table and column metadata; another page covers [segments and metrics](./segments-and-metrics.md).
 
-Or are you instead looking for docs on [models](../users-guide/models.md)?
+Or are you instead looking for docs on [models](./models.md)?
 
 ## Accessing the Data Model page
 

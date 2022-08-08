@@ -73,4 +73,4 @@ You can add events to collections, and organize those events into timelines. See
 Next, we'll learn about [creating dashboards and adding questions to them][dashboards].
 
 [dashboards]: 07-dashboards.md
-[models]: models.md
+[models]: ../data-modeling/models.md

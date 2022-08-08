@@ -126,7 +126,7 @@ On either the table settings or field settings page, you'll see these options:
 
 ![Re-scan options](./images/re-scan-options.png)
 
-For more on editing metadata, check out [the Data Model page: editing metadata](./metadata-editing.md).
+For more on editing metadata, check out [the Data Model page: editing metadata](../data-modeling/metadata-editing.md).
 
 ## Deleting databases
 
@@ -146,7 +146,7 @@ If you're having trouble with your database connection, you can check out this [
 
 ## Further reading
 
-- [Metadata editing](./metadata-editing.md).
-- [Models](../users-guide/models.md).
+- [Metadata editing](../data-modeling/metadata-editing.md).
+- [Models](../data-modeling/models.md).
 - [Setting data access permissions](../administration-guide/05-setting-permissions.md).
 
