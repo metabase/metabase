@@ -338,6 +338,34 @@ describe("StructuredQuery", () => {
         expect(query.breakout(ORDERS.PRODUCT_ID).hasValidBreakout()).toBe(true);
       });
     });
+
+    describe("excludes breakout that has the same base dimension as what is already used", () => {
+      const breakout = [
+        "field",
+        ORDERS.CREATED_AT.id,
+        { "temporal-unit": "month" },
+      ];
+      const queryWithBreakout = query.breakout(breakout);
+      const createdAtBreakoutDimension = queryWithBreakout
+        .breakouts()
+        .map(breakout => breakout.dimension());
+
+      //Ensure dimension added is not present in breakout options
+      expect(queryWithBreakout.breakoutOptions().all()).toEqual(
+        expect.not.arrayContaining(createdAtBreakoutDimension),
+      );
+      expect(
+        queryWithBreakout
+          .breakoutOptions()
+          .all()
+          .some(dimension => dimension.field().id === ORDERS.CREATED_AT.id),
+      ).toBe(false);
+
+      //Ensure that only 1 breakout option was removed after adding our breakout
+      expect(queryWithBreakout.breakoutOptions().all().length).toBe(
+        query.breakoutOptions().all().length - 1,
+      );
+    });
   });
 
   // FILTERS:
