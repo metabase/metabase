@@ -6,7 +6,7 @@ import cx from "classnames";
 
 const getValue = (value, type) => {
   if (type === "number") {
-    const numericValue = parseInt(value);
+    const numericValue = parseFloat(value);
     return isNaN(numericValue) ? null : numericValue;
   }
 
