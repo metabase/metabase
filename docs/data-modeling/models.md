@@ -1,5 +1,5 @@
 ---
-title: Models
+title: "Models"
 redirect_from:
   - /docs/latest/users-guide/models
 ---

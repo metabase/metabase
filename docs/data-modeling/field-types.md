@@ -1,5 +1,5 @@
 ---
-title: Field types in Metabase
+title: "Field types in Metabase"
 redirect_from:
   - /docs/latest/users-guide/field-types
 ---

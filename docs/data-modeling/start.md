@@ -1,5 +1,5 @@
 ---
-title: Data modeling
+title: "Data modeling"
 ---
 
 # Data modeling
