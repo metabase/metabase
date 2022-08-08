@@ -565,7 +565,7 @@ const mapStateToProps = state => ({
 export default _.compose(
   ExplicitSize({
     selector: ".CardVisualization",
-    refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
+    refreshMode: props => (props.isDashboard ? "debounceLeading" : "throttle"),
   }),
   connect(mapStateToProps),
   memoizeClass("_getQuestionForCardCached"),

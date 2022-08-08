@@ -1,5 +1,7 @@
 ---
 title: Charts with multiple series
+redirect_from:
+- /docs/latest/users-guide/09-multi-series-charting
 ---
 
 # Charts with multiple series
@@ -25,15 +27,15 @@ If you’re creating a new question, you can view the results as a multi-series 
 
 As an example, we might want to see which website or service is referring the most people to our website. In the **Sample Database** that ships with Metabase, you would group by the `Source` and `Created At` columns of the **People** table.
 
-To create the multi-series chart, select the **People** table, click on the **Summarize** button in the upper right, then add `Source` and `Created At` as groupings (the `count of rows` metric that we want is selected by default). Be sure to click the plus button to the right of your selection, so Metabase knows to add the grouping; otherwise, Metabase will switch to that grouping. [Learn more about asking questions](04-asking-questions.md).
+To create the multi-series chart, select the **People** table, click on the **Summarize** button in the upper right, then add `Source` and `Created At` as groupings (the `count of rows` metric that we want is selected by default). Be sure to click the plus button to the right of your selection, so Metabase knows to add the grouping; otherwise, Metabase will switch to that grouping. [Learn more about asking questions](../users-guide/04-asking-questions.md).
 
 Metabase will automatically display a multi-series line chart visualization of how each referrer has performed for us.
 
-![multi-series in the query builder](images/multi-series-charts/multi-series_query_builder.png)
+![multi-series in the query builder](./images/multi-series_query_builder.png)
 
 You can also create a multi-series chart by composing a custom question in the notebook editor. All you need to do is summarize your data (e.g., count the rows) and group that data into multiple groups (e.g. `Created At` by month and Product Category).
 
-![Composing a multi-series question in the notebook editor](images/multi-series-charts/notebook_editor_multi-series.png)
+![Composing a multi-series question in the notebook editor](./images/notebook_editor_multi-series.png)
 
 Note: you won’t be able to add another saved question to multi-series visualizations made in this fashion. Metabase can visualize up to 100 distinct values of a dimension at once, so if you're selecting a field that contains a lot of values, you might need to filter the values.
 
@@ -45,15 +47,15 @@ If you already have two or more saved questions you’d like to compare, and the
 
 2. While in edit mode on the dashboard, hovering over a card will display some editing options in the upper right of the question, including an option to **add a line**, as well as a **gear** icon. Click on the add a line option (the **+** with a line and the word "Add" next to it).
 
-![add multi-series](images/multi-series-charts/add_series.png)
+![add multi-series](./images/add_series.png)
 
 3. In the Edit Data modal, you’ll see the original question on the left, with a list of compatible questions you can choose from on the right. Search question(s) to add, and check the box next to each question you’d like to see alongside with the original. Metabase will add the question(s) to the same chart.
 
-![multi-series edit modal](images/multi-series-charts/edit_modal.png)
+![multi-series edit modal](./images/edit_modal.png)
 
 If necessary, the X and Y axes will automatically update. Metabase will create a legend using the existing card titles to help you understand which question maps to which series on the chart. Repeat this process as many times as you need.
 
-![Edit modal with multi-series](images/multi-series-charts/edit_modal_multi-series.png)
+![Edit modal with multi-series](images/edit_modal_multi-series.png)
 
 To remove a series, simply uncheck its box.
 
@@ -69,7 +71,7 @@ As above, while editing a dashboard, hover over a number chart of your choice, a
 
 Use the search bar to find other saved question(s) that you’d like to see represented on the bar chart, and click the checkbox to add them to your chart. In this case, we added **Widget orders** to compare them to **Gadget orders**.
 
-![From numbers to bar chart](images/multi-series-charts/numbers_to_bar_chart.png)
+![From numbers to bar chart](./images/numbers_to_bar_chart.png)
 
 ## Multi-series charts, values, and legibility
 
@@ -81,7 +83,7 @@ From the **Visualization -> Display** options, you can toggle the option: **Show
 
 You can also toggle values for each individual series. If you have three series, for example, you can show values on one, two, or all three series. In the **Display** tab, click on the down arrow to the right of a series to expand its details, and toggle **Show values for this series** to show or hide its values.
 
-![add values to multi-series chart](images/multi-series-charts/add_values.png)
+![add values to multi-series chart](./images/add_values.png)
 
 You can also toggle values for the whole chart, then selectively hide values for individual series until you have your chart looking just right.
 

@@ -141,7 +141,7 @@ export function remapParameterValuesToTemplateTags(
     const { target } = dashboardParameter;
     const tag = getTemplateTagFromTarget(target);
 
-    if (templateTagParametersByName[tag]) {
+    if (tag != null && templateTagParametersByName[tag]) {
       const templateTagParameter = templateTagParametersByName[tag];
       const parameterValue =
         parameterValuesByDashboardParameterId[dashboardParameter.id];

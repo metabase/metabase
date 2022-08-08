@@ -69,7 +69,8 @@
         ns-symbols (set (map ns.parse/name-from-ns-decl ns-decls))]
     (->> (dependencies-graph ns-decls)
          ns.deps/topo-sort
-         (filter ns-symbols))))
+         (filter ns-symbols)
+         (cons 'metabase.bootstrap))))
 
 (defn compile-sources! [basis]
   (u/step "Compile Clojure source files"
@@ -104,7 +105,7 @@
    "Multi-Release"    "true"
    "Created-By"       "Metabase build.clj"
    "Build-Jdk-Spec"   (System/getProperty "java.specification.version")
-   "Main-Class"       "metabase.core"})
+   "Main-Class"       "metabase.bootstrap"})
 
 (defn manifest ^Manifest []
   (doto (Manifest.)

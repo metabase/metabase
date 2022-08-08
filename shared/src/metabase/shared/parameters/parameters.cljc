@@ -220,9 +220,9 @@
   "Normalize a single parameter by calling [[mbql.normalize/normalize-fragment]] on it, and converting all string keys
   to keywords."
   [parameter]
-  (->> (mbql.normalize/normalize-fragment [:parameters] [parameter])
-       first
-       (reduce-kv (fn [acc k v] (assoc acc (keyword k) v)) {})))
+  (-> (mbql.normalize/normalize-fragment [:parameters] [parameter])
+      first
+      (update-keys keyword)))
 
 (defn ^:export substitute_tags
   "Given the context of a text dashboard card, replace all template tags in the text with their corresponding values,
@@ -233,10 +233,7 @@
    (when text
      (let [tag->param #?(:clj tag->param
                          :cljs (js->clj tag->param))
-           tag->normalized-param (reduce-kv (fn [acc tag param]
-                                              (assoc acc tag (normalize-parameter param)))
-                                            {}
-                                            tag->param)]
+           tag->normalized-param (update-vals tag->param normalize-parameter)]
        ;; Most of the functions in this pipeline are relating to handling optional blocks in the text which use
        ;; the [[ ]] syntax.
        ;; For example, given an input "[[a {{b}}]] [[{{c}}]]", where `b` has no value and `c` = 3:
