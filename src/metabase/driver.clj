@@ -670,7 +670,11 @@
 (defmulti incorporate-ssh-tunnel-details
   "A multimethod for driver-specific behavior required to incorporate details for an opened SSH tunnel into the DB
   details. In most cases, this will simply involve updating the :host and :port (to point to the tunnel entry point,
-  instead of the backing database server), but some drivers may have more specific behavior."
+  instead of the backing database server), but some drivers may have more specific behavior.
+
+  WARNING! Implementations of this method may create new SSH tunnels, which need to be cleaned up. DO NOT USE THIS
+  METHOD DIRECTLY UNLESS YOU ARE GOING TO BE CLEANING UP ANY CREATED TUNNELS! Instead, you probably want to
+  use [[metabase.util.ssh/with-ssh-tunnel]]. See #24445 for more information."
   {:added "0.39.0" :arglists '([driver db-details])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)

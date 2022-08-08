@@ -1,3 +1,8 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 // Legacy "tableMetadata" etc
 
 import { Database, DatabaseId } from "metabase-types/types/Database";

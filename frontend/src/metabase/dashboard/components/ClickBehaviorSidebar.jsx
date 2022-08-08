@@ -5,7 +5,7 @@ import { getIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
-import { color, darken } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import Button from "metabase/core/components/Button";
@@ -20,7 +20,6 @@ import DashboardPicker from "metabase/containers/DashboardPicker";
 import Questions from "metabase/entities/questions";
 import QuestionPicker from "metabase/containers/QuestionPicker";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import CheckBox from "metabase/core/components/CheckBox";
 import ClickMappings, {
   withUserAttributes,
   clickTargetObjectType,
@@ -34,6 +33,7 @@ import {
 } from "metabase/lib/click-behavior";
 import { getIconForField } from "metabase/lib/schema_metadata";
 import { keyForColumn } from "metabase/lib/dataset";
+import { CloseIconContainer, SidebarItem } from "./ClickBehaviorSidebar.styled";
 
 const clickBehaviorOptions = [
   { value: "menu", icon: "popover" },
@@ -471,15 +471,9 @@ class ClickBehaviorSidebar extends React.Component {
                     <h4>
                       {getClickBehaviorOptionName(clickBehavior.type, dashcard)}
                     </h4>
-                    <span
-                      className="ml-auto bg-brand-dark-hover border-left"
-                      style={{
-                        padding: 16,
-                        borderLeftColor: darken(color("brand"), 0.2),
-                      }}
-                    >
+                    <CloseIconContainer>
                       <Icon name="close" size={12} />
-                    </span>
+                    </CloseIconContainer>
                   </div>
                 </SidebarItemWrapper>
               </SidebarContentBordered>
@@ -602,24 +596,16 @@ function LinkOptions({ clickBehavior, updateSettings, dashcard, parameters }) {
                       ? clickBehavior.linkTemplate
                       : t`URL`}
                   </h4>
-                  <span
-                    className="ml-auto bg-brand-dark-hover border-left"
-                    style={{
-                      borderLeftColor: darken(color("brand"), 0.2),
-                      padding: 17,
-                    }}
+                  <CloseIconContainer
+                    onClick={() =>
+                      updateSettings({
+                        type: clickBehavior.type,
+                        linkType: null,
+                      })
+                    }
                   >
-                    <Icon
-                      name="close"
-                      size={12}
-                      onClick={() =>
-                        updateSettings({
-                          type: clickBehavior.type,
-                          linkType: null,
-                        })
-                      }
-                    />
-                  </span>
+                    <Icon name="close" size={12} />
+                  </CloseIconContainer>
                 </div>
               </SidebarItemWrapper>
             }
@@ -712,8 +698,7 @@ function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
                 color: color("white"),
               }}
             >
-              <div
-                className="flex align-center bg-brand-dark-hover full"
+              <SidebarItem
                 style={{
                   paddingLeft: SidebarItemStyle.paddingLeft,
                   paddingRight: SidebarItemStyle.paddingRight,
@@ -736,13 +721,8 @@ function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
                   )}
                   <Icon name="chevrondown" size={12} className="ml-auto" />
                 </div>
-              </div>
-              <span
-                className="ml-auto bg-brand-dark-hover border-left"
-                style={{
-                  borderLeftColor: darken(color("brand"), 0.2),
-                  padding: 17,
-                }}
+              </SidebarItem>
+              <CloseIconContainer
                 onClick={() =>
                   updateSettings({
                     type: clickBehavior.type,
@@ -751,7 +731,7 @@ function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
                 }
               >
                 <Icon name="close" size={12} />
-              </span>
+              </CloseIconContainer>
             </div>
           }
           isInitiallyOpen={clickBehavior.targetId == null}
@@ -786,18 +766,6 @@ function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
         <Entity.Loader id={clickBehavior.targetId}>
           {({ object }) => (
             <div className="pt1">
-              {object.public_uuid && (
-                <CheckBox
-                  label={t`Use public link`}
-                  checked={clickBehavior.use_public_link}
-                  onChange={e =>
-                    updateSettings({
-                      ...clickBehavior,
-                      use_public_link: e.target.checked,
-                    })
-                  }
-                />
-              )}
               <Heading>
                 {
                   {

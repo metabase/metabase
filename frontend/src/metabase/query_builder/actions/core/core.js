@@ -243,7 +243,8 @@ export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
     dispatch.action(API_UPDATE_QUESTION, updatedQuestion.card());
 
     if (rerunQuery) {
-      await dispatch(loadMetadataForCard(question.card()));
+      const metadataOptions = { reload: question.isDataset() };
+      await dispatch(loadMetadataForCard(question.card(), metadataOptions));
       dispatch(runQuestionQuery());
     }
   };

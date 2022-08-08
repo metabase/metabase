@@ -8009,12 +8009,17 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - and:
             - dbms:
-                type: postgresql,mysql,mariadb
+                type: postgresql
+      # This has maybe never succeeded in creating the index because (at least with the current DB versions)
+      # the syntax was wrong on all requested databases (postgresql, mysql and mariadb). Since this change is
+      # not critical it's OK to ignore it.
+      validCheckSum: 8:9da2f706a7cd42b5101601e0106fa929
       changes:
         - createIndex:
             columns:
              - column:
                  name: lower(email)
+                 computed: true
                  type: varchar(254)
             tableName: core_user
             indexName: idx_lower_email
@@ -8062,6 +8067,7 @@ databaseChangeLog:
       comment: Added 0.37.0 # for H2 convert column to VARCHAR_IGNORECASE
       failOnError: false
       preConditions:
+         - onFail: MARK_RAN
          - or:
              - dbms:
                    type: h2

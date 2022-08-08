@@ -1,5 +1,5 @@
 import dc from "dc";
-import moment from "moment";
+import moment from "moment-timezone";
 
 export const lineAddons = _chart => {
   _chart.fadeDeselectedArea = function () {

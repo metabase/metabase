@@ -5,7 +5,7 @@ import {
   sidebar,
 } from "__support__/e2e/helpers";
 
-describe.skip("issue 22518", () => {
+describe("issue 22518", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

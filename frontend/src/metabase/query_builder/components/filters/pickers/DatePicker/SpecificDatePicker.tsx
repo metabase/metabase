@@ -8,8 +8,7 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import ExpandingContent from "metabase/components/ExpandingContent";
 import HoursMinutesInput from "./HoursMinutesInput";
 
-import moment from "moment";
-import momentTimezone from "moment-timezone";
+import moment, { Moment } from "moment-timezone";
 import { getTimeComponent, setTimeComponent } from "metabase/lib/query_time";
 import { CalendarIcon } from "./SpecificDatePicker.styled";
 
@@ -27,7 +26,7 @@ type Props = {
 
 const SpecificDatePicker: React.FC<Props> = props => {
   const onChange = (
-    date?: string | momentTimezone.Moment,
+    date?: string | Moment,
     hours?: number | null,
     minutes?: number | null,
   ) => {
@@ -66,7 +65,7 @@ const SpecificDatePicker: React.FC<Props> = props => {
           onBlurChange={({ target: { value } }: any) => {
             const date = moment(value, dateFormat);
             if (date.isValid()) {
-              onChange(date as momentTimezone.Moment, hours, minutes);
+              onChange(date, hours, minutes);
             } else {
               onChange();
             }
@@ -99,8 +98,8 @@ const SpecificDatePicker: React.FC<Props> = props => {
       {calendar && (
         <ExpandingContent isOpen={showCalendar}>
           <Calendar
-            selected={date as moment.Moment}
-            initial={(date as moment.Moment) || moment()}
+            selected={date}
+            initial={date || moment()}
             onChange={value => onChange(value, hours, minutes)}
             isRangePicker={false}
             selectAll={selectAll}

@@ -98,10 +98,14 @@ function DashCardCardParameterMapper({
   const hasPermissionsToMap = useMemo(() => {
     if (isVirtual) {
       return true;
-    } else {
-      const question = new Question(card, metadata);
-      return question.query().isEditable();
     }
+
+    if (!card.dataset_query) {
+      return false;
+    }
+
+    const question = new Question(card, metadata);
+    return question.query().isEditable();
   }, [card, metadata, isVirtual]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
