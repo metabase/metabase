@@ -1,5 +1,5 @@
 (ns metabase.query-processor.util.add-alias-info
-  "Walks query and adds generates appropriate aliases for every selected column; and adds extra keys to the
+  "Walks query and generates appropriate aliases for every selected column; and adds extra keys to the
   corresponding MBQL clauses with this information. Deduplicates aliases and calls [[metabase.driver/escape-alias]]
   with the generated aliases. Adds information about the aliases in source queries and joins that correspond to
   columns in the parent level.
@@ -289,9 +289,9 @@
     ;; suffix to escaped identifiers.)
     ;;
     ;; We'll have to look into this more in the future. For now, it seems to work for everything we try it with.
-    (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
     (and join-is-this-level? alias-from-join)  alias-from-join
     alias-from-source-query                    alias-from-source-query
+    (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
     :else                                      field-name))
 
 (defn- field-desired-alias

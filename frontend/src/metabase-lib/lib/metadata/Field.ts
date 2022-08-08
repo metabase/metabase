@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-import moment from "moment";
+import moment from "moment-timezone";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";

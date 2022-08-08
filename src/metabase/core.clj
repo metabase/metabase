@@ -1,5 +1,4 @@
 (ns metabase.core
-  (:gen-class)
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.tools.trace :as trace]

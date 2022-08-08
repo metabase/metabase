@@ -7,6 +7,8 @@ import moment, {
 
 import MetabaseSettings from "metabase/lib/settings";
 
+import type { DatetimeUnit } from "metabase-types/api/query";
+
 addAbbreviatedLocale();
 
 const TIME_FORMAT_24_HOUR = "HH:mm";
@@ -18,7 +20,6 @@ const TEXT_UNIT_FORMATS = {
 
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
-  year: (value: number) => moment().year(value).startOf("year"),
   "minute-of-hour": (value: number) => moment().minute(value).startOf("minute"),
   "hour-of-day": (value: number) => moment().hour(value).startOf("hour"),
   "day-of-week": (value: number) =>
@@ -40,6 +41,7 @@ const NUMERIC_UNIT_FORMATS = {
       .startOf("month"),
   "quarter-of-year": (value: number) =>
     moment().quarter(value).startOf("quarter"),
+  year: (value: number) => moment().year(value).startOf("year"),
 };
 
 // when you define a custom locale, moment automatically makes it the active global locale,
@@ -172,24 +174,25 @@ export function parseTime(value: moment.Moment | string) {
   return moment.utc(value);
 }
 
+type NUMERIC_UNIT_FORMATS_KEY_TYPE =
+  | "minute-of-hour"
+  | "hour-of-day"
+  | "day-of-week"
+  | "day-of-month"
+  | "day-of-year"
+  | "week-of-year"
+  | "month-of-year"
+  | "quarter-of-year"
+  | "year";
+
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
 export function parseTimestamp(
   value: MomentInput,
-  unit:
-    | "year"
-    | "minute-of-hour"
-    | "hour-of-day"
-    | "day-of-week"
-    | "day-of-month"
-    | "day-of-year"
-    | "week-of-year"
-    | "month-of-year"
-    | "quarter-of-year"
-    | null = null,
-  local: boolean = false,
+  unit: DatetimeUnit | null = null,
+  local: unknown = false,
 ) {
-  let m;
+  let m: any;
   if (moment.isMoment(value)) {
     m = value;
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
@@ -197,7 +200,7 @@ export function parseTimestamp(
   } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
     m = TEXT_UNIT_FORMATS[unit as "day-of-week"](value);
   } else if (unit && unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
-    m = NUMERIC_UNIT_FORMATS[unit](value);
+    m = NUMERIC_UNIT_FORMATS[unit as NUMERIC_UNIT_FORMATS_KEY_TYPE](value);
   } else if (typeof value === "number") {
     m = moment.utc(value, moment.ISO_8601);
   } else {

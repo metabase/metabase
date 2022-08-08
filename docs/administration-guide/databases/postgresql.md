@@ -68,19 +68,6 @@ You can set up an SSH tunnel by supplying the tunnel host, port, tunnel username
 
 For more, see [SSH tunneling in Metabase][ssh-tunnel].
 
-## Google Cloud Platform Application Default Credentials
-
-When running on [Google Cloud SQL][gcp-cloud-sql] you can utilize [Application Default Credentials][gcp-adc] to securely connect to your database.
-
-To utilize Application Default Credentials you must specify the following additional JDBC connection string options:
-
-- socketFactory - The class name to use as the SocketFactory when establishing a socket connection
-  - e.g. `socketFactory=com.google.cloud.sql.postgres.SocketFactory`
-- cloudSqlInstance - The instance connection name (found on the instance details page)
-  - e.g. `cloudSqlInstance=my-project:us-central1:my-db`
-
-For more, see the [Cloud SQL Connector for Java documentation][gcp-cloud-sql-connector]
-
 ## Advanced options
 
 ### Additional JDBC connection string options
@@ -105,8 +92,12 @@ This enables Metabase to scan for additional field values during syncs allowing 
 
 The problem is that if the keys in the JSON vary record to record, the first five hundred rows may not capture all the keys used by JSON objects in that JSON field. To get Metabase to infer all the JSON keys for that table, you'll need to add the additional keys to the JSON objects in the first five hundred rows.
 
+## Model caching
+
+Metabase can create tables with model data in your database and refresh them on a schedule you define. Metabase's connection's credentials to that database must be able to read and write to the schema displayed in the info tooltip.
+
+See [Models](../../users-guide/models.md).
+
 [ssl-modes]: https://jdbc.postgresql.org/documentation/head/ssl-client.html
 [ssh-tunnel]: ../ssh-tunnel-for-database-connections.html
-[gcp-cloud-sql]: https://cloud.google.com/sql
-[gcp-adc]: https://developers.google.com/identity/protocols/application-default-credentials
-[gcp-cloud-sql-connector]: https://github.com/GoogleCloudPlatform/cloud-sql-jdbc-socket-factory/blob/main/docs/jdbc-postgres.md#creating-the-jdbc-url
+

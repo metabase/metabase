@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 
 import { nestedSettings } from "./nested";
@@ -25,12 +25,10 @@ import {
   formatColumn,
   numberFormatterForOptions,
   getCurrencySymbol,
-} from "metabase/lib/formatting";
-import {
   getDateFormatFromStyle,
-  hasDay,
-  hasHour,
-} from "metabase/lib/formatting/date";
+} from "metabase/lib/formatting";
+
+import { hasDay, hasHour } from "metabase/lib/formatting/datetime-utils";
 
 import { currency } from "cljs/metabase.shared.util.currency";
 

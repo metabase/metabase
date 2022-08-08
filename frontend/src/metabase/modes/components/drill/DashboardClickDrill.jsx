@@ -74,17 +74,13 @@ export default ({ question, clicked }) => {
           },
         };
       } else {
-        const targetDashboard = extraData.dashboards[targetId];
         const queryParams = getParameterValuesBySlug(parameterMapping, {
           data,
           extraData,
           clickBehavior,
         });
 
-        const path =
-          clickBehavior.use_public_link && targetDashboard.public_uuid
-            ? Urls.publicDashboard(targetDashboard.public_uuid)
-            : Urls.dashboard({ id: targetId });
+        const path = Urls.dashboard({ id: targetId });
         const url = `${path}?${querystring.stringify(queryParams)}`;
 
         behavior = { url: () => url };
@@ -111,18 +107,9 @@ export default ({ question, clicked }) => {
         }))
         .value();
 
-      let url = null;
-      if (clickBehavior.use_public_link && targetQuestion.publicUUID()) {
-        url = Urls.publicQuestion(
-          targetQuestion.publicUUID(),
-          null,
-          querystring.stringify(queryParams),
-        );
-      } else {
-        url = targetQuestion.isStructured()
-          ? targetQuestion.getUrlWithParameters(parameters, queryParams)
-          : `${targetQuestion.getUrl()}?${querystring.stringify(queryParams)}`;
-      }
+      const url = targetQuestion.isStructured()
+        ? targetQuestion.getUrlWithParameters(parameters, queryParams)
+        : `${targetQuestion.getUrl()}?${querystring.stringify(queryParams)}`;
 
       behavior = { url: () => url };
     }
