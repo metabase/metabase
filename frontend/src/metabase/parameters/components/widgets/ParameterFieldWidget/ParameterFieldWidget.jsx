@@ -69,6 +69,7 @@ export default function ParameterFieldWidget({
               };
           return (
             <FieldValuesWidget
+              updateOnInputChange
               key={index}
               className={cx("input", numFields - 1 !== index && "mb1")}
               value={value}

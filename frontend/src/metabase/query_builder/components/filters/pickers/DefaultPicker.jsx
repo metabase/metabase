@@ -119,6 +119,7 @@ export default function DefaultPicker({
         }
         return (
           <FieldValuesWidget
+            updateOnInputChange
             className="input"
             value={values}
             onChange={onValuesChange}

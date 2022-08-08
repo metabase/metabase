@@ -313,6 +313,7 @@ export default class TokenField extends Component<
       keyCode === KEYCODE_ENTER
     ) {
       if (this.addSelectedOption(event)) {
+        event.preventDefault();
         event.stopPropagation();
       }
     } else if (event.keyCode === KEYCODE_UP) {

@@ -267,6 +267,7 @@ class FieldValuesWidgetInner extends Component {
       placeholder,
       showOptionsInPopover,
       checkedColor,
+      updateOnInputChange,
     } = this.props;
     const { loadingState, options = [], valuesMode } = this.state;
 
@@ -322,7 +323,7 @@ class FieldValuesWidgetInner extends Component {
             value={value.filter(v => v != null)}
             onChange={onChange}
             placeholder={tokenFieldPlaceholder}
-            updateOnInputChange
+            updateOnInputChange={updateOnInputChange}
             // forwarded props
             multi={multi}
             autoFocus={autoFocus}

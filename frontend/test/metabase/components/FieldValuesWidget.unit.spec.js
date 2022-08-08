@@ -1,5 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { renderWithProviders } from "__support__/ui";
 import "mutationobserver-shim";
 
 import { ORDERS, PRODUCTS, PEOPLE } from "__support__/sample_database_fixture";
@@ -23,6 +25,19 @@ const renderFieldValuesWidget = props =>
       {...props}
     />,
   );
+
+const renderFieldValuesWidgetWithProviders = props => {
+  renderWithProviders(
+    <FieldValuesWidget
+      value={[]}
+      onChange={() => {}}
+      fetchFieldValues={() => {}}
+      addRemappings={() => {}}
+      {...props}
+    />,
+    { withSettings: true, withEmbedSettings: true },
+  );
+};
 
 describe("FieldValuesWidget", () => {
   describe("category field", () => {
@@ -133,6 +148,26 @@ describe("FieldValuesWidget", () => {
         ];
         renderFieldValuesWidget({ fields });
         await screen.findByPlaceholderText("Search by Product");
+      });
+
+      it("accepts values that incluse already selected values as substrings", async () => {
+        const onChange = jest.fn();
+        renderFieldValuesWidgetWithProviders({
+          fields: [
+            mock(PRODUCTS.VENDOR, {
+              has_field_values: "search",
+            }),
+          ],
+          value: ["Meta"],
+          multi: true,
+          onChange,
+        });
+
+        const input = await screen.findByDisplayValue("");
+
+        userEvent.type(input, "Metabase{enter}");
+
+        expect(onChange).toHaveBeenCalledWith(["Meta", "Metabase"]);
       });
     });
   });
