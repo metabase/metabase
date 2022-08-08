@@ -120,6 +120,16 @@ const SECTIONS = updateSectionsWithPlugins({
         defaultValue: "simple",
       },
       {
+        key: "sql-editor-autocomplete-match-style",
+        display_name: t`SQL Editor autocomplete match`,
+        type: "select",
+        options: [
+          { value: "substring", name: t`Substring` },
+          { value: "prefix", name: t`Prefix` },
+          { value: "off", name: t`Off` },
+        ],
+      },
+      {
         key: "enable-nested-queries",
         display_name: t`Enable Nested Queries`,
         type: "boolean",

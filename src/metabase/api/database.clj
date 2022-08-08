@@ -24,6 +24,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.persisted-info :as persisted-info]
             [metabase.models.secret :as secret]
+            [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.table :refer [Table]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
@@ -444,6 +445,28 @@
         tables (filter mi/can-read? (autocomplete-tables db-id match-string limit))
         fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
     (autocomplete-results tables fields limit)))
+
+(def ^:private autocomplete-matching-options
+  "Valid options for the autocomplete types. Can match on a substring (\"%input%\"), on a prefix (\"input%\"), or reject
+  autocompletions. Large instances with lots of fields might want to use prefix matching or turn off the feature if it
+  causes too many problems."
+  #{:substring :prefix :off})
+
+(defsetting sql-editor-autocomplete-match-style
+  (deferred-tru
+    (str "Matching style for sql editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
+         "Larger instances can have performance issues matching using substring, so can use prefix matching, "
+         " or turn autocompletions off."))
+  :visibility :admin
+  :type       :keyword
+  :default    :substring
+  :setter     (fn [v]
+                (let [v (cond-> v (string? v) keyword)]
+                  (if (autocomplete-matching-options v)
+                    (setting/set-value-of-type! :keyword :sql-editor-autocomplete-match-style v)
+                    (throw (ex-info (tru "Invalid `sql-editor-autocomplete-match-style` option")
+                                    {:option v
+                                     :valid-options autocomplete-matching-options}))))))
 
 (api/defendpoint GET "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given `prefix`.
