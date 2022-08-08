@@ -65,19 +65,18 @@
 
 (defn- translated-interval
   [interval n]
-  (get
-   {"minutes"  (trsn "Minute" "Minutes" n)
+  (case interval
+    "minutes"  (trsn "Minute" "Minutes" n)
     "hours"    (trsn "Hour" "Hours" n)
     "days"     (trsn "Day" "Days" n)
     "weeks"    (trsn "Week" "Weeks" n)
     "months"   (trsn "Month" "Months" n)
     "quarters" (trsn "Quarter" "Quarters" n)
-    "years"    (trsn "Year" "Years" n)}
-   interval))
+    "years"    (trsn "Year" "Years" n)))
 
 (defn- format-relative-date
   [prefix n interval]
-  (let [n        #?(:clj (Integer. ^String n) :cljs (js/parseInt n))
+  (let [n        #?(:clj (Integer/valueOf ^String n) :cljs (js/parseInt n))
         interval (translated-interval interval n)]
     (case [prefix (= n 1)]
       ["past" true]  (trs "Previous {0}" interval)
