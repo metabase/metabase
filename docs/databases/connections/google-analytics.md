@@ -1,5 +1,7 @@
 ---
 title: Working with Google Analytics in Metabase
+redirect_from:
+  - /docs/latest/administration-guide/databases/google-analytics
 ---
 
 # Working with Google Analytics in Metabase

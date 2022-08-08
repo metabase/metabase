@@ -1,5 +1,7 @@
 ---
 title: Snowflake
+redirect_from:
+  - /docs/latest/administration-guide/databases/snowflake
 ---
 
 # Snowflake

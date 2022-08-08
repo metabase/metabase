@@ -1,5 +1,7 @@
 ---
-title: Field types in Metabase
+title: "Field types in Metabase"
+redirect_from:
+  - /docs/latest/users-guide/field-types
 ---
 
 # Field types in Metabase
@@ -81,7 +83,7 @@ Metabase recognizes the following field types:
 
 ### X-rays
 
-When you [X-ray](14-x-rays.md) a table, Metabase considers both the data type and the field type to display different charts that summarize that data.
+When you [X-ray](../users-guide/14-x-rays.md) a table, Metabase considers both the data type and the field type to display different charts that summarize that data.
 
 ### Field Filters
 
