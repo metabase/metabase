@@ -12,7 +12,6 @@ interface ResponsiveParametersListRootProps {
   isSmallScreen: boolean;
 }
 export const ResponsiveParametersListRoot = styled.div<ResponsiveParametersListRootProps>`
-  position: relative;
   width: 100%;
 `;
 
@@ -24,9 +23,11 @@ export const ParametersListContainer = styled.div`
     position: absolute;
     top: 0;
     left: 0;
+    bottom: 0;
     width: 100%;
     border-bottom: 1px solid ${color("border")};
     padding-bottom: 0.5rem;
+    overflow-y: auto;
   `}
 `;
 
