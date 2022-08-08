@@ -123,11 +123,18 @@ const fieldRefWithTemporalUnitForColumn = (column, unit) =>
 export function drillFilter(query, value, column) {
   let filter;
   if (isDate(column)) {
-    filter = [
-      "=",
-      fieldRefWithTemporalUnitForColumn(column, column.unit),
-      parseTimestamp(value, column.unit).format(),
-    ];
+    if (value == null) {
+      filter = [
+        "is-null",
+        fieldRefWithTemporalUnitForColumn(column, column.unit),
+      ];
+    } else {
+      filter = [
+        "=",
+        fieldRefWithTemporalUnitForColumn(column, column.unit),
+        parseTimestamp(value, column.unit).format(),
+      ];
+    }
   } else {
     const range = rangeForValue(value, column);
     if (range) {
