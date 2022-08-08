@@ -78,6 +78,7 @@ const ORDERS_DATASET = ORDERS.question()
   .setResultsMetadata({
     columns: [OVERWRITTEN_USER_ID_FIELD_METADATA],
   });
+ORDERS_DATASET.card().id = 111;
 
 // It isn't actually possible to overwrite metadata for non-models,
 // it's just needed to test it's only possible for models
@@ -322,11 +323,14 @@ describe("Dimension", () => {
           const emptyMetadata = {
             field: () => {},
             table: () => {},
+            card: () => {},
           };
 
           const question = ORDERS.question().setResultsMetadata({
             columns: [ORDERS.TOTAL],
           });
+          question.card().id = 1;
+
           const query = new StructuredQuery(question, {
             type: "query",
             database: SAMPLE_DATABASE.id,
@@ -902,7 +906,8 @@ describe("Dimension", () => {
             name: "boolean",
             display_name: "boolean",
             base_type: "type/Boolean",
-            semantic_type: null,
+            id: ["field", "boolean", { "base-type": "type/Boolean" }],
+            semantic_type: undefined,
             field_ref: [
               "field",
               "boolean",
@@ -917,7 +922,7 @@ describe("Dimension", () => {
       describe("field", () => {
         it("should return the `field` from the card's result_metadata", () => {
           const field = dimension.field();
-          expect(field.id).toBeUndefined();
+          expect(field.getId()).toEqual("boolean");
           expect(field.name).toEqual("boolean");
           expect(field.isBoolean()).toBe(true);
           expect(field.metadata).toBeDefined();

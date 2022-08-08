@@ -840,7 +840,7 @@ export class FieldDimension extends Dimension {
     }
 
     const virtualTableCardId = getQuestionIdFromVirtualTableId(
-      this.query()?.sourceTableId(),
+      this.query()?.sourceTableId?.(),
     );
     if (virtualTableCardId != null) {
       const card = this._metadata?.card(virtualTableCardId);

@@ -194,7 +194,7 @@ export const getSegments = createSelector(
 // UTILS:
 
 // clone each object in the provided mapping of objects
-export function copyObjects(metadata, objects, instantiate) {
+export function copyObjects(metadata, objects = {}, instantiate) {
   const copies = {};
   for (const object of Object.values(objects)) {
     if (object && object.id != null) {
