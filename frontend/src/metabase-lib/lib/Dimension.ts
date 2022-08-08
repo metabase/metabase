@@ -827,52 +827,71 @@ export class FieldDimension extends Dimension {
     }
 
     const lookupField = this.isIntegerFieldId() ? "id" : "name";
-    let fieldMetadata;
-    const questionAssociatedWithDimension = this.query()?.question();
-    if (
-      questionAssociatedWithDimension &&
-      questionAssociatedWithDimension.card().id != null
-    ) {
-      const question = this.query()?.question();
-      fieldMetadata = _.findWhere(question.getResultMetadata(), {
-        [lookupField]: this.fieldIdOrName(),
-      });
-    }
 
-    const virtualTableCardId = getQuestionIdFromVirtualTableId(
-      this.query()?.sourceTableId?.(),
-    );
-    if (virtualTableCardId != null) {
-      const card = this._metadata?.card(virtualTableCardId);
-      fieldMetadata = card
-        ? _.findWhere(card.result_metadata, {
-            [lookupField]: this.fieldIdOrName(),
-          })
-        : null;
-    }
+    const getFieldMetadataFromSavedQuestion = () => {
+      const questionAssociatedWithDimension = this.query()?.question();
+      if (questionAssociatedWithDimension?.isSaved()) {
+        const question = this.query()?.question();
+        const field = _.findWhere(question.getResultMetadata(), {
+          [lookupField]: this.fieldIdOrName(),
+        });
 
-    // Field result metadata can be overwritten for models,
-    // so we need to merge regular field object with the model overwrites
-    const shouldMergeFieldResultMetadata =
-      questionAssociatedWithDimension?.isDataset() ||
-      virtualTableCardId != null;
+        return field;
+      }
+    };
 
-    if (this.isIntegerFieldId()) {
-      const field = this._metadata?.field(this.fieldIdOrName());
+    const getFieldMetadataFromNestedCard = () => {
+      const virtualTableCardId = getQuestionIdFromVirtualTableId(
+        this.query()?.sourceTableId?.(),
+      );
+      if (virtualTableCardId != null) {
+        const card = this._metadata?.card(virtualTableCardId);
+        const field = card
+          ? _.findWhere(card.result_metadata, {
+              [lookupField]: this.fieldIdOrName(),
+            })
+          : undefined;
 
-      if (field) {
-        if (!fieldMetadata || !shouldMergeFieldResultMetadata) {
-          return field;
+        return field;
+      }
+    };
+
+    const fieldMetadata =
+      getFieldMetadataFromSavedQuestion() || getFieldMetadataFromNestedCard();
+
+    const combineGlobalAndLocalFields = (
+      maybeGlobalField: Field,
+      maybeLocalField,
+    ) => {
+      if (maybeGlobalField) {
+        if (!maybeLocalField) {
+          return maybeGlobalField;
         }
+
         const fieldObject = merge(
-          field instanceof Field ? field.getPlainObject() : field,
-          fieldMetadata,
+          maybeGlobalField instanceof Field
+            ? maybeGlobalField.getPlainObject()
+            : maybeGlobalField,
+          maybeLocalField,
         );
         return this._createField(fieldObject, { hydrate: true });
       }
 
-      if (fieldMetadata) {
-        return this._createField(fieldMetadata);
+      if (maybeLocalField) {
+        return this._createField(maybeLocalField);
+      }
+    };
+
+    // Field result metadata can be overwritten for models,
+    // so we need to merge regular field object with the model overwrites
+    // const shouldMergeFieldResultMetadata = fieldMetadata != null; // hasNestedQuery();
+
+    if (this.isIntegerFieldId()) {
+      const globalField = this._metadata?.field(this.fieldIdOrName());
+      const field = combineGlobalAndLocalFields(globalField, fieldMetadata);
+
+      if (field) {
+        return field;
       }
 
       return this._createField({ id: this._fieldIdOrName });
@@ -881,28 +900,17 @@ export class FieldDimension extends Dimension {
     // look for a "virtual" field on the query's table or question
     // for example, fields from a question based on a nested question have fields
     // that show up in a card's `result_metadata`
+    // note: this is explicitly for fields referenced via `name` and NOT `id`
+    // e.g. custom columns
     if (this.query()) {
       const table = this.query().table();
+      const tableField = _.findWhere(table?.fields, {
+        name: this.fieldIdOrName(),
+      });
 
-      if (table != null) {
-        const field = _.findWhere(table.fields, {
-          name: this.fieldIdOrName(),
-        });
-
-        if (field) {
-          if (!fieldMetadata || !shouldMergeFieldResultMetadata) {
-            return field;
-          }
-          const fieldObject = merge(
-            field instanceof Field ? field.getPlainObject() : field,
-            fieldMetadata,
-          );
-          return this._createField(fieldObject, { hydrate: true });
-        }
-      }
-
-      if (fieldMetadata) {
-        return this._createField(fieldMetadata);
+      const field = combineGlobalAndLocalFields(tableField, fieldMetadata);
+      if (field) {
+        return field;
       }
     }
 
