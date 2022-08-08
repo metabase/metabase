@@ -5,23 +5,34 @@ import { formatDateTimeForParameter } from "./date";
 
 import type { DatasetColumn } from "metabase-types/api/dataset";
 
-interface ValueAndColumnForColumnNameDate {
+interface TemplateForClickFormatFunctionParamsType {
+  value: string;
+  column: DatasetColumn;
+}
+
+export interface ValueAndColumnForColumnNameDate {
   column: DatasetColumn;
   parameterBySlug: string;
   parameterByName: string;
   userAttribute: string;
 }
 
-function formatValueForLinkTemplate(value: number, column: DatasetColumn) {
+function formatValueForLinkTemplate(value: string, column: DatasetColumn) {
   if (isDate(column) && column.unit) {
     return formatDateTimeForParameter(value, column.unit);
   }
   return value;
 }
 
-export function renderLinkTextForClick(template: string, data) {
-  return renderTemplateForClick(template, data, ({ value, column }) =>
-    formatValue(value, { column }),
+export function renderLinkTextForClick(
+  template: string,
+  data: ValueAndColumnForColumnNameDate,
+) {
+  return renderTemplateForClick(
+    template,
+    data,
+    ({ value, column }: { value: string; column: DatasetColumn }) =>
+      formatValue(value, { column }),
   );
 }
 
@@ -32,15 +43,17 @@ export function renderLinkURLForClick(
   return renderTemplateForClick(
     template,
     data,
-    ({ value: string, column: DatasetColumn }) =>
-      encodeURIComponent(formatValueForLinkTemplate(value, column)),
+    ({ value, column }: TemplateForClickFormatFunctionParamsType) => {
+      const valueForLinkTemplate = formatValueForLinkTemplate(value, column);
+      return encodeURIComponent(valueForLinkTemplate);
+    },
   );
 }
 
 function renderTemplateForClick(
   template: string,
   data: ValueAndColumnForColumnNameDate,
-  formatFunction: (any) => any = ({ value }) => value,
+  formatFunction: any = ({ value }: { value: any }) => value,
 ) {
   return template.replace(
     /{{([^}]+)}}/g,
