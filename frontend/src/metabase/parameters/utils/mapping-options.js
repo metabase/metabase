@@ -63,6 +63,10 @@ export function getParameterMappingOptions(
     return tagNames ? tagNames.map(buildTextTagOption) : [];
   }
 
+  if (!card.dataset_query) {
+    return [];
+  }
+
   const question = new Question(card, metadata);
   const query = question.query();
   const options = [];

@@ -38,7 +38,11 @@ import MiniBar from "../MiniBar";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
-import { ExpandButton } from "./TableInteractive.styled";
+import {
+  ExpandButton,
+  HeaderCell,
+  ResizeHandle,
+} from "./TableInteractive.styled";
 
 // approximately 120 chars
 const TRUNCATE_WIDTH = 780;
@@ -751,7 +755,7 @@ class TableInteractive extends Component {
           });
         }}
       >
-        <div
+        <HeaderCell
           data-testid="header-cell"
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
@@ -763,7 +767,7 @@ class TableInteractive extends Component {
               : this.getColumnLeft(style, columnIndex),
           }}
           className={cx(
-            "TableInteractive-cellWrapper TableInteractive-headerCellData text-medium text-brand-hover",
+            "TableInteractive-cellWrapper TableInteractive-headerCellData",
             {
               "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
               padLeft: columnIndex === 0 && !showDetailShortcut,
@@ -834,8 +838,7 @@ class TableInteractive extends Component {
               this.setState({ dragColIndex: null });
             }}
           >
-            <div
-              className="bg-brand-hover bg-brand-active"
+            <ResizeHandle
               style={{
                 zIndex: 99,
                 position: "absolute",
@@ -847,7 +850,7 @@ class TableInteractive extends Component {
               }}
             />
           </Draggable>
-        </div>
+        </HeaderCell>
       </Draggable>
     );
   };

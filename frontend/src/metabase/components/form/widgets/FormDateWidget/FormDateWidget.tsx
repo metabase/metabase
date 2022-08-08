@@ -1,5 +1,5 @@
 import React, { forwardRef, Ref, useCallback, useMemo } from "react";
-import { Moment } from "moment";
+import { Moment } from "moment-timezone";
 import {
   getNumericDateStyleFromSettings,
   getTimeStyleFromSettings,
@@ -62,7 +62,7 @@ const FormDateWidget = forwardRef(function FormDateWidget(
   return (
     <DateWidget
       ref={ref}
-      value={value as Moment | undefined}
+      value={value}
       placeholder={placeholder}
       hasTime={Boolean(values[hasTimeField])}
       dateFormat={getNumericDateStyleFromSettings()}

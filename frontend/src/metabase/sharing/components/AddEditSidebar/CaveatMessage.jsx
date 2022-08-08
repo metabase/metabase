@@ -15,7 +15,7 @@ function CaveatMessage() {
       <ExternalLink
         className="link"
         target="_blank"
-        href={MetabaseSettings.docsUrl("users-guide/dashboard-subscriptions")}
+        href={MetabaseSettings.docsUrl("dashboards/subscriptions")}
       >
         {t`Learn more`}
       </ExternalLink>

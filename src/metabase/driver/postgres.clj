@@ -360,7 +360,7 @@
         qualified        (parent-method query)
         unqualified      (parent-method (update query
                                                 :breakout
-                                                sql.qp/rewrite-fields-to-force-using-column-aliases))]
+                                                #(sql.qp/rewrite-fields-to-force-using-column-aliases % {:is-breakout true})))]
     (if (some field/json-field? stored-fields)
       (merge qualified
              (select-keys unqualified #{:group-by}))

@@ -94,7 +94,6 @@ const ChartTypeOption = ({
     <OptionIconContainer
       isSelected={isSelected}
       onClick={onClick}
-      className="cursor-pointer bg-brand-hover text-brand text-white-hover"
       data-testid={`${visualization.uiName}-button`}
       data-is-sensible={isSensible}
     >
