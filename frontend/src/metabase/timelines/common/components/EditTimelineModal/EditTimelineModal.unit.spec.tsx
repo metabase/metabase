@@ -10,7 +10,7 @@ const FormMock = (props: FormHTMLAttributes<HTMLFormElement>) => (
   </form>
 );
 
-jest.mock("metabase/containers/Form", () => FormMock);
+jest.mock("metabase/containers/FormikForm", () => FormMock);
 
 describe("EditTimelineModal", () => {
   it("should submit modal", () => {
