@@ -109,7 +109,7 @@ title: Metabase documentation
 - [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
 - [Editing your database metadata](./databases/metadata-editing.md)
 - [Creating segments and metrics](./databases/segments-and-metrics.md)
-- [SSH tunneling](./databases/ssh-tunnels.md)
+- [SSH tunneling](./databases/ssh-tunnel.md)
 - [SSL certificate](./databases/ssl-certificates.md)
 
 ## Configuring Metabase
