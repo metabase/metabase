@@ -8,26 +8,40 @@ export const FilterButton = styled(Button)`
   color: ${color("brand")};
   margin: 0.5rem;
 `;
-interface ResponsiveParametersListRootProps {
-  isSmallScreen: boolean;
-}
-export const ResponsiveParametersListRoot = styled.div<ResponsiveParametersListRootProps>`
+
+export const ResponsiveParametersListRoot = styled.div`
   width: 100%;
 `;
 
-export const ParametersListContainer = styled.div`
+interface ParametersListContainerProps {
+  isSmallScreen: boolean;
+  mobileShow: boolean;
+}
+
+export const ParametersListContainer = styled.div<ParametersListContainerProps>`
   background-color: ${color("bg-light")};
-  ${props =>
-    props.isSmallScreen &&
+
+  ${({ isSmallScreen, mobileShow }) =>
+    isSmallScreen &&
     `
     position: absolute;
     top: 0;
     left: 0;
-    bottom: 0;
+    
     width: 100%;
     border-bottom: 1px solid ${color("border")};
-    padding-bottom: 0.5rem;
+    
     overflow-y: auto;
+    bottom: ${mobileShow ? "0" : "100%"};
+    padding-bottom: ${mobileShow ? "0.5rem" : "0"};
+    opacity: ${mobileShow ? "1" : "0"};
+    transition: opacity 250ms;
+
+    ${StyledParametersList} {
+      position: relative;
+      top: ${mobileShow ? "0" : "15px"};
+      transition: top 250ms;
+    }
   `}
 `;
 

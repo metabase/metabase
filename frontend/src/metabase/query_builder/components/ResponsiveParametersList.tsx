@@ -1,8 +1,8 @@
 import React, { useCallback, useState, useMemo } from "react";
-
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
-
 import Button from "metabase/core/components/Button";
+
+import { Parameter } from "metabase-types/types/Parameter";
 
 import {
   FilterButton,
@@ -13,9 +13,9 @@ import {
 } from "./ResponsiveParametersList.styled";
 
 interface ResponsiveParametersListProps {
-  parameters: any;
-  setParameterValue: any;
-  setParameterIndex: any;
+  parameters: Parameter[];
+  setParameterValue: (parameterId: string, value: string) => void;
+  setParameterIndex: (parameterId: string, parameterIndex: number) => void;
 }
 
 export const ResponsiveParametersList = ({
@@ -35,7 +35,7 @@ export const ResponsiveParametersList = ({
   }, [parameters]);
 
   return (
-    <ResponsiveParametersListRoot isSmallScreen={isSmallScreen}>
+    <ResponsiveParametersListRoot>
       {isSmallScreen && (
         <FilterButton
           borderless
@@ -46,41 +46,30 @@ export const ResponsiveParametersList = ({
           {activeFilters > 0 ? `${activeFilters} active filters` : `Filters`}
         </FilterButton>
       )}
-      {/* {isSmallScreen && mobileShowParameterList && (
-        <ParametersListHeader>
-          <h3>Filters</h3>
-          <Button
-            onlyIcon
-            borderless
-            icon="close"
-            onClick={handleFilterButtonClick}
-            iconSize={14}
-          />
-        </ParametersListHeader>
-      )} */}
-      {(!isSmallScreen || mobileShowParameterList) && (
-        <ParametersListContainer isSmallScreen={isSmallScreen}>
-          {isSmallScreen && (
-            <ParametersListHeader>
-              <h3>Filters</h3>
-              <Button
-                onlyIcon
-                borderless
-                icon="close"
-                onClick={handleFilterButtonClick}
-                iconSize={14}
-              />
-            </ParametersListHeader>
-          )}
-          <StyledParametersList
-            parameters={parameters}
-            setParameterValue={setParameterValue}
-            setParameterIndex={setParameterIndex}
-            isEditing
-            commitImmediately
-          />
-        </ParametersListContainer>
-      )}
+      <ParametersListContainer
+        isSmallScreen={isSmallScreen}
+        mobileShow={mobileShowParameterList}
+      >
+        {isSmallScreen && (
+          <ParametersListHeader>
+            <h3>Filters</h3>
+            <Button
+              onlyIcon
+              borderless
+              icon="close"
+              onClick={handleFilterButtonClick}
+              iconSize={14}
+            />
+          </ParametersListHeader>
+        )}
+        <StyledParametersList
+          parameters={parameters}
+          setParameterValue={setParameterValue}
+          setParameterIndex={setParameterIndex}
+          isEditing
+          commitImmediately
+        />
+      </ParametersListContainer>
     </ResponsiveParametersListRoot>
   );
 };
