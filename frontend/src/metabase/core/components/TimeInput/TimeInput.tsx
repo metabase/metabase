@@ -1,6 +1,6 @@
 import React, { forwardRef, Ref } from "react";
 import { t } from "ttag";
-import { Moment } from "moment";
+import { Moment } from "moment-timezone";
 import Tooltip from "metabase/components/Tooltip";
 
 import useTimeInput, { BaseTimeInputProps } from "./useTimeInput";

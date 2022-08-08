@@ -2,6 +2,7 @@ import _ from "underscore";
 import { updateIn } from "icepick";
 
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
+import { deriveFieldOperatorFromParameter } from "metabase/parameters/utils/operators";
 
 import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
@@ -116,12 +117,16 @@ export function applyParameters(
     );
 
     const type = parameter.type;
+    const options =
+      deriveFieldOperatorFromParameter(parameter)?.optionsDefaults;
+
     if (mapping) {
       // mapped target, e.x. on a dashboard
       datasetQuery.parameters.push({
         type,
         value: normalizeParameterValue(type, value),
         target: mapping.target,
+        options,
         id: parameter.id,
       });
     } else if (parameter.target) {
@@ -130,6 +135,7 @@ export function applyParameters(
         type,
         value: normalizeParameterValue(type, value),
         target: parameter.target,
+        options,
         id: parameter.id,
       });
     }

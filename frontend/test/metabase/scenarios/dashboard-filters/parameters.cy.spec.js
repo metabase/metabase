@@ -3,22 +3,22 @@ import {
   restore,
   visitDashboard,
   filterWidget,
+  editDashboard,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
-const { ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card/**/query").as("cardQuery");
-    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-    cy.intercept("GET", "/api/collection/**").as("collection");
   });
 
   it("one filter should search across multiple fields", () => {
+    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+
     cy.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
       // add the same question twice
       cy.request("POST", `/api/dashboard/${id}/cards`, {
@@ -305,76 +305,152 @@ describe("scenarios > dashboard > parameters", () => {
     });
   });
 
-  // TODO: Completely rewrite, and put together with other nested question reproductions
-  //  - This repro is using the old params API
-  //  - It's tightly connected to metabase#12985 so put them together if possible
-  it("should allow applying multiple values to filter connected to nested question (metabase#18113)", () => {
-    const filter = {
-      id: "c2967a17",
-      name: "Category",
-      slug: "category",
-      type: "category",
+  it("should handle multiple filters and allow multiple filter values without sending superfluous queries or limiting results (metabase#13150, metabase#15689, metabase#15695, metabase#16103, metabase#17139)", () => {
+    const questionDetails = {
+      name: "13150 (Products)",
+      query: { "source-table": PRODUCTS_ID },
     };
 
-    cy.createNativeQuestion({
-      name: "Products SQL",
-      native: {
-        query: "select * from products",
-        "template-tags": {},
+    const parameters = [
+      {
+        name: "Title",
+        slug: "title",
+        id: "9f20a0d5",
+        type: "string/=",
+        sectionId: "string",
       },
-      display: "table",
-    }).then(({ body: { id: card_id } }) => {
-      cy.createQuestion({
-        name: "Products use saved SQL question",
-        query: {
-          "source-table": `card__${card_id}`,
-          aggregation: [],
-          breakout: [],
-        },
-      }).then(({ body: { id: card_id } }) => {
-        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
-          // Add previously created question to the dashboard
-          cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
-            cardId: card_id,
-          }).then(({ body: { id } }) => {
-            cy.addFilterToDashboard({ filter, dashboard_id });
-            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-              cards: [
+      {
+        name: "Category",
+        slug: "category",
+        id: "719fe1c2",
+        type: "string/=",
+        sectionId: "string",
+      },
+      {
+        name: "Vendor",
+        slug: "vendor",
+        id: "a73b7c9",
+        type: "string/=",
+        sectionId: "string",
+      },
+    ];
+
+    const [titleFilter, categoryFilter, vendorFilter] = parameters;
+
+    const dashboardDetails = { parameters };
+
+    cy.intercept(
+      "POST",
+      "/api/dashboard/*/dashcard/*/card/*/query",
+      cy.spy().as("cardQueryRequest"),
+    ).as("cardQuery");
+
+    cy.intercept(
+      "GET",
+      `/api/dashboard/*/params/${categoryFilter.id}/values`,
+      cy.spy().as("fetchAllCategories"),
+    ).as("filterValues");
+
+    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        cy.log("Connect all filters to the card");
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              sizeX: 14,
+              sizeY: 12,
+              parameter_mappings: [
                 {
-                  id,
+                  parameter_id: titleFilter.id,
                   card_id,
-                  row: 0,
-                  col: 0,
-                  sizeX: 8,
-                  sizeY: 6,
-                  parameter_mappings: [
-                    {
-                      card_id: 5,
-                      parameter_id: "c2967a17",
-                      target: [
-                        "dimension",
-                        ["field", "TITLE", { "base-type": "type/Text" }],
-                      ],
-                    },
-                  ],
+                  target: ["dimension", ["field", PRODUCTS.TITLE, null]],
+                },
+                {
+                  parameter_id: categoryFilter.id,
+                  card_id,
+                  target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                },
+                {
+                  parameter_id: vendorFilter.id,
+                  card_id,
+                  target: ["dimension", ["field", PRODUCTS.VENDOR, null]],
                 },
               ],
-            });
-          });
-
-          visitDashboard(dashboard_id);
-          cy.wait("@collection");
+              visualization_settings: {},
+            },
+          ],
         });
-      });
+
+        cy.visit(
+          `/dashboard/${dashboard_id}?title=Awesome Concrete Shoes&category=Widget&vendor=McClure-Lockman`,
+        );
+      },
+    );
+
+    cy.wait("@cardQuery");
+    // Multiple filters shouldn't affect the number of card query requests (metabase#13150)
+    cy.get("@cardQueryRequest").should("have.been.calledOnce");
+
+    // Open category dropdown
+    filterWidget().contains("Widget").click();
+    cy.wait("@filterValues");
+
+    // Make sure all filters were fetched (should be cached after this)
+    popover().within(() => {
+      // Widget should be selected by default
+      isFilterSelected("Widget", true);
+      // Select one more filter (metabase#15689)
+      cy.findByText("Gizmo").click();
+      isFilterSelected("Gizmo", true);
+
+      cy.findByText("Doohickey");
+      cy.findByText("Gadget");
     });
 
-    cy.findByText("Category").click();
-    cy.wait("@dashboard");
-    cy.findByPlaceholderText("Enter some text").type(
-      "Small Marble Hat{enter}Enormous Marble Wallet{enter}",
+    cy.get("@fetchAllCategories").should("have.been.calledOnce");
+
+    cy.button("Update filter").click();
+    cy.findByText("2 selections").click();
+
+    // Even after we reopen the dropdown, it shouldn't send additional requests for values (metabase#16103)
+    cy.get("@fetchAllCategories").should("have.been.calledOnce");
+
+    // As a sanity check, make sure we can deselect the filter by clicking on it
+    popover().within(() => {
+      cy.findByText("Gizmo").click();
+      isFilterSelected("Gizmo", false);
+    });
+
+    cy.button("Update filter").click();
+    cy.findByText("2 selections").should("not.exist");
+    filterWidget().contains("Widget");
+
+    filterWidget().contains("Awesome Concrete Shoes").click();
+    // Do not limit number of results (metabase#15695)
+    // Prior to the issue being fixed, the cap was 100 results
+    cy.findByPlaceholderText("Search the list").type("Syner");
+    cy.findByText("Synergistic Wool Coat");
+
+    cy.location("search").should(
+      "eq",
+      "?title=Awesome%20Concrete%20Shoes&category=Widget&vendor=McClure-Lockman",
     );
-    cy.button("Add filter").click();
-    cy.get("tbody > tr").should("have.length", 2);
+    cy.findAllByTestId("table-row").should("have.length", 1);
+
+    // It should not reset previously defined filters when exiting 'edit' mode without making any changes (metabase#5332, metabase#17139)
+    editDashboard();
+    cy.findByText("Cancel").click();
+    cy.findByText("You're editing this dashboard.").should("not.exist");
+
+    cy.location("search").should(
+      "eq",
+      "?title=Awesome%20Concrete%20Shoes&category=Widget&vendor=McClure-Lockman",
+    );
+    cy.findAllByTestId("table-row").should("have.length", 1);
   });
 
   describe("when the user does not have self-service data permissions", () => {
@@ -409,4 +485,12 @@ describe("scenarios > dashboard > parameters", () => {
 function selectFilter(selection, filterName) {
   selection.contains("Select…").click();
   popover().contains(filterName).click({ force: true });
+}
+
+function isFilterSelected(filter, bool) {
+  cy.findByTestId(`${filter}-filter-value`).within(() =>
+    cy
+      .findByRole("checkbox")
+      .should(`${bool === false ? "not." : ""}be.checked`),
+  );
 }

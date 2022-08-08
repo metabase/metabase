@@ -36,6 +36,7 @@ type RelativeDatePickerProps = {
   offsetFormatter: (value: number) => number;
   primaryColor?: string;
   reverseIconDirection?: boolean;
+  supportsExpressions?: boolean;
 };
 
 type OptionsContentProps = RelativeDatePickerProps & {
@@ -106,6 +107,7 @@ const OptionsContent: React.FC<OptionsContentProps> = ({
   onFilterChange,
   reverseIconDirection,
   setOptionsVisible,
+  supportsExpressions,
 }) => {
   const options = filter[4] || {};
   const includeCurrent = !!options["include-current"];
@@ -128,14 +130,16 @@ const OptionsContent: React.FC<OptionsContentProps> = ({
 
   return (
     <OptionsContainer>
-      <OptionButton
-        icon="arrow_left_to_line"
-        primaryColor={primaryColor}
-        reverseIconDirection={reverseIconDirection}
-        onClick={handleClickOnStartingFrom}
-      >
-        {t`Starting from...`}
-      </OptionButton>
+      {supportsExpressions && (
+        <OptionButton
+          icon="arrow_left_to_line"
+          primaryColor={primaryColor}
+          reverseIconDirection={reverseIconDirection}
+          onClick={handleClickOnStartingFrom}
+        >
+          {t`Starting from...`}
+        </OptionButton>
+      )}
       <OptionButton
         selected={includeCurrent}
         primaryColor={primaryColor}
@@ -157,7 +161,6 @@ const RelativeDatePicker: React.FC<RelativeDatePickerProps> = props => {
     offsetFormatter = value => value,
     className,
     primaryColor,
-    reverseIconDirection,
   } = props;
 
   const startingFrom = getStartingFrom(filter);

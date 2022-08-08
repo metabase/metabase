@@ -41,7 +41,7 @@ const PersistedModelRefreshIntervalWidget = ({
   const [customCronSchedule, setCustomCronSchedule] = useState(
     // We don't allow to specify the "year" component, but it's present in the value
     // So we need to cut it visually to avoid confusion
-    isCustom ? formatCronExpression(setting.value) : "",
+    isCustom ? formatCronExpression(setting.value ?? setting.default) : "",
   );
 
   const handleScheduleChange = useCallback(
@@ -49,6 +49,7 @@ const PersistedModelRefreshIntervalWidget = ({
       if (nextValue === "custom") {
         setCustom(true);
         setCustomCronSchedule(DEFAULT_CUSTOM_SCHEDULE);
+        onChange(`0 ${DEFAULT_CUSTOM_SCHEDULE} *`);
       } else {
         setCustom(false);
         setCustomCronSchedule("");

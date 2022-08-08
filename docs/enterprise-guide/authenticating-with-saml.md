@@ -16,7 +16,7 @@ The open source edition of Metabase includes the option to set up [single sign-o
 <div class='doc-toc' markdown=1>
 - [Turning on SAML-based SSO](#turning-on-saml-based-sso).
 - [Setting up SAML with your IdP](#setting-up-saml-with-your-idp).
-- [Generic SAML configuration](#saml-configuration).
+- [Generic SAML configuration](#generic-saml-configuration).
   - [URL the IdP should redirect back to](#url-the-idp-should-redirect-back-to).
   - [User attributes](#user-attributes).
   - [Settings for signing SSO requests (optional)](#settings-for-signing-sso-requests-optional).

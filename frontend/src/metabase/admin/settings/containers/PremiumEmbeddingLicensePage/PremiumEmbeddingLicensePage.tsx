@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { jt, t } from "ttag";
 import { connect } from "react-redux";
-import moment from "moment";
+import moment from "moment-timezone";
 import AdminLayout from "metabase/components/AdminLayout";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";

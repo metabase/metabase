@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { alpha, color } from "metabase/lib/colors";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
@@ -13,13 +14,20 @@ export const ExpressionList = styled.ul`
 `;
 
 export const ExpressionListItem = styled.li`
-  padding-top: 5px;
-  padding-bottom: 5px;
+  display: flex;
+  align-items: center;
+  padding: 0.3125rem 0.875rem;
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("white")};
+    background-color: ${color("brand")};
+  }
 
   ${({ isHighlighted }) =>
     isHighlighted &&
-    `
+    css`
       color: ${color("white")};
       background-color: ${color("brand")};
-  `})}
+    `}
 `;

@@ -12,7 +12,7 @@ import {
 import {
   DASHBOARD_SQL_DATE_FILTERS,
   questionDetails,
-} from "./helpers/e2e-dashboard-filter-sql-data-objects";
+} from "./dashboard-filters-sql-date";
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 
 describe("scenarios > dashboard > filters > SQL > date", () => {

@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import _ from "underscore";
-import moment from "moment";
+import moment from "moment-timezone";
 import { t } from "ttag";
 
 import Card from "metabase/components/Card";
