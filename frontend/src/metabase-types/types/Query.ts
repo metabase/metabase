@@ -1,8 +1,14 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 import { TableId } from "./Table";
 import { FieldId, BaseType } from "./Field";
 import { SegmentId } from "./Segment";
 import { MetricId } from "./Metric";
 import { ParameterType } from "./Parameter";
+import { DatetimeUnit } from "metabase-types/api/query";
 
 export type ExpressionName = string;
 
@@ -26,23 +32,6 @@ export type RelativeDatetimeUnit =
   | "week"
   | "month"
   | "quarter"
-  | "year";
-export type DatetimeUnit =
-  | "default"
-  | "minute"
-  | "minute-of-hour"
-  | "hour"
-  | "hour-of-day"
-  | "day"
-  | "day-of-week"
-  | "day-of-month"
-  | "day-of-year"
-  | "week"
-  | "week-of-year"
-  | "month"
-  | "month-of-year"
-  | "quarter"
-  | "quarter-of-year"
   | "year";
 
 export type TemplateTagId = string;

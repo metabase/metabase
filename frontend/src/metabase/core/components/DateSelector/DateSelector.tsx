@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import moment, { Moment } from "moment";
+import moment, { Moment } from "moment-timezone";
 import { t } from "ttag";
 import TimeInput from "metabase/core/components/TimeInput";
 import Calendar from "metabase/components/Calendar";

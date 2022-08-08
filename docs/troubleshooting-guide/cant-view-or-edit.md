@@ -1,8 +1,15 @@
 ---
-title: I can't view or edit a question or dashboard.
+title: Troubleshooting viewing and editing questions and dashboards
 ---
 
 # Troubleshooting viewing and editing questions and dashboards
+
+1. Clear your browser cache.
+2. Check if a browser extension or plugin is interfering with Metabase:
+   - Disable all extensions and plugins,
+   - Open your question or dashboard in an incognito browser session, or
+   - Open your question or dashboard in a different browser.
+3. If you aren't the creator of the question or dashboard, check if you have permissions to the collection where the question or dashboard is saved.
 
 ## I can't view or edit a dashboard in a collection that I have permissions to
 

@@ -119,7 +119,7 @@
 
 ;; correct password
 (deftest connects-with-correct-password
-  (ssh/start-ssh-tunnel!
+  (#'ssh/start-ssh-tunnel!
    {:tunnel-user ssh-username
     :tunnel-host "127.0.0.1"
     :tunnel-port ssh-mock-server-with-password-port
@@ -131,7 +131,7 @@
 (deftest throws-exception-on-incorrect-password
   (is (thrown?
        org.apache.sshd.common.SshException
-       (ssh/start-ssh-tunnel!
+       (#'ssh/start-ssh-tunnel!
         {:tunnel-user ssh-username
          :tunnel-host "127.0.0.1"
          :tunnel-port ssh-mock-server-with-password-port
@@ -142,7 +142,7 @@
 ;; correct ssh key
 (deftest connects-with-correct-ssh-key
   (is (some?
-       (ssh/start-ssh-tunnel!
+       (#'ssh/start-ssh-tunnel!
         {:tunnel-user        ssh-username
          :tunnel-host        "127.0.0.1"
          :tunnel-port        ssh-mock-server-with-publickey-port
@@ -154,7 +154,7 @@
 (deftest throws-exception-on-incorrect-ssh-key
   (is (thrown?
        org.apache.sshd.common.SshException
-       (ssh/start-ssh-tunnel!
+       (#'ssh/start-ssh-tunnel!
         {:tunnel-user        ssh-username
          :tunnel-host        "127.0.0.1"
          :tunnel-port        ssh-mock-server-with-publickey-port
@@ -165,7 +165,7 @@
 ;; correct ssh key
 (deftest connects-with-correct-ssh-key-and-passphrase
   (is (some?
-       (ssh/start-ssh-tunnel!
+       (#'ssh/start-ssh-tunnel!
         {:tunnel-user                   ssh-username
          :tunnel-host                   "127.0.0.1"
          :tunnel-port                   ssh-mock-server-with-publickey-passphrase-port
@@ -177,7 +177,7 @@
 (deftest throws-exception-on-incorrect-ssh-key-and-passphrase
   (is (thrown?
        java.io.StreamCorruptedException
-       (ssh/start-ssh-tunnel!
+       (#'ssh/start-ssh-tunnel!
         {:tunnel-user                   ssh-username
          :tunnel-host                   "127.0.0.1"
          :tunnel-port                   ssh-mock-server-with-publickey-passphrase-port

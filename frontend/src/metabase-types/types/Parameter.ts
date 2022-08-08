@@ -1,3 +1,8 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 import { CardId } from "./Card";
 import { LocalFieldReference, ForeignFieldReference } from "./Query";
 

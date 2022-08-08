@@ -1,3 +1,8 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 // ISO8601 timestamp
 export type ISO8601Time = string;
 

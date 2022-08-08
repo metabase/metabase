@@ -347,14 +347,22 @@
                     source.LONGITUDE   AS LONGITUDE
                     source.PRICE       AS PRICE
                     source.double_id   AS double_id]
-           :from   [{:select [VENUES.ID          AS ID
-                              VENUES.NAME        AS NAME
-                              VENUES.CATEGORY_ID AS CATEGORY_ID
-                              VENUES.LATITUDE    AS LATITUDE
-                              VENUES.LONGITUDE   AS LONGITUDE
-                              VENUES.PRICE       AS PRICE
-                              (VENUES.ID * 2)    AS double_id]
-                     :from   [VENUES]}
+           :from   [{:select [source.ID          AS ID
+                              source.NAME        AS NAME
+                              source.CATEGORY_ID AS CATEGORY_ID
+                              source.LATITUDE    AS LATITUDE
+                              source.LONGITUDE   AS LONGITUDE
+                              source.PRICE       AS PRICE
+                              source.double_id   AS double_id]
+                     :from   [{:select [VENUES.ID AS ID
+                                        VENUES.NAME AS NAME
+                                        VENUES.CATEGORY_ID AS CATEGORY_ID
+                                        VENUES.LATITUDE    AS LATITUDE
+                                        VENUES.LONGITUDE   AS LONGITUDE
+                                        VENUES.PRICE       AS PRICE
+                                        (VENUES.ID * 2)    AS double_id]
+                               :from   [VENUES]}
+                              source]}
                     source]
            :limit  [1]}
          (-> (mt/mbql-query venues
@@ -843,19 +851,24 @@
                            Q1.CC           AS Q1__CC]
                :from      [{:select [source.CATEGORY AS CATEGORY
                                      source.count    AS count
-                                     (1 + 1)         AS CC]
-                            :from   [{:select   [PRODUCTS.CATEGORY AS CATEGORY
-                                                 count (*)         AS count]
-                                      :from     [PRODUCTS]
-                                      :group-by [PRODUCTS.CATEGORY]
-                                      :order-by [PRODUCTS.CATEGORY ASC]}
-                                     source]} source]
-               :left-join [{:select [source.CATEGORY AS CATEGORY
-                                     source.count AS count
-                                     source.CC AS CC]
+                                     source.CC       AS CC]
                             :from   [{:select [source.CATEGORY AS CATEGORY
-                                               source.count AS count
-                                               (1 + 1) AS CC]
+                                               source.count    AS count
+                                               (1 + 1)         AS CC]
+                                      :from   [{:select   [PRODUCTS.CATEGORY AS CATEGORY
+                                                           count (*)         AS count]
+                                                :from     [PRODUCTS]
+                                                :group-by [PRODUCTS.CATEGORY]
+                                                :order-by [PRODUCTS.CATEGORY ASC]}
+                                               source]}
+                                     source]}
+                           source]
+               :left-join [{:select [source.CATEGORY AS CATEGORY
+                                     source.count    AS count
+                                     source.CC       AS CC]
+                            :from   [{:select [source.CATEGORY AS CATEGORY
+                                               source.count    AS count
+                                               (1 + 1)         AS CC]
                                       :from   [{:select   [PRODUCTS.CATEGORY AS CATEGORY
                                                            count (*)         AS count]
                                                 :from     [PRODUCTS]

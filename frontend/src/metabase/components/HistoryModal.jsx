@@ -8,7 +8,7 @@ import {
   getRevisionDescription,
 } from "metabase/lib/revisions";
 
-import moment from "moment";
+import moment from "moment-timezone";
 
 function formatDate(date) {
   const m = moment(date);

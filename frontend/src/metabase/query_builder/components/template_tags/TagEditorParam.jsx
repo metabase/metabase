@@ -8,9 +8,7 @@ import { Link } from "react-router";
 
 import Schemas from "metabase/entities/schemas";
 import Toggle from "metabase/core/components/Toggle";
-import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/core/components/Select";
-import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 
 import { getParameterOptionsForField } from "metabase/parameters/utils/template-tag-options";
 
@@ -18,6 +16,16 @@ import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import MetabaseSettings from "metabase/lib/settings";
+
+import {
+  ErrorSpan,
+  TagName,
+  TagContainer,
+  ContainerLabel,
+  InputContainer,
+  WidgetLabelInput,
+  DefaultParameterValueWidget,
+} from "./TagEditorParam.styled";
 
 const propTypes = {
   tag: PropTypes.object.isRequired,
@@ -141,16 +149,16 @@ export class TagEditorParam extends Component {
     const hasWidgetOptions = widgetOptions && widgetOptions.length > 0;
     const hasNoWidgetType =
       tag["widget-type"] === "none" || !tag["widget-type"];
+    const hasNoWidgetLabel = !tag["display-name"];
 
     return (
-      <div className="px3 pt3 mb1 border-top">
-        <h4 className="text-medium py1">{t`Variable name`}</h4>
-        <h3 className="text-heavy text-brand align-self-end mb4">{tag.name}</h3>
+      <TagContainer>
+        <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
+        <TagName>{tag.name}</TagName>
 
-        <div className="pb4">
-          <h4 className="text-medium pb1">{t`Variable type`}</h4>
+        <InputContainer>
+          <ContainerLabel>{t`Variable type`}</ContainerLabel>
           <Select
-            className="block"
             value={tag.type}
             onChange={e => this.setType(e.target.value)}
             isInitiallyOpen={!tag.type}
@@ -162,16 +170,14 @@ export class TagEditorParam extends Component {
             <Option value="date">{t`Date`}</Option>
             <Option value="dimension">{t`Field Filter`}</Option>
           </Select>
-        </div>
+        </InputContainer>
 
         {tag.type === "dimension" && (
-          <div className="pb4">
-            <h4 className="text-medium pb1">
+          <InputContainer>
+            <ContainerLabel>
               {t`Field to map to`}
-              {tag.dimension == null && (
-                <span className="text-error mx1">{t`(required)`}</span>
-              )}
-            </h4>
+              {tag.dimension == null && <ErrorSpan>{t`(required)`}</ErrorSpan>}
+            </ContainerLabel>
 
             {(!hasSelectedDimensionField ||
               (hasSelectedDimensionField && fieldMetadataLoaded)) && (
@@ -196,17 +202,15 @@ export class TagEditorParam extends Component {
                 )}
               </Schemas.Loader>
             )}
-          </div>
+          </InputContainer>
         )}
 
         {hasSelectedDimensionField && (
-          <div className="pb4">
-            <h4 className="text-medium pb1">
+          <InputContainer>
+            <ContainerLabel>
               {t`Filter widget type`}
-              {hasNoWidgetType && (
-                <span className="text-error mx1">{t`(required)`}</span>
-              )}
-            </h4>
+              {hasNoWidgetType && <ErrorSpan>{t`(required)`}</ErrorSpan>}
+            </ContainerLabel>
             <Select
               className="block"
               value={this.getFilterWidgetTypeValue(tag, widgetOptions)}
@@ -242,38 +246,39 @@ export class TagEditorParam extends Component {
                 </Link>
               </p>
             )}
-          </div>
+          </InputContainer>
         )}
 
         {(hasWidgetOptions || !isDimension) && (
-          <div className="pb4">
-            <h4 className="text-medium pb1">{t`Filter widget label`}</h4>
-            <InputBlurChange
+          <InputContainer>
+            <ContainerLabel>
+              {t`Filter widget label`}
+              {hasNoWidgetLabel && <ErrorSpan>{t`(required)`}</ErrorSpan>}
+            </ContainerLabel>
+            <WidgetLabelInput
               type="text"
               value={tag["display-name"]}
-              className="AdminSelect p1 text-bold text-dark bordered border-medium rounded full"
-              style={{ fontSize: "14px" }}
               onBlurChange={e =>
                 this.setParameterAttribute("display-name", e.target.value)
               }
             />
-          </div>
+          </InputContainer>
         )}
 
-        <div className="pb3">
-          <h4 className="text-medium pb1">{t`Required?`}</h4>
+        <InputContainer lessBottomPadding>
+          <ContainerLabel>{t`Required?`}</ContainerLabel>
           <Toggle
             value={tag.required}
             onChange={value => this.setRequired(value)}
           />
-        </div>
+        </InputContainer>
 
         {((tag.type !== "dimension" && tag.required) ||
           tag.type === "dimension" ||
           tag["widget-type"]) && (
-          <div className="pb3">
-            <h4 className="text-medium pb1">{t`Default filter widget value`}</h4>
-            <ParameterValueWidget
+          <InputContainer lessBottomPadding>
+            <ContainerLabel>{t`Default filter widget value`}</ContainerLabel>
+            <DefaultParameterValueWidget
               parameter={
                 tag.type === "dimension"
                   ? parameter || {
@@ -293,13 +298,12 @@ export class TagEditorParam extends Component {
               }
               value={tag.default}
               setValue={value => this.setParameterAttribute("default", value)}
-              className="AdminSelect p1 text-bold text-medium bordered border-medium rounded bg-white"
               isEditing
               commitImmediately
             />
-          </div>
+          </InputContainer>
         )}
-      </div>
+      </TagContainer>
     );
   }
 }
