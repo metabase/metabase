@@ -71,7 +71,7 @@ You can add query parameters to the URL to toggle various full-app features.
 E.g., the URL
 
 ```
-http://localhost:3000/?top-nav=false&side_nav=false
+http://localhost:3000/?top_nav=false&side_nav=false
 ```
 
 would disable the top and side nav:
@@ -84,7 +84,7 @@ Entire top navigation bar, with optional search and new button.
 
 ![Top nav bar](./images/full-app-embedding/top-nav.png)
 
-The top bar is hidden by default. Additionally, if you enable the top bar (`top_bar=true`), you can turn on other hidden-by-default top bar options:
+The top bar is hidden by default. Additionally, if you enable the top bar (`top_nav=true`), you can turn on other hidden-by-default top bar options:
 
 - `search`: Search bar within the top nav.
 - `new_button`: “New” CTA that lets users create questions and more.
@@ -95,7 +95,7 @@ The main navigation bar.
 
 ![Side nav](./images/full-app-embedding/side-nav.png)
 
-The navigation sidebar is hidden by default, aside from `/collection` and home page product routes. If you want people to be able to minimize the sidebar, you MUST enable the `top-nav`.
+The navigation sidebar is hidden by default, aside from `/collection` and home page product routes. If you want people to be able to minimize the sidebar, you MUST enable the `top_nav`.
 
 ### `header`
 
