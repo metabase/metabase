@@ -9,6 +9,7 @@ export * from "./dataset";
 export * from "./field";
 export * from "./foreign-key";
 export * from "./group";
+export * from "./metric";
 export * from "./models";
 export * from "./notifications";
 export * from "./permissions";
