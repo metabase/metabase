@@ -47,6 +47,7 @@ const MetricForm = ({
   return (
     <Formik
       initialValues={metric ?? {}}
+      isInitialValid={false}
       validate={validate}
       onSubmit={onSubmit}
     >
