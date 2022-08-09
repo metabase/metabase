@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ReactNode } from "react";
 import { Link } from "react-router";
 import { Field, Formik } from "formik";
 import type { FieldProps } from "formik";
@@ -8,17 +8,20 @@ import { formatValue } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
 import FieldSet from "metabase/components/FieldSet";
 import { Metric } from "metabase-types/api";
-import FormLabel from "../FormLabel/FormLabel";
 import PartialQueryBuilder from "../PartialQueryBuilder";
 import {
   FormRoot,
   FormSection,
-  FormBodyContent,
   FormBody,
+  FormBodyContent,
   FormFooter,
   FormFooterContent,
   FormSubmitButton,
-  FormField,
+  FormInputRoot,
+  FormLabelRoot,
+  FormLabelContent,
+  FormLabelTitle,
+  FormLabelDescription,
 } from "./MetricForm.styled";
 
 const QUERY_BUILDER_FEATURES = {
@@ -116,6 +119,26 @@ const MetricForm = ({
   );
 };
 
+interface FormLabelProps {
+  title?: string;
+  description?: string;
+  children?: ReactNode;
+}
+
+const FormLabel = ({ title, description, children }: FormLabelProps) => {
+  return (
+    <FormLabelRoot>
+      <FormLabelContent>
+        {title && <FormLabelTitle>{title}</FormLabelTitle>}
+        {description && (
+          <FormLabelDescription>{description}</FormLabelDescription>
+        )}
+      </FormLabelContent>
+      {children}
+    </FormLabelRoot>
+  );
+};
+
 interface FormInputProps {
   name: string;
   placeholder?: string;
@@ -125,7 +148,7 @@ const FormInput = ({ name, placeholder }: FormInputProps): JSX.Element => {
   return (
     <Field name={name}>
       {({ field, meta }: FieldProps) => (
-        <FormField
+        <FormInputRoot
           {...field}
           className="input"
           type="text"
@@ -150,7 +173,7 @@ const FormTextArea = ({
   return (
     <Field name={name}>
       {({ field, meta }: FieldProps) => (
-        <FormField
+        <FormInputRoot
           {...field}
           as="textarea"
           className="input"
