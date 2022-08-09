@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { Metric } from "metabase-types/api";
 import FormLabel from "../FormLabel/FormLabel";
 import FormInput from "../FormInput/FormInput";
+import FormTextArea from "../FormTextArea/FormTextArea";
 
 export interface MetricFormProps {
   metric?: Metric;
@@ -29,6 +30,15 @@ const MetricForm = ({ metric, onSubmit }: MetricFormProps): JSX.Element => {
                 <FormInput
                   name="name"
                   placeholder={t`Something descriptive but not too long`}
+                />
+              </FormLabel>
+              <FormLabel
+                title={t`Describe Your Metric`}
+                description={t`Give your metric a description to help others understand what it's about.`}
+              >
+                <FormTextArea
+                  name="description"
+                  placeholder={t`This is a good place to be more specific about less obvious metric rules`}
                 />
               </FormLabel>
             </div>
