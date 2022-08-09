@@ -6,6 +6,7 @@ import { Metric } from "metabase-types/api";
 import FormLabel from "../FormLabel/FormLabel";
 import FormInput from "../FormInput/FormInput";
 import FormTextArea from "../FormTextArea/FormTextArea";
+import { FormRoot, FormContainer, FormBody } from "./MetricForm.styled";
 
 export interface MetricFormProps {
   metric?: Metric;
@@ -20,9 +21,9 @@ const MetricForm = ({ metric, onSubmit }: MetricFormProps): JSX.Element => {
       onSubmit={onSubmit}
     >
       {({ handleSubmit }) => (
-        <form className="full" onSubmit={handleSubmit}>
-          <div className="wrapper py4">
-            <div style={{ maxWidth: "575px" }}>
+        <FormRoot onSubmit={handleSubmit}>
+          <FormContainer>
+            <FormBody>
               <FormLabel
                 title={t`Name Your Metric`}
                 description={t`Give your metric a name to help others find it.`}
@@ -41,9 +42,9 @@ const MetricForm = ({ metric, onSubmit }: MetricFormProps): JSX.Element => {
                   placeholder={t`This is a good place to be more specific about less obvious metric rules`}
                 />
               </FormLabel>
-            </div>
-          </div>
-        </form>
+            </FormBody>
+          </FormContainer>
+        </FormRoot>
       )}
     </Formik>
   );
@@ -66,3 +67,5 @@ const validate = (values: Partial<Metric>) => {
 
   return errors;
 };
+
+export default MetricForm;
