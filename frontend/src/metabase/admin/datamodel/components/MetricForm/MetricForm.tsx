@@ -6,7 +6,13 @@ import { Metric } from "metabase-types/api";
 import FormLabel from "../FormLabel/FormLabel";
 import FormInput from "../FormInput/FormInput";
 import FormTextArea from "../FormTextArea/FormTextArea";
-import { FormRoot, FormContainer, FormBody } from "./MetricForm.styled";
+import {
+  FormRoot,
+  FormSection,
+  FormContainer,
+  FormBody,
+  FormFooter,
+} from "./MetricForm.styled";
 
 export interface MetricFormProps {
   metric?: Metric;
@@ -14,6 +20,8 @@ export interface MetricFormProps {
 }
 
 const MetricForm = ({ metric, onSubmit }: MetricFormProps): JSX.Element => {
+  const isNew = metric == null;
+
   return (
     <Formik
       initialValues={metric ?? {}}
@@ -22,8 +30,8 @@ const MetricForm = ({ metric, onSubmit }: MetricFormProps): JSX.Element => {
     >
       {({ handleSubmit }) => (
         <FormRoot onSubmit={handleSubmit}>
-          <FormContainer>
-            <FormBody>
+          <FormBody>
+            <FormContainer>
               <FormLabel
                 title={t`Name Your Metric`}
                 description={t`Give your metric a name to help others find it.`}
@@ -42,8 +50,15 @@ const MetricForm = ({ metric, onSubmit }: MetricFormProps): JSX.Element => {
                   placeholder={t`This is a good place to be more specific about less obvious metric rules`}
                 />
               </FormLabel>
-            </FormBody>
-          </FormContainer>
+            </FormContainer>
+          </FormBody>
+          {isNew && (
+            <FormFooter>
+              <FormSection>
+                <div />
+              </FormSection>
+            </FormFooter>
+          )}
         </FormRoot>
       )}
     </Formik>
