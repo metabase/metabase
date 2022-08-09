@@ -173,7 +173,7 @@ When you set the **Variable type** to "Field Filter", Metabase will present an o
 
 If you're not seeing the option to display a filter widget, make sure the mapped field is set to one of the above types, and then try manually syncing your database from the "Databases" section of the Admin Panel to force Metabase to scan and cache the field's values.
 
-If you want to map a Field Filter to a field that isn't one of the compatible types listed above, you'll need an Admin to change the [field type for that column][column-types].
+If you want to map a Field Filter to a field that isn't one of the compatible types listed above, you'll need an Admin to change the [field type for that column](../data-modeling/metadata-editing.md#field-type).
 
 ## Field Filter syntax
 
@@ -278,7 +278,6 @@ More on [Dashboard filters][dashboard-filters].
 Learn how to [refer to a saved question in a SQL query](referencing-saved-questions-in-queries.md).
 
 [sql-editor]: ./writing-sql.html
-[column-types]: ../data-modeling/metadata-editing.md#field-type
 [dashboard-filters]: ../dashboards/filters.html
 [field-filter]: /learn/sql-questions/field-filters.html
 [filtering-on-this-field]: ../administration-guide/03-metadata-editing.html#picking-the-filter-user-interface-for-a-column
