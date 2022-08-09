@@ -12,7 +12,6 @@ export const FormRoot = styled.form`
 export const FormSection = styled.div`
   margin: 0 auto;
   padding: 0 1em;
-  width: 100%;
 
   ${breakpointMinSmall} {
     padding-left: 1.5rem;
@@ -30,12 +29,17 @@ export const FormBody = styled(FormSection)`
   padding-bottom: 4rem;
 `;
 
+export const FormBodyContent = styled.div`
+  max-width: 576rem;
+`;
+
 export const FormFooter = styled.div`
   padding-top: 4rem;
   padding-bottom: 4rem;
   border-top: 1px solid ${color("border")};
 `;
 
-export const FormContainer = styled.div`
-  max-width: 576rem;
+export const FormFooterContent = styled.div`
+  display: flex;
+  align-items: center;
 `;

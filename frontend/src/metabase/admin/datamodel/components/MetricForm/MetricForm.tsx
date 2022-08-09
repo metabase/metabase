@@ -11,9 +11,10 @@ import FormTextArea from "../FormTextArea/FormTextArea";
 import {
   FormRoot,
   FormSection,
-  FormContainer,
+  FormBodyContent,
   FormBody,
   FormFooter,
+  FormFooterContent,
 } from "./MetricForm.styled";
 
 export interface MetricFormProps {
@@ -33,7 +34,7 @@ const MetricForm = ({ metric, onSubmit }: MetricFormProps): JSX.Element => {
       {({ isValid, handleSubmit }) => (
         <FormRoot onSubmit={handleSubmit}>
           <FormBody>
-            <FormContainer>
+            <FormBodyContent>
               <FormLabel
                 title={t`Name Your Metric`}
                 description={t`Give your metric a name to help others find it.`}
@@ -62,9 +63,12 @@ const MetricForm = ({ metric, onSubmit }: MetricFormProps): JSX.Element => {
                       placeholder={t`This will show up in the revision history for this metric to help everyone remember why things changed`}
                     />
                   </FormLabel>
+                  <FormFooterContent>
+                    <MetricFormActions isValid={isValid} />
+                  </FormFooterContent>
                 </FieldSet>
               )}
-            </FormContainer>
+            </FormBodyContent>
           </FormBody>
           {isNew && (
             <FormFooter>
