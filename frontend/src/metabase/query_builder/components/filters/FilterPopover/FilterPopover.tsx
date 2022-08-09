@@ -152,7 +152,12 @@ export default class FilterPopover extends Component<Props, State> {
   };
 
   handleFilterChange = (mbql: any[] = []) => {
-    const newFilter = new Filter(mbql, null, this.props.query);
+    const newFilter = new Filter(
+      mbql,
+      this.state.filter?.index(),
+      this.props.query,
+    );
+
     this.setFilter(newFilter);
   };
 
