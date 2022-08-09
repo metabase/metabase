@@ -850,9 +850,9 @@ export class FieldDimension extends Dimension {
       this.query()?.sourceTableId?.(),
     );
     if (virtualTableCardId != null) {
-      const card = this._metadata?.card(virtualTableCardId);
-      const field = card
-        ? _.findWhere(card.result_metadata, {
+      const question = this._metadata?.question(virtualTableCardId);
+      const field = question
+        ? _.findWhere(question.getResultMetadata(), {
             [identifierProp]: this.fieldIdOrName(),
           })
         : undefined;

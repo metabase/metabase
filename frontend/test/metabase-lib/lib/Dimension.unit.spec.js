@@ -1006,7 +1006,10 @@ describe("Dimension", () => {
   describe("Dimension connected to query based on nested card with result_metadata", () => {
     describe("field", () => {
       it("should return a Field with properties from the field in the question's result_metadata", () => {
-        metadata.cards[cardWithResultMetadata.id] = cardWithResultMetadata;
+        metadata.questions[cardWithResultMetadata.id] = new Question(
+          cardWithResultMetadata,
+          metadata,
+        );
 
         const questionWithResultMetadata = new Question(
           cardWithResultMetadata,
