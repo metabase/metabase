@@ -15,19 +15,19 @@ export const FormSection = styled.div`
   padding: 0 1em;
 
   ${breakpointMinSmall} {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
+    padding-left: 1.75rem;
+    padding-right: 1.75rem;
   }
 
   ${breakpointMinMedium} {
-    padding-left: 2rem;
-    padding-right: 2rem;
+    padding-left: 2.625rem;
+    padding-right: 2.625rem;
   }
 `;
 
 export const FormBody = styled(FormSection)`
-  padding-top: 4rem;
-  padding-bottom: 4rem;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
 `;
 
 export const FormBodyContent = styled.div`
@@ -35,8 +35,8 @@ export const FormBodyContent = styled.div`
 `;
 
 export const FormFooter = styled.div`
-  padding-top: 4rem;
-  padding-bottom: 4rem;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
   border-top: 1px solid ${color("border")};
 `;
 
@@ -71,8 +71,10 @@ export const FormLabelContent = styled.div`
 `;
 
 export const FormLabelTitle = styled.label`
+  font-size: 0.83em;
   font-weight: bold;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
 `;
 
 export const FormLabelDescription = styled.p`
