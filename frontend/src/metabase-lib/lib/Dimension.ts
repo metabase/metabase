@@ -818,90 +818,119 @@ export class FieldDimension extends Dimension {
     return field;
   }
 
-  field(): Field {
+  _getIdentifierProp() {
+    return this.isIntegerFieldId() ? "id" : "name";
+  }
+
+  _getTrustedFieldCachedOnInstance() {
     if (
       this._fieldInstance &&
       this._fieldInstance._comesFromEndpoint === true
     ) {
       return this._fieldInstance;
     }
+  }
 
-    const identifierProp = this.isIntegerFieldId() ? "id" : "name";
-
-    const getFieldMetadataFromSavedQuestion = () => {
-      const questionAssociatedWithDimension = this.query()?.question();
-      if (questionAssociatedWithDimension?.isSaved()) {
-        const question = this.query()?.question();
-        const field = _.findWhere(question.getResultMetadata(), {
-          [identifierProp]: this.fieldIdOrName(),
-        });
-
-        return field;
-      }
-    };
-
-    const getFieldMetadataFromNestedCard = () => {
-      const virtualTableCardId = getQuestionIdFromVirtualTableId(
-        this.query()?.sourceTableId?.(),
-      );
-      if (virtualTableCardId != null) {
-        const card = this._metadata?.card(virtualTableCardId);
-        const field = card
-          ? _.findWhere(card.result_metadata, {
-              [identifierProp]: this.fieldIdOrName(),
-            })
-          : undefined;
-
-        return field;
-      }
-    };
-
-    const getFieldMetadataFromQueryTable = () => {
-      const table = this.query()?.table();
-      return _.findWhere(table?.fields, {
+  _getFieldMetadataFromSavedQuestion() {
+    const identifierProp = this._getIdentifierProp();
+    const questionAssociatedWithDimension = this.query()?.question();
+    if (questionAssociatedWithDimension?.isSaved()) {
+      const question = this.query()?.question();
+      const field = _.findWhere(question.getResultMetadata(), {
         [identifierProp]: this.fieldIdOrName(),
       });
-    };
 
-    const mergeFields = (field: Field, fieldMetadata) => {
-      if (field) {
-        if (!fieldMetadata) {
-          return field;
-        }
+      return field;
+    }
+  }
 
-        const fieldObject = merge(
-          field instanceof Field ? field.getPlainObject() : field,
-          fieldMetadata,
-        );
-        return this._createField(fieldObject, { hydrate: true });
+  _getFieldMetadataFromNestedCard() {
+    const identifierProp = this._getIdentifierProp();
+    const virtualTableCardId = getQuestionIdFromVirtualTableId(
+      this.query()?.sourceTableId?.(),
+    );
+    if (virtualTableCardId != null) {
+      const card = this._metadata?.card(virtualTableCardId);
+      const field = card
+        ? _.findWhere(card.result_metadata, {
+            [identifierProp]: this.fieldIdOrName(),
+          })
+        : undefined;
+
+      return field;
+    }
+  }
+
+  _getFieldMetadataFromQueryTable() {
+    const identifierProp = this._getIdentifierProp();
+    const table = this.query()?.table();
+    return _.findWhere(table?.fields, {
+      [identifierProp]: this.fieldIdOrName(),
+    });
+  }
+
+  _combineFieldWithExtraMetadata(field: Field | undefined, fieldMetadata) {
+    if (field) {
+      if (!fieldMetadata || field === fieldMetadata) {
+        return field;
       }
 
-      if (fieldMetadata) {
-        return this._createField(fieldMetadata);
-      }
-    };
+      const fieldObject = merge(
+        field instanceof Field ? field.getPlainObject() : field,
+        fieldMetadata instanceof Field
+          ? fieldMetadata.getPlainObject()
+          : fieldMetadata,
+      );
+      return this._createField(fieldObject, { hydrate: true });
+    }
 
-    // the order matters here
-    // check the result_metadata of nested cards first
-    // before checking the fields on the associated Table
-    // because the Table fields are sometimes populated from the metadata object,
-    // so prioritize the LOCAL field metadata over the "global"
+    if (fieldMetadata) {
+      if (fieldMetadata instanceof Field) {
+        return fieldMetadata;
+      }
+
+      return this._createField(fieldMetadata);
+    }
+  }
+
+  field(): Field {
+    /*
+      1. If a Field is cached on the FieldDimension instance, we can shortwire this method and
+         return the cached Field.
+      2. When the associated card is saved, we can always rely on its result_metadata array because it
+         will be populated with relevant Field metadata from the BE.
+      3. Otherwise, when the query is based on another card, check the result_metadata of the nested card.
+         We can't always rely on this.query().table() when a query with a nested card is unsaved
+         because the Table instance may contain field objects that _should_ have local, overriding metadata
+         (e.g. a custom description) but that have been clobbered by the Field instances from the real Table
+         that the nested card is based on.
+      4. Fallback to grabbing the Field off of the query's table, which may be identical to the Field
+         returned from the Metadata object.
+    */
+    const cachedField = this._getTrustedFieldCachedOnInstance();
+    if (cachedField) {
+      return cachedField;
+    }
+
     const fieldMetadata =
-      getFieldMetadataFromSavedQuestion() ||
-      getFieldMetadataFromNestedCard() ||
-      getFieldMetadataFromQueryTable();
+      this._getFieldMetadataFromSavedQuestion() ||
+      this._getFieldMetadataFromNestedCard() ||
+      this._getFieldMetadataFromQueryTable();
 
-    // Field result metadata can be overwritten for models,
-    // so we need to merge regular field object with the model overwrites
+    // The `fieldMetadata` object may have metadata that overrides the regular field object
+    // (e.g. a custom field display name or description on a model)
     const field = this._metadata?.field(this.fieldIdOrName());
-    const combinedField = mergeFields(field, fieldMetadata);
+    const combinedField = this._combineFieldWithExtraMetadata(
+      field,
+      fieldMetadata,
+    );
 
     if (combinedField) {
       return combinedField;
     }
 
-    // despite being unable to find a field, we _might_ still have enough data to know a few things about it
-    // for example, if we have an mbql field reference, it might contain a `base-type`
+    // Despite being unable to find a field, we _might_ still have enough data to know a few things about it.
+    // For example, if we have an mbql field reference, it might contain a `base-type`
     return this._createField({
       id: this.isIntegerFieldId() ? this.fieldIdOrName() : this.mbql(),
       name: this.isStringFieldName() && this.fieldIdOrName(),
