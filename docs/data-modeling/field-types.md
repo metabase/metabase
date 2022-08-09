@@ -87,13 +87,13 @@ When you [X-ray](../users-guide/14-x-rays.md) a table, Metabase considers both t
 
 ### Field Filters
 
-Knowing what field types are and how they work is helpful when using [field filters](/learn/sql-questions/field-filters.html), as you can only create field filters for [certain field types](./13-sql-parameters.md#field-filter-compatible-types).
+Knowing what field types are and how they work is helpful when using [field filters](/learn/sql-questions/field-filters.html), as you can only create field filters for [certain field types](../users-guide/13-sql-parameters.md#field-filter-compatible-types).
 
 ### Editing types in the Data Model page
 
-If you're an administrator, you can edit field types using the [Data Model page](../administration-guide/03-metadata-editing.md) in the Admin Panel.
+If you're an administrator, you can edit field types using the [Data Model page](./metadata-editing.md) in the Admin Panel.
 
-While data types themselves can't be edited in Metabase, admins can manually [cast data types](../administration-guide/03-metadata-editing.md/#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
+While data types themselves can't be edited in Metabase, admins can manually [cast data types](./metadata-editing.md#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
 
 ## Further Reading
 
