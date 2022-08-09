@@ -71,7 +71,7 @@ export const FormLabelContent = styled.div`
 `;
 
 export const FormLabelTitle = styled.label`
-  font-size: 0.83em;
+  font-size: 0.72rem;
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.06em;
