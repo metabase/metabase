@@ -258,7 +258,11 @@ class NativeQueryEditor extends Component {
     this._lastAutoComplete = { timestamp: 0, prefix: null, results: null };
 
     aceLanguageTools.addCompleter({
-      getCompletions: async (editor, session, pos, prefix, callback) => {
+      getCompletions: async (_editor, _session, _pos, prefix, callback) => {
+        if (!this.props.autocompleteResultsFn) {
+          return callback(null, []);
+        }
+
         try {
           let { results, timestamp } = this._lastAutoComplete;
           const cacheHit =
@@ -267,7 +271,11 @@ class NativeQueryEditor extends Component {
           if (!cacheHit) {
             // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
             results = await this.props.autocompleteResultsFn(prefix);
-            this._lastAutoComplete = { timestamp: Date.now(), prefix, results };
+            this._lastAutoComplete = {
+              timestamp: Date.now(),
+              prefix,
+              results,
+            };
           }
 
           // transform results of the API call into what ACE expects
