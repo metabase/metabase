@@ -1,8 +1,8 @@
 import React from "react";
 import { Link } from "react-router";
 import { Formik } from "formik";
-import type { FormikErrors } from "formik";
 import { t } from "ttag";
+import * as Q from "metabase/lib/query/query";
 import { formatValue } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
 import FieldSet from "metabase/components/FieldSet";
@@ -139,7 +139,7 @@ const MetricFormActions = ({
 };
 
 const validate = (values: Partial<Metric>) => {
-  const errors: FormikErrors<Metric> = {};
+  const errors: Record<string, string> = {};
 
   if (!values.name) {
     errors.name = t`Name is required`;
@@ -151,6 +151,12 @@ const validate = (values: Partial<Metric>) => {
 
   if (values.id != null && !values.revision_message) {
     errors.revision_message = t`Revision message is required`;
+  }
+
+  const aggregations =
+    values.definition && Q.getAggregations(values.definition);
+  if (!aggregations || aggregations.length === 0) {
+    errors.definition = t`Aggregation is required`;
   }
 
   return errors;
