@@ -19,6 +19,11 @@ import {
   FormFooterContent,
 } from "./MetricForm.styled";
 
+const QUERY_BUILDER_FEATURES = {
+  filter: true,
+  aggregation: true,
+};
+
 export interface MetricFormProps {
   metric?: Metric;
   previewSummary?: string;
@@ -56,10 +61,7 @@ const MetricForm = ({
                 }
               >
                 <PartialQueryBuilder
-                  features={{
-                    filter: true,
-                    aggregation: true,
-                  }}
+                  features={QUERY_BUILDER_FEATURES}
                   previewSummary={previewValue}
                   updatePreviewSummary={updatePreviewSummary}
                   canChangeTable={isNew}
