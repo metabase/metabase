@@ -1,7 +1,7 @@
 import React, { ReactNode } from "react";
 
 export interface FormLabelProps {
-  title: string;
+  title?: string;
   description?: string;
   children?: ReactNode;
 }

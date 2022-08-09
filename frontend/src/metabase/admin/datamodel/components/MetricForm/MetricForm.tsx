@@ -3,6 +3,7 @@ import { Formik } from "formik";
 import type { FormikErrors } from "formik";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
+import FieldSet from "metabase/components/FieldSet";
 import { Metric } from "metabase-types/api";
 import FormLabel from "../FormLabel/FormLabel";
 import FormInput from "../FormInput/FormInput";
@@ -51,6 +52,18 @@ const MetricForm = ({ metric, onSubmit }: MetricFormProps): JSX.Element => {
                   placeholder={t`This is a good place to be more specific about less obvious metric rules`}
                 />
               </FormLabel>
+              {!isNew && (
+                <FieldSet legend={t`Reason For Changes`} noPadding={false}>
+                  <FormLabel
+                    description={t`Leave a note to explain what changes you made and why they were required.`}
+                  >
+                    <FormTextArea
+                      name="revision_message"
+                      placeholder={t`This will show up in the revision history for this metric to help everyone remember why things changed`}
+                    />
+                  </FormLabel>
+                </FieldSet>
+              )}
             </FormContainer>
           </FormBody>
           {isNew && (
