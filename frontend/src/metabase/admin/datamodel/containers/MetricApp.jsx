@@ -8,7 +8,7 @@ import Metrics from "metabase/entities/metrics";
 
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";
-import MetricForm from "../components/MetricForm/MetricForm";
+import MetricForm from "../components/MetricForm";
 
 const mapDispatchToProps = {
   updatePreviewSummary,
