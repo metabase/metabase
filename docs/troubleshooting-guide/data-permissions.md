@@ -121,7 +121,7 @@ If you can’t solve your problem using the troubleshooting guides:
 [group-permissions]: ../administration-guide/05-setting-permissions.html#key-points-regarding-permissions
 [known-issues]: ./known-issues.html
 [learn-permissions]: /learn/permissions/index.html
-[native-query-editing]: ../administration-guide/data-permissions.html#native-querying
+[native-query-editing]: ../administration-guide/data-permissions.html#native-query-editing
 [no-self-service]: ../administration-guide/data-permissions.html#no-self-service-access
 [pricing]: https://www.metabase.com/pricing
 [proxies]: ./proxies.html

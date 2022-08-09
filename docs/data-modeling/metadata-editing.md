@@ -90,11 +90,11 @@ For the **SQL editor**, **Do Not Include** settings only affect visibility in th
 
 ### Field type
 
-You can use the Data Model page to edit field types for fields in your database. Use the **Type** dropdown menu to select from this [list of options](../users-guide/field-types.md).
+You can use the Data Model page to edit field types for fields in your database. Use the **Type** dropdown menu to select from this [list of options](./field-types.md).
 
 In this same menu, you can also designate a column as the table's **primary key** or **foreign key**.
 
-See the [users guide](../users-guide/field-types.md#list-of-metabase-field-types) for more on types and how they function in Metabase.
+See [Field types](./field-types.md) for more on types and how they function in Metabase.
 
 ### Casting to a specific data type
 
