@@ -721,11 +721,7 @@
         labels         (datetime/format-temporal-string-pair timezone-id
                                                              (map x-axis-rowfn last-rows)
                                                              (x-axis-rowfn cols))
-        series         ;; some stuff
-        settings       ;; some stuff
-        image-bundle   (image-bundle/make-image-bundle
-                         render-type
-                         (js-svg/combo-chart series settings))]
+        image-bundle   (lab-image-bundle :line render-type timezone-id card dashcard data)]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
