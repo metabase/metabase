@@ -53,22 +53,22 @@ const MetricForm = ({
       {({ isValid, handleSubmit }) => (
         <FormRoot onSubmit={handleSubmit}>
           <FormBody>
+            <FormLabel
+              title={isNew ? t`Create Your Metric` : t`Edit Your Metric`}
+              description={
+                isNew
+                  ? t`You can create saved metrics to add a named metric option. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating "Average Price" for an Orders table.`
+                  : t`Make changes to your metric and leave an explanatory note.`
+              }
+            >
+              <PartialQueryBuilder
+                features={QUERY_BUILDER_FEATURES}
+                previewSummary={previewValue}
+                updatePreviewSummary={updatePreviewSummary}
+                canChangeTable={isNew}
+              />
+            </FormLabel>
             <FormBodyContent>
-              <FormLabel
-                title={isNew ? t`Create Your Metric` : t`Edit Your Metric`}
-                description={
-                  isNew
-                    ? t`You can create saved metrics to add a named metric option. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating "Average Price" for an Orders table.`
-                    : t`Make changes to your metric and leave an explanatory note.`
-                }
-              >
-                <PartialQueryBuilder
-                  features={QUERY_BUILDER_FEATURES}
-                  previewSummary={previewValue}
-                  updatePreviewSummary={updatePreviewSummary}
-                  canChangeTable={isNew}
-                />
-              </FormLabel>
               <FormLabel
                 title={t`Name Your Metric`}
                 description={t`Give your metric a name to help others find it.`}
