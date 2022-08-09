@@ -123,6 +123,7 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "sql-editor-autocomplete-match-style",
         display_name: t`SQL Editor autocomplete match`,
         type: "select",
+        defaultValue: "substring",
         options: [
           { value: "substring", name: t`Substring` },
           { value: "prefix", name: t`Prefix` },
