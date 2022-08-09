@@ -5,6 +5,7 @@ export * from "./collection";
 export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
+export * from "./metric";
 export * from "./models";
 export * from "./query";
 export * from "./table";
