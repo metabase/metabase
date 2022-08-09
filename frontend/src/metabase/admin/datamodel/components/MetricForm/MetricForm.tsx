@@ -2,6 +2,7 @@ import React from "react";
 import { Formik } from "formik";
 import type { FormikErrors } from "formik";
 import { t } from "ttag";
+import Button from "metabase/core/components/Button";
 import { Metric } from "metabase-types/api";
 import FormLabel from "../FormLabel/FormLabel";
 import FormInput from "../FormInput/FormInput";
@@ -28,7 +29,7 @@ const MetricForm = ({ metric, onSubmit }: MetricFormProps): JSX.Element => {
       validate={validate}
       onSubmit={onSubmit}
     >
-      {({ handleSubmit }) => (
+      {({ isValid, handleSubmit }) => (
         <FormRoot onSubmit={handleSubmit}>
           <FormBody>
             <FormContainer>
@@ -55,13 +56,29 @@ const MetricForm = ({ metric, onSubmit }: MetricFormProps): JSX.Element => {
           {isNew && (
             <FormFooter>
               <FormSection>
-                <div />
+                <MetricFormActions isValid={isValid} />
               </FormSection>
             </FormFooter>
           )}
         </FormRoot>
       )}
     </Formik>
+  );
+};
+
+interface MetricFormActionsProps {
+  isValid: boolean;
+}
+
+const MetricFormActions = ({
+  isValid,
+}: MetricFormActionsProps): JSX.Element => {
+  return (
+    <div>
+      <Button type="submit" primary={isValid} disabled={!isValid}>
+        {t`Save changes`}
+      </Button>
+    </div>
   );
 };
 
