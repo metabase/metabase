@@ -128,24 +128,6 @@
                                                   (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
-;; (defn timelineseries-bar
-;;   "Clojure entrypoint to render a timeseries bar chart. Rows should be tuples of [datetime numeric-value]. Labels is a
-;;   map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-;;   [rows labels settings]
-;;   (let [svg-string (.asString (js/execute-fn-name @context "timeseries_bar" rows
-;;                                                   (map (fn [[k v]] [(name k) v]) labels)
-;;                                                   (json/generate-string settings)))]
-;;     (svg-string->bytes svg-string)))
-
-;; (defn timelineseries-area
-;;   "Clojure entrypoint to render a timeseries area chart. Rows should be tuples of [datetime numeric-value]. Labels is a
-;;   map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-;;   [rows labels settings]
-;;   (let [svg-string (.asString (js/execute-fn-name @context "timeseries_area" rows
-;;                                                   (map (fn [[k v]] [(name k) v]) labels)
-;;                                                   (json/generate-string settings)))]
-;;     (svg-string->bytes svg-string)))
-
 (defn combo-chart
   "Clojure entrypoint to render a combo or multiple chart.
   These are different conceptions in the BE but being smushed together
@@ -160,15 +142,6 @@
                                                   (json/generate-string settings)
                                                   (json/generate-string (:colors settings))))]
     (svg-string->bytes svg-string)))
-
-;; (defn categorical-line
-;;   "Clojure entrypoint to render a categorical line chart. Rows should be tuples of [stringable numeric-value]. Labels is
-;;   a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
-;;   [rows labels settings]
-;;   (let [svg-string (.asString (js/execute-fn-name @context "categorical_line" rows
-;;                                                   (map (fn [[k v]] [(name k) v]) labels)
-;;                                                   (json/generate-string settings)))]
-;;     (svg-string->bytes svg-string)))
 
 (defn categorical-waterfall
   "Clojure entrypoint to render a categorical waterfall chart. Rows should be tuples of [stringable numeric-value]. Labels is
