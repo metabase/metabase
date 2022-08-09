@@ -9,9 +9,14 @@ import { PickerContainer, PickerGrid } from "./InlineCategoryPicker.styled";
 import { isValidOption } from "./utils";
 import { LONG_OPTION_LENGTH } from "./constants";
 
+type Option = [
+  string | number,
+  (string | number)?, // optional remapped display value
+];
+
 interface SimpleCategoryFilterPickerProps {
   filter: Filter;
-  options: (string | number)[];
+  options: Option[];
   onChange: (newFilter: Filter) => void;
 }
 
@@ -31,7 +36,8 @@ export function SimpleCategoryFilterPicker({
   };
 
   const hasShortOptions = !options.find(
-    option => String(option).length > LONG_OPTION_LENGTH,
+    ([value, displayValue]) =>
+      String(displayValue ?? value).length > LONG_OPTION_LENGTH,
   );
   // because we want options to flow by column, we have to explicitly set the number of rows
   const rows = Math.round(options.length / 2);
@@ -39,12 +45,12 @@ export function SimpleCategoryFilterPicker({
   return (
     <PickerContainer data-testid="category-picker">
       <PickerGrid multiColumn={hasShortOptions} rows={rows}>
-        {options.map((option: string | number) => (
+        {options.map(([option, displayOption]) => (
           <Checkbox
             key={option?.toString() ?? "empty"}
             checked={filterValues.includes(option)}
             onChange={e => handleChange(option, e.target.checked)}
-            label={option?.toString() ?? t`empty`}
+            label={(displayOption ?? option)?.toString() ?? t`empty`}
           />
         ))}
       </PickerGrid>
