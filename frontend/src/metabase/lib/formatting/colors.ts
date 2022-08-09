@@ -1,15 +1,17 @@
 import { color } from "metabase/lib/colors";
 
-const colors = [
-  color("brand"),
-  color("accent2"),
-  color("error"),
-  color("accent1"),
-  color("accent4"),
-  color("bg-medium"),
-];
-
-export function assignUserColors(userIds: string[], currentUserId: string) {
+export function assignUserColors(
+  userIds: string[],
+  currentUserId: string,
+  colors = [
+    color("brand"),
+    color("accent2"),
+    color("error"),
+    color("accent1"),
+    color("accent4"),
+    color("bg-medium"),
+  ],
+) {
   const assignments: { [index: string]: string } = {};
   const currentUserColor = colors[0];
   const otherUserColors = colors.slice(1);
