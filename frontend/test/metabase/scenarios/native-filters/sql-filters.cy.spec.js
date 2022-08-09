@@ -143,7 +143,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     // resize window to mobile form factor
     cy.viewport(480, 800);
 
-    cy.findByText("1 active filters").click();
+    cy.findByText("1 active filter").click();
 
     cy.get("fieldset")
       .findByText("Testingparamvisbility77")
