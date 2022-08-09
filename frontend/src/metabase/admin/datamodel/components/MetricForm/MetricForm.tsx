@@ -2,12 +2,14 @@ import React from "react";
 import { Formik } from "formik";
 import type { FormikErrors } from "formik";
 import { t } from "ttag";
+import { formatValue } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
 import FieldSet from "metabase/components/FieldSet";
 import { Metric } from "metabase-types/api";
 import FormLabel from "../FormLabel/FormLabel";
 import FormInput from "../FormInput/FormInput";
 import FormTextArea from "../FormTextArea/FormTextArea";
+import PartialQueryBuilder from "../PartialQueryBuilder";
 import {
   FormRoot,
   FormSection,
@@ -19,11 +21,21 @@ import {
 
 export interface MetricFormProps {
   metric?: Metric;
+  previewSummary?: string;
+  updatePreviewSummary: (previewSummary: string) => void;
   onSubmit: (values: Partial<Metric>) => void;
 }
 
-const MetricForm = ({ metric, onSubmit }: MetricFormProps): JSX.Element => {
+const MetricForm = ({
+  metric,
+  previewSummary,
+  updatePreviewSummary,
+  onSubmit,
+}: MetricFormProps): JSX.Element => {
   const isNew = metric == null;
+  const previewValue = previewSummary
+    ? t`Result: ${formatValue(previewSummary)}`
+    : "";
 
   return (
     <Formik
@@ -35,6 +47,24 @@ const MetricForm = ({ metric, onSubmit }: MetricFormProps): JSX.Element => {
         <FormRoot onSubmit={handleSubmit}>
           <FormBody>
             <FormBodyContent>
+              <FormLabel
+                title={isNew ? t`Create Your Metric` : t`Edit Your Metric`}
+                description={
+                  isNew
+                    ? t`You can create saved metrics to add a named metric option. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating "Average Price" for an Orders table.`
+                    : t`Make changes to your metric and leave an explanatory note.`
+                }
+              >
+                <PartialQueryBuilder
+                  features={{
+                    filter: true,
+                    aggregation: true,
+                  }}
+                  previewSummary={previewValue}
+                  updatePreviewSummary={updatePreviewSummary}
+                  canChangeTable={isNew}
+                />
+              </FormLabel>
               <FormLabel
                 title={t`Name Your Metric`}
                 description={t`Give your metric a name to help others find it.`}
