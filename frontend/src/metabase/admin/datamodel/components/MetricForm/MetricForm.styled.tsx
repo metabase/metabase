@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import Button from "metabase/core/components/Button";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
@@ -42,4 +43,8 @@ export const FormFooter = styled.div`
 export const FormFooterContent = styled.div`
   display: flex;
   align-items: center;
+`;
+
+export const FormSubmitButton = styled(Button)`
+  margin-right: 1rem;
 `;

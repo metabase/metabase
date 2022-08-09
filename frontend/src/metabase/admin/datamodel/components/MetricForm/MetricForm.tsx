@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router";
 import { Formik } from "formik";
 import type { FormikErrors } from "formik";
 import { t } from "ttag";
@@ -17,6 +18,7 @@ import {
   FormBody,
   FormFooter,
   FormFooterContent,
+  FormSubmitButton,
 } from "./MetricForm.styled";
 
 const QUERY_BUILDER_FEATURES = {
@@ -124,8 +126,11 @@ const MetricFormActions = ({
 }: MetricFormActionsProps): JSX.Element => {
   return (
     <div>
-      <Button type="submit" primary={isValid} disabled={!isValid}>
+      <FormSubmitButton type="submit" primary={isValid} disabled={!isValid}>
         {t`Save changes`}
+      </FormSubmitButton>
+      <Button as={Link} to="/admin/datamodel/metrics">
+        {t`Cancel`}
       </Button>
     </div>
   );
