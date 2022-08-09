@@ -10,7 +10,7 @@ import { Metric } from "metabase-types/api";
 import FormLabel from "../FormLabel/FormLabel";
 import FormInput from "../FormInput/FormInput";
 import FormTextArea from "../FormTextArea/FormTextArea";
-import PartialQueryBuilder from "../PartialQueryBuilder";
+import FormQueryBuilder from "../FormQueryBuilder";
 import {
   FormRoot,
   FormSection,
@@ -51,7 +51,7 @@ const MetricForm = ({
       validate={validate}
       onSubmit={onSubmit}
     >
-      {({ isValid, getFieldProps, handleSubmit }) => (
+      {({ isValid, handleSubmit }) => (
         <FormRoot onSubmit={handleSubmit}>
           <FormBody>
             <FormLabel
@@ -62,8 +62,8 @@ const MetricForm = ({
                   : t`Make changes to your metric and leave an explanatory note.`
               }
             >
-              <PartialQueryBuilder
-                {...getFieldProps("definition")}
+              <FormQueryBuilder
+                name="definition"
                 features={QUERY_BUILDER_FEATURES}
                 canChangeTable={isNew}
                 previewSummary={previewValue}
