@@ -26,7 +26,9 @@ const FormQueryBuilder = ({
           features={features}
           canChangeTable={canChangeTable}
           previewSummary={previewSummary}
-          onChange={field.onChange}
+          onChange={(value: string) =>
+            field.onChange({ target: { name, value } })
+          }
           updatePreviewSummary={updatePreviewSummary}
         />
       )}
