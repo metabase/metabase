@@ -469,7 +469,8 @@
                                      :valid-options autocomplete-matching-options}))))))
 
 (api/defendpoint GET "/:id/autocomplete_suggestions"
-  "Return a list of autocomplete suggestions for a given `prefix`.
+  "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
+  `substring` will have priority if both are present.
 
   This is intened for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
   and `Fields` in this `Database`.
@@ -477,12 +478,12 @@
   Tables are returned in the format `[table_name \"Table\"]`;
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
-  [id prefix search]
+  [id prefix substring]
   (api/read-check Database id)
   (try
     (cond
-      search
-      (autocomplete-suggestions id (str "%" search "%"))
+      substring
+      (autocomplete-suggestions id (str "%" substring "%"))
       prefix
       (autocomplete-suggestions id (str prefix "%"))
       :else
