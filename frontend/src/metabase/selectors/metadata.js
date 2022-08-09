@@ -41,7 +41,10 @@ export const getNormalizedFields = createSelector(
 );
 export const getNormalizedMetrics = state => state.entities.metrics;
 export const getNormalizedSegments = state => state.entities.segments;
-export const getNormalizedCards = state => state.entities.questions;
+export const getNormalizedCards = state => {
+  const cards = state.entities.questions;
+  return _.mapObject(cards, card => _.omit(card, "metadata"));
+};
 
 // TODO: these should be denomalized but non-cylical, and only to the same "depth" previous "tableMetadata" was, e.x.
 //
