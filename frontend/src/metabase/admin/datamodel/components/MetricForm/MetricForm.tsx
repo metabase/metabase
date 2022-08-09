@@ -51,7 +51,7 @@ const MetricForm = ({
       validate={validate}
       onSubmit={onSubmit}
     >
-      {({ isValid, handleSubmit }) => (
+      {({ isValid, getFieldProps, handleSubmit }) => (
         <FormRoot onSubmit={handleSubmit}>
           <FormBody>
             <FormLabel
@@ -63,10 +63,11 @@ const MetricForm = ({
               }
             >
               <PartialQueryBuilder
+                {...getFieldProps("definition")}
                 features={QUERY_BUILDER_FEATURES}
+                canChangeTable={isNew}
                 previewSummary={previewValue}
                 updatePreviewSummary={updatePreviewSummary}
-                canChangeTable={isNew}
               />
             </FormLabel>
             <FormBodyContent>
