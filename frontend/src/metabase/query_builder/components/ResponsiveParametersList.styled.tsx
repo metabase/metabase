@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import Button from "metabase/core/components/Button";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList";
 
@@ -15,34 +16,34 @@ export const ResponsiveParametersListRoot = styled.div`
 
 interface ParametersListContainerProps {
   isSmallScreen: boolean;
-  mobileShow: boolean;
+  isShowingMobile: boolean;
 }
 
 export const ParametersListContainer = styled.div<ParametersListContainerProps>`
   background-color: ${color("bg-light")};
 
-  ${({ isSmallScreen, mobileShow }) =>
+  ${({ isSmallScreen, isShowingMobile }) =>
     isSmallScreen &&
-    `
-    position: absolute;
-    top: 0;
-    left: 0;
-    
-    width: 100%;
-    border-bottom: 1px solid ${color("border")};
-    
-    overflow-y: auto;
-    bottom: ${mobileShow ? "0" : "100%"};
-    padding-bottom: ${mobileShow ? "0.5rem" : "0"};
-    opacity: ${mobileShow ? "1" : "0"};
-    transition: opacity 250ms;
+    css`
+      position: absolute;
+      top: 0;
+      left: 0;
 
-    ${StyledParametersList} {
-      position: relative;
-      top: ${mobileShow ? "0" : "15px"};
-      transition: top 250ms;
-    }
-  `}
+      width: 100%;
+      border-bottom: 1px solid ${color("border")};
+
+      overflow-y: auto;
+      bottom: ${isShowingMobile ? "0" : "100%"};
+      padding-bottom: ${isShowingMobile ? "0.5rem" : "0"};
+      opacity: ${isShowingMobile ? "1" : "0"};
+      transition: opacity 250ms;
+
+      ${StyledParametersList} {
+        position: relative;
+        top: ${isShowingMobile ? "0" : "15px"};
+        transition: top 250ms;
+      }
+    `}
 `;
 
 export const ParametersListHeader = styled.div`

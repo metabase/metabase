@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useMemo } from "react";
+import { msgid, ngettext } from "ttag";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import Button from "metabase/core/components/Button";
 
@@ -27,8 +28,8 @@ export const ResponsiveParametersList = ({
   const isSmallScreen = useIsSmallScreen();
 
   const handleFilterButtonClick = useCallback(() => {
-    setShowMobileParameterList(!mobileShowParameterList);
-  }, [mobileShowParameterList]);
+    setShowMobileParameterList(mobileShow => !mobileShow);
+  }, []);
 
   const activeFilters = useMemo(() => {
     return parameters.filter(p => !!p.value).length;
@@ -43,12 +44,18 @@ export const ResponsiveParametersList = ({
           icon="filter"
           onClick={handleFilterButtonClick}
         >
-          {activeFilters > 0 ? `${activeFilters} active filters` : `Filters`}
+          {activeFilters > 0
+            ? ngettext(
+                msgid`${activeFilters} active filter`,
+                `${activeFilters} active filters`,
+                activeFilters,
+              )
+            : `Filters`}
         </FilterButton>
       )}
       <ParametersListContainer
         isSmallScreen={isSmallScreen}
-        mobileShow={mobileShowParameterList}
+        isShowingMobile={mobileShowParameterList}
       >
         {isSmallScreen && (
           <ParametersListHeader>
