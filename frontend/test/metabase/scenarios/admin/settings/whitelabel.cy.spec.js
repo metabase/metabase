@@ -26,9 +26,7 @@ describeEE("formatting > whitelabel", () => {
     beforeEach(() => {
       cy.log("Change company name");
       cy.visit("/admin/settings/whitelabel");
-      cy.findByLabelText("Application Name")
-        .clear()
-        .type(COMPANY_NAME);
+      cy.findByLabelText("Application Name").clear().type(COMPANY_NAME);
       // Helps scroll the page up in order to see "Saved" notification
       cy.findByText("Application Name").click();
       cy.findByText("Saved");
@@ -107,9 +105,7 @@ describeEE("formatting > whitelabel", () => {
       cy.findByLabelText("Favicon").type(
         "https://cdn.ecosia.org/assets/images/ico/favicon.ico",
       );
-      cy.get("ul")
-        .eq(1)
-        .click("right");
+      cy.get("ul").eq(1).click("right");
       cy.findByText("Saved");
       checkFavicon();
     });

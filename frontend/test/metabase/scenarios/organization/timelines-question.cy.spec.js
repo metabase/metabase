@@ -102,9 +102,7 @@ describe("scenarios > organization > timelines > question", () => {
       sidebar().within(() => cy.icon("ellipsis").click());
       cy.findByText("Edit event").click();
 
-      cy.findByLabelText("Event name")
-        .clear()
-        .type("RC2");
+      cy.findByLabelText("Event name").clear().type("RC2");
       cy.findByText("Update").click();
       cy.wait("@updateEvent");
 

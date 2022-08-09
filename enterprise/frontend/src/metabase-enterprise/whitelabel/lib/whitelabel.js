@@ -1,17 +1,10 @@
-import MetabaseSettings from "metabase/lib/settings";
-
 import Color from "color";
+import _ from "underscore";
+import MetabaseSettings from "metabase/lib/settings";
+import { colors, originalColors, lighten } from "metabase/lib/colors/palette";
 
-import { colors, lighten } from "metabase/lib/colors/palette";
-import { addCSSRule } from "metabase/lib/dom";
-
-import { omit } from "lodash";
-import memoize from "lodash.memoize";
-
-export const originalColors = { ...colors };
-
-const BRAND_NORMAL_COLOR = Color(colors.brand).hsl();
-const COLOR_REGEX = /(?:#[a-fA-F0-9]{3}(?:[a-fA-F0-9]{3})?\b|(?:rgb|hsl)a?\(\s*\d+\s*(?:,\s*\d+(?:\.\d+)?%?\s*){2,3}\))/;
+const COLOR_REGEX =
+  /(?:#[a-fA-F0-9]{3}(?:[a-fA-F0-9]{3})?\b|(?:rgb|hsl)a?\(\s*\d+\s*(?:,\s*\d+(?:\.\d+)?%?\s*){2,3}\))/;
 
 const CSS_COLOR_UPDATORS_BY_COLOR_NAME = {};
 const JS_COLOR_UPDATORS_BY_COLOR_NAME = {};
@@ -20,20 +13,11 @@ const JS_COLOR_UPDATORS_BY_COLOR_NAME = {};
 const RANDOM_COLOR = Color({ r: 0xab, g: 0xcd, b: 0xed });
 
 function colorScheme() {
-  // FIXME: Ugh? initially load public setting as "application_color" but if the admin updates it
-  // we need to use "application-colors"
-  return (
-    MetabaseSettings.get("application-colors") ||
-    MetabaseSettings.get("application_colors")
-  );
+  return { ...originalColors, ...MetabaseSettings.get("application-colors") };
 }
 
 function applicationName() {
-  // FIXME: Ugh? see comment in colorScheme()
-  return (
-    MetabaseSettings.get("application-name") ||
-    MetabaseSettings.get("application_name")
-  );
+  return MetabaseSettings.get("application-name");
 }
 
 function walkStyleSheets(sheets, fn) {
@@ -64,9 +48,7 @@ const replaceColors = (cssValue, matchColor, replacementColor) => {
     const color = Color(colorString);
     if (color.hex() === Color(matchColor).hex()) {
       if (color.alpha() < 1) {
-        return Color(replacementColor)
-          .alpha(color.alpha())
-          .string();
+        return Color(replacementColor).alpha(color.alpha()).string();
       } else {
         return replacementColor;
       }
@@ -75,7 +57,7 @@ const replaceColors = (cssValue, matchColor, replacementColor) => {
   });
 };
 
-const getColorStyleProperties = memoize(function() {
+const getColorStyleProperties = _.memoize(function () {
   const properties = [];
   walkStyleSheets(
     document.styleSheets,
@@ -111,11 +93,6 @@ function initColorCSS(colorName) {
   }
   CSS_COLOR_UPDATORS_BY_COLOR_NAME[colorName] = [];
 
-  // special updator for brand
-  if (colorName === "brand") {
-    initCSSBrandHueUpdator();
-  }
-
   const colorMappings = getCSSColorMapping(colorName);
   // look for CSS rules which have colors matching the brand colors or very light or desaturated
   for (const {
@@ -135,19 +112,6 @@ function initColorCSS(colorName) {
       }
     }
   }
-}
-
-function initCSSBrandHueUpdator() {
-  // initialize the ".brand-hue" CSS rule, which is used to change the hue of images which should
-  // only contain the brand color or completely desaturated colors
-  const rotateHueRule = addCSSRule(".brand-hue", "filter: hue-rotate(0);");
-  CSS_COLOR_UPDATORS_BY_COLOR_NAME["brand"].push(themeColor => {
-    const degrees =
-      Color(themeColor)
-        .hsl()
-        .hue() - BRAND_NORMAL_COLOR.hue();
-    rotateHueRule.style["filter"] = `hue-rotate(${degrees}deg)`;
-  });
 }
 
 function initColorJS(colorName) {
@@ -191,7 +155,7 @@ function updateColorsCSS() {
     used in CSS and variables are preserved during the build.
    */
   const scheme = colorScheme();
-  const colors = omit(scheme, ["filter", "summarize", "accent0"]);
+  const colors = _.omit(scheme, ["filter", "summarize", "accent0"]);
   for (const [colorName, themeColor] of Object.entries(colors)) {
     updateColorCSS(colorName, themeColor);
   }

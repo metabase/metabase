@@ -50,8 +50,8 @@ export default createEntity({
     },
   },
 
-  reducer: (state = {}, { type, payload }) => {
-    if (type === Questions.actionTypes.CREATE) {
+  reducer: (state = {}, { type, payload, error }) => {
+    if (type === Questions.actionTypes.CREATE && !error) {
       const { question, status, data } = payload;
       if (question) {
         const schema = getCollectionVirtualSchemaId(question.collection);
@@ -71,16 +71,17 @@ export default createEntity({
       }
     }
 
-    if (type === Questions.actionTypes.UPDATE) {
+    if (type === Questions.actionTypes.UPDATE && !error) {
       const { question } = payload;
       const schemaId = getCollectionVirtualSchemaId(question.collection);
 
       const virtualQuestionId = getQuestionVirtualTableId(question);
-      const previousSchemaContainingTheQuestion = getPreviousSchemaContainingTheQuestion(
-        state,
-        schemaId,
-        virtualQuestionId,
-      );
+      const previousSchemaContainingTheQuestion =
+        getPreviousSchemaContainingTheQuestion(
+          state,
+          schemaId,
+          virtualQuestionId,
+        );
 
       if (previousSchemaContainingTheQuestion) {
         state = removeVirtualQuestionFromSchema(
@@ -95,6 +96,10 @@ export default createEntity({
       }
 
       return updateIn(state, [schemaId, "tables"], tables => {
+        if (!tables) {
+          return tables;
+        }
+
         if (question.archived) {
           return tables.filter(id => id !== virtualQuestionId);
         }

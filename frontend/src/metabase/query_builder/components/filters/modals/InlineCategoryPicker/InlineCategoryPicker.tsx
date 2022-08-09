@@ -2,25 +2,30 @@ import React, { useState, useEffect } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import type Filter from "metabase-lib/lib/queries/structured/Filter";
 import Fields from "metabase/entities/fields";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 
 import Warnings from "metabase/query_builder/components/Warnings";
-import Checkbox from "metabase/core/components/CheckBox";
+
+import { InlineValuePicker } from "../InlineValuePicker";
 
 import { MAX_INLINE_CATEGORIES } from "./constants";
-import {
-  PickerContainer,
-  PickerGrid,
-  Loading,
-} from "./InlineCategoryPicker.styled";
-import { BulkFilterSelect } from "../BulkFilterSelect";
+import { isValidOption } from "./utils";
+
+import { SimpleCategoryFilterPicker } from "./SimpleCategoryFilterPicker";
+
+import { Loading } from "./InlineCategoryPicker.styled";
 
 const mapStateToProps = (state: any, props: any) => {
   const fieldId = props.dimension?.field?.()?.id;
+
+  if (props.dimension?.field?.()?.values?.length) {
+    return { fieldValues: props.dimension?.field?.()?.values };
+  }
+
   const fieldValues =
     fieldId != null
       ? Fields.selectors.getFieldValues(state, {
@@ -35,25 +40,22 @@ const mapDispatchToProps = {
 };
 
 interface InlineCategoryPickerProps {
-  query: StructuredQuery;
   filter?: Filter;
+  tableName?: string;
   newFilter: Filter;
   dimension: Dimension;
   fieldValues: any[];
   fetchFieldValues: ({ id }: { id: number }) => Promise<any>;
   onChange: (newFilter: Filter) => void;
-  onClear: () => void;
 }
 
 export function InlineCategoryPickerComponent({
-  query,
   filter,
   newFilter,
   dimension,
   fieldValues,
   fetchFieldValues,
   onChange,
-  onClear,
 }: InlineCategoryPickerProps) {
   const safeFetchFieldValues = useSafeAsyncFunction(fetchFieldValues);
   const shouldFetchFieldValues = !dimension?.field()?.hasFieldValues();
@@ -75,6 +77,17 @@ export function InlineCategoryPickerComponent({
       });
   }, [dimension, safeFetchFieldValues, shouldFetchFieldValues]);
 
+  const hasCheckboxOperator = ["=", "!="].includes(
+    (filter ?? newFilter)?.operatorName(),
+  );
+
+  const hasValidOptions = fieldValues.flat().find(isValidOption);
+
+  const showInlinePicker =
+    hasValidOptions &&
+    fieldValues.length <= MAX_INLINE_CATEGORIES &&
+    hasCheckboxOperator;
+
   if (hasError) {
     return (
       <Warnings
@@ -89,62 +102,22 @@ export function InlineCategoryPickerComponent({
     return <Loading size={20} />;
   }
 
-  if (fieldValues.length <= MAX_INLINE_CATEGORIES) {
+  if (showInlinePicker) {
     return (
       <SimpleCategoryFilterPicker
         filter={filter ?? newFilter}
         onChange={onChange}
-        options={fieldValues.flat()}
+        options={fieldValues.flat().filter(isValidOption)}
       />
     );
   }
 
   return (
-    <BulkFilterSelect
-      query={query}
-      filter={filter}
-      dimension={dimension}
+    <InlineValuePicker
+      filter={filter ?? newFilter}
+      field={dimension.field()}
       handleChange={onChange}
-      handleClear={onClear}
     />
-  );
-}
-
-interface SimpleCategoryFilterPickerProps {
-  filter: Filter;
-  options: (string | number)[];
-  onChange: (newFilter: Filter) => void;
-}
-
-export function SimpleCategoryFilterPicker({
-  filter,
-  options,
-  onChange,
-}: SimpleCategoryFilterPickerProps) {
-  const filterValues = filter.arguments().filter(Boolean);
-
-  const handleChange = (option: string | number, checked: boolean) => {
-    const newArgs = checked
-      ? [...filterValues, option]
-      : filterValues.filter(filterValue => filterValue !== option);
-
-    onChange(filter.setArguments(newArgs));
-  };
-
-  return (
-    <PickerContainer data-testid="category-picker">
-      <PickerGrid>
-        {options.map((option: string | number) => (
-          <Checkbox
-            key={option.toString()}
-            checked={filterValues.includes(option)}
-            onChange={e => handleChange(option, e.target.checked)}
-            checkedColor="accent2"
-            label={option.toString()}
-          />
-        ))}
-      </PickerGrid>
-    </PickerContainer>
   );
 }
 

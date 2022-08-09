@@ -10,18 +10,24 @@ export const Loading = styled(LoadingSpinner)`
 `;
 
 export const PickerContainer = styled.div`
-  grid-column: span 2;
-  margin: ${space(2)} 0;
-  padding-bottom: ${space(2)};
   font-weight: bold;
-  border-bottom: 1px solid ${color("border")};
 `;
 
-export const PickerGrid = styled.div`
-  width: 100%;
+interface PickerGridProps {
+  multiColumn?: boolean;
+  rows?: number;
+}
+
+export const PickerGrid = styled.div<PickerGridProps>`
   display: grid;
-  columns: 2;
-  align-items: center;
-  grid-template-columns: repeat(3, 1fr);
+  ${props =>
+    props.multiColumn
+      ? `
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(${props.rows ?? 2}, 1fr);
+    grid-auto-flow: column;
+  `
+      : ""}
+
   gap: ${space(2)};
 `;

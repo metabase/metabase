@@ -435,19 +435,19 @@
              :display_name "Categories"
              :fields       [(merge
                              (field-details (Field (mt/id :categories :id)))
-                             {:table_id         (mt/id :categories)
+                             {:table_id          (mt/id :categories)
                               :semantic_type     "type/PK"
-                              :name             "ID"
-                              :display_name     "ID"
-                              :database_type    "BIGINT"
-                              :base_type        "type/BigInteger"
-                              :effective_type   "type/BigInteger"
-                              :has_field_values "none"
+                              :name              "ID"
+                              :display_name      "ID"
+                              :database_type     "BIGINT"
+                              :base_type         "type/BigInteger"
+                              :effective_type    "type/BigInteger"
+                              :has_field_values  "none"
                               :database_required false})
                             (merge
                              (field-details (Field (mt/id :categories :name)))
                              {:table_id                 (mt/id :categories)
-                              :semantic_type             "type/Name"
+                              :semantic_type            "type/Name"
                               :name                     "NAME"
                               :display_name             "Name"
                               :database_type            "VARCHAR"
@@ -458,7 +458,7 @@
                               :has_field_values         "list"
                               :database_position        1
                               :position                 1
-                              :database_required        false})]
+                              :database_required        true})]
              :id           (mt/id :categories)})
            (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
 

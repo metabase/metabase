@@ -122,7 +122,7 @@ class SharingSidebarInner extends React.Component {
     saveEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
     updateEditingPulse: PropTypes.func.isRequired,
-    pulses: PropTypes.array.isRequired,
+    pulses: PropTypes.array,
     onCancel: PropTypes.func.isRequired,
     setPulseArchived: PropTypes.func.isRequired,
     users: PropTypes.array,
@@ -251,14 +251,8 @@ class SharingSidebarInner extends React.Component {
 
   render() {
     const { editingMode } = this.state;
-    const {
-      pulse,
-      pulses,
-      formInput,
-      testPulse,
-      users,
-      dashboard,
-    } = this.props;
+    const { pulse, pulses, formInput, testPulse, users, dashboard } =
+      this.props;
 
     const isLoading = !pulses || !users || !pulse || !formInput?.channels;
 

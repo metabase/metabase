@@ -10,11 +10,7 @@ export const BetweenConnector = styled.span`
   font-weight: 700;
 `;
 
-interface MultiTimePickerRootProps {
-  direction: string;
-}
-
-export const MultiTimePickerRoot = styled.div<MultiTimePickerRootProps>`
+export const MultiTimePickerRoot = styled.div`
   display: flex;
   flex-wrap: wrap;
   align-items: center;

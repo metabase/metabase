@@ -99,8 +99,14 @@
   (emit [_ x]
     (vswap! results conj (str x))))
 
-(defn- apply-json-query [json-node jq-query]
-  (let [vresults (volatile! [])
+(defn apply-json-query
+  "Executes a jq query on [[object]]."
+  [object jq-query]
+  ;; TODO this is pretty ineficient. We parse with `:as :json`, then reencode within a response
+  ;; I couldn't find a way to get JSONNode out of cheshire, so we fall back to jackson.
+  ;; Should jackson be added explicitly to deps.edn?
+  (let [json-node (.readTree ^ObjectMapper @object-mapper (json/generate-string object))
+        vresults (volatile! [])
         output (ActionOutput. vresults)
         expr (JsonQuery/compile jq-query Versions/JQ_1_6)
         ;; might need to Scope childScope = Scope.newChildScope(rootScope); if root-scope can be modified by expression
@@ -113,30 +119,38 @@
 (defn execute-http-action!
   "Calls an http endpoint based on action and params"
   [action params->value]
-  (let [{:keys [method url body headers]} (:template action)
-        request {:method (keyword method)
-                 :url (parse-and-substitute url params->value)
-                 :accept :json
-                 :as :json
-                 :headers (merge
-                            ;; TODO maybe we want to default Agent here? Maybe Origin/Referer?
-                            {"X-Metabase-Action" (:name action)}
-                            (-> headers
-                                (parse-and-substitute params->value)
-                                (json/decode)))
-                 :body (parse-and-substitute body params->value)}
-        response (http/request request)
-        ;; TODO this is pretty ineficient. We parse with `:as :json`, then reencode within a response
-        ;; I couldn't find a way to get JSONNode out of cheshire, so we fall back to jackson.
-        ;; Should jackson be added explicitly to deps.edn?
-        response-node (.readTree ^ObjectMapper @object-mapper (json/generate-string (select-keys response [:body :headers :status])))]
-    (if-let [error (json/parse-string (apply-json-query response-node (or (:error_handle action) ".status >= 400")))]
-      {:status 400
-       :headers {"Content-Type" "application/json"}
-       :body (when-not (boolean? error) error)}
-      (if-some [response (some->> action :response_handle (apply-json-query response-node))]
-        {:status 200
+  (try
+    (let [{:keys [method url body headers]} (:template action)
+          request {:method (keyword method)
+                   :url (parse-and-substitute url params->value)
+                   :accept :json
+                   :content-type :json
+                   :throw-exceptions false
+                   :headers (merge
+                              ;; TODO maybe we want to default Agent here? Maybe Origin/Referer?
+                              {"X-Metabase-Action" (:name action)}
+                              (-> headers
+                                  (parse-and-substitute params->value)
+                                  (json/decode)))
+                   :body (parse-and-substitute body params->value)}
+          response (-> (http/request request)
+                       (select-keys [:body :headers :status])
+                       (update :body json/decode))
+          error (json/parse-string (apply-json-query response (or (:error_handle action) ".status >= 400")))]
+      (log/trace "Response before handle:" response)
+      (if error
+        {:status 400
          :headers {"Content-Type" "application/json"}
-         :body response}
-        {:status 204
-         :body nil}))))
+         :body (if (boolean? error)
+                 {:remote-status (:status response)}
+                 error)}
+        (if-some [response (some->> action :response_handle (apply-json-query response))]
+          {:status 200
+           :headers {"Content-Type" "application/json"}
+           :body response}
+          {:status 204
+           :body nil})))
+    (catch Exception e
+      (throw (ex-info (str "Problem building request: " (ex-message e))
+                      {:template (:template action)}
+                      e)))))

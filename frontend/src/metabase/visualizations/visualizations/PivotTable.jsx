@@ -27,11 +27,23 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
+import { RowToggleIconRoot } from "./PivotTable.styled";
 
-const getBgLightColor = hasCustomColors =>
-  hasCustomColors ? darken("white", 0.01) : lighten("brand", 0.65);
-const getBgDarkColor = hasCustomColors =>
-  hasCustomColors ? darken("white", 0.035) : lighten("brand", 0.6);
+const getBgLightColor = (hasCustomColors, isNightMode) => {
+  if (isNightMode) {
+    return lighten("bg-black", 0.3);
+  }
+
+  return hasCustomColors ? darken("white", 0.01) : lighten("brand", 0.65);
+};
+
+const getBgDarkColor = (hasCustomColors, isNightMode) => {
+  if (isNightMode) {
+    return lighten("bg-black", 0.1);
+  }
+
+  return hasCustomColors ? darken("white", 0.035) : lighten("brand", 0.6);
+};
 
 const partitions = [
   {
@@ -244,6 +256,7 @@ class PivotTable extends Component {
       width,
       hasCustomColors,
       onUpdateVisualizationSettings,
+      isNightMode,
     } = this.props;
     if (data == null || !data.cols.some(isPivotGroupColumn)) {
       return null;
@@ -302,7 +315,7 @@ class PivotTable extends Component {
           key={key}
           style={{
             ...style,
-            backgroundColor: getBgLightColor(hasCustomColors),
+            backgroundColor: getBgLightColor(hasCustomColors, isNightMode),
           }}
           className={cx("overflow-hidden", {
             "border-right border-medium": !hasChildren,
@@ -315,6 +328,7 @@ class PivotTable extends Component {
             isGrandTotal={isGrandTotal}
             hasCustomColors={hasCustomColors}
             onClick={this.getCellClickHander(clicked)}
+            isNightMode={isNightMode}
             icon={
               (isSubtotal || hasSubtotal) && (
                 <RowToggleIcon
@@ -323,6 +337,7 @@ class PivotTable extends Component {
                   updateSettings={onUpdateVisualizationSettings}
                   hideUnlessCollapsed={isSubtotal}
                   rowIndex={rowIndex} // used to get a list of "other" paths when open one item in a collapsed column
+                  isNightMode={isNightMode}
                 />
               )
             }
@@ -397,6 +412,7 @@ class PivotTable extends Component {
               isSubtotal={isSubtotal}
               isGrandTotal={isGrandTotal}
               hasCustomColors={hasCustomColors}
+              isNightMode={isNightMode}
               isBody
               onClick={this.getCellClickHander(clicked)}
             />
@@ -417,7 +433,10 @@ class PivotTable extends Component {
                     "border-right border-bottom border-medium": leftHeaderWidth,
                   })}
                   style={{
-                    backgroundColor: getBgLightColor(hasCustomColors),
+                    backgroundColor: getBgLightColor(
+                      hasCustomColors,
+                      isNightMode,
+                    ),
                     // add left spacing unless the header width is 0
                     paddingLeft: leftHeaderWidth && LEFT_HEADER_LEFT_SPACING,
                     width: leftHeaderWidth,
@@ -430,6 +449,7 @@ class PivotTable extends Component {
                       value={this.getColumnTitle(rowIndex)}
                       style={{ width: LEFT_HEADER_CELL_WIDTH }}
                       hasCustomColors={hasCustomColors}
+                      isNightMode={isNightMode}
                       icon={
                         // you can only collapse before the last column
                         index < rowIndexes.length - 1 &&
@@ -439,6 +459,7 @@ class PivotTable extends Component {
                             settings={settings}
                             updateSettings={onUpdateVisualizationSettings}
                             hasCustomColors={hasCustomColors}
+                            isNightMode={isNightMode}
                           />
                         )
                       }
@@ -532,6 +553,7 @@ function RowToggleIcon({
   hideUnlessCollapsed,
   rowIndex,
   hasCustomColors,
+  isNightMode,
 }) {
   if (value == null) {
     return null;
@@ -582,16 +604,13 @@ function RowToggleIcon({
         settingValue => settingValue.concat(ref);
 
   return (
-    <div
-      className={cx(
-        "flex align-center cursor-pointer text-brand-hover text-light",
-      )}
+    <RowToggleIconRoot
       style={{
         padding: "4px",
         borderRadius: "4px",
         backgroundColor: isCollapsed
-          ? getBgLightColor(hasCustomColors)
-          : getBgDarkColor(hasCustomColors),
+          ? getBgLightColor(hasCustomColors, isNightMode)
+          : getBgDarkColor(hasCustomColors, isNightMode),
       }}
       onClick={e => {
         e.stopPropagation();
@@ -601,7 +620,7 @@ function RowToggleIcon({
       }}
     >
       <Icon name={isCollapsed ? "add" : "dash"} size={8} />
-    </div>
+    </RowToggleIconRoot>
   );
 }
 
@@ -615,6 +634,7 @@ function Cell({
   className,
   icon,
   hasCustomColors,
+  isNightMode,
 }) {
   return (
     <div
@@ -623,7 +643,9 @@ function Cell({
         ...(isGrandTotal ? { borderTop: "1px solid white" } : {}),
         ...style,
         ...(isSubtotal
-          ? { backgroundColor: getBgDarkColor(hasCustomColors) }
+          ? {
+              backgroundColor: getBgDarkColor(hasCustomColors, isNightMode),
+            }
           : {}),
       }}
       className={cx(
@@ -646,9 +668,9 @@ function Cell({
 
 function updateValueWithCurrentColumns(storedValue, columns) {
   const currentQueryFieldRefs = columns.map(c => JSON.stringify(c.field_ref));
-  const currentSettingFieldRefs = Object.values(
-    storedValue,
-  ).flatMap(fieldRefs => fieldRefs.map(field_ref => JSON.stringify(field_ref)));
+  const currentSettingFieldRefs = Object.values(storedValue).flatMap(
+    fieldRefs => fieldRefs.map(field_ref => JSON.stringify(field_ref)),
+  );
   const toAdd = _.difference(currentQueryFieldRefs, currentSettingFieldRefs);
   const toRemove = _.difference(currentSettingFieldRefs, currentQueryFieldRefs);
 

@@ -146,9 +146,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       .should("be.visible");
 
     // collapse editor
-    cy.get(".Icon-contract")
-      .first()
-      .click();
+    cy.get(".Icon-contract").first().click();
 
     cy.get("fieldset")
       .findByText("Testingparamvisbility77")

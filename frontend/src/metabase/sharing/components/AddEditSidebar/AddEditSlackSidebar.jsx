@@ -69,9 +69,9 @@ function _AddEditSlackSidebar({
           )}
           scheduleOptions={channelSpec.schedules}
           textBeforeInterval={t`Sent`}
-          textBeforeSendTime={t`${CHANNEL_NOUN_PLURAL[
-            channelSpec && channelSpec.type
-          ] || t`Messages`} will be sent at`}
+          textBeforeSendTime={t`${
+            CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || t`Messages`
+          } will be sent at`}
           onScheduleChange={(newSchedule, changedProp) =>
             onChannelScheduleChange(newSchedule, changedProp)
           }

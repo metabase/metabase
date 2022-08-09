@@ -26,10 +26,7 @@ describeEE("scenarios > question > caching", () => {
     });
 
     popover().within(() => {
-      cy.findByPlaceholderText("24")
-        .clear()
-        .type("48")
-        .blur();
+      cy.findByPlaceholderText("24").clear().type("48").blur();
       cy.button("Save changes").click();
     });
 
@@ -44,10 +41,7 @@ describeEE("scenarios > question > caching", () => {
     });
 
     popover().within(() => {
-      cy.findByDisplayValue("48")
-        .clear()
-        .type("0")
-        .blur();
+      cy.findByDisplayValue("48").clear().type("0").blur();
       cy.button("Save changes").click();
     });
 

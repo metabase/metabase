@@ -230,9 +230,7 @@ describe("scenarios > collection items listing", () => {
 
 function toggleSortingFor(columnName) {
   const testId = "items-table-head";
-  cy.findByTestId(testId)
-    .findByText(columnName)
-    .click();
+  cy.findByTestId(testId).findByText(columnName).click();
 }
 
 function getAllCollectionItemNames() {

@@ -48,9 +48,7 @@ describe("scenarios > setup", () => {
       // "Next" should be disabled on the blank form
       // NOTE: unclear why cy.findByText("Next", { selector: "button" }) doesn't work
       // alternative: cy.contains("Next").should("be.disabled");
-      cy.findByText("Next")
-        .closest("button")
-        .should("be.disabled");
+      cy.findByText("Next").closest("button").should("be.disabled");
 
       cy.findByLabelText("First name").type("Testy");
       cy.findByLabelText("Last name").type("McTestface");
@@ -63,9 +61,7 @@ describe("scenarios > setup", () => {
 
       // the form shouldn't be valid yet and we should display an error
       cy.findByText("must include one number", { exact: false });
-      cy.findByText("Next")
-        .closest("button")
-        .should("be.disabled");
+      cy.findByText("Next").closest("button").should("be.disabled");
 
       // now try a strong password that doesn't match
       const strongPassword = "QJbHYJN3tPW[";
@@ -78,9 +74,7 @@ describe("scenarios > setup", () => {
         .blur();
 
       // tell the user about the mismatch after clicking "Next"
-      cy.findByText("Next")
-        .closest("button")
-        .should("be.disabled");
+      cy.findByText("Next").closest("button").should("be.disabled");
       cy.findByText("passwords do not match", { exact: false });
 
       // fix that mismatch
@@ -125,9 +119,7 @@ describe("scenarios > setup", () => {
       cy.findByText("Show more options").click();
       cy.findByText("H2").click();
       cy.findByLabelText("Display name").type("Metabase H2");
-      cy.findByText("Connect database")
-        .closest("button")
-        .should("be.disabled");
+      cy.findByText("Connect database").closest("button").should("be.disabled");
 
       const dbFilename = "frontend/test/__runner__/empty.db";
       const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
@@ -219,6 +211,8 @@ describe("scenarios > setup", () => {
     cy.location("pathname").should("eq", "/");
   });
 
+  // Values in this test are set through MB_USER_DEFAULTS environment variable!
+  // Please see https://github.com/metabase/metabase/pull/18763 for details
   it("should allow pre-filling user details", () => {
     cy.visit(`/setup#123456`);
 
@@ -250,28 +244,26 @@ describeWithSnowplow("scenarios > setup", () => {
   });
 
   it("should send snowplow events", () => {
-    // 1 - new_instance_created
-    // 2 - pageview
+    // 1 - pageview
     cy.visit(`/setup`);
 
-    // 3 - setup/step_seen
+    // 2 - setup/step_seen
     cy.findByText("Welcome to Metabase");
     cy.button("Let's get started").click();
 
-    // 4 - setup/step_seen
+    // 3 - setup/step_seen
     cy.findByText("What's your preferred language?");
 
-    expectGoodSnowplowEvents(4);
+    expectGoodSnowplowEvents(3);
   });
 
   it("should ignore snowplow failures and work as normal", () => {
-    // 1 - new_instance_created
     blockSnowplow();
     cy.visit(`/setup`);
 
     cy.findByText("Welcome to Metabase");
     cy.button("Let's get started").click();
 
-    expectGoodSnowplowEvents(1);
+    expectGoodSnowplowEvents(0);
   });
 });

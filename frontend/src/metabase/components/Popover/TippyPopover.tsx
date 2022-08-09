@@ -84,10 +84,8 @@ function TippyPopover({
   const shouldShowContent = mounted && content != null;
   const isControlled = props.visible != null;
 
-  const {
-    setupCloseHandler,
-    removeCloseHandler,
-  } = useSequencedContentCloseHandler();
+  const { setupCloseHandler, removeCloseHandler } =
+    useSequencedContentCloseHandler();
 
   const handleShow = useCallback(
     (instance: TippyInstance) => {

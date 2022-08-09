@@ -1,6 +1,7 @@
 (ns metabase.api.setup
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST]]
+            [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
@@ -165,7 +166,7 @@
                                             user-id
                                             {:database engine, :database-id (u/the-id database), :source :setup}))
       ;; return response with session ID and set the cookie as well
-      (mw.session/set-session-cookie request {:id session-id} session))))
+      (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."

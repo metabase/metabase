@@ -51,9 +51,7 @@ describe("issue 18207", () => {
   });
 
   it("should be possible to group by a string expression (metabase#18207)", () => {
-    popover()
-      .contains("Custom Expression")
-      .click();
+    popover().contains("Custom Expression").click();
     popover().within(() => {
       enterCustomColumnDetails({ formula: "Max([Vendor])" });
       cy.findByPlaceholderText("Name (required)").type("LastVendor");
@@ -61,9 +59,7 @@ describe("issue 18207", () => {
     });
 
     cy.contains("Pick a column to group by").click();
-    popover()
-      .contains("Category")
-      .click();
+    popover().contains("Category").click();
 
     visualize();
 

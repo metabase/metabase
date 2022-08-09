@@ -1,10 +1,12 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
+import { TYPE, isa } from "metabase/lib/types";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
+
+const INVALID_TYPES = [TYPE.Structured];
 
 export default function ColumnFilterDrill({ question, clicked }) {
   const query = question.query();
@@ -13,6 +15,7 @@ export default function ColumnFilterDrill({ question, clicked }) {
     !query.isEditable() ||
     !clicked ||
     !clicked.column ||
+    INVALID_TYPES.some(type => isa(clicked.column.base_type, type)) ||
     clicked.column.field_ref == null ||
     clicked.value !== undefined
   ) {
@@ -20,11 +23,10 @@ export default function ColumnFilterDrill({ question, clicked }) {
   }
 
   const { column } = clicked;
-  const initialFilter = new Filter(
-    [],
-    null,
-    query,
-  ).setDimension(column.field_ref, { useDefaultOperator: true });
+  const initialFilter = new Filter([], null, query).setDimension(
+    column.field_ref,
+    { useDefaultOperator: true },
+  );
 
   return [
     {
@@ -40,10 +42,7 @@ export default function ColumnFilterDrill({ question, clicked }) {
           filter={initialFilter}
           onClose={onClose}
           onChangeFilter={filter => {
-            const nextCard = query
-              .filter(filter)
-              .question()
-              .card();
+            const nextCard = query.filter(filter).question().card();
             onChangeCardAndRun({ nextCard });
             onClose();
           }}

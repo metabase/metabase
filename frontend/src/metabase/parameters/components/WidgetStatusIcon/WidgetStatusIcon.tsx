@@ -1,16 +1,6 @@
 import React from "react";
-import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon";
-
-const propTypes = {
-  isFullscreen: PropTypes.bool.isRequired,
-  hasValue: PropTypes.bool.isRequired,
-  noReset: PropTypes.bool.isRequired,
-  noPopover: PropTypes.bool.isRequired,
-  isFocused: PropTypes.bool.isRequired,
-  setValue: PropTypes.func.isRequired,
-};
 
 type Props = {
   isFullscreen: boolean;
@@ -77,5 +67,3 @@ function WidgetStatusIcon({
 }
 
 export default WidgetStatusIcon;
-
-WidgetStatusIcon.propTypes = propTypes;

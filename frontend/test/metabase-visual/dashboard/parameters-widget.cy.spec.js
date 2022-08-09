@@ -53,7 +53,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         cy.get("main")
           .scrollTo(0, 264)
           .then(() => {
-            cy.percySnapshot();
+            cy.createPercySnapshot();
           });
 
         cy.findByTestId("dashboard-parameters-widget-container").should(
@@ -69,7 +69,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         cy.findByTestId("dashboard-parameters-and-cards")
           .scrollTo(0, 464)
           .then(() => {
-            cy.percySnapshot();
+            cy.createPercySnapshot();
           });
 
         cy.findByTestId("edit-dashboard-parameters-widget-container").should(
@@ -87,7 +87,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         cy.get("main")
           .scrollTo(0, 264)
           .then(() => {
-            cy.percySnapshot(null, { widths: [MOBILE_WIDTH] });
+            cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
           });
 
         cy.findByTestId("dashboard-parameters-widget-container").should(
@@ -105,7 +105,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         cy.findByTestId("dashboard-parameters-and-cards")
           .scrollTo(0, 464)
           .then(() => {
-            cy.percySnapshot(null, { widths: [MOBILE_WIDTH] });
+            cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
           });
 
         cy.findByTestId("edit-dashboard-parameters-widget-container").should(
@@ -149,7 +149,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         cy.get("main")
           .scrollTo(0, 264)
           .then(() => {
-            cy.percySnapshot();
+            cy.createPercySnapshot();
           });
 
         cy.findByTestId("dashboard-parameters-widget-container").should(
@@ -167,7 +167,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         cy.findByTestId("dashboard-parameters-and-cards")
           .scrollTo(0, 464)
           .then(() => {
-            cy.percySnapshot();
+            cy.createPercySnapshot();
           });
 
         cy.findByTestId("edit-dashboard-parameters-widget-container").should(
@@ -185,7 +185,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         cy.get("main")
           .scrollTo(0, 264)
           .then(() => {
-            cy.percySnapshot(null, { widths: [MOBILE_WIDTH] });
+            cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
           });
 
         cy.findByTestId("dashboard-parameters-widget-container").should(
@@ -203,7 +203,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         cy.findByTestId("dashboard-parameters-and-cards")
           .scrollTo(0, 464)
           .then(() => {
-            cy.percySnapshot(null, { widths: [MOBILE_WIDTH] });
+            cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
           });
 
         cy.findByTestId("edit-dashboard-parameters-widget-container").should(

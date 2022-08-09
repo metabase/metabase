@@ -56,9 +56,7 @@ describe.skip("filtering based on the remapped column name should result in a co
     cy.wait("@dataset");
     cy.findByText("Today").should("not.exist");
 
-    cy.get(".cellData")
-      .should("have.length", 4)
-      .and("contain", "Created At");
+    cy.get(".cellData").should("have.length", 4).and("contain", "Created At");
   });
 
   it("when done through the filter trigger (metabase#22715-2)", () => {
@@ -71,9 +69,7 @@ describe.skip("filtering based on the remapped column name should result in a co
 
     cy.wait("@dataset");
 
-    cy.get(".cellData")
-      .should("have.length", 4)
-      .and("contain", "Created At");
+    cy.get(".cellData").should("have.length", 4).and("contain", "Created At");
   });
 });
 
@@ -83,10 +79,6 @@ function mapColumnTo({ table, column } = {}) {
     .contains("None")
     .click();
 
-  popover()
-    .findByText(table)
-    .click();
-  popover()
-    .findByText(column)
-    .click();
+  popover().findByText(table).click();
+  popover().findByText(column).click();
 }

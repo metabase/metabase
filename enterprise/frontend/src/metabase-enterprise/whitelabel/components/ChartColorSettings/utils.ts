@@ -1,22 +1,22 @@
 import Color from "color";
-import { chain, flatten, omit, times } from "lodash";
+import _ from "underscore";
 
 export const getChartColorGroups = (): string[][] => {
-  return times(8, i => [`accent${i}`, `accent${i}-light`, `accent${i}-dark`]);
+  return _.times(8, i => [`accent${i}`, `accent${i}-light`, `accent${i}-dark`]);
 };
 
 export const getDefaultChartColors = (
   values: Record<string, string>,
   groups: string[][],
 ) => {
-  return omit({ ...values }, flatten(groups));
+  return _.omit(values, _.flatten(groups));
 };
 
 export const hasCustomChartColors = (
   values: Record<string, string>,
   groups: string[][],
 ) => {
-  return flatten(groups).some(name => values[name] != null);
+  return _.flatten(groups).some(name => values[name] != null);
 };
 
 export const getAutoChartColors = (
@@ -24,34 +24,36 @@ export const getAutoChartColors = (
   groups: string[][],
   palette: Record<string, string>,
 ) => {
-  const oldColors = chain(groups)
+  const oldColors = groups
     .map(([name]) => values[name])
-    .map(value => (value ? Color(value) : undefined))
-    .value();
+    .map(value => (value ? Color(value) : undefined));
 
   const fallbackColor = Color(palette["brand"]);
   const newColors = getAutoColors(oldColors, fallbackColor);
-  const defaultValues = getDefaultChartColors(values, groups);
 
-  const newValues = chain(groups)
+  const newValues = groups
     .map(([name], index) => [name, newColors[index]?.hex()])
-    .filter(([_, value]) => value != null)
-    .fromPairs()
-    .value();
+    .filter(([_, value]) => value != null);
 
-  return { ...defaultValues, ...newValues };
+  return { ...values, ...Object.fromEntries(newValues) };
 };
 
 const getAutoColors = (
   oldColors: (Color | undefined)[],
   fallbackColor: Color,
 ) => {
-  const baseColor = oldColors.find(color => color != null) ?? fallbackColor;
+  const oldColor = oldColors.find(color => color != null);
 
   const autoColors: Color[] = [];
-  oldColors.forEach((_, index) =>
-    autoColors.push(getNextColor(index ? autoColors[index - 1] : baseColor)),
-  );
+  oldColors.forEach((_, index) => {
+    if (index === 0 && !oldColor) {
+      autoColors.push(fallbackColor);
+    } else if (index === 0 && oldColor) {
+      autoColors.push(getNextColor(oldColor));
+    } else {
+      autoColors.push(getNextColor(autoColors[index - 1]));
+    }
+  });
 
   const availableColors = autoColors.filter(
     newColor => !isSimilarToColors(newColor, oldColors),
@@ -65,10 +67,7 @@ const getNextColor = (color: Color) => {
   const newHue = (color.hue() + newHueChange) % 360;
   const newSaturation = newHue <= 65 || newHue >= 345 ? 55 : 40;
 
-  return color
-    .hue(newHue)
-    .saturationv(newSaturation)
-    .value(90);
+  return color.hue(newHue).saturationv(newSaturation).value(90);
 };
 
 const isSimilarColor = (newColor: Color, oldColor: Color) => {

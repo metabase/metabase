@@ -198,37 +198,42 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
+(defn- format-and-quote-field-name [driver field-name]
+  (sql.u/quote-name driver :field (ddl.i/format-name driver field-name)))
+
+(defn- field-definition-sql
+  [driver {:keys [field-name base-type field-comment not-null?], :as field-definition}]
+  (let [field-name (format-and-quote-field-name driver field-name)
+        field-type (or (cond
+                         (and (map? base-type) (contains? base-type :native))
+                         (:native base-type)
+
+                         (and (map? base-type) (contains? base-type :natives))
+                         (get-in base-type [:natives driver])
+
+                         base-type
+                         (field-base-type->sql-type driver base-type))
+                       (throw (ex-info (format "Missing datatype for field %s for driver: %s"
+                                               field-name driver)
+                                       {:field  field-definition
+                                        :driver driver})))
+        not-null       (when not-null?
+                         "NOT NULL")
+        inline-comment (inline-column-comment-sql driver field-comment)]
+    (str/join " " (filter some? [field-name field-type not-null inline-comment]))))
+
 (defmethod create-table-sql :sql/test-extensions
-  [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions table-comment]}]
-  (let [quot          #(sql.u/quote-name driver :field (ddl.i/format-name driver %))
-        pk-field-name (quot (pk-field-name driver))]
+  [driver {:keys [database-name], :as _dbdef} {:keys [table-name field-definitions table-comment]}]
+  (let [pk-field-name (format-and-quote-field-name driver (pk-field-name driver))]
     (format "CREATE TABLE %s (%s %s, %s, PRIMARY KEY (%s)) %s;"
             (qualify-and-quote driver database-name table-name)
             pk-field-name (pk-sql-type driver)
             (str/join
              ", "
-             (for [{:keys [field-name base-type field-comment] :as field} field-definitions]
-               (str (format "%s %s"
-                            (quot field-name)
-                            (or (cond
-                                  (and (map? base-type) (contains? base-type :native))
-                                  (:native base-type)
-
-                                  (and (map? base-type) (contains? base-type :natives))
-                                  (get-in base-type [:natives driver])
-
-                                  base-type
-                                  (field-base-type->sql-type driver base-type))
-                                (throw (ex-info (format "Missing datatype for field %s for driver: %s"
-                                                        field-name driver)
-                                                {:field field
-                                                 :driver driver
-                                                 :database-name database-name}))))
-                    (when-let [comment (inline-column-comment-sql driver field-comment)]
-                      (str " " comment)))))
+             (for [field-def field-definitions]
+               (field-definition-sql driver field-def)))
             pk-field-name
             (or (inline-table-comment-sql driver table-comment) ""))))
-
 
 (defmulti drop-table-if-exists-sql
   {:arglists '([driver dbdef tabledef])}

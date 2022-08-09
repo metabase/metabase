@@ -151,13 +151,10 @@ function testOfficialBadgePresence(expectBadge = true) {
 
   // Dashboard Page
   cy.findByText("Official Dashboard").click();
-  closeNavigationSidebar();
-  assertHasCollectionBadge(expectBadge);
+  assertHasCollectionBadgeInNavbar(expectBadge);
 
   // Question Page
-  cy.get("main")
-    .findByText(COLLECTION_NAME)
-    .click();
+  cy.get("header").findByText(COLLECTION_NAME).click();
   cy.findByText("Official Question").click();
   assertHasCollectionBadgeInNavbar(expectBadge);
 
@@ -180,10 +177,7 @@ function testOfficialBadgeInSearch({
   question,
   expectBadge,
 }) {
-  appBar()
-    .findByPlaceholderText("Search…")
-    .as("searchBar")
-    .type(searchQuery);
+  appBar().findByPlaceholderText("Search…").as("searchBar").type(searchQuery);
 
   cy.findByTestId("search-results-list").within(() => {
     assertSearchResultBadge(collection, {
@@ -220,9 +214,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
 }
 
 function openCollection(collectionName) {
-  navigationSidebar()
-    .findByText(collectionName)
-    .click();
+  navigationSidebar().findByText(collectionName).click();
 }
 
 function createAndOpenOfficialCollection({ name }) {
@@ -243,7 +235,7 @@ function changeCollectionTypeTo(type) {
     if (type === "official") {
       cy.findByText("Make collection official").click();
     } else {
-      cy.findByText("Make collection unofficial").click();
+      cy.findByText("Remove Official badge").click();
     }
   });
 }
@@ -256,7 +248,7 @@ function assertNoCollectionTypeInput() {
 
 function assertNoCollectionTypeOption() {
   cy.findByText("Make collection official").should("not.exist");
-  cy.findByText("Make collection unofficial").should("not.exist");
+  cy.findByText("Remove Official badge").should("not.exist");
 }
 
 function assertSidebarIcon(collectionName, expectedIcon) {
@@ -272,15 +264,6 @@ function assertSearchResultBadge(itemName, opts) {
   const { expectBadge } = opts;
   cy.findByText(itemName, opts)
     .parentsUntil("[data-testid=search-result-item]")
-    .within(() => {
-      cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
-    });
-}
-
-function assertHasCollectionBadge(expectBadge = true) {
-  cy.get("main")
-    .findByText(COLLECTION_NAME)
-    .parent()
     .within(() => {
       cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
     });

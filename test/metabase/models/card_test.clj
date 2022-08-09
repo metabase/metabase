@@ -31,37 +31,6 @@
           (is (= 2
                  (get-dashboard-count))))))))
 
-(deftest card-dependencies-test
-  (testing "Segment dependencies"
-    (is (= {:Segment #{2 3}
-            :Metric  #{}}
-           (card/card-dependencies
-            {:dataset_query {:type  :query
-                             :query {:filter [:and
-                                              [:> [:field-id 4] "2014-10-19"]
-                                              [:= [:field-id 5] "yes"]
-                                              [:segment 2]
-                                              [:segment 3]]}}}))))
-
-  (testing "Segment and Metric dependencies"
-    (is (= {:Segment #{1}
-            :Metric  #{7}}
-           (card/card-dependencies
-            {:dataset_query {:type  :query
-                             :query {:aggregation [:metric 7]
-                                     :filter      [:and
-                                                   [:> [:field-id 4] "2014-10-19"]
-                                                   [:= [:field-id 5] "yes"]
-                                                   [:or [:segment 1] [:!= [:field-id 5] "5"]]]}}}))))
-
-  (testing "no dependencies"
-    (is (= {:Segment #{}
-            :Metric  #{}}
-           (card/card-dependencies
-            {:dataset_query {:type  :query
-                             :query {:aggregation nil
-                                     :filter      nil}}})))))
-
 (deftest remove-from-dashboards-when-archiving-test
   (testing "Test that when somebody archives a Card, it is removed from any Dashboards it belongs to"
     (tt/with-temp* [Dashboard     [dashboard]
@@ -139,14 +108,6 @@
            Exception
            (db/update! Card (u/the-id card-a)
              (card-with-source-table (str "card__" (u/the-id card-c)))))))))
-
-(deftest extract-ids-test
-  (doseq [[ids-type expected] {:segment #{1}
-                               :metric  #{2}}]
-    (testing (pr-str (list 'extract-ids ids-type 'card))
-      (is (= expected
-             (#'card/extract-ids ids-type {:query {:fields [[:segment 1]
-                                                            [:metric 2]]}}))))))
 
 (deftest validate-collection-namespace-test
   (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]

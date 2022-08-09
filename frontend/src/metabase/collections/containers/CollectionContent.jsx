@@ -75,13 +75,8 @@ function CollectionContent({
     sort_direction: "asc",
   });
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
-  const {
-    selected,
-    toggleItem,
-    toggleAll,
-    getIsSelected,
-    clear,
-  } = useListSelect(itemKeyFn);
+  const { selected, toggleItem, toggleAll, getIsSelected, clear } =
+    useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
 
   useOnMount(() => {

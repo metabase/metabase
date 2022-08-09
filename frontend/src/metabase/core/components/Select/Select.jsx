@@ -8,13 +8,13 @@ import SelectButton from "metabase/core/components/SelectButton";
 import _ from "underscore";
 import cx from "classnames";
 
-import AccordionList from "../AccordionList";
 import { createSelector } from "reselect";
 
 import { color } from "metabase/lib/colors";
 
 import Uncontrollable from "metabase/hoc/Uncontrollable";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
+import { SelectAccordionList } from "./Select.styled";
 
 const MIN_ICON_WIDTH = 20;
 
@@ -33,6 +33,7 @@ class Select extends Component {
     multiple: PropTypes.bool,
     placeholder: PropTypes.string,
     disabled: PropTypes.bool,
+    hiddenIcons: PropTypes.bool,
 
     // PopoverWithTrigger props
     isInitiallyOpen: PropTypes.bool,
@@ -49,6 +50,7 @@ class Select extends Component {
     searchPlaceholder: PropTypes.string,
     searchFuzzy: PropTypes.bool,
     hideEmptySectionsInSearch: PropTypes.bool,
+    width: PropTypes.number,
 
     optionNameFn: PropTypes.func,
     optionValueFn: PropTypes.func,
@@ -57,6 +59,7 @@ class Select extends Component {
     optionDisabledFn: PropTypes.func,
     optionIconFn: PropTypes.func,
     optionClassNameFn: PropTypes.func,
+    optionStylesFn: PropTypes.func,
   };
 
   static defaultProps = {
@@ -149,6 +152,10 @@ class Select extends Component {
   };
 
   renderItemIcon = item => {
+    if (this.props.hiddenIcons) {
+      return null;
+    }
+
     const icon = this.props.optionIconFn(item);
     if (icon) {
       return (
@@ -196,6 +203,7 @@ class Select extends Component {
       isInitiallyOpen,
       onClose,
       disabled,
+      width,
     } = this.props;
 
     const sections = this._getSections();
@@ -240,15 +248,17 @@ class Select extends Component {
         // this can happen when filtering items via search
         pinInitialAttachment
       >
-        <AccordionList
+        <SelectAccordionList
           hasInitialFocus
           sections={sections}
-          className="MB-Select text-brand"
+          className="MB-Select"
           alwaysExpanded
+          width={width}
           itemIsSelected={this.itemIsSelected}
           itemIsClickable={this.itemIsClickable}
           renderItemName={this.props.optionNameFn}
           getItemClassName={this.props.optionClassNameFn}
+          getItemStyles={this.props.optionStylesFn}
           renderItemDescription={this.props.optionDescriptionFn}
           renderItemIcon={this.renderItemIcon}
           onChange={this.handleChange}

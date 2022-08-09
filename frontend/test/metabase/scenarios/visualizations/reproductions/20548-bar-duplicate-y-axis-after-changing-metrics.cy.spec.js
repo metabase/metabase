@@ -57,9 +57,7 @@ function removeAggregationItem(item) {
 
 function addAggregationItem(item) {
   cy.findByTestId("add-aggregation-button").click();
-  popover()
-    .contains(item)
-    .click();
+  popover().contains(item).click();
 
   cy.wait("@dataset");
 }

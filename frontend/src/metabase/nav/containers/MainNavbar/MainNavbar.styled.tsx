@@ -133,25 +133,6 @@ export const LoadingTitle = styled.h2`
   margin-top: ${space(1)};
 `;
 
-export const ProfileLinkContainer = styled.div<{ isOpen: boolean }>`
-  position: fixed;
-  bottom: 0;
-  // Height is hard-set so it remains
-  // the same as the ArchiveBarContent
-  // in ArchiveApp
-  height: 49px;
-  left: 0;
-  padding: ${space(0)};
-  width: ${props => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
-  border-top: 1px solid ${color("border")};
-  background-color: ${color("white")};
-  display: flex;
-  overflow: hidden;
-  align-items: center;
-  margin-right: ${space(2)};
-  color: ${color("text-light")};
-`;
-
 export const HomePageLink = styled(SidebarLink)`
   padding-left: 12px;
 `;

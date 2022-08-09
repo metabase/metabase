@@ -176,10 +176,7 @@ describeEE("scenarios > admin > permissions > application", () => {
         cy.findByText("Updates").should("not.exist");
 
         // General smoke test
-        cy.get("#setting-site-name")
-          .clear()
-          .type("new name")
-          .blur();
+        cy.get("#setting-site-name").clear().type("new name").blur();
 
         cy.findByText("Saved");
       });

@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from "react";
+import { t } from "ttag";
 
 import StructuredQuery, {
   SegmentOption,
@@ -6,9 +7,10 @@ import StructuredQuery, {
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
-import { isBoolean } from "metabase/lib/schema_metadata";
+import { isBoolean, isDate } from "metabase/lib/schema_metadata";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { DateShortcutOptions } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
 
 import {
   SelectFilterButton,
@@ -20,6 +22,7 @@ export interface BulkFilterSelectProps {
   query: StructuredQuery;
   filter?: Filter;
   dimension: Dimension;
+  dateShortcutOptions?: DateShortcutOptions;
   customTrigger?: ({ onClick }: { onClick: () => void }) => JSX.Element;
   handleChange: (newFilter: Filter) => void;
   handleClear: () => void;
@@ -29,17 +32,33 @@ export const BulkFilterSelect = ({
   query,
   filter,
   dimension,
+  dateShortcutOptions,
   customTrigger,
   handleChange,
   handleClear,
-}: BulkFilterSelectProps): JSX.Element => {
+}: BulkFilterSelectProps) => {
   const name = useMemo(() => {
-    return filter?.displayName({ includeDimension: false });
+    return filter?.displayName({
+      includeDimension: false,
+      includeOperator: false,
+    });
   }, [filter]);
 
   const newFilter = useMemo(() => {
     return getNewFilter(query, dimension);
   }, [query, dimension]);
+
+  const isDateField = useMemo(() => isDate(dimension?.field()), [dimension]);
+
+  const hideArgumentSelector =
+    !isDateField &&
+    ["is-null", "not-null", "is-empty", "not-empty"].includes(
+      filter?.operatorName(),
+    );
+
+  if (hideArgumentSelector) {
+    return null;
+  }
 
   return (
     <TippyPopoverWithTrigger
@@ -47,15 +66,18 @@ export const BulkFilterSelect = ({
       renderTrigger={
         customTrigger
           ? customTrigger
-          : ({ onClick }) => (
+          : ({ onClick, visible }) => (
               <SelectFilterButton
-                hasValue={filter != null}
+                hasValue={!!filter?.isValid()}
                 highlighted
                 aria-label={dimension.displayName()}
                 onClick={onClick}
                 onClear={handleClear}
+                isActive={visible}
               >
-                {name}
+                {filter?.isValid()
+                  ? name
+                  : t`Filter by ${dimension.displayName()}`}
               </SelectFilterButton>
             )
       }
@@ -66,8 +88,11 @@ export const BulkFilterSelect = ({
           isNew={filter == null}
           showCustom={false}
           showFieldPicker={false}
+          showOperatorSelector={false}
+          dateShortcutOptions={dateShortcutOptions}
           onChangeFilter={handleChange}
           onClose={closePopover}
+          checkedColor="brand"
           commitOnBlur
         />
       )}
@@ -134,6 +159,7 @@ export const SegmentFilterSelect = ({
         icon: segment.icon,
       }))}
       value={activeSegmentOptions}
+      hasValue={activeSegmentOptions.length > 0}
       onChange={(e: any) => toggleSegment(e.target.value.changedItem)}
       multiple
       buttonProps={{
@@ -141,6 +167,7 @@ export const SegmentFilterSelect = ({
         highlighted: true,
         onClear: onClearSegments,
       }}
+      placeholder={t`Filter segments`}
       buttonText={
         activeSegmentOptions.length > 1
           ? `${activeSegmentOptions.length} segments`

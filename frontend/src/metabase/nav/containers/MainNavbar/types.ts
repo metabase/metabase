@@ -1,11 +1,5 @@
-export type SelectedEntityItem = {
-  type: "card" | "collection" | "dashboard";
+export interface SelectedItem {
+  type: "card" | "collection" | "dashboard" | "non-entity";
   id?: number | string;
-};
-
-export type SelectedNonEntityItem = {
-  type: "non-entity";
-  url: string;
-};
-
-export type SelectedItem = SelectedEntityItem | SelectedNonEntityItem;
+  url?: string;
+}

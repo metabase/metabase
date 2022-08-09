@@ -100,9 +100,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get(".value-labels")
-        .should("contain", "19")
-        .and("contain", "20.0M");
+      cy.get(".value-labels").should("contain", "19").and("contain", "20.0M");
     });
   });
 });

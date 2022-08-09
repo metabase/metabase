@@ -1,5 +1,6 @@
 (ns metabase.models.action
-  (:require [medley.core :as m]
+  (:require [cheshire.core :as json]
+            [medley.core :as m]
             [metabase.models.interface :as mi]
             [metabase.util :as u]
             [metabase.util.encryption :as encryption]
@@ -10,24 +11,25 @@
 (models/defmodel HTTPAction :http_action)
 (models/defmodel Action :action)
 
+(models/add-type! ::json-with-nested-parameters
+  :in  (comp mi/json-in
+             (fn [template]
+               (u/update-if-exists template :parameters mi/normalize-parameters-list)))
+  :out (comp (fn [template]
+               (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
+             mi/json-out-with-keywordization))
+
 (u/strict-extend (class Action)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:type :keyword})
           :properties (constantly {:timestamped? true})}))
 
-(defn- pre-insert
-  [action]
-  (let [base-action (db/insert! Action (select-keys action [:type]))]
-    (-> action
-        (dissoc :type)
-        (assoc :action_id (u/the-id base-action)))))
-
 (defn- pre-update
   [action]
   ;; All possible sub-type columns
   (when-let [sub-type-action (not-empty (select-keys action [:card_id :name :description :template :response_handle :error_handle]))]
-    (assoc sub-type-action :action_id (:id action))))
+    (assoc sub-type-action :action_id (or (:id action) (:action_id action)))))
 
 (defn- pre-delete
   [action]
@@ -39,8 +41,7 @@
   (merge models/IModelDefaults
          {:primary-key (constantly :action_id) ; This is ok as long as we're 1:1
           :pre-delete pre-delete
-          :pre-update pre-update
-          :pre-insert pre-insert}))
+          :pre-update pre-update}))
 
 (u/strict-extend (class QueryAction)
   models/IModel
@@ -49,13 +50,26 @@
 (u/strict-extend (class HTTPAction)
   models/IModel
   (merge Action-subtype-IModel-impl
-         {:types (constantly {:template :json
-                              :response_handle :json
-                              :error_handle :json})}))
+         {:types (constantly {:template ::json-with-nested-parameters})}))
+
+(defn insert!
+  "Inserts an Action and related HTTPAction or QueryAction. Returns the action id."
+  [action-data]
+  (db/transaction
+    (let [action (db/insert! Action {:type (:type action-data)})
+          model (case (keyword (:type action))
+                  :http HTTPAction
+                  :query QueryAction)]
+      (db/execute! {:insert-into model
+                    :values [(-> action-data
+                                 (dissoc :type)
+                                 (u/update-if-exists :template json/encode)
+                                 (assoc :action_id (:id action)))]})
+      (:id action))))
 
 (def ^:private encrypted-json-out (comp mi/json-out-with-keywordization encryption/maybe-decrypt))
 
-(defn- normalize-query-actions [database actions]
+(defn- normalize-query-actions [actions]
   (when (seq actions)
     (let [cards (->> (db/query {:select [:card.*
                                          [:db.settings :db_settings]
@@ -63,10 +77,7 @@
                                 :from [[:report_card :card]]
                                 :join [:query_action [:= :query_action.card_id :card.id]
                                        [:metabase_database :db] [:= :card.database_id :db.id]]
-                                :where [:and
-                                        [:= :card.is_write true]
-                                        (when database
-                                          [:= :card.database_id database])]})
+                                :where [:= :card.is_write true]})
                      (map (fn [card]
                             (let [disabled (or (:archived card)
                                                (-> card
@@ -101,17 +112,17 @@
                    (merge
                      {:disabled false
                       :parameters []
-                      :parameter_mappings []}
-                     (select-keys http-action [:name :description :template])
+                      :parameter_mappings {}}
+                     (select-keys http-action [:name :description :template :response_handle :error_handle])
                      (select-keys (:template http-action) [:parameters :parameter_mappings])))))
            actions))))
 
 (defn select-actions
   "Select Actions and fill in sub type information.
    `options` is passed to `db/select` `& options` arg"
-  [database & options]
+  [& options]
   (let [{:keys [query http]} (group-by :type (apply db/select Action options))
-        query-actions (normalize-query-actions database query)
+        query-actions (normalize-query-actions query)
         http-actions (normalize-http-actions http)]
     (sort-by :updated_at (concat query-actions http-actions))))
 
@@ -124,7 +135,7 @@
   (if-let [emitter-ids (seq (filter some? (map :id emitters)))]
     (let [emitter-actions (db/select 'EmitterAction :emitter_id [:in emitter-ids])
           action-id-by-emitter-id (into {} (map (juxt :emitter_id :action_id) emitter-actions))
-          actions (m/index-by :id (select-actions nil :id [:in (map :action_id emitter-actions)]))]
+          actions (m/index-by :id (select-actions :id [:in (map :action_id emitter-actions)]))]
       (for [{emitter-id :id, :as emitter} emitters]
         (some-> emitter (assoc :action (get actions (get action-id-by-emitter-id emitter-id))))))
     emitters))

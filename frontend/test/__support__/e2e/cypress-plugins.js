@@ -24,13 +24,8 @@ const isQaDatabase = process.env["QA_DB_ENABLED"];
 
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
-const webpack = require("@cypress/webpack-preprocessor");
-const { resolve } = require("../../../../webpack.config.js");
 
-const webpackPluginOptions = {
-  webpackOptions: { resolve },
-  watchOptions: {},
-};
+const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
 
 module.exports = (on, config) => {
   // `on` is used to hook into various events Cypress emits
@@ -38,10 +33,10 @@ module.exports = (on, config) => {
   require("cypress-grep/src/plugin")(config);
 
   /********************************************************************
-   **                          WEBPACK                               **
+   **                        PREPROCESSOR                            **
    ********************************************************************/
 
-  on("file:preprocessor", webpack(webpackPluginOptions));
+  on("file:preprocessor", createBundler());
 
   /********************************************************************
    **                         BROWSERS                               **

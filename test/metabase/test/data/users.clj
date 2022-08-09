@@ -1,7 +1,6 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
-  (:require [cemerick.friend.credentials :as creds]
-            [clojure.test :as t]
+  (:require [clojure.test :as t]
             [medley.core :as m]
             [metabase.db.connection :as mdb.connection]
             [metabase.http-client :as client]
@@ -11,6 +10,7 @@
             [metabase.server.middleware.session :as mw.session]
             [metabase.test.initialize :as initialize]
             [metabase.util :as u]
+            [metabase.util.password :as u.password]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -167,7 +167,7 @@
           (apply client-fn username args))))))
 
 (s/defn ^:deprecated user->client :- (s/pred fn?)
-  "Returns a `metabase.http-client/client` partially bound with the credentials for User with `username`.
+  "Returns a [[metabase.http-client/client]] partially bound with the credentials for User with `username`.
    In addition, it forces lazy creation of the User if needed.
 
      ((user->client) :get 200 \"meta/table\")
@@ -197,7 +197,7 @@
         (throw (ex-info "User does not exist" {:user user})))
       (try
         (db/execute! {:update User
-                      :set    {:password      (creds/hash-bcrypt user-email)
+                      :set    {:password      (u.password/hash-bcrypt user-email)
                                :password_salt ""}
                       :where  [:= :id user-id]})
         (apply client/client {:username user-email, :password user-email} args)

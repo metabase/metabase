@@ -7,4 +7,5 @@ export interface ListFieldProps {
   optionRenderer: (option: any) => JSX.Element;
   placeholder: string;
   isDashboardFilter?: boolean;
+  checkedColor?: string;
 }

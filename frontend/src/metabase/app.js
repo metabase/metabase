@@ -53,7 +53,7 @@ import { syncHistoryWithStore } from "react-router-redux";
 import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
 
-import GlobalStyles from "metabase/styled-components/theme/global";
+import GlobalStyles from "metabase/styled-components/containers/GlobalStyles";
 
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");

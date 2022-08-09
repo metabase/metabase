@@ -2,10 +2,9 @@
 // @ts-nocheck
 
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { metadata } from "__support__/sample_database_fixture";
-import { getStore } from "__support__/entities-store";
-import { Provider } from "react-redux";
+import { renderWithProviders } from "__support__/ui";
 
 import Field from "metabase-lib/lib/metadata/Field";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
@@ -29,7 +28,7 @@ const booleanField = new Field({
 
 const intField = new Field({
   database_type: "test",
-  semantic_type: "",
+  semantic_type: "type/Integer",
   table_id: 8,
   name: "int_num",
   has_field_values: "none",
@@ -43,7 +42,7 @@ const intField = new Field({
 
 const floatField = new Field({
   database_type: "test",
-  semantic_type: "",
+  semantic_type: "type/Integer",
   table_id: 8,
   name: "float_num",
   has_field_values: "none",
@@ -61,12 +60,12 @@ const categoryField = new Field({
   table_id: 8,
   name: "category_string",
   has_field_values: "list",
-  values: ["Michaelangelo", "Donatello", "Raphael", "Leonardo"],
+  values: [["Michaelangelo"], ["Donatello"], ["Raphael"], ["Leonardo"]],
   dimensions: {},
   dimension_options: [],
-  effective_type: "type/Float",
+  effective_type: "type/Text",
   id: 137,
-  base_type: "type/Float",
+  base_type: "type/Text",
   metadata,
 });
 
@@ -105,12 +104,27 @@ const textField = new Field({
   semantic_type: "",
   table_id: 8,
   name: "text_field",
-  has_field_values: "none",
+  has_field_values: "search",
   values: [],
   dimensions: {},
   dimension_options: [],
   effective_type: "type/Text",
   id: 140,
+  base_type: "type/Text",
+  metadata,
+});
+
+const longTextField = new Field({
+  database_type: "test",
+  semantic_type: "type/Description",
+  table_id: 8,
+  name: "text_field",
+  has_field_values: "search",
+  values: [],
+  dimensions: {},
+  dimension_options: [],
+  effective_type: "type/Text",
+  id: 141,
   base_type: "type/Text",
   metadata,
 });
@@ -122,6 +136,7 @@ metadata.fields[categoryField.id] = categoryField;
 metadata.fields[pkField.id] = pkField;
 metadata.fields[fkField.id] = fkField;
 metadata.fields[textField.id] = textField;
+metadata.fields[longTextField.id] = longTextField;
 
 const card = {
   dataset_query: {
@@ -144,6 +159,7 @@ const categoryDimension = categoryField.dimension();
 const pkDimension = pkField.dimension();
 const fkDimension = fkField.dimension();
 const textDimension = textField.dimension();
+const longTextDimension = longTextField.dimension();
 
 describe("BulkFilterItem", () => {
   it("renders a boolean picker for a boolean filter", () => {
@@ -154,7 +170,7 @@ describe("BulkFilterItem", () => {
     );
     const changeSpy = jest.fn();
 
-    render(
+    renderWithProviders(
       <BulkFilterItem
         query={query}
         filter={testFilter}
@@ -165,11 +181,11 @@ describe("BulkFilterItem", () => {
       />,
     );
 
-    expect(screen.getByLabelText("true")).toBeChecked();
-    expect(screen.getByLabelText("false")).not.toBeChecked();
+    expect(screen.getByLabelText("True")).toBeChecked();
+    expect(screen.getByLabelText("False")).not.toBeChecked();
   });
 
-  it("renders a bulk filter select for integer field type", () => {
+  it("renders a value picker integer field type", () => {
     const testFilter = new Filter(
       ["=", ["field", intField.id, null], 99],
       null,
@@ -177,7 +193,7 @@ describe("BulkFilterItem", () => {
     );
     const changeSpy = jest.fn();
 
-    render(
+    renderWithProviders(
       <BulkFilterItem
         query={query}
         filter={testFilter}
@@ -188,14 +204,10 @@ describe("BulkFilterItem", () => {
       />,
     );
 
-    expect(screen.queryByText("true")).toBeNull();
-    expect(screen.getByTestId("select-button")).toHaveAttribute(
-      "aria-label",
-      "int_num",
-    );
+    screen.getByTestId("value-picker");
   });
 
-  it("renders a bulk filter select for float field type", () => {
+  it("renders a value picker for float field type", () => {
     const testFilter = new Filter(
       ["=", ["field", floatField.id, null], 99],
       null,
@@ -203,7 +215,7 @@ describe("BulkFilterItem", () => {
     );
     const changeSpy = jest.fn();
 
-    render(
+    renderWithProviders(
       <BulkFilterItem
         query={query}
         filter={testFilter}
@@ -213,11 +225,26 @@ describe("BulkFilterItem", () => {
         onRemoveFilter={changeSpy}
       />,
     );
-    expect(screen.queryByText("true")).toBeNull();
-    expect(screen.getByTestId("select-button")).toHaveAttribute(
-      "aria-label",
-      "float_num",
+    screen.getByTestId("value-picker");
+  });
+
+  it("defaults to a between picker for float field type", () => {
+    const changeSpy = jest.fn();
+
+    renderWithProviders(
+      <BulkFilterItem
+        query={query}
+        filter={undefined}
+        dimension={floatDimension}
+        onAddFilter={changeSpy}
+        onChangeFilter={changeSpy}
+        onRemoveFilter={changeSpy}
+      />,
     );
+    screen.getByTestId("value-picker");
+    screen.getByText(/between/i);
+    screen.getByPlaceholderText("Min");
+    screen.getByPlaceholderText("Max");
   });
 
   it("renders a category picker for category type", () => {
@@ -227,19 +254,16 @@ describe("BulkFilterItem", () => {
       query,
     );
     const changeSpy = jest.fn();
-    const store = getStore();
 
-    render(
-      <Provider store={store}>
-        <BulkFilterItem
-          query={query}
-          filter={testFilter}
-          dimension={categoryDimension}
-          onAddFilter={changeSpy}
-          onChangeFilter={changeSpy}
-          onRemoveFilter={changeSpy}
-        />
-      </Provider>,
+    renderWithProviders(
+      <BulkFilterItem
+        query={query}
+        filter={testFilter}
+        dimension={categoryDimension}
+        onAddFilter={changeSpy}
+        onChangeFilter={changeSpy}
+        onRemoveFilter={changeSpy}
+      />,
     );
     screen.getByTestId("category-picker");
   });
@@ -251,22 +275,18 @@ describe("BulkFilterItem", () => {
       query,
     );
     const changeSpy = jest.fn();
-    const store = getStore();
 
-    render(
-      <Provider store={store}>
-        <BulkFilterItem
-          query={query}
-          filter={testFilter}
-          dimension={pkDimension}
-          onAddFilter={changeSpy}
-          onChangeFilter={changeSpy}
-          onRemoveFilter={changeSpy}
-        />
-      </Provider>,
+    renderWithProviders(
+      <BulkFilterItem
+        query={query}
+        filter={testFilter}
+        dimension={pkDimension}
+        onAddFilter={changeSpy}
+        onChangeFilter={changeSpy}
+        onRemoveFilter={changeSpy}
+      />,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(pkField.name);
   });
 
   it("renders a value picker for a foreign key", () => {
@@ -276,22 +296,18 @@ describe("BulkFilterItem", () => {
       query,
     );
     const changeSpy = jest.fn();
-    const store = getStore();
 
-    render(
-      <Provider store={store}>
-        <BulkFilterItem
-          query={query}
-          filter={testFilter}
-          dimension={fkDimension}
-          onAddFilter={changeSpy}
-          onChangeFilter={changeSpy}
-          onRemoveFilter={changeSpy}
-        />
-      </Provider>,
+    renderWithProviders(
+      <BulkFilterItem
+        query={query}
+        filter={testFilter}
+        dimension={fkDimension}
+        onAddFilter={changeSpy}
+        onChangeFilter={changeSpy}
+        onRemoveFilter={changeSpy}
+      />,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(fkField.name);
   });
 
   it("renders a value picker for a text field", () => {
@@ -301,60 +317,66 @@ describe("BulkFilterItem", () => {
       query,
     );
     const changeSpy = jest.fn();
-    const store = getStore();
 
-    render(
-      <Provider store={store}>
-        <BulkFilterItem
-          query={query}
-          filter={testFilter}
-          dimension={textDimension}
-          onAddFilter={changeSpy}
-          onChangeFilter={changeSpy}
-          onRemoveFilter={changeSpy}
-        />
-      </Provider>,
+    renderWithProviders(
+      <BulkFilterItem
+        query={query}
+        filter={testFilter}
+        dimension={textDimension}
+        onAddFilter={changeSpy}
+        onChangeFilter={changeSpy}
+        onRemoveFilter={changeSpy}
+      />,
     );
     screen.getByTestId("value-picker");
-    screen.getByLabelText(textField.name);
-    screen.getByText("foo");
+    screen.getByDisplayValue("foo");
   });
 
   it("defaults key filters to 'is' operator", () => {
     const changeSpy = jest.fn();
-    const store = getStore();
 
-    render(
-      <Provider store={store}>
-        <BulkFilterItem
-          query={query}
-          filter={undefined}
-          dimension={fkDimension}
-          onAddFilter={changeSpy}
-          onChangeFilter={changeSpy}
-          onRemoveFilter={changeSpy}
-        />
-      </Provider>,
+    renderWithProviders(
+      <BulkFilterItem
+        query={query}
+        filter={undefined}
+        dimension={fkDimension}
+        onAddFilter={changeSpy}
+        onChangeFilter={changeSpy}
+        onRemoveFilter={changeSpy}
+      />,
     );
-    screen.getByText("Is");
+    screen.getByText(/is/i);
   });
 
-  it("defaults text filters to 'contains' operator", () => {
+  it("defaults text filters to 'is' operator", () => {
     const changeSpy = jest.fn();
-    const store = getStore();
 
-    render(
-      <Provider store={store}>
-        <BulkFilterItem
-          query={query}
-          filter={undefined}
-          dimension={textDimension}
-          onAddFilter={changeSpy}
-          onChangeFilter={changeSpy}
-          onRemoveFilter={changeSpy}
-        />
-      </Provider>,
+    renderWithProviders(
+      <BulkFilterItem
+        query={query}
+        filter={undefined}
+        dimension={textDimension}
+        onAddFilter={changeSpy}
+        onChangeFilter={changeSpy}
+        onRemoveFilter={changeSpy}
+      />,
     );
-    screen.getByText("Contains");
+    screen.getByText(/is/i);
+  });
+
+  it("defaults long text filters to 'contains' operator", () => {
+    const changeSpy = jest.fn();
+
+    renderWithProviders(
+      <BulkFilterItem
+        query={query}
+        filter={undefined}
+        dimension={longTextDimension}
+        onAddFilter={changeSpy}
+        onChangeFilter={changeSpy}
+        onRemoveFilter={changeSpy}
+      />,
+    );
+    screen.getByText(/contains/i);
   });
 });

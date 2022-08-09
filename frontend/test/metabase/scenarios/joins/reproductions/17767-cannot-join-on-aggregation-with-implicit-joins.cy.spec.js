@@ -28,14 +28,10 @@ describe("issue 17767", () => {
     cy.findByText("Join data").click();
 
     // Join "Previous results" with
-    popover()
-      .contains("Reviews")
-      .click();
+    popover().contains("Reviews").click();
 
     // On
-    popover()
-      .contains("ID")
-      .click();
+    popover().contains("ID").click();
     // =
     popover()
       .contains(/Products? ID/)

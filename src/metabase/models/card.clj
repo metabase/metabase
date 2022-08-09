@@ -4,17 +4,17 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.util :as mbql.u]
             [metabase.models.action :as action]
             [metabase.models.collection :as collection]
-            [metabase.models.dependency :as dependency]
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as mi]
             [metabase.models.params :as params]
             [metabase.models.permissions :as perms]
             [metabase.models.query :as query]
             [metabase.models.revision :as revision]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.moderation :as moderation]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
@@ -63,27 +63,6 @@
 
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
-
-;;; -------------------------------------------------- Dependencies --------------------------------------------------
-
-(defn- extract-ids
-  "Get all the Segment or Metric IDs referenced by a query."
-  [segment-or-metric query]
-  (set
-   (case segment-or-metric
-     :segment (mbql.u/match query [:segment id] id)
-     :metric  (mbql.u/match query [:metric  id] id))))
-
-(defn card-dependencies
-  "Calculate any dependent objects for a given `card`."
-  ([_ _ card]
-   (card-dependencies card))
-  ([{{query-type :type, inner-query :query} :dataset_query}]
-   (when (= :query query-type)
-     {:Metric  (extract-ids :metric inner-query)
-      :Segment (extract-ids :segment inner-query)})))
-
-
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -208,13 +187,14 @@
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
                                  (describe-database query-db-id)))
-                          {:status-code 400})))))))
+                          {:status-code           400
+                           :query-database        query-db-id
+                           :field-filter-database field-db-id})))))))
 
 (defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
   (when is-write?
     (when-not (db/select-one action/QueryAction :card_id card-id)
-      (db/insert! action/QueryAction {:card_id card-id
-                                      :type :query}))))
+      (action/insert! {:card_id card-id :type :query}))))
 
 (defn- delete-actions-when-not-writable! [{is-write? :is_write card-id :id}]
   (when (not is-write?)
@@ -294,8 +274,7 @@
 (defn- pre-delete [{:keys [id]}]
   (db/delete! 'QueryAction :card_id id)
   (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (db/delete! 'Revision :model "Card", :model_id id)
-  (db/delete! 'Dependency :model "Card", :model_id id))
+  (db/delete! 'Revision :model "Card", :model_id id))
 
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
@@ -337,8 +316,55 @@
   (assoc revision/IRevisionedDefaults
          :serialize-instance serialize-instance)
 
-  dependency/IDependent
-  {:dependencies card-dependencies}
-
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+(defmethod serdes.base/extract-query "Card" [_ {:keys [user]}]
+  (serdes.base/raw-reducible-query
+    "Card"
+    {:select     [:card.*]
+     :from       [[:report_card :card]]
+     :left-join  [[:collection :coll] [:= :coll.id :card.collection_id]]
+     :where      (if user
+                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
+                   [:is :coll.personal_owner_id nil])}))
+
+(defmethod serdes.base/extract-one "Card"
+  [_model-name _opts card]
+  ;; Cards have :table_id, :database_id, :collection_id, :creator_id that need conversion.
+  ;; :table_id and :database_id are extracted as just :table_id [database_name schema table_name].
+  ;; :collection_id is extracted as its entity_id or identity-hash.
+  ;; :creator_id as the user's email.
+  (-> (serdes.base/extract-one-basics "Card" card)
+      (update :database_id            serdes.util/export-fk-keyed 'Database :name)
+      (update :table_id               serdes.util/export-table-fk)
+      (update :collection_id          serdes.util/export-fk 'Collection)
+      (update :creator_id             serdes.util/export-fk-keyed 'User :email)
+      (update :dataset_query          serdes.util/export-json-mbql)
+      (update :parameter_mappings     serdes.util/export-parameter-mappings)
+      (update :visualization_settings serdes.util/export-visualization-settings)
+      (dissoc :result_metadata))) ; Not portable, and can be rebuilt on the other side.
+
+(defmethod serdes.base/load-xform "Card"
+  [card]
+  (-> card
+      serdes.base/load-xform-basics
+      (update :database_id            serdes.util/import-fk-keyed 'Database :name)
+      (update :table_id               serdes.util/import-table-fk)
+      (update :creator_id             serdes.util/import-fk-keyed 'User :email)
+      (update :collection_id          serdes.util/import-fk 'Collection)
+      (update :dataset_query          serdes.util/import-json-mbql)
+      (update :parameter_mappings     serdes.util/import-parameter-mappings)
+      (update :visualization_settings serdes.util/import-visualization-settings)))
+
+(defmethod serdes.base/serdes-dependencies "Card"
+  [{:keys [collection_id dataset_query parameter_mappings table_id visualization_settings]}]
+  ;; The Table implicitly depends on the Database.
+  (->> (map serdes.util/mbql-deps parameter_mappings)
+       (reduce set/union)
+       (set/union #{(serdes.util/table->path table_id)
+                    [{:model "Collection" :id collection_id}]})
+       (set/union (serdes.util/mbql-deps dataset_query))
+       (set/union (serdes.util/visualization-settings-deps visualization_settings))
+       vec))

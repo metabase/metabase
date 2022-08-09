@@ -35,14 +35,9 @@ describe("scenarios > question > native > mongo", () => {
     cy.findByTextEnsureVisible("Save question");
 
     modal().within(() => {
-      cy.findByLabelText("Name")
-        .clear()
-        .should("be.empty")
-        .type("mongo count");
+      cy.findByLabelText("Name").clear().should("be.empty").type("mongo count");
 
-      cy.button("Save")
-        .should("not.be.disabled")
-        .click();
+      cy.button("Save").should("not.be.disabled").click();
     });
 
     cy.wait("@createQuestion");

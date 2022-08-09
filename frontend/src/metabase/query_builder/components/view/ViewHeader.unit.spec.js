@@ -55,6 +55,7 @@ const SAVED_QUESTION = {
   name: "Q1",
   description: null,
   collection_id: null,
+  can_write: true,
 };
 
 function getQuestion(card) {
@@ -254,13 +255,12 @@ describe("ViewHeader", () => {
         });
 
         it("offers to filter query results", () => {
-          const { onAddFilter } = setup({
+          const { onOpenModal } = setup({
             question,
             queryBuilderMode: "view",
           });
           fireEvent.click(screen.getByText("Filter"));
-          fireEvent.click(screen.getByLabelText("Show more filters"));
-          expect(onAddFilter).toHaveBeenCalled();
+          expect(onOpenModal).toHaveBeenCalled();
         });
 
         it("offers to summarize query results", () => {
@@ -357,18 +357,20 @@ describe("ViewHeader", () => {
           xhrMock.teardown();
         });
 
-        it("opens details sidebar on question name click", () => {
+        it("calls save function on title update", () => {
           const { onSave } = setup({ question });
           const title = screen.getByTestId("saved-question-header-title");
-          userEvent.type(title, "New Title");
-          fireEvent.blur(title);
+          userEvent.clear(title);
+          userEvent.type(title, "New Title{enter}");
+          expect(title).toHaveValue("New Title");
+          title.blur();
           expect(onSave).toHaveBeenCalled();
         });
 
         it("shows bookmark and action buttons", () => {
           setup({ question });
           expect(
-            screen.queryByTestId("question-action-buttons-container"),
+            screen.queryByTestId("qb-header-info-button"),
           ).toBeInTheDocument();
         });
       });
@@ -386,20 +388,10 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
     expect(onOpenModal).not.toHaveBeenCalled();
   });
 
-  it("displays original question name if a question is started from one", () => {
-    const originalQuestion = getSavedGUIQuestion();
-    setupAdHoc({ originalQuestion });
-
-    expect(screen.queryByText("Started from")).toBeInTheDocument();
-    expect(
-      screen.queryByText(originalQuestion.displayName()),
-    ).toBeInTheDocument();
-  });
-
   it("does not render bookmark and action buttons", () => {
     setupAdHoc();
     expect(
-      screen.queryByTestId("question-action-buttons-container"),
+      screen.queryByTestId("qb-header-info-button"),
     ).not.toBeInTheDocument();
   });
 
@@ -522,16 +514,6 @@ describe("View Header | Not saved native question", () => {
     setupNative();
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
   });
-
-  it("displays original question name if a question is started from one", () => {
-    const originalQuestion = getSavedNativeQuestion();
-    setupNative({ originalQuestion });
-
-    expect(screen.queryByText("Started from")).toBeInTheDocument();
-    expect(
-      screen.queryByText(originalQuestion.displayName()),
-    ).toBeInTheDocument();
-  });
 });
 
 describe("View Header | Saved native question", () => {
@@ -557,5 +539,12 @@ describe("View Header | Saved native question", () => {
   it("doesn't offer to explore results if nested queries are disabled", () => {
     setupSavedNative({ settings: { enableNestedQueries: false } });
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
+  });
+});
+
+describe("View Header | Read only permissions", () => {
+  it("should disable the input field for the question title", () => {
+    setup({ question: getSavedGUIQuestion({ can_write: false }) });
+    expect(screen.queryByTestId("saved-question-header-title")).toBeDisabled();
   });
 });

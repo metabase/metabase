@@ -123,13 +123,13 @@
   (let [field-name (str \$ (field->name field "."))]
     (cond
       (isa? coercion :Coercion/UNIXMicroSeconds->DateTime)
-      {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970}}
+      {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/UNIXMilliSeconds->DateTime)
-      {:$dateFromParts {:millisecond field-name, :year 1970}}
+      {:$dateFromParts {:millisecond field-name, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/UNIXSeconds->DateTime)
-      {:$dateFromParts {:second field-name, :year 1970}}
+      {:$dateFromParts {:second field-name, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/YYYYMMDDHHMMSSString->Temporal)
       {"$dateFromString" {:dateString field-name
@@ -181,11 +181,13 @@
                           (* 24 60 60 1000)]}]})
 
 (defn- truncate-to-resolution [column resolution]
-  (mongo-let [parts {:$dateToParts {:date column}}]
-    {:$dateFromParts (into {} (for [part (concat (take-while (partial not= resolution)
-                                                             [:year :month :day :hour :minute :second :millisecond])
-                                                 [resolution])]
-                                [part (str (name parts) \. (name part))]))}))
+  (mongo-let [parts {:$dateToParts {:timezone (qp.timezone/results-timezone-id)
+                                    :date column}}]
+    {:$dateFromParts (into {:timezone (qp.timezone/results-timezone-id)}
+                           (for [part (concat (take-while (partial not= resolution)
+                                                          [:year :month :day :hour :minute :second :millisecond])
+                                              [resolution])]
+                             [part (str (name parts) \. (name part))]))}))
 
 (defn- with-rvalue-temporal-bucketing
   [field unit]
@@ -245,9 +247,10 @@
   [[_ value {base-type :base_type}]]
   (if (and (isa? base-type :type/MongoBSONID)
            (some? value))
-    ;; Passing a nil to the ObjectId constructor throws an exception
+    ;; Passing nil or "" to the ObjectId constructor throws an exception
     ;; "invalid hexadecimal representation of an ObjectId: []" so, just treat it as nil
-    (ObjectId. (str value))
+    (when (not= value "")
+      (ObjectId. (str value)))
     value))
 
 (defn- $date-from-string [s]

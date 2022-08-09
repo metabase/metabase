@@ -347,7 +347,7 @@ const forms = {
         { name: "is_full_sync", type: "hidden" },
         { name: "is_on_demand", type: "hidden" },
       ].filter(Boolean),
-    normalize: function(database) {
+    normalize: function (database) {
       if (!database.details["let-user-control-scheduling"]) {
         // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults
         return {

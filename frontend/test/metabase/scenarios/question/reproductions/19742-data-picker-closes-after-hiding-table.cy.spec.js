@@ -40,13 +40,9 @@ describe("issue 19742", () => {
 });
 
 function selectFromDropdown(optionName) {
-  popover()
-    .findByText(optionName)
-    .click();
+  popover().findByText(optionName).click();
 }
 
 function hideTable(tableName) {
-  cy.findByText(tableName)
-    .find(".Icon-eye_crossed_out")
-    .click({ force: true });
+  cy.findByText(tableName).find(".Icon-eye_crossed_out").click({ force: true });
 }

@@ -60,12 +60,14 @@
 (api/defendpoint PUT "/:emitter-id"
   "Endpoint to update an emitter."
   [emitter-id :as {emitter :body}]
+  (api/check-404 (Emitter emitter-id))
   (db/update! Emitter emitter-id emitter)
   api/generic-204-no-content)
 
 (api/defendpoint DELETE "/:emitter-id"
   "Endpoint to delete an emitter."
   [emitter-id]
+  (api/check-404 (Emitter emitter-id))
   (db/delete! Emitter :id emitter-id)
   api/generic-204-no-content)
 
@@ -75,66 +77,20 @@
                   s/Keyword s/Any}}
       (su/with-api-error-message "map of parameter name or ID -> map of parameter `:value` and `:type` of the value")))
 
-(comment
-  ;; Assuming things look like this
-;; GET native query action
-:parameters
-;;[
-;;    {
-;;        "id": "2fddf797-838e-81eb-4828-53f947932486",
-;;        "type": "number/=",
-;;        "target": [
-;;            "variable",
-;;            [
-;;                "template-tag",
-;;                "product_id"
-;;            ]
-;;        ],
-;;        "name": "Product",
-;;        "slug": "product_id"
-;;    }
-;;]
-
-;; PUT dashboards/:id
-:emitters
-:parameter_mappings
-;;{
-;;    "2fddf797-838e-81eb-4828-53f947932486": [
-;;        "variable",
-;;        [
-;;            "template-tag",
-;;            "product_id"
-;;        ]
-;;    ]
-;;}
-
-
-;; on execution
-:parameters
-;;{
-;;    "2fddf797-838e-81eb-4828-53f947932486": {
-;;        "value": 1,
-;;        "type": "number/="
-;;    }
-;;}
-
-
-  )
-
 (defn- execute-http-emitter!
   [emitter parameters]
   ;; TODO check the types match
   (let [mapped-params (->> emitter
                            :parameter_mappings
                            (map (fn [[k [param-type param-spec]]]
-                                  (if (= "variable" param-type)
+                                  (if (= "variable" (name param-type))
                                     [k (second param-spec)]
                                     (throw (ex-info "Unimplemented"
                                                     {:parameters parameters
                                                      :parameter_mappings (:parameter_mappings emitter)})))))
                            (into {}))
         params->value (->> parameters
-                           (map (juxt (comp mapped-params key) (comp #(get % "value") val)))
+                           (map (juxt (comp mapped-params key) (comp #(get % :value) val)))
                            (into {}))]
     (http-action/execute-http-action! (:action emitter) params->value)))
 

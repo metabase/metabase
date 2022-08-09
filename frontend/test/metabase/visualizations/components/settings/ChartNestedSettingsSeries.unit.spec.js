@@ -18,14 +18,23 @@ function getSeries(display) {
     },
   ];
 }
+
+const setup = seriesDisplay => {
+  return renderWithProviders(
+    <ChartSettings
+      series={getSeries(seriesDisplay)}
+      initial={{ section: "Display" }}
+    />,
+    {
+      withSettings: true,
+      withEmbedSettings: true,
+    },
+  );
+};
+
 describe("ChartNestedSettingSeries", () => {
   it("shouldn't show line/area/bar buttons for row charts", () => {
-    const { queryByRole } = renderWithProviders(
-      <ChartSettings
-        series={getSeries("row")}
-        initial={{ section: "Display" }}
-      />,
-    );
+    const { queryByRole } = setup("row");
 
     expect(queryByRole("img", { name: /line/i })).not.toBeInTheDocument();
     expect(queryByRole("img", { name: /area/i })).not.toBeInTheDocument();
@@ -33,12 +42,7 @@ describe("ChartNestedSettingSeries", () => {
   });
 
   it("should show line/area/bar buttons for bar charts", () => {
-    const { getByRole } = renderWithProviders(
-      <ChartSettings
-        series={getSeries("bar")}
-        initial={{ section: "Display" }}
-      />,
-    );
+    const { getByRole } = setup("bar");
 
     getByRole("img", { name: /line/i });
     getByRole("img", { name: /area/i });

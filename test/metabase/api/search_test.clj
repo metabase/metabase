@@ -379,7 +379,20 @@
                                  :name     "test segment"}]]
       (perms/revoke-data-perms! (perms-group/all-users) db-id)
       (is (= []
-             (search-request-data :rasta :q "test"))))))
+             (search-request-data :rasta :q "test")))))
+
+  (testing "Databases for which the user does not have access to should not show up in results"
+    (mt/with-temp* [Database [db-1 {:name "db-1"}]
+                    Database [_db-2 {:name "db-2"}]]
+      (is (= #{"db-2" "db-1"}
+             (->> (search-request-data-with sorted-results :rasta :q "db")
+                  (map :name)
+                  set)))
+      (perms/revoke-data-perms! (perms-group/all-users) (:id db-1))
+      (is (= #{"db-2"}
+             (->> (search-request-data-with sorted-results :rasta :q "db")
+                  (map :name)
+                  set))))))
 
 (deftest bookmarks-test
   (testing "Bookmarks are per user, so other user's bookmarks don't cause search results to be altered"
@@ -583,3 +596,16 @@
               (db/update! Pulse (:id pulse) :dashboard_id (:id dashboard))
               (is (= nil
                      (search-for-pulses pulse))))))))))
+
+(deftest card-dataset-query-test
+  (testing "Search results should match a native query's dataset_query column, but not an MBQL query's one."
+    ;; https://github.com/metabase/metabase/issues/24132
+    (mt/with-temp* [Card [mbql-card   {:name          "Venues Count"
+                                       :query_type    "query"
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                    Card [native-card {:name          "Another SQL query"
+                                       :query_type    "native"
+                                       :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]]
+      (is (= ["Another SQL query"]
+             (->> (search-request-data :rasta :q "aggregation")
+                  (map :name)))))))

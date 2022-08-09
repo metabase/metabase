@@ -1,6 +1,6 @@
-FROM eclipse-temurin:11-jre-alpine
+FROM --platform=linux/amd64 eclipse-temurin:11-jre-alpine
 
-ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
+ENV FC_LANG=en-US LC_CTYPE=en_US.UTF-8
 
 # dependencies
 RUN apk add -U bash ttf-dejavu fontconfig curl java-cacerts && \

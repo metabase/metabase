@@ -1,10 +1,13 @@
 (ns metabase.models.segment
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
-  (:require [medley.core :as m]
+  (:require [clojure.set :as set]
+            [medley.core :as m]
             [metabase.models.interface :as mi]
             [metabase.models.revision :as revision]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -78,6 +81,30 @@
    {:serialize-instance serialize-segment
     :diff-map           diff-segments}))
 
+;;; ------------------------------------------------ Serialization ---------------------------------------------------
+
+(defmethod serdes.base/serdes-generate-path "Segment"
+  [_ segment]
+  [(assoc (serdes.base/infer-self-path "Segment" segment)
+          :label (:name segment))])
+
+(defmethod serdes.base/extract-one "Segment"
+  [_model-name _opts segment]
+  (-> (serdes.base/extract-one-basics "Segment" segment)
+      (update :table_id   serdes.util/export-table-fk)
+      (update :creator_id serdes.util/export-fk-keyed 'User :email)
+      (update :definition serdes.util/export-json-mbql)))
+
+(defmethod serdes.base/load-xform "Segment" [segment]
+  (-> segment
+      serdes.base/load-xform-basics
+      (update :table_id   serdes.util/import-table-fk)
+      (update :creator_id serdes.util/import-fk-keyed 'User :email)
+      (update :definition serdes.util/import-json-mbql)))
+
+(defmethod serdes.base/serdes-dependencies "Segment" [{:keys [definition table_id]}]
+  (into [] (set/union #{(serdes.util/table->path table_id)}
+                      (serdes.util/mbql-deps definition))))
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 

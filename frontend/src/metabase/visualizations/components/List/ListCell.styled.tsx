@@ -3,31 +3,14 @@ import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
 
-import { CellType } from "./types";
-
-function getCellWidth(type: CellType) {
-  if (type === "image") {
-    return "5%";
-  }
-  if (type === "pk") {
-    return "2%";
-  }
-  if (type === "primary") {
-    return "30%";
-  }
-  return "unset";
-}
-
-export const CellRoot = styled.td<{ type: CellType }>`
+export const CellRoot = styled.td`
   padding-left: 0.5rem;
   padding-right: 0.5rem;
 
-  color: ${color("text-dark")};
+  color: ${color("text-medium")};
   font-weight: bold;
-  text-align: ${props => (props.type === "secondary" ? "right" : "unset")};
+  text-align: left;
   white-space: nowrap;
-
-  width: ${props => getCellWidth(props.type)};
 `;
 
 export const CellContent = styled.span<{ isClickable: boolean }>`
@@ -35,6 +18,7 @@ export const CellContent = styled.span<{ isClickable: boolean }>`
 
   img {
     border-radius: 99px;
+    height: 36px !important;
   }
 
   ${props =>

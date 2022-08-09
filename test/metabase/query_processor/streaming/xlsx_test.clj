@@ -216,6 +216,9 @@
             (is (= "mmmm, yyyy" (format-string {} month-col)))
             (is (= "m/yyyy"     (format-string {::mb.viz/date-style "M/D/YYYY"} month-col)))
             (is (= "yyyy/m"     (format-string {::mb.viz/date-style "YYYY/M/D"} month-col)))
+            (is (= "mmmm, yyyy" (format-string {::mb.viz/date-style "MMMM D, YYYY"} month-col)))
+            (is (= "mmmm, yyyy" (format-string {::mb.viz/date-style "D MMMM, YYYY"} month-col)))
+            (is (= "mmmm, yyyy" (format-string {::mb.viz/date-style "DDDD, MMMM D, YYYY"} month-col)))
             (is (= "yyyy"       (format-string {} year-col)))
             (is (= "yyyy"       (format-string {::mb.viz/date-style "M/D/YYYY"} year-col)))))
 

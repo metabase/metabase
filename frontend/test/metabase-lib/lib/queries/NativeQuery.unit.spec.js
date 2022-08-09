@@ -113,9 +113,8 @@ describe("NativeQuery", () => {
     describe("setCollectionName(newCollection) selects or updates a target table for you mongo native query", () => {
       it("allows you to update mongo collections", () => {
         const fakeCollectionID = 9999;
-        const fakeMongoQuery = makeMongoQuery("").setCollectionName(
-          fakeCollectionID,
-        );
+        const fakeMongoQuery =
+          makeMongoQuery("").setCollectionName(fakeCollectionID);
         expect(fakeMongoQuery.collection()).toBe(fakeCollectionID);
       });
     });
@@ -195,11 +194,33 @@ describe("NativeQuery", () => {
         expect(q.canRun()).toBe(true);
       });
 
+      it("requires a display name", () => {
+        q = q.setDatasetQuery(
+          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            name: "foo",
+            type: "text",
+          }),
+        );
+
+        expect(q.canRun()).toBe(false);
+
+        q = q.setDatasetQuery(
+          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            name: "foo",
+            type: "text",
+            "display-name": "Foo",
+          }),
+        );
+
+        expect(q.canRun()).toBe(true);
+      });
+
       it("dimension type without a dimension", () => {
         q = q.setDatasetQuery(
           assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
             type: "dimension",
             "widget-type": "category",
+            "display-name": "bar",
           }),
         );
 
@@ -211,6 +232,7 @@ describe("NativeQuery", () => {
             type: "dimension",
             "widget-type": "category",
             dimension: ["field", 123, null],
+            "display-name": "bar",
           }),
         );
 

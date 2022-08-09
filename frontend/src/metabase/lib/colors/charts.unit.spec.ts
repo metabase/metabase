@@ -1,4 +1,4 @@
-import { times } from "lodash";
+import _ from "underscore";
 import { color } from "./palette";
 import { getColorsForValues } from "./charts";
 
@@ -31,7 +31,7 @@ describe("charts", () => {
   });
 
   it("should use harmony colors for > 8 series", () => {
-    const keys = ["count", "sum", "profit", ...times(8, i => `S${i}`)];
+    const keys = ["count", "sum", "profit", ..._.times(8, i => `S${i}`)];
     const existingMapping = { count: color("accent1") };
 
     const newMapping = getColorsForValues(keys, existingMapping);
@@ -49,7 +49,7 @@ describe("charts", () => {
   });
 
   it("should reuse colors for > 24 series", () => {
-    const keys = ["count", "sum", "profit", ...times(48, i => `S${i}`)];
+    const keys = ["count", "sum", "profit", ..._.times(48, i => `S${i}`)];
     const existingMapping = { count: color("accent1") };
 
     const newMapping = getColorsForValues(keys, existingMapping);

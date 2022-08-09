@@ -3,11 +3,11 @@ import { color } from "metabase/lib/colors";
 import Button from "metabase/core/components/Button";
 
 export const Container = styled.div`
-  padding: 1rem 0.5rem;
+  padding: 1rem 0;
   display: flex;
   justify-content: space-between;
   align-items: start;
-  column-gap: 1rem;
+  column-gap: 0.5rem;
   border-radius: 8px;
 `;
 
@@ -26,7 +26,7 @@ export const Text = styled.span`
 
 export const Time = styled.time`
   color: ${color("text-medium")};
-  font-size: 0.875rem;
+  font-size: 0.766rem;
   line-height: 1.25rem;
 `;
 

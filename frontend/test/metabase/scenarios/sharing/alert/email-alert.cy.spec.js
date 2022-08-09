@@ -57,8 +57,5 @@ function openAlertForQuestion(id = 1) {
 }
 
 function toggleChannel(channel) {
-  cy.findByText(channel)
-    .parent()
-    .find("input")
-    .click();
+  cy.findByText(channel).parent().find("input").click();
 }

@@ -77,10 +77,8 @@ import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
 import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
-import DashboardHistoryModal from "metabase/dashboard/components/DashboardHistoryModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
-import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import HomePage from "metabase/home/homepage/containers/HomePage";
@@ -90,6 +88,9 @@ import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
 import { getAdminPaths } from "metabase/admin/app/selectors";
+
+import CreateActionPage from "metabase/writeback/containers/CreateActionPage";
+import EditActionPage from "metabase/writeback/containers/EditActionPage";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
@@ -232,10 +233,8 @@ export const getRoutes = store => (
           title={t`Dashboard`}
           component={DashboardApp}
         >
-          <ModalRoute path="history" modal={DashboardHistoryModal} />
           <ModalRoute path="move" modal={DashboardMoveModal} />
           <ModalRoute path="copy" modal={DashboardCopyModal} />
-          <ModalRoute path="details" modal={DashboardDetailsModal} />
           <ModalRoute path="archive" modal={ArchiveDashboardModal} />
         </Route>
 
@@ -357,6 +356,11 @@ export const getRoutes = store => (
 
         {/* ADMIN */}
         {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
+
+        <Route path="/action">
+          <Route path="create" component={CreateActionPage} />
+          <Route path=":actionId" component={EditActionPage} />
+        </Route>
       </Route>
     </Route>
 
@@ -364,7 +368,7 @@ export const getRoutes = store => (
     <Route
       path="/_internal"
       getChildRoutes={(partialNextState, callback) =>
-        require.ensure([], function(require) {
+        require.ensure([], function (require) {
           callback(null, [require("metabase/internal/routes").default]);
         })
       }

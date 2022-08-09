@@ -36,12 +36,14 @@ export default class DimensionOptions {
   }
 
   sections({ extraItems = [] } = {}): DimensionOptionsSection[] {
-    const [dimension] = this.dimensions;
+    const dimension =
+      this.dimensions.find(dimension => !dimension.isExpression()) ??
+      this.dimensions[0];
     const table = dimension && dimension.field().table;
     const tableName = table ? table.objectName() : null;
     const mainSection: DimensionOptionsSection = {
       name: this.name || tableName,
-      icon: this.icon || "table2",
+      icon: this.icon || "table",
       items: [
         ...extraItems,
         ...this.dimensions.map(dimension => ({

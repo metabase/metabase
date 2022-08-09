@@ -32,7 +32,8 @@ import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { redirectToNewQuestionFlow, updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
 
-import { loadMetadataForCard, resetQB } from "./core";
+import { resetQB } from "./core";
+import { loadMetadataForCard } from "./metadata";
 import {
   handleDashboardParameters,
   getParameterValuesForQuestion,
@@ -323,14 +324,13 @@ async function handleQBInit(
   }
 }
 
-export const initializeQB = (
-  location: LocationDescriptorObject,
-  params: QueryParams,
-) => async (dispatch: Dispatch, getState: GetState) => {
-  try {
-    await handleQBInit(dispatch, getState, { location, params });
-  } catch (error) {
-    console.warn("initializeQB failed because of an error:", error);
-    dispatch(setErrorPage(error));
-  }
-};
+export const initializeQB =
+  (location: LocationDescriptorObject, params: QueryParams) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    try {
+      await handleQBInit(dispatch, getState, { location, params });
+    } catch (error) {
+      console.warn("initializeQB failed because of an error:", error);
+      dispatch(setErrorPage(error));
+    }
+  };

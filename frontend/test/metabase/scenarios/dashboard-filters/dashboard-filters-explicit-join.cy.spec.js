@@ -79,7 +79,7 @@ describe("scenarios > dashboard > filters", () => {
   it("should work properly when connected to the explicitly joined field", () => {
     filterWidget().click();
 
-    cy.findByPlaceholderText(/^Search by/).type("Awe");
+    cy.findByPlaceholderText("Search the list").type("Awe");
 
     selectFromDropdown(["Awesome Concrete Shoes", "Awesome Iron Hat"]);
 

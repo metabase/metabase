@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import moment from "moment";
+import moment from "moment-timezone";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
 import { Collection, Timeline } from "metabase-types/api";

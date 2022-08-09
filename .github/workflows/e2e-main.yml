@@ -148,18 +148,18 @@ jobs:
       env:
         TERM: xterm
 
-    - name: Upload Cypress recording upon failure
+    - name: Upload Cypress Artifacts upon failure
       uses: actions/upload-artifact@v2
       if: failure()
       with:
-        name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
+        name: cypress-artifacts-${{ matrix.folder }}-${{ matrix.edition }}
         path: |
           ./cypress
           ./logs/test.log
         if-no-files-found: ignore
 
   visual-regression-tests:
-    if: env.PERCY_TOKEN != null && ${{ github.ref == 'refs/heads/master' }}
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     needs: build

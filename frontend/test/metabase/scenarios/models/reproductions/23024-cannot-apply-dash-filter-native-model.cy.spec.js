@@ -64,12 +64,8 @@ function mapColumnTo({ table, column } = {}) {
     .contains("None")
     .click();
 
-  popover()
-    .findByText(table)
-    .click();
-  popover()
-    .findByText(column)
-    .click();
+  popover().findByText(table).click();
+  popover().findByText(column).click();
 
   cy.findByDisplayValue(column);
 }

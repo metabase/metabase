@@ -50,4 +50,5 @@ export type Dataset = {
   data: DatasetData;
   json_query: DatasetQuery;
   error?: string;
+  row_count?: number;
 };

@@ -37,9 +37,7 @@ class TableInner extends Base {
   }
 
   newQuestion() {
-    return this.question()
-      .setDefaultQuery()
-      .setDefaultDisplay();
+    return this.question().setDefaultQuery().setDefaultDisplay();
   }
 
   question() {
@@ -132,6 +130,16 @@ class TableInner extends Base {
   connectedTables(): Table[] {
     const fks = this.fks || [];
     return fks.map(fk => new Table(fk.origin.table));
+  }
+
+  primaryKeys(): { field: Field; index: number }[] {
+    const pks = [];
+    this.fields.forEach((field, index) => {
+      if (field.isPK()) {
+        pks.push({ field, index });
+      }
+    });
+    return pks;
   }
 
   /**

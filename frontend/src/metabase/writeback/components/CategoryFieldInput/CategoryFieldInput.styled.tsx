@@ -36,6 +36,7 @@ export const StyledFieldValuesWidget = styled(FieldValuesWidget)`
   }
 
   .TokenField-NewItemInputContainer {
+    height: 100%;
     padding: 12px;
     margin: 0;
 

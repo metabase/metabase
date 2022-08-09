@@ -28,11 +28,9 @@ import QueryModals from "../QueryModals";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
-import FilterSidebar from "./sidebars/FilterSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
-import { ViewSubHeader } from "./ViewHeader";
 import NewQuestionHeader from "./NewQuestionHeader";
 import ViewFooter from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
@@ -147,7 +145,6 @@ class View extends React.Component {
       timelines,
       isResultDirty,
       isShowingSummarySidebar,
-      isShowingFilterSidebar,
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
       runQuestionQuery,
@@ -160,10 +157,11 @@ class View extends React.Component {
       deselectTimelineEvents,
       onOpenModal,
       onCloseSummary,
-      onCloseFilter,
       onCloseTimelines,
       onSave,
     } = this.props;
+
+    const isSaved = question.isSaved();
 
     if (isShowingSummarySidebar) {
       return (
@@ -174,10 +172,6 @@ class View extends React.Component {
           runQuestionQuery={runQuestionQuery}
         />
       );
-    }
-
-    if (isShowingFilterSidebar) {
-      return <FilterSidebar question={question} onClose={onCloseFilter} />;
     }
 
     if (isShowingTimelineSidebar) {
@@ -198,7 +192,7 @@ class View extends React.Component {
       );
     }
 
-    if (isShowingQuestionInfoSidebar) {
+    if (isSaved && isShowingQuestionInfoSidebar) {
       return <QuestionInfoSidebar question={question} onSave={onSave} />;
     }
 
@@ -320,16 +314,8 @@ class View extends React.Component {
   };
 
   renderMain = ({ leftSidebar, rightSidebar }) => {
-    const {
-      query,
-      mode,
-      parameters,
-      isLiveResizable,
-      isPreviewable,
-      isPreviewing,
-      setParameterValue,
-      setIsPreviewing,
-    } = this.props;
+    const { query, mode, parameters, isLiveResizable, setParameterValue } =
+      this.props;
 
     const queryMode = mode && mode.queryMode();
     const ModeFooter = queryMode && queryMode.ModeFooter;
@@ -361,12 +347,6 @@ class View extends React.Component {
             commitImmediately
           />
         )}
-
-        <ViewSubHeader
-          isPreviewable={isPreviewable}
-          isPreviewing={isPreviewing}
-          setIsPreviewing={setIsPreviewing}
-        />
 
         {validationError ? (
           <QueryValidationError error={validationError} />
@@ -465,7 +445,12 @@ class View extends React.Component {
     }
 
     if (card.dataset && queryBuilderMode === "dataset") {
-      return <DatasetEditor {...this.props} />;
+      return (
+        <>
+          <DatasetEditor {...this.props} />
+          <QueryModals {...this.props} />
+        </>
+      );
     }
 
     const isNotebookContainerOpen =

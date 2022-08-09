@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from "react";
-import { times } from "lodash";
+import _ from "underscore";
 import {
   ChartAxis,
   ChartBar,
@@ -28,7 +28,7 @@ const ChartColorSample = ({
   return (
     <ChartRoot>
       <ChartGrid>
-        {times(TICK_COUNT, index => (
+        {_.times(TICK_COUNT, index => (
           <ChartTick key={index} />
         ))}
         <ChartAxis />

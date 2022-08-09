@@ -9,7 +9,7 @@ import {
   setParameterValue,
   openActionParametersModal,
 } from "metabase/dashboard/actions";
-import { executeRowAction } from "metabase/writeback/actions";
+import { executeRowAction } from "metabase/dashboard/writeback-actions";
 import {
   getDataFromClicked,
   getTargetForQueryParams,
@@ -17,7 +17,10 @@ import {
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 import * as Urls from "metabase/lib/urls";
-import { getTemplateTagType } from "metabase/parameters/utils/cards";
+import {
+  getActionTemplateTagType,
+  getActionParameterType,
+} from "metabase/writeback/utils";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
@@ -45,28 +48,30 @@ export default ({ question, clicked }) => {
   }
 
   if (type === "action") {
-    const parameters = getParametersForNativeAction(parameterMapping, {
+    const parameters = getActionParameters(parameterMapping, {
       data,
       extraData,
       clickBehavior,
     });
     const action = extraData.actions[clickBehavior.action];
-    const missingParameters = getNotProvidedParametersForNativeAction(
+    const missingParameters = getNotProvidedActionParameters(
       action,
       parameters,
     );
+    const emitterId = clickBehavior.emitter_id || clickBehavior.id;
 
     if (missingParameters.length > 0) {
       behavior = {
         action: () =>
           openActionParametersModal({
-            emitterId: clickBehavior.emitter_id,
+            emitterId: emitterId,
             props: {
+              description: settings["user_input_modal.description"],
               missingParameters,
               onSubmit: filledMissingParameters =>
                 executeRowAction({
                   dashboard: extraData.dashboard,
-                  emitterId: clickBehavior.emitter_id,
+                  emitterId: emitterId,
                   parameters: {
                     ...parameters,
                     ...filledMissingParameters,
@@ -80,7 +85,7 @@ export default ({ question, clicked }) => {
         action: () =>
           executeRowAction({
             dashboard: extraData.dashboard,
-            emitterId: clickBehavior.emitter_id,
+            emitterId: emitterId,
             parameters,
           }),
       };
@@ -118,17 +123,13 @@ export default ({ question, clicked }) => {
           },
         };
       } else {
-        const targetDashboard = extraData.dashboards[targetId];
         const queryParams = getParameterValuesBySlug(parameterMapping, {
           data,
           extraData,
           clickBehavior,
         });
 
-        const path =
-          clickBehavior.use_public_link && targetDashboard.public_uuid
-            ? Urls.publicDashboard(targetDashboard.public_uuid)
-            : Urls.dashboard({ id: targetId });
+        const path = Urls.dashboard({ id: targetId });
         const url = `${path}?${querystring.stringify(queryParams)}`;
 
         behavior = { url: () => url };
@@ -155,18 +156,9 @@ export default ({ question, clicked }) => {
         }))
         .value();
 
-      let url = null;
-      if (clickBehavior.use_public_link && targetQuestion.publicUUID()) {
-        url = Urls.publicQuestion(
-          targetQuestion.publicUUID(),
-          null,
-          querystring.stringify(queryParams),
-        );
-      } else {
-        url = targetQuestion.isStructured()
-          ? targetQuestion.getUrlWithParameters(parameters, queryParams)
-          : `${targetQuestion.getUrl()}?${querystring.stringify(queryParams)}`;
-      }
+      const url = targetQuestion.isStructured()
+        ? targetQuestion.getUrlWithParameters(parameters, queryParams)
+        : `${targetQuestion.getUrl()}?${querystring.stringify(queryParams)}`;
 
       behavior = { url: () => url };
     }
@@ -181,14 +173,17 @@ export default ({ question, clicked }) => {
   ];
 };
 
-function getParametersForNativeAction(
+function getActionParameters(
   parameterMapping = {},
   { data, extraData, clickBehavior },
 ) {
   const action = extraData.actions[clickBehavior.action];
-  const templateTags = Object.values(
-    action.card.dataset_query.native["template-tags"],
-  );
+
+  const isQueryAction = action.type === "query";
+  const tagsMap = isQueryAction
+    ? action.card.dataset_query.native["template-tags"]
+    : action.template.parameters;
+  const templateTags = Object.values(tagsMap);
 
   const parameters = {};
 
@@ -205,14 +200,22 @@ function getParametersForNativeAction(
 
     parameters[id] = {
       value,
-      type: getTemplateTagType(targetTemplateTag),
+      type: isQueryAction
+        ? getActionTemplateTagType(targetTemplateTag)
+        : getActionParameterType(targetTemplateTag),
     };
   });
 
   return parameters;
 }
 
-function getNotProvidedParametersForNativeAction(action, parameters) {
+function getNotProvidedActionParameters(action, parameters) {
+  return action.type === "query"
+    ? getNotProvidedQueryActionParameters(action, parameters)
+    : getNotProvidedHTTPActionParameters(action, parameters);
+}
+
+function getNotProvidedQueryActionParameters(action, parameters) {
   const mappedParameterIDs = Object.keys(parameters);
 
   const emptyParameterIDs = [];
@@ -223,15 +226,34 @@ function getNotProvidedParametersForNativeAction(action, parameters) {
     }
   });
 
-  const templateTags = Object.values(
-    action.card.dataset_query.native["template-tags"],
-  );
+  const tagsMap = action.card.dataset_query.native["template-tags"];
+  const templateTags = Object.values(tagsMap);
+
   return templateTags.filter(tag => {
     if (!tag.required) {
       return false;
     }
     const isNotMapped = !mappedParameterIDs.includes(tag.id);
     const isMappedButNoValue = emptyParameterIDs.includes(tag.id);
+    return isNotMapped || isMappedButNoValue;
+  });
+}
+
+function getNotProvidedHTTPActionParameters(action, parameters) {
+  const mappedParameterIDs = Object.keys(parameters);
+
+  const emptyParameterIDs = [];
+  mappedParameterIDs.forEach(parameterId => {
+    const { value } = parameters[parameterId];
+    if (value === undefined) {
+      emptyParameterIDs.push(parameterId);
+    }
+  });
+
+  const allParameters = Object.values(action.parameters);
+  return allParameters.filter(parameter => {
+    const isNotMapped = !mappedParameterIDs.includes(parameter.id);
+    const isMappedButNoValue = emptyParameterIDs.includes(parameter.id);
     return isNotMapped || isMappedButNoValue;
   });
 }

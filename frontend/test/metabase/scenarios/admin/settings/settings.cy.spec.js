@@ -130,15 +130,10 @@ describe("scenarios > admin > settings", () => {
       .parent()
       .findByTestId("select-button")
       .click();
-    popover()
-      .contains("https://")
-      .click({ force: true });
+    popover().contains("https://").click({ force: true });
 
     cy.wait("@httpsCheck");
-    cy.contains("Redirect to HTTPS")
-      .parent()
-      .parent()
-      .contains("Disabled");
+    cy.contains("Redirect to HTTPS").parent().parent().contains("Disabled");
 
     restore(); // avoid leaving https site url
   });
@@ -157,9 +152,7 @@ describe("scenarios > admin > settings", () => {
       .parent()
       .findByTestId("select-button")
       .click();
-    popover()
-      .contains("https://")
-      .click({ force: true });
+    popover().contains("https://").click({ force: true });
 
     cy.wait("@httpsCheck");
     cy.contains("It looks like HTTPS is not properly configured");
@@ -260,9 +253,7 @@ describe("scenarios > admin > settings", () => {
         .as("settingsOptions")
         .first()
         .contains("Setup");
-      cy.get("@settingsOptions")
-        .last()
-        .contains(lastItem);
+      cy.get("@settingsOptions").last().contains(lastItem);
     },
   );
 

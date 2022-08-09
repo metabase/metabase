@@ -20,6 +20,7 @@ import {
   ExpressionReference,
   DatetimeUnit,
 } from "metabase-types/types/Query";
+import { VariableTarget } from "metabase-types/types/Parameter";
 import ValidationError, {
   VALIDATION_ERROR_TYPES,
 } from "metabase-lib/lib/ValidationError";
@@ -28,6 +29,7 @@ import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
 import { isa } from "cljs/metabase.types";
 
@@ -105,9 +107,9 @@ export default class Dimension {
    * Metadata should be provided if you intend to use the display name or render methods.
    */
   static parseMBQL(
-    mbql: ConcreteField,
+    mbql: ConcreteField | VariableTarget,
     metadata?: Metadata,
-    query?: StructuredQuery | null | undefined,
+    query?: StructuredQuery | NativeQuery | null | undefined,
   ): Dimension | null | undefined {
     for (const D of DIMENSION_TYPES) {
       const dimension = D.parseMBQL(mbql, metadata, query);
@@ -272,6 +274,10 @@ export default class Dimension {
       !!baseDimensionB &&
       baseDimensionA.isEqual(baseDimensionB)
     );
+  }
+
+  isExpression(): boolean {
+    return isExpressionDimension(this);
   }
 
   foreign(dimension: Dimension): FieldDimension {
@@ -967,7 +973,7 @@ export class FieldDimension extends Dimension {
     const field = this.field();
 
     // Add FK dimensions if this field is an FK
-    if (field.target && field.target.table && field.target.table.fields) {
+    if (field.target?.table?.fields) {
       const fkDimensions = field.target.table.fields.map(
         field =>
           new FieldDimension(
@@ -1083,12 +1089,7 @@ export class FieldDimension extends Dimension {
 
     if (this.fk()) {
       const fkDisplayName =
-        this.fk() &&
-        stripId(
-          this.fk()
-            .field()
-            .displayName(),
-        );
+        this.fk() && stripId(this.fk().field().displayName());
       displayName = `${fkDisplayName} ${FK_SYMBOL} ${displayName}`;
     } else if (this.joinAlias()) {
       displayName = `${this.joinAlias()} ${FK_SYMBOL} ${displayName}`;
@@ -1543,16 +1544,16 @@ export class AggregationDimension extends Dimension {
   }
 }
 export class TemplateTagDimension extends FieldDimension {
-  constructor(tagName, metadata, query) {
+  constructor(tagName: string, metadata: Metadata, query: NativeQuery) {
     super(null, null, metadata, query, {
       _tagName: tagName,
     });
   }
 
   static parseMBQL(
-    mbql,
-    metadata = null,
-    query = null,
+    mbql: VariableTarget,
+    metadata: Metadata = null,
+    query: NativeQuery = null,
   ): FieldDimension | null | undefined {
     return TemplateTagDimension.isTemplateTagClause(mbql)
       ? Object.freeze(new TemplateTagDimension(mbql[1], metadata, query))

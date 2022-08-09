@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import _ from "underscore";
-import moment from "moment";
+import moment from "moment-timezone";
 import { t } from "ttag";
 
 import Card from "metabase/components/Card";
@@ -11,6 +11,7 @@ import EmptyState from "metabase/components/EmptyState";
 import NoResults from "assets/img/no_results.svg";
 
 import {
+  LoginActiveLabel,
   LoginGroup,
   LoginItemContent,
   LoginItemInfo,
@@ -29,11 +30,7 @@ const LoginHistoryItem = item => (
         </Text>
       </div>
       <LoginItemInfo>
-        {item.active && (
-          <Label pr={2} className="text-data">
-            Active
-          </Label>
-        )}
+        {item.active && <LoginActiveLabel pr={2}>Active</LoginActiveLabel>}
         <Label>{item.time}</Label>
       </LoginItemInfo>
     </LoginItemContent>
@@ -53,8 +50,9 @@ const formatItems = items =>
     return {
       ...item,
       date: parsedTimestamp.format("LL"),
-      time: `${parsedTimestamp.format("LT")} (${item.timezone ||
-        parsedTimestamp.format("Z")})`,
+      time: `${parsedTimestamp.format("LT")} (${
+        item.timezone || parsedTimestamp.format("Z")
+      })`,
     };
   });
 

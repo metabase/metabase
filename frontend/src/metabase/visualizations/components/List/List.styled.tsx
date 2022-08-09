@@ -1,86 +1,151 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import { color } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 
-export const Root = styled.div`
+import TableFooter from "../TableSimple/TableFooter";
+import { CellRoot, CellContent } from "./ListCell.styled";
+
+export const LIST_ITEM_BORDER_DIVIDER_WIDTH = "1";
+
+export const Root = styled.div<{ isQueryBuilder?: boolean }>`
   display: flex;
   flex-direction: column;
   position: relative;
-`;
+  margin: 0.3rem;
 
-export const ContentContainer = styled.div`
-  position: relative;
-  flex: 1 0 auto;
-`;
-
-export const TableContainer = styled.div`
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 0;
-  left: 0;
-
-  overflow-x: auto;
-  overflow-y: hidden;
-
-  padding-left: 1rem;
-  padding-right: 1rem;
+  ${props =>
+    props.isQueryBuilder &&
+    css`
+      margin: 2rem 6rem;
+    `}
 `;
 
 const standardTableStyleReset = css`
   border-collapse: collapse;
   border-spacing: 0;
-
   width: 100%;
-
   font-size: 12px;
   line-height: 12px;
   text-align: left;
 `;
 
 export const Table = styled.table`
-  ${standardTableStyleReset}
-
-  border-collapse: separate;
-  border-spacing: 0rem 1rem;
+  ${standardTableStyleReset};
 `;
 
-const LIST_ROW_BORDER_RADIUS = "8px";
+export const RowActionsContainer = styled.td`
+  transition: all 0.1s ease-in-out;
+`;
 
-export const ListRow = styled.tr`
-  position: relative;
+export const BulkSelectionControlContainer = styled(RowActionsContainer)<{
+  isSelectingItems?: boolean;
+}>`
+  padding-left: 6px;
+
+  ${props =>
+    props.isSelectingItems &&
+    css`
+      opacity: 1 !important;
+    `}
+`;
+
+export const RowActionButtonContainer = styled(CellRoot)`
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+`;
+
+export const ListItemContainer = styled.tr<{ disabled?: boolean }>`
   height: 4rem;
+
   background-color: ${color("bg-white")};
-  border: 1px solid ${color("border")};
 
-  td:first-of-type {
-    border-top-left-radius: ${LIST_ROW_BORDER_RADIUS};
-    border-bottom-left-radius: ${LIST_ROW_BORDER_RADIUS};
+  overflow-x: hidden;
 
-    padding-left: 1rem;
+  transition: all 0.1s ease-in-out;
+
+  ${props =>
+    !props.disabled &&
+    css`
+      &:hover {
+        cursor: pointer;
+        background-color: ${alpha(color("brand"), 0.05)};
+      }
+    `}
+
+  ${RowActionsContainer}, ${BulkSelectionControlContainer} {
+    opacity: 0;
   }
 
-  td:last-of-type {
-    border-top-right-radius: ${LIST_ROW_BORDER_RADIUS};
-    border-bottom-right-radius: ${LIST_ROW_BORDER_RADIUS};
-
-    padding-right: 1rem;
+  &:hover {
+    ${RowActionsContainer}, ${BulkSelectionControlContainer} {
+      opacity: 1;
+    }
   }
+`;
 
-  &:before {
-    content: "";
+export const InfoContentContainer = styled.div`
+  display: flex;
+  flex-direction: column;
 
-    position: absolute;
-    left: 0;
-    right: 0;
-
+  ${CellContent} {
     display: block;
-    height: 4rem;
-    border-radius: ${LIST_ROW_BORDER_RADIUS};
-
-    box-shadow: 4px 5px 10px 3px ${color("shadow")};
-
-    pointer-events: none;
   }
+
+  ${CellContent}:first-of-type {
+    font-size: 0.875rem;
+  }
+
+  ${CellContent}:last-of-type {
+    margin-top: 4px;
+    font-size: 0.75rem;
+  }
+`;
+
+export const TableHeader = styled.thead`
+  font-size: 0.8rem;
+  color: ${color("text-medium")};
+
+  &:after {
+    content: "-";
+    display: block;
+    line-height: 1em;
+    color: transparent;
+  }
+`;
+
+export const ColumnHeader = styled.th<{ width: string }>`
+  padding-left: 0.5rem;
+  width: ${props => props.width};
+`;
+
+const LIST_ITEM_BORDER_RADIUS = "6px";
+
+export const TableBody = styled.tbody`
+  box-shadow: 0px 1px 10px ${color("shadow")};
+  border-radius: ${LIST_ITEM_BORDER_RADIUS};
+
+  ${ListItemContainer}:first-of-type td:first-of-type {
+    border-top-left-radius: ${LIST_ITEM_BORDER_RADIUS};
+  }
+
+  ${ListItemContainer}:first-of-type td:last-of-type {
+    border-top-right-radius: ${LIST_ITEM_BORDER_RADIUS};
+  }
+
+  ${ListItemContainer}:last-of-type td:first-of-type {
+    border-bottom-left-radius: ${LIST_ITEM_BORDER_RADIUS};
+  }
+
+  ${ListItemContainer}:last-of-type td:last-of-type {
+    border-bottom-right-radius: ${LIST_ITEM_BORDER_RADIUS};
+  }
+
+  ${ListItemContainer}:not(:last-of-type) {
+    border-bottom: 1px solid ${color("border")};
+  }
+`;
+
+export const Footer = styled(TableFooter)`
+  margin-top: 0.5rem;
 `;

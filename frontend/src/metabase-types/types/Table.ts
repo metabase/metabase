@@ -4,7 +4,7 @@ import { Field } from "./Field";
 import { Segment } from "./Segment";
 import { Metric } from "./Metric";
 import { DatabaseId } from "./Database";
-import { ForeignKey } from "../api/foreignKey";
+import { ForeignKey } from "../api/foreign-key";
 
 export type TableId = number;
 export type SchemaName = string;

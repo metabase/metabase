@@ -22,8 +22,10 @@ if (hasPremiumFeature("advanced_permissions")) {
   PLUGIN_GROUP_MANAGERS.UserTypeCell = UserTypeCell;
   PLUGIN_GROUP_MANAGERS.UserTypeToggle = UserTypeToggle;
 
-  PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation = getRemoveMembershipConfirmation;
-  PLUGIN_GROUP_MANAGERS.getChangeMembershipConfirmation = getChangeMembershipConfirmation;
+  PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation =
+    getRemoveMembershipConfirmation;
+  PLUGIN_GROUP_MANAGERS.getChangeMembershipConfirmation =
+    getChangeMembershipConfirmation;
 
   PLUGIN_GROUP_MANAGERS.deleteGroup = deleteGroup;
   PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction = confirmDeleteMembership;

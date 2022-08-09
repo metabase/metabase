@@ -36,15 +36,11 @@ describe("scenarios > question > joined questions", () => {
 
     cy.icon("join_left_outer").click();
 
-    popover()
-      .findByText("Sample Database")
-      .click();
+    popover().findByText("Sample Database").click();
     cy.findByText("Saved Questions").click();
     cy.findByText("15578").click();
 
-    popover()
-      .findByText("ID")
-      .click();
+    popover().findByText("ID").click();
     popover()
       // Implicit assertion - test will fail for multiple strings
       .findByText("Product ID")
@@ -134,25 +130,16 @@ describe("scenarios > question > joined questions", () => {
 
 function joinTable(table) {
   cy.findByText("Join data").click();
-  popover()
-    .findByText(table)
-    .click();
+  popover().findByText(table).click();
 }
 
 function selectJoinType(strategy) {
-  cy.icon("join_left_outer")
-    .first()
-    .click();
-  popover()
-    .findByText(strategy)
-    .click();
+  cy.icon("join_left_outer").first().click();
+  popover().findByText(strategy).click();
 }
 
 function selectFromDropdown(option, clickOpts) {
-  popover()
-    .last()
-    .findByText(option)
-    .click(clickOpts);
+  popover().last().findByText(option).click(clickOpts);
 }
 
 function assertDimensionName(type, name) {

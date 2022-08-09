@@ -52,10 +52,7 @@ function domainForEvenlySpacedMonths(domain, { timezone, interval }) {
 }
 
 function rangeForEvenlySpacedMonths(range, domain, { timezone, interval }) {
-  const plainScale = d3.scale
-    .linear()
-    .domain(domain.map(toInt))
-    .range(range);
+  const plainScale = d3.scale.linear().domain(domain.map(toInt)).range(range);
   const ticks = ticksForRange(domain, { count: 1, timezone, interval });
   // if the domain only contains one month, return the range untouched
   if (ticks.length < 2) {

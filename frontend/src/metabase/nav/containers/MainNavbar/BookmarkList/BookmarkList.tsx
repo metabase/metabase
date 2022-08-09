@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
-import _ from "underscore";
 
 import "./sortable.css";
 
@@ -13,12 +12,12 @@ import CollapseSection from "metabase/components/CollapseSection";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import { Bookmark, BookmarksType } from "metabase-types/api";
+import { Bookmark } from "metabase-types/api";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
 
-import { SelectedEntityItem } from "../types";
+import { SelectedItem } from "../types";
 import { SidebarHeading } from "../MainNavbar.styled";
 import { DragIcon, SidebarBookmarkItem } from "./BookmarkList.styled";
 
@@ -28,8 +27,8 @@ const mapDispatchToProps = {
 };
 
 interface CollectionSidebarBookmarksProps {
-  bookmarks: BookmarksType;
-  selectedItem?: SelectedEntityItem;
+  bookmarks: Bookmark[];
+  selectedItem?: SelectedItem;
   onSelect: () => void;
   onDeleteBookmark: (bookmark: Bookmark) => void;
   reorderBookmarks: ({
@@ -45,7 +44,7 @@ interface BookmarkItemProps {
   bookmark: Bookmark;
   index: number;
   isSorting: boolean;
-  selectedItem?: SelectedEntityItem;
+  selectedItem?: SelectedItem;
   onSelect: () => void;
   onDeleteBookmark: (bookmark: Bookmark) => void;
 }

@@ -46,9 +46,7 @@ describe("issue 12581", () => {
       .as("editor")
       .click()
       .type("{selectall}{backspace}", { delay: 50 });
-    cy.get("@editor")
-      .click()
-      .type("{selectall}{backspace}SELECT 1");
+    cy.get("@editor").click().type("{selectall}{backspace}SELECT 1");
 
     cy.findByText("Save").click();
     modal().within(() => {
@@ -69,9 +67,7 @@ describe("issue 12581", () => {
     cy.findByText(/Open Editor/i).click();
 
     cy.log("Reported failing on v0.35.3");
-    cy.get("@editor")
-      .should("be.visible")
-      .and("contain", ORIGINAL_QUERY);
+    cy.get("@editor").should("be.visible").and("contain", ORIGINAL_QUERY);
 
     cy.findByText("37.65");
 

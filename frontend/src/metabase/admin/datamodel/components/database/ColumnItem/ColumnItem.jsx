@@ -229,36 +229,38 @@ export class SemanticTypeAndTargetPicker extends Component {
           searchProp="name"
         />
         {showCurrencyTypeSelect && selectSeparator}
-        {// TODO - now that we have multiple "nested" options like choosing a
-        // FK table and a currency type we should make this more generic and
-        // handle a "secondary" input more elegantly
-        showCurrencyTypeSelect && (
-          <Select
-            className={cx(
-              "TableEditor-field-target inline-block",
-              selectSeparator ? "mt0" : "mt1",
-              className,
-            )}
-            value={
-              (field.settings && field.settings.currency) ||
-              getGlobalSettingsForColumn(field).currency ||
-              "USD"
-            }
-            onChange={this.handleChangeCurrency}
-            placeholder={t`Select a currency type`}
-            searchProp="name"
-            searchCaseSensitive={false}
-          >
-            {currency.map(([_, c]) => (
-              <Option name={c.name} value={c.code} key={c.code}>
-                <span className="flex full align-center">
-                  <span>{c.name}</span>
-                  <span className="text-bold text-light ml1">{c.symbol}</span>
-                </span>
-              </Option>
-            ))}
-          </Select>
-        )}
+        {
+          // TODO - now that we have multiple "nested" options like choosing a
+          // FK table and a currency type we should make this more generic and
+          // handle a "secondary" input more elegantly
+          showCurrencyTypeSelect && (
+            <Select
+              className={cx(
+                "TableEditor-field-target inline-block",
+                selectSeparator ? "mt0" : "mt1",
+                className,
+              )}
+              value={
+                (field.settings && field.settings.currency) ||
+                getGlobalSettingsForColumn(field).currency ||
+                "USD"
+              }
+              onChange={this.handleChangeCurrency}
+              placeholder={t`Select a currency type`}
+              searchProp="name"
+              searchCaseSensitive={false}
+            >
+              {currency.map(([_, c]) => (
+                <Option name={c.name} value={c.code} key={c.code}>
+                  <span className="flex full align-center">
+                    <span>{c.name}</span>
+                    <span className="text-bold text-light ml1">{c.symbol}</span>
+                  </span>
+                </Option>
+              ))}
+            </Select>
+          )
+        }
         {showFKTargetSelect && selectSeparator}
         {showFKTargetSelect && (
           <Select

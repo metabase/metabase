@@ -7,7 +7,7 @@ describe("DateRelativeWidget", () => {
   it("should render correctly", () => {
     const { container } = render(
       <DateRelativeWidget
-        value={"yesterday"}
+        value={"past1days"}
         setValue={jest.fn()}
         onClose={jest.fn()}
       ></DateRelativeWidget>,

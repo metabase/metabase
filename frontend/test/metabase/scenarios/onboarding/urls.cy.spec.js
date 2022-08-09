@@ -67,9 +67,7 @@ describe("URLs", () => {
       navigationSidebar().within(() => {
         cy.icon("ellipsis").click();
       });
-      popover()
-        .findByText("Other users' personal collections")
-        .click();
+      popover().findByText("Other users' personal collections").click();
       cy.findByText("All personal collections");
       cy.location("pathname").should("eq", "/collection/users");
     });

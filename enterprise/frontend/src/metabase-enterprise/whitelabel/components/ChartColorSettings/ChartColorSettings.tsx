@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
-import { flatten, omit, set } from "lodash";
+import _ from "underscore";
 import { color } from "metabase/lib/colors";
 import { useCurrentRef } from "metabase/hooks/use-current-ref";
 import Button from "metabase/core/components/Button";
@@ -44,9 +44,9 @@ const ChartColorSettings = ({
   const handleChange = useCallback(
     (colorName: string, color?: string) => {
       if (color) {
-        onChange(set({ ...colorsRef.current }, colorName, color));
+        onChange({ ...colorsRef.current, [colorName]: color });
       } else {
-        onChange(omit({ ...colorsRef.current }, colorName));
+        onChange(_.omit(colorsRef.current, colorName));
       }
     },
     [colorsRef, onChange],

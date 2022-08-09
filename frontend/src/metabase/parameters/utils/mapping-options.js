@@ -40,7 +40,6 @@ function buildVariableOption(variable) {
 }
 
 export function getParameterMappingOptions(metadata, parameter = null, card) {
-  const options = [];
   if (
     card.display === "text" ||
     card.display === "actions" ||
@@ -50,8 +49,13 @@ export function getParameterMappingOptions(metadata, parameter = null, card) {
     return [];
   }
 
+  if (!card.dataset_query) {
+    return [];
+  }
+
   const question = new Question(card, metadata);
   const query = question.query();
+  const options = [];
 
   if (question.isStructured()) {
     options.push(

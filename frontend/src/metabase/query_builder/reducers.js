@@ -44,8 +44,6 @@ import {
   RESET_ROW_ZOOM,
   onEditSummary,
   onCloseSummary,
-  onAddFilter,
-  onCloseFilter,
   onOpenChartSettings,
   onCloseChartSettings,
   onOpenChartType,
@@ -68,17 +66,14 @@ const DEFAULT_UI_CONTROLS = {
   isShowingDataReference: false,
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,
-  isEditing: false,
   isRunning: false,
   isQueryComplete: false,
   isShowingSummarySidebar: false,
-  isShowingFilterSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionInfoSidebar: false,
   isShowingTimelineSidebar: false,
   initialChartSetting: null,
-  isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: false, // "view" | "notebook" | "dataset"
   previousQueryBuilderMode: false,
@@ -96,7 +91,6 @@ const DEFAULT_QUERY_STATUS = "idle";
 
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingSummarySidebar: false,
-  isShowingFilterSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingTimelineSidebar: false,
@@ -201,13 +195,6 @@ export const uiControls = handleActions(
       next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }),
     },
 
-    [API_UPDATE_QUESTION]: {
-      next: (state, { payload }) => ({ ...state, isEditing: false }),
-    },
-    [RELOAD_CARD]: {
-      next: (state, { payload }) => ({ ...state, isEditing: false }),
-    },
-
     [RUN_QUERY]: state => ({
       ...state,
       isRunning: true,
@@ -240,15 +227,6 @@ export const uiControls = handleActions(
       isShowingSummarySidebar: true,
     }),
     [onCloseSummary]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    }),
-    [onAddFilter]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      isShowingFilterSidebar: true,
-    }),
-    [onCloseFilter]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),

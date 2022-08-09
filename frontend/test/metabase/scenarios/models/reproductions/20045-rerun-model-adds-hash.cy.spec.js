@@ -18,9 +18,7 @@ describe("issue 20045", () => {
     cy.location("pathname").should("eq", "/model/1-orders-model");
     cy.location("hash").should("eq", "");
 
-    cy.findByTestId("qb-header-action-panel")
-      .find(".Icon-refresh")
-      .click();
+    cy.findByTestId("qb-header-action-panel").find(".Icon-refresh").click();
 
     cy.wait("@dataset");
 

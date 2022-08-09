@@ -262,8 +262,10 @@ export class AlertScheduleText extends Component {
       return verbose ? "hourly" : "Hourly";
     } else if (scheduleType === "daily") {
       const hourOfDay = schedule.schedule_hour;
-      const hour = _.find(HOUR_OPTIONS, opt => opt.value === hourOfDay % 12)
-        .name;
+      const hour = _.find(
+        HOUR_OPTIONS,
+        opt => opt.value === hourOfDay % 12,
+      ).name;
       const amPm = _.find(
         AM_PM_OPTIONS,
         opt => opt.value === (hourOfDay >= 12 ? 1 : 0),
@@ -276,8 +278,10 @@ export class AlertScheduleText extends Component {
         DAY_OF_WEEK_OPTIONS,
         o => o.value === schedule.schedule_day,
       ).name;
-      const hour = _.find(HOUR_OPTIONS, opt => opt.value === hourOfDay % 12)
-        .name;
+      const hour = _.find(
+        HOUR_OPTIONS,
+        opt => opt.value === hourOfDay % 12,
+      ).name;
       const amPm = _.find(
         AM_PM_OPTIONS,
         opt => opt.value === (hourOfDay >= 12 ? 1 : 0),

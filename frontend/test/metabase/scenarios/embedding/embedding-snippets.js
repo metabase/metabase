@@ -1,5 +1,5 @@
-export const JS_CODE = ({ isEE, hideDownloadButton }) =>
-  new RegExp(
+export const JS_CODE = ({ type, hideDownloadButton, theme }) => {
+  return new RegExp(
     `// you will need to install via 'npm install jsonwebtoken' or in your package.json
 
 var jwt = require("jsonwebtoken");
@@ -7,21 +7,22 @@ var jwt = require("jsonwebtoken");
 var METABASE_SITE_URL = "http://localhost:PORTPORTPORT";
 var METABASE_SECRET_KEY = "KEYKEYKEY";
 var payload = {
-  resource: { dashboard: 1 },
+  resource: { ${type}: 1 },
   params: {},
   exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration
 };
 var token = jwt.sign(payload, METABASE_SECRET_KEY);
 
-var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=true&titled=true${getParameter(
-      { isEE, hideDownloadButton },
-    )}";`
+var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token + "#${getThemeParameter(
+      theme,
+    )}bordered=true&titled=true${getParameter({ hideDownloadButton })}";`
       .split("\n")
       .join("")
       .replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
       .replace("KEYKEYKEY", ".*")
       .replace("PORTPORTPORT", ".*"),
   );
+};
 
 export const IFRAME_CODE = `<iframe
     src="{{iframeUrl}}"
@@ -33,16 +34,16 @@ export const IFRAME_CODE = `<iframe
   .split("\n")
   .join("");
 
-function getParameter({ isEE, hideDownloadButton }) {
+function getParameter({ hideDownloadButton }) {
   let parameter = "";
-
-  if (isEE) {
-    parameter += "&font=Lato";
-  }
 
   if (hideDownloadButton) {
     parameter += "&hide_download_button=true";
   }
 
   return parameter;
+}
+
+function getThemeParameter(theme) {
+  return theme ? `theme=${theme}&` : "";
 }

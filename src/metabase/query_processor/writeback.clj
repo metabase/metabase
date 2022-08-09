@@ -2,12 +2,10 @@
   "Code for executing writeback queries."
   (:require
    [clojure.tools.logging :as log]
-   [metabase.api.action :as api.action]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.parameters :as parameters]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
@@ -59,14 +57,8 @@
 (defn- writeback-qp []
   ;; `rff` and `context` are not currently used by the writeback QP stuff, so these parameters can be ignored; we pass
   ;; in `nil` for these below.
-  (letfn [(qp* [{database-id :database, :as query} _rff _context]
+  (letfn [(qp* [query _rff _context]
             (let [query (parameters/substitute-parameters query)]
-              ;; make sure that the Database supports the `:actions/custom` feature
-              (when-not (driver/database-supports? driver/*driver* :actions/custom (qp.store/database))
-                (throw (ex-info (tru "{0} database {1} does not support executing custom actions."
-                                     (name driver/*driver*) database-id)
-                                {:status-code 400
-                                 :type        qp.error-type/invalid-query})))
               ;; ok, now execute the query.
               (log/debugf "Executing query\n\n%s" (u/pprint-to-str query))
               (driver/execute-write-query! driver/*driver* query)))]
@@ -105,15 +97,10 @@
     (log/tracef "Mapping parameters\n\n%s\nwith mappings\n\n%s"
                 (u/pprint-to-str parameters)
                 (u/pprint-to-str (:parameter_mappings emitter)))
-    (let [parameters                         (map-parameters parameters (:parameter_mappings emitter))
-          {database-id :database, :as query} (assoc (:dataset_query card) :parameters parameters)]
+    (let [parameters (map-parameters parameters (:parameter_mappings emitter))
+          query      (assoc (:dataset_query card) :parameters parameters)]
       (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
-      ;; make sure actions are enabled and supported for this Database. (We'll check the `:actions/custom` feature flag
-      ;; later once the DB is fetched in and the QP store -- see above)
-      (api.action/do-check-actions-enabled
-       database-id
-       (fn [_driver]
-         (execute-write-query! query))))
+      (execute-write-query! query))
     (catch Throwable e
       (throw (ex-info (tru "Error executing QueryEmitter: {0}" (ex-message e))
                       {:emitter    emitter

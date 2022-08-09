@@ -38,6 +38,7 @@ import {
 } from "./NativeQueryEditor/utils";
 
 import "./NativeQueryEditor.css";
+import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
@@ -193,10 +194,7 @@ class NativeQueryEditor extends Component {
     const selectedText = this._editor?.getSelectedText();
 
     if (selectedText) {
-      const temporaryCard = query
-        .setQueryText(selectedText)
-        .question()
-        .card();
+      const temporaryCard = query.setQueryText(selectedText).question().card();
 
       runQuestionQuery({
         overrideWithCard: temporaryCard,
@@ -273,7 +271,7 @@ class NativeQueryEditor extends Component {
           }
 
           // transform results of the API call into what ACE expects
-          const js_results = results.map(function(result) {
+          const js_results = results.map(function (result) {
             return {
               name: result[0],
               value: result[0],
@@ -419,7 +417,7 @@ class NativeQueryEditor extends Component {
     );
 
     return (
-      <div className="NativeQueryEditor bg-light full">
+      <NativeQueryEditorRoot className="NativeQueryEditor bg-light full">
         {hasTopBar && (
           <div className="flex align-center" data-testid="native-query-top-bar">
             <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
@@ -499,7 +497,7 @@ class NativeQueryEditor extends Component {
             />
           )}
         </ResizableBox>
-      </div>
+      </NativeQueryEditorRoot>
     );
   }
 }

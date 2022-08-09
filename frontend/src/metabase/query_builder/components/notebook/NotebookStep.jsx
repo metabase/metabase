@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import styled from "@emotion/styled";
 
-import { color as c, lighten, darken } from "metabase/lib/colors";
+import { color as c, lighten, darken, alpha } from "metabase/lib/colors";
 
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
@@ -51,6 +51,7 @@ const STEP_UI = {
     title: t`Custom column`,
     icon: "add_data",
     component: ExpressionStep,
+    transparent: true,
     getColor: () => c("bg-dark"),
   },
   filter: {
@@ -86,6 +87,7 @@ const STEP_UI = {
     icon: "smartscalar",
     component: SortStep,
     compact: true,
+    transparent: true,
     getColor: () => c("bg-dark"),
   },
   limit: {
@@ -93,6 +95,7 @@ const STEP_UI = {
     icon: "list",
     component: LimitStep,
     compact: true,
+    transparent: true,
     getColor: () => c("bg-dark"),
   },
 };
@@ -108,17 +111,15 @@ export default class NotebookStep extends React.Component {
   };
 
   render() {
-    const {
-      step,
-      openStep,
-      isLastStep,
-      isLastOpened,
-      updateQuery,
-    } = this.props;
+    const { step, openStep, isLastStep, isLastOpened, updateQuery } =
+      this.props;
     const { showPreview } = this.state;
 
-    const { title, getColor, component: NotebookStepComponent } =
-      STEP_UI[step.type] || {};
+    const {
+      title,
+      getColor,
+      component: NotebookStepComponent,
+    } = STEP_UI[step.type] || {};
 
     const color = getColor();
     const canPreview = step.previewQuery && step.previewQuery.isValid();
@@ -190,6 +191,7 @@ export default class NotebookStep extends React.Component {
                   icon="play"
                   title={t`Preview`}
                   color={c("text-light")}
+                  transparent
                   onClick={() => this.setState({ showPreview: true })}
                 />
               </StepButtonContainer>
@@ -216,22 +218,32 @@ export default class NotebookStep extends React.Component {
 
 const ColorButton = styled(Button)`
   border: none;
-  color: ${({ color }) => (color ? color : c("text-medium"))};
-  background-color: ${({ color }) => (color ? lighten(color, 0.61) : null)};
+  color: ${({ color }) => color};
+  background-color: ${({ color, transparent }) =>
+    transparent ? null : alpha(color, 0.2)};
   &:hover {
-    color: ${({ color }) => (color ? darken(color, 0.115) : color("brand"))};
-    background-color: ${({ color }) =>
-      color ? lighten(color, 0.5) : lighten(color("brand"), 0.61)};
+    color: ${({ color }) => darken(color, 0.115)};
+    background-color: ${({ color, transparent }) =>
+      transparent ? lighten(color, 0.5) : alpha(color, 0.35)};
   }
   transition: background 300ms;
 `;
 
-const ActionButton = ({ icon, title, color, large, onClick, ...props }) => {
+const ActionButton = ({
+  icon,
+  title,
+  color,
+  transparent,
+  large,
+  onClick,
+  ...props
+}) => {
   const button = (
     <ColorButton
-      color={color}
       icon={icon}
       small={!large}
+      color={color}
+      transparent={transparent}
       iconVertical={large}
       iconSize={large ? 18 : 14}
       onClick={onClick}

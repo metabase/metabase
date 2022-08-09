@@ -1,5 +1,5 @@
 import React, { forwardRef, Ref, useCallback, useMemo } from "react";
-import { Moment } from "moment";
+import { Moment } from "moment-timezone";
 import {
   getNumericDateStyleFromSettings,
   getTimeStyleFromSettings,

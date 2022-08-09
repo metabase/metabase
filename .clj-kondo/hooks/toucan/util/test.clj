@@ -5,7 +5,9 @@
   (let [pairs       (partition 2 bindings)
         db-refs     (map first pairs)
         let-stream  (for [[_ binding+opts] pairs
-                          part             (:children binding+opts)]
+                          ;; if children is size 1 then ensure nil is on the right side of the let
+                          :let [[binding-part opts] (:children binding+opts)]
+                          part [binding-part opts]]
                       part)]
     (api/vector-node [(api/vector-node db-refs)
                       (api/list-node (list* (api/token-node `let)

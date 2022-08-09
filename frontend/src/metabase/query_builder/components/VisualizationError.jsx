@@ -60,7 +60,7 @@ export function adjustPositions(error, origSql) {
     adjustmentLength += newLinePos + 2;
   }
 
-  return error.replace(/Position: (\d+)/, function(_, p1) {
+  return error.replace(/Position: (\d+)/, function (_, p1) {
     return "Position: " + (parseInt(p1) - adjustmentLength);
   });
 }

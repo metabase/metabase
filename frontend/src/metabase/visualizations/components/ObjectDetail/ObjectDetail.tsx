@@ -6,8 +6,8 @@ import Question from "metabase-lib/lib/Question";
 import { isPK } from "metabase/lib/schema_metadata";
 import Table from "metabase-lib/lib/metadata/Table";
 
-import { ForeignKey } from "metabase-types/api/foreignKey";
 import { State } from "metabase-types/store";
+import { ForeignKey } from "metabase-types/api";
 import { DatasetData } from "metabase-types/types/Dataset";
 import { ObjectId, OnVisualizationClickType } from "./types";
 
@@ -36,10 +36,6 @@ import {
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import WritebackForm from "metabase/writeback/containers/WritebackForm";
-import { getWritebackEnabled } from "metabase/writeback/selectors";
-import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
-
 import {
   getObjectName,
   getDisplayId,
@@ -56,15 +52,7 @@ import {
   ObjectIdLabel,
   CloseButton,
   ErrorWrapper,
-  EditingFormContainer,
 } from "./ObjectDetail.styled";
-import {
-  deleteRowFromObjectDetail,
-  DeleteRowPayload,
-  updateRowFromObjectDetail,
-  UpdateRowPayload,
-} from "metabase/writeback/actions";
-import ActionHeader from "metabase/writeback/components/ObjectDetails/ActionHeader";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
   let zoomedRowID = getZoomedObjectId(state);
@@ -88,7 +76,6 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
     canZoom: isZooming && !!zoomedRow,
     canZoomPreviousRow,
     canZoomNextRow,
-    isWritebackEnabled: getWritebackEnabled(state),
   };
 };
 
@@ -102,10 +89,6 @@ const mapDispatchToProps = (dispatch: any) => ({
     dispatch(followForeignKey({ objectId, fk })),
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
-  updateRowFromObjectDetail: (payload: UpdateRowPayload) =>
-    dispatch(updateRowFromObjectDetail(payload)),
-  deleteRowFromObjectDetail: (payload: DeleteRowPayload) =>
-    dispatch(deleteRowFromObjectDetail(payload)),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
 });
 
@@ -123,13 +106,10 @@ export interface ObjectDetailProps {
   canZoom: boolean;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
-  isWritebackEnabled: boolean;
   showActions?: boolean;
   showRelations?: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
-  updateRowFromObjectDetail: (opts: UpdateRowPayload) => void;
-  deleteRowFromObjectDetail: (opts: DeleteRowPayload) => void;
   fetchTableFks: (id: number) => void;
   loadObjectDetailFKReferences: (opts: { objectId: ObjectId }) => void;
   followForeignKey: (opts: { objectId: ObjectId; fk: ForeignKey }) => void;
@@ -142,8 +122,6 @@ export function ObjectDetailFn({
   data,
   question,
   table,
-  updateRowFromObjectDetail,
-  deleteRowFromObjectDetail,
   zoomedRow,
   zoomedRowID,
   tableForeignKeys,
@@ -152,7 +130,6 @@ export function ObjectDetailFn({
   canZoom,
   canZoomPreviousRow,
   canZoomNextRow,
-  isWritebackEnabled,
   showActions = true,
   showRelations = true,
   onVisualizationClick,
@@ -165,7 +142,6 @@ export function ObjectDetailFn({
   closeObjectDetail,
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
   const prevZoomedRowId = usePrevious(zoomedRowID);
   const prevData = usePrevious(data);
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
@@ -232,38 +208,6 @@ export function ObjectDetailFn({
     [zoomedRowID, followForeignKey],
   );
 
-  const database = question?.database()?.getPlainObject?.();
-  const canEdit = !!(
-    table &&
-    isWritebackEnabled &&
-    isDatabaseWritebackEnabled(database)
-  );
-  const deleteRow = React.useMemo(() => {
-    if (canEdit) {
-      return () =>
-        deleteRowFromObjectDetail({
-          id: zoomedRowID,
-          table,
-        });
-    }
-  }, [canEdit, zoomedRowID, table, deleteRowFromObjectDetail]);
-
-  const onSubmit = React.useMemo(
-    () =>
-      canEdit && table
-        ? (values: Record<string, unknown>) => {
-            updateRowFromObjectDetail({
-              table,
-              id: zoomedRowID,
-              values,
-            });
-            setIsEditing(false);
-          }
-        : undefined,
-    [updateRowFromObjectDetail, canEdit, table, zoomedRowID],
-  );
-  const canUpdate = isEditing && typeof onSubmit === "function" && table;
-
   const onKeyDown = (event: KeyboardEvent) => {
     const capturedKeys: Record<string, () => void> = {
       ArrowUp: viewPreviousObjectDetail,
@@ -310,39 +254,24 @@ export function ObjectDetailFn({
             objectId={displayId}
             canZoomPreviousRow={canZoomPreviousRow}
             canZoomNextRow={canZoomNextRow}
-            isEditing={isEditing}
-            canEdit={canEdit}
             showActions={showActions}
-            deleteRow={deleteRow}
             viewPreviousObjectDetail={viewPreviousObjectDetail}
             viewNextObjectDetail={viewNextObjectDetail}
             closeObjectDetail={closeObjectDetail}
-            onToggleEditingModeClick={() => setIsEditing(editing => !editing)}
           />
           <ObjectDetailBodyWrapper>
-            {canUpdate ? (
-              <EditingFormContainer>
-                <WritebackForm
-                  table={table}
-                  row={zoomedRow}
-                  onSubmit={onSubmit}
-                  isModal
-                />
-              </EditingFormContainer>
-            ) : (
-              <ObjectDetailBody
-                data={data}
-                objectName={objectName}
-                zoomedRow={zoomedRow ?? []}
-                settings={settings}
-                hasRelationships={hasRelationships}
-                onVisualizationClick={onVisualizationClick}
-                visualizationIsClickable={visualizationIsClickable}
-                tableForeignKeys={tableForeignKeys}
-                tableForeignKeyReferences={tableForeignKeyReferences}
-                followForeignKey={onFollowForeignKey}
-              />
-            )}
+            <ObjectDetailBody
+              data={data}
+              objectName={objectName}
+              zoomedRow={zoomedRow ?? []}
+              settings={settings}
+              hasRelationships={hasRelationships}
+              onVisualizationClick={onVisualizationClick}
+              visualizationIsClickable={visualizationIsClickable}
+              tableForeignKeys={tableForeignKeys}
+              tableForeignKeyReferences={tableForeignKeyReferences}
+              followForeignKey={onFollowForeignKey}
+            />
           </ObjectDetailBodyWrapper>
         </div>
       )}
@@ -400,14 +329,10 @@ export interface ObjectDetailHeaderProps {
   objectId: ObjectId | null | unknown;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
-  isEditing: boolean;
-  canEdit: boolean;
   showActions?: boolean;
-  deleteRow?: () => void;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
-  onToggleEditingModeClick: () => void;
 }
 
 export function ObjectDetailHeader({
@@ -416,14 +341,10 @@ export function ObjectDetailHeader({
   objectId,
   canZoomPreviousRow,
   canZoomNextRow,
-  isEditing,
-  canEdit,
   showActions = true,
-  deleteRow,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
-  onToggleEditingModeClick,
 }: ObjectDetailHeaderProps): JSX.Element {
   return (
     <div className="Grid border-bottom relative">
@@ -435,13 +356,6 @@ export function ObjectDetailHeader({
       </div>
       {showActions && (
         <div className="flex align-center">
-          {canEdit && (
-            <ActionHeader
-              isEditing={isEditing}
-              deleteRow={deleteRow}
-              onToggleEditingModeClick={onToggleEditingModeClick}
-            />
-          )}
           <div className="flex p2">
             {!!canZoom && (
               <>

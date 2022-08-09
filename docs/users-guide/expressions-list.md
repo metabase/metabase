@@ -25,9 +25,9 @@ For an introduction to expressions, check out [Writing expressions in the notebo
 - [Functions](#functions)
   - [abs](#abs)
   - [between](#between)
-  - [case](#case)
+  - [case](./expressions/case)
   - [ceil](#ceil)
-  - [coalesce](#coalesce)
+  - [coalesce](./expressions/coalesce)
   - [concat](#concat)
   - [contains](#contains)
   - [endswith](#endswith)
@@ -212,7 +212,7 @@ Example: `between([Created At], "2019-01-01", "2020-12-31")` would return rows w
 
 Related: [interval](#interval).
 
-### case
+### [case](./expressions/case)
 
 Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.
 
@@ -230,7 +230,7 @@ Example: `ceil([Price])`. `ceil(2.99)` would return 3.
 
 Related: [floor](#floor), [round](#round).
 
-### coalesce
+### [coalesce](./expressions/coalesce)
 
 Looks at the values in each argument in order and returns the first non-null value for each row.
 

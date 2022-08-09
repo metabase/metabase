@@ -1,30 +1,47 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import { space, breakpointMaxSmall } from "metabase/styled-components/theme";
+
 import TabList from "metabase/core/components/TabList";
 import TabPanel from "metabase/core/components/TabPanel";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import Icon from "metabase/components/Icon";
 
-export const ModalRoot = styled.div`
+interface ModalRootProps {
+  hasSideNav?: boolean;
+}
+
+export const ModalRoot = styled.div<ModalRootProps>`
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  width: min(98vw, ${props => (props.hasSideNav ? "70rem" : "55rem")});
+`;
+
+export const ModalMain = styled.div`
+  height: calc(90vh - 10rem);
+  ${breakpointMaxSmall} {
+    height: calc(98vh - 10rem);
+    flex-direction: column;
+  }
+  display: flex;
 `;
 
 export const ModalHeader = styled.div`
   display: flex;
   align-items: center;
-  padding: 2rem 2rem 1.75rem;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid ${color("border")};
 `;
 
 export const ModalBody = styled.div`
   overflow-y: auto;
-  padding: 0 2rem;
+  flex: 1;
 `;
 
 export const ModalFooter = styled.div`
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 1rem;
   padding: 1.5rem 2rem;
 `;
@@ -38,13 +55,20 @@ export const ModalTitle = styled(Ellipsified)`
 `;
 
 export const ModalTabList = styled(TabList)`
-  padding: 0 2rem;
-  flex-shrink: 0;
+  padding: 1rem;
+  width: 15rem;
+  border-right: 1px solid ${color("border")};
+  overflow-y: auto;
+
+  ${breakpointMaxSmall} {
+    width: 100%;
+    height: 5rem;
+  }
 `;
 
 export const ModalTabPanel = styled(TabPanel)`
   overflow-y: auto;
-  padding: 0 2rem;
+  flex: 1;
 `;
 
 interface ModalDividerProps {
@@ -59,4 +83,57 @@ export const ModalDivider = styled.div<ModalDividerProps>`
 export const ModalCloseButton = styled(IconButtonWrapper)`
   flex: 0 0 auto;
   color: ${color("text-light")};
+`;
+
+export const SearchIcon = styled(Icon)`
+  margin: 0 ${space(1)};
+  color: ${color("text-light")};
+`;
+
+export const SearchContainer = styled.div<{ isActive: boolean }>`
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  position: relative;
+
+  border: ${props =>
+    props.isActive ? `1px solid ${color("border")}` : "none"};
+  overflow: hidden;
+  transition: max-width 0.2s;
+  margin-right: ${space(3)};
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
+
+  justify-content: center;
+  margin-left: auto;
+
+  max-width: ${props => (props.isActive ? "20rem" : "2rem")};
+  height: 2rem;
+  border-radius: 0.5rem;
+
+  ${breakpointMaxSmall} {
+    display: none;
+  }
+`;
+
+export const SearchInput = styled.input<{ isActive: boolean }>`
+  background-color: transparent;
+  border: none;
+  color: ${color("text-medium")};
+  font-weight: 700;
+  margin-right: ${space(1)};
+
+  width: 100%;
+
+  &:focus {
+    outline: none;
+  }
+
+  &::placeholder {
+    color: ${color("text-light")};
+  }
+
+  width: ${props => (props.isActive ? "100%" : 0)};
 `;

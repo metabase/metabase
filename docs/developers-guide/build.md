@@ -62,7 +62,7 @@ If you are developing on Windows, you should run Ubuntu on Windows Subsystem for
 
 ### Developing with VS Code in a remote container
 
-Alternatively, without the need to explicitly install the above dependencies, follow the guide [on using Visual Studio Code](deven.md#developing-with-visual-studio-code.md) and its remote container support.
+Alternatively, without the need to explicitly install the above dependencies, follow the guide [on using Visual Studio Code](visual-studio-code.md) and its remote container support.
 
 ## Clone the Metabase repo
 

@@ -21,7 +21,7 @@ As time goes on we may add other auth providers. If you have a service you’d l
   - [Syncing user attributes with Google](#syncing-user-attributes-with-google)
   - [Syncing user attributes with LDAP](#syncing-user-attributes-with-ldap)
 - [Changing an account's login method from email to SSO](#changing-an-accounts-login-method-from-email-to-sso)
-- [Checking if SSO is working correctly](#checking-if-sso-is-working-correctly)
+- [Troubleshooting login issues](#troubleshooting-login-issues)
 
 ## Enabling Google Sign-In
 
@@ -33,7 +33,7 @@ Next, you'll have to create authorization credentials for your application by fo
 
 Once you have your `Client ID` (ending in `.apps.googleusercontent.com`), click `Configure` on the "Sign in with Google" section of the Authentication page in the Metabase Admin Panel. Paste your `client_id` into the first box.
 
-[Check if your SSO setup is working correctly](#checking-if-sso-is-working-correctly). Now existing Metabase users signed into a Google account that matches their Metabase account email can sign in with just a click.
+Now existing Metabase users signed into a Google account that matches their Metabase account email can sign in with just a click.
 
 ### Creating Metabase accounts with Google Sign-in
 
@@ -134,17 +134,14 @@ Once a person creates an account, you cannot change the authentication method fo
 
 Note that you must have at least one account with email and password login. This account safeguards you from getting locked out of your Metabase if there are any problems with your SSO provider.
 
-## Checking if SSO is working correctly
+## Troubleshooting login issues
 
-Go to your Metabase login page. If SSO is working correctly, you should see [a single button to sign in][sso-def] with your identity provider (IdP). Once you're authenticated, you should be automatically redirected to the Metabase home page.
-
-If you're having trouble, go to [Troubleshooting logins](../troubleshooting-guide/cant-log-in.html).
+See [Troubleshooting logins](../troubleshooting-guide/cant-log-in.md).
 
 [data-sandboxing-docs]: ../enterprise-guide/data-sandboxes.html
 [google-saml-docs]: ../enterprise-guide/saml-google.html
 [jwt-docs]: ../enterprise-guide/authenticating-with-jwt.html
 [saml-docs]: ../enterprise-guide/authenticating-with-saml.html
-[sso-def]: /glossary/sso
 [sso-docs]: ../administration-guide/sso.html
 [user-attributes-docs]: ../enterprise-guide/data-sandboxes.html#getting-user-attributes
 [user-attributes-def]: /glossary/attribute#user-attributes-in-metabase

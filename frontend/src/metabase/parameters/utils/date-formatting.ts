@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
-import moment from "moment";
+import moment from "moment-timezone";
 
 import { DATE_MBQL_FILTER_MAPPING } from "metabase/parameters/constants";
 import { dateParameterValueToMBQL } from "metabase/parameters/utils/mbql";
@@ -149,6 +149,7 @@ export function formatRelativeWidget(value: string) {
     : "";
 }
 
+// This should miror the logic in `metabase.shared.parameters.parameters`
 export function formatDateValue(value: string, parameter: UiParameter) {
   switch (parameter.type) {
     case "date/range":

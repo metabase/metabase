@@ -141,9 +141,8 @@ describe("buildDataModelPermission", () => {
         "schemas",
       );
 
-      const [downgradePermissionConfirmation] = permissionModel.confirmations(
-        "none",
-      );
+      const [downgradePermissionConfirmation] =
+        permissionModel.confirmations("none");
 
       expect(downgradePermissionConfirmation?.message).toBe(
         'The "All Users" group has a higher level of access than this, which will override this setting. You should limit or revoke the "All Users" group\'s access to this item.',
@@ -160,14 +159,29 @@ describe("buildDataModelPermission", () => {
         "schemas",
       );
 
-      const [downgradePermissionConfirmation] = permissionModel.confirmations(
-        "all",
-      );
+      const [downgradePermissionConfirmation] =
+        permissionModel.confirmations("all");
 
       expect(permissionModel.warning).toBe(
         'The "All Users" group has a higher level of access than this, which will override this setting. You should limit or revoke the "All Users" group\'s access to this item.',
       );
       expect(downgradePermissionConfirmation?.message).toBeUndefined();
+    });
+
+    it("does not warn when group permissions is blocking", () => {
+      const permissionModel = buildDataModelPermission(
+        { databaseId },
+        groupId,
+        isNotAdmin,
+        getPermissionGraph("block"),
+        defaultGroup,
+        "schemas",
+      );
+
+      const [downgradePermissionConfirmation] =
+        permissionModel.confirmations("all");
+
+      expect(permissionModel.warning).toBe(null);
     });
   });
 });

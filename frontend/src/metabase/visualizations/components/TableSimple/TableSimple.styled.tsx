@@ -58,23 +58,6 @@ export const Table = styled.table`
   }
 `;
 
-export const TableHeaderCellContent = styled.button<{
-  isSorted: boolean;
-  isRightAligned: boolean;
-}>`
-  display: flex;
-  margin-left: ${props => (props.isRightAligned ? "auto" : "unset")};
-
-  color: ${props => (props.isSorted ? color("brand") : color("text-medium"))};
-  font-weight: 700;
-
-  cursor: pointer;
-
-  &:hover {
-    color: ${() => color("brand")};
-  }
-`;
-
 export const SortIcon = styled(Icon)`
   margin-right: 3px;
 `;
@@ -82,6 +65,31 @@ export const SortIcon = styled(Icon)`
 SortIcon.defaultProps = {
   size: 8,
 };
+
+export const TableHeaderCellContent = styled.button<{
+  isSorted: boolean;
+  isRightAligned: boolean;
+}>`
+  display: flex;
+  justify-content: ${props =>
+    props.isRightAligned ? "space-between" : "flex-start"};
+  width: 100%;
+
+  margin-left: ${props => (props.isRightAligned ? "auto" : "unset")};
+
+  color: ${props => (props.isSorted ? color("brand") : color("text-medium"))};
+  font-weight: 700;
+
+  cursor: pointer;
+
+  ${SortIcon} {
+    opacity: ${props => (props.isSorted ? 1 : 0.2)};
+  }
+
+  &:hover {
+    color: ${() => color("brand")};
+  }
+`;
 
 export const TableFooterRoot = styled.div`
   display: flex;

@@ -23,6 +23,11 @@ jobs:
               echo User ${{ github.event.comment.user.login }} is not a member of Metabase organization
               exit 1
           fi
+      - uses: tibdex/github-app-token@v1.6.0
+        id: generate-token
+        with:
+          app_id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
       - uses: actions/github-script@v4
         id: branch_info
         with:
@@ -79,9 +84,11 @@ jobs:
         name: Cherry-pick commits and create PR
         with:
           fetch-depth: 0
-      - run: |
-          git config --global user.email "metabase-github-automation@metabase.com"
-          git config --global user.name "$GITHUB_ACTOR"
+      - id: create_backport_pull_request
+        name: Create backport pull request
+        run: |
+          git config --global user.email "metabase-bot@metabase.com"
+          git config --global user.name "Metabase bot"
 
           git fetch --all
 
@@ -104,9 +111,13 @@ jobs:
           if [[ $(hub pr list -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -s "open") ]]; then
               echo "PR already exists"
           else
-              hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "auto-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
+              BACKPORT_PR_URL=$(hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "auto-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
 
-              #${ORIGINAL_PULL_REQUEST_NUMBER}"
+              #${ORIGINAL_PULL_REQUEST_NUMBER}")
+
+              BACKPORT_PR_NUMBER=${BACKPORT_PR_URL##*/}
+
+              echo "::set-output name=backport_pr_number::$BACKPORT_PR_NUMBER"
               echo "New PR has been created"
           fi
         env:
@@ -120,7 +131,18 @@ jobs:
           BACKPORT_BRANCH: ${{ fromJson(steps.branch_info.outputs.result).backportBranch }}
           START_SHA: ${{ fromJson(steps.branch_info.outputs.result).startSha }}
           END_SHA: ${{ fromJson(steps.branch_info.outputs.result).endSha }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+      - name: Auto approve backport PR
+        uses: juliangruber/approve-pull-request-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
+      - name: Enable Pull Request Automerge
+        uses: peter-evans/enable-pull-request-automerge@v2
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+          pull-request-number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
+          merge-method: squash
 
   notify_when_failed:
     runs-on: ubuntu-20.04
@@ -128,7 +150,7 @@ jobs:
     needs: create_pull_request
     if: ${{ failure() }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/notify-pull-request
         with:
           include-log: true

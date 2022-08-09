@@ -12,20 +12,18 @@ describe("visual tests > visualizations > table", () => {
   });
 
   it("ad-hoc with long column trimmed", () => {
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("ad-hoc with long column expanded", () => {
-    cy.findAllByTestId("expand-column")
-      .eq(0)
-      .click({ force: true });
+    cy.findAllByTestId("expand-column").eq(0).click({ force: true });
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("saved", () => {
     saveQuestion();
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });
 
@@ -39,7 +37,5 @@ function saveQuestion() {
     cy.wait("@saveQuestion");
   });
 
-  modal()
-    .findByText("Not now")
-    .click();
+  modal().findByText("Not now").click();
 }

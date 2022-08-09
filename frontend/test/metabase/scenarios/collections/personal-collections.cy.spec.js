@@ -33,9 +33,7 @@ describe("personal collections", () => {
       navigationSidebar().within(() => {
         cy.icon("ellipsis").click();
       });
-      popover()
-        .findByText("Other users' personal collections")
-        .click();
+      popover().findByText("Other users' personal collections").click();
       cy.location("pathname").should("eq", "/collection/users");
       cy.findByText(/All personal collections/i);
       Object.values(USERS).forEach(user => {
@@ -71,9 +69,7 @@ describe("personal collections", () => {
       // });
 
       // Go to the newly created sub-collection "Foo"
-      navigationSidebar()
-        .findByText("Foo")
-        .click();
+      navigationSidebar().findByText("Foo").click();
 
       // It should be possible to edit sub-collections' details, but not its permissions
       cy.findByDisplayValue("Foo").should("be.enabled");
@@ -118,28 +114,17 @@ describe("personal collections", () => {
 
           // Create initial collection inside the personal collection and navigate to it
           addNewCollection("Foo");
-          navigationSidebar()
-            .as("sidebar")
-            .findByText("Foo")
-            .click();
+          navigationSidebar().as("sidebar").findByText("Foo").click();
         });
 
         it("should be able to edit collection(s) inside personal collection", () => {
           // Create new collection inside previously added collection
           addNewCollection("Bar");
-          cy.get("@sidebar")
-            .findByText("Bar")
-            .click();
-          cy.findByPlaceholderText("Add title")
-            .type("1")
-            .blur();
-          cy.findByPlaceholderText("Add description")
-            .type("ex-bar")
-            .blur();
+          cy.get("@sidebar").findByText("Bar").click();
+          cy.findByPlaceholderText("Add title").type("1").blur();
+          cy.findByPlaceholderText("Add description").type("ex-bar").blur();
 
-          cy.get("@sidebar")
-            .findByText("Foo")
-            .click();
+          cy.get("@sidebar").findByText("Foo").click();
           cy.get("@sidebar").findByText("Bar1");
 
           cy.log(
@@ -148,13 +133,9 @@ describe("personal collections", () => {
 
           openCollectionMenu();
           popover().within(() => cy.findByText("Archive").click());
-          modal()
-            .findByRole("button", { name: "Archive" })
-            .click();
+          modal().findByRole("button", { name: "Archive" }).click();
           cy.findByText("Archived collection");
-          cy.get("@sidebar")
-            .findByText("Foo")
-            .should("not.exist");
+          cy.get("@sidebar").findByText("Foo").should("not.exist");
         });
       });
     });

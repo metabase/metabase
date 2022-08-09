@@ -1,6 +1,7 @@
 (ns metabase.api.permissions-test
   "Tests for `/api/permissions` endpoints."
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.api.permissions :as api.permissions]
             [metabase.models :refer [Database PermissionsGroup PermissionsGroupMembership Table User]]
             [metabase.models.permissions :as perms]
@@ -39,12 +40,12 @@
                               :name         (s/eq "Administrators")
                               :member_count su/IntGreaterThanZero}
                              (get id->group (:id (perms-group/admin)))))))]
-      (let [id->group (u/key-by :id (fetch-groups))]
+      (let [id->group (m/index-by :id (fetch-groups))]
         (check-default-groups-returned id->group))
 
       (testing "should return empty groups"
         (mt/with-temp PermissionsGroup [group]
-          (let [id->group (u/key-by :id (fetch-groups))]
+          (let [id->group (m/index-by :id (fetch-groups))]
             (check-default-groups-returned id->group)
             (testing "empty group should be returned"
               (is (schema= {:id           su/IntGreaterThanZero
@@ -70,7 +71,7 @@
   (testing "GET /permissions/group/:id"
     (let [{:keys [members]} (mt/user-http-request
                              :crowberto :get 200 (format "permissions/group/%d" (:id (perms-group/all-users))))
-          id->member        (u/key-by :user_id members)]
+          id->member        (m/index-by :user_id members)]
       (is (schema= {:first_name    (s/eq "Crowberto")
                     :last_name     (s/eq "Corv")
                     :email         (s/eq "crowberto@metabase.com")

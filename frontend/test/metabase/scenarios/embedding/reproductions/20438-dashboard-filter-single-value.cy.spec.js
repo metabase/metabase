@@ -90,9 +90,7 @@ describe("issue 20438", () => {
     filterWidget().click();
     cy.wait("@getEmbed");
 
-    popover()
-      .contains("Doohickey")
-      .click();
+    popover().contains("Doohickey").click();
     cy.wait("@getEmbed");
 
     cy.button("Add filter").click();

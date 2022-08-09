@@ -17,7 +17,7 @@ const questionDetails = {
       aggregation: [["count"]],
       breakout: [
         ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-        ["field", PEOPLE.STATE, { "source-field": 11 }],
+        ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
       ],
     },
   },
@@ -45,13 +45,14 @@ describeEE("visual tests > admin > colors", () => {
     });
 
     visitQuestionAdhoc(questionDetails);
-    cy.percySnapshot("chart");
+    cy.createPercySnapshot("chart");
 
-    cy.findByText("Filter").click();
-    cy.percySnapshot("filters");
+    cy.icon("notebook").click();
+    cy.createPercySnapshot("filters");
+    cy.icon("notebook").click();
 
     cy.findByText("Summarize").click();
-    cy.percySnapshot("summarize");
+    cy.createPercySnapshot("summarize");
   });
 
   it("should use custom chart colors", () => {
@@ -64,12 +65,13 @@ describeEE("visual tests > admin > colors", () => {
     });
 
     visitQuestionAdhoc(questionDetails);
-    cy.percySnapshot("chart");
+    cy.createPercySnapshot("chart");
 
-    cy.findByText("Filter").click();
-    cy.percySnapshot("filters");
+    cy.icon("notebook").click();
+    cy.createPercySnapshot("filters");
+    cy.icon("notebook").click();
 
     cy.findByText("Summarize").click();
-    cy.percySnapshot("summarize");
+    cy.createPercySnapshot("summarize");
   });
 });

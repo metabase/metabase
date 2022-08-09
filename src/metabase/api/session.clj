@@ -1,8 +1,8 @@
 (ns metabase.api.session
   "/api/session endpoints"
-  (:require [cemerick.friend.credentials :as creds]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST]]
+            [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.config :as config]
@@ -165,18 +165,18 @@
   [:as {{:keys [username password]} :body, :as request}]
   {username su/NonBlankString
    password su/NonBlankString}
-  (let [ip-address (request.u/ip-address request)
-        do-login   (fn []
-                     (let [{session-uuid :id, :as session} (login username password (request.u/device-info request))
-                           response                        {:id (str session-uuid)}]
-                       (mw.session/set-session-cookie request response session)))]
+  (let [ip-address   (request.u/ip-address request)
+        request-time (t/zoned-date-time (t/zone-id "GMT"))
+        do-login     (fn []
+                       (let [{session-uuid :id, :as session} (login username password (request.u/device-info request))
+                             response                        {:id (str session-uuid)}]
+                         (mw.session/set-session-cookies request response session request-time)))]
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
        (throttle/with-throttling [(login-throttlers :ip-address) ip-address
                                   (login-throttlers :username)   username]
            (do-login))))))
-
 
 (api/defendpoint DELETE "/"
   "Logout."
@@ -231,7 +231,7 @@
                                                                    :id user-id, :is_active true)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
         (when (u/ignore-exceptions
-                (creds/bcrypt-verify token reset_token))
+                (u.password/bcrypt-verify token reset_token))
           ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
           (let [token-age (- (System/currentTimeMillis) reset_triggered)]
             (when (< token-age reset-token-ttl-ms)
@@ -252,7 +252,7 @@
         (let [{session-uuid :id, :as session} (create-session! :password user (request.u/device-info request))
               response                        {:success    true
                                                :session_id (str session-uuid)}]
-          (mw.session/set-session-cookie request response session)))
+          (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
 (api/defendpoint GET "/password_reset_token_valid"
@@ -287,7 +287,10 @@
              response {:id (str session-uuid)}
              user (db/select-one [User :id :is_active], :email (:email user))]
          (if (and user (:is_active user))
-           (mw.session/set-session-cookie request response session)
+           (mw.session/set-session-cookies request
+                                           response
+                                           session
+                                           (t/zoned-date-time (t/zone-id "GMT")))
            (throw (ex-info (str disabled-account-message)
                            {:status-code 401
                             :errors      {:account disabled-account-snippet}}))))))))

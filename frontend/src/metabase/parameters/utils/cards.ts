@@ -108,9 +108,9 @@ export function getCardUiParameters(
   const question = new Question(card, metadata);
 
   return valuePopulatedParameters.map(parameter => {
-    const target:
-      | ParameterTarget
-      | undefined = (parameter as ParameterWithTarget).target;
+    const target: ParameterTarget | undefined = (
+      parameter as ParameterWithTarget
+    ).target;
     const field = getParameterTargetField(target, metadata, question);
     if (field) {
       return {
@@ -144,7 +144,7 @@ export function remapParameterValuesToTemplateTags(
     const { target } = dashboardParameter;
     const tag = getTemplateTagFromTarget(target);
 
-    if (templateTagParametersByName[tag]) {
+    if (tag != null && templateTagParametersByName[tag]) {
       const templateTagParameter = templateTagParametersByName[tag];
       const parameterValue =
         parameterValuesByDashboardParameterId[dashboardParameter.id];

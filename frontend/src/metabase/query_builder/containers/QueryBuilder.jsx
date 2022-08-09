@@ -11,14 +11,12 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getWritebackEnabled } from "metabase/writeback/selectors";
-
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 
-import { closeNavbar } from "metabase/redux/app";
+import { closeNavbar, getIsNavbarOpen } from "metabase/redux/app";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -74,8 +72,6 @@ import {
   getQuestionAlerts,
   getVisualizationSettings,
   getIsNativeEditorOpen,
-  getIsPreviewing,
-  getIsPreviewable,
   getIsVisualized,
   getIsLiveResizable,
   getNativeEditorCursorOffset,
@@ -154,8 +150,6 @@ const mapStateToProps = (state, props) => {
     rawSeries: getRawSeries(state),
 
     uiControls: getUiControls(state),
-    // includes isShowingDataReference, isEditing, isRunning, etc
-    // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
     ...state.qb.uiControls,
     isAnySidebarOpen: getIsAnySidebarOpen(state),
 
@@ -163,17 +157,14 @@ const mapStateToProps = (state, props) => {
     isDirty: getIsDirty(state),
     isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),
-    isPreviewing: getIsPreviewing(state),
-    isPreviewable: getIsPreviewable(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
+    isNavBarOpen: getIsNavbarOpen(state),
     isVisualized: getIsVisualized(state),
     isLiveResizable: getIsLiveResizable(state),
     isTimeseries: getIsTimeseries(state),
     isHeaderVisible: getIsHeaderVisible(state),
     isActionListVisible: getIsActionListVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
-
-    isWritebackEnabled: getWritebackEnabled(state),
 
     parameters: getParameters(state),
     databaseFields: getDatabaseFields(state),
@@ -241,9 +232,10 @@ function QueryBuilder(props) {
   } = props;
 
   const forceUpdate = useForceUpdate();
-  const forceUpdateDebounced = useMemo(() => _.debounce(forceUpdate, 400), [
-    forceUpdate,
-  ]);
+  const forceUpdateDebounced = useMemo(
+    () => _.debounce(forceUpdate, 400),
+    [forceUpdate],
+  );
   const timeout = useRef(null);
 
   const previousUIControls = usePrevious(uiControls);

@@ -39,7 +39,6 @@ export function QuestionSummarizeWidget({
   return (
     <HeaderButton
       large
-      data-testid="toggle-summarize-sidebar-button"
       color={color("summarize")}
       labelBreakpoint="sm"
       onClick={async () => {
@@ -94,10 +93,7 @@ QuestionSummaries.shouldRender = ({
   queryBuilderMode === "view" &&
   question &&
   question.isStructured() &&
-  question
-    .query()
-    .topLevelQuery()
-    .hasAggregations() &&
+  question.query().topLevelQuery().hasAggregations() &&
   !isObjectDetail;
 
 QuestionSummarizeWidget.shouldRender = ({

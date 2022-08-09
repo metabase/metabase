@@ -6,7 +6,7 @@
             [clojure.test :refer [deftest is testing use-fixtures]]
             [metabase-enterprise.serialization.cmd :refer [dump load]]
             [metabase-enterprise.serialization.test-util :as ts]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency
+            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
                                      Dimension Field FieldValues Metric NativeQuerySnippet Pulse PulseCard PulseChannel
                                      Segment Table User]]
             [metabase.query-processor :as qp]
@@ -36,7 +36,7 @@
 (defn- world-snapshot
   []
   (into {} (for [model [Database Table Field Metric Segment Collection Dashboard DashboardCard Pulse
-                        Card DashboardCardSeries FieldValues Dimension Dependency PulseCard PulseChannel User
+                        Card DashboardCardSeries FieldValues Dimension PulseCard PulseChannel User
                         NativeQuerySnippet]]
              [model (db/select-field :id model)])))
 
@@ -299,7 +299,8 @@
                                                              table-id-categories
                                                              table-id-users
                                                              table-id-checkins])
-                          (dump dump-dir (:email (test.users/fetch-user :crowberto)) {:only-db-ids #{db-id}})
+                          (dump dump-dir {:user        (:email (test.users/fetch-user :crowberto))
+                                          :only-db-ids #{db-id}})
                           {:query-results (gather-orig-results [card-id
                                                                 card-arch-id
                                                                 card-id-root

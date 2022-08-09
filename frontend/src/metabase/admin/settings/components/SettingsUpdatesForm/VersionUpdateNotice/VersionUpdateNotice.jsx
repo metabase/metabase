@@ -12,6 +12,7 @@ import {
   HostingCTAContent,
   HostingCTAIconContainer,
   HostingCTARoot,
+  NewVersionContainer,
 } from "./VersionUpdateNotice.styled";
 
 export default function VersionUpdateNotice() {
@@ -67,7 +68,7 @@ function NewVersionAvailable({ currentVersion }) {
 
   return (
     <div>
-      <div className="p2 bg-green bordered rounded border-success flex flex-row align-center justify-between">
+      <NewVersionContainer className="p2 bordered rounded border-success flex flex-row align-center justify-between">
         <span className="text-white text-bold">
           {t`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
           {t`You're running ${currentVersion}`}
@@ -85,7 +86,7 @@ function NewVersionAvailable({ currentVersion }) {
         >
           {t`Update`}
         </ExternalLink>
-      </div>
+      </NewVersionContainer>
 
       <div
         className="text-medium bordered rounded p2 mt2 overflow-y-scroll"

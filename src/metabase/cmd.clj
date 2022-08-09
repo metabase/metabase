@@ -73,12 +73,6 @@
   (classloader/require 'metabase.cmd.reset-password)
   ((resolve 'metabase.cmd.reset-password/reset-password!) email-address))
 
-(defn ^:command refresh-integration-test-db-metadata
-  "Re-sync the frontend integration test DB's metadata for the Sample Database."
-  []
-  (classloader/require 'metabase.cmd.refresh-integration-test-db-metadata)
-  ((resolve 'metabase.cmd.refresh-integration-test-db-metadata/refresh-integration-test-db-metadata)))
-
 (defn ^:command help
   "Show this help message listing valid Metabase commands."
   []
@@ -157,9 +151,8 @@
   `active` (default), `all`. With `active` option, do not dump archived entities."
   ([path] (dump path {"--state" :active}))
   ([path & args]
-   (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/dump)
-         {:keys [user]} (cmd-args->map args)]
-     (cmd path user))))
+   (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/dump)]
+     (cmd path (cmd-args->map args)))))
 
 (defn ^:command rotate-encryption-key
   "Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to

@@ -24,6 +24,26 @@ type DatabaseEntityLoaderProps = {
   database?: Database;
 };
 
+export const toggleModelPersistence = async (
+  model: Question,
+  onChange?: (isPersisted: boolean) => void,
+) => {
+  const id = model.id();
+  const isPersisted = model.isPersisted();
+  try {
+    if (isPersisted) {
+      await CardApi.unpersist({ id });
+    } else {
+      await CardApi.persist({ id });
+    }
+    onChange?.(!isPersisted);
+  } catch (err) {
+    console.warn("Failed to persist/unpersist model");
+  } finally {
+    await delay(200);
+  }
+};
+
 function ModelCacheControl({
   model,
   size,
@@ -34,22 +54,9 @@ function ModelCacheControl({
   const label = model.isPersisted() ? t`Unpersist model` : t`Persist model`;
 
   const handleClick = useCallback(async () => {
-    const id = model.id();
-    const isPersisted = model.isPersisted();
     setLoading(true);
-    try {
-      if (isPersisted) {
-        await CardApi.unpersist({ id });
-      } else {
-        await CardApi.persist({ id });
-      }
-      onChange?.(!isPersisted);
-    } catch (err) {
-      console.warn("Failed to persist/unpersist model");
-    } finally {
-      await delay(200);
-      setLoading(false);
-    }
+    toggleModelPersistence(model, onChange);
+    setLoading(false);
   }, [model, onChange]);
 
   return (

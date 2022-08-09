@@ -16,6 +16,11 @@ export const ColorPillRoot = styled.div<ColorPillRootProps>`
   border-style: ${props => (props.isAuto ? "dashed" : "solid")};
   border-radius: 50%;
   cursor: pointer;
+
+  &:hover {
+    border-color: ${props =>
+      props.isSelected ? color("text-dark") : color("text-light")};
+  }
 `;
 
 export const ColorPillContent = styled.div`

@@ -1,4 +1,5 @@
 import {
+  checkIfTimeSpanTooGreat,
   parseTime,
   parseTimestamp,
   getRelativeTimeAbbreviated,
@@ -7,7 +8,7 @@ import {
   msToHours,
   hoursToSeconds,
 } from "metabase/lib/time";
-import moment from "moment";
+import moment from "moment-timezone";
 
 describe("time", () => {
   describe("parseTimestamp", () => {
@@ -85,29 +86,17 @@ describe("time", () => {
   describe("getRelativeTimeAbbreviated", () => {
     it("should show 'just now' for timestamps from the immediate past", () => {
       expect(
-        getRelativeTimeAbbreviated(
-          moment()
-            .subtract(30, "s")
-            .toString(),
-        ),
+        getRelativeTimeAbbreviated(moment().subtract(30, "s").toString()),
       ).toEqual("just now");
     });
 
     it("should show a shortened string for times 1 minute+", () => {
       expect(
-        getRelativeTimeAbbreviated(
-          moment()
-            .subtract(61, "s")
-            .toString(),
-        ),
+        getRelativeTimeAbbreviated(moment().subtract(61, "s").toString()),
       ).toEqual("1 m");
 
       expect(
-        getRelativeTimeAbbreviated(
-          moment()
-            .subtract(5, "d")
-            .toString(),
-        ),
+        getRelativeTimeAbbreviated(moment().subtract(5, "d").toString()),
       ).toEqual("5 d");
     });
   });
@@ -161,6 +150,18 @@ describe("time", () => {
       it(`returns ${expected} for ${value}`, () => {
         expect(hoursToSeconds(value)).toBe(expected);
       });
+    });
+  });
+
+  describe("checkIfTimeSpanTooGreat", () => {
+    it(`returns false for small time spans`, () => {
+      const isTimeSpanTooGreat = checkIfTimeSpanTooGreat(10, "days");
+      expect(isTimeSpanTooGreat).toBeFalsy();
+    });
+
+    it(`returns truthy for large time spans`, () => {
+      const isTimeSpanTooGreat = checkIfTimeSpanTooGreat(1000000000, "years");
+      expect(isTimeSpanTooGreat).toBeTruthy();
     });
   });
 });

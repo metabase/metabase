@@ -7,6 +7,8 @@ import styles from "./Text.css";
 import cx from "classnames";
 import { t } from "ttag";
 
+import { DataAppContextConsumer } from "metabase/writeback/containers/DataAppContext";
+
 const getSettingsStyle = settings => ({
   "align-center": settings["text.align_horizontal"] === "center",
   "align-end": settings["text.align_horizontal"] === "right",
@@ -94,73 +96,78 @@ export default class Text extends Component {
   preventDragging = e => e.stopPropagation();
 
   render() {
-    const {
-      className,
-      gridSize,
-      settings,
-      isEditing,
-      isPreviewing,
-    } = this.props;
+    const { className, gridSize, settings, isEditing, isPreviewing } =
+      this.props;
     const isSingleRow = gridSize && gridSize.height === 1;
 
     if (isEditing) {
       return (
-        <div
-          className={cx(className, styles.Text, {
-            [styles.padded]: !isPreviewing,
-          })}
-        >
-          {isPreviewing ? (
-            <ReactMarkdown
-              remarkPlugins={REMARK_PLUGINS}
-              className={cx(
-                "full flex-full flex flex-column text-card-markdown",
-                styles["text-card-markdown"],
-                getSettingsStyle(settings),
-              )}
+        <DataAppContextConsumer>
+          {dataAppContext => (
+            <div
+              className={cx(className, styles.Text, {
+                [styles.padded]: !isPreviewing,
+              })}
             >
-              {settings.text}
-            </ReactMarkdown>
-          ) : (
-            <textarea
-              className={cx(
-                "full flex-full flex flex-column bg-light bordered drag-disabled",
-                styles["text-card-textarea"],
+              {isPreviewing ? (
+                <ReactMarkdown
+                  remarkPlugins={REMARK_PLUGINS}
+                  className={cx(
+                    "full flex-full flex flex-column text-card-markdown",
+                    styles["text-card-markdown"],
+                    getSettingsStyle(settings),
+                  )}
+                >
+                  {dataAppContext.format(settings.text)}
+                </ReactMarkdown>
+              ) : (
+                <textarea
+                  className={cx(
+                    "full flex-full flex flex-column bg-light bordered drag-disabled",
+                    styles["text-card-textarea"],
+                  )}
+                  name="text"
+                  placeholder={t`You can use Markdown here, and include variables {{like_this}}`}
+                  value={settings.text}
+                  onChange={e => this.handleTextChange(e.target.value)}
+                  // Prevents text cards from dragging when you actually want to select text
+                  // See: https://github.com/metabase/metabase/issues/17039
+                  onMouseDown={this.preventDragging}
+                />
               )}
-              name="text"
-              placeholder={t`Write here, and use Markdown if you'd like`}
-              value={settings.text}
-              onChange={e => this.handleTextChange(e.target.value)}
-              // Prevents text cards from dragging when you actually want to select text
-              // See: https://github.com/metabase/metabase/issues/17039
-              onMouseDown={this.preventDragging}
-            />
+            </div>
           )}
-        </div>
+        </DataAppContextConsumer>
       );
     }
 
     return (
-      <div
-        className={cx(className, styles.Text, {
-          // if the card is not showing a background
-          // we should adjust the left padding
-          // to help align the titles with the wrapper
-          pl0: !settings["dashcard.background"],
-          "Text--single-row": isSingleRow,
-        })}
-      >
-        <ReactMarkdown
-          remarkPlugins={REMARK_PLUGINS}
-          className={cx(
-            "full flex-full flex flex-column text-card-markdown",
-            styles["text-card-markdown"],
-            getSettingsStyle(settings),
-          )}
-        >
-          {settings.text}
-        </ReactMarkdown>
-      </div>
+      <DataAppContextConsumer>
+        {dataAppContext => {
+          return (
+            <div
+              className={cx(className, styles.Text, {
+                // if the card is not showing a background
+                // we should adjust the left padding
+                // to help align the titles with the wrapper
+                pl0: !settings["dashcard.background"],
+                "Text--single-row": isSingleRow,
+              })}
+            >
+              <ReactMarkdown
+                remarkPlugins={REMARK_PLUGINS}
+                className={cx(
+                  "full flex-full flex flex-column text-card-markdown",
+                  styles["text-card-markdown"],
+                  getSettingsStyle(settings),
+                )}
+              >
+                {dataAppContext.format(settings.text)}
+              </ReactMarkdown>
+            </div>
+          );
+        }}
+      </DataAppContextConsumer>
     );
   }
 }

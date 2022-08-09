@@ -104,11 +104,7 @@ function createBasicAlert({ firstAlert, includeNormal } = {}) {
   }
 
   if (includeNormal) {
-    cy.findByText("Email alerts to:")
-      .parent()
-      .children()
-      .last()
-      .click();
+    cy.findByText("Email alerts to:").parent().children().last().click();
     cy.findByText("Robert Tableton").click();
   }
   cy.findByText("Done").click();

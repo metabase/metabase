@@ -30,7 +30,7 @@ const ColorResetModal = ({
       ]}
       onClose={onClose}
     >
-      {t`If you do this, your colors will change to our default colors. This action can’t be undone`}
+      {t`If you do this, your colors will change to our default colors. This action can’t be undone.`}
     </ModalContent>
   );
 };

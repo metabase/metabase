@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
 
 export const TabListRoot = styled.div`
-  overflow-x: auto;
+  position: relative;
 `;
 
 export const TabListContent = styled.div`
-  display: flex;
-  gap: 1rem;
+  scroll-behavior: smooth;
+  height: 100%;
 `;

@@ -60,7 +60,7 @@ export class WindowModal extends Component {
   _modalComponent() {
     const className = cx(
       this.props.className,
-      ...["small", "medium", "wide", "tall"]
+      ...["small", "medium", "wide", "tall", "fit"]
         .filter(type => this.props[type])
         .map(type => `Modal--${type}`),
     );

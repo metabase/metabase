@@ -7,9 +7,7 @@ import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import AccordionList from "metabase/core/components/AccordionList";
 
-import FieldList from "../FieldList";
 import QueryDefinitionTooltip from "../QueryDefinitionTooltip";
 import ExpressionPopover from "../ExpressionPopover";
 
@@ -17,7 +15,11 @@ import * as AGGREGATION from "metabase/lib/query/aggregation";
 
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 
-import { ExpressionPopoverRoot } from "./AggregationPopover.styled";
+import {
+  ExpressionPopoverRoot,
+  AggregationItemList,
+  AggregationFieldList,
+} from "./AggregationPopover.styled";
 
 const COMMON_SECTION_NAME = t`Common Metrics`;
 const BASIC_SECTION_NAME = t`Basic Metrics`;
@@ -182,13 +184,8 @@ export default class AggregationPopover extends Component {
   }
 
   render() {
-    let {
-      query,
-      dimension,
-      showCustom,
-      showMetrics,
-      alwaysExpanded,
-    } = this.props;
+    let { query, dimension, showCustom, showMetrics, alwaysExpanded } =
+      this.props;
 
     const table = query.table();
     const aggregationOperators = this._getAvailableAggregations();
@@ -265,11 +262,9 @@ export default class AggregationPopover extends Component {
 
     // slightly different layout of "basic" and "common" metrics for alwaysExpanded=true
     if (alwaysExpanded && sections.length > 1) {
-      const [
-        commonAggregationItems,
-        basicAggregationItems,
-      ] = _.partition(aggregationItems, item =>
-        COMMON_AGGREGATIONS.has(item.aggregation.short),
+      const [commonAggregationItems, basicAggregationItems] = _.partition(
+        aggregationItems,
+        item => COMMON_AGGREGATIONS.has(item.aggregation.short),
       );
       // move COMMON_AGGREGATIONS into the "common metrics" section
       sections[0].items = basicAggregationItems;
@@ -346,8 +341,7 @@ export default class AggregationPopover extends Component {
               <h3 className="inline-block pl1">{selectedAggregation.name}</h3>
             </a>
           </div>
-          <FieldList
-            className="text-green"
+          <AggregationFieldList
             width={this.props.width}
             maxHeight={this.props.maxHeight - (this.state.headerHeight || 0)}
             query={query}
@@ -361,8 +355,7 @@ export default class AggregationPopover extends Component {
       );
     } else {
       return (
-        <AccordionList
-          className="text-green"
+        <AggregationItemList
           width={this.props.width}
           maxHeight={this.props.maxHeight}
           alwaysExpanded={this.props.alwaysExpanded}

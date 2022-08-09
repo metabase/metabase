@@ -5,6 +5,9 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Questions from "metabase/entities/questions";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 import Modal from "metabase/components/Modal";
@@ -23,13 +26,15 @@ import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm";
 import BulkFilterModal from "metabase/query_builder/components/filters/modals/BulkFilterModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
+import QuestionMoveToast from "./QuestionMoveToast";
 
-import { createRowFromTableView } from "metabase/writeback/actions";
+const mapDispatchToProps = {
+  setQuestionCollection: Questions.actions.setCollection,
+};
 
 class QueryModals extends React.Component {
   showAlertsAfterQuestionSaved = () => {
@@ -55,15 +60,10 @@ class QueryModals extends React.Component {
       modal,
       modalContext,
       question,
+      initialCollectionId,
       onCloseModal,
       onOpenModal,
-      createRowFromTableView,
     } = this.props;
-
-    const onInsert = values => {
-      const table = question.table();
-      createRowFromTableView({ table, values });
-    };
 
     return modal === MODAL_TYPES.SAVE ? (
       <Modal form onClose={onCloseModal}>
@@ -166,7 +166,7 @@ class QueryModals extends React.Component {
         />
       </Modal>
     ) : modal === MODAL_TYPES.FILTERS ? (
-      <Modal onClose={onCloseModal}>
+      <Modal fit onClose={onCloseModal}>
         <BulkFilterModal question={question} onClose={onCloseModal} />
       </Modal>
     ) : modal === MODAL_TYPES.HISTORY ? (
@@ -187,11 +187,21 @@ class QueryModals extends React.Component {
           initialCollectionId={question.collectionId()}
           onClose={onCloseModal}
           onMove={collection => {
-            const card = question
-              .setCollectionId(collection && collection.id)
-              .card();
-
-            this.props.onSave(card);
+            this.props.setQuestionCollection(
+              { id: question.id() },
+              collection,
+              {
+                notify: {
+                  message: (
+                    <QuestionMoveToast
+                      isModel={question.isDataset()}
+                      collectionId={collection.id || ROOT_COLLECTION.id}
+                    />
+                  ),
+                  undo: false,
+                },
+              },
+            );
             onCloseModal();
           }}
         />
@@ -208,10 +218,15 @@ class QueryModals extends React.Component {
       <Modal onClose={onCloseModal}>
         <EntityCopyModal
           entityType="questions"
-          entityObject={this.props.card}
+          entityObject={{
+            ...question.card(),
+            collection_id: question.canWrite()
+              ? question.collectionId()
+              : initialCollectionId,
+          }}
           copy={async formValues => {
             const object = await this.props.onCreate({
-              ...this.props.card,
+              ...question.card(),
               ...formValues,
               description: formValues.description || null,
               collection_position: null,
@@ -250,20 +265,8 @@ class QueryModals extends React.Component {
           onClose={onCloseModal}
         />
       </Modal>
-    ) : modal === MODAL_TYPES.INSERT_ROW ? (
-      <Modal onClose={onCloseModal}>
-        <WritebackModalForm
-          table={question.table()}
-          onSubmit={onInsert}
-          onClose={onCloseModal}
-        />
-      </Modal>
     ) : null;
   }
 }
 
-const mapDispatchToProps = dispatch => ({
-  createRowFromTableView: payload => dispatch(createRowFromTableView(payload)),
-});
-
-export default connect(() => {}, mapDispatchToProps)(QueryModals);
+export default connect(null, mapDispatchToProps)(QueryModals);

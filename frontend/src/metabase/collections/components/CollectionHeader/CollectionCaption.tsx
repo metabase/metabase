@@ -25,6 +25,7 @@ const CollectionCaption = ({
   const isRoot = isRootCollection(collection);
   const isPersonal = isPersonalCollection(collection);
   const isEditable = !isRoot && !isPersonal && collection.can_write;
+  const hasDescription = Boolean(collection.description);
 
   const handleChangeName = useCallback(
     (name: string) => {
@@ -56,12 +57,13 @@ const CollectionCaption = ({
           onChange={handleChangeName}
         />
       </CaptionTitleContainer>
-      {isEditable && (
+      {(isEditable || hasDescription) && (
         <CaptionDescription
           key={collection.id}
           initialValue={collection.description}
           placeholder={t`Add description`}
           isVisible={Boolean(collection.description)}
+          isDisabled={!isEditable}
           isOptional
           isMultiline
           onChange={handleChangeDescription}

@@ -3,4 +3,5 @@ export const SIDEBAR_NAME = {
   clickBehavior: "clickBehavior",
   editParameter: "editParameter",
   sharing: "sharing",
+  info: "info",
 };

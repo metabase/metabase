@@ -6,7 +6,7 @@ title: Installing Metabase
 
 Metabase is built and packaged as a Java JAR file and can be run anywhere that Java is available.
 
-If you're not sure which way is right for you, check out [How to run Metabase in production](/blog/how-to-run-metabase-in-production/index.html).
+If you're not sure which way is right for you, check out [How to run Metabase in production](/blog/how-to-run-metabase-in-production).
 
 ## [Running the Jar File](running-the-metabase-jar-file.md)
 

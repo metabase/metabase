@@ -55,12 +55,7 @@ dateDimension.field().fingerprint = {
 };
 
 const expressionDimension = Dimension.parseMBQL(
-  [
-    "expression",
-    Array(15)
-      .fill("Long display name")
-      .join(" -- "),
-  ],
+  ["expression", Array(15).fill("Long display name").join(" -- ")],
   metadata,
 );
 

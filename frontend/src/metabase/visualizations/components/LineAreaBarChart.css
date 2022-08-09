@@ -237,11 +237,17 @@ text.value-label {
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.5px;
+  stroke: var(--color-text-white);
+  stroke-width: 3px;
+  paint-order: stroke;
 }
 
 text.value-label-white {
   fill: var(--color-text-white);
   font-weight: 800;
+  stroke: var(--color-text-dark);
+  stroke-width: 3px;
+  paint-order: stroke;
 }
 
 /* timeline events */

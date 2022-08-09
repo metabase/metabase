@@ -6,9 +6,7 @@ import { popover } from "__support__/e2e/helpers";
  */
 export function openNewCollectionItemFlowFor(type) {
   cy.findByText("New").click();
-  popover()
-    .findByText(new RegExp(type, "i"))
-    .click();
+  popover().findByText(new RegExp(type, "i")).click();
 }
 
 export function getCollectionActions() {
@@ -30,4 +28,14 @@ export function getCollectionIdFromSlug(slug, callback) {
 
     callback && callback(id);
   });
+}
+
+export function visitCollection(id) {
+  const alias = `getCollection${id}Items`;
+
+  cy.intercept("GET", `/api/collection/${id}/items?**`).as(alias);
+
+  cy.visit(`/collection/${id}`);
+
+  cy.wait([`@${alias}`, `@${alias}`]);
 }

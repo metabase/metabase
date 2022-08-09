@@ -39,6 +39,12 @@ Your joins can also include multiple conditions to refine your results. Metabase
 
 ![Joining tables on multiple columns](./images/notebook/joining-on-multiple-columns.png)
 
+## Joining with different operators
+
+You can join tables on comparison conditions like `=`, `≠`, `>`, `≥`, `<`, or `≤`.
+
+![Join operators](./images/notebook/join-operator.png)
+
 ## Further reading
 
 - [Joins in Metabase][join]

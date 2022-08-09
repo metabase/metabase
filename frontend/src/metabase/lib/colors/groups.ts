@@ -1,4 +1,4 @@
-import { times, unzip } from "lodash";
+import _ from "underscore";
 import { ACCENT_COUNT, color } from "./palette";
 import { AccentColorOptions } from "./types";
 
@@ -13,19 +13,19 @@ export const getAccentColors = ({
   light && ranges.push(getLightAccentColors());
   dark && ranges.push(getDarkAccentColors());
 
-  return harmony ? unzip(ranges).flat() : ranges.flat();
+  return harmony ? _.unzip(ranges).flat() : ranges.flat();
 };
 
 export const getMainAccentColors = () => {
-  return times(ACCENT_COUNT, i => color(`accent${i}`));
+  return _.times(ACCENT_COUNT, i => color(`accent${i}`));
 };
 
 export const getLightAccentColors = () => {
-  return times(ACCENT_COUNT, i => color(`accent${i}-light`));
+  return _.times(ACCENT_COUNT, i => color(`accent${i}-light`));
 };
 
 export const getDarkAccentColors = () => {
-  return times(ACCENT_COUNT, i => color(`accent${i}-dark`));
+  return _.times(ACCENT_COUNT, i => color(`accent${i}-dark`));
 };
 
 export const getStatusColorRanges = () => {

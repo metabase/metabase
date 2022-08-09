@@ -1,10 +1,9 @@
 import React from "react";
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
-import cx from "classnames";
 import { t } from "ttag";
-
 import YearPicker from "metabase/components/YearPicker";
+import { QuarterRoot } from "./DateQuarterYearWidget.styled";
 
 // translator: this is a "moment" format string (https://momentjs.com/docs/#/displaying/format/) It should include "Q" for the quarter number, and raw text can be escaped by brackets. For eample "[Quarter] Q" will be rendered as "Quarter 1" etc
 const QUARTER_FORMAT_STRING = t`[Q]Q`;
@@ -46,10 +45,7 @@ class DateQuarterYearWidget extends React.Component<Props, State> {
   componentWillUnmount() {
     const { quarter, year } = this.state;
     if (quarter != null && year != null) {
-      const value = moment()
-        .year(year)
-        .quarter(quarter)
-        .format("[Q]Q-YYYY");
+      const value = moment().year(year).quarter(quarter).format("[Q]Q-YYYY");
       if (this.props.value !== value) {
         this.props.setValue(value);
       }
@@ -92,19 +88,9 @@ interface QuarterProps {
 }
 
 const Quarter = ({ quarter, selected, onClick }: QuarterProps) => (
-  <li
-    aria-selected={selected}
-    className={cx(
-      "cursor-pointer bg-brand-hover text-white-hover flex layout-centered",
-      { "bg-brand text-white": selected },
-    )}
-    style={{ width: 75, height: 75 }}
-    onClick={onClick}
-  >
-    {moment()
-      .quarter(quarter)
-      .format(QUARTER_FORMAT_STRING)}
-  </li>
+  <QuarterRoot isSelected={selected} aria-selected={selected} onClick={onClick}>
+    {moment().quarter(quarter).format(QUARTER_FORMAT_STRING)}
+  </QuarterRoot>
 );
 
 export default DateQuarterYearWidget;

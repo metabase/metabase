@@ -53,8 +53,5 @@ describe.skip("issue 22517", () => {
 });
 
 function renameColumn(column, newName) {
-  cy.findByDisplayValue(column)
-    .clear()
-    .type(newName)
-    .blur();
+  cy.findByDisplayValue(column).clear().type(newName).blur();
 }

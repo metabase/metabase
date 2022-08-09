@@ -23,9 +23,7 @@ describe("issue 21135", () => {
   });
 
   it("should handle cc with the same name as the table column (metabase#21135)", () => {
-    cy.findAllByTestId("notebook-cell-item")
-      .contains("Price")
-      .click();
+    cy.findAllByTestId("notebook-cell-item").contains("Price").click();
     cy.button("Update").click();
 
     previewCustomColumnNotebookStep();
@@ -53,9 +51,7 @@ function switchToNotebookView() {
 function previewCustomColumnNotebookStep() {
   cy.intercept("POST", "/api/dataset").as("dataset");
 
-  cy.findByTestId("step-expression-0-0")
-    .find(".Icon-play")
-    .click();
+  cy.findByTestId("step-expression-0-0").find(".Icon-play").click();
 
   cy.wait("@dataset");
 }

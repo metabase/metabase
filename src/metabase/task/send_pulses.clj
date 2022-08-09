@@ -49,7 +49,8 @@
    (let [pulse-id->channels (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
      (doseq [[pulse-id channels] pulse-id->channels]
        (try
-         (task-history/with-task-history {:task (format "send-pulse %s" pulse-id)}
+         (task-history/with-task-history {:task         "send-pulse"
+                                          :task_details {:pulse-id pulse-id}}
            (log/debug (trs "Starting Pulse Execution: {0}" pulse-id))
            (when-let [pulse (pulse/retrieve-notification pulse-id :archived false)]
              (metabase.pulse/send-pulse! pulse :channel-ids (map :id channels)))

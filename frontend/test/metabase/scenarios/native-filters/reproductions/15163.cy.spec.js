@@ -77,7 +77,7 @@ const dashboardFilter = {
           if (test === "nosql") {
             cy.updatePermissionsGraph({
               [COLLECTION_GROUP]: {
-                "1": { data: { schemas: "all", native: "none" } },
+                1: { data: { schemas: "all", native: "none" } },
               },
             });
           }

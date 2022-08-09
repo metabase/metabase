@@ -80,9 +80,7 @@ describeEE("audit > auditing", () => {
       cy.findByText("No results!");
 
       // Wait for both of the charts to show up
-      cy.get(".dc-chart")
-        .as("charts")
-        .should("have.length", 2);
+      cy.get(".dc-chart").as("charts").should("have.length", 2);
 
       // For queries viewed, only 3 viewed something
       cy.get("@charts")

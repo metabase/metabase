@@ -182,9 +182,7 @@ describe("scenarios > question > null", () => {
       // Open the context menu that lets us apply filter using this column directly
       .click({ force: true });
 
-    popover()
-      .contains("=")
-      .click();
+    popover().contains("=").click();
 
     cy.findByText("39.72");
     // This row ([id] 3) had the `discount` column value and should be filtered out now

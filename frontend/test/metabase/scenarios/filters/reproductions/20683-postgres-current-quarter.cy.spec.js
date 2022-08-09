@@ -7,9 +7,7 @@ describe("issue 20683", () => {
 
     cy.visit("/");
     cy.findByText("New").click();
-    cy.findByText("Question")
-      .should("be.visible")
-      .click();
+    cy.findByText("Question").should("be.visible").click();
 
     cy.findByText("QA Postgres12").click();
     cy.findByText("Orders").click();

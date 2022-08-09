@@ -141,7 +141,9 @@
 
 (defn- remove-extra-channels-fields [channels]
   (for [channel channels]
-    (dissoc channel :id :pulse_id :created_at :updated_at)))
+    (-> channel
+        (dissoc :id :pulse_id :created_at :updated_at)
+        (update :entity_id boolean))))
 
 (def ^:private pulse-defaults
   {:collection_id       nil
@@ -959,7 +961,7 @@
                                           :body    {"A Pulse" true}})
                      (mt/regex-email-bodies #"A Pulse"))))))))))
 
-(deftest dont-run-cards-async-test
+(deftest pulse-card-query-results-test
   (testing "A Card saved with `:async?` true should not be ran async for a Pulse"
     (is (map? (#'api.pulse/pulse-card-query-results
                {:id            1
@@ -967,7 +969,16 @@
                                 :type     :query
                                 :query    {:source-table (mt/id :venues)
                                            :limit        1}
-                                :async?   true}})))))
+                                :async?   true}}))))
+  (testing "viz-settings saved in the DB for a Card should be loaded"
+    (is (some? (get-in (#'api.pulse/pulse-card-query-results
+                        {:id            1
+                         :dataset_query {:database (mt/id)
+                                         :type     :query
+                                         :query    {:source-table (mt/id :venues)
+                                                    :limit        1}
+                                         :async?   true}})
+                       [:data :viz-settings])))))
 
 (deftest form-input-test
   (testing "GET /api/pulse/form_input"

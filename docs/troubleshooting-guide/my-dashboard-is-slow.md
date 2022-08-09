@@ -12,6 +12,10 @@ You've created a dashboard that shows the right things but:
 
 Our articles on [Metabase at scale][metabase-at-scale] and [making dashboards faster][faster-dashboards] will help set the stage for the steps below.
 
+## Do you see an error message?
+
+If you get an error message that says "Your question took too long", go to [Troubleshooting timeouts](./timeout.html).
+
 ## Did it used to be fast enough, but has recently slowed down?
 
 **Root cause:** Metabase is not an island, complete unto itself, so if the dashboards and the cards it shows haven't changed, the slowdown is probably due to a change in the environment.

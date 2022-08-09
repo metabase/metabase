@@ -28,9 +28,17 @@ You'll find the certificates in the `/app/certs/` directory in Metabase's Docker
 
 If you need a different certificate, you can build your own Docker image. Visit your external provider's page for your database and find a link to download the root certificate for connecting to your database.
 
-### Step 2: Save the certificate in your Metabase directory
+### Step 2: Save the certificate
+
+**Self-hosted**
 
 Save the downloaded certificate in the same directory where you keep your metabase.jar file. Technically you can store the certificate wherever, but keeping it in the same directory as your metabase.jar file is a best practice. You'll specify the certificate's path in your connection string.
+
+**Metabase Cloud**
+
+You'll need to complete [Step 3: Add your database](#step-3-add-your-database) first.
+
+Once you've done that, you can go to **Admin** > **Databases** and select your database. Find the section named **SSL Client Certificate** and click **Select a file** to upload your downloaded certificate.
 
 ### Step 3: Add your database
 
@@ -55,7 +63,7 @@ You'll add an ampersand (`&`) to separate each parameter. For example, In the **
 sslmode=verify-full&sslrootcert=/path/to/certificate.pem
 ```
 
-Replacing `/path/to/certifcate.pem` with the full path for the certificate you downloaded from your provider.
+Replace `/path/to/certifcate.pem` with the full path for the certificate you downloaded from your provider.
 
 You can learn more about [SSL support for PostgreSQL](https://www.postgresql.org/docs/current/libpq-ssl.html).
 

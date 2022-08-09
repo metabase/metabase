@@ -2,27 +2,58 @@
   "`/api/action/` endpoints."
   (:require [compojure.core :as compojure :refer [POST]]
             [metabase.actions :as actions]
+            [metabase.actions.http-action :as http-action]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [HTTPAction]]
             [metabase.models.action :as action]
             [metabase.models.database :refer [Database]]
             [metabase.models.setting :as setting]
+            [metabase.models.table :as table]
             [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [trs]]
+            [metabase.util.i18n :as i18n]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
-(defn do-check-actions-enabled
+(def ^:private JsonQuerySchema
+  (su/with-api-error-message
+    (s/constrained
+      s/Str
+      #(http-action/apply-json-query {} %))
+    "must be a valid json-query"))
+
+(def ^:private SupportedActionType
+  (su/with-api-error-message
+    (s/enum "http")
+    "Only http actions are supported at this time."))
+
+(def ^:private HTTPActionTemplate
+  {:method (s/enum "GET" "POST" "PUT" "DELETE" "PATCH")
+   :url s/Str
+   (s/optional-key :body) (s/maybe s/Str)
+   (s/optional-key :headers) (s/maybe s/Str)
+   (s/optional-key :parameters) (s/maybe [su/Map])
+   (s/optional-key :parameter_mappings) (s/maybe su/Map)})
+
+(api/defendpoint POST "/:action-namespace/:action-name"
+  "Generic API endpoint for executing any sort of Action."
+  [action-namespace action-name :as {:keys [body]}]
+  (let [action (keyword action-namespace action-name)]
+    (actions/perform-action! action body)))
+
+(api/defendpoint POST "/:action-namespace/:action-name/:table-id"
+  "Generic API endpoint for executing any sort of Action with source Table ID specified as part of the route."
+  [action-namespace action-name table-id :as {:keys [body]}]
+  (let [action (keyword action-namespace action-name)]
+    (actions/perform-action! action {:database (api/check-404 (table/table-id->database-id table-id))
+                                     :table-id table-id
+                                     :arg      body})))
+
+(defn check-actions-enabled
   "Check whether Actions are enabled and allowed for the [[metabase.models.database]] with `database-id`, or return a
-  400 status code. `f` may be `nil`. If `f` is passed, calls
-
-    (f driver)
-
-  if the check passes."
-  [database-id f]
+  400 status code."
+  [database-id]
   {:pre [(integer? database-id)]}
   (let [{db-settings :settings, driver :engine, :as db} (Database database-id)]
     ;; make sure the Driver supports Actions.
@@ -35,70 +66,46 @@
       ;; make sure Actions are enabled for this Database
       (when-not (actions/database-enable-actions)
         (throw (ex-info (i18n/tru "Actions are not enabled for Database {0}." database-id)
-                        {:status-code 400})))
-      ;; TODO -- need to check permissions once the perms code is in place.
-      (when f
-        (f driver)))))
-
-
-(api/defendpoint POST "/table/:action"
-  "Generic API endpoint for doing an action against a specific Table."
-  [action :as {{:keys [database], :as query} :body}]
-  {database s/Int}
-  (do-check-actions-enabled
-   database
-   (fn [_driver]
-     (actions/table-action! (keyword action) query))))
-
-(api/defendpoint POST "/row/:action"
-  "Generic API endpoint for doing an action against a single, specific row."
-  [action :as {{:keys [database] :as query} :body}]
-  {database s/Int}
-  (let [query (mbql.normalize/normalize query)]
-    (try
-      (s/validate mbql.s/Query query)
-      (catch Exception e
-        (throw (ex-info
-                (ex-message e)
-                {:exception-data (ex-data e)
-                 :status-code 400}))))
-    (case (keyword action)
-      :update (s/validate {:update-row {s/Keyword s/Any} s/Keyword s/Any} query)
-      :create (s/validate {:create-row {s/Keyword s/Any} s/Keyword s/Any} query)
-      nil) ;; nothing else to check
-    (do-check-actions-enabled
-     database
-     (fn [driver]
-       (actions/row-action! (keyword action) driver query)))))
+                        {:status-code 400}))))))
 
 (api/defendpoint GET "/"
   "Returns cards that can be used for QueryActions"
-  [database]
-  {database (s/maybe s/Int)}
-  (when database
-    (do-check-actions-enabled database nil))
-  (action/select-actions database))
+  []
+  (action/select-actions))
 
 (api/defendpoint GET "/:action-id"
-  [action-id database]
-  (when database
-    (do-check-actions-enabled database nil))
-  (first (action/select-actions nil :id action-id)))
+  [action-id]
+  (api/check-404 (first (action/select-actions :id action-id))))
 
 (api/defendpoint DELETE "/:action-id"
-  [action-id database]
-  (when database
-    (do-check-actions-enabled database nil))
+  [action-id]
   (db/delete! HTTPAction :action_id action-id)
   api/generic-204-no-content)
 
 (api/defendpoint POST "/"
-  [action database]
-  (when database
-    (do-check-actions-enabled database nil))
-  (when (not= :http (:type action))
-    (throw (ex-info (trs "Action type is not supported") action)))
-  (let [http-action (db/insert! HTTPAction action)]
-    (first (action/select-actions nil :id (:action_id http-action)))))
+  "Create a new HTTP action."
+  [:as {{:keys [type name template response_handle error_handle] :as action} :body}]
+  {type SupportedActionType
+   name s/Str
+   template HTTPActionTemplate
+   response_handle (s/maybe JsonQuerySchema)
+   error_handle (s/maybe JsonQuerySchema)}
+  (let [action-id (action/insert! action)]
+    (if action-id
+      (first (action/select-actions :id action-id))
+      ;; db/insert! does not return a value when used with h2
+      ;; so we return the most recently updated http action.
+      (last (action/select-actions :type "http")))))
+
+(api/defendpoint PUT "/:id"
+  [id :as {{:keys [type name template response_handle error_handle] :as action} :body}]
+  {id su/IntGreaterThanZero
+   type SupportedActionType
+   name (s/maybe s/Str)
+   template (s/maybe HTTPActionTemplate)
+   response_handle (s/maybe JsonQuerySchema)
+   error_handle (s/maybe JsonQuerySchema)}
+  (db/update! HTTPAction id action)
+  (first (action/select-actions :id id)))
 
 (api/define-routes actions/+check-actions-enabled api/+check-superuser)

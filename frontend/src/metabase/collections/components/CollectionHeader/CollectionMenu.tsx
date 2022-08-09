@@ -57,7 +57,7 @@ const CollectionMenu = ({
       },
       {
         title: t`Archive`,
-        icon: "view_archive",
+        icon: "archive",
         link: `${url}/archive`,
         event: `${ANALYTICS_CONTEXT};Edit Menu;Archive Collection`,
       },
@@ -65,7 +65,13 @@ const CollectionMenu = ({
   }
 
   if (items.length > 0) {
-    return <EntityMenu items={items} triggerIcon="ellipsis" />;
+    return (
+      <EntityMenu
+        items={items}
+        triggerIcon="ellipsis"
+        tooltip={t`Move, archive, and more...`}
+      />
+    );
   } else {
     return null;
   }

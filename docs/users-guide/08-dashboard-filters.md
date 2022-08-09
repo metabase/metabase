@@ -79,10 +79,10 @@ When you're finished wiring up the filter, click **Done** at the bottom of the s
 
 ## Editing a filter
 
-- **To edit a filter**: click the **pencil** icon to enter dashboard editing mode, then click the **gears** icon button on the filter you want to change. You can wire up individual cards to the filter, and use the sidebar to update the label.
+- **To edit a filter**: click the **pencil** icon to enter dashboard editing mode, then click the **gear** icon button on the filter you want to change. You can wire up individual cards to the filter, and use the sidebar to update the label.
 - **To reorder your filters**: click on the grabber handle on the left side of a filter, then drag the filter to a different position.
-- **To set a default value**: click on the filter's **gears** icon to open the filter sidebar. Under the **Settings** tab, enter a value in the **Default value** input field.
-- **To remove a filter**: click on the filter's **gears** icon to open the filter sidebar. Under the **Settings** tab, click **Remove** in the sidebar. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes.
+- **To set a default value**: click on the filter's **gear** icon to open the filter sidebar. Under the **Settings** tab, enter a value in the **Default value** input field.
+- **To remove a filter**: click on the filter's **gear** icon to open the filter sidebar. Under the **Settings** tab, click **Remove** in the sidebar. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes.
 
 ## Using filters
 

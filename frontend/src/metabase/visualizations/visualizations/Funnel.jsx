@@ -184,12 +184,8 @@ export default class Funnel extends Component {
     if (settings["funnel.type"] === "bar") {
       return <FunnelBar {...this.props} />;
     } else {
-      const {
-        actionButtons,
-        className,
-        onChangeCardAndRun,
-        series,
-      } = this.props;
+      const { actionButtons, className, onChangeCardAndRun, series } =
+        this.props;
       return (
         <div className={cx(className, "flex flex-column p1")}>
           {hasTitle && (
@@ -202,7 +198,7 @@ export default class Funnel extends Component {
             />
           )}
           {!hasTitle &&
-          actionButtons && ( // always show action buttons if we have them
+            actionButtons && ( // always show action buttons if we have them
               <LegendHeader
                 className="flex-no-shrink"
                 series={series._raw || series}

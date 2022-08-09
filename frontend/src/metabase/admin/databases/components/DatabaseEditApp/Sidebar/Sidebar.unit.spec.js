@@ -46,6 +46,25 @@ it("rescans database field values", () => {
   expect(rescanDatabaseFields).toHaveBeenCalledWith(databaseId);
 });
 
+it("can cancel sync and just forgets about initial sync (#20863)", () => {
+  const databaseId = 1;
+  const database = {
+    id: databaseId,
+    initial_sync_status: "incomplete",
+    supportsPersistence: () => true,
+    isPersisted: () => false,
+  };
+  const dismissSyncSpinner = jest.fn();
+
+  render(
+    <Sidebar database={database} dismissSyncSpinner={dismissSyncSpinner} />,
+  );
+
+  const dismissButton = screen.getByText("Dismiss sync spinner manually");
+  fireEvent.click(dismissButton);
+  expect(dismissSyncSpinner).toHaveBeenCalledWith(databaseId);
+});
+
 it("discards saved field values", () => {
   const databaseId = 1;
   const database = {

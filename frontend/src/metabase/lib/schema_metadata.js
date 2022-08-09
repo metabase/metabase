@@ -231,6 +231,9 @@ export const isCurrency = field =>
 export const isDescription = field =>
   field && isa(field.semantic_type, TYPE.Description);
 
+export const isComment = field =>
+  field && isa(field.semantic_type, TYPE.Comment);
+
 export const isID = field => isFK(field) || isPK(field);
 
 export const isURL = field => field && isa(field.semantic_type, TYPE.URL);
@@ -757,10 +760,10 @@ export function foreignKeyCountsByOriginTable(fks) {
   }
 
   return fks
-    .map(function(fk) {
+    .map(function (fk) {
       return "origin" in fk ? fk.origin.table.id : null;
     })
-    .reduce(function(prev, curr, idx, array) {
+    .reduce(function (prev, curr, idx, array) {
       if (curr in prev) {
         prev[curr]++;
       } else {

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 
 import { nestedSettings } from "./nested";
@@ -154,6 +154,32 @@ function timeStyleOption(style, description) {
   };
 }
 
+function getTimeEnabledOptionsForUnit(unit) {
+  const options = [
+    { name: t`Off`, value: null },
+    { name: t`HH:MM`, value: "minutes" },
+  ];
+
+  if (
+    !unit ||
+    unit === "default" ||
+    unit === "second" ||
+    unit === "millisecond"
+  ) {
+    options.push({ name: t`HH:MM:SS`, value: "seconds" });
+  }
+
+  if (!unit || unit === "default" || unit === "millisecond") {
+    options.push({ name: t`HH:MM:SS.MS`, value: "milliseconds" });
+  }
+
+  if (options.length === 2) {
+    options[1].name = t`On`;
+  }
+
+  return options;
+}
+
 export const DATE_COLUMN_SETTINGS = {
   date_style: {
     title: t`Date style`,
@@ -208,26 +234,12 @@ export const DATE_COLUMN_SETTINGS = {
   time_enabled: {
     title: t`Show the time`,
     widget: "radio",
-    isValid: ({ unit }, settings) => !settings["time_enabled"] || hasHour(unit),
+    isValid: ({ unit }, settings) => {
+      const options = getTimeEnabledOptionsForUnit(unit);
+      return !!_.findWhere(options, { value: settings["time_enabled"] });
+    },
     getProps: ({ unit }, settings) => {
-      const options = [
-        { name: t`Off`, value: null },
-        { name: t`HH:MM`, value: "minutes" },
-      ];
-      if (
-        !unit ||
-        unit === "default" ||
-        unit === "second" ||
-        unit === "millisecond"
-      ) {
-        options.push({ name: t`HH:MM:SS`, value: "seconds" });
-      }
-      if (!unit || unit === "default" || unit === "millisecond") {
-        options.push({ name: t`HH:MM:SS.MS`, value: "milliseconds" });
-      }
-      if (options.length === 2) {
-        options[1].name = t`On`;
-      }
+      const options = getTimeEnabledOptionsForUnit(unit);
       return { options };
     },
     getHidden: (column, settings) =>
