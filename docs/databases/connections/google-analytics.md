@@ -109,5 +109,5 @@ If you're having trouble, see the guides under [Troubleshooting data sources][tr
 [google-managing-service-accounts]: https://cloud.google.com/iam/docs/creating-managing-service-accounts
 [google-oauth-scopes]: https://developers.google.com/identity/protocols/oauth2/scopes
 [google-service-accounts]: https://cloud.google.com/iam/docs/service-accounts
-[sync-docs]: ../../administration-guide/01-managing-databases.html#choose-when-metabase-syncs-and-scans
+[sync-docs]: ../connecting.md#choose-when-metabase-syncs-and-scans
 [troubleshooting-data-sources]: ../../troubleshooting-guide/index.html#databases
