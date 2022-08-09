@@ -93,7 +93,7 @@ Knowing what field types are and how they work is helpful when using [field filt
 
 If you're an administrator, you can edit field types using the [Data Model page](./metadata-editing.md) in the Admin Panel.
 
-While data types themselves can't be edited in Metabase, admins can manually [cast data types](./metadata-editing.md/#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
+While data types themselves can't be edited in Metabase, admins can manually [cast data types](./metadata-editing.md#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
 
 ## Further Reading
 
