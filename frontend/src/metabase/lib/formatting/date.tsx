@@ -86,7 +86,7 @@ export function getDateFormatFromStyle(
   return replaceSeparators(style);
 }
 
-export function formatDateTimeForParameter(value: number, unit: DatetimeUnit) {
+export function formatDateTimeForParameter(value: string, unit: DatetimeUnit) {
   const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);

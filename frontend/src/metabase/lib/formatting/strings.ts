@@ -78,7 +78,10 @@ function getLinkText(value: string, options: OptionsType) {
   const hasCustomizedText = link_text && clicked;
 
   if (isExplicitLink && hasCustomizedText) {
-    return renderLinkTextForClick(link_text, getDataFromClicked(clicked));
+    return renderLinkTextForClick(
+      link_text,
+      getDataFromClicked(clicked) as any,
+    );
   }
 
   return (

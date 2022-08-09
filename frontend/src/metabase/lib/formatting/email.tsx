@@ -17,7 +17,7 @@ export function formatEmail(
   const email = String(value);
   const label =
     clicked && link_text
-      ? renderLinkTextForClick(link_text, getDataFromClicked(clicked))
+      ? renderLinkTextForClick(link_text, getDataFromClicked(clicked) as any)
       : null;
 
   if (
