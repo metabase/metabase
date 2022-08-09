@@ -31,7 +31,7 @@ export function renderLinkTextForClick(
   return renderTemplateForClick(
     template,
     data,
-    ({ value, column }: { value: string; column: DatasetColumn }) =>
+    ({ value, column }: TemplateForClickFormatFunctionParamsType) =>
       formatValue(value, { column }),
   );
 }
@@ -53,7 +53,8 @@ export function renderLinkURLForClick(
 function renderTemplateForClick(
   template: string,
   data: ValueAndColumnForColumnNameDate,
-  formatFunction: any = ({ value }: { value: any }) => value,
+  formatFunction: any = ({ value }: TemplateForClickFormatFunctionParamsType) =>
+    value,
 ) {
   return template.replace(
     /{{([^}]+)}}/g,
