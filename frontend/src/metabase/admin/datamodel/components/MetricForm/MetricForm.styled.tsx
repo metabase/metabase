@@ -30,7 +30,7 @@ export const FormBody = styled(FormSection)`
 `;
 
 export const FormBodyContent = styled.div`
-  max-width: 576rem;
+  max-width: 36rem;
 `;
 
 export const FormFooter = styled.div`
