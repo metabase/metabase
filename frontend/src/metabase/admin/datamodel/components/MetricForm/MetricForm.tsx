@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router";
-import { Formik } from "formik";
+import { Field, Formik } from "formik";
+import type { FieldProps } from "formik";
 import { t } from "ttag";
 import * as Q from "metabase/lib/query/query";
 import { formatValue } from "metabase/lib/formatting";
@@ -8,9 +9,7 @@ import Button from "metabase/core/components/Button";
 import FieldSet from "metabase/components/FieldSet";
 import { Metric } from "metabase-types/api";
 import FormLabel from "../FormLabel/FormLabel";
-import FormInput from "../FormInput/FormInput";
-import FormTextArea from "../FormTextArea/FormTextArea";
-import FormQueryBuilder from "../FormQueryBuilder";
+import PartialQueryBuilder from "../PartialQueryBuilder";
 import {
   FormRoot,
   FormSection,
@@ -19,6 +18,7 @@ import {
   FormFooter,
   FormFooterContent,
   FormSubmitButton,
+  FormField,
 } from "./MetricForm.styled";
 
 const QUERY_BUILDER_FEATURES = {
@@ -40,15 +40,12 @@ const MetricForm = ({
   onSubmit,
 }: MetricFormProps): JSX.Element => {
   const isNew = metric == null;
-  const previewValue = previewSummary
-    ? t`Result: ${formatValue(previewSummary)}`
-    : "";
 
   return (
     <Formik
       initialValues={metric ?? {}}
       isInitialValid={false}
-      validate={validate}
+      validate={getFormErrors}
       onSubmit={onSubmit}
     >
       {({ isValid, handleSubmit }) => (
@@ -66,7 +63,7 @@ const MetricForm = ({
                 name="definition"
                 features={QUERY_BUILDER_FEATURES}
                 canChangeTable={isNew}
-                previewSummary={previewValue}
+                previewSummary={getPreviewSummary(previewSummary)}
                 updatePreviewSummary={updatePreviewSummary}
               />
             </FormLabel>
@@ -119,6 +116,86 @@ const MetricForm = ({
   );
 };
 
+interface FormInputProps {
+  name: string;
+  placeholder?: string;
+}
+
+const FormInput = ({ name, placeholder }: FormInputProps): JSX.Element => {
+  return (
+    <Field name={name}>
+      {({ field, meta }: FieldProps) => (
+        <FormField
+          {...field}
+          className="input"
+          type="text"
+          placeholder={placeholder}
+          touched={meta.touched}
+          error={meta.error}
+        />
+      )}
+    </Field>
+  );
+};
+
+interface FormTextAreaProps {
+  name: string;
+  placeholder?: string;
+}
+
+const FormTextArea = ({
+  name,
+  placeholder,
+}: FormTextAreaProps): JSX.Element => {
+  return (
+    <Field name={name}>
+      {({ field, meta }: FieldProps) => (
+        <FormField
+          {...field}
+          as="textarea"
+          className="input"
+          placeholder={placeholder}
+          touched={meta.touched}
+          error={meta.error}
+        />
+      )}
+    </Field>
+  );
+};
+
+interface FormQueryBuilderProps {
+  name: string;
+  features?: Record<string, boolean>;
+  canChangeTable?: boolean;
+  previewSummary?: string;
+  updatePreviewSummary: (previewSummary: string) => void;
+}
+
+const FormQueryBuilder = ({
+  name,
+  features,
+  canChangeTable,
+  previewSummary,
+  updatePreviewSummary,
+}: FormQueryBuilderProps): JSX.Element => {
+  return (
+    <Field name={name}>
+      {({ field }: FieldProps) => (
+        <PartialQueryBuilder
+          value={field.value}
+          features={features}
+          canChangeTable={canChangeTable}
+          previewSummary={previewSummary}
+          onChange={(value: string) =>
+            field.onChange({ target: { name, value } })
+          }
+          updatePreviewSummary={updatePreviewSummary}
+        />
+      )}
+    </Field>
+  );
+};
+
 interface MetricFormActionsProps {
   isValid: boolean;
 }
@@ -138,7 +215,15 @@ const MetricFormActions = ({
   );
 };
 
-const validate = (values: Partial<Metric>) => {
+const getPreviewSummary = (previewSummary?: string) => {
+  if (previewSummary) {
+    return t`Result: ${formatValue(previewSummary)}`;
+  } else {
+    return "";
+  }
+};
+
+const getFormErrors = (values: Partial<Metric>) => {
   const errors: Record<string, string> = {};
 
   if (!values.name) {

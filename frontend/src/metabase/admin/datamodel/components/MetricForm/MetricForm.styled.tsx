@@ -48,3 +48,16 @@ export const FormFooterContent = styled.div`
 export const FormSubmitButton = styled(Button)`
   margin-right: 1rem;
 `;
+
+export interface FieldInputProps {
+  touched: boolean;
+  error?: string;
+}
+
+export const FormField = styled.input<FieldInputProps>`
+  width: 100%;
+
+  &:not(:focus) {
+    border-color: ${props => props.touched && props.error && color("error")};
+  }
+`;
