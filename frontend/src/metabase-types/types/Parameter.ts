@@ -45,6 +45,7 @@ export interface Parameter {
   sectionId?: string;
   default?: any;
   filteringParameters?: ParameterId[];
+  value?: any;
 }
 
 export type ParameterQueryObject = {
