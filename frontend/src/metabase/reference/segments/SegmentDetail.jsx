@@ -203,7 +203,7 @@ class SegmentDetail extends Component {
                   <li className="relative">
                     <Detail
                       id="description"
-                      title={t`Description`}
+                      name={t`Description`}
                       description={entity.description}
                       placeholder={t`No description yet`}
                       isEditing={isEditing}
@@ -213,7 +213,7 @@ class SegmentDetail extends Component {
                   <li className="relative">
                     <Detail
                       id="points_of_interest"
-                      title={t`Why this Segment is interesting`}
+                      name={t`Why this Segment is interesting`}
                       description={entity.points_of_interest}
                       placeholder={t`Nothing interesting yet`}
                       isEditing={isEditing}
@@ -223,7 +223,7 @@ class SegmentDetail extends Component {
                   <li className="relative">
                     <Detail
                       id="caveats"
-                      title={t`Things to be aware of about this Segment`}
+                      name={t`Things to be aware of about this Segment`}
                       description={entity.caveats}
                       placeholder={t`Nothing to be aware of yet`}
                       isEditing={isEditing}
