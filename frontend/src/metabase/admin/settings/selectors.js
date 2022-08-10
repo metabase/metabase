@@ -120,8 +120,8 @@ const SECTIONS = updateSectionsWithPlugins({
         defaultValue: "simple",
       },
       {
-        key: "sql-editor-autocomplete-match-style",
-        display_name: t`SQL Editor autocomplete match`,
+        key: "native-query-autocomplete-match-style",
+        display_name: t`Native query editor autocomplete match`,
         type: "select",
         defaultValue: "substring",
         options: [

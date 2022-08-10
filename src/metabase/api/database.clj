@@ -452,9 +452,9 @@
   causes too many problems."
   #{:substring :prefix :off})
 
-(defsetting sql-editor-autocomplete-match-style
+(defsetting native-query-autocomplete-match-style
   (deferred-tru
-    (str "Matching style for sql editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
+    (str "Matching style for native query editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
          "Larger instances can have performance issues matching using substring, so can use prefix matching, "
          " or turn autocompletions off."))
   :visibility :public
@@ -463,8 +463,8 @@
   :setter     (fn [v]
                 (let [v (cond-> v (string? v) keyword)]
                   (if (autocomplete-matching-options v)
-                    (setting/set-value-of-type! :keyword :sql-editor-autocomplete-match-style v)
-                    (throw (ex-info (tru "Invalid `sql-editor-autocomplete-match-style` option")
+                    (setting/set-value-of-type! :keyword :native-query-autocomplete-match-style v)
+                    (throw (ex-info (tru "Invalid `native-query-autocomplete-match-style` option")
                                     {:option v
                                      :valid-options autocomplete-matching-options}))))))
 

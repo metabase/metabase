@@ -833,7 +833,7 @@ export const getIsAdditionalInfoVisible = createSelector(
 );
 
 export const getAutocompleteResultsFn = state => {
-  const matchStyle = getSetting(state, "sql-editor-autocomplete-match-style");
+  const matchStyle = getSetting(state, "native-query-autocomplete-match-style");
 
   if (matchStyle === "off") {
     return null;

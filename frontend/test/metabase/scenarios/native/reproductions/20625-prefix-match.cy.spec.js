@@ -4,7 +4,7 @@ describe("issue 20625", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.request("PUT", "/api/setting/sql-editor-autocomplete-match-style", {
+    cy.request("PUT", "/api/setting/native-query-autocomplete-match-style", {
       value: "prefix",
     });
     cy.signInAsNormalUser();
