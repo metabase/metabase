@@ -7,7 +7,6 @@
   resulting svg."
   (:require [cheshire.core :as json]
             [clojure.set :as set]
-            [clojure.spec.alpha :as s]
             [clojure.test :refer :all]
             [metabase.public-settings :as public-settings]
             [metabase.pulse.render.js-engine :as js]

@@ -710,10 +710,8 @@
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
   [_ render-type timezone-id card dashcard {:keys [_rows cols viz-settings] :as data}]
-  (let [viz-settings   (merge viz-settings (:visualization_settings dashcard))
-        [x-axis-rowfn
+  (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
-        [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
         rows           (sparkline/cleaned-rows timezone-id card data)
         last-rows      (reverse (take-last 2 rows))
         values         (for [row last-rows]
