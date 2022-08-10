@@ -114,6 +114,8 @@ const MetricDetail = props => {
 
   const { getFieldProps, getFieldMeta, handleSubmit } = useFormik({
     validate,
+    initialValues: {},
+    initialErrors: validate({}),
     onSubmit: fields => onUpdate(entity, fields, props),
   });
 
