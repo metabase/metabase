@@ -64,7 +64,7 @@ const MetricForm = ({
             {...getQueryBuilderProps(getFieldProps("definition"))}
             features={QUERY_BUILDER_FEATURES}
             canChangeTable={isNew}
-            previewSummary={getPreviewSummary(previewSummary)}
+            previewSummary={getResultSummary(previewSummary)}
             updatePreviewSummary={updatePreviewSummary}
           />
         </FormLabel>
@@ -137,12 +137,8 @@ const MetricFormActions = ({
   );
 };
 
-const getPreviewSummary = (previewSummary?: string) => {
-  if (previewSummary) {
-    return t`Result: ${formatValue(previewSummary)}`;
-  } else {
-    return "";
-  }
+const getResultSummary = (previewSummary?: string) => {
+  return previewSummary ? t`Result: ${formatValue(previewSummary)}` : "";
 };
 
 const getFormErrors = (values: Partial<Metric>) => {
