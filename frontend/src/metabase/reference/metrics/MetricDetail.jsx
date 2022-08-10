@@ -112,11 +112,12 @@ const MetricDetail = props => {
     onChangeLocation,
   } = props;
 
-  const { getFieldProps, getFieldMeta, handleSubmit } = useFormik({
+  const { getFieldProps, getFieldMeta, handleSubmit, handleReset } = useFormik({
     validate,
     initialValues: {},
     initialErrors: validate({}),
-    onSubmit: fields => onUpdate(entity, fields, props),
+    onSubmit: fields =>
+      onUpdate(entity, fields, { ...props, resetForm: handleReset }),
   });
 
   const getField = name => ({ ...getFieldProps(name), ...getFieldMeta(name) });
