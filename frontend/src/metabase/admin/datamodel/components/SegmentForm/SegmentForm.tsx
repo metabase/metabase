@@ -8,9 +8,9 @@ import * as Q from "metabase/lib/query/query";
 import Button from "metabase/core/components/Button/Button";
 import FieldSet from "metabase/components/FieldSet";
 import { Segment, StructuredQuery } from "metabase-types/api";
-import FormInput from "../FormInput/FormInput";
-import FormLabel from "../FormLabel/FormLabel";
-import FormTextArea from "../FormTextArea/FormTextArea";
+import FormInput from "../FormInput";
+import FormLabel from "../FormLabel";
+import FormTextArea from "../FormTextArea";
 import PartialQueryBuilder from "../PartialQueryBuilder";
 import {
   FormRoot,

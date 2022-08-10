@@ -8,9 +8,9 @@ import { formatValue } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
 import FieldSet from "metabase/components/FieldSet";
 import { Metric, StructuredQuery } from "metabase-types/api";
-import FormInput from "../FormInput/FormInput";
-import FormLabel from "../FormLabel/FormLabel";
-import FormTextArea from "../FormTextArea/FormTextArea";
+import FormInput from "../FormInput";
+import FormLabel from "../FormLabel";
+import FormTextArea from "../FormTextArea";
 import PartialQueryBuilder from "../PartialQueryBuilder";
 import {
   FormRoot,
