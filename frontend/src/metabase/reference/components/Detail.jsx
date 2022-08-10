@@ -7,7 +7,7 @@ import { t } from "ttag";
 import cx from "classnames";
 
 const Detail = ({
-  name,
+  title,
   description,
   placeholder,
   subtitleClass,
@@ -21,10 +21,10 @@ const Detail = ({
       <div className={S.detailTitle}>
         {url ? (
           <Link to={url} className={S.detailName}>
-            {name}
+            {title}
           </Link>
         ) : (
-          <span className={S.detailName}>{name}</span>
+          <span className={S.detailName}>{title}</span>
         )}
       </div>
       <div
@@ -53,7 +53,7 @@ const Detail = ({
 );
 
 Detail.propTypes = {
-  name: PropTypes.string.isRequired,
+  title: PropTypes.string.isRequired,
   url: PropTypes.string,
   description: PropTypes.string,
   placeholder: PropTypes.string,

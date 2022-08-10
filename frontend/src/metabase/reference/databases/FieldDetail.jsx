@@ -195,7 +195,7 @@ class FieldDetail extends Component {
                   <li className="relative">
                     <Detail
                       id="description"
-                      name={t`Description`}
+                      title={t`Description`}
                       description={entity.description}
                       placeholder={t`No description yet`}
                       isEditing={isEditing}
@@ -206,7 +206,7 @@ class FieldDetail extends Component {
                     <li className="relative">
                       <Detail
                         id="name"
-                        name={t`Actual name in database`}
+                        title={t`Actual name in database`}
                         description={entity.name}
                         subtitleClass={S.tableActualName}
                       />
@@ -215,7 +215,7 @@ class FieldDetail extends Component {
                   <li className="relative">
                     <Detail
                       id="points_of_interest"
-                      name={t`Why this field is interesting`}
+                      title={t`Why this field is interesting`}
                       description={entity.points_of_interest}
                       placeholder={t`Nothing interesting yet`}
                       isEditing={isEditing}
@@ -225,7 +225,7 @@ class FieldDetail extends Component {
                   <li className="relative">
                     <Detail
                       id="caveats"
-                      name={t`Things to be aware of about this field`}
+                      title={t`Things to be aware of about this field`}
                       description={entity.caveats}
                       placeholder={t`Nothing to be aware of yet`}
                       isEditing={isEditing}
@@ -237,7 +237,7 @@ class FieldDetail extends Component {
                     <li className="relative">
                       <Detail
                         id="base_type"
-                        name={t`Data type`}
+                        title={t`Data type`}
                         description={entity.base_type}
                       />
                     </li>

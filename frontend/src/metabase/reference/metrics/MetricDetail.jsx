@@ -171,7 +171,7 @@ class MetricDetail extends Component {
                   <li className="relative">
                     <Detail
                       id="description"
-                      name={t`Description`}
+                      title={t`Description`}
                       description={entity.description}
                       placeholder={t`No description yet`}
                       isEditing={isEditing}
@@ -181,7 +181,7 @@ class MetricDetail extends Component {
                   <li className="relative">
                     <Detail
                       id="points_of_interest"
-                      name={t`Why this metric is interesting`}
+                      title={t`Why this metric is interesting`}
                       description={entity.points_of_interest}
                       placeholder={t`Nothing interesting yet`}
                       isEditing={isEditing}
@@ -191,7 +191,7 @@ class MetricDetail extends Component {
                   <li className="relative">
                     <Detail
                       id="caveats"
-                      name={t`Things to be aware of about this metric`}
+                      title={t`Things to be aware of about this metric`}
                       description={entity.caveats}
                       placeholder={t`Nothing to be aware of yet`}
                       isEditing={isEditing}
@@ -201,7 +201,7 @@ class MetricDetail extends Component {
                   <li className="relative">
                     <Detail
                       id="how_is_this_calculated"
-                      name={t`How this metric is calculated`}
+                      title={t`How this metric is calculated`}
                       description={entity.how_is_this_calculated}
                       placeholder={t`Nothing on how it's calculated yet`}
                       isEditing={isEditing}
