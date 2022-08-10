@@ -8,6 +8,7 @@ import {
   filter,
   visitQuestionAdhoc,
   enterCustomColumnDetails,
+  openProductsTable,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -365,9 +366,7 @@ describe("scenarios > question > joined questions", () => {
       query: { "source-table": ORDERS_ID },
     });
 
-    startNewQuestion();
-    cy.findByTextEnsureVisible("Sample Database").click();
-    cy.findByTextEnsureVisible("Products").click();
+    openProductsTable({ mode: "notebook" });
 
     cy.icon("join_left_outer").click();
 
