@@ -120,6 +120,17 @@ const SECTIONS = updateSectionsWithPlugins({
         defaultValue: "simple",
       },
       {
+        key: "native-query-autocomplete-match-style",
+        display_name: t`Native query editor autocomplete match`,
+        type: "select",
+        defaultValue: "substring",
+        options: [
+          { value: "substring", name: t`Substring` },
+          { value: "prefix", name: t`Prefix` },
+          { value: "off", name: t`Off` },
+        ],
+      },
+      {
         key: "enable-nested-queries",
         display_name: t`Enable Nested Queries`,
         type: "boolean",

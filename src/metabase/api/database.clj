@@ -24,6 +24,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.persisted-info :as persisted-info]
             [metabase.models.secret :as secret]
+            [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.table :refer [Table]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
@@ -445,8 +446,31 @@
         fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
     (autocomplete-results tables fields limit)))
 
+(def ^:private autocomplete-matching-options
+  "Valid options for the autocomplete types. Can match on a substring (\"%input%\"), on a prefix (\"input%\"), or reject
+  autocompletions. Large instances with lots of fields might want to use prefix matching or turn off the feature if it
+  causes too many problems."
+  #{:substring :prefix :off})
+
+(defsetting native-query-autocomplete-match-style
+  (deferred-tru
+    (str "Matching style for native query editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
+         "Larger instances can have performance issues matching using substring, so can use prefix matching, "
+         " or turn autocompletions off."))
+  :visibility :public
+  :type       :keyword
+  :default    :substring
+  :setter     (fn [v]
+                (let [v (cond-> v (string? v) keyword)]
+                  (if (autocomplete-matching-options v)
+                    (setting/set-value-of-type! :keyword :native-query-autocomplete-match-style v)
+                    (throw (ex-info (tru "Invalid `native-query-autocomplete-match-style` option")
+                                    {:option v
+                                     :valid-options autocomplete-matching-options}))))))
+
 (api/defendpoint GET "/:id/autocomplete_suggestions"
-  "Return a list of autocomplete suggestions for a given `prefix`.
+  "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
+  `substring` will have priority if both are present.
 
   This is intened for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
   and `Fields` in this `Database`.
@@ -454,12 +478,12 @@
   Tables are returned in the format `[table_name \"Table\"]`;
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
-  [id prefix search]
+  [id prefix substring]
   (api/read-check Database id)
   (try
     (cond
-      search
-      (autocomplete-suggestions id (str "%" search "%"))
+      substring
+      (autocomplete-suggestions id (str "%" substring "%"))
       prefix
       (autocomplete-suggestions id (str prefix "%"))
       :else
