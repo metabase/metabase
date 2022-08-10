@@ -80,9 +80,6 @@ const propTypes = {
   collapseFormula: PropTypes.func.isRequired,
   setError: PropTypes.func.isRequired,
   updateField: PropTypes.func.isRequired,
-  handleSubmit: PropTypes.func.isRequired,
-  resetForm: PropTypes.func.isRequired,
-  fields: PropTypes.object.isRequired,
   isFormulaExpanded: PropTypes.bool,
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
@@ -106,7 +103,6 @@ const MetricDetail = props => {
     expandFormula,
     collapseFormula,
     isFormulaExpanded,
-    resetForm,
     submitting,
     onUpdate,
     onChangeLocation,
@@ -129,7 +125,7 @@ const MetricDetail = props => {
           hasRevisionHistory={true}
           onSubmit={handleSubmit}
           endEditing={endEditing}
-          reinitializeForm={resetForm}
+          reinitializeForm={handleReset}
           submitting={submitting}
           revisionMessageFormField={getField("revision_message")}
         />
