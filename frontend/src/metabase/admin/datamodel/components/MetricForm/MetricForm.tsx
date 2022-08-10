@@ -1,13 +1,15 @@
-import React, { ReactNode } from "react";
+import React from "react";
 import { Link } from "react-router";
-import { Field, Formik } from "formik";
-import type { FieldProps } from "formik";
+import { Formik } from "formik";
 import { t } from "ttag";
 import * as Q from "metabase/lib/query/query";
 import { formatValue } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
 import FieldSet from "metabase/components/FieldSet";
 import { Metric } from "metabase-types/api";
+import FormInput from "../FormInput/FormInput";
+import FormLabel from "../FormLabel/FormLabel";
+import FormTextArea from "../FormTextArea/FormTextArea";
 import PartialQueryBuilder from "../PartialQueryBuilder";
 import {
   FormRoot,
@@ -17,11 +19,6 @@ import {
   FormFooter,
   FormFooterContent,
   FormSubmitButton,
-  FormInputRoot,
-  FormLabelRoot,
-  FormLabelContent,
-  FormLabelTitle,
-  FormLabelDescription,
 } from "./MetricForm.styled";
 
 const QUERY_BUILDER_FEATURES = {
@@ -51,7 +48,7 @@ const MetricForm = ({
       validate={getFormErrors}
       onSubmit={onSubmit}
     >
-      {({ isValid, handleSubmit }) => (
+      {({ isValid, getFieldProps, getFieldMeta, handleSubmit }) => (
         <FormRoot onSubmit={handleSubmit}>
           <FormBody>
             <FormLabel
@@ -62,8 +59,8 @@ const MetricForm = ({
                   : t`Make changes to your metric and leave an explanatory note.`
               }
             >
-              <FormQueryBuilder
-                name="definition"
+              <PartialQueryBuilder
+                {...getFieldProps("definition")}
                 features={QUERY_BUILDER_FEATURES}
                 canChangeTable={isNew}
                 previewSummary={getPreviewSummary(previewSummary)}
@@ -76,7 +73,8 @@ const MetricForm = ({
                 description={t`Give your metric a name to help others find it.`}
               >
                 <FormInput
-                  name="name"
+                  {...getFieldProps("name")}
+                  {...getFieldMeta("name")}
                   placeholder={t`Something descriptive but not too long`}
                 />
               </FormLabel>
@@ -85,7 +83,8 @@ const MetricForm = ({
                 description={t`Give your metric a description to help others understand what it's about.`}
               >
                 <FormTextArea
-                  name="description"
+                  {...getFieldProps("description")}
+                  {...getFieldMeta("description")}
                   placeholder={t`This is a good place to be more specific about less obvious metric rules`}
                 />
               </FormLabel>
@@ -95,7 +94,8 @@ const MetricForm = ({
                     description={t`Leave a note to explain what changes you made and why they were required.`}
                   >
                     <FormTextArea
-                      name="revision_message"
+                      {...getFieldProps("revision_message")}
+                      {...getFieldMeta("revision_message")}
                       placeholder={t`This will show up in the revision history for this metric to help everyone remember why things changed`}
                     />
                   </FormLabel>
@@ -116,106 +116,6 @@ const MetricForm = ({
         </FormRoot>
       )}
     </Formik>
-  );
-};
-
-interface FormLabelProps {
-  title?: string;
-  description?: string;
-  children?: ReactNode;
-}
-
-const FormLabel = ({ title, description, children }: FormLabelProps) => {
-  return (
-    <FormLabelRoot>
-      <FormLabelContent>
-        {title && <FormLabelTitle>{title}</FormLabelTitle>}
-        {description && (
-          <FormLabelDescription>{description}</FormLabelDescription>
-        )}
-      </FormLabelContent>
-      {children}
-    </FormLabelRoot>
-  );
-};
-
-interface FormInputProps {
-  name: string;
-  placeholder?: string;
-}
-
-const FormInput = ({ name, placeholder }: FormInputProps): JSX.Element => {
-  return (
-    <Field name={name}>
-      {({ field, meta }: FieldProps) => (
-        <FormInputRoot
-          {...field}
-          className="input"
-          type="text"
-          placeholder={placeholder}
-          touched={meta.touched}
-          error={meta.error}
-        />
-      )}
-    </Field>
-  );
-};
-
-interface FormTextAreaProps {
-  name: string;
-  placeholder?: string;
-}
-
-const FormTextArea = ({
-  name,
-  placeholder,
-}: FormTextAreaProps): JSX.Element => {
-  return (
-    <Field name={name}>
-      {({ field, meta }: FieldProps) => (
-        <FormInputRoot
-          {...field}
-          as="textarea"
-          className="input"
-          placeholder={placeholder}
-          touched={meta.touched}
-          error={meta.error}
-        />
-      )}
-    </Field>
-  );
-};
-
-interface FormQueryBuilderProps {
-  name: string;
-  features?: Record<string, boolean>;
-  canChangeTable?: boolean;
-  previewSummary?: string;
-  updatePreviewSummary: (previewSummary: string) => void;
-}
-
-const FormQueryBuilder = ({
-  name,
-  features,
-  canChangeTable,
-  previewSummary,
-  updatePreviewSummary,
-}: FormQueryBuilderProps): JSX.Element => {
-  return (
-    <Field name={name}>
-      {({ field }: FieldProps) => (
-        <PartialQueryBuilder
-          value={field.value}
-          features={features}
-          canChangeTable={canChangeTable}
-          previewSummary={previewSummary}
-          onChange={(value: string) =>
-            field.onChange({ target: { name, value } })
-          }
-          updatePreviewSummary={updatePreviewSummary}
-        />
-      )}
-    </Field>
   );
 };
 
