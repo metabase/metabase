@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router";
-import { Formik } from "formik";
+import { useFormik } from "formik";
 import type { FieldInputProps } from "formik";
 import { t } from "ttag";
 import * as Q from "metabase/lib/query/query";
@@ -42,81 +42,79 @@ const MetricForm = ({
 }: MetricFormProps): JSX.Element => {
   const isNew = metric == null;
 
+  const { isValid, getFieldProps, getFieldMeta, handleSubmit } = useFormik({
+    initialValues: metric ?? {},
+    isInitialValid: false,
+    validate: getFormErrors,
+    onSubmit,
+  });
+
   return (
-    <Formik
-      initialValues={metric ?? {}}
-      isInitialValid={false}
-      validate={getFormErrors}
-      onSubmit={onSubmit}
-    >
-      {({ isValid, getFieldProps, getFieldMeta, handleSubmit }) => (
-        <FormRoot onSubmit={handleSubmit}>
-          <FormBody>
-            <FormLabel
-              title={isNew ? t`Create Your Metric` : t`Edit Your Metric`}
-              description={
-                isNew
-                  ? t`You can create saved metrics to add a named metric option. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating "Average Price" for an Orders table.`
-                  : t`Make changes to your metric and leave an explanatory note.`
-              }
-            >
-              <PartialQueryBuilder
-                {...getQueryBuilderProps(getFieldProps("definition"))}
-                features={QUERY_BUILDER_FEATURES}
-                canChangeTable={isNew}
-                previewSummary={getPreviewSummary(previewSummary)}
-                updatePreviewSummary={updatePreviewSummary}
-              />
-            </FormLabel>
-            <FormBodyContent>
+    <FormRoot onSubmit={handleSubmit}>
+      <FormBody>
+        <FormLabel
+          title={isNew ? t`Create Your Metric` : t`Edit Your Metric`}
+          description={
+            isNew
+              ? t`You can create saved metrics to add a named metric option. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating "Average Price" for an Orders table.`
+              : t`Make changes to your metric and leave an explanatory note.`
+          }
+        >
+          <PartialQueryBuilder
+            {...getQueryBuilderProps(getFieldProps("definition"))}
+            features={QUERY_BUILDER_FEATURES}
+            canChangeTable={isNew}
+            previewSummary={getPreviewSummary(previewSummary)}
+            updatePreviewSummary={updatePreviewSummary}
+          />
+        </FormLabel>
+        <FormBodyContent>
+          <FormLabel
+            title={t`Name Your Metric`}
+            description={t`Give your metric a name to help others find it.`}
+          >
+            <FormInput
+              {...getFieldProps("name")}
+              {...getFieldMeta("name")}
+              placeholder={t`Something descriptive but not too long`}
+            />
+          </FormLabel>
+          <FormLabel
+            title={t`Describe Your Metric`}
+            description={t`Give your metric a description to help others understand what it's about.`}
+          >
+            <FormTextArea
+              {...getFieldProps("description")}
+              {...getFieldMeta("description")}
+              placeholder={t`This is a good place to be more specific about less obvious metric rules`}
+            />
+          </FormLabel>
+          {!isNew && (
+            <FieldSet legend={t`Reason For Changes`} noPadding={false}>
               <FormLabel
-                title={t`Name Your Metric`}
-                description={t`Give your metric a name to help others find it.`}
-              >
-                <FormInput
-                  {...getFieldProps("name")}
-                  {...getFieldMeta("name")}
-                  placeholder={t`Something descriptive but not too long`}
-                />
-              </FormLabel>
-              <FormLabel
-                title={t`Describe Your Metric`}
-                description={t`Give your metric a description to help others understand what it's about.`}
+                description={t`Leave a note to explain what changes you made and why they were required.`}
               >
                 <FormTextArea
-                  {...getFieldProps("description")}
-                  {...getFieldMeta("description")}
-                  placeholder={t`This is a good place to be more specific about less obvious metric rules`}
+                  {...getFieldProps("revision_message")}
+                  {...getFieldMeta("revision_message")}
+                  placeholder={t`This will show up in the revision history for this metric to help everyone remember why things changed`}
                 />
               </FormLabel>
-              {!isNew && (
-                <FieldSet legend={t`Reason For Changes`} noPadding={false}>
-                  <FormLabel
-                    description={t`Leave a note to explain what changes you made and why they were required.`}
-                  >
-                    <FormTextArea
-                      {...getFieldProps("revision_message")}
-                      {...getFieldMeta("revision_message")}
-                      placeholder={t`This will show up in the revision history for this metric to help everyone remember why things changed`}
-                    />
-                  </FormLabel>
-                  <FormFooterContent>
-                    <MetricFormActions isValid={isValid} />
-                  </FormFooterContent>
-                </FieldSet>
-              )}
-            </FormBodyContent>
-          </FormBody>
-          {isNew && (
-            <FormFooter>
-              <FormSection>
+              <FormFooterContent>
                 <MetricFormActions isValid={isValid} />
-              </FormSection>
-            </FormFooter>
+              </FormFooterContent>
+            </FieldSet>
           )}
-        </FormRoot>
+        </FormBodyContent>
+      </FormBody>
+      {isNew && (
+        <FormFooter>
+          <FormSection>
+            <MetricFormActions isValid={isValid} />
+          </FormSection>
+        </FormFooter>
       )}
-    </Formik>
+    </FormRoot>
   );
 };
 
