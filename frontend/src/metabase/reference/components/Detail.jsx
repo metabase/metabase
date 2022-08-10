@@ -13,9 +13,11 @@ const Detail = ({
   placeholder,
   subtitleClass,
   url,
-  icon,
   isEditing,
   field,
+  touched = field?.error,
+  error = field?.touched,
+  onChange = field?.onChange,
 }) => (
   <div className={cx(S.detail)}>
     <div className={isEditing ? cx(S.detailBody, "flex-full") : S.detailBody}>
@@ -36,7 +38,7 @@ const Detail = ({
             className={S.detailTextarea}
             name={name}
             placeholder={placeholder}
-            onChange={field.onChange}
+            onChange={onChange}
             //FIXME: use initialValues from redux forms instead of default value
             // to allow for reinitializing on cancel (see GettingStartedGuide.jsx)
             defaultValue={description}
@@ -46,8 +48,8 @@ const Detail = ({
             {description || placeholder || t`No description yet`}
           </span>
         )}
-        {isEditing && field.error && field.touched && (
-          <span className="text-error">{field.error}</span>
+        {isEditing && error && touched && (
+          <span className="text-error">{error}</span>
         )}
       </div>
     </div>
@@ -64,6 +66,9 @@ Detail.propTypes = {
   icon: PropTypes.string,
   isEditing: PropTypes.bool,
   field: PropTypes.object,
+  touched: PropTypes.bool,
+  error: PropTypes.string,
+  onChange: PropTypes.func,
 };
 
 export default React.memo(Detail);
