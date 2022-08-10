@@ -107,7 +107,11 @@
     (format "{%s: %s}" (field->name field) (param-value->str field value))
     (substitute-one-field-filter field-filter)))
 
-(defn- substitute-param [param->value [acc missing] in-optional? {:keys [k], :as param}]
+(defn- substitute-native-query-snippet [[acc missing] v]
+  (let [{:keys [content]} v]
+    [(conj acc content) missing]))
+
+(defn- substitute-param [param->value [acc missing] in-optional? {:keys [k], :as _param}]
   (let [v (get param->value k)]
     (cond
       (not (contains? param->value k))
@@ -138,6 +142,13 @@
           no-value?                    [(conj acc "{}") missing]
           :else                        [(conj acc (substitute-field-filter v))
                                         missing]))
+
+      (params/ReferencedQuerySnippet? v)
+      (substitute-native-query-snippet [acc missing] v)
+
+      (params/ReferencedCardQuery? v)
+      (throw (ex-info (tru "Cannot run query: MongoDB doesn''t support saved questions reference: {0}" k)
+                      {:type qp.error-type/invalid-query}))
 
       (= v params/no-value)
       [acc (conj missing k)]
@@ -191,6 +202,6 @@
 
 (defn substitute-native-parameters
   "Implementation of `driver/substitute-native-parameters` for MongoDB."
-  [driver inner-query]
+  [_driver inner-query]
   (let [param->value (params.values/query->params-map inner-query)]
     (update inner-query :query (partial walk/postwalk (partial parse-and-substitute param->value)))))
