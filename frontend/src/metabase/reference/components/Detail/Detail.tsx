@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ChangeEvent } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 import {
@@ -7,6 +7,7 @@ import {
   DetailTitle,
   DetailSubtitle,
   DetailError,
+  DetailTextArea,
 } from "./Detail.styled";
 
 export interface DetailProps {
@@ -18,6 +19,7 @@ export interface DetailProps {
   isEditing?: boolean;
   touched?: boolean;
   error?: string;
+  onChange?: (event: ChangeEvent<HTMLTextAreaElement>) => void;
 }
 
 const Detail = ({
@@ -28,6 +30,7 @@ const Detail = ({
   isEditing,
   touched,
   error,
+  onChange,
 }: DetailProps) => {
   return (
     <DetailRoot>
@@ -36,7 +39,15 @@ const Detail = ({
           {url ? <Link to={url}>{title}</Link> : <span>{title}</span>}
         </DetailTitle>
         <DetailSubtitle hasDescription={Boolean(description)}>
-          <span>{description || placeholder || t`No description yet`}</span>
+          {isEditing ? (
+            <DetailTextArea
+              placeholder={placeholder}
+              defaultValue={description}
+              onChange={onChange}
+            />
+          ) : (
+            <span>{description || placeholder || t`No description yet`}</span>
+          )}
           {isEditing && error && touched && <DetailError>{error}</DetailError>}
         </DetailSubtitle>
       </DetailBody>

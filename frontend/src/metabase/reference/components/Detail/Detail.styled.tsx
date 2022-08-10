@@ -45,3 +45,13 @@ export const DetailSubtitle = styled.div<DetailSubtitleProps>`
 export const DetailError = styled.span`
   color: ${color("text-error")};
 `;
+
+export const DetailTextArea = styled.textarea`
+  color: ${color("text-dark")};
+  padding: 1rem;
+  resize: none;
+  font-size: 1rem;
+  width: 100%;
+  min-height: 6.25rem;
+  border-color: ${color("text-light")};
+`;
