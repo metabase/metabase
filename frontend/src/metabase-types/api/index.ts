@@ -15,6 +15,7 @@ export * from "./notifications";
 export * from "./permissions";
 export * from "./query";
 export * from "./revision";
+export * from "./segment";
 export * from "./settings";
 export * from "./slack";
 export * from "./table";

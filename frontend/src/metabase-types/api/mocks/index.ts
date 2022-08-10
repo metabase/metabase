@@ -8,6 +8,7 @@ export * from "./dataset";
 export * from "./metric";
 export * from "./models";
 export * from "./query";
+export * from "./segment";
 export * from "./table";
 export * from "./timeline";
 export * from "./settings";
