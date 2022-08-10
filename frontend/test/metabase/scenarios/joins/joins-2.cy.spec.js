@@ -346,37 +346,6 @@ describe("scenarios > question > joined questions", () => {
       });
     });
 
-    it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
-      cy.createQuestion(
-        {
-          name: "14649_min",
-          query: {
-            "source-query": {
-              "source-table": ORDERS_ID,
-              aggregation: [
-                [
-                  "aggregation-options",
-                  ["sum", ["field", ORDERS.SUBTOTAL, null]],
-                  { name: "Revenue", "display-name": "Revenue" },
-                ],
-              ],
-              breakout: [
-                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-              ],
-            },
-            aggregation: [
-              ["min", ["field", "Revenue", { "base-type": "type/Float" }]],
-            ],
-          },
-
-          display: "scalar",
-        },
-        { visitQuestion: true },
-      );
-
-      cy.findByText("49.54");
-    });
-
     it("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
       const XRAY_DATASETS = 11; // enough to load most questions
 
@@ -431,39 +400,6 @@ describe("scenarios > question > joined questions", () => {
       cy.contains(/^A closer look at/);
       // Make sure at least one card is rendered
       cy.get(".DashCard");
-    });
-
-    it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
-      visitQuestionAdhoc({
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            filter: ["=", ["field-id", ORDERS.USER_ID], 1],
-          },
-          database: SAMPLE_DB_ID,
-        },
-      });
-
-      cy.findByText("User ID is 1");
-      cy.findByText("37.65");
-    });
-
-    it("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
-      cy.visit("/question/1/notebook");
-      summarize({ mode: "notebook" });
-      cy.findByText("Count of rows").click();
-      cy.findByText("Pick a column to group by").click();
-      cy.findByText("Created At")
-        .closest(".List-item")
-        .findByText("by month")
-        .click({ force: true });
-      // First a reality check - "Minute" is the only string visible in UI and this should pass
-      cy.findAllByText("Minute")
-        .first() // TODO: cy.findAllByText(string).first() is necessary workaround that will be needed ONLY until (metabase#15570) gets fixed
-        .isVisibleInPopover();
-      // The actual check that will fail until this issue gets fixed
-      cy.findAllByText("Week").first().isVisibleInPopover();
     });
 
     it("should add numeric filter on joined table (metabase#15570)", () => {
