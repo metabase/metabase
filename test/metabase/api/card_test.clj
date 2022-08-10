@@ -19,6 +19,7 @@
                                      Collection
                                      Dashboard
                                      Database
+                                     Emitter
                                      ModerationReview
                                      PersistedInfo
                                      Pulse
@@ -754,8 +755,9 @@
   (testing "GET /api/card/:id"
     (testing "Fetch card with an emitter"
       (mt/with-temp* [Card [read-card {:name "Test Read Card"}]
-                      Card [write-card {:is_write true :name "Test Write Card"}]]
-        (db/insert! CardEmitter {:action_id (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))
+                      Card [write-card {:is_write true :name "Test Write Card"}]
+                      Emitter [{emitter-id :id} {:action_id (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))}]]
+        (db/insert! CardEmitter {:emitter_id emitter-id
                                  :card_id (u/the-id read-card)})
         (testing "admin sees emitters"
           (is (partial=
