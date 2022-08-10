@@ -19,14 +19,14 @@ import Formula from "metabase/reference/components/Formula";
 import { getQuestionUrl } from "../utils";
 
 import {
-  getError,
-  getFields,
-  getForeignKeys,
-  getIsFormulaExpanded,
-  getLoading,
   getMetric,
   getTable,
+  getFields,
+  getError,
+  getLoading,
   getUser,
+  getIsFormulaExpanded,
+  getForeignKeys,
 } from "../selectors";
 
 import * as metadataActions from "metabase/redux/metadata";
@@ -164,7 +164,7 @@ const MetricDetail = props => {
                 <li className="relative">
                   <Detail
                     field={getField("description")}
-                    title={t`Description`}
+                    name={t`Description`}
                     description={entity.description}
                     placeholder={t`No description yet`}
                     isEditing={isEditing}
@@ -173,7 +173,7 @@ const MetricDetail = props => {
                 <li className="relative">
                   <Detail
                     field={getField("points_of_interest")}
-                    title={t`Why this metric is interesting`}
+                    name={t`Why this metric is interesting`}
                     description={entity.points_of_interest}
                     placeholder={t`Nothing interesting yet`}
                     isEditing={isEditing}
@@ -182,7 +182,7 @@ const MetricDetail = props => {
                 <li className="relative">
                   <Detail
                     field={getField("caveats")}
-                    title={t`Things to be aware of about this metric`}
+                    name={t`Things to be aware of about this metric`}
                     description={entity.caveats}
                     placeholder={t`Nothing to be aware of yet`}
                     isEditing={isEditing}
@@ -191,7 +191,7 @@ const MetricDetail = props => {
                 <li className="relative">
                   <Detail
                     field={getField("how_is_this_calculated")}
-                    title={t`How this metric is calculated`}
+                    name={t`How this metric is calculated`}
                     description={entity.how_is_this_calculated}
                     placeholder={t`Nothing on how it's calculated yet`}
                     isEditing={isEditing}
