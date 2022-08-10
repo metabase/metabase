@@ -23,10 +23,8 @@ const EditableReferenceHeader = ({
   hasSingleSchema,
   hasDisplayName,
   startEditing,
-  nameFormField,
   displayNameFormField,
-  onChangeName = nameFormField?.onChange,
-  onChangeDisplayName = displayNameFormField?.onChange,
+  nameFormField,
 }) => (
   <div className="wrapper">
     <div className={cx("relative", L.header)}>
@@ -50,7 +48,11 @@ const EditableReferenceHeader = ({
             type="text"
             name={hasDisplayName ? "display_name" : "name"}
             placeholder={entity.name}
-            onChange={hasDisplayName ? onChangeDisplayName : onChangeName}
+            onChange={
+              hasDisplayName
+                ? displayNameFormField.onChange
+                : nameFormField.onChange
+            }
             defaultValue={hasDisplayName ? entity.display_name : entity.name}
           />
         ) : (
@@ -99,10 +101,8 @@ EditableReferenceHeader.propTypes = {
   hasSingleSchema: PropTypes.bool,
   hasDisplayName: PropTypes.bool,
   startEditing: PropTypes.func,
-  nameFormField: PropTypes.object,
   displayNameFormField: PropTypes.object,
-  onChangeName: PropTypes.func,
-  onChangeDisplayName: PropTypes.func,
+  nameFormField: PropTypes.object,
 };
 
 export default React.memo(EditableReferenceHeader);

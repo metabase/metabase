@@ -111,14 +111,14 @@ const MetricDetail = props => {
     onChangeLocation,
   } = props;
 
-  const { getFieldProps, getFieldMeta, handleChange, handleSubmit } = useFormik(
-    {
-      validate,
-      onSubmit: handleSubmit(fields =>
-        actions.rUpdateMetricDetail(props.entity, fields, props),
-      ),
-    },
-  );
+  const { getFieldProps, getFieldMeta, handleSubmit } = useFormik({
+    validate,
+    onSubmit: handleSubmit(fields =>
+      actions.rUpdateMetricDetail(props.entity, fields, props),
+    ),
+  });
+
+  const getField = name => ({ ...getFieldProps(name), ...getFieldMeta(name) });
 
   return (
     <form style={style} className="full" onSubmit={onSubmit}>
@@ -148,8 +148,8 @@ const MetricDetail = props => {
         hasSingleSchema={false}
         hasDisplayName={false}
         startEditing={startEditing}
-        onChangeName={handleChange}
-        onChangeDisplayName={handleChange}
+        displayNameFormField={getField("display_name")}
+        nameFormField={getField("name")}
       />
       <LoadingAndErrorWrapper
         loading={!loadingError && loading}
@@ -161,8 +161,7 @@ const MetricDetail = props => {
               <List>
                 <li className="relative">
                   <Detail
-                    {...getFieldProps("description")}
-                    {...getFieldMeta("description")}
+                    field={getField("description")}
                     title={t`Description`}
                     description={entity.description}
                     placeholder={t`No description yet`}
@@ -171,8 +170,7 @@ const MetricDetail = props => {
                 </li>
                 <li className="relative">
                   <Detail
-                    {...getFieldProps("points_of_interest")}
-                    {...getFieldMeta("points_of_interest")}
+                    field={getField("points_of_interest")}
                     title={t`Why this metric is interesting`}
                     description={entity.points_of_interest}
                     placeholder={t`Nothing interesting yet`}
@@ -181,8 +179,7 @@ const MetricDetail = props => {
                 </li>
                 <li className="relative">
                   <Detail
-                    {...getFieldProps("caveats")}
-                    {...getFieldMeta("caveats")}
+                    field={getField("caveats")}
                     title={t`Things to be aware of about this metric`}
                     description={entity.caveats}
                     placeholder={t`Nothing to be aware of yet`}
@@ -191,8 +188,7 @@ const MetricDetail = props => {
                 </li>
                 <li className="relative">
                   <Detail
-                    {...getFieldProps("how_is_this_calculated")}
-                    {...getFieldMeta("how_is_this_calculated")}
+                    field={getField("how_is_this_calculated")}
                     title={t`How this metric is calculated`}
                     description={entity.how_is_this_calculated}
                     placeholder={t`Nothing on how it's calculated yet`}
