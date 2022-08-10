@@ -4,8 +4,7 @@
             [metabase.actions.http-action :as http-action]
             [metabase.api.common :as api]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models
-             :refer [CardEmitter DashboardEmitter Emitter EmitterAction]]
+            [metabase.models :refer [CardEmitter DashboardEmitter Emitter]]
             [metabase.query-processor.writeback :as qp.writeback]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -19,9 +18,7 @@
   [emitter-id]
   (when-let [emitter (->> (db/query {:select    [:*]
                                      :from      [[Emitter :emitter]]
-                                     :left-join [[EmitterAction :emitter_action]
-                                                 [:= :emitter_action.emitter_id :emitter.id]
-                                                 ;; TODO -- not 100% sure we need CardEmitter and DashboardEmitter, we'd
+                                     :left-join [;; TODO -- not 100% sure we need CardEmitter and DashboardEmitter, we'd
                                                  ;; only need that if we wanted to hydrate the Card or Dashboard they
                                                  ;; came from.
                                                  [CardEmitter :card_emitter]
@@ -44,8 +41,9 @@
   ;; Create stuff the hard way by hand because H2 doesn't return the Emitter ID if you have Toucan `pre-insert` create
   ;; them for you because of some issue with INSERT RETURNING ROWS or something like that. See
   ;; [[metabase.models.emitter/pre-insert]] for more discussion.
-  (let [emitter-id (u/the-id (db/insert! Emitter {:options options, :parameter_mappings parameter_mappings}))]
-    (db/insert! EmitterAction {:emitter_id emitter-id, :action_id action_id})
+  (let [emitter-id (u/the-id (db/insert! Emitter {:options options,
+                                                  :parameter_mappings parameter_mappings
+                                                  :action_id action_id}))]
     (cond
       dashboard_id
       (db/insert! DashboardEmitter {:emitter_id emitter-id, :dashboard_id dashboard_id})

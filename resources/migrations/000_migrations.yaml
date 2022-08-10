@@ -12542,6 +12542,69 @@ databaseChangeLog:
             columnNames: action_id
             constraintName: pk_http_action
 
+  - changeSet:
+      id: v45.00-014
+      author: snoe
+      comment: Added 0.45.0 - writeback add action_id to emitter
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+            tableName: emitter
+
+  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
+  - changeSet:
+      id: v45.00-015
+      author: snoe
+      comment: Added 0.45.0 - writeback add fk for action_id to emitter
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: emitter
+            baseColumnNames: action_id
+            referencedTableName: action
+            referencedColumnNames: id
+            constraintName: fk_emitter_ref_action_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v45.00-016
+      author: snoe
+      comment: Added 0.45.0 - writeback Move foreign keys from emitter_action and dashboard_emitter
+      changes:
+        - sql:
+              sql: >-
+                update emitter set
+                action_id = (select action_id from emitter_action where emitter_id = id);
+
+  - changeSet:
+      id: v45.00-017
+      author: snoe
+      comment: Added 0.45.0 - writeback remove any emitters that were orphaned to be safe.
+      changes:
+        - sql:
+              sql: delete from emitter where action_id is null;
+
+  - changeSet:
+      id: v45.00-018
+      author: snoe
+      comment: Added 0.45.0 - writeback Make emitter action_id not nullable
+      changes:
+        - addNotNullConstraint:
+            columnDataType: int
+            tableName: emitter
+            columnName: action_id
+
+  - changeSet:
+      id: v45.00-019
+      author: snoe
+      comment: Added 0.45.0 - writeback drop emitter_action
+      changes:
+        - dropTable:
+            tableName: emitter_action
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -132,10 +132,8 @@
   [emitters]
   ;; emitters apparently might actually be `[nil]` (not 100% sure why) so just make sure we're not doing anything dumb
   ;; if this is the case.
-  (if-let [emitter-ids (seq (filter some? (map :id emitters)))]
-    (let [emitter-actions (db/select 'EmitterAction :emitter_id [:in emitter-ids])
-          action-id-by-emitter-id (into {} (map (juxt :emitter_id :action_id) emitter-actions))
-          actions (m/index-by :id (select-actions :id [:in (map :action_id emitter-actions)]))]
+  (if-let [action-id-by-emitter-id (not-empty (into {} (map (juxt :id :action_id) (filter :id emitters))))]
+    (let [actions-by-id (m/index-by :id (select-actions :id [:in (map val action-id-by-emitter-id)]))]
       (for [{emitter-id :id, :as emitter} emitters]
-        (some-> emitter (assoc :action (get actions (get action-id-by-emitter-id emitter-id))))))
+        (some-> emitter (assoc :action (get actions-by-id (get action-id-by-emitter-id emitter-id))))))
     emitters))
