@@ -174,8 +174,8 @@ class TableDetail extends Component {
                 <List>
                   <li className="relative">
                     <Detail
-                      name="description"
-                      title={t`Description`}
+                      id="description"
+                      name={t`Description`}
                       description={entity.description}
                       placeholder={t`No description yet`}
                       isEditing={isEditing}
@@ -185,8 +185,8 @@ class TableDetail extends Component {
                   {!isEditing && (
                     <li className="relative">
                       <Detail
-                        name="name"
-                        title={t`Actual name in database`}
+                        id="name"
+                        name={t`Actual name in database`}
                         description={entity.name}
                         subtitleClass={S.tableActualName}
                       />
@@ -194,8 +194,8 @@ class TableDetail extends Component {
                   )}
                   <li className="relative">
                     <Detail
-                      name="points_of_interest"
-                      title={t`Why this table is interesting`}
+                      id="points_of_interest"
+                      name={t`Why this table is interesting`}
                       description={entity.points_of_interest}
                       placeholder={t`Nothing interesting yet`}
                       isEditing={isEditing}
@@ -204,8 +204,8 @@ class TableDetail extends Component {
                   </li>
                   <li className="relative">
                     <Detail
-                      name="caveats"
-                      title={t`Things to be aware of about this table`}
+                      id="caveats"
+                      name={t`Things to be aware of about this table`}
                       description={entity.caveats}
                       placeholder={t`Nothing to be aware of yet`}
                       isEditing={isEditing}
