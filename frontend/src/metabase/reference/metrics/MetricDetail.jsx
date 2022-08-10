@@ -56,6 +56,7 @@ const mapDispatchToProps = {
   // The state and callbacks are received via props
   ..._.omit(actions, "startEditing", "endEditing"),
 
+  onUpdate: actions.rUpdateMetricDetail,
   onChangeLocation: push,
 };
 
@@ -86,6 +87,7 @@ const propTypes = {
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
   submitting: PropTypes.bool,
+  onUpdate: PropTypes.func.isRequired,
   onChangeLocation: PropTypes.func.isRequired,
 };
 
@@ -104,19 +106,15 @@ const MetricDetail = props => {
     expandFormula,
     collapseFormula,
     isFormulaExpanded,
-    handleSubmit: onSubmit,
     resetForm,
     submitting,
+    onUpdate,
     onChangeLocation,
   } = props;
 
-  const handleUpdate = onSubmit(fields =>
-    actions.rUpdateMetricDetail(props.entity, fields, props),
-  );
-
   const { getFieldProps, getFieldMeta, handleSubmit } = useFormik({
     validate,
-    onSubmit: handleUpdate,
+    onSubmit: fields => onUpdate(entity, fields, props),
   });
 
   const getField = name => ({ ...getFieldProps(name), ...getFieldMeta(name) });
