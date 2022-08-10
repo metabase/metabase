@@ -32,7 +32,10 @@ describe("scenarios > question > joined questions", () => {
   });
 
   describe("joins", () => {
-    it("should allow joins on tables (metabase#12221, metabase#13468)", () => {
+    it("should allow joins on tables (metabase#11452, metabase#12221, metabase#13468, metabase#15570)", () => {
+      // Pluralization isn't reliable so we have to guard against it
+      const joinedTable = new RegExp(/Reviews? - Products?/);
+
       openOrdersTable({ mode: "notebook" });
 
       // join to Reviews on orders.product_id = reviews.product_id
@@ -50,37 +53,40 @@ describe("scenarios > question > joined questions", () => {
         cy.findByText("Reviews");
       });
 
-      // Post-join filters (metabase#12221)
+      // Post-join filters on the joined table (metabase#12221, metabase#15570)
       filter();
 
       cy.get(".Modal").within(() => {
-        cy.icon("join_left_outer").click();
-        cy.findByPlaceholderText("Search by Reviewer").type("xavier{enter}", {
-          delay: 0,
-        });
+        cy.findByText(joinedTable).click();
+        cy.findByTestId("filter-field-Rating").contains("2").click();
         cy.button("Apply Filters").click();
         cy.wait("@dataset");
       });
 
-      cy.findByText("Reviewer is xavier");
+      cy.findByText("Rating is equal to 2");
 
-      // Post-join aggregation:
-      // get the distinct values of reviews IDs (not a useful metric)
-      cy.findAllByTestId("header-cell")
-        .contains(/^Reviews - Products? → ID$/)
-        .click();
+      // Post-join aggregation (metabase#11452):
+      cy.icon("notebook").click();
+      summarize({ mode: "notebook" });
 
-      popover().contains("Distinct values").click();
-      cy.wait("@dataset");
+      cy.findByText("Average of ...").click();
+      popover().contains(joinedTable).click();
+      popover().contains("Rating").click();
 
-      cy.findByText("Reviewer is xavier");
-      cy.get(".ScalarValue").invoke("text").should("eq", "1");
+      cy.findByText("Pick a column to group by").click();
+      popover().contains(joinedTable).click();
+      popover().contains("Reviewer").click();
+
+      visualize();
+
+      cy.findByText("Rating is equal to 2");
+      cy.findByText("Showing 89 rows");
 
       // Make sure UI overlay doesn't obstruct viewing results after we save this question (metabase#13468)
       saveQuestion();
 
-      cy.findByText("Reviewer is xavier");
-      cy.get(".ScalarValue").invoke("text").should("eq", "1");
+      cy.findByText("Rating is equal to 2");
+      cy.findByText("Showing 89 rows");
 
       function saveQuestion() {
         cy.intercept("POST", "/api/card").as("saveQuestion");
@@ -165,38 +171,6 @@ describe("scenarios > question > joined questions", () => {
       visualize();
 
       cy.findByText("Sum Divide");
-    });
-
-    it("should show correct column title with foreign keys (metabase#11452)", () => {
-      // (Orders join Reviews on Product ID)
-      openOrdersTable({ mode: "notebook" });
-
-      cy.findByText("Join data").click();
-      cy.findByText("Reviews").click();
-      cy.findByText("Product ID").click();
-      popover().within(() => {
-        cy.findByText("Product ID").click();
-      });
-
-      cy.log("It shouldn't use FK for a column title");
-      summarize({ mode: "notebook" });
-      cy.findByText("Pick a column to group by").click();
-
-      // NOTE: Since there is no better way to "get" the element we need, below is a representation of the current DOM structure.
-      //       This can also be useful because some future DOM changes could easily introduce a flake.
-      //  the common parent
-      //    wrapper for the icon
-      //      the actual svg icon with the class `.Icon-join_left_outer`
-      //    h3.List-section-title with the text content we're actually testing
-      popover().within(() => {
-        cy.icon("join_left_outer")
-          .parent()
-          .next()
-          // NOTE from Flamber's warning:
-          // this name COULD be "normalized" to "Review - Product" instead of "Reviews - Products" - that's why we use Regex match here
-          .invoke("text")
-          .should("match", /reviews? - products?/i);
-      });
     });
 
     it("should join saved questions that themselves contain joins (metabase#12928)", () => {
@@ -400,38 +374,6 @@ describe("scenarios > question > joined questions", () => {
       cy.contains(/^A closer look at/);
       // Make sure at least one card is rendered
       cy.get(".DashCard");
-    });
-
-    it("should add numeric filter on joined table (metabase#15570)", () => {
-      cy.createQuestion({
-        name: "15570",
-        query: {
-          "source-table": PRODUCTS_ID,
-          joins: [
-            {
-              fields: "all",
-              "source-table": ORDERS_ID,
-              condition: [
-                "=",
-                ["field", PRODUCTS.ID, null],
-                ["field", ORDERS.PRODUCT_ID, { "join-alias": "Orders" }],
-              ],
-              alias: "Orders",
-            },
-          ],
-        },
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.visit(`/question/${QUESTION_ID}/notebook`);
-      });
-      cy.findByText("Filter").click();
-      popover().within(() => {
-        cy.findByText(/Orders/i).click();
-        cy.findByText("Discount").click();
-      });
-      cy.findAllByTestId("select-button").contains("Equal to").click();
-      cy.findByText("Greater than").click();
-      cy.findByPlaceholderText("Enter a number").type(0);
-      cy.button("Add filter").should("not.be.disabled").click();
     });
   });
 });
