@@ -831,10 +831,13 @@ export class FieldDimension extends Dimension {
     }
   }
 
-  _getFieldMetadataFromSavedQuestion() {
+  _getFieldMetadataFromSavedDataset() {
     const identifierProp = this._getIdentifierProp();
     const questionAssociatedWithDimension = this.query()?.question();
-    if (questionAssociatedWithDimension?.isSaved()) {
+    if (
+      questionAssociatedWithDimension?.isSaved() &&
+      questionAssociatedWithDimension.isDataset()
+    ) {
       const question = this.query()?.question();
       const field = _.findWhere(question.getResultMetadata(), {
         [identifierProp]: this.fieldIdOrName(),
@@ -844,18 +847,19 @@ export class FieldDimension extends Dimension {
     }
   }
 
-  _getFieldMetadataFromNestedCard() {
+  _getFieldMetadataFromNestedDataset() {
     const identifierProp = this._getIdentifierProp();
     const virtualTableCardId = getQuestionIdFromVirtualTableId(
       this.query()?.sourceTableId?.(),
     );
     if (virtualTableCardId != null) {
       const question = this._metadata?.question(virtualTableCardId);
-      const field = question
-        ? _.findWhere(question.getResultMetadata(), {
-            [identifierProp]: this.fieldIdOrName(),
-          })
-        : undefined;
+      const field =
+        question && question.isDataset()
+          ? _.findWhere(question.getResultMetadata(), {
+              [identifierProp]: this.fieldIdOrName(),
+            })
+          : undefined;
 
       return field;
     }
@@ -909,8 +913,8 @@ export class FieldDimension extends Dimension {
     // Field that exists in the Metadata object.
     if (this.isIntegerFieldId()) {
       fieldMetadata =
-        this._getFieldMetadataFromSavedQuestion() ||
-        this._getFieldMetadataFromNestedCard();
+        this._getFieldMetadataFromSavedDataset() ||
+        this._getFieldMetadataFromNestedDataset();
     }
 
     // In scenarios where the Field id is not an integer, we need to grab the Field from the

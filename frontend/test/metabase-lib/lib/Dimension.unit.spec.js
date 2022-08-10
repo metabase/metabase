@@ -387,8 +387,7 @@ describe("Dimension", () => {
           expect(fieldInfo).toEqual(OVERWRITTEN_USER_ID_FIELD_METADATA);
         });
 
-        // TODO: confirm that we don't need to worry about this
-        it.skip("should not merge regular question's field results metadata with field info", () => {
+        it("should not merge regular question's field results metadata with field info", () => {
           const dimension = Dimension.parseMBQL(
             ["field", ORDERS.USER_ID.id, null],
             metadata,
