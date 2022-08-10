@@ -134,6 +134,10 @@ function setup() {
           });
 
           createTargetDashboard().then(targetDashboardId => {
+            cy.intercept("GET", `/api/dashboard/${targetDashboardId}`).as(
+              "targetDashboardLoaded",
+            );
+
             cy.wrap(targetDashboardId).as("targetDashboardId");
 
             // Create a click behavior and resize the question card
@@ -278,6 +282,7 @@ function createTargetDashboard() {
 function visitSourceDashboard() {
   cy.get("@sourceDashboardId").then(id => {
     visitDashboard(id);
+    cy.wait("@targetDashboardLoaded");
   });
 }
 
