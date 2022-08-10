@@ -32,76 +32,63 @@ describe("scenarios > question > joined questions", () => {
   });
 
   describe("joins", () => {
-    it("should allow joins", () => {
-      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
-
-      // start a custom question with orders
-      startNewQuestion();
-      cy.contains("Sample Database").click();
-      cy.contains("Orders").click();
+    it("should allow joins on tables (metabase#12221, metabase#13468)", () => {
+      openOrdersTable({ mode: "notebook" });
 
       // join to Reviews on orders.product_id = reviews.product_id
       cy.icon("join_left_outer").click();
-      cy.wait("@schema");
 
       popover().contains("Reviews").click();
       popover().contains("Product ID").click();
       popover().contains("Product ID").click();
 
-      // get the average rating across all rows (not a useful metric)
-      cy.contains("Pick the metric you want to see").click();
-      popover().contains("Average of").click();
-      popover().find(".Icon-join_left_outer").click();
-      popover().contains("Rating").click();
-
       visualize();
+      cy.contains("37.65");
 
       cy.findByTestId("question-table-badges").within(() => {
         cy.findByText("Orders");
         cy.findByText("Reviews");
       });
 
-      cy.contains("3");
-    });
-
-    it("should allow post-join filters (metabase#12221)", () => {
-      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
-
-      cy.log("Start a custom question with Orders");
-      startNewQuestion();
-      cy.findByTextEnsureVisible("Sample Database").click();
-      cy.findByTextEnsureVisible("Orders").click();
-
-      cy.log("Join to People table using default settings");
-      cy.icon("join_left_outer ").click();
-      cy.wait("@schema");
-      cy.contains("People").click();
-
-      cy.findByTestId("question-table-badges").within(() => {
-        cy.findByText("Orders");
-        cy.findByText("People");
-      });
-
-      visualize();
-
-      cy.log("Attempt to filter on the joined table");
+      // Post-join filters (metabase#12221)
       filter();
 
-      cy.findByText("People - User").click();
-      cy.findByPlaceholderText("Search by Email")
-        .type("wo")
-        .then($el => {
-          // This test was flaking due to a race condition with typing.
-          // We're ensuring that the value entered was correct and are retrying if it wasn't
-          const value = $el[0].value;
-          const input = cy.wrap($el);
-          if (value !== "wo") {
-            input.clear().type("wo");
-          }
+      cy.get(".Modal").within(() => {
+        cy.icon("join_left_outer").click();
+        cy.findByPlaceholderText("Search by Reviewer").type("xavier{enter}", {
+          delay: 0,
         });
-      cy.findByText("wolf.dina@yahoo.com").click();
-      cy.findByTestId("apply-filters").click();
-      cy.contains("Showing 1 row");
+        cy.button("Apply Filters").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Reviewer is xavier");
+
+      // Post-join aggregation:
+      // get the distinct values of reviews IDs (not a useful metric)
+      cy.findAllByTestId("header-cell")
+        .contains(/^Reviews - Products? → ID$/)
+        .click();
+
+      popover().contains("Distinct values").click();
+      cy.wait("@dataset");
+
+      cy.findByText("Reviewer is xavier");
+      cy.get(".ScalarValue").invoke("text").should("eq", "1");
+
+      // Make sure UI overlay doesn't obstruct viewing results after we save this question (metabase#13468)
+      saveQuestion();
+
+      cy.findByText("Reviewer is xavier");
+      cy.get(".ScalarValue").invoke("text").should("eq", "1");
+
+      function saveQuestion() {
+        cy.intercept("POST", "/api/card").as("saveQuestion");
+        cy.findByText("Save").click();
+        cy.button("Save").click();
+        cy.wait("@saveQuestion");
+        cy.button("Not now").click();
+      }
     });
 
     it("should join on field literals", () => {
