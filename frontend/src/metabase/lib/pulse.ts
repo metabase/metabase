@@ -122,8 +122,9 @@ export function dashboardPulseIsValid(
 
 export function emailIsEnabled(pulse: Pulse) {
   return (
-    pulse.channels.filter(c => c.channel_type === "email" && c.enabled).length >
-    0
+    pulse.channels.filter(
+      channel => channel.channel_type === "email" && channel.enabled,
+    ).length > 0
   );
 }
 
@@ -136,8 +137,8 @@ export function cleanPulse(pulse: Pulse, channelSpecs: any) {
 }
 
 function cleanPulseChannels(channels: Channel[], channelSpecs: any) {
-  return channels.filter(c =>
-    channelIsValid(c, channelSpecs?.[c.channel_type]),
+  return channels.filter(channel =>
+    channelIsValid(channel, channelSpecs?.[channel.channel_type]),
   );
 }
 
