@@ -111,21 +111,23 @@ const MetricDetail = props => {
     onChangeLocation,
   } = props;
 
+  const handleUpdate = onSubmit(fields =>
+    actions.rUpdateMetricDetail(props.entity, fields, props),
+  );
+
   const { getFieldProps, getFieldMeta, handleSubmit } = useFormik({
     validate,
-    onSubmit: handleSubmit(fields =>
-      actions.rUpdateMetricDetail(props.entity, fields, props),
-    ),
+    onSubmit: handleUpdate,
   });
 
   const getField = name => ({ ...getFieldProps(name), ...getFieldMeta(name) });
 
   return (
-    <form style={style} className="full" onSubmit={onSubmit}>
+    <form style={style} className="full" onSubmit={handleSubmit}>
       {isEditing && (
         <EditHeader
           hasRevisionHistory={true}
-          onSubmit={onSubmit}
+          onSubmit={handleSubmit}
           endEditing={endEditing}
           reinitializeForm={resetForm}
           submitting={submitting}
