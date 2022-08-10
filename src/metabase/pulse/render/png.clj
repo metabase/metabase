@@ -112,3 +112,75 @@
     (catch Throwable e
       (log/error e (trs "Error rendering Pulse"))
       (throw e))))
+
+(defn render-measured-text
+  [^String text style-map]
+  (register-fonts-if-needed!)
+  (let [default-style {:font-family "Lato"}
+        html-str      (html [:html
+                             [:body {:style (style/style
+                                             {:margin           0
+                                              :padding          0
+                                              :background-color :none})}
+                              [:span {:style (style/style (merge default-style style-map))} text]]])]
+    (with-open [is         (ByteArrayInputStream. (.getBytes html-str StandardCharsets/UTF_8))
+                doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
+      (let [dimension       (Dimension. 1000 1)
+            doc             (.parse (DefaultDOMSource. doc-source))
+            da              (dom-analyzer doc doc-source dimension)
+            graphics-engine (proxy [GraphicsEngine] [(.getRoot da) da (.getURL doc-source)]
+                              (setupGraphics [^Graphics2D g]
+                                (doto g
+                                  (.setRenderingHint RenderingHints/KEY_RENDERING
+                                                     RenderingHints/VALUE_RENDER_QUALITY)
+                                  (.setRenderingHint RenderingHints/KEY_ALPHA_INTERPOLATION
+                                                     RenderingHints/VALUE_ALPHA_INTERPOLATION_QUALITY)
+                                  (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING
+                                                     RenderingHints/VALUE_TEXT_ANTIALIAS_GASP)
+                                  (.setRenderingHint RenderingHints/KEY_FRACTIONALMETRICS
+                                                     RenderingHints/VALUE_FRACTIONALMETRICS_ON))))]
+        (.createLayout graphics-engine dimension)
+        (let [image     (.getImage graphics-engine)
+              viewport  (.getViewport graphics-engine)
+              ;; CSSBox voodoo -- sometimes maximal width < minimal width, no idea why
+              content-w (max (int (.getMinimalWidth viewport))
+                             (int (.getMaximalWidth viewport)))
+              content-h (int (.getHeight viewport))]
+          (.getSubimage image 0 0 content-w (.getHeight image)))))))
+
+(defn measure-text
+  [^String text style-map]
+  (register-fonts-if-needed!)
+  (let [default-style {:font-family "Lato"}
+        html-str      (html [:html
+                             [:body {:style (style/style
+                                             {:margin           0
+                                              :padding          0
+                                              :background-color :none})}
+                              [:span {:style (style/style (merge default-style style-map))} text]]])]
+    (with-open [is         (ByteArrayInputStream. (.getBytes html-str StandardCharsets/UTF_8))
+                doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
+      (let [dimension       (Dimension. 1000 1)
+            doc             (.parse (DefaultDOMSource. doc-source))
+            da              (dom-analyzer doc doc-source dimension)
+            graphics-engine (proxy [GraphicsEngine] [(.getRoot da) da (.getURL doc-source)]
+                              (setupGraphics [^Graphics2D g]
+                                (doto g
+                                  (.setRenderingHint RenderingHints/KEY_RENDERING
+                                                     RenderingHints/VALUE_RENDER_QUALITY)
+                                  (.setRenderingHint RenderingHints/KEY_ALPHA_INTERPOLATION
+                                                     RenderingHints/VALUE_ALPHA_INTERPOLATION_QUALITY)
+                                  (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING
+                                                     RenderingHints/VALUE_TEXT_ANTIALIAS_GASP)
+                                  (.setRenderingHint RenderingHints/KEY_FRACTIONALMETRICS
+                                                     RenderingHints/VALUE_FRACTIONALMETRICS_ON))))]
+        (.createLayout graphics-engine dimension)
+        (let [image     (.getImage graphics-engine)
+              viewport  (.getViewport graphics-engine)
+              ;; CSSBox voodoo -- sometimes maximal width < minimal width, no idea why
+              content-w (max (int (.getMinimalWidth viewport))
+                             (int (.getMaximalWidth viewport)))
+              content-h (int (.getHeight viewport))]
+          ;; Crop the image to the actual size of the rendered content so that tables don't have a ton of whitespace.
+          {:width  (min (.getWidth image) content-w)
+           :height content-h})))))
