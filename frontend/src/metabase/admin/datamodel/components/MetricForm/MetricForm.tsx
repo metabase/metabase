@@ -1,12 +1,13 @@
 import React from "react";
 import { Link } from "react-router";
 import { Formik } from "formik";
+import type { FieldInputProps } from "formik";
 import { t } from "ttag";
 import * as Q from "metabase/lib/query/query";
 import { formatValue } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
 import FieldSet from "metabase/components/FieldSet";
-import { Metric } from "metabase-types/api";
+import { Metric, StructuredQuery } from "metabase-types/api";
 import FormInput from "../FormInput/FormInput";
 import FormLabel from "../FormLabel/FormLabel";
 import FormTextArea from "../FormTextArea/FormTextArea";
@@ -60,7 +61,7 @@ const MetricForm = ({
               }
             >
               <PartialQueryBuilder
-                {...getFieldProps("definition")}
+                {...getQueryBuilderProps(getFieldProps("definition"))}
                 features={QUERY_BUILDER_FEATURES}
                 canChangeTable={isNew}
                 previewSummary={getPreviewSummary(previewSummary)}
@@ -168,6 +169,17 @@ const getFormErrors = (values: Partial<Metric>) => {
   }
 
   return errors;
+};
+
+const getQueryBuilderProps = ({
+  name,
+  value,
+  onChange,
+}: FieldInputProps<StructuredQuery>) => {
+  return {
+    value,
+    onChange: (value: StructuredQuery) => onChange({ target: { name, value } }),
+  };
 };
 
 export default MetricForm;
