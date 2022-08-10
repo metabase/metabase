@@ -8,7 +8,6 @@ import {
   visitQuestionAdhoc,
   summarize,
   filter,
-  visitQuestion,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -140,12 +139,14 @@ describe("scenarios > question > joined questions", () => {
       cy.findByText("Showing 1 row");
     });
 
-    it("should allow joins based on saved questions (metabase#13000, metabase#13649)", () => {
+    it("should allow joins based on saved questions (metabase#13000, metabase#13649, metabase#13744)", () => {
       cy.createQuestion({
         name: "Q1",
         query: {
           aggregation: ["sum", ["field", ORDERS.TOTAL, null]],
           breakout: [["field", ORDERS.PRODUCT_ID, null]],
+          // Make sure it works if a question has sorted metric (metabase#13744)
+          "order-by": [["asc", ["aggregation", 0]]],
           "source-table": ORDERS_ID,
         },
       });
@@ -295,54 +296,6 @@ describe("scenarios > question > joined questions", () => {
       });
 
       cy.findAllByText(/Products? → Category/).should("have.length", 2);
-    });
-
-    it("should join saved question with sorted metric (metabase#13744)", () => {
-      // create first question based on repro steps in #13744
-      cy.createQuestion({
-        name: "13744",
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", PRODUCTS.CATEGORY, null]],
-          "order-by": [["asc", ["aggregation", 0]]],
-        },
-      }).then(({ body: { id: questionId } }) => {
-        const ALIAS = `Question ${questionId}`;
-
-        // create new question and join it with a previous one
-        cy.createQuestion({
-          name: "13744_joined",
-          query: {
-            joins: [
-              {
-                alias: ALIAS,
-                fields: "all",
-                condition: [
-                  "=",
-                  ["field", PRODUCTS.CATEGORY, null],
-                  [
-                    "field",
-                    "CATEGORY",
-                    { "base-type": "type/Text", "join-alias": ALIAS },
-                  ],
-                ],
-                "source-table": `card__${questionId}`,
-              },
-            ],
-            "source-table": PRODUCTS_ID,
-          },
-        }).then(({ body: { id: joinedQuestionId } }) => {
-          // Assert phase begins here
-          visitQuestion(joinedQuestionId);
-
-          cy.log("Reported failing on v0.34.3 - v0.37.0.2");
-          cy.log("Reported error log: 'No aggregation at index: 0'");
-
-          cy.findByText("13744_joined");
-          cy.findAllByText("Gizmo");
-        });
-      });
     });
 
     it("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
