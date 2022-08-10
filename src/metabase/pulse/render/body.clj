@@ -709,7 +709,7 @@
          :render/text (str last-value "\n" (trs "Nothing to compare to."))}))))
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
-  [_ render-type timezone-id card dashcard {:keys [_rows cols viz-settings] :as data}]
+  [_ render-type timezone-id card dashcard {:keys [_rows cols] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows           (sparkline/cleaned-rows timezone-id card data)
