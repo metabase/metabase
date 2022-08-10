@@ -392,7 +392,7 @@ const RuleEditor = ({
             colors={COLORS}
             onChange={color => onChange({ ...rule, color })}
           />
-          {isDetail ? null : (
+          {!isDetail && (
             <>
               <h3 className="mt3 mb1">{t`Highlight the whole row`}</h3>
               <Toggle

@@ -4,7 +4,14 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Question from "metabase-lib/lib/Question";
-import { isPK } from "metabase/lib/schema_metadata";
+import {
+  isPK,
+  isNumber,
+  isURL,
+  isEmail,
+  isImageURL,
+  isAvatarURL,
+} from "metabase/lib/schema_metadata";
 import Table from "metabase-lib/lib/metadata/Table";
 import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
 
@@ -18,15 +25,6 @@ import { NotFound } from "metabase/containers/ErrorPages";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePrevious } from "metabase/hooks/use-previous";
 
-import {
-  isMetric,
-  isDimension,
-  isNumber,
-  isURL,
-  isEmail,
-  isImageURL,
-  isAvatarURL,
-} from "metabase/lib/schema_metadata";
 import Tables from "metabase/entities/tables";
 import {
   loadObjectDetailFKReferences,
@@ -72,6 +70,7 @@ import {
   ErrorWrapper,
 } from "./ObjectDetail.styled";
 import { formatColumn } from "metabase/lib/formatting";
+import { Series } from "metabase-types/types/Visualization";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
   let zoomedRowID = getZoomedObjectId(state);
@@ -483,7 +482,7 @@ export const ObjectDetailProperties = {
       title: t`Visible columns`,
       widget: ChartSettingOrderedColumns,
       getHidden: () => false,
-      isValid: ([{ card, data }]: any) =>
+      isValid: ([{ card, data }]: Series) =>
         // If "detail.columns" happened to be an empty array,
         // it will be treated as "all columns are hidden",
         // This check ensures it's not empty,

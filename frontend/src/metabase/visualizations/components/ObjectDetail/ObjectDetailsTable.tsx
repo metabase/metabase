@@ -2,7 +2,7 @@ import React from "react";
 import cx from "classnames";
 import { t } from "ttag";
 
-import { DatasetData } from "metabase-types/types/Dataset";
+import { DatasetData, Row } from "metabase-types/types/Dataset";
 
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
@@ -19,15 +19,16 @@ import {
   GridCell,
 } from "./ObjectDetail.styled";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { ClickObject } from "metabase-types/types/Visualization";
 
 export interface DetailsTableCellProps {
   column: any;
   value: any;
-  row: any;
+  row: Row;
   isColumnName: boolean;
   settings: any;
   className?: string;
-  getExtraDataForClick?: (clicked: any) => any;
+  getExtraDataForClick?: (clicked: ClickObject) => any;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
 }
@@ -54,7 +55,7 @@ export function DetailsTableCell({
       column,
       value,
       settings,
-      origin: { rowIndex: 0, row },
+      origin: { rowIndex: 0, row, cols: [column] },
     };
     cellValue = formatValue(
       columnSettings["_column_title_full"] || formatColumn(column),
@@ -140,23 +141,24 @@ export function DetailsTable({
   onVisualizationClick,
   visualizationIsClickable,
 }: DetailsTableProps): JSX.Element {
+  const { cols: columns } = data;
   const { cols, row } = React.useMemo(() => {
-    const { cols } = data;
     const columnSettings = settings["detail.columns"];
     const columnIndexes = columnSettings
       .filter((columnSetting: any) => columnSetting.enabled)
       .map((columnSetting: any) =>
-        findColumnIndexForColumnSetting(cols, columnSetting),
+        findColumnIndexForColumnSetting(columns, columnSetting),
       )
       .filter(
-        (columnIndex: number) => columnIndex >= 0 && columnIndex < cols.length,
+        (columnIndex: number) =>
+          columnIndex >= 0 && columnIndex < columns.length,
       );
 
     return {
-      cols: columnIndexes.map((i: number) => cols[i]) as any[],
+      cols: columnIndexes.map((i: number) => columns[i]) as any[],
       row: columnIndexes.map((i: number) => zoomedRow[i]),
     };
-  }, [data.cols, zoomedRow, settings]);
+  }, [columns, zoomedRow, settings]);
 
   if (!row?.length) {
     return <EmptyState message={t`No details found`} />;
