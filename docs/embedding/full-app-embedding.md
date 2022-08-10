@@ -1,12 +1,14 @@
 ---
 title: Embedding all of Metabase in your web app
+redirect_from:
+  - /docs/latest/enterprise-guide/full-app-embedding
 ---
 
 # Embedding all of Metabase in your web app
 
 {% include plans-blockquote.html feature="Full-app embedding" %}
 
-The open-source edition of Metabase allows you to [embed standalone charts or dashboards](../administration-guide/13-embedding.md) in your own web applications for simple situations. But what if you want to provide your users with a more interactive, browsable experience? Some plans allow you to embed the entire Metabase app within your own web app, allowing you to provide [drill-through](https://www.metabase.com/learn/basics/questions/drill-through.html) for your embedded charts and dashboards, or even embed the graphical query builder, or collections of dashboards and charts.
+The open-source edition of Metabase allows you to [embed standalone charts or dashboards](./introduction.md) in your own web applications for simple situations. But what if you want to provide your users with a more interactive, browsable experience? Some plans allow you to embed the entire Metabase app within your own web app, allowing you to provide [drill-through](https://www.metabase.com/learn/basics/questions/drill-through.html) for your embedded charts and dashboards, or even embed the graphical query builder, or collections of dashboards and charts.
 
 You'll be putting the whole Metabase app into an iframe, and the SSO integration you've set up with Metabase will be used to make sure the embedded Metabase respects the collection and data permissions you've set up for your user groups. Clicking on charts and graphs in the embed will do just what they do in Metabase itself. You can even display a specific Metabase collection in an embed to allow your users to browse through all the dashboards and questions that you've made available to them. The only difference is that Metabase's top nav bar and global search will not be rendered in your iframe.
 
@@ -76,13 +78,13 @@ http://localhost:3000/?top_nav=false&side_nav=false
 
 would disable the top and side nav:
 
-![Top nav and side nav disabled](./images/full-app-embedding/no-top-no-side.png)
+![Top nav and side nav disabled](./images/no-top-no-side.png)
 
 ### `top_nav`
 
 Entire top navigation bar, with optional search and new button.
 
-![Top nav bar](./images/full-app-embedding/top-nav.png)
+![Top nav bar](./images/top-nav.png)
 
 The top bar is hidden by default. Additionally, if you enable the top bar (`top_nav=true`), you can turn on other hidden-by-default top bar options:
 
@@ -93,7 +95,7 @@ The top bar is hidden by default. Additionally, if you enable the top bar (`top_
 
 The main navigation bar.
 
-![Side nav](./images/full-app-embedding/side-nav.png)
+![Side nav](./images/side-nav.png)
 
 The navigation sidebar is hidden by default, aside from `/collection` and home page product routes. If you want people to be able to minimize the sidebar, you MUST enable the `top_nav`.
 
@@ -107,13 +109,13 @@ If you enable the header, these sub-components are visible by default:
 
 Applicable to dashboards and questions. Refers to the gray text “Edited X days ago by FirstName LastName”, as well as the collection, database, and table information.
 
-![Additional info](./images/full-app-embedding/additional-info.png)
+![Additional info](./images/additional-info.png)
 
 #### `action_buttons`
 
 Applicable to questions. Refers to the **Save**, **Summarize**, and **Filter** action buttons, as well as the icon to bring up the query builder.
 
-![Action buttons](./images/full-app-embedding/action-buttons.png)
+![Action buttons](./images/action-buttons.png)
 
 ## Choosing what to embed
 
@@ -129,7 +131,7 @@ One of the main differences between embedding the full Metabase app vs. standalo
 
 When clicking on any part of a chart — like a dot, bar, slice, or state — your users will see the drill-through action menu.
 
-![Action menu](../enterprise-guide/images/full-app-embedding/action-menu.png)
+![Action menu](./images/action-menu.png)
 
 This will let them do things like:
 

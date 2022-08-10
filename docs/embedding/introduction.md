@@ -1,5 +1,7 @@
 ---
 title: Embedding Metabase in other applications
+redirect_from:
+  - /docs/latest/administration-guide/13-embedding
 ---
 
 # Embedding Metabase in other applications
@@ -35,7 +37,7 @@ If you choose to sign a specific parameter value, that means the user can't modi
 ## Enabling embedding
 
 To enable embedding, go to the **Admin Panel** and select **Embedding in other Applications** from the left sidebar. When you click **Enable**, you'll see an **Embedding secret key** you can use later to sign requests. If you ever need to invalidate that key and generate a new one, just click on **Regenerate key**.
-![Enabling Embedding](images/embedding/01-enabling.png)
+![Enabling Embedding](./images/01-enabling.png)
 
 You can also see all questions and dashboards that have been marked as embedded here, as well as revoke any questions or dashboards that should no longer be embeddable in other applications.
 
@@ -45,19 +47,19 @@ Once you've enabled the embedding feature on your Metabase instance, next you'll
 
 To make a question or dashboard embeddable, click the **Sharing icon** (the box with an arrow pointing up and to the right) at the bottom right of the question.
 
-![Share icon](images/embedding/02-share-icon.png)
+![Share icon](./images/02-share-icon.png)
 
 For dashboards, the sharing icon is at the top of the dashboard:
 
-![Dashboard sharing icon](images/embedding/dashboard-sharing-icon.png)
+![Dashboard sharing icon](./images/dashboard-sharing-icon.png)
 
 Then select **Embed this question in an application**.
 
-![Enable sharing for a question](images/embedding/03-enable-question.png)
+![Enable sharing for a question](./images/03-enable-question.png)
 
 You'll see a preview of the question or dashboard as it will appear in your application, as well as a panel showing the code you'll need to insert in your application. You can alternate between the preview and code with the toggle near the top of the page.
 
-![Preview](images/embedding/04-preview.png)
+![Preview](./images/04-preview.png)
 
 ## Publishing your embedded item
 
@@ -68,7 +70,7 @@ In order for the embedding to work, you'll need to hit **Publish**. You'll need 
 
  Also, any changes you make to the embedding settings may require you to update the code in your own application so that it matches the latest code sample Metabase generates.
 
-![Code samples for embedding](images/embedding/05-code.png)
+![Code samples for embedding](./images/05-code.png)
 
 Metabase provides code samples for common frontend template languages, as well as some common backend web frameworks and languages. You can also use these code samples as starting points for writing your own versions in other platforms.
 
@@ -78,7 +80,7 @@ If you want to remove the **Powered by Metabase** label, you'll need to upgrade 
 
 If you wish to have a parameter locked down to prevent your embedding application's end users from seeing other users' data, you can mark parameters as "Locked." This will prevent that parameter from being displayed as a filter widget, so its value must instead be set by the embedding application's server code.
 
-![Locked parameters](images/embedding/06-locked.png)
+![Locked parameters](./images/06-locked.png)
 
 When using locked Field Filters with multiple selected values, then it is provided as a JSON array. Example:
 
@@ -155,7 +157,7 @@ To see code examples of how to embed Metabase in applications using a number of 
 
 ## Customizing embeds
 
-Paid plans include additional features for [customizing the appearance](../enterprise-guide/customize-embeds.md) of embedded items.
+Paid plans include additional features for [customizing the appearance](./customize-embeds.md) of embedded items.
 
 ## Further reading
 
