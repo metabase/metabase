@@ -1,5 +1,7 @@
 ---
 title: Customizing embedded charts
+redirect_from:
+  - /docs/latest/enterprise-guide/customize-embeds
 ---
 
 # Customizing embedded charts
@@ -10,7 +12,7 @@ Some paid plans give you additional customization options for [embedded items](.
 
 ## Remove the "Powered by Metabase" banner
 
-![Powered by Metabase](../administration-guide/images/embedding/powered-by-metabase.png)
+![Powered by Metabase](./images/powered-by-metabase.png)
 
 Charts and dashboards won't show the branded Metabase label at the bottom.
 
