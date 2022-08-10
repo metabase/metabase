@@ -140,33 +140,58 @@ describe("scenarios > question > joined questions", () => {
       cy.findByText("Showing 1 row");
     });
 
-    it("should allow joins based on saved questions (metabase#13000)", () => {
-      // pass down a joined question alias
-      joinTwoSavedQuestions();
-    });
+    it("should allow joins based on saved questions (metabase#13000, metabase#13649)", () => {
+      cy.createQuestion({
+        name: "Q1",
+        query: {
+          aggregation: ["sum", ["field", ORDERS.TOTAL, null]],
+          breakout: [["field", ORDERS.PRODUCT_ID, null]],
+          "source-table": ORDERS_ID,
+        },
+      });
 
-    // NOTE: - This repro is really tightly coupled to the `joinTwoSavedQuestions()` function.
-    //       - Be extremely careful when changing any of the steps within that function.
-    //       - The alternative approach would have been to write one longer repro instead of two separate ones.
-    it("joined questions should create custom column (metabase#13649)", () => {
-      // pass down a joined question alias
-      joinTwoSavedQuestions();
+      cy.createQuestion({
+        name: "Q2",
+        query: {
+          aggregation: ["sum", ["field", PRODUCTS.RATING, null]],
+          breakout: [["field", PRODUCTS.ID, null]],
+          "source-table": PRODUCTS_ID,
+        },
+      });
 
+      startNewQuestion();
+      popover().within(() => {
+        cy.findByText("Saved Questions").click();
+        cy.findByText("Q1").click();
+      });
+
+      cy.icon("join_left_outer").click();
+
+      popover().within(() => {
+        cy.icon("chevronleft").click();
+        cy.findByText("Saved Questions").click();
+        cy.findByText("Q2").click();
+      });
+
+      popover().findByText("Product ID").click();
+      popover().findByText("ID").click();
+
+      visualize();
+
+      cy.icon("notebook").click();
+      cy.url().should("contain", "/notebook");
+
+      // cy.log("joined questions should create custom column (metabase#13649)");
       // add a custom column on top of the steps from the #13000 repro which was simply asserting
       // that a question could be made by joining two previously saved questions
       cy.icon("add_data").click();
 
-      popover().within(() => {
-        enterCustomColumnDetails({
-          formula: "[Question 5 → Sum of Rating] / [Sum of Rating]",
-        });
-
-        cy.findByPlaceholderText("Something nice and descriptive").type(
-          "Sum Divide",
-        );
-
-        cy.button("Done").should("not.be.disabled").click();
+      enterCustomColumnDetails({
+        formula: "[Question 5 → Sum of Rating] / [Sum of Rating]",
+        name: "Sum Divide",
       });
+
+      cy.button("Done").click();
 
       visualize();
 
@@ -377,48 +402,3 @@ describe("scenarios > question > joined questions", () => {
     });
   });
 });
-
-// Extracted repro steps for #13000
-function joinTwoSavedQuestions() {
-  cy.createQuestion({
-    name: "Q1",
-    query: {
-      aggregation: ["sum", ["field", ORDERS.TOTAL, null]],
-      breakout: [["field", ORDERS.PRODUCT_ID, null]],
-      "source-table": ORDERS_ID,
-    },
-  }).then(() => {
-    cy.createQuestion({
-      name: "Q2",
-      query: {
-        aggregation: ["sum", ["field", PRODUCTS.RATING, null]],
-        breakout: [["field", PRODUCTS.ID, null]],
-        "source-table": PRODUCTS_ID,
-      },
-    }).then(() => {
-      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
-      startNewQuestion();
-
-      popover().within(() => {
-        cy.findByText("Saved Questions").click();
-        cy.findByText("Q1").click();
-      });
-
-      cy.icon("join_left_outer").click();
-      cy.wait("@schema");
-      popover().within(() => {
-        cy.icon("chevronleft").click();
-        cy.findByText("Saved Questions").click();
-        cy.findByText("Q2").click();
-      });
-
-      popover().findByText("Product ID").click();
-      popover().findByText("ID").click();
-
-      visualize();
-
-      cy.icon("notebook").click();
-      cy.url().should("contain", "/notebook");
-    });
-  });
-}
