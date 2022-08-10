@@ -894,28 +894,29 @@ export class FieldDimension extends Dimension {
   }
 
   field(): Field {
-    /*
-      1. If a Field is cached on the FieldDimension instance, we can shortwire this method and
-         return the cached Field.
-      2. When the associated card is saved, we can always rely on its result_metadata array because it
-         will be populated with relevant Field metadata from the BE.
-      3. Otherwise, when the query is based on another card, check the result_metadata of the nested card.
-         We can't always rely on this.query().table() when a query with a nested card is unsaved
-         because the Table instance may contain field objects that _should_ have local, overriding metadata
-         (e.g. a custom description) but that have been clobbered by the Field instances from the real Table
-         that the nested card is based on.
-      4. Fallback to grabbing the Field off of the query's table, which may be identical to the Field
-         returned from the Metadata object.
-    */
+    // If a Field is cached on the FieldDimension instance, we can shortwire this method and
+    // return the cached Field.
     const cachedField = this._getTrustedFieldCachedOnInstance();
     if (cachedField) {
       return cachedField;
     }
 
-    const fieldMetadata =
-      this._getFieldMetadataFromSavedQuestion() ||
-      this._getFieldMetadataFromNestedCard() ||
-      this._getFieldMetadataFromQueryTable();
+    let fieldMetadata;
+
+    // Models contain custom metadata for fields, but when these fields have integer ids,
+    // they are clobbered by the metadata from the real table that the card is based on,
+    // so we need to check the result_metadata of the nested card and merge it with the
+    // Field that exists in the Metadata object.
+    if (this.isIntegerFieldId()) {
+      fieldMetadata =
+        this._getFieldMetadataFromSavedQuestion() ||
+        this._getFieldMetadataFromNestedCard();
+    }
+
+    // In scenarios where the Field id is not an integer, we need to grab the Field from the
+    // query's table, because the Field won't exist in the Metadata object (and string Field ids
+    // are not sufficiently unique to be stored properly in the Metadata object).
+    fieldMetadata = fieldMetadata || this._getFieldMetadataFromQueryTable();
 
     // The `fieldMetadata` object may have metadata that overrides the regular field object
     // (e.g. a custom field display name or description on a model)

@@ -931,7 +931,14 @@ describe("Dimension", () => {
             name: "boolean",
             display_name: "boolean",
             base_type: "type/Boolean",
-            semantic_type: null,
+            semantic_type: undefined,
+            id: [
+              "field",
+              "boolean",
+              {
+                "base-type": "type/Boolean",
+              },
+            ],
             field_ref: [
               "field",
               "boolean",
@@ -946,7 +953,11 @@ describe("Dimension", () => {
       describe("field", () => {
         it("should return the `field` from the card's result_metadata", () => {
           const field = dimension.field();
-          expect(field.id).toBeUndefined();
+          expect(field.id).toEqual([
+            "field",
+            "boolean",
+            { "base-type": "type/Boolean" },
+          ]);
           expect(field.name).toEqual("boolean");
           expect(field.isBoolean()).toBe(true);
           expect(field.metadata).toBeDefined();
@@ -983,22 +994,11 @@ describe("Dimension", () => {
           metadata,
           questionWithResultMetadata.query(),
         );
-        const fieldDimensionUsingNameProp = Dimension.parseMBQL(
-          ["field", ORDERS.TOTAL.name, null],
-          metadata,
-          questionWithResultMetadata.query(),
-        );
 
         const idField = fieldDimensionUsingIdProp.field();
         expect(idField.id).toBe(ORDERS.ID.id);
         expect(idField.display_name).toBe("Foo");
         expect(idField.description).toBe(ORDERS.ID.description);
-
-        const nameField = fieldDimensionUsingNameProp.field();
-        expect(nameField.name).toBe(ORDERS.TOTAL.name);
-        expect(nameField.display_name).toBe("Bar");
-        expect(nameField.id).toBeUndefined();
-        expect(nameField.description).toBeUndefined();
       });
     });
   });
@@ -1024,22 +1024,11 @@ describe("Dimension", () => {
           metadata,
           unsavedQuestionBasedOnCard.query(),
         );
-        const fieldDimensionUsingNameProp = Dimension.parseMBQL(
-          ["field", ORDERS.TOTAL.name, null],
-          metadata,
-          unsavedQuestionBasedOnCard.query(),
-        );
 
         const idField = fieldDimensionUsingIdProp.field();
         expect(idField.id).toBe(ORDERS.ID.id);
         expect(idField.display_name).toBe("Foo");
         expect(idField.description).toBe(ORDERS.ID.description);
-
-        const nameField = fieldDimensionUsingNameProp.field();
-        expect(nameField.name).toBe(ORDERS.TOTAL.name);
-        expect(nameField.display_name).toBe("Bar");
-        expect(nameField.id).toBeUndefined();
-        expect(nameField.description).toBeUndefined();
       });
     });
   });
