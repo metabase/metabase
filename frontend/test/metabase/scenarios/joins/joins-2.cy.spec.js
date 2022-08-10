@@ -299,7 +299,6 @@ describe("scenarios > question > joined questions", () => {
     });
 
     it("should join saved question with sorted metric (metabase#13744)", () => {
-      cy.server();
       // create first question based on repro steps in #13744
       cy.createQuestion({
         name: "13744",
