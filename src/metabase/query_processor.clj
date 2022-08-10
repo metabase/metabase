@@ -36,6 +36,7 @@
             [metabase.query-processor.middleware.format-rows :as format-rows]
             [metabase.query-processor.middleware.large-int-id :as large-int-id]
             [metabase.query-processor.middleware.limit :as limit]
+            [metabase.query-processor.middleware.mark-outer-select-fields :as qp.mark-outer-select-fields]
             [metabase.query-processor.middleware.mbql-to-native :as mbql-to-native]
             [metabase.query-processor.middleware.normalize-query :as normalize]
             [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
@@ -95,6 +96,7 @@
    (resolve 'ee.sandbox.rows/apply-sandboxing)
    #'qp.persistence/substitute-persisted-query
    #'qp.add-implicit-clauses/add-implicit-clauses
+   #'qp.mark-outer-select-fields/mark-outer-select-fields
    #'qp.add-dimension-projections/add-remapped-columns
    #'qp.resolve-fields/resolve-fields
    #'binning/update-binning-strategy

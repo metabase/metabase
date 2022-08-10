@@ -353,7 +353,6 @@
 
 (defmethod ->honeysql [:sql :field]
   [driver [_ id-or-name {:keys             [database-type]
-                         ::nest-query/keys [outer-select]
                          :as               options}
            :as field-clause]]
   (try
@@ -361,6 +360,8 @@
           source-alias         (field-source-alias field-clause)
           field                (when (integer? id-or-name)
                                  (qp.store/field id-or-name))
+          outer-select         (or (:metabase.query-processor.middleware.mark-outer-select-fields/outer-select options)
+                                   (::nest-query/outer-select options))
           allow-casting?       (and field
                                     (not outer-select))
           database-type        (or database-type

@@ -7,6 +7,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
+            [metabase.query-processor.middleware.mark-outer-select-fields :as outer]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.test :as mt]))
 
@@ -131,11 +132,12 @@
                                                                               ::add/source-alias "P2__CATEGORY"
                                                                               ::add/source-table "Q2"}]]
                                    :strategy     :left-join}]
-                   :fields       [[:field %products.category {:join-alias         "P1"
-                                                              ::add/desired-alias "P1__CATEGORY"
-                                                              ::add/position      0
-                                                              ::add/source-alias  "P1__CATEGORY"
-                                                              ::add/source-table  ::add/source}]]
+                   :fields       [[:field %products.category {:join-alias          "P1"
+                                                              ::outer/outer-select true
+                                                              ::add/desired-alias  "P1__CATEGORY"
+                                                              ::add/position       0
+                                                              ::add/source-alias   "P1__CATEGORY"
+                                                              ::add/source-table   ::add/source}]]
                    :limit        1})
                 (add-alias-info
                  (mt/mbql-query orders
@@ -537,11 +539,12 @@
                                              :semantic_type     :type/Category}]]}
                            :fields       [[:field
                                            %products.id
-                                           {::add/desired-alias "Products_Renamed__ID"
-                                            ::add/position      0
-                                            ::add/source-alias  "Products_Renamed__ID"
-                                            ::add/source-table  ::add/source
-                                            :join-alias         "Products Renamed"}]
+                                           {::add/desired-alias  "Products_Renamed__ID"
+                                            ::add/position       0
+                                            ::add/source-alias   "Products_Renamed__ID"
+                                            ::add/source-table   ::add/source
+                                            ::outer/outer-select true
+                                            :join-alias          "Products Renamed"}]
                                           [:field
                                            "CC"
                                            {::add/desired-alias "CC"
@@ -586,14 +589,16 @@
                                                                        ::add/source-alias  "Name"
                                                                        ::add/desired-alias "Name_2"
                                                                        ::add/position      1}]]}
-                       :fields       [[:field name-id {::add/source-table  ::add/source
-                                                       ::add/source-alias  "NAME"
-                                                       ::add/desired-alias "NAME"
-                                                       ::add/position      0}]
-                                      [:field price-id {::add/source-table  ::add/source
-                                                        ::add/source-alias  "Name_2"
-                                                        ::add/desired-alias "Name_2"
-                                                        ::add/position      1}]]
+                       :fields       [[:field name-id {::outer/outer-select true
+                                                       ::add/source-table   ::add/source
+                                                       ::add/source-alias   "NAME"
+                                                       ::add/desired-alias  "NAME"
+                                                       ::add/position       0}]
+                                      [:field price-id {::outer/outer-select true
+                                                       ::add/source-table    ::add/source
+                                                        ::add/source-alias   "Name_2"
+                                                        ::add/desired-alias  "Name_2"
+                                                        ::add/position       1}]]
                        :limit        1})
                     (-> (mt/mbql-query venues
                           {:source-query {:source-table $$venues

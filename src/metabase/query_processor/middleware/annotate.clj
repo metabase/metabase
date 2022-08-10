@@ -193,7 +193,8 @@
         ;; remapping based on that info)
         namespaced-options        (not-empty (into {}
                                                    (filter (fn [[k _v]]
-                                                             (and (keyword? k) (namespace k))))
+                                                             (and (keyword? k) (namespace k)
+                                                                  (not= k :metabase.query-processor.middleware.mark-outer-select-fields/outer-select))))
                                                    opts))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
