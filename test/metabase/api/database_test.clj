@@ -335,10 +335,10 @@
                     (mt/user-http-request :rasta :get 200
                                           (format "database/%d/autocomplete_suggestions" db-id)
                                           :prefix prefix))
-        search-fn (fn [db-id search]
-                    (mt/user-http-request :rasta :get 200
-                                          (format "database/%d/autocomplete_suggestions" db-id)
-                                          :search search))]
+        substring-fn (fn [db-id search]
+                       (mt/user-http-request :rasta :get 200
+                                             (format "database/%d/autocomplete_suggestions" db-id)
+                                             :substring search))]
     (testing "GET /api/database/:id/autocomplete_suggestions"
       (doseq [[prefix expected] {"u"   [["USERS" "Table"]
                                         ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
@@ -367,12 +367,12 @@
                             count))))
             (testing " behaves differently with search and prefix query params"
               (is (= 0 (count (prefix-fn (u/the-id tmp-db) "a"))))
-              (is (= 50 (count (search-fn (u/the-id tmp-db) "a"))))
+              (is (= 50 (count (substring-fn (u/the-id tmp-db) "a"))))
               ;; setting both uses search:
               (is (= 50 (count (mt/user-http-request :rasta :get 200
                                                      (format "database/%d/autocomplete_suggestions" (u/the-id tmp-db))
                                                      :prefix "a"
-                                                     :search "a")))))))))))
+                                                     :substring "a")))))))))))
 
 
 (defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
