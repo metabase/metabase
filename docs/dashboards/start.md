@@ -6,7 +6,7 @@ title: Dashboards overview
 
 ![Example dashboard](./images/dashboard.png)
 
-## [Introduction to dashboards](./introduction)
+## [Introduction to dashboards](./introduction.md)
 
 Learn how to arrange tables, charts, and text cards on a dashboard.
 
