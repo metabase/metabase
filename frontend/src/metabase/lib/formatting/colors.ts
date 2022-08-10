@@ -13,9 +13,9 @@ export function assignUserColors(
   ],
 ) {
   const assignments: { [index: string]: string } = {};
-
   const currentUserColor = colors[0];
   const otherUserColors = colors.slice(1);
+
   let otherUserColorIndex = 0;
 
   for (const userId of userIds) {
