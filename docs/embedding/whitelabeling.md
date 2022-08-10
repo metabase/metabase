@@ -2,6 +2,7 @@
 title: White labeling Metabase
 redirect_from:
   - /docs/latest/administration-guide/whitelabeling
+  - /docs/latest/enterprise-guide/whitelabeling
 ---
 
 # White labeling Metabase
@@ -20,7 +21,7 @@ You can change every place in the app that says “Metabase” to something like
 
 ## Font
 
-This is the primary font used in charts and throughout the Metabase application (your "instance font"). See [Fonts](../enterprise-guide/fonts.md).
+This is the primary font used in charts and throughout the Metabase application (your "instance font"). See [Fonts](./fonts.md).
 
 ## Color palette
 
@@ -28,7 +29,7 @@ You can customize colors in both the application UI and in the Metabase charts.
 
 ### User interface colors
 
-![User interface colors](images/appearance/user-interface-colors.png)
+![User interface colors](./images/user-interface-colors.png)
 
 You can customize the colors that Metabase uses throughout the app:
 
@@ -38,7 +39,7 @@ You can customize the colors that Metabase uses throughout the app:
 
 ### Chart colors
 
-![Chart colors](images/appearance/chart-colors.png)
+![Chart colors](./images/chart-colors.png)
 
 You can choose up to 24 hex values. If you choose fewer than 24 colors, Metabase will auto-generate colors to fill in the rest of the values.
 
@@ -64,7 +65,7 @@ This message is the text Metabase presents when it's loading a query. Options in
 
 ## Metabot
 
-![Metabot toggle](./images/appearance/metabot.png)
+![Metabot toggle](./images/metabot.png)
 
 You can decide whether to display our little friend on the home page.
 

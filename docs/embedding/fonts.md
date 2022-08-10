@@ -1,5 +1,7 @@
 ---
 title: Fonts
+redirect_from:
+  - /docs/latest/enterprise-guide/fonts
 ---
 
 # Fonts
