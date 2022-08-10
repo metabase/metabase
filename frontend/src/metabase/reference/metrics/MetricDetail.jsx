@@ -91,7 +91,6 @@ const propTypes = {
 
 const MetricDetail = props => {
   const {
-    fields: { revision_message },
     style,
     entity,
     table,
@@ -131,7 +130,7 @@ const MetricDetail = props => {
           endEditing={endEditing}
           reinitializeForm={resetForm}
           submitting={submitting}
-          revisionMessageFormField={revision_message}
+          revisionMessageFormField={getField("revision_message")}
         />
       )}
       <EditableReferenceHeader
