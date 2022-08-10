@@ -213,7 +213,9 @@ describe("scenarios > question > joined questions", () => {
     });
 
     it("should join saved questions that themselves contain joins (metabase#12928)", () => {
-      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
+      cy.intercept("GET", "/api/table/card__*/query_metadata").as(
+        "cardQueryMetadata",
+      );
 
       // Save Question 1
       cy.createQuestion({
@@ -279,15 +281,17 @@ describe("scenarios > question > joined questions", () => {
       cy.findByText("Saved Questions").click();
 
       cy.findByText("12928_Q1").click();
+      cy.wait("@cardQueryMetadata");
 
       cy.icon("join_left_outer").click();
-      cy.wait("@schema");
 
       popover().within(() => {
         cy.findByTextEnsureVisible("Sample Database").click();
         cy.findByTextEnsureVisible("Saved Questions").click();
       });
+
       cy.findByText("12928_Q2").click();
+      cy.wait("@cardQueryMetadata");
 
       cy.contains(/Products? → Category/).click();
 
