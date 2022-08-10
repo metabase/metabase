@@ -12,7 +12,7 @@ How to embed charts and dashboards in applications and websites.
 
 How to embed the graphical query builder and more in your application.
 
-## [Customize embeds](./custom-embeds.md)
+## [Customize embeds](./customize-embeds.md)
 
 Introduction to customizing embedded charts and dashboards.
 
