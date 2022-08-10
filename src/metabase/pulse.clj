@@ -2,6 +2,7 @@
   "Public API for sending Pulses."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.api.common :as api]
             [metabase.config :as config]
             [metabase.email :as email]
             [metabase.email.messages :as messages]
@@ -50,6 +51,7 @@
   (try
     (let [card-id (u/the-id card-or-id)
           card    (Card :id card-id)
+          _       (api/check-is-readonly card) ;; cannot execute writable cards here
           result  (mw.session/with-current-user owner-id
                     (qp.dashboard/run-query-for-dashcard-async
                      :dashboard-id  (u/the-id dashboard)
