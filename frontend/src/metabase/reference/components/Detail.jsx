@@ -7,7 +7,6 @@ import { t } from "ttag";
 import cx from "classnames";
 
 const Detail = ({
-  name,
   title,
   description,
   placeholder,
@@ -34,7 +33,7 @@ const Detail = ({
         {isEditing ? (
           <textarea
             className={S.detailTextarea}
-            name={name}
+            name={field.name}
             placeholder={placeholder}
             onChange={field.onChange}
             //FIXME: use initialValues from redux forms instead of default value
