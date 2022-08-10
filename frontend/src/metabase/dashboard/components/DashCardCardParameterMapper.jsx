@@ -112,22 +112,22 @@ function DashCardCardParameterMapper({
     useMemo(() => {
       if (!hasPermissionsToMap) {
         return {
-          variant: "unauthed",
-          tooltip: t`You don’t have permission to see this question’s columns.`,
-          text: null,
+          buttonVariant: "unauthed",
+          buttonTooltip: t`You don’t have permission to see this question’s columns.`,
+          buttonText: null,
           buttonIcon: <KeyIcon />,
         };
       } else if (isDisabled && !isVirtual) {
         return {
-          variant: "disabled",
-          tooltip: t`This card doesn't have any fields or parameters that can be mapped to this parameter type.`,
+          buttonVariant: "disabled",
+          buttonTooltip: t`This card doesn't have any fields or parameters that can be mapped to this parameter type.`,
           buttonText: t`No valid fields`,
           buttonIcon: null,
         };
       } else if (selectedMappingOption) {
         return {
-          variant: "mapped",
-          tooltip: null,
+          buttonVariant: "mapped",
+          buttonTooltip: null,
           buttonText: formatSelected(selectedMappingOption),
           buttonIcon: (
             <CloseIconButton
@@ -140,8 +140,8 @@ function DashCardCardParameterMapper({
         };
       } else {
         return {
-          variant: "default",
-          tooltip: null,
+          buttonVariant: "default",
+          buttonTooltip: null,
           buttonText: t`Select…`,
           buttonIcon: <ChevrondownIcon />,
         };
