@@ -194,7 +194,7 @@ class FieldDetail extends Component {
                 <List>
                   <li className="relative">
                     <Detail
-                      id="description"
+                      name="description"
                       title={t`Description`}
                       description={entity.description}
                       placeholder={t`No description yet`}
@@ -205,7 +205,7 @@ class FieldDetail extends Component {
                   {!isEditing && (
                     <li className="relative">
                       <Detail
-                        id="name"
+                        name="name"
                         title={t`Actual name in database`}
                         description={entity.name}
                         subtitleClass={S.tableActualName}
@@ -214,7 +214,7 @@ class FieldDetail extends Component {
                   )}
                   <li className="relative">
                     <Detail
-                      id="points_of_interest"
+                      name="points_of_interest"
                       title={t`Why this field is interesting`}
                       description={entity.points_of_interest}
                       placeholder={t`Nothing interesting yet`}
@@ -224,7 +224,7 @@ class FieldDetail extends Component {
                   </li>
                   <li className="relative">
                     <Detail
-                      id="caveats"
+                      name="caveats"
                       title={t`Things to be aware of about this field`}
                       description={entity.caveats}
                       placeholder={t`Nothing to be aware of yet`}
@@ -236,7 +236,7 @@ class FieldDetail extends Component {
                   {!isEditing && (
                     <li className="relative">
                       <Detail
-                        id="base_type"
+                        name="base_type"
                         title={t`Data type`}
                         description={entity.base_type}
                       />

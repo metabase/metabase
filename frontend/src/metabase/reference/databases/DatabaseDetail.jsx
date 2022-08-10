@@ -141,7 +141,7 @@ class DatabaseDetail extends Component {
                 <List>
                   <li className="relative">
                     <Detail
-                      id="description"
+                      name="description"
                       title={t`Description`}
                       description={entity.description}
                       placeholder={t`No description yet`}
@@ -151,7 +151,7 @@ class DatabaseDetail extends Component {
                   </li>
                   <li className="relative">
                     <Detail
-                      id="points_of_interest"
+                      name="points_of_interest"
                       title={t`Why this database is interesting`}
                       description={entity.points_of_interest}
                       placeholder={t`Nothing interesting yet`}
@@ -161,7 +161,7 @@ class DatabaseDetail extends Component {
                   </li>
                   <li className="relative">
                     <Detail
-                      id="caveats"
+                      name="caveats"
                       title={t`Things to be aware of about this database`}
                       description={entity.caveats}
                       placeholder={t`Nothing to be aware of yet`}

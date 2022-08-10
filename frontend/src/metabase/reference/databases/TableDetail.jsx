@@ -174,7 +174,7 @@ class TableDetail extends Component {
                 <List>
                   <li className="relative">
                     <Detail
-                      id="description"
+                      name="description"
                       title={t`Description`}
                       description={entity.description}
                       placeholder={t`No description yet`}
@@ -185,7 +185,7 @@ class TableDetail extends Component {
                   {!isEditing && (
                     <li className="relative">
                       <Detail
-                        id="name"
+                        name="name"
                         title={t`Actual name in database`}
                         description={entity.name}
                         subtitleClass={S.tableActualName}
@@ -194,7 +194,7 @@ class TableDetail extends Component {
                   )}
                   <li className="relative">
                     <Detail
-                      id="points_of_interest"
+                      name="points_of_interest"
                       title={t`Why this table is interesting`}
                       description={entity.points_of_interest}
                       placeholder={t`Nothing interesting yet`}
@@ -204,7 +204,7 @@ class TableDetail extends Component {
                   </li>
                   <li className="relative">
                     <Detail
-                      id="caveats"
+                      name="caveats"
                       title={t`Things to be aware of about this table`}
                       description={entity.caveats}
                       placeholder={t`Nothing to be aware of yet`}
