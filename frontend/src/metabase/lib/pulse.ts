@@ -7,6 +7,14 @@ import {
   normalizeParameterValue,
 } from "metabase/parameters/utils/parameter-values";
 
+import {
+  Channel,
+  ChannelSpec,
+  NotificationRecipient,
+  Pulse,
+  PulseParameter,
+} from "metabase-types/api";
+
 export const NEW_PULSE_TEMPLATE = {
   name: null,
   cards: [],
@@ -16,7 +24,7 @@ export const NEW_PULSE_TEMPLATE = {
   parameters: [],
 };
 
-export function channelIsValid(channel, channelSpec) {
+export function channelIsValid(channel: Channel, channelSpec: ChannelSpec) {
   switch (channel.channel_type) {
     case "email":
       return (
@@ -28,8 +36,7 @@ export function channelIsValid(channel, channelSpec) {
       );
     case "slack":
       return (
-        channel.details &&
-        channel.details.channel &&
+        channel.details?.channel &&
         fieldsAreValid(channel, channelSpec) &&
         scheduleIsValid(channel)
       );
@@ -38,7 +45,7 @@ export function channelIsValid(channel, channelSpec) {
   }
 }
 
-export function scheduleIsValid(channel) {
+export function scheduleIsValid(channel: Channel) {
   switch (channel.schedule_type) {
     case "monthly":
       if (channel.schedule_frame != null && channel.schedule_hour != null) {
@@ -65,7 +72,7 @@ export function scheduleIsValid(channel) {
   return true;
 }
 
-export function fieldsAreValid(channel, channelSpec) {
+export function fieldsAreValid(channel: Channel, channelSpec: ChannelSpec) {
   if (!channelSpec) {
     return false;
   }
@@ -79,15 +86,15 @@ export function fieldsAreValid(channel, channelSpec) {
     .every(field => Boolean(channel.details?.[field.name]));
 }
 
-function pulseChannelsAreValid(pulse, channelSpecs) {
+function pulseChannelsAreValid(pulse: Pulse, channelSpecs: any) {
   return (
-    pulse.channels.filter(c =>
-      channelIsValid(c, channelSpecs && channelSpecs[c.channel_type]),
+    pulse.channels.filter(channel =>
+      channelIsValid(channel, channelSpecs?.[channel.channel_type]),
     ).length > 0 || false
   );
 }
 
-export function recipientIsValid(recipient) {
+export function recipientIsValid(recipient: NotificationRecipient) {
   if (recipient.id) {
     return true;
   }
@@ -97,7 +104,7 @@ export function recipientIsValid(recipient) {
   return _.isEmpty(allowedDomains) || allowedDomains.includes(recipientDomain);
 }
 
-export function pulseIsValid(pulse, channelSpecs) {
+export function pulseIsValid(pulse: Pulse, channelSpecs: ChannelSpecs) {
   return (
     (pulse.name &&
       pulse.cards.length > 0 &&
@@ -106,18 +113,22 @@ export function pulseIsValid(pulse, channelSpecs) {
   );
 }
 
-export function dashboardPulseIsValid(pulse, channelSpecs) {
+export function dashboardPulseIsValid(
+  pulse: Pulse,
+  channelSpecs: ChannelSpecs,
+) {
   return pulseChannelsAreValid(pulse, channelSpecs);
 }
 
-export function emailIsEnabled(pulse) {
+export function emailIsEnabled(pulse: Pulse) {
   return (
-    pulse.channels.filter(c => c.channel_type === "email" && c.enabled).length >
-    0
+    pulse.channels.filter(
+      channel => channel.channel_type === "email" && channel.enabled,
+    ).length > 0
   );
 }
 
-export function cleanPulse(pulse, channelSpecs) {
+export function cleanPulse(pulse: Pulse, channelSpecs: any) {
   return {
     ...pulse,
     channels: cleanPulseChannels(pulse.channels, channelSpecs),
@@ -125,13 +136,13 @@ export function cleanPulse(pulse, channelSpecs) {
   };
 }
 
-function cleanPulseChannels(channels, channelSpecs) {
-  return channels.filter(c =>
-    channelIsValid(c, channelSpecs && channelSpecs[c.channel_type]),
+function cleanPulseChannels(channels: Channel[], channelSpecs: any) {
+  return channels.filter(channel =>
+    channelIsValid(channel, channelSpecs?.[channel.channel_type]),
   );
 }
 
-function cleanPulseParameters(parameters) {
+function cleanPulseParameters(parameters: PulseParameter[]) {
   return parameters.map(parameter => {
     const { default: defaultValue, name, slug, type, value, id } = parameter;
     const normalizedValue = normalizeParameterValue(type, value);
@@ -147,9 +158,15 @@ function cleanPulseParameters(parameters) {
   });
 }
 
-export function getDefaultChannel(channelSpecs) {
+type ChannelSpecs = {
+  email?: {
+    configured: boolean;
+  };
+};
+
+export function getDefaultChannel(channelSpecs: ChannelSpecs) {
   // email is the first choice
-  if (channelSpecs.email && channelSpecs.email.configured) {
+  if (channelSpecs.email?.configured) {
     return channelSpecs.email;
   }
   // otherwise just pick the first configured
@@ -160,7 +177,7 @@ export function getDefaultChannel(channelSpecs) {
   }
 }
 
-export function createChannel(channelSpec) {
+export function createChannel(channelSpec: ChannelSpec) {
   const details = {};
 
   return {
@@ -175,13 +192,16 @@ export function createChannel(channelSpec) {
   };
 }
 
-export function getPulseParameters(pulse) {
-  return (pulse && pulse.parameters) || [];
+export function getPulseParameters(pulse: Pulse) {
+  return pulse?.parameters || [];
 }
 
 // pulse parameters list cannot be trusted for existence/up-to-date defaults
 // rely on given parameters list but take pulse parameter values if they are not null
-export function getActivePulseParameters(pulse, parameters) {
+export function getActivePulseParameters(
+  pulse: Pulse,
+  parameters: PulseParameter[],
+) {
   const pulseParameters = getPulseParameters(pulse);
   const pulseParametersById = _.indexBy(pulseParameters, "id");
 
