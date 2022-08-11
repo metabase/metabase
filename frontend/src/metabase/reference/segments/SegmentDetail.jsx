@@ -126,8 +126,7 @@ const SegmentDetail = props => {
     validate,
     initialValues: {},
     initialErrors: validate({}),
-    onSubmit: fields =>
-      onSubmit(entity, fields, { ...props, resetForm: handleReset }),
+    onSubmit: fields => onSubmit(fields, { ...props, resetForm: handleReset }),
   });
 
   const getField = name => ({ ...getFieldProps(name), ...getFieldMeta(name) });
