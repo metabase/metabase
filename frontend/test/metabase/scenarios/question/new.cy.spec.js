@@ -1,11 +1,8 @@
 import {
-  enterCustomColumnDetails,
   openOrdersTable,
-  openReviewsTable,
   popover,
   restore,
   visualize,
-  summarize,
   startNewQuestion,
   visitQuestion,
   visitQuestionAdhoc,
@@ -125,52 +122,6 @@ describe("scenarios > question > new", () => {
   });
 
   describe("ask a (simple) question", () => {
-    it.skip("should handle (removing) multiple metrics when one is sorted (metabase#13990)", () => {
-      cy.intercept("POST", `/api/dataset`).as("dataset");
-
-      cy.createQuestion(
-        {
-          name: "12625",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["count"],
-              ["sum", ["field", ORDERS.SUBTOTAL, null]],
-              ["sum", ["field", ORDERS.TOTAL, null]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-            "order-by": [["desc", ["aggregation", 1]]],
-          },
-        },
-        { visitQuestion: true },
-      );
-
-      summarize();
-
-      // CSS class of a sorted header cell
-      cy.get("[class*=TableInteractive-headerCellData--sorted]").as(
-        "sortedCell",
-      );
-
-      // At this point only "Sum of Subtotal" should be sorted
-      cy.get("@sortedCell").its("length").should("eq", 1);
-      removeMetricFromSidebar("Sum of Subtotal");
-
-      cy.wait("@dataset");
-      cy.findByText("Sum of Subtotal").should("not.exist");
-
-      // "Sum of Total" should not be sorted, nor any other header cell
-      cy.get("@sortedCell").its("length").should("eq", 0);
-
-      removeMetricFromSidebar("Sum of Total");
-
-      cy.wait("@dataset");
-      cy.findByText(/No results!/i).should("not.exist");
-      cy.contains("744"); // `Count` for year 2016
-    });
-
     it("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
       openOrdersTable();
 
@@ -218,88 +169,6 @@ describe("scenarios > question > new", () => {
       cy.get(
         "#main-data-grid .TableInteractive-cellWrapper--firstColumn",
       ).should("have.length", 1);
-    });
-
-    // flaky test (#19454)
-    it.skip("should show an info popover when hovering over summarize dimension options", () => {
-      openReviewsTable();
-
-      summarize();
-      cy.findByText("Group by")
-        .parent()
-        .findByText("Title")
-        .trigger("mouseenter");
-
-      popover().contains("Title");
-      popover().contains("199 distinct values");
-    });
-  });
-
-  describe("ask a (custom) question", () => {
-    it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
-      openOrdersTable({ mode: "notebook" });
-      summarize({ mode: "notebook" });
-      popover().contains("Custom Expression").click();
-      popover().within(() => {
-        enterCustomColumnDetails({ formula: "2 * Max([Total])" });
-        cy.findByPlaceholderText("Name (required)").type("twice max total");
-        cy.findByText("Done").click();
-      });
-
-      visualize();
-
-      cy.findByText("318.7");
-    });
-
-    it.skip("should keep manually entered parenthesis intact (metabase#13306)", () => {
-      const FORMULA =
-        "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))";
-
-      openOrdersTable({ mode: "notebook" });
-      summarize({ mode: "notebook" });
-      popover().contains("Custom Expression").click();
-      popover().within(() => {
-        cy.get(".ace_text-input").type(FORMULA).blur();
-
-        cy.log("Fails after blur in v0.36.6");
-        // Implicit assertion
-        cy.contains(FORMULA);
-      });
-    });
-
-    it("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
-      openReviewsTable({ mode: "notebook" });
-      summarize({ mode: "notebook" });
-      popover().contains("Custom Expression").click();
-
-      enterCustomColumnDetails({ formula: "Distinct([R" });
-
-      cy.log(
-        "**The point of failure for ANY non-numeric value reported in v0.36.4**",
-      );
-      // the default type for "Reviewer" is "No semantic type"
-      popover().within(() => {
-        cy.contains("Reviewer");
-      });
-    });
-
-    it("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {
-      // Go straight to orders table in custom questions
-      openOrdersTable({ mode: "notebook" });
-
-      summarize({ mode: "notebook" });
-      popover().within(() => {
-        cy.findByText("Number of distinct values of ...").click();
-        cy.log(
-          "**Test fails at this point as there isn't an extra field next to 'Created At'**",
-        );
-        // instead of relying on DOM structure that might change
-        // (i.e. find "Created At" -> parent -> parent -> parent -> find "by month")
-        // access it directly from the known common parent
-        cy.get(".List-item").contains("by month").click({ force: true });
-      });
-      // this should be among the granular selection choices
-      cy.findByText("Hour of Day").click();
     });
   });
 
@@ -353,12 +222,3 @@ describe("scenarios > question > new", () => {
     cy.findByText("37.65");
   });
 });
-
-function removeMetricFromSidebar(metricName) {
-  cy.get("[class*=SummarizeSidebar__AggregationToken]")
-    .contains(metricName)
-    .parent()
-    .find(".Icon-close")
-    .should("be.visible")
-    .click();
-}
