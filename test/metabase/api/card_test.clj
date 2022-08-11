@@ -440,14 +440,6 @@
                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:cache_ttl nil})
                 (:cache_ttl (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))))))))))
 
-(defn- fingerprint-integers->doubles
-  "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
-  new card"
-  [metadata]
-  (update metadata :fingerprint (fn [fingerprint] (-> fingerprint
-                                                      (update-in [:type :type/Number :min] double)
-                                                      (update-in [:type :type/Number :max] double)))))
-
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
     (mt/with-non-admin-groups-no-root-collection-perms

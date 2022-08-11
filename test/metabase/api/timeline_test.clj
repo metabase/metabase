@@ -196,9 +196,6 @@
   (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id timeline))
                         :include "events" :archived archived?))
 
-(defn- event-names [timeline]
-  (->> timeline :events (map :name) set))
-
 (deftest timeline-hydration-test
   (testing "GET /api/timeline/:id?include=events"
     (mt/with-temp Collection [collection {:name "Important Data"}]

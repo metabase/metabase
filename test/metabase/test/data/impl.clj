@@ -5,7 +5,7 @@
             [clojure.tools.reader.edn :as edn]
             [metabase.api.common :as api]
             [metabase.config :as config]
-            [metabase.db.connection :as mdb.conn]
+            [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
             [metabase.models :refer [Database Field FieldValues Table]]
             [metabase.plugins.classloader :as classloader]
@@ -303,14 +303,14 @@
   from the standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db} (*get-db*)
-        original-db                 (select-keys old-db [:details :engine :name])]
-    (let [{new-db-id :id, :as new-db} (db/insert! Database original-db)]
-      (try
-        (copy-db-tables-and-fields! old-db-id new-db-id)
-        (binding [*db-is-temp-copy?* true]
-          (do-with-db new-db f))
-        (finally
-          (db/delete! Database :id new-db-id))))))
+        original-db                 (select-keys old-db [:details :engine :name])
+        {new-db-id :id, :as new-db} (db/insert! Database original-db)]
+    (try
+      (copy-db-tables-and-fields! old-db-id new-db-id)
+      (binding [*db-is-temp-copy?* true]
+        (do-with-db new-db f))
+      (finally
+        (db/delete! Database :id new-db-id)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -332,7 +332,7 @@
   "Impl for [[metabase.test/dataset]] macro."
   [dataset-definition f]
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
-        get-db-for-driver (mdb.conn/memoize-for-application-db
+        get-db-for-driver (mdb.connection/memoize-for-application-db
                            (fn [driver]
                              (binding [db/*disable-db-logging* true]
                                (let [db (get-or-create-database! driver dbdef)]
