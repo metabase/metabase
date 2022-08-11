@@ -56,7 +56,7 @@ const mapDispatchToProps = {
   // The state and callbacks are received via props
   ..._.omit(actions, "startEditing", "endEditing"),
 
-  onUpdate: actions.rUpdateMetricDetail,
+  onSubmit: actions.rUpdateMetricDetail,
   onChangeLocation: push,
 };
 
@@ -84,7 +84,7 @@ const propTypes = {
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
   submitting: PropTypes.bool,
-  onUpdate: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
   onChangeLocation: PropTypes.func.isRequired,
 };
 
@@ -104,7 +104,7 @@ const MetricDetail = props => {
     collapseFormula,
     isFormulaExpanded,
     submitting,
-    onUpdate,
+    onSubmit,
     onChangeLocation,
   } = props;
 
@@ -113,7 +113,7 @@ const MetricDetail = props => {
     initialValues: {},
     initialErrors: validate({}),
     onSubmit: fields =>
-      onUpdate(entity, fields, { ...props, resetForm: handleReset }),
+      onSubmit(entity, fields, { ...props, resetForm: handleReset }),
   });
 
   const getField = name => ({ ...getFieldProps(name), ...getFieldMeta(name) });

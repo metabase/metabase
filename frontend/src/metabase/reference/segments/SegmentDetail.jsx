@@ -75,7 +75,7 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   ...metadataActions,
   ...actions,
-  onUpdate: actions.rUpdateSegmentDetail,
+  onSubmit: actions.rUpdateSegmentDetail,
 };
 
 const validate = values =>
@@ -101,7 +101,7 @@ const propTypes = {
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
   submitting: PropTypes.bool,
-  onUpdate: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
 };
 
 const SegmentDetail = props => {
@@ -119,7 +119,7 @@ const SegmentDetail = props => {
     collapseFormula,
     isFormulaExpanded,
     submitting,
-    onUpdate,
+    onSubmit,
   } = props;
 
   const { getFieldProps, getFieldMeta, handleSubmit, handleReset } = useFormik({
@@ -127,7 +127,7 @@ const SegmentDetail = props => {
     initialValues: {},
     initialErrors: validate({}),
     onSubmit: fields =>
-      onUpdate(entity, fields, { ...props, resetForm: handleReset }),
+      onSubmit(entity, fields, { ...props, resetForm: handleReset }),
   });
 
   const getField = name => ({ ...getFieldProps(name), ...getFieldMeta(name) });
