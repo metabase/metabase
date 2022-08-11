@@ -237,7 +237,7 @@
         user-parameters))
 
 (defmethod qp.util/query->remark :redshift
-  [_ {{:keys [executed-by query-hash card-id]} :info, :as query}]
+  [_ {{:keys [executed-by card-id]} :info, :as query}]
   (str "/* partner: \"metabase\", "
        (json/generate-string {:dashboard_id        nil ;; requires metabase/metabase#11909
                               :chart_id            card-id

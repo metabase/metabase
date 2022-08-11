@@ -21,9 +21,10 @@
                       (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
                       (clojure.tools.macro/macrolet)]}
            :refer-all {:level   :warning
-                       :exclude [clojure.test
-                                 monger.operators]}
+                       :exclude [clojure.test]}
+           ;; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
            :unexpected-recur             {:level :off}
+           ;; TODO (cam): can we fix these?
            :unused-referred-var          {:exclude {compojure.core [GET DELETE POST PUT]}}
            :missing-else-branch          {:level :warning}
            :misplaced-docstring          {:level :warning}
@@ -33,6 +34,16 @@
            ;; TODO (braden): This is useful, but it doesn't grok eg. enterprise/backend/src
            :namespace-name-mismatch      {:level :off}
            :use                          {:level :warning}
+           :redundant-fn-wrapper         {:level :warning}
+           ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
+           ;; :docstring-no-summary                  {:level :warning}
+           ;; :docstring-leading-trailing-whitespace {:level :warning}
+           ;; :reduce-without-init                   {:level :warning}
+           ;; :used-underscored-binding              {:level :warning}
+           ;; :single-key-in                         {:level :warning}
+           ;; :keyword-binding                       {:level :warning}
+           ;; :main-without-gen-class                {:level :warning}
+           ;; :shadowed-var                          {:level :warning}
            :deprecated-var {:exclude {metabase.query-processor.util/normalize-token
                                       {:namespaces ["metabase.*"]}
                                       metabase.db.data-migrations/data-migrations
