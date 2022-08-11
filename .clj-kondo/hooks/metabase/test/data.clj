@@ -19,9 +19,13 @@
   [node]
   (when (hooks/token-node? node)
     (let [symb (hooks/sexpr node)]
-      (when (symbol? symb)
-        (some (partial str/starts-with? symb)
-              #{"$" "!" "&" "*" "%"})))))
+      (and (symbol? symb)
+           (some (partial str/starts-with? symb)
+                 #{"$" "!" "&" "*" "%"})
+           ;; ignore args like `%` or `%1` inside function literals. $id forms have to be more than one character long,
+           ;; and the first character won't be a number (hopefully -- maybe some DBs allow this -- but we don't use it)
+           (> (count (str symb)) 1)
+           (not (re-find #"^%\d+" (str symb)))))))
 
 (defn- replace-$id-special-tokens
   "Impl for [[$ids]] and [[mbql-query]]. Walk `form` and look for special tokens like `$field` and replace them with
