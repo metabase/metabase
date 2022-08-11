@@ -186,6 +186,22 @@
                      (select-keys [:cols :rows])
                      (update :cols #(map (fn [c] (select-keys c [:name :display_name])) %))))))))))
 
+(deftest nested-with-coerced-fields
+  (testing "Coerced fields are cast only once (#22519)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+      (mt/dataset sample-dataset
+        (mt/with-temp-vals-in-db Field (mt/id :reviews :rating) {:coercion_strategy :Coercion/UNIXSeconds->DateTime
+                                                                 :effective_type    :type/Instant}
+          (mt/with-temp Card [{card-id :id}
+                              {:dataset_query
+                               (mt/mbql-query reviews
+                                 {:fields      [$rating]
+                                  :limit       1})}]
+            (is (= :completed
+                   (:status (qp/process-query {:type     :query
+                                               :database (mt/id)
+                                               :query    {:source-table (str "card__" card-id)}}))))))))))
+
 (deftest sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using a SQL source query"
