@@ -21,14 +21,31 @@ jobs:
     - uses: actions/checkout@v3
     - name: Run clj-kondo
       run: >-
-        docker run -v $PWD:/work
+        docker run
+        --volume $PWD:/work
         --rm cljkondo/clj-kondo:2022.08.03
-        find /work/modules/drivers -type d -name src | xargs
-        /usr/local/bin/clj-kondo
+        clj-kondo
         --config /work/.clj-kondo/config.edn
         --config-dir /work/.clj-kondo
         --parallel
-        --lint /work/src /work/enterprise/backend/src /work/shared/src
+        --lint
+        /work/src
+        /work/enterprise/backend/src
+        /work/shared/src
+        /work/modules/drivers/bigquery-cloud-sdk/src
+        /work/modules/drivers/druid/src
+        /work/modules/drivers/googleanalytics/src
+        /work/modules/drivers/mongo/src
+        /work/modules/drivers/oracle/src
+        /work/modules/drivers/presto-common/src
+        /work/modules/drivers/presto-jdbc/src
+        /work/modules/drivers/presto/src
+        /work/modules/drivers/redshift/src
+        /work/modules/drivers/snowflake/src
+        /work/modules/drivers/sparksql/src
+        /work/modules/drivers/sqlite/src
+        /work/modules/drivers/sqlserver/src
+        /work/modules/drivers/vertica/src
 
   be-linter-eastwood:
     runs-on: ubuntu-20.04
