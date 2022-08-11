@@ -6,6 +6,7 @@ import {
   startNewQuestion,
   visitQuestion,
   visitQuestionAdhoc,
+  getCollectionIdFromSlug,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -118,6 +119,47 @@ describe("scenarios > question > new", () => {
       cy.findByTestId("data-step-cell").contains("Products");
       visualize();
       cy.findByText("Rustic Paper Wallet");
+    });
+
+    it("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
+      cy.request("POST", "/api/collection", {
+        name: "foo:bar",
+        color: "#509EE3",
+        parent_id: null,
+      }).then(({ body: { id: COLLECTION_ID } }) => {
+        // Move question #1 ("Orders") to newly created collection
+        cy.request("PUT", "/api/card/1", {
+          collection_id: COLLECTION_ID,
+        });
+        // Sanity check: make sure Orders is indeed inside new collection
+        cy.visit(`/collection/${COLLECTION_ID}`);
+        cy.findByText("Orders");
+      });
+
+      startNewQuestion();
+      popover().within(() => {
+        cy.findByText("Saved Questions").click();
+        // Note: collection name's first letter is capitalized
+        cy.findByText(/foo:bar/i).click();
+        cy.findByText("Orders");
+      });
+    });
+
+    it("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
+      getCollectionIdFromSlug("second_collection", id => {
+        // Move first question in a DB snapshot ("Orders") to a "Second collection"
+        cy.request("PUT", "/api/card/1", {
+          collection_id: id,
+        });
+      });
+
+      startNewQuestion();
+
+      popover().within(() => {
+        cy.findByText("Saved Questions").click();
+        cy.findByText("First collection");
+        cy.findByText("Second collection").should("not.exist");
+      });
     });
   });
 
