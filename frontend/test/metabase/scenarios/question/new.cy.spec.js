@@ -1,5 +1,4 @@
 import {
-  browse,
   enterCustomColumnDetails,
   openOrdersTable,
   openReviewsTable,
@@ -54,16 +53,6 @@ describe("scenarios > question > new", () => {
     cy.findByText("Get alerts");
     cy.icon("share").realHover();
     cy.findByText("Sharing");
-  });
-
-  describe("browse data", () => {
-    it("should load orders table and summarize", () => {
-      cy.visit("/");
-      browse().click();
-      cy.contains("Sample Database").click();
-      cy.contains("Orders").click();
-      cy.contains("37.65");
-    });
   });
 
   describe("data picker search", () => {
