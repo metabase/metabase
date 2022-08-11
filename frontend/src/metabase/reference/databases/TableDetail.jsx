@@ -97,7 +97,6 @@ const propTypes = {
   hasSingleSchema: PropTypes.bool,
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
-  submitting: PropTypes.bool,
   onSubmit: PropTypes.func.isRequired,
 };
 
@@ -113,11 +112,16 @@ const TableDetail = props => {
     startEditing,
     endEditing,
     hasSingleSchema,
-    submitting,
     onSubmit,
   } = props;
 
-  const { getFieldProps, getFieldMeta, handleSubmit, handleReset } = useFormik({
+  const {
+    isSubmitting,
+    getFieldProps,
+    getFieldMeta,
+    handleSubmit,
+    handleReset,
+  } = useFormik({
     initialValues: {},
     onSubmit: fields => onSubmit(fields, { ...props, resetForm: handleReset }),
   });
@@ -132,7 +136,7 @@ const TableDetail = props => {
           onSubmit={handleSubmit}
           endEditing={endEditing}
           reinitializeForm={handleReset}
-          submitting={submitting}
+          submitting={isSubmitting}
           revisionMessageFormField={getField("revision_message")}
         />
       )}

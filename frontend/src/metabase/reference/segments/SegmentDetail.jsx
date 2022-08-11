@@ -100,7 +100,6 @@ const propTypes = {
   isFormulaExpanded: PropTypes.bool,
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
-  submitting: PropTypes.bool,
   onSubmit: PropTypes.func.isRequired,
 };
 
@@ -118,11 +117,16 @@ const SegmentDetail = props => {
     expandFormula,
     collapseFormula,
     isFormulaExpanded,
-    submitting,
     onSubmit,
   } = props;
 
-  const { getFieldProps, getFieldMeta, handleSubmit, handleReset } = useFormik({
+  const {
+    isSubmitting,
+    getFieldProps,
+    getFieldMeta,
+    handleSubmit,
+    handleReset,
+  } = useFormik({
     validate,
     initialValues: {},
     initialErrors: validate({}),
@@ -139,7 +143,7 @@ const SegmentDetail = props => {
           onSubmit={handleSubmit}
           endEditing={endEditing}
           reinitializeForm={handleReset}
-          submitting={submitting}
+          submitting={isSubmitting}
           revisionMessageFormField={getField("revision_message")}
         />
       )}

@@ -94,7 +94,6 @@ const propTypes = {
   updateField: PropTypes.func.isRequired,
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
-  submitting: PropTypes.bool,
   onSubmit: PropTypes.func.isRequired,
 };
 
@@ -110,11 +109,16 @@ const SegmentFieldDetail = props => {
     isEditing,
     startEditing,
     endEditing,
-    submitting,
     onSubmit,
   } = props;
 
-  const { getFieldProps, getFieldMeta, handleSubmit, handleReset } = useFormik({
+  const {
+    isSubmitting,
+    getFieldProps,
+    getFieldMeta,
+    handleSubmit,
+    handleReset,
+  } = useFormik({
     initialValues: {},
     onSubmit: fields => onSubmit(fields, { ...props, resetForm: handleReset }),
   });
@@ -129,7 +133,7 @@ const SegmentFieldDetail = props => {
           onSubmit={handleSubmit}
           endEditing={endEditing}
           reinitializeForm={handleReset()}
-          submitting={submitting}
+          submitting={isSubmitting}
           revisionMessageFormField={getField("revision_message")}
         />
       )}
