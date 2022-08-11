@@ -11,7 +11,9 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(defn- resolve-card-id-source-tables [query]
+(defn resolve-card-id-source-tables
+  "Resolve metadata for a query that has card-id as source."
+  [query]
   (:pre (mt/test-qp-middleware fetch-source-query/resolve-card-id-source-tables query)))
 
 (defn- wrap-inner-query [query]
