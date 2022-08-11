@@ -428,4 +428,29 @@
    clojurewerkz.quartzite.schedule.simple/schedule macros.quartz/simple-schedule}}
 
  :config-in-comment
- {:linters {:unresolved-symbol {:level :off}}}}
+ {:linters {:unresolved-symbol {:level :off}}}
+
+ ;;
+ ;; TEST CONFIG
+ ;;
+ :ns-groups
+ ;; the following patterns are considered to be test namespaces:
+ ;;
+ ;; - Any namespace ending in `-test` or `-test.whatever`
+ ;; - Any namespace ending in `.test-util`
+ ;; - Any namespace that starts with `metabase.test`
+ [{:pattern "(?:.*-test(?:\\..*)?$)|(?:.*\\.test-util$)|(?:^metabase\\.test.*)"
+   :name    test-namespaces}]
+
+ :config-in-ns
+ {test-namespaces
+  {:linters
+   {:missing-docstring {:level :off}
+    :private-call      {:level :off}
+
+    ;; FIXME
+    :unused-binding       {:level :off}
+    :unresolved-symbol    {:level :off}
+    :deprecated-var       {:level :off}
+    :unresolved-namespace {:level :off}
+    }}}}
