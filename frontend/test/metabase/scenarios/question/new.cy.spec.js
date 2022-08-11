@@ -24,127 +24,103 @@ describe("scenarios > question > new", () => {
     cy.signInAsAdmin();
   });
 
-  it("data selector popover should not be too small (metabase#15591)", () => {
-    // Add 10 more databases
-    for (let i = 0; i < 10; i++) {
-      cy.request("POST", "/api/database", {
-        engine: "h2",
-        name: "Sample" + i,
-        details: {
-          db: "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest",
-        },
-        auto_run_queries: false,
-        is_full_sync: false,
-        schedules: {},
-      });
-    }
+  describe("data picker", () => {
+    it("data selector popover should not be too small (metabase#15591)", () => {
+      // Add 10 more databases
+      for (let i = 0; i < 10; i++) {
+        cy.request("POST", "/api/database", {
+          engine: "h2",
+          name: "Sample" + i,
+          details: {
+            db: "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest",
+          },
+          auto_run_queries: false,
+          is_full_sync: false,
+          schedules: {},
+        });
+      }
 
-    startNewQuestion();
-
-    cy.contains("Pick your starting data");
-    cy.findByText("Sample3").isVisibleInPopover();
-  });
-
-  describe("data picker search", () => {
-    describe("on a (custom) question page", () => {
-      beforeEach(() => {
-        startNewQuestion();
-        cy.findByPlaceholderText("Search for a table…").type("Ord");
-      });
-
-      it("should allow to search saved questions", () => {
-        cy.findByText("Orders, Count").click();
-
-        visualize();
-        cy.findByText("18,760");
-      });
-
-      it("should allow to search and select tables", () => {
-        cy.findAllByText("Orders")
-          .eq(1)
-          .closest("li")
-          .findByText("Table in")
-          .parent()
-          .findByTestId("search-result-item-name")
-          .click();
-
-        visualize();
-
-        cy.url().should("include", "question#");
-        cy.findByText("Sample Database");
-        cy.findByText("Orders");
-      });
-    });
-
-    it("should ignore an empty search string", () => {
-      cy.intercept("/api/search", req => {
-        expect("Unexpected call to /api/search").to.be.false;
-      });
       startNewQuestion();
-      cy.findByPlaceholderText("Search for a table…").type("  ");
+
+      cy.contains("Pick your starting data");
+      cy.findByText("Sample3").isVisibleInPopover();
     });
-  });
 
-  describe("saved question picker", () => {
-    describe("on a (custom) question page", () => {
-      beforeEach(() => {
-        startNewQuestion();
-        cy.findByText("Saved Questions").click();
-      });
+    it("new question data picker search should work for both saved questions and database tables", () => {
+      cy.intercept("GET", "/api/search?q=*", cy.spy().as("searchQuery")).as(
+        "search",
+      );
 
-      it("should display the collection tree on the left side", () => {
-        popover().findByText("Our analytics");
-      });
+      startNewQuestion();
 
-      it("should display the saved questions list on the right side", () => {
-        cy.findByText("Orders, Count, Grouped by Created At (year)");
-        cy.findByText("Orders");
-        cy.findByText("Orders, Count").click();
+      cy.get(".List-section")
+        .should("have.length", 2)
+        .and("contain", "Sample Database")
+        .and("contain", "Saved Questions");
 
-        visualize();
+      // should not trigger search for an empty string
+      cy.findByPlaceholderText("Search for a table…").type("  ").blur();
+      cy.findByPlaceholderText("Search for a table…").type("ord");
+      cy.wait("@search");
+      cy.get("@searchQuery").should("have.been.calledOnce");
 
-        cy.findByText("18,760");
-      });
+      // Search results include both saved questions and database tables
+      cy.findAllByTestId("search-result-item").should(
+        "have.length.at.least",
+        4,
+      );
 
-      it("should redisplay the saved question picker when changing a question", () => {
-        cy.findByText("Orders, Count").click();
+      cy.contains("Saved question in Our analytics");
+      cy.findAllByRole("link", { name: "Our analytics" })
+        .should("have.attr", "href")
+        .and("eq", "/collection/root");
 
-        // Try to choose a different saved question
-        cy.findByTestId("data-step-cell").click();
+      cy.contains("Table in Sample Database");
+      cy.findAllByRole("link", { name: "Sample Database" })
+        .should("have.attr", "href")
+        .and("eq", `/browse/${SAMPLE_DB_ID}-sample-database`);
 
-        popover().within(() => {
-          cy.findByText("Our analytics");
-          cy.findByText("Orders");
-          cy.findByText("Orders, Count, Grouped by Created At (year)").click();
-        });
+      // Discarding the search qquery should take us back to the original selector
+      // that starts with the list of databases and saved questions
+      cy.findByPlaceholderText("Search for a table…")
+        .next()
+        .find(".Icon-close")
+        .click();
 
-        visualize();
+      cy.findByText("Saved Questions").click();
 
-        cy.findByText("2016");
-        cy.findByText("5,834");
-      });
+      // Search is now scoped to questions only
+      cy.findByPlaceholderText("Search for a question…");
+      cy.findByTestId("select-list")
+        .as("rightSide")
+        // should display the collection tree on the left side
+        .should("contain", "Orders")
+        .and("contain", "Orders, Count");
 
-      it("should perform a search scoped to saved questions", () => {
-        cy.findByPlaceholderText("Search for a question…").type("Grouped");
-        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+      cy.get("@rightSide")
+        .siblings()
+        .should("have.length", 1)
+        .as("leftSide")
+        // should display the collection tree on the left side
+        .should("contain", "Our analytics")
+        .and("contain", "Your personal collection")
+        .and("contain", "All personal collections");
 
-        visualize();
-
-        cy.findByText("2018");
-      });
-
-      it("should reopen saved question picker after returning back to editor mode", () => {
-        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
-
-        visualize();
-
-        cy.icon("notebook").click();
-        cy.findByTestId("data-step-cell").click();
-
-        cy.findByTestId("select-list").within(() => {
-          cy.findByText("Orders, Count, Grouped by Created At (year)");
-        });
-      });
+      cy.findByText("Orders, Count").click();
+      cy.findByText("Orders").should("not.exist");
+      visualize();
+      cy.findByText("18,760");
+      // should reopen saved question picker after returning back to editor mode
+      cy.icon("notebook").click();
+      cy.findByTestId("data-step-cell").contains("Orders, Count").click();
+      // It is now possible to choose another saved question
+      cy.findByText("Orders");
+      cy.findByText("Saved Questions").click();
+      popover().contains("Sample Database").click();
+      cy.findByText("Products").click();
+      cy.findByTestId("data-step-cell").contains("Products");
+      visualize();
+      cy.findByText("Rustic Paper Wallet");
     });
   });
 
@@ -260,16 +236,6 @@ describe("scenarios > question > new", () => {
   });
 
   describe("ask a (custom) question", () => {
-    it("should load orders table", () => {
-      startNewQuestion();
-      cy.contains("Sample Database").click();
-      cy.contains("Orders").click();
-
-      visualize();
-
-      cy.contains("37.65");
-    });
-
     it("should show a table info popover when hovering over the table name in the header", () => {
       visitQuestion(1);
 
