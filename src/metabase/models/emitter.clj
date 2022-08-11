@@ -1,5 +1,6 @@
 (ns metabase.models.emitter
   (:require
+   [honeysql.core :as hsql]
    [medley.core :as m]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
@@ -73,3 +74,54 @@
       (map #(m/assoc-some % :emitters (get emitters (:id %)))
            items))
     items))
+
+(defn card-emitter-usages
+  "Hydrates emitter usages given a list of cards, this is used e.g. to show the user what else deleting a card will
+  modify."
+  {:batched-hydrate :card/emitter-usages}
+  [cards]
+  (if-let [card-ids (seq (map :id (filter :is_write cards)))]
+    (let [emitter-usages (db/query {:select [:query_action.card_id
+                                             [(hsql/call "coalesce" :report_dashboard.id :report_card.id) :id]
+                                             [(hsql/call "coalesce" :report_dashboard.name :report_card.name) :name]
+                                             [(hsql/call "case"
+                                                         [:!= :report_dashboard.id nil] "dashboard"
+                                                         [:!= :report_card.id nil] "card") :type]]
+                                    :from [:query_action]
+                                    :join [Emitter [:= :emitter.action_id :query_action.action_id]]
+                                    :left-join [DashboardEmitter [:= :emitter.id :dashboard_emitter.emitter_id]
+                                                :report_dashboard [:= :dashboard_emitter.dashboard_id :report_dashboard.id]
+                                                CardEmitter [:= :emitter.id :card_emitter.emitter_id]
+                                                :report_card [:= :card_emitter.card_id :report_card.id]]
+                                    :where [:in :query_action.card_id card-ids]})
+          usage-by-card-id (->> emitter-usages
+                                (group-by :card_id)
+                                (m/map-vals (fn [usages] (map #(dissoc % :card_id) usages))))]
+      (for [card cards]
+        (m/assoc-some card :emitter-usages (get usage-by-card-id (:id card)))))
+    cards))
+
+(defn action-emitter-usages
+    "Hydrates emitter usages given a list of cards, this is used e.g. to show the user what else deleting a card will
+  modify."
+  {:batched-hydrate :action/emitter-usages}
+  [actions]
+  (if-let [action-ids (seq (keep :id actions))]
+    (let [emitter-usages (db/query {:select [:emitter.action_id
+                                             [(hsql/call "coalesce" :report_dashboard.id :report_card.id) :id]
+                                             [(hsql/call "coalesce" :report_dashboard.name :report_card.name) :name]
+                                             [(hsql/call "case"
+                                                         [:!= :report_dashboard.id nil] "dashboard"
+                                                         [:!= :report_card.id nil] "card") :type]]
+                                    :from [Emitter]
+                                    :left-join [DashboardEmitter [:= :emitter.id :dashboard_emitter.emitter_id]
+                                                :report_dashboard [:= :dashboard_emitter.dashboard_id :report_dashboard.id]
+                                                CardEmitter [:= :emitter.id :card_emitter.emitter_id]
+                                                :report_card [:= :card_emitter.card_id :report_card.id]]
+                                    :where [:in :emitter.action_id action-ids]})
+          usage-by-action-id (->> emitter-usages
+                                  (group-by :action_id)
+                                  (m/map-vals (fn [usages] (map #(dissoc % :action_id) usages))))]
+      (for [action actions]
+        (m/assoc-some action :emitter-usages (get usage-by-action-id (:id action)))))
+    actions))
