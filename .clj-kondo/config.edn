@@ -34,6 +34,7 @@
            ;; TODO (braden): This is useful, but it doesn't grok eg. enterprise/backend/src
            :namespace-name-mismatch      {:level :off}
            :use                          {:level :warning}
+           :redundant-fn-wrapper         {:level :warning}
            ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
            ;; :docstring-no-summary                  {:level :warning}
            ;; :docstring-leading-trailing-whitespace {:level :warning}
@@ -42,7 +43,6 @@
            ;; :single-key-in                         {:level :warning}
            ;; :keyword-binding                       {:level :warning}
            ;; :main-without-gen-class                {:level :warning}
-           ;; :redundant-fn-wrapper                  {:level :warning}
            ;; :shadowed-var                          {:level :warning}
            :deprecated-var {:exclude {metabase.query-processor.util/normalize-token
                                       {:namespaces ["metabase.*"]}
