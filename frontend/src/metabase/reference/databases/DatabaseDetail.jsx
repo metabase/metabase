@@ -120,7 +120,7 @@ const DatabaseDetail = props => {
         hasDisplayName={false}
         startEditing={startEditing}
         displayNameFormField={getField("display_name")}
-        nameFormField={getField("getField")}
+        nameFormField={getField("name")}
       />
       <LoadingAndErrorWrapper
         loading={!loadingError && loading}

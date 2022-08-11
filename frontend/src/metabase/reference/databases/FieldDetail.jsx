@@ -171,7 +171,7 @@ const FieldDetail = props => {
         hasDisplayName={true}
         startEditing={startEditing}
         displayNameFormField={getField("display_name")}
-        nameFormField={getField("getField")}
+        nameFormField={getField("name")}
       />
       <LoadingAndErrorWrapper
         loading={!loadingError && loading}
