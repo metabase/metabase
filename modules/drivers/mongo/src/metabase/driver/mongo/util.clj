@@ -55,8 +55,7 @@
   serves as a starting point for the changes made below."
   ^MongoClientOptions [{:keys [ssl additional-options ssl-cert
                                ssl-use-client-auth client-ssl-cert client-ssl-key]
-                        :or   {ssl false, ssl-use-client-auth false}
-                        :as   details}]
+                        :or   {ssl false, ssl-use-client-auth false}}]
   (let [client-options (-> (client-options-for-url-params additional-options)
                            client-options->builder
                            (.description config/mb-app-id-string)
@@ -103,8 +102,7 @@
   (format "mongodb+srv://%s:%s@%s/%s?authSource=%s" user pass host dbname authdb))
 
 (defn- normalize-details [details]
-  (let [{:keys [dbname host port user pass authdb tunnel-host tunnel-user tunnel-pass additional-options use-srv conn-uri
-                ssl ssl-cert ssl-use-client-auth client-ssl-cert]
+  (let [{:keys [dbname host port user pass authdb additional-options use-srv conn-uri ssl ssl-cert ssl-use-client-auth client-ssl-cert]
          :or   {port 27017, ssl false, ssl-use-client-auth false, use-srv false, ssl-cert "", authdb "admin"}} details
         ;; ignore empty :user and :pass strings
         user (not-empty user)
@@ -210,7 +208,7 @@
     [mongo-client (mg/get-db mongo-client dbname)]))
 
 (defmethod connect :conn-string
-  [{:keys [conn-string dbname]}]
+  [{:keys [conn-string]}]
   (let [mongo-client (mg/connect-via-uri conn-string)]
     [(:conn mongo-client) (:db mongo-client)]))
 

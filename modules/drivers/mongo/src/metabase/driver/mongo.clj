@@ -21,11 +21,9 @@
             [monger.core :as mg]
             [monger.db :as mdb]
             monger.json
-            [schema.core :as s]
             [taoensso.nippy :as nippy])
   (:import com.mongodb.DB
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           org.bson.BsonUndefined
            org.bson.types.ObjectId))
 
 ;; See http://clojuremongodb.info/articles/integration.html Loading this namespace will load appropriate Monger
@@ -138,13 +136,13 @@
                                  (find-nested-fields field-value nested-fields)
                                  nested-fields)))))
 
-;; TODO - use `driver.common/class->base-type` to implement this functionality
-(s/defn ^:private ^Class most-common-object-type :- (s/maybe Class)
+;; TODO - use [[metabase.driver.common/class->base-type]] to implement this functionality
+(defn- most-common-object-type
   "Given a sequence of tuples like [Class <number-of-occurances>] return the Class with the highest number of
   occurances. The basic idea here is to take a sample of values for a Field and then determine the most common type
   for its values, and use that as the Metabase base type. For example if we have a Field called `zip_code` and it's a
   number 90% of the time and a string the other 10%, we'll just call it a `:type/Number`."
-  [field-types :- [(s/pair (s/maybe Class) "Class", s/Int "Int")]]
+  ^Class [field-types]
   (->> field-types
        (sort-by second)
        last
@@ -288,9 +286,9 @@
   :sunday)
 
 (comment
-  (require '[metabase.driver.util :as driver.u]
-           '[monger.credentials :as mcred]
-           '[clojure.java.io :as io])
+  (require '[clojure.java.io :as io]
+           '[metabase.driver.util :as driver.u]
+           '[monger.credentials :as mcred])
   (import javax.net.ssl.SSLSocketFactory)
 
   ;; The following forms help experimenting with the behaviour of Mongo

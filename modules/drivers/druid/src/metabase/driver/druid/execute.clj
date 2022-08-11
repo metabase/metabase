@@ -41,7 +41,7 @@
 ;;
 ;; We can remove this at some point in the future when everyone is using Druid 0.17.0 or above.
 (defmethod post-process ::druid.qp/select
-  [_ projections _ [{{:keys [events]} :result} first-result]]
+  [_ projections _ [{{:keys [events]} :result}]]
   {:projections projections
    :results     (for [event (map :event events)]
                   (update event :timestamp u.date/parse))})
@@ -125,7 +125,7 @@
   (vec (remove #(re-find #"^___" (name %)) columns)))
 
 (defn- reduce-results
-  [{{:keys [query mbql?]} :native, :as outer-query} {:keys [projections], :as result} respond]
+  [{{:keys [mbql?]} :native, :as outer-query} {:keys [projections], :as result} respond]
   (let [col-names          (if mbql?
                              (->> projections
                                   remove-bonus-keys
@@ -143,10 +143,9 @@
 (defn execute-reducible-query
   "Execute a query for a Druid DB."
   [execute*
-   {database-id                                  :database
-    {:keys [query query-type mbql? projections]} :native
-    middleware                                   :middleware
-    :as                                          mbql-query}
+   {{:keys [query query-type projections]} :native
+    middleware                             :middleware
+    :as                                    mbql-query}
    respond]
   {:pre [query]}
   (let [details    (:details (qp.store/database))
