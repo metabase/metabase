@@ -436,9 +436,12 @@
  ;; the following patterns are considered to be test namespaces:
  ;;
  ;; - Any namespace ending in `-test` or `-test.whatever`
- ;; - Any namespace ending in `.test-util`
+ ;; - Any namespace ending in `test-util`
  ;; - Any namespace that starts with `metabase.test`
- [{:pattern "(?:.*-test(?:\\..*)?$)|(?:.*\\.test-util$)|(?:^metabase\\.test.*)"
+ ;;
+ ;; this list isn't exhaustive because it misses some stuff like the test runner and HTTP client but it's easier to go
+ ;; fix those namespaces than it is to make this regex super hairy.
+ [{:pattern "(?:.*-test(?:\\..*)?$)|(?:.*test-util$)|(?:^metabase\\.test.*)"
    :name    test-namespaces}]
 
  :config-in-ns

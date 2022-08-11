@@ -249,20 +249,20 @@
     (mt/with-temp Card [{card-id :id}]
       (let [circular-source-query {:database (mt/id)
                                    :type     :query
-                                   :query    {:source-table (str "card__" card-id)}}]
+                                   :query    {:source-table (str "card__" card-id)}}
+            save-error            (try
+                                    ;; `db/update!` will fail because it will try to validate the query when it saves
+                                    (db/execute! {:update Card
+                                                  :set    {:dataset_query (json/generate-string circular-source-query)}
+                                                  :where  [:= :id card-id]})
+                                    nil
+                                    (catch Throwable e
+                                      (str "Failed to save Card:" e)))]
         ;; Make sure save isn't the thing throwing the Exception
-        (let [save-error (try
-                           ;; `db/update!` will fail because it will try to validate the query when it saves
-                           (db/execute! {:update Card
-                                         :set    {:dataset_query (json/generate-string circular-source-query)}
-                                         :where  [:= :id card-id]})
-                           nil
-                           (catch Throwable e
-                             (str "Failed to save Card:" e)))]
-          (is (thrown?
-               clojure.lang.ExceptionInfo
-               (or save-error
-                   (resolve-card-id-source-tables circular-source-query))))))))
+        (is (thrown?
+             clojure.lang.ExceptionInfo
+             (or save-error
+                 (resolve-card-id-source-tables circular-source-query)))))))
 
   (testing "middleware should throw an Exception if we try to resolve a source query card with a source query that refers back to the original"
     (let [circular-source-query (fn [card-id]

@@ -134,9 +134,6 @@
   [username]
   (format "Hi %s, you're not extra special :(" (name username)))
 
-(def ^:private missing-feature-error-msg
-  #"The special-greeting-or-error function requires a valid premium token with the special-greeting feature")
-
 (deftest defenterprise-test
   (when-not config/ee-available?
    (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
