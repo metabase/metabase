@@ -402,19 +402,18 @@
    metabase.models.setting/defsetting                         hooks.metabase.models.setting/defsetting
    metabase.models.setting.multi-setting/define-multi-setting hooks.metabase.models.setting/defsetting
    metabase.test/$ids                                         hooks.metabase.test.data/$ids
-   metabase.test/data-query                                   hooks.metabase.test.data/$ids
    metabase.test/dataset                                      hooks.metabase.test.data/dataset
-   metabase.test/mbql-query                                   hooks.metabase.test.data/$ids
-   metabase.test/query                                        hooks.metabase.test.data/$ids
-   metabase.test/run-mbql-query                               hooks.metabase.test.data/$ids
+   metabase.test/mbql-query                                   hooks.metabase.test.data/mbql-query
+   metabase.test/query                                        hooks.metabase.test.data/mbql-query
+   metabase.test/run-mbql-query                               hooks.metabase.test.data/mbql-query
    metabase.test/with-temp                                    hooks.toucan.util.test/with-temp
    metabase.test/with-temp*                                   hooks.toucan.util.test/with-temp*
    metabase-enterprise.serialization.test-util/with-temp-dpc  hooks.toucan.util.test/with-temp*
    metabase.test/with-temporary-setting-values                hooks.metabase.test.util/with-temporary-setting-values
    metabase.test.data/$ids                                    hooks.metabase.test.data/$ids
    metabase.test.data/dataset                                 hooks.metabase.test.data/dataset
-   metabase.test.data/mbql-query                              hooks.metabase.test.data/$ids
-   metabase.test.data/run-mbql-query                          hooks.metabase.test.data/$ids
+   metabase.test.data/mbql-query                              hooks.metabase.test.data/mbql-query
+   metabase.test.data/run-mbql-query                          hooks.metabase.test.data/mbql-query
    metabase.test.util/with-temporary-setting-values           hooks.metabase.test.util/with-temporary-setting-values}
 
   :macroexpand

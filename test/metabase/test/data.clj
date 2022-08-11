@@ -125,7 +125,7 @@
   (The 'cheatsheet' above is listed first so I can easily look at it with `autocomplete-mode` in Emacs.) This macro
   does the following:
 
-  *  Expands symbols like `$field` into calls to `id`, and wraps them in `:field-id`. See the dox for `$ids` for
+  *  Expands symbols like `$field` into calls to `id`, and wraps them in `:field-id`. See the dox for [[$ids]] for
      complete details.
   *  Wraps 'inner' query with the standard `{:database (data/id), :type :query, :query {...}}` boilerplate
   *  Adds `:source-table` clause if `:source-table` or `:source-query` is not already present"

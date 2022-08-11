@@ -1,7 +1,7 @@
 (ns hooks.metabase.test.data
   (:require
    [clj-kondo.hooks-api :as hooks]
-   [clojure.string :as string]
+   [clojure.string :as str]
    [clojure.walk :as walk]))
 
 (defn dataset [{:keys [node]}]
@@ -14,42 +14,62 @@
                body))
              (meta dataset))}))
 
-(defn $ids [{:keys [node]}]
-  (let [args (rest (:children node))
-        [table-name & body] args
-        unused-node (hooks/token-node '_)
-        vars (atom #{})
-        _ (walk/postwalk (fn [node]
-                           (when (hooks/token-node? node)
-                             (let [str-node (str (hooks/sexpr node))]
-                               (when (or (string/starts-with? str-node "$")
-                                         (string/starts-with? str-node "!")
-                                         (string/starts-with? str-node "&")
-                                         (string/starts-with? str-node "*")
-                                         (string/starts-with? str-node "%"))
-                                 (swap! vars conj node))))
-                           node)
-                         body)
-        nil-bindings (vec (interpose (hooks/token-node nil) @vars))
-        unused-bindings (vec (interpose unused-node @vars))
-        final-bindings (concat
-                        (when-not (= "nil" (str table-name))
-                          [table-name (hooks/token-node nil)])
-                        [unused-node table-name]
-                        (if (seq nil-bindings)
-                          (conj nil-bindings (hooks/token-node nil))
-                          [])
-                        (if (seq unused-bindings)
-                          (conj (next unused-bindings)
-                                (first unused-bindings)
-                                unused-node)
-                          []))]
-    {:node (with-meta
-             (hooks/list-node
-              (with-meta
+(defn- special-token-node?
+  "Whether this node is one of the special symbols like `$field`."
+  [node]
+  (when (hooks/token-node? node)
+    (let [symb (hooks/sexpr node)]
+      (when (symbol? symb)
+        (some (partial str/starts-with? symb)
+              #{"$" "!" "&" "*" "%"})))))
+
+(defn- replace-$id-special-tokens
+  "Impl for [[$ids]] and [[mbql-query]]. Walk `form` and look for special tokens like `$field` and replace them with
+  strings so we don't get unresolved symbol errors. Preserves metadata."
+  [form]
+  ;; [[walk/postwalk]] seems to preserve its meta so we don't need to do anything special
+  (walk/postwalk
+   (fn [node]
+     (if (special-token-node? node)
+       (-> (hooks/string-node (str (hooks/sexpr node)))
+           (with-meta (meta node)))
+       node))
+   form))
+
+(defn $ids
+  [{{[_$ids & args] :children} :node}]
+  ;; `$ids` accepts either
+  ;;
+  ;;    ($ids form)
+  ;;
+  ;; or
+  ;;
+  ;;    ($ids table & body)
+  ;;
+  ;; table is only relevant for expanding the special tokens so we can ignore it.
+  (let [body (if (= (count args) 1)
+               (first args)
+               (hooks/list-node
                 (list*
-                 (hooks/token-node 'let)
-                 (hooks/vector-node (vec final-bindings))
-                 body)
-                (meta body)))
-             (meta body))}))
+                 (hooks/token-node `do)
+                 (rest args))))]
+    {:node (replace-$id-special-tokens body)}))
+
+(defn mbql-query
+  [{{[_mbql-query & args] :children} :node}]
+  (binding [*print-meta* true])
+  ;; `mbql-query` accepts either
+  ;;
+  ;;    (mbql-query table)
+  ;;
+  ;; or
+  ;;
+  ;;    (mbql-query table query)
+  ;;
+  ;; and table may be `nil`.
+  ;;
+  ;; table is only relevant for expanding the special tokens so we can ignore it either way.
+  (let [query (if (= (count args) 1)
+                (hooks/map-node [])
+                (second args))]
+    {:node (replace-$id-special-tokens query)}))
