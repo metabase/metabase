@@ -1,32 +1,26 @@
-/* eslint-disable react/prop-types */
 import React, { useState, useEffect } from "react";
+import { t } from "ttag";
 
-import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePrevious } from "metabase/hooks/use-previous";
 
-import { t } from "ttag";
-import _ from "underscore";
-
 import { color } from "metabase/lib/colors";
-
-import DimensionList from "../../DimensionList";
-import Icon from "metabase/components/Icon";
-
-import FilterPopoverHeader from "./FilterPopoverHeader";
-import FilterPopoverPicker from "./FilterPopoverPicker";
-import FilterPopoverFooter from "./FilterPopoverFooter";
-
-import ExpressionPopover from "metabase/query_builder/components/ExpressionPopover";
-import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
-
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { isStartingFrom } from "metabase/lib/query_time";
+
+import Icon from "metabase/components/Icon";
+import ExpressionPopover from "metabase/query_builder/components/ExpressionPopover";
+import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
+
+import FilterPopoverHeader from "./FilterPopoverHeader";
+import FilterPopoverPicker from "./FilterPopoverPicker";
+import FilterPopoverFooter from "./FilterPopoverFooter";
 import { Button } from "./FilterPopover.styled";
 import DatePicker from "../pickers/DatePicker/DatePicker";
 import TimePicker from "../pickers/TimePicker";
 import { DateShortcutOptions } from "../pickers/DatePicker/DatePickerShortcutOptions";
+import DimensionList from "../../DimensionList";
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
@@ -43,7 +37,6 @@ type Props = {
   onChangeFilter: (filter: Filter) => void;
 
   onClose?: () => void;
-  commitOnBlur?: boolean;
 
   noCommitButton?: boolean;
   showFieldPicker?: boolean;
@@ -61,15 +54,12 @@ type State = {
   editingFilter: boolean;
 };
 
-// NOTE: this is duplicated from FilterPopover but allows you to add filters on
-// the last two "stages" of a nested query, e.x. post aggregation filtering
 export default function FilterPopover({
   isNew: isNewProp,
   filter: filterProp,
   style = {},
   showFieldPicker = true,
   showCustom = true,
-  commitOnBlur = false,
   noCommitButton,
   className,
   query,
@@ -92,14 +82,6 @@ export default function FilterPopover({
 
   const previousQuery = usePrevious(query);
 
-  useOnMount(() => {
-    return () => {
-      if (commitOnBlur) {
-        handleCommit();
-      }
-    };
-  });
-
   // if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
   useEffect(() => {
     if (filter && query !== previousQuery) {
@@ -108,10 +90,27 @@ export default function FilterPopover({
   }, [query, previousQuery, filter]);
 
   useEffect(() => {
-    if (typeof onChange === "function" && filter) {
+    if (typeof onChange === "function" && filter && filter !== filterProp) {
       onChange(filter);
     }
-  }, [filter, onChange]);
+  }, [filter, onChange, filterProp]);
+
+  // we should only commit the filter once to prevent
+  // inconsistent filters from being committed
+  const handleCommitFilter = (
+    newFilter: Filter | null,
+    query: StructuredQuery,
+  ) => {
+    if (newFilter && !(newFilter instanceof Filter)) {
+      newFilter = new Filter(newFilter, null, query);
+    }
+    if (newFilter && newFilter.isValid() && onChangeFilter) {
+      onChangeFilter(newFilter);
+      if (typeof onClose === "function") {
+        onClose();
+      }
+    }
+  };
 
   const handleUpdateAndCommit = (newFilterMbql: any[]) => {
     const base = filter || new Filter([], null, query);
@@ -127,22 +126,6 @@ export default function FilterPopover({
       query,
     );
   };
-
-  // we should only commit the filter once to prevent
-  // inconsistent filters from being committed
-  const handleCommitFilter = _.once(
-    (filter: Filter | null, query: StructuredQuery) => {
-      if (filter && !(filter instanceof Filter)) {
-        filter = new Filter(filter, null, query);
-      }
-      if (filter && filter.isValid() && onChangeFilter) {
-        onChangeFilter(filter);
-        if (typeof onClose === "function") {
-          onClose();
-        }
-      }
-    },
-  );
 
   const handleDimensionChange = (dimension: FieldDimension) => {
     const field = dimension?.field();
