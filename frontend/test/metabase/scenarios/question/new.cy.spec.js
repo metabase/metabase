@@ -45,16 +45,6 @@ describe("scenarios > question > new", () => {
     cy.findByText("Sample3").isVisibleInPopover();
   });
 
-  it("should display a tooltip for CTA icons on an individual question (metabase#16108)", () => {
-    openOrdersTable();
-    cy.icon("download").realHover();
-    cy.findByText("Download full results");
-    cy.icon("bell").realHover();
-    cy.findByText("Get alerts");
-    cy.icon("share").realHover();
-    cy.findByText("Sharing");
-  });
-
   describe("data picker search", () => {
     describe("on a (custom) question page", () => {
       beforeEach(() => {
