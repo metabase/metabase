@@ -5,15 +5,11 @@ import {
   openOrdersTable,
   summarize,
   visitQuestion,
-  startNewQuestion,
-  visualize,
   openQuestionActions,
   questionInfoButton,
   rightSidebar,
   appbar,
   getCollectionIdFromSlug,
-  filter,
-  filterField,
 } from "__support__/e2e/helpers";
 
 describe("scenarios > question > saved", () => {
@@ -151,27 +147,6 @@ describe("scenarios > question > saved", () => {
 
     cy.findByText(/reverted to an earlier revision/i);
     cy.findByText(/This is a question/i).should("not.exist");
-  });
-
-  it("should be able to use integer filter on a nested query based on a saved native question (metabase#15808)", () => {
-    cy.createNativeQuestion({
-      name: "15808",
-      native: { query: "select * from products" },
-    });
-    startNewQuestion();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("15808").click();
-    visualize();
-
-    filter();
-    filterField("RATING", {
-      operator: "Equal to",
-      value: "4",
-    });
-    cy.findByTestId("apply-filters").click();
-
-    cy.findByText("Synergistic Granite Chair");
-    cy.findByText("Rustic Paper Wallet").should("not.exist");
   });
 
   it("should show table name in header with a table info popover on hover", () => {
