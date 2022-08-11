@@ -9,15 +9,11 @@ import {
 import { getParameterMappingOptions } from "./mapping-options";
 
 function structured(query) {
-  const card = SAMPLE_DATABASE.question(query).card();
-  card.id = 1;
-  return card;
+  return SAMPLE_DATABASE.question(query).card();
 }
 
 function native(native) {
-  const card = SAMPLE_DATABASE.nativeQuestion(native).card();
-  card.id = 2;
-  return card;
+  return SAMPLE_DATABASE.nativeQuestion(native).card();
 }
 
 describe("parameters/utils/mapping-options", () => {
