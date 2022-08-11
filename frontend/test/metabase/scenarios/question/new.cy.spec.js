@@ -4,7 +4,6 @@ import {
   restore,
   visualize,
   startNewQuestion,
-  visitQuestion,
   visitQuestionAdhoc,
   getCollectionIdFromSlug,
 } from "__support__/e2e/helpers";
@@ -212,40 +211,6 @@ describe("scenarios > question > new", () => {
         "#main-data-grid .TableInteractive-cellWrapper--firstColumn",
       ).should("have.length", 1);
     });
-  });
-
-  it("'read-only' user should be able to resize column width (metabase#9772)", () => {
-    cy.signIn("readonly");
-    visitQuestion(1);
-
-    cy.findByText("Tax")
-      .closest(".TableInteractive-headerCellData")
-      .as("headerCell")
-      .then($cell => {
-        const originalWidth = $cell[0].getBoundingClientRect().width;
-
-        // Retries the assertion a few times to ensure it waits for DOM changes
-        // More context: https://github.com/metabase/metabase/pull/21823#discussion_r855302036
-        function assertColumnResized(attempt = 0) {
-          cy.get("@headerCell").then($newCell => {
-            const newWidth = $newCell[0].getBoundingClientRect().width;
-            if (newWidth === originalWidth && attempt < 3) {
-              cy.wait(100);
-              assertColumnResized(++attempt);
-            } else {
-              expect(newWidth).to.be.gt(originalWidth);
-            }
-          });
-        }
-
-        cy.wrap($cell)
-          .find(".react-draggable")
-          .trigger("mousedown", 0, 0, { force: true })
-          .trigger("mousemove", 100, 0, { force: true })
-          .trigger("mouseup", 100, 0, { force: true });
-
-        assertColumnResized();
-      });
   });
 
   it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
