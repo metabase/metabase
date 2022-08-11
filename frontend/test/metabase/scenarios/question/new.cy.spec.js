@@ -236,14 +236,6 @@ describe("scenarios > question > new", () => {
   });
 
   describe("ask a (custom) question", () => {
-    it("should show a table info popover when hovering over the table name in the header", () => {
-      visitQuestion(1);
-
-      cy.findByTestId("question-table-badges").trigger("mouseenter");
-
-      cy.findByText("9 columns");
-    });
-
     it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
       openOrdersTable({ mode: "notebook" });
       summarize({ mode: "notebook" });
