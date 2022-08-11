@@ -24,7 +24,7 @@ jobs:
         docker run -v $PWD:/work
         --rm cljkondo/clj-kondo:2022.08.03
         find /work/modules/drivers -type d -name src | xargs
-        clj-kondo
+        /usr/local/bin/clj-kondo
         --config /work/.clj-kondo/config.edn
         --config-dir /work/.clj-kondo
         --parallel
