@@ -838,12 +838,14 @@ export class FieldDimension extends Dimension {
       questionAssociatedWithDimension?.isSaved() &&
       questionAssociatedWithDimension.isDataset()
     ) {
-      const question = this.query()?.question();
-      const field = _.findWhere(question.getResultMetadata(), {
-        [identifierProp]: this.fieldIdOrName(),
-      });
+      const fieldMetadata = _.findWhere(
+        questionAssociatedWithDimension.getResultMetadata(),
+        {
+          [identifierProp]: this.fieldIdOrName(),
+        },
+      );
 
-      return field;
+      return fieldMetadata;
     }
   }
 
@@ -854,14 +856,13 @@ export class FieldDimension extends Dimension {
     );
     if (virtualTableCardId != null) {
       const question = this._metadata?.question(virtualTableCardId);
-      const field =
-        question && question.isDataset()
-          ? _.findWhere(question.getResultMetadata(), {
-              [identifierProp]: this.fieldIdOrName(),
-            })
-          : undefined;
+      const fieldMetadata = question?.isDataset()
+        ? _.findWhere(question.getResultMetadata(), {
+            [identifierProp]: this.fieldIdOrName(),
+          })
+        : undefined;
 
-      return field;
+      return fieldMetadata;
     }
   }
 
