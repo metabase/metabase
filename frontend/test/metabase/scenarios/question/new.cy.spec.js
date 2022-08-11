@@ -162,55 +162,55 @@ describe("scenarios > question > new", () => {
     });
   });
 
-  describe("ask a (simple) question", () => {
-    it("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
-      openOrdersTable();
+  it("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
+    openOrdersTable();
 
-      cy.url().should("include", "question#");
-      // Isolate icons within "QueryBuilder" scope because there is also `.Icon-sql` in top navigation
-      cy.get(".QueryBuilder .Icon-notebook").click();
-      cy.url().should("include", "question/notebook#");
-      cy.get(".QueryBuilder .Icon-sql").click();
-      cy.findByText("Convert this question to SQL").click();
-      cy.url().should("include", "question#");
+    cy.url().should("include", "question#");
+    // Isolate icons within "QueryBuilder" scope because there is also `.Icon-sql` in top navigation
+    cy.get(".QueryBuilder .Icon-notebook").click();
+    cy.url().should("include", "question/notebook#");
+    cy.get(".QueryBuilder .Icon-sql").click();
+    cy.findByText("Convert this question to SQL").click();
+    cy.url().should("include", "question#");
+  });
+
+  it("composite keys should act as filters on click (metabase#13717)", () => {
+    cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+      semantic_type: "type/PK",
     });
 
-    it("composite keys should act as filters on click (metabase#13717)", () => {
-      cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
-        semantic_type: "type/PK",
-      });
+    openOrdersTable();
 
-      openOrdersTable();
+    cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
+      .eq(1) // first table body cell
+      .should("contain", "2") // quantity for order ID#1
+      .click();
+    cy.wait("@dataset");
 
-      cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
-        .eq(1) // first table body cell
-        .should("contain", "2") // quantity for order ID#1
-        .click();
-      cy.wait("@dataset");
+    cy.get("#main-data-grid .TableInteractive-cellWrapper--firstColumn").should(
+      "have.length.gt",
+      1,
+    );
 
-      cy.get(
-        "#main-data-grid .TableInteractive-cellWrapper--firstColumn",
-      ).should("have.length.gt", 1);
+    cy.log(
+      "**Reported at v0.34.3 - v0.37.0.2 / probably was always like this**",
+    );
+    cy.log(
+      "**It should display the table with all orders with the selected quantity.**",
+    );
+    cy.get(".TableInteractive");
 
-      cy.log(
-        "**Reported at v0.34.3 - v0.37.0.2 / probably was always like this**",
-      );
-      cy.log(
-        "**It should display the table with all orders with the selected quantity.**",
-      );
-      cy.get(".TableInteractive");
+    cy.get(".TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
+      .eq(1) // first table body cell
+      .should("contain", 1)
+      .click();
+    cy.wait("@dataset");
 
-      cy.get(".TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
-        .eq(1) // first table body cell
-        .should("contain", 1)
-        .click();
-      cy.wait("@dataset");
-
-      cy.log("only one row should appear after filtering by ID");
-      cy.get(
-        "#main-data-grid .TableInteractive-cellWrapper--firstColumn",
-      ).should("have.length", 1);
-    });
+    cy.log("only one row should appear after filtering by ID");
+    cy.get("#main-data-grid .TableInteractive-cellWrapper--firstColumn").should(
+      "have.length",
+      1,
+    );
   });
 
   it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
