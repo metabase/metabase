@@ -131,7 +131,10 @@
 
 ;;; client
 
-(defn build-request-map [credentials http-body]
+(defn build-request-map
+  "Build the request map we ultimately pass to [[clj-http.client]]. Add user credential headers, specify JSON encoding,
+  and encode body as JSON."
+  [credentials http-body]
   (merge
    {:accept       :json
     :headers      {@#'mw.session/metabase-session-header
