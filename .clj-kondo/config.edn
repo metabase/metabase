@@ -445,7 +445,8 @@
  :config-in-ns
  {test-namespaces
   {:linters
-   {:missing-docstring {:level :off}
+   {:inline-def        {:level :off}
+    :missing-docstring {:level :off}
     :private-call      {:level :off}
 
     ;; FIXME
