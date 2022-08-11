@@ -24,8 +24,7 @@
                                       $multiply $ne $not $or $project $regex $size $skip $sort $strcasecmp $subtract
                                       $sum $toLower]]
             [schema.core :as s])
-  (:import
-   (org.bson.types ObjectId)))
+  (:import org.bson.types.ObjectId))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
