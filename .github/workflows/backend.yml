@@ -20,7 +20,15 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Run clj-kondo
-      run: docker run -v $PWD:/work --rm cljkondo/clj-kondo:2022.08.03 clj-kondo --config /work/.clj-kondo/config.edn --config-dir /work/.clj-kondo --lint /work/src:/work/enterprise/backend/src:/work/shared/src
+      run: >-
+        docker run -v $PWD:/work \
+        --rm cljkondo/clj-kondo:2022.08.03 \
+        find /work/modules/drivers -type d -name src | xargs \
+        clj-kondo \
+        --config /work/.clj-kondo/config.edn \
+        --config-dir /work/.clj-kondo \
+        --parallel \
+        --lint /work/src /work/enterprise/backend/src /work/shared/src
 
   be-linter-eastwood:
     runs-on: ubuntu-20.04
