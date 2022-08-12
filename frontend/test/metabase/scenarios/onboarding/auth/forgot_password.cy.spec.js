@@ -26,10 +26,7 @@ describe("scenarios > auth > password", () => {
       cy.findByLabelText("Confirm your password").type(admin.password);
       cy.findByText("Save new password").click();
 
-      cy.findByText("All done!");
-      cy.findByText("Sign in with your new password").click();
-
-      cy.findByText(admin.first_name, { exact: false });
+      cy.findByText("You've updated your password.");
     });
   });
 });
