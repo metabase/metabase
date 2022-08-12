@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.mark-outer-select-fields
+(ns metabase.query-processor.middleware.mark-outer-fields
   (:require [clojure.walk :as walk]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.util :as qp.util]))
@@ -7,7 +7,7 @@
   [field source-field]
   (= (qp.util/field-ref->key field) (qp.util/field-ref->key source-field)))
 
-(defn- mark-mbql-outer-select-fields
+(defn- mark-mbql-outer-fields
   [mbql-query]
   (walk/prewalk
    (fn [form]
@@ -27,10 +27,10 @@
                       fields)))))
    mbql-query))
 
-(defn mark-outer-select-fields
+(defn mark-outer-fields
   "Mark all Fields in the MBQL query `query` coming from a source-query as `:nested/outer` so QP implementations know
   not to apply coercion or whatever to them a second time"
   [query]
   (cond-> query
     (not= (:type query) :native)
-    (update :query mark-mbql-outer-select-fields)))
+    (update :query mark-mbql-outer-fields)))
