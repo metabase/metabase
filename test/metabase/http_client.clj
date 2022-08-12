@@ -7,7 +7,7 @@
             [clojure.string :as str]
             [clojure.test :as t]
             [clojure.tools.logging :as log]
-            [java-time]
+            java-time
             [metabase.config :as config]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
