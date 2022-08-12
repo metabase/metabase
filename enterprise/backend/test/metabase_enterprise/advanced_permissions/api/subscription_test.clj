@@ -140,7 +140,7 @@
          user  [group]]
         (mt/with-temp*
           [Card       [card {:creator_id (:id user)}]
-           Collection [collection]]
+           Collection [_collection]]
           (let [alert-default {:card             {:id                (:id card)
                                                   :include_csv       true
                                                   :include_xls       false
@@ -189,7 +189,7 @@
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
-        (mt/with-temp* [Card [{card-id :id}]]
+        (mt/with-temp Card [_]
           (letfn [(add-alert-recipient [req-user status]
                     (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
                                     Card                  [card]
