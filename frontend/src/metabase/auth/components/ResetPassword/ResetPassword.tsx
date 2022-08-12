@@ -21,7 +21,7 @@ export interface ResetPasswordProps {
   onResetPassword: (token: string, password: string) => void;
   onValidatePassword: (password: string) => void;
   onValidatePasswordToken: (token: string) => void;
-  showToast: (toast: { message: string }) => void;
+  onShowToast: (toast: { message: string }) => void;
   onRedirect: (url: string) => void;
 }
 
@@ -30,7 +30,7 @@ const ResetPassword = ({
   onResetPassword,
   onValidatePassword,
   onValidatePasswordToken,
-  showToast,
+  onShowToast,
   onRedirect,
 }: ResetPasswordProps): JSX.Element | null => {
   const [view, setView] = useState<ViewType>("none");
@@ -60,9 +60,9 @@ const ResetPassword = ({
     async ({ password }: ResetPasswordData) => {
       await onResetPassword(token, password);
       onRedirect("/");
-      showToast({ message: t`You've updated your password.` });
+      onShowToast({ message: t`You've updated your password.` });
     },
-    [onResetPassword, token, onRedirect, showToast],
+    [onResetPassword, token, onRedirect, onShowToast],
   );
 
   useEffect(() => {

@@ -27,20 +27,20 @@ describe("ResetPassword", () => {
   });
 
   it("should show a success message when the form is submitted", async () => {
-    const showToast = jest.fn();
+    const onShowToast = jest.fn();
     const onRedirect = jest.fn();
 
     const props = getProps({
       onResetPassword: jest.fn().mockResolvedValue({}),
       onValidatePasswordToken: jest.fn().mockResolvedValue({}),
-      showToast,
+      onShowToast,
       onRedirect,
     });
 
     render(
       <ResetPassword
         {...props}
-        showToast={showToast}
+        onShowToast={onShowToast}
         onRedirect={onRedirect}
       />,
     );
@@ -51,7 +51,7 @@ describe("ResetPassword", () => {
 
     await waitFor(() => {
       expect(onRedirect).toHaveBeenCalledWith("/");
-      expect(showToast).toHaveBeenCalledWith({
+      expect(onShowToast).toHaveBeenCalledWith({
         message: "You've updated your password.",
       });
     });
@@ -64,7 +64,7 @@ const getProps = (opts?: Partial<ResetPasswordProps>): ResetPasswordProps => {
     onResetPassword: jest.fn(),
     onValidatePassword: jest.fn(),
     onValidatePasswordToken: jest.fn(),
-    showToast: jest.fn(),
+    onShowToast: jest.fn(),
     onRedirect: jest.fn(),
     ...opts,
   };

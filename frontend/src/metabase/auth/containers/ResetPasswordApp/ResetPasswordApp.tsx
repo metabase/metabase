@@ -16,7 +16,7 @@ const mapDispatchToProps = {
   onResetPassword: resetPassword,
   onValidatePassword: validatePassword,
   onValidatePasswordToken: validatePasswordToken,
-  showToast: addUndo,
+  onShowToast: addUndo,
   onRedirect: replace,
 };
 
