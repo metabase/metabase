@@ -96,7 +96,6 @@
    (resolve 'ee.sandbox.rows/apply-sandboxing)
    #'qp.persistence/substitute-persisted-query
    #'qp.add-implicit-clauses/add-implicit-clauses
-   #'qp.mark-outer-fields/mark-outer-fields
    #'qp.add-dimension-projections/add-remapped-columns
    #'qp.resolve-fields/resolve-fields
    #'binning/update-binning-strategy
@@ -106,6 +105,7 @@
    #'resolve-joins/resolve-joins
    #'resolve-joined-fields/resolve-joined-fields
    #'fix-bad-refs/fix-bad-references
+   #'qp.mark-outer-fields/mark-outer-fields
    #'escape-join-aliases/escape-join-aliases
    (resolve 'ee.sandbox.rows/apply-sandboxing)
    #'qp.cumulative-aggregations/rewrite-cumulative-aggregations

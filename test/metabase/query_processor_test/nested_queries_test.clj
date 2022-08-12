@@ -195,8 +195,8 @@
           (mt/with-temp Card [{card-id :id}
                               {:dataset_query
                                (mt/mbql-query reviews
-                                 {:fields      [$rating]
-                                  :limit       1})}]
+                                 {:fields [$rating]
+                                  :limit  1})}]
             (testing "with all inherited fields"
               (is (= :completed
                      (:status (qp/process-query {:type     :query
@@ -207,7 +207,25 @@
                      (:status (qp/process-query {:type     :query
                                                  :database (mt/id)
                                                  :query    {:fields       [(mt/id :reviews :rating)]
-                                                            :source-table (str "card__" card-id)}})))))))))))
+                                                            :source-table (str "card__" card-id)}})))))))))
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset sample-dataset
+        (mt/with-temp-vals-in-db Field (mt/id :reviews :rating) {:coercion_strategy :Coercion/UNIXSeconds->DateTime
+                                                                 :effective_type    :type/Instant}
+          (testing "with join"
+            (mt/with-temp Card [{card-id :id}
+                                {:dataset_query
+                                 (mt/mbql-query products
+                                   {:fields [$id]
+                                    :joins  [{:source-table $$reviews
+                                              :alias        "R"
+                                              :fields       [&R.reviews.rating]
+                                              :condition    [:= $id &R.reviews.product_id]}]
+                                    :limit  1})}]
+              (is (= :completed
+                     (:status (qp/process-query {:type     :query
+                                                 :database (mt/id)
+                                                 :query    {:source-table (str "card__" card-id)}})))))))))))
 
 (deftest sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
