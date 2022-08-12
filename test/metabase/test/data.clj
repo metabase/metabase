@@ -204,7 +204,7 @@
 
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the
-  current DB (for `metabase.test.data` functions like `id` and `db`), and execute `body`.
+  current DB (for [[metabase.test.data]] functions like [[id]] and [[db]]), and execute `body`.
 
   `dataset` can be one of the following:
 
