@@ -1832,7 +1832,7 @@
                                :as new-collection} {:name "New Collection"}]
                   Card       [card-a               {:name "a", :collection_id coll-id-1}]
                   Card       [card-b               {:name "b", :collection_id coll-id-2, :collection_position 1}]
-                  Card       [card-c               {:name "c", :collection_id coll-id-2, :collection_position 2}]]
+                  Card       [_card-c              {:name "c", :collection_id coll-id-2, :collection_position 2}]]
     (is (= {:response    {:status "ok"}
             :collections ["New Collection" "New Collection"]}
            (POST-card-collections! :crowberto 200 new-collection [card-a card-b])))

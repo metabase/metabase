@@ -12,7 +12,7 @@
 
   (testing "reset token generated for known email in differing case"
     (let [email "some.valid.user.to.reset@metabase.com"]
-      (mt/with-temp User [user {:email (u/upper-case-en email)}]
+      (mt/with-temp User [_ {:email (u/upper-case-en email)}]
         (is (instance?
               String
               (#'reset-password/set-reset-token! email)))))))
