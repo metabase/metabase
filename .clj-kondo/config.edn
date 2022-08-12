@@ -430,7 +430,7 @@
    clojurewerkz.quartzite.schedule.cron/schedule   macros.quartz/schedule
    clojurewerkz.quartzite.schedule.simple/schedule macros.quartz/simple-schedule}}
 
- :ns-groups [{:pattern ".*-test" :name test-group}]
+ :ns-groups [{:pattern "metabase.*test.*" :name test-group}]
 
  :config-in-ns {test-group
                 {:linters
