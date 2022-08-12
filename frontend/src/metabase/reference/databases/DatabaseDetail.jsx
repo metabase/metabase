@@ -94,7 +94,10 @@ const DatabaseDetail = props => {
     onSubmit: fields => onSubmit(fields, { ...props, resetForm: handleReset }),
   });
 
-  const getField = name => ({ ...getFieldProps(name), ...getFieldMeta(name) });
+  const getFormField = name => ({
+    ...getFieldProps(name),
+    ...getFieldMeta(name),
+  });
 
   return (
     <form style={style} className="full" onSubmit={handleSubmit}>
@@ -105,7 +108,7 @@ const DatabaseDetail = props => {
           endEditing={endEditing}
           reinitializeForm={handleReset}
           submitting={isSubmitting}
-          revisionMessageFormField={getField("revision_message")}
+          revisionMessageFormField={getFormField("revision_message")}
         />
       )}
       <EditableReferenceHeader
@@ -119,8 +122,8 @@ const DatabaseDetail = props => {
         hasSingleSchema={false}
         hasDisplayName={false}
         startEditing={startEditing}
-        displayNameFormField={getField("display_name")}
-        nameFormField={getField("name")}
+        displayNameFormField={getFormField("display_name")}
+        nameFormField={getFormField("name")}
       />
       <LoadingAndErrorWrapper
         loading={!loadingError && loading}
@@ -137,7 +140,7 @@ const DatabaseDetail = props => {
                     description={entity.description}
                     placeholder={t`No description yet`}
                     isEditing={isEditing}
-                    field={getField("description")}
+                    field={getFormField("description")}
                   />
                 </li>
                 <li className="relative">
@@ -147,7 +150,7 @@ const DatabaseDetail = props => {
                     description={entity.points_of_interest}
                     placeholder={t`Nothing interesting yet`}
                     isEditing={isEditing}
-                    field={getField("points_of_interest")}
+                    field={getFormField("points_of_interest")}
                   />
                 </li>
                 <li className="relative">
@@ -157,7 +160,7 @@ const DatabaseDetail = props => {
                     description={entity.caveats}
                     placeholder={t`Nothing to be aware of yet`}
                     isEditing={isEditing}
-                    field={getField("caveats")}
+                    field={getFormField("caveats")}
                   />
                 </li>
               </List>
