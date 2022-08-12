@@ -45,7 +45,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
             <Select
               placeholder={t`Select a field type`}
               value={
-                formField.semantic_type.value !== ""
+                formField.semantic_type.value !== undefined
                   ? formField.semantic_type.value
                   : field.semantic_type
               }
