@@ -6,7 +6,7 @@ title: Isnull
 
 `isnull` checks if a value is a `null`, a special kind of placeholder that's used by a database when something is missing or unknown.
 
-**In Metabase, you must combine `isnull` with another expression that accepts boolean arguments (i.e., true or false).** The table below shows you examples of the boolean value that will be passed to your other expression(s).
+**In Metabase, you must combine `isnull` with another expression that accepts boolean values.** The table below shows you examples of the boolean value that will be passed to your other expression(s).
 
 | Syntax                                                | Example with a true `null` | Example with an empty string |
 | ---------------------------------------------------   | -------------------------- | ---------------------------- |
@@ -15,7 +15,7 @@ title: Isnull
 
 ## How Metabase handles nulls
 
-In Metabase tables, `null`s are displayed as empty or blank cells. For example, in the column below, the empty cells could contain either:
+In Metabase tables, `null`s are displayed as empty or blank cells. For example, in the Feedback column below, the empty cells could contain either:
 
 - `null`: no feedback was submitted, so the customer's thoughts are "unknown".
 - `""`: feedback was submitted and left intentionally blank, so the customer had "no feedback to give".
@@ -28,17 +28,17 @@ In Metabase tables, `null`s are displayed as empty or blank cells. For example, 
 
 ## Replacing null values with another value
 
-| Feedback           | `case(isnull([Feedback]), "Unknown feedback.", "No feedback.")` | 
-| ------------------ | --------------------------------------------------------------- | 
-|                    | Unknown feedback.                                               | 
-| I like your style. | I like your style.                                              | 
-|                    | No feedback.                                                    |
+| Feedback           | `case(isnull([Feedback]), "Unknown feedback.", [Feedback])` | 
+| ------------------ | ----------------------------------------------------------- | 
+|                    | Unknown feedback.                                           | 
+| I like your style. | I like your style.                                          | 
+|                    |                                                             |
 
 Combine `isnull` with the [`case` expression](./case) to replace "unknown" information with something more descriptive.
 
 If the first row's blank cell is actually a `null`, then `isnull` will return `true`. The `case` statement evaluates `true` to return the first output "Unknown feedback".
 
-If the third row's blank cell is actually an empty string (or even an emoji that blends into your table background), then `isnull` will return `false`, and `case` will return the default output "No feedback".
+If the third row's blank cell is actually an empty string (or even an emoji that blends into your table background), then `isnull` will return `false`, and `case` will return whatever's in the Feedback column as the default output.
 
 ## Accepted data types
 
@@ -52,45 +52,81 @@ If the third row's blank cell is actually an empty string (or even an emoji that
 
 ## Limitations
 
-- `isnull` only accepts one value at a time. If you need to deal with empty cells , see [coalesce](./coalesce).
 - In Metabase, you must combine `isnull` with another expression that accepts boolean arguments (i.e., `true` or `false`).
+- `isnull` only accepts one value at a time. If you need to deal with blank cells across multiple columns, see [coalesce](./coalesce).
+- If `isnull` doesn't seem to do anything to your blank cells, you might have empty strings. Try the [`isempty` expression](./isempty) instead.
 
 ## Converting a function into an `isnull` expression
 
 This section covers functions and formulas that can be used interchangeably with the Metabase `isnull` expression, with notes on how to choose the best option for your use case.
 
-**Metabase expressions**
-
-- [isempty]()
-
-**Other tools**
-
 - [SQL](#sql)
 - [Spreadsheets](#spreadsheets)
 - [Python](#python)
 
-## isempty
+All examples use the table from the [Replacing null values](#replacing-null-values-with-another-value) example:
 
-When combined with `case`, the Metabase `isempty` expression can be used to figure out if a blank cell contains an empty string instead of a `null` value.
+| Feedback           | `case(isempty([Feedback]), "Unknown feedback.", [Feedback])` | 
+| ------------------ | ------------------------------------------------------------ | 
+|                    | Unknown feedback.                                            | 
+| I like your style. | I like your style.                                           | 
+|                    |                                                              |
 
-```
-`case(isempty([Feedback]), "No feedback.", "Unknown feedback.")`
+### SQL
+
+In most cases (unless you're using a NoSQL database), questions created from the [notebook editor][notebook-editor-def] are converted into SQL queries that run against your database or data warehouse.
+
+```sql
+CASE WHEN Feedback IS NULL THEN "Unknown feedback",
+     ELSE Feedback END
 ```
 
 is equivalent to the Metabase `isnull` expression:
 
 ```
-`case(isnull([Feedback]), "Unknown feedback.", [Feedback]="", "No feedback.")`
+case(isnull([Feedback]), "Unknown feedback.", [Feedback])
 ```
-
-`isempty` cannot be used to check for `null` values.
-
-- Use `isempty` if you're working with columns that have a string data type _and_ your column are non-nullable.
-- Use `isnull` if your columns are nullable (or if you're not sure what type of blank values you're dealing with).
-
-### SQL
 
 ### Spreadsheets
 
+Spreadsheet `#N/A`s are the equivalent of database `null`s (placeholders for "unknown" or "missing" information).
+
+If your [feedback table](#replacing-null-values-with-another-value) is in a spreadsheet where "Feedback" is in column A, then the formula
+
+```
+=IF(ISNA(A2), "Unknown feedback.", A2)
+```
+
+is equivalent to the Metabase `isnull` expression:
+
+```
+case(isnull([Feedback]), "Unknown feedback.", [Feedback])
+```
+
 ### Python
+
+[Numpy][numpy] and [pandas][pandas] use `NaN`s or `NA`s instead of `null`s.
+
+Assuming the [feedback table](#replacing-null-values-with-another-value) is in a dataframe column called `df["Feedback"]`:
+
+```
+df["Custom Column"] = np.where(df["Feedback"].isnull(), "Unknown feedback.", df["Feedback"])
+```
+
+is equivalent to the Metabase `isnull` expression:
+
+```
+case(isnull([Feedback]), "Unknown feedback.", [Feedback])
+```
+
+## Further reading
+
+- [Custom expressions documentation][custom-expressions-doc]
+- [Custom expressions tutorial][custom-expressions-learn]
+
+[custom-expressions-doc]: ../expressions
+[custom-expressions-learn]: /learn/questions/custom-expressions
+[data-types]: /learn/databases/data-types-overview#examples-of-data-types
+[numpy]: https://numpy.org/doc/
+[pandas]: https://pandas.pydata.org/pandas-docs/stable/
 

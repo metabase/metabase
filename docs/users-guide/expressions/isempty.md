@@ -4,9 +4,9 @@ title: Isempty
 
 # Isempty
 
-`isempty` checks if a value is an empty string (`""`).
+`isempty` checks if a value in a **string column** is an empty string (`""`).
 
-**In Metabase, you must combine `isempty` with another expression that accepts boolean arguments (i.e., true or false).** The table below shows you examples of the boolean output that will be passed to your other expression(s).
+**In Metabase, you must combine `isempty` with another expression that accepts boolean values.** The table below shows you examples of the boolean output that will be passed to your other expression(s).
 
 | Syntax                                                             | Example with an empty string | Example with a true `null`   |
 | ------------------------------------------------------------------ | ---------------------------- | ---------------------------- |
@@ -15,12 +15,14 @@ title: Isempty
 
 ## How Metabase handles nulls
 
-In Metabase, columns with string data types can display empty or blank cells for empty strings or `null` values. For example, in the column below, the empty cells could contain either:
+In Metabase, columns with string [data types][data-types] will display blank cells for empty strings _or_ `null` values (if the column is nullable in your database).
 
-- `""`: feedback was submitted and left intentionally blank, so the customer had "no feedback to give".
-- `null`: no feedback was submitted, so the customer's thoughts are "unknown".
+For example, in the column below, the empty cells could contain either:
 
-| Customer Feedback  | 
+- `""`: feedback was submitted and left intentionally blank, so the person had "no feedback to give".
+- `null`: no feedback was submitted, so the person's thoughts are "unknown".
+
+| Feedback           | 
 | ------------------ | 
 |                    | 
 | I like your style. | 
@@ -28,17 +30,17 @@ In Metabase, columns with string data types can display empty or blank cells for
 
 ## Replacing empty strings with another value
 
-| Feedback           | `case(isempty([Feedback]), "No feedback.", "Unknown feedback.")`| 
-| ------------------ | --------------------------------------------------------------- | 
-|                    | Unknown feedback.                                               | 
-| I like your style. | I like your style.                                              | 
-|                    | No feedback.                                                    |
+| Feedback           | `case(isempty([Feedback]), "No feedback.", [Feedback])`| 
+| ------------------ | ------------------------------------------------------ | 
+|                    |                                                        | 
+| I like your style. | I like your style.                                     | 
+|                    | No feedback.                                           |
 
 Combine `isempty` with the [`case` expression](./case) to replace empty strings with something more descriptive.
 
-If the first row's blank cell is actually an empty string (or even an emoji that blends into your table background), then `isnull` will return `false`, and `case` will return the default output "No feedback".
+If the first row's blank cell is actually an empty string, then `isempty` will return `true`. The `case` statement evaluates `true` to return the first output "No feedback".
 
-If the third row's blank cell is actually a `null`, then `isnull` will return `true`. The `case` statement evaluates `true` to return the first output "Unknown feedback".
+If the third row's blank cell is actually a `null`, (or even an emoji that blends into your table background), then `isempty` will return `false`, and `case` will return whatever's in the Feedback column as the default output.
 
 ## Accepted data types
 
@@ -52,16 +54,13 @@ If the third row's blank cell is actually a `null`, then `isnull` will return `t
 
 ## Limitations
 
-- `isempty` only accepts values with a string data type. If you need to deal with columns that have contain other data type, use `isnull`.
 - In Metabase, you must combine `isempty` with another expression that accepts boolean arguments (i.e., `true` or `false`).
+- `isempty` only accepts one value at a time. If you need to deal with empty strings from multiple columns, you'll need to use multiple `isempty` expressions with [case](./case).
+- If `isempty` doesn't seem to do anything to your blank cells, you might have `null` values. Try the [`isnull` expression](./isempty) instead.
 
 ## Converting a function into an `isempty` expression
 
 This section covers functions and formulas that can be used interchangeably with the Metabase `isempty` expression, with notes on how to choose the best option for your use case.
-
-**Metabase expressions**
-
-- [isempty](#isnull)
 
 **Other tools**
 
@@ -69,27 +68,64 @@ This section covers functions and formulas that can be used interchangeably with
 - [Spreadsheets](#spreadsheets)
 - [Python](#python)
 
-## isnull
+### SQL
 
-When combined with `case`, the Metabase `isnull` expression can be used to figure out if a blank cell contains a `null` value instead of an empty string.
+In most cases (unless you're using a NoSQL database), questions created from the [notebook editor][notebook-editor-def] are converted into SQL queries that run against your database or data warehouse.
 
-```
-`case(isnull([Feedback]), "Unknown feedback.", [Feedback]="", "No feedback.")`
+Using the table from the [Replacing empty strings](#replacing-null-values-with-another-value) example:
+
+| Feedback           | `case(isempty([Feedback]), "No feedback.", [Feedback])`| 
+| ------------------ | ------------------------------------------------------ | 
+|                    |                                                        | 
+| I like your style. | I like your style.                                     | 
+|                    | No feedback.                                           |
+
+```sql
+CASE WHEN Feedback = "" THEN "No feedback"
+     ELSE Feedback END
 ```
 
 is equivalent to the Metabase `isempty` expression:
 
 ```
-`case(isempty([Feedback]), "No feedback.", "Unknown feedback.")`
+case(isempty([Feedback]), "No feedback.", [Feedback])
 ```
-
-`isempty` cannot be used to check for `null` values.
-
-- Use `isempty` if you're working with columns that have a string data type _and_ your column are non-nullable.
-- Use `isnull` if your columns are nullable (or if you're not sure what type of blank values you're dealing with).
-
-### SQL
 
 ### Spreadsheets
 
+If your [feedback table](#replacing-null-values-with-another-value) is in a spreadsheet where "Feedback" is in column A, then the formula
+
+```
+=IF(A2 = "", "Unknown feedback.", A2)
+```
+
+is equivalent to the Metabase `isempty` expression:
+
+```
+case(isempty([Feedback]), "No feedback.", [Feedback])
+```
+
 ### Python
+
+Assuming the [feedback table](#replacing-null-values-with-another-value) is in a dataframe column called `df["Feedback"]`:
+
+```
+df["Custom Column"] = np.where(df["Feedback"] == "", "No feedback.", df["Feedback"])
+```
+
+is equivalent to the Metabase `isnull` expression:
+
+```
+case(isempty([Feedback]), "No feedback.", [Feedback])
+```
+
+## Further reading
+
+- [Custom expressions documentation][custom-expressions-doc]
+- [Custom expressions tutorial][custom-expressions-learn]
+
+[custom-expressions-doc]: ../expressions
+[custom-expressions-learn]: /learn/questions/custom-expressions
+[data-types]: /learn/databases/data-types-overview#examples-of-data-types
+[numpy]: https://numpy.org/doc/
+[pandas]: https://pandas.pydata.org/pandas-docs/stable/
