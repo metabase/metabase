@@ -28,7 +28,7 @@
    mbql-query))
 
 (defn mark-outer-select-fields
-  "Mark all Fields in the MBQL query `query` coming from a source-query as `::outer-select` so QP implementations know
+  "Mark all Fields in the MBQL query `query` coming from a source-query as `:nested/outer` so QP implementations know
   not to apply coercion or whatever to them a second time"
   [query]
   (cond-> query

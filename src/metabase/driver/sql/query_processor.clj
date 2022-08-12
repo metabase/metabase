@@ -360,8 +360,7 @@
           source-alias         (field-source-alias field-clause)
           field                (when (integer? id-or-name)
                                  (qp.store/field id-or-name))
-          outer-select         (or (:metabase.query-processor.middleware.mark-outer-select-fields/outer-select options)
-                                   (::nest-query/outer-select options))
+          outer-select         (:nested/outer options)
           allow-casting?       (and field
                                     (not outer-select))
           database-type        (or database-type
@@ -376,7 +375,7 @@
       (u/prog1
         (cond->> identifier
           allow-casting?           (cast-field-if-needed driver field)
-          database-type            maybe-add-db-type                         ; only add type info if it wasn't added by [[cast-field-if-needed]]
+          database-type            maybe-add-db-type ; only add type info if it wasn't added by [[cast-field-if-needed]]
           (:temporal-unit options) (apply-temporal-bucketing driver options)
           (:binning options)       (apply-binning options))
         (log/trace (binding [*print-meta* true]
@@ -629,12 +628,12 @@
      [:field id-or-name opts]
      [:field id-or-name (cond-> opts
                           true
-                          (assoc ::add/source-alias        (::add/desired-alias opts)
-                                 ::add/source-table        ::add/none
+                          (assoc ::add/source-alias (::add/desired-alias opts)
+                                 ::add/source-table ::add/none
                                  ;; sort of a HACK but this key will tell the SQL QP not to apply casting here either.
-                                 ::nest-query/outer-select true
+                                 :nested/outer      true
                                  ;; used to indicate that this is a forced alias
-                                 ::forced-alias            true)
+                                 ::forced-alias     true)
                           ;; don't want to do temporal bucketing or binning inside the order by only.
                           ;; That happens inside the `SELECT`
                           ;; (#22831) however, we do want it in breakout
