@@ -14,11 +14,15 @@
                body))
              (meta dataset))}))
 
-(defn $ids [{:keys [node]}]
+(defn $ids [{:keys [node] :as opts}]
   (let [args (rest (:children node))]
     (if (= 1 (count args))
-      {:node (update node :children (fn [[ids form]]
-                                      (list* ids (hooks/token-node nil) form)))}
+      (let [new-node (update node :children
+                             (fn [[ids form]]
+                               (if (= "mbql-query" (name (hooks/sexpr ids)))
+                                 [ids (hooks/token-node nil) (hooks/token-node nil)]
+                                 [ids (hooks/token-node nil) form])))]
+        (recur (assoc opts :node new-node)))
       (let [args (rest (:children node))
             [table-name & body] args
             unused-node (hooks/token-node '_)
@@ -47,13 +51,14 @@
                               (conj (next unused-bindings)
                                     (first unused-bindings)
                                     unused-node)
-                              []))]
-        {:node (with-meta
-                 (hooks/list-node
-                  (with-meta
-                    (list*
-                     (hooks/token-node 'let)
-                     (hooks/vector-node (vec final-bindings))
-                     body)
-                    (meta body)))
-                 (meta body))}))))
+                              []))
+            new-node (with-meta
+                       (hooks/list-node
+                        (with-meta
+                          (list*
+                           (hooks/token-node 'let)
+                           (hooks/vector-node (vec final-bindings))
+                           body)
+                          (meta body)))
+                       (meta body))]
+        {:node new-node}))))
