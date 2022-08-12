@@ -85,8 +85,6 @@
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
-(def ^:private limited-char-drivers #{:bigquery-cloud-sdk})
-
 (deftest dont-return-expressions-if-fields-is-explicit-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     ;; bigquery doesn't let you have hypthens in field, table, etc names

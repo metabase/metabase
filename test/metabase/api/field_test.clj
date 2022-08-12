@@ -6,6 +6,7 @@
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database Field FieldValues Table]]
             [metabase.sync :as sync]
+            [metabase.sync.concurrent :as sync.concurrent]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.timeseries-query-processor-test.util :as tqpt]
@@ -151,7 +152,7 @@
                                         ;; unix is an integer->Temporal conversion
                                         {:coercion_strategy :Coercion/UNIXMicroSeconds->DateTime}))))))
       (testing "Refingerprints field when updated"
-        (with-redefs [metabase.sync.concurrent/submit-task (fn [task] (task))]
+        (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
           (mt/dataset integer-coerceable
             (sync/sync-database! (Database (mt/id)))
             (let [field-id      (mt/id :t :f)

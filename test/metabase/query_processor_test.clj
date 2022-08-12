@@ -6,7 +6,7 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase.db.connection :as mdb.conn]
+            [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.models.field :refer [Field]]
@@ -197,7 +197,7 @@
 (declare cols)
 
 (def ^:private ^{:arglists '([db-id table-id field-id])} native-query-col*
-  (mdb.conn/memoize-for-application-db
+  (mdb.connection/memoize-for-application-db
    (fn [db-id table-id field-id]
      (first
       (cols

@@ -169,8 +169,8 @@
 
 (deftest normalize-result-metadata-test
   (testing "Should normalize result metadata keys when fetching a Card from the DB"
-    (let [metadata (qp/query->expected-cols (mt/mbql-query :venues))]
-      (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query :venues)
+    (let [metadata (qp/query->expected-cols (mt/mbql-query venues))]
+      (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query venues)
                                          :result_metadata metadata}]
         (is (= (mt/derecordize metadata)
                (mt/derecordize (db/select-one-field :result_metadata Card :id card-id))))))))
@@ -181,19 +181,19 @@
                         (mt/with-temp Card [{card-id :id} properties]
                           (f (db/select-one-field :result_metadata Card :id card-id))))
            "updating" (fn [changes f]
-                        (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query :checkins)
-                                                           :result_metadata (qp/query->expected-cols (mt/mbql-query :checkins))}]
+                        (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query checkins)
+                                                           :result_metadata (qp/query->expected-cols (mt/mbql-query checkins))}]
                           (db/update! Card card-id changes)
                           (f (db/select-one-field :result_metadata Card :id card-id))))}]
     (testing (format "When %s a Card\n" creating-or-updating)
       (testing "If result_metadata is empty, we should attempt to populate it"
-        (f {:dataset_query (mt/mbql-query :venues)}
+        (f {:dataset_query (mt/mbql-query venues)}
            (fn [metadata]
-             (is (= (map :name (qp/query->expected-cols (mt/mbql-query :venues)))
+             (is (= (map :name (qp/query->expected-cols (mt/mbql-query venues)))
                     (map :name metadata))))))
       (testing "Don't overwrite result_metadata that was passed in"
-        (let [metadata (take 1 (qp/query->expected-cols (mt/mbql-query :venues)))]
-          (f {:dataset_query   (mt/mbql-query :venues)
+        (let [metadata (take 1 (qp/query->expected-cols (mt/mbql-query venues)))]
+          (f {:dataset_query   (mt/mbql-query venues)
               :result_metadata metadata}
              (fn [new-metadata]
                (is (= (mt/derecordize metadata)

@@ -400,9 +400,9 @@
 ;; TODO - not sure everything below belongs in this namespace
 
 (s/defn ^:private dataset-field-definition :- ValidFieldDefinition
-  [field-definition-map :- DatasetFieldDefinition]
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
   comsumption by various test-data-loading methods."
+  [field-definition-map :- DatasetFieldDefinition]
   ;; if definition uses a coercion strategy they need to provide the effective-type
   (map->FieldDefinition field-definition-map))
 

@@ -456,7 +456,7 @@
            (mt/user-http-request :lucky :get 200 "database?saved=true"))))
     (testing "Omit virtual DB if nested queries are disabled"
       (tu/with-temporary-setting-values [enable-nested-queries false]
-        (every? some? (:data (mt/user-http-request :lucky :get 200 "database?saved=true")))))))
+        (is (every? some? (:data (mt/user-http-request :lucky :get 200 "database?saved=true"))))))))
 
 (deftest fetch-databases-with-invalid-driver-test
   (testing "GET /api/database"

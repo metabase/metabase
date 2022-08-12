@@ -1,11 +1,10 @@
 (ns metabase.api.common-test
   (:require [clojure.test :refer :all]
-            [metabase.api.common :as api :refer :all]
-            [metabase.api.common.internal :refer :all]
+            [metabase.api.common :as api :refer  [*current-user* check-404 defendpoint let-404]]
+            [metabase.api.common.internal :refer [*auto-parse-types*]]
             [metabase.server.middleware.exceptions :as mw.exceptions]
             [metabase.server.middleware.misc :as mw.misc]
             [metabase.server.middleware.security :as mw.security]
-            [metabase.test.data :refer :all]
             [metabase.util.schema :as su]))
 
 ;;; TESTS FOR CHECK (ETC)

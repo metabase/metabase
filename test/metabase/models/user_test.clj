@@ -188,7 +188,7 @@
     (mt/with-temporary-setting-values [enable-password-login false]
       (ldap.test/with-ldap-server
         (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
-        (is (not (empty? (mt/regex-email-bodies #"/auth/login"))))))))
+        (is (seq (mt/regex-email-bodies #"/auth/login")))))))
 
 (deftest ldap-user-passwords-test
   (testing (str "LDAP users should not persist their passwords. Check that if somehow we get passed an LDAP user "

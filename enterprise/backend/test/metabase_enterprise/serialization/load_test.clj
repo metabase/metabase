@@ -381,7 +381,7 @@
             (doseq [[model entity] (:entities fingerprint)]
               (testing (format "%s \"%s\"" (type model) (:name entity))
                 (is (or (-> entity :name nil?)
-                        (if-let [loaded (db/select-one model :name (:name entity))]
+                        (when-let [loaded (db/select-one model :name (:name entity))]
                           (assert-loaded-entity loaded fingerprint))
                         (and (-> entity :archived) ; archived card hasn't been dump-loaded
                              (= (:name entity) "My Arch Card"))
