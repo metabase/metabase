@@ -1,5 +1,14 @@
 (ns metabase.api.embed-test
   "Tests for /api/embed endpoints."
+  {:clj-kondo/config
+   '{:linters {:unresolved-symbol
+               {:exclude
+                [(metabase.api.embed-test/with-temp-card)
+                 (metabase.api.embed-test/with-temp-dashcard)
+                 (metabase.api.embed-test/do-response-formats)
+                 (metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing)
+                 (metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing)]}}
+     :lint-as {metabase.api.embed-test/with-chain-filter-fixtures clojure.core/fn}}}
   (:require [buddy.sign.jwt :as jwt]
             [buddy.sign.util :as buddy-util]
             [clj-time.core :as time]
@@ -155,7 +164,7 @@
     (with-temp-card [card {:enable_embedding true}]
       (is (= successful-card-info
              (dissoc-id-and-name
-               (client/client :get 200 (card-url card))))))))
+              (client/client :get 200 (card-url card))))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token
   (with-embedding-enabled-and-new-secret-key
@@ -231,42 +240,42 @@
 (deftest card-query-test
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
     (do-response-formats [response-format request-options]
-      (testing "check that the endpoint doesn't work if embedding isn't enabled"
-        (mt/with-temporary-setting-values [enable-embedding false]
-          (with-new-secret-key
-            (with-temp-card [card]
-              (is (= "Embedding is not enabled."
-                     (client/client :get 400 (card-query-url card response-format))))))))
+                         (testing "check that the endpoint doesn't work if embedding isn't enabled"
+                           (mt/with-temporary-setting-values [enable-embedding false]
+                             (with-new-secret-key
+                               (with-temp-card [card]
+                                 (is (= "Embedding is not enabled."
+                                        (client/client :get 400 (card-query-url card response-format))))))))
 
-      (with-embedding-enabled-and-new-secret-key
-        (let [expected-status (response-format->status-code response-format)]
-          (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
-            (with-temp-card [card {:enable_embedding true}]
-              (test-query-results
-               response-format
-               (client/client :get expected-status (card-query-url card response-format)
-                              {:request-options request-options}))))
+                         (with-embedding-enabled-and-new-secret-key
+                           (let [expected-status (response-format->status-code response-format)]
+                             (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
+                               (with-temp-card [card {:enable_embedding true}]
+                                 (test-query-results
+                                  response-format
+                                  (client/client :get expected-status (card-query-url card response-format)
+                                                 {:request-options request-options}))))
 
-          (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" "
-                        "exception (rather than leaking query info)")
-            (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
-                                                                           :type     :native
-                                                                           :native   {:query "SELECT * FROM XYZ"}}}]
-              (is (= {:status     "failed"
-                      :error      "An error occurred while running the query."
-                      :error_type "invalid-query"}
-                     (client/client :get expected-status (card-query-url card response-format)))))))
+                             (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" "
+                                           "exception (rather than leaking query info)")
+                               (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
+                                                                                              :type     :native
+                                                                                              :native   {:query "SELECT * FROM XYZ"}}}]
+                                 (is (= {:status     "failed"
+                                         :error      "An error occurred while running the query."
+                                         :error_type "invalid-query"}
+                                        (client/client :get expected-status (card-query-url card response-format)))))))
 
-        (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
-          (with-temp-card [card]
-            (is (= "Embedding is not enabled for this object."
-                   (client/client :get 400 (card-query-url card response-format))))))
+                           (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
+                             (with-temp-card [card]
+                               (is (= "Embedding is not enabled for this object."
+                                      (client/client :get 400 (card-query-url card response-format))))))
 
-        (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
-                      "signed with the wrong key")
-          (with-temp-card [card {:enable_embedding true}]
-            (is (= "Message seems corrupt or manipulated."
-                   (client/client :get 400 (with-new-secret-key (card-query-url card response-format)))))))))))
+                           (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
+                                         "signed with the wrong key")
+                             (with-temp-card [card {:enable_embedding true}]
+                               (is (= "Message seems corrupt or manipulated."
+                                      (client/client :get 400 (with-new-secret-key (card-query-url card response-format)))))))))))
 
 
 (deftest download-formatted-without-constraints-test
@@ -288,57 +297,57 @@
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "locked"}}]
       (do-response-formats [response-format request-options]
-        (testing (str "check that if embedding is enabled globally and for the object requests fail if the token is "
-                      "missing a `:locked` parameter")
-          (is (= "You must specify a value for :venue_id in the JWT."
-                 (client/client :get 400 (card-query-url card response-format)))))
+                           (testing (str "check that if embedding is enabled globally and for the object requests fail if the token is "
+                                         "missing a `:locked` parameter")
+                             (is (= "You must specify a value for :venue_id in the JWT."
+                                    (client/client :get 400 (card-query-url card response-format)))))
 
-        (testing "if `:locked` param is present, request should succeed"
-          (test-query-results
-           response-format
-           (client/client :get (response-format->status-code response-format)
-                          (card-query-url card response-format {:params {:venue_id 100}})
-                          {:request-options request-options})))
+                           (testing "if `:locked` param is present, request should succeed"
+                             (test-query-results
+                              response-format
+                              (client/client :get (response-format->status-code response-format)
+                                             (card-query-url card response-format {:params {:venue_id 100}})
+                                             {:request-options request-options})))
 
-        (testing "If `:locked` parameter is present in URL params, request should fail"
-          (is (= "You can only specify a value for :venue_id in the JWT."
-                 (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=100")))))))))
+                           (testing "If `:locked` parameter is present in URL params, request should fail"
+                             (is (= "You can only specify a value for :venue_id in the JWT."
+                                    (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=100")))))))))
 
 
 (deftest card-disabled-params-test
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "disabled"}}]
       (do-response-formats [response-format request-options]
-        (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
-                      "`:disabled` parameter")
-          (is (= "You're not allowed to specify a value for :venue_id."
-                 (client/client :get 400 (card-query-url card response-format {:params {:venue_id 100}})))))
+                           (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
+                                         "`:disabled` parameter")
+                             (is (= "You're not allowed to specify a value for :venue_id."
+                                    (client/client :get 400 (card-query-url card response-format {:params {:venue_id 100}})))))
 
-        (testing "If a `:disabled` param is passed in the URL the request should fail"
-          (is (= "You're not allowed to specify a value for :venue_id."
-                 (client/client :get 400 (str (card-query-url card response-format) "?venue_id=200")))))))))
+                           (testing "If a `:disabled` param is passed in the URL the request should fail"
+                             (is (= "You're not allowed to specify a value for :venue_id."
+                                    (client/client :get 400 (str (card-query-url card response-format) "?venue_id=200")))))))))
 
 (deftest card-enabled-params-test
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "enabled"}}]
       (do-response-formats [response-format request-options]
-        (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
-          (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
-                 (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=200")))))
+                           (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
+                             (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
+                                    (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=200")))))
 
-        (testing "If an `:enabled` param is present in the JWT, that's ok"
-          (test-query-results
-           response-format
-           (client/client :get (response-format->status-code response-format)
-                          (card-query-url card response-format {:params {:venue_id "enabled"}})
-                          {:request-options request-options})))
+                           (testing "If an `:enabled` param is present in the JWT, that's ok"
+                             (test-query-results
+                              response-format
+                              (client/client :get (response-format->status-code response-format)
+                                             (card-query-url card response-format {:params {:venue_id "enabled"}})
+                                             {:request-options request-options})))
 
-        (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
-          (test-query-results
-           response-format
-           (client/client :get (response-format->status-code response-format)
-                          (str (card-query-url card response-format) "?venue_id=200")
-                          {:request-options request-options})))))))
+                           (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
+                             (test-query-results
+                              response-format
+                              (client/client :get (response-format->status-code response-format)
+                                             (str (card-query-url card response-format) "?venue_id=200")
+                                             {:request-options request-options})))))))
 
 (defn- card-with-date-field-filter []
   {:dataset_query    {:database (mt/id)
@@ -379,7 +388,7 @@
     (mt/with-temp Dashboard [dash {:enable_embedding true}]
       (is (= successful-dashboard-info
              (dissoc-id-and-name
-               (client/client :get 200 (dashboard-url dash))))))))
+              (client/client :get 200 (dashboard-url dash))))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token-2
   (with-embedding-enabled-and-new-secret-key
@@ -587,15 +596,15 @@
 (defn- do-with-embedding-enabled-and-temp-card-referencing {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key
     (mt/with-temp Card [card (assoc (public-test/mbql-card-referencing table-kw field-kw)
-                               :enable_embedding true)]
+                                    :enable_embedding true)]
       (f card))))
 
 (defmacro ^:private with-embedding-enabled-and-temp-card-referencing
   {:style/indent 3}
   [table-kw field-kw [card-binding] & body]
   `(do-with-embedding-enabled-and-temp-card-referencing ~table-kw ~field-kw
-     (fn [~(or card-binding '_)]
-       ~@body)))
+                                                        (fn [~(or card-binding '_)]
+                                                          ~@body)))
 
 ;; should be able to fetch values for a Field referenced by a public Card
 (deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
@@ -648,8 +657,8 @@
   {:style/indent 3}
   [table-kw field-kw [dash-binding card-binding dashcard-binding] & body]
   `(do-with-embedding-enabled-and-temp-dashcard-referencing ~table-kw ~field-kw
-     (fn [~(or dash-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
-       ~@body)))
+                                                            (fn [~(or dash-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
+                                                              ~@body)))
 
 ;; should be able to use it when everything is g2g
 (deftest should-be-able-to-use-it-when-everything-is-g2g
@@ -698,35 +707,35 @@
 
 (deftest field-search-test
   (testing
-    (letfn [(tests [model object]
-              (is (= [[93 "33 Taps"]]
-                     (client/client :get 200 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
-                                    :value "33 T")))
+      (letfn [(tests [model object]
+                (is (= [[93 "33 Taps"]]
+                       (client/client :get 200 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
+                                      :value "33 T")))
 
-              (testing "if search field isn't allowed to be used with the other Field endpoint should return exception"
-                (is (= "Invalid Request."
-                       (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :price))
-                                      :value "33 T"))))
+                (testing "if search field isn't allowed to be used with the other Field endpoint should return exception"
+                  (is (= "Invalid Request."
+                         (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :price))
+                                        :value "33 T"))))
 
-              (testing "Endpoint should fail if embedding is disabled"
-                (mt/with-temporary-setting-values [enable-embedding false]
-                  (is (= "Embedding is not enabled."
+                (testing "Endpoint should fail if embedding is disabled"
+                  (mt/with-temporary-setting-values [enable-embedding false]
+                    (is (= "Embedding is not enabled."
+                           (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
+                                          :value "33 T")))))
+
+                (testing "Endpoint should fail if embedding is disabled for the object"
+                  (db/update! model (u/the-id object) :enable_embedding false)
+                  (is (= "Embedding is not enabled for this object."
                          (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
-                                        :value "33 T")))))
-
-              (testing "Endpoint should fail if embedding is disabled for the object"
-                (db/update! model (u/the-id object) :enable_embedding false)
-                (is (= "Embedding is not enabled for this object."
-                       (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
-                                      :value "33 T")))))]
-      (testing "GET /api/embed/card/:token/field/:field/search/:search-field-id nil"
-        (testing "Search for Field values for a Card"
-          (with-embedding-enabled-and-temp-card-referencing :venues :id [card]
-            (tests Card card))))
-      (testing "GET /api/embed/dashboard/:token/field/:field/search/:search-field-id nil"
-        (testing "Search for Field values for a Dashboard"
-          (with-embedding-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
-            (tests Dashboard dashboard)))))))
+                                        :value "33 T")))))]
+        (testing "GET /api/embed/card/:token/field/:field/search/:search-field-id nil"
+          (testing "Search for Field values for a Card"
+            (with-embedding-enabled-and-temp-card-referencing :venues :id [card]
+              (tests Card card))))
+        (testing "GET /api/embed/dashboard/:token/field/:field/search/:search-field-id nil"
+          (testing "Search for Field values for a Dashboard"
+            (with-embedding-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+              (tests Dashboard dashboard)))))))
 
 
 ;;; ----------------------- GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil ------------------------
@@ -1135,15 +1144,15 @@
     (mt/dataset sample-dataset
       (with-embedding-enabled-and-new-secret-key
         (mt/with-temp Card [{card-id :id, :as card} {:dataset_query    (mt/native-query
-                                                                         {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
-                                                                          :template-tags {"NAME"
-                                                                                          {:id           "9ddca4ca-3906-83fd-bc6b-8480ae9ab05e"
-                                                                                           :name         "NAME"
-                                                                                           :display-name "Name"
-                                                                                           :type         :dimension
-                                                                                           :dimension    [:field (mt/id :people :name) nil]
-                                                                                           :widget-type  :string/=
-                                                                                           :default      nil}}})
+                                                                        {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                                                                         :template-tags {"NAME"
+                                                                                         {:id           "9ddca4ca-3906-83fd-bc6b-8480ae9ab05e"
+                                                                                          :name         "NAME"
+                                                                                          :display-name "Name"
+                                                                                          :type         :dimension
+                                                                                          :dimension    [:field (mt/id :people :name) nil]
+                                                                                          :widget-type  :string/=
+                                                                                          :default      nil}}})
                                                      :enable_embedding true
                                                      :embedding_params {:NAME "enabled"}}]
           (testing "Card"
@@ -1173,10 +1182,10 @@
     (mt/dataset sample-dataset
       (with-embedding-enabled-and-new-secret-key
         (mt/with-temp Card [card {:dataset_query    (mt/native-query
-                                                      {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
-                                                       :template-tags {"qty_locked" {:name         "qty_locked"
-                                                                                     :display-name "Quantity (Locked)"
-                                                                                     :type         :number}}})
+                                                     {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
+                                                      :template-tags {"qty_locked" {:name         "qty_locked"
+                                                                                    :display-name "Quantity (Locked)"
+                                                                                    :type         :number}}})
                                   :enable_embedding true
                                   :embedding_params {:qty_locked "locked"}}]
           (is (= [3443]
