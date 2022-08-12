@@ -1,4 +1,8 @@
 (ns metabase.api.search-test
+  {:clj-kondo/config
+   '{:linters {:unresolved-symbol
+               {:exclude [(metabase.api.search-test/with-search-items-in-collection)
+                          (metabase.api.search-test/do-test-users)]}}}}
   (:require [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer :all]
@@ -6,12 +10,13 @@
             [metabase.api.search :as api.search]
             [metabase.models
              :refer
-             [Card CardBookmark Collection Dashboard DashboardBookmark DashboardCard
-              Database Metric PermissionsGroup PermissionsGroupMembership Pulse PulseCard
-              Segment Table]]
+             [Card CardBookmark Collection Dashboard DashboardBookmark
+              DashboardCard Database Metric PermissionsGroup
+              PermissionsGroupMembership Pulse PulseCard Segment Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.search.config :as search-config]
+            [metabase.search.scoring]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
