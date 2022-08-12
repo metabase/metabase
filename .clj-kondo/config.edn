@@ -459,5 +459,4 @@
     :unused-binding       {:level :off}
     :unresolved-symbol    {:level :off}
     :deprecated-var       {:level :off}
-    :unresolved-namespace {:level :off}
     }}}}

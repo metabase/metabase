@@ -11,6 +11,7 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models.database :refer [Database]]
@@ -495,12 +496,12 @@
         (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [sql]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= metabase.driver.sql-jdbc.sync.describe-table/max-nested-field-columns
+          (is (= sql-jdbc.describe-table/max-nested-field-columns
                  (count
-                   (sql-jdbc.sync/describe-nested-field-columns
-                     :postgres
-                     database
-                     {:name "big_json_table"}))))
+                  (sql-jdbc.sync/describe-nested-field-columns
+                   :postgres
+                   database
+                   {:name "big_json_table"}))))
           (is (str/includes?
                 (get-in (mt/with-log-messages-for-level :warn
                               (sql-jdbc.sync/describe-nested-field-columns

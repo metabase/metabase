@@ -1,5 +1,6 @@
 (ns metabase.public-settings.premium-features-test
   (:require [cheshire.core :as json]
+            [clj-http.client :as http]
             [clj-http.fake :as http-fake]
             [clojure.test :refer :all]
             [metabase.config :as config]
@@ -66,10 +67,10 @@
         (let [result (token-status-response random-fake-token {:status 500})]
           (is (false? (:valid result)))))
       (testing "On other errors"
-        (binding [clj-http.client/request (fn [& args]
-                                            ;; note originally the code caught clojure.lang.ExceptionInfo so don't
-                                            ;; throw an ex-info here
-                                            (throw (Exception. "network issues")))]
+        (binding [http/request (fn [& args]
+                                 ;; note originally the code caught clojure.lang.ExceptionInfo so don't
+                                 ;; throw an ex-info here
+                                 (throw (Exception. "network issues")))]
           (is (= {:valid         false
                   :status        "Unable to validate token"
                   :error-details "network issues"}
