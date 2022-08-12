@@ -107,7 +107,7 @@
     (format "{%s: %s}" (field->name field) (param-value->str field value))
     (substitute-one-field-filter field-filter)))
 
-(defn- substitute-param [param->value [acc missing] in-optional? {:keys [k], :as param}]
+(defn- substitute-param [param->value [acc missing] in-optional? {:keys [k], :as _param}]
   (let [v (get param->value k)]
     (cond
       (not (contains? param->value k))
@@ -191,6 +191,6 @@
 
 (defn substitute-native-parameters
   "Implementation of `driver/substitute-native-parameters` for MongoDB."
-  [driver inner-query]
+  [_driver inner-query]
   (let [param->value (params.values/query->params-map inner-query)]
     (update inner-query :query (partial walk/postwalk (partial parse-and-substitute param->value)))))
