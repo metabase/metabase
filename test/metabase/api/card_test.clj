@@ -2109,7 +2109,7 @@
                             :result_metadata
                             (map :description)))))))))))
   (testing "Cards preserve edits to `visibility_type` (#22520)"
-    (mt/with-temp* [Card [model {:dataset_query (mt/mbql-query :venues
+    (mt/with-temp* [Card [model {:dataset_query (mt/mbql-query venues
                                                                {:fields [$id $name]
                                                                 :limit 2})
                                  :dataset       true}]]
