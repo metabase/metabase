@@ -258,8 +258,7 @@
 (s/defn ^:private merge-metadata-for-internal-remaps :- [su/Map]
   [columns :- [su/Map] {:keys [internal-only-dims]} :- (s/maybe InternalColumnsInfo)]
   (reduce
-   (fn [columns internal-dimension-info]
-     (merge-metadata-for-internally-remapped-column columns internal-dimension-info))
+   merge-metadata-for-internally-remapped-column
    columns
    internal-only-dims))
 
@@ -339,8 +338,7 @@
 (s/defn ^:private merge-metadata-for-external-remaps :- [su/Map]
   [columns :- [su/Map] remapping-dimensions :- (s/maybe [ExternalRemappingDimension])]
   (reduce
-   (fn [columns dimension]
-     (merge-metadata-for-externally-remapped-column columns dimension))
+   merge-metadata-for-externally-remapped-column
    columns
    remapping-dimensions))
 

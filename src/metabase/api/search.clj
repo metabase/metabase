@@ -446,7 +446,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ; This is basically a union type. defendpoint splits the string if it only gets one
-(def ^:private models-schema (s/conditional #(vector? %) [su/NonBlankString] :else su/NonBlankString))
+(def ^:private models-schema (s/conditional vector? [su/NonBlankString] :else su/NonBlankString))
 
 (s/defn ^:private search-context :- SearchContext
   [search-string :-   (s/maybe su/NonBlankString),
