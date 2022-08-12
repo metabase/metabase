@@ -40,11 +40,11 @@
   The gtap-attributes is a list with 2 elements:
   1. card-id - for GTAP that use a saved question
   2. a map:
-    - with key is the user-attribute applied to `field-id`
+    - with key is the user-attribute that applied to the table that `field` is in
     - value is the user-attribute of current user corresponding to the key
 
   For example we have an GTAP rules
-  {:card_id 1
+  {:card_id              1
    :attribute_remappings {\"State\" [:dimension [:field 3 nil]]}}
 
   And users with login-attributes {\"State\" \"CA\"}
@@ -58,7 +58,7 @@
           field-ids            (db/select-field :id Field :table_id table_id)]
       [(:card_id gtap)
        (into {} (for [[k v] attribute_remappings
-                      ;; get any attribute that map to field inside the same table
+                      ;; get attribute that map to fields of the same table
                       :when (contains? field-ids
                                        (mbql.u/match-one v [:dimension [:field field-id _]] field-id))]
                   {k (get login-attributes k)}))])))
