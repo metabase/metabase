@@ -456,7 +456,6 @@
     :hooks.metabase.test.data/mbql-query-first-arg {:level :error}
 
     ;; FIXME
-    :unused-binding       {:level :off}
     :unresolved-symbol    {:level :off}
     :deprecated-var       {:level :off}
     }}}}
