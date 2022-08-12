@@ -3,13 +3,13 @@
             [clojure.java.io :as io]
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
+            [metabase.driver :as driver]
             [metabase.query-processor.streaming.interface :as qp.si]
             [metabase.query-processor.streaming.xlsx :as qp.xlsx]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test :as mt])
   (:import com.fasterxml.jackson.core.JsonGenerator
            [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream]))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Format string generation unit tests                                        |
@@ -447,7 +447,7 @@
       (is (= [#inst "2020-03-28T10:12:06.681"]
              (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))))
   (mt/with-everything-store
-    (binding [metabase.driver/*driver* :h2]
+    (binding [driver/*driver* :h2]
       (testing "OffsetDateTime"
         (is (= [#inst "2020-03-28T13:33:06.000-00:00"]
                (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "2020-03-28T10:12:06Z-03:21"]])))))

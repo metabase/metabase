@@ -171,6 +171,7 @@
   {:extra-deps
    {clj-http-fake/clj-http-fake                           {:mvn/version "1.0.3"
                                                            :exclusions  [slingshot/slingshot]}
+    clj-kondo/clj-kondo                                   {:mvn/version "2022.08.03"} ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage                                   {:mvn/version "1.2.2"}
     eftest/eftest                                         {:mvn/version "0.5.9"}
     jonase/eastwood                                       {:mvn/version "1.2.2"}

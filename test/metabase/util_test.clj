@@ -88,7 +88,7 @@
 
 (deftest ^:parallel qualified-name-test
   (mt/are+ [k expected] (= expected
-                        (u/qualified-name k))
+                           (u/qualified-name k))
     :keyword                          "keyword"
     :namespace/keyword                "namespace/keyword"
     ;; `qualified-name` should return strings as-is

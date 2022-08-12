@@ -278,8 +278,7 @@
         (testing "Cached results should exist"
           (is (= true
                  (i/cached-results cache/*backend* query-hash 100
-                   (fn respond [input-stream]
-                     (some? input-stream))))))
+                   some?))))
         (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached

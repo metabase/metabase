@@ -4,8 +4,7 @@
             [medley.core :as m]
             [metabase.test.data.interface :as tx]
             [metabase.util.date-2 :as u.date])
-  (:import java.sql.Time
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
+  (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Various Datasets                                                |

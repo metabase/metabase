@@ -1,11 +1,11 @@
 (ns metabase.automagic-dashboards.comparison-test
   (:require [clojure.test :refer :all]
-            [metabase.automagic-dashboards.comparison :as c :refer :all]
+            [metabase.automagic-dashboards.comparison :as c]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.models :refer [Card Segment Table]]
             [metabase.models.query :as query]
             [metabase.test :as mt]
-            [metabase.test.automagic-dashboards :refer :all]))
+            [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]))
 
 (def ^:private segment
   (delay

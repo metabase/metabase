@@ -19,7 +19,7 @@
   [f]
   (let [updated-field-names (atom #{})]
     (with-redefs [field-values/create-or-update-full-field-values! (fn [field]
-                                                                (swap! updated-field-names conj (:name field)))]
+                                                                     (swap! updated-field-names conj (:name field)))]
       (f updated-field-names)
       @updated-field-names)))
 
@@ -58,7 +58,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- field-values-were-updated-for-new-card? [options]
-  (not (empty? (do-with-updated-fields-for-card options))))
+  (boolean (seq (do-with-updated-fields-for-card options))))
 
 (deftest newly-created-card-test
   (testing "Newly created Card with param referencing Field"
