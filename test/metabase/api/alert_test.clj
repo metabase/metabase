@@ -11,7 +11,7 @@
             [metabase.models.pulse-test :as pulse-test]
             [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
-            [metabase.test.data.users :refer :all]
+            [metabase.test.data.users :refer [fetch-user user->client user->id]]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
             [metabase.test.util :as tu]
             [metabase.util :as u]

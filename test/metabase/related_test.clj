@@ -3,7 +3,7 @@
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.models :refer [Card Collection Metric Segment]]
-            [metabase.related :as related :refer :all]
+            [metabase.related :as related]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.one-off-dbs :as one-off-dbs]))

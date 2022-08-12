@@ -181,5 +181,5 @@
             (is (= (u.date/format-rfc3339 first-user-creation)
                    instance-creation)))))
       (finally
-        (if original-value
+        (when original-value
           (db/update-where! Setting {:key "instance-creation"} :value original-value))))))

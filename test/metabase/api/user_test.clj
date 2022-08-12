@@ -1007,7 +1007,7 @@
       (testing "shouldn't be allowed to set someone else's status"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403
-                                     (format "user/%d/modal/endpoint"
+                                     (format "user/%d/modal/%s"
                                              (mt/user->id :trashbird)
                                              endpoint))))))))
 

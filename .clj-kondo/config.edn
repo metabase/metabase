@@ -35,6 +35,7 @@
            :namespace-name-mismatch      {:level :off}
            :use                          {:level :warning}
            :redundant-fn-wrapper         {:level :warning}
+           :invalid-arity                {:skip-args [metabase.mbql.util.match/match]}
            ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
            ;; :docstring-no-summary                  {:level :warning}
            ;; :docstring-leading-trailing-whitespace {:level :warning}
@@ -402,19 +403,18 @@
    metabase.models.setting/defsetting                         hooks.metabase.models.setting/defsetting
    metabase.models.setting.multi-setting/define-multi-setting hooks.metabase.models.setting/defsetting
    metabase.test/$ids                                         hooks.metabase.test.data/$ids
-   metabase.test/data-query                                   hooks.metabase.test.data/$ids
    metabase.test/dataset                                      hooks.metabase.test.data/dataset
-   metabase.test/mbql-query                                   hooks.metabase.test.data/$ids
-   metabase.test/query                                        hooks.metabase.test.data/$ids
-   metabase.test/run-mbql-query                               hooks.metabase.test.data/$ids
+   metabase.test/mbql-query                                   hooks.metabase.test.data/mbql-query
+   metabase.test/query                                        hooks.metabase.test.data/mbql-query
+   metabase.test/run-mbql-query                               hooks.metabase.test.data/mbql-query
    metabase.test/with-temp                                    hooks.toucan.util.test/with-temp
    metabase.test/with-temp*                                   hooks.toucan.util.test/with-temp*
    metabase-enterprise.serialization.test-util/with-temp-dpc  hooks.toucan.util.test/with-temp*
    metabase.test/with-temporary-setting-values                hooks.metabase.test.util/with-temporary-setting-values
    metabase.test.data/$ids                                    hooks.metabase.test.data/$ids
    metabase.test.data/dataset                                 hooks.metabase.test.data/dataset
-   metabase.test.data/mbql-query                              hooks.metabase.test.data/$ids
-   metabase.test.data/run-mbql-query                          hooks.metabase.test.data/$ids
+   metabase.test.data/mbql-query                              hooks.metabase.test.data/mbql-query
+   metabase.test.data/run-mbql-query                          hooks.metabase.test.data/mbql-query
    metabase.test.util/with-temporary-setting-values           hooks.metabase.test.util/with-temporary-setting-values}
 
   :macroexpand
@@ -428,4 +428,35 @@
    clojurewerkz.quartzite.schedule.simple/schedule macros.quartz/simple-schedule}}
 
  :config-in-comment
- {:linters {:unresolved-symbol {:level :off}}}}
+ {:linters {:unresolved-symbol {:level :off}}}
+
+ ;;
+ ;; TEST CONFIG
+ ;;
+ :ns-groups
+ ;; the following patterns are considered to be test namespaces:
+ ;;
+ ;; - Any namespace ending in `-test` or `-test.whatever`
+ ;; - Any namespace ending in `test-util`
+ ;; - Any namespace that starts with `metabase.test`
+ ;;
+ ;; this list isn't exhaustive because it misses some stuff like the test runner and HTTP client but it's easier to go
+ ;; fix those namespaces than it is to make this regex super hairy.
+ [{:pattern "(?:.*-test(?:\\..*)?$)|(?:.*test-util$)|(?:^metabase\\.test.*)"
+   :name    test-namespaces}]
+
+ :config-in-ns
+ {test-namespaces
+  {:linters
+   {:inline-def        {:level :off}
+    :missing-docstring {:level :off}
+    :private-call      {:level :off}
+
+    ;; custom linters
+    :hooks.metabase.test.data/mbql-query-first-arg {:level :error}
+
+    ;; FIXME
+    :unused-binding       {:level :off}
+    :unresolved-symbol    {:level :off}
+    :deprecated-var       {:level :off}
+    }}}}

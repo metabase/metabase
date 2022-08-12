@@ -440,14 +440,6 @@
                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:cache_ttl nil})
                 (:cache_ttl (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))))))))))
 
-(defn- fingerprint-integers->doubles
-  "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
-  new card"
-  [metadata]
-  (update metadata :fingerprint (fn [fingerprint] (-> fingerprint
-                                                      (update-in [:type :type/Number :min] double)
-                                                      (update-in [:type :type/Number :max] double)))))
-
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -468,8 +460,8 @@
                      (db/select-one-field :result_metadata Card :name card-name))))))))))
 
 (deftest updating-card-updates-metadata
-  (let [query          (mt/mbql-query :venues {:fields [$id $name]})
-        modified-query (mt/mbql-query :venues {:fields [$id $name $price]})
+  (let [query          (mt/mbql-query venues {:fields [$id $name]})
+        modified-query (mt/mbql-query venues {:fields [$id $name $price]})
         norm           (comp str/upper-case :name)
         to-native      (fn [q]
                          {:database (:database q)
@@ -613,7 +605,7 @@
     ;; able to ad-hoc query it now.
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (let [query        (mt/mbql-query :venues)
+      (let [query        (mt/mbql-query venues)
             create-card! (fn [test-user expected-status-code]
                            (mt/with-model-cleanup [Card]
                              (mt/user-http-request test-user :post expected-status-code "card"
@@ -1120,16 +1112,16 @@
     ;; able to ad-hoc query it now.
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query :venues)}]
+      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query venues)}]
         (let [update-card! (fn [test-user expected-status-code request-body]
                              (mt/user-http-request test-user :put expected-status-code (format "card/%d" card-id)
                                                    request-body))]
           (testing "\nadmin"
             (testing "*should* be allowed to update query"
               (is (schema= {:id            (s/eq card-id)
-                            :dataset_query (s/eq (mt/obj->json->obj (mt/mbql-query :checkins)))
+                            :dataset_query (s/eq (mt/obj->json->obj (mt/mbql-query checkins)))
                             s/Keyword      s/Any}
-                           (update-card! :crowberto 200 {:dataset_query (mt/mbql-query :checkins)})))))
+                           (update-card! :crowberto 200 {:dataset_query (mt/mbql-query checkins)})))))
 
           (testing "\nnon-admin"
             (testing "should be allowed to update fields besides query"
@@ -1141,12 +1133,12 @@
             (testing "should *not* be allowed to update query"
               (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
                 (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
-                              :query          (s/eq (mt/obj->json->obj (mt/mbql-query :users)))
+                              :query          (s/eq (mt/obj->json->obj (mt/mbql-query users)))
                               :required-perms [perms/Path]
                               :actual-perms   [perms/Path]
                               :trace          [s/Any]
                               s/Keyword       s/Any}
-                             (update-card! :rasta 403 {:dataset_query (mt/mbql-query :users)}))))
+                             (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
               (testing "make sure query hasn't changed in the DB"
                 (is (= (mt/mbql-query checkins)
                        (db/select-one-field :dataset_query Card :id card-id)))))
@@ -1154,7 +1146,7 @@
             (testing "should be allowed to update other fields if query is passed in but hasn't changed (##11719)"
               (is (schema= {:id            (s/eq card-id)
                             :name          (s/eq "Another new name")
-                            :dataset_query (s/eq (mt/obj->json->obj (mt/mbql-query :checkins)))
+                            :dataset_query (s/eq (mt/obj->json->obj (mt/mbql-query checkins)))
                             s/Keyword      s/Any}
                            (update-card! :rasta 200 {:name "Another new name", :dataset_query (mt/mbql-query checkins)}))))))))))
 
@@ -2054,8 +2046,8 @@
                           (map only-user-edits)
                           (map #(update % :semantic_type keyword)))))))))))
   (testing "Cards preserve edits to metadata when query changes"
-    (let [query          (mt/mbql-query :venues {:fields [$id $name]})
-          modified-query (mt/mbql-query :venues {:fields [$id $name $price]})
+    (let [query          (mt/mbql-query venues {:fields [$id $name]})
+          modified-query (mt/mbql-query venues {:fields [$id $name $price]})
           norm           (comp str/upper-case :name)
           to-native      (fn [q]
                            {:database (:database q)

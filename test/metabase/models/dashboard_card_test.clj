@@ -241,7 +241,7 @@
            (is (= expected
                   (db/select-one-field :visualization_settings DashboardCard :id (u/the-id dashcard))))))))))
 
-(deftest normalize-parameter-mappings-test
+(deftest normalize-parameter-mappings-test-2
   (testing "make sure parameter mappings correctly normalize things like legacy MBQL clauses"
     (is (= [{:target [:dimension [:field 30 {:source-field 23}]]}]
            ((i.test/type-fn :parameters-list :out)

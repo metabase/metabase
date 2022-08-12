@@ -12,6 +12,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.search.config :as search-config]
+            [metabase.search.scoring :as scoring]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
@@ -48,7 +49,7 @@
 
 (defn- sorted-results [results]
   (->> results
-       (sort-by (juxt (comp (var-get #'metabase.search.scoring/model->sort-position) :model)))
+       (sort-by (juxt (comp (var-get #'scoring/model->sort-position) :model)))
        reverse))
 
 (defn- make-result
