@@ -1,9 +1,11 @@
 (ns metabase.query-processor.middleware.mark-outer-select-fields
-  (:require [clojure.walk :as walk]))
+  (:require [clojure.walk :as walk]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.query-processor.util :as qp.util]))
 
 (defn- matching-fields?
   [field source-field]
-  (every? #(= (field %) (source-field %)) [0 1]))
+  (= (qp.util/field-ref->key field) (qp.util/field-ref->key source-field)))
 
 (defn- mark-mbql-outer-select-fields
   [mbql-query]
@@ -20,7 +22,8 @@
          (assoc :fields
                 (mapv (fn [field]
                         (cond-> field
-                          (some #(matching-fields? field %) source-fields) (assoc-in [2 ::outer-select] true)))
+                          (some #(matching-fields? field %) source-fields)
+                          (mbql.u/assoc-field-options :nested/outer true)))
                       fields)))))
    mbql-query))
 
