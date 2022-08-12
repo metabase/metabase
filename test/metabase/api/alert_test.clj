@@ -823,8 +823,8 @@
            (mt/with-temp* [Card                  [card  (basic-alert-query)]
                            Pulse                 [alert (basic-alert)]
                            PulseCard             [_     (pulse-card alert card)]
-                           PulseChannel          [_     (assoc (pulse-channel alert) :channel_type :email)]
-                           PulseChannel          [_     (assoc (pulse-channel alert) :channel_type :slack)]
+                           PulseChannel          [pc-1  (assoc (pulse-channel alert) :channel_type :email)]
+                           PulseChannel          [_pc-2 (assoc (pulse-channel alert) :channel_type :slack)]
                            PulseChannelRecipient [_     (recipient pc-1 :rasta)]]
              (with-alerts-in-readable-collection [alert]
                (with-alert-setup
