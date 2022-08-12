@@ -336,7 +336,7 @@
 ;; This is not an issue limited to expressions, but using expressions is the most straightforward
 ;; way to reproducing it.
 (deftest no-lazyness-test
-  (let [{:keys [num-fields], :as dataset-def} (no-laziness-dataset-definition 300)]
+  (let [dataset-def (no-laziness-dataset-definition 300)]
     (mt/dataset dataset-def
       (let [query (mt/mbql-query lots-of-fields
                     {:expressions {:c [:+
@@ -427,7 +427,6 @@
       (mt/dataset test-data
         (let [r-word  "r_word"
               no-sp   "no_spaces"
-              id      (mt/id :venues :id)
               results (mt/run-mbql-query venues
                         {:expressions  {r-word [:regex-match-first [:field-id (mt/id :venues :name)] "^R[^ ]+"]
                                         no-sp  [:replace [:field-id (mt/id :venues :name)] " " ""]}

@@ -54,7 +54,7 @@
                  (:public_uuid card))))))))
 
 (defn- dummy-dataset-query [database-id]
-  {:database (mt/id)
+  {:database database-id
    :type     :native
    :native   {:query "SELECT count(*) FROM toucan_sightings;"}})
 
@@ -269,7 +269,7 @@
        (is (some? card))))
 
     (testing "updating"
-      (mt/with-temp Card [{:keys [id] :as card} {:parameters []}]
+      (mt/with-temp Card [{:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with :id and :type keys"
