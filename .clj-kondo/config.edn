@@ -440,7 +440,8 @@
                   :deprecated-var {:level :off}
                   :unresolved-symbol
                   {:exclude [(metabase.models.pulse-test/with-pulse-in-collection)
-                             (metabase.models.collection-test/with-collection-hierarchy)]}}}
+                             (metabase.models.collection-test/with-collection-hierarchy)
+                             (metabase.models.dashboard-test/with-dash-in-collection)]}}}
 
                 metabase.api.alert-test
                 {:linters {:unresolved-symbol
