@@ -1,4 +1,8 @@
 (ns metabase.models.params.chain-filter-test
+  {:clj-kondo/config
+   '{:linters
+     {:unresolved-symbol {:exclude [(metabase.models.params.chain-filter-test/chain-filter)
+                                    (metabase.models.params.chain-filter-test/chain-filter-search)]}}}}
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
             [metabase.models :refer [Field FieldValues]]
