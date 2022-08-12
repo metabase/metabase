@@ -56,7 +56,7 @@ const mapDispatchToProps = {
   // The state and callbacks are received via props
   ..._.omit(actions, "startEditing", "endEditing"),
 
-  onUpdate: actions.rUpdateMetricDetail,
+  onSubmit: actions.rUpdateMetricDetail,
   onChangeLocation: push,
 };
 
@@ -83,8 +83,7 @@ const propTypes = {
   isFormulaExpanded: PropTypes.bool,
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
-  submitting: PropTypes.bool,
-  onUpdate: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
   onChangeLocation: PropTypes.func.isRequired,
 };
 
@@ -103,20 +102,28 @@ const MetricDetail = props => {
     expandFormula,
     collapseFormula,
     isFormulaExpanded,
-    submitting,
-    onUpdate,
+    onSubmit,
     onChangeLocation,
   } = props;
 
-  const { getFieldProps, getFieldMeta, handleSubmit, handleReset } = useFormik({
+  const {
+    isSubmitting,
+    getFieldProps,
+    getFieldMeta,
+    handleSubmit,
+    handleReset,
+  } = useFormik({
     validate,
     initialValues: {},
     initialErrors: validate({}),
     onSubmit: fields =>
-      onUpdate(entity, fields, { ...props, resetForm: handleReset }),
+      onSubmit(entity, fields, { ...props, resetForm: handleReset }),
   });
 
-  const getField = name => ({ ...getFieldProps(name), ...getFieldMeta(name) });
+  const getFormField = name => ({
+    ...getFieldProps(name),
+    ...getFieldMeta(name),
+  });
 
   return (
     <form style={style} className="full" onSubmit={handleSubmit}>
@@ -126,8 +133,8 @@ const MetricDetail = props => {
           onSubmit={handleSubmit}
           endEditing={endEditing}
           reinitializeForm={handleReset}
-          submitting={submitting}
-          revisionMessageFormField={getField("revision_message")}
+          submitting={isSubmitting}
+          revisionMessageFormField={getFormField("revision_message")}
         />
       )}
       <EditableReferenceHeader
@@ -146,8 +153,8 @@ const MetricDetail = props => {
         hasSingleSchema={false}
         hasDisplayName={false}
         startEditing={startEditing}
-        displayNameFormField={getField("display_name")}
-        nameFormField={getField("name")}
+        displayNameFormField={getFormField("display_name")}
+        nameFormField={getFormField("name")}
       />
       <LoadingAndErrorWrapper
         loading={!loadingError && loading}
@@ -159,7 +166,7 @@ const MetricDetail = props => {
               <List>
                 <li className="relative">
                   <Detail
-                    field={getField("description")}
+                    field={getFormField("description")}
                     name={t`Description`}
                     description={entity.description}
                     placeholder={t`No description yet`}
@@ -168,7 +175,7 @@ const MetricDetail = props => {
                 </li>
                 <li className="relative">
                   <Detail
-                    field={getField("points_of_interest")}
+                    field={getFormField("points_of_interest")}
                     name={t`Why this metric is interesting`}
                     description={entity.points_of_interest}
                     placeholder={t`Nothing interesting yet`}
@@ -177,7 +184,7 @@ const MetricDetail = props => {
                 </li>
                 <li className="relative">
                   <Detail
-                    field={getField("caveats")}
+                    field={getFormField("caveats")}
                     name={t`Things to be aware of about this metric`}
                     description={entity.caveats}
                     placeholder={t`Nothing to be aware of yet`}
@@ -186,7 +193,7 @@ const MetricDetail = props => {
                 </li>
                 <li className="relative">
                   <Detail
-                    field={getField("how_is_this_calculated")}
+                    field={getFormField("how_is_this_calculated")}
                     name={t`How this metric is calculated`}
                     description={entity.how_is_this_calculated}
                     placeholder={t`Nothing on how it's calculated yet`}
