@@ -99,8 +99,8 @@
 
     (testing "check that we don't see collections if we don't have permissions for them"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
-                        Collection [collection-2 {:name "Collection 2"}]]
+        (mt/with-temp* [Collection [collection-1  {:name "Collection 1"}]
+                        Collection [_             {:name "Collection 2"}]]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
           (is (= ["Collection 1"
                   "Rasta Toucan's Personal Collection"]
@@ -110,8 +110,8 @@
                                     (str/includes? collection-name "Personal Collection"))))
                       (map :name)))))))
 
-    (mt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
-                    Collection [collection-2 {:name "Regular Collection"}]]
+    (mt/with-temp* [Collection [_ {:name "Archived Collection", :archived true}]
+                    Collection [_ {:name "Regular Collection"}]]
       (letfn [(remove-other-collections [collections]
                 (filter (fn [{collection-name :name}]
                           (or (#{"Our analytics" "Archived Collection" "Regular Collection"} collection-name)
@@ -342,7 +342,7 @@
                       Dashboard  [{dashboard-id :id}
                                   {:name          "Dine & Dashboard"
                                    :collection_id collection-id-or-nil}]
-                      Pulse      [{pulse-id :id, :as pulse}
+                      Pulse      [{pulse-id :id, :as _pulse}
                                   {:name          "Electro-Magnetic Pulse"
                                    :collection_id collection-id-or-nil}]
                       ;; this is a dashboard subscription
@@ -432,25 +432,25 @@
                                              (str "collection/" (u/the-id collection) "/items"))))))))
     (testing "check that limit and offset work and total comes back"
       (mt/with-temp* [Collection [collection]
-                      Card       [card3        {:collection_id (u/the-id collection)}]
-                      Card       [card2        {:collection_id (u/the-id collection)}]
-                      Card       [card1        {:collection_id (u/the-id collection)}]]
+                      Card       [_ {:collection_id (u/the-id collection)}]
+                      Card       [_ {:collection_id (u/the-id collection)}]
+                      Card       [_ {:collection_id (u/the-id collection)}]]
         (is (= 2 (count (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "1")))))
         (is (= 1 (count (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "2")))))
         (is (= 3 (:total (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "1"))))))
 
     (testing "check that pinning filtering exists"
       (mt/with-temp* [Collection [collection]
-                      Card       [card3        {:collection_id (u/the-id collection)
-                                                :collection_position 1
-                                                :name "pinned-1"}]
-                      Card       [card2        {:collection_id (u/the-id collection)
-                                                :collection_position 1
-                                                :name "pinned-2"}]
-                      Card       [card1        {:collection_id (u/the-id collection)
-                                                :name "unpinned-card"}]
-                      Timeline   [timeline     {:collection_id (u/the-id collection)
-                                                :name "timeline"}]]
+                      Card       [_ {:collection_id (u/the-id collection)
+                                     :collection_position 1
+                                     :name "pinned-1"}]
+                      Card       [_ {:collection_id (u/the-id collection)
+                                     :collection_position 1
+                                     :name "pinned-2"}]
+                      Card       [_ {:collection_id (u/the-id collection)
+                                     :name "unpinned-card"}]
+                      Timeline   [_ {:collection_id (u/the-id collection)
+                                     :name "timeline"}]]
         (letfn [(fetch [pin-state]
                   (:data (mt/user-http-request :crowberto :get 200
                                                (str "collection/" (u/the-id collection) "/items")
