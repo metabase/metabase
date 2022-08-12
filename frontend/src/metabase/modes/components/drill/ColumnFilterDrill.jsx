@@ -22,15 +22,8 @@ export default function ColumnFilterDrill({ question, clicked }) {
     return [];
   }
 
-  const { column } = clicked;
-
-  // if our field ref doesn't match our column id, we have a remapped column
-  // and need to use the field id instead of the ref
-  const fieldRef =
-    column.id !== undefined && column.id !== column.field_ref[1]
-      ? ["field", column.id, null]
-      : column.field_ref;
-
+  const { dimension } = clicked;
+  const fieldRef = dimension.mbql();
   const initialFilter = new Filter([], null, query).setDimension(fieldRef, {
     useDefaultOperator: true,
   });
