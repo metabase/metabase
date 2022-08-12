@@ -37,6 +37,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   as?: ElementType;
   className?: string;
   to?: string;
+  href?: string;
 
   icon?: string | ReactNode;
   iconSize?: number;

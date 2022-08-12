@@ -132,6 +132,7 @@ export const normalizedMetadata = {
     },
   },
   groups_list: { null: { list: [1, 2, 3] } },
+  questions: {},
 };
 
 export const initialPermissions = {
