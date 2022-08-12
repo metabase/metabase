@@ -6,7 +6,7 @@
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database Field FieldValues Table]]
             [metabase.sync :as sync]
-            [metabase.sync.concurrent]
+            metabase.sync.concurrent
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.timeseries-query-processor-test.util :as tqpt]
