@@ -336,6 +336,9 @@
 ;; This is not an issue limited to expressions, but using expressions is the most straightforward
 ;; way to reproducing it.
 (deftest no-lazyness-test
+  ;; Sometimes Kondo thinks this is unused, depending on the state of the cache -- see comments in
+  ;; [[hooks.metabase.test.data]] for more information. It's definitely used to.
+  #_{:clj-kondo/ignore [:unused-binding]}
   (let [dataset-def (no-laziness-dataset-definition 300)]
     (mt/dataset dataset-def
       (let [query (mt/mbql-query lots-of-fields
