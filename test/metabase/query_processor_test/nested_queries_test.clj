@@ -197,10 +197,17 @@
                                (mt/mbql-query reviews
                                  {:fields      [$rating]
                                   :limit       1})}]
-            (is (= :completed
-                   (:status (qp/process-query {:type     :query
-                                               :database (mt/id)
-                                               :query    {:source-table (str "card__" card-id)}}))))))))))
+            (testing "with all inherited fields"
+              (is (= :completed
+                     (:status (qp/process-query {:type     :query
+                                                 :database (mt/id)
+                                                 :query    {:source-table (str "card__" card-id)}})))))
+            (testing "with explicit top-level fields"
+              (is (= :completed
+                     (:status (qp/process-query {:type     :query
+                                                 :database (mt/id)
+                                                 :query    {:fields       [(mt/id :reviews :rating)]
+                                                            :source-table (str "card__" card-id)}})))))))))))
 
 (deftest sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
