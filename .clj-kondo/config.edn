@@ -441,7 +441,8 @@
                   :unresolved-symbol
                   {:exclude [(metabase.models.pulse-test/with-pulse-in-collection)
                              (metabase.models.collection-test/with-collection-hierarchy)
-                             (metabase.models.dashboard-test/with-dash-in-collection)]}}}
+                             (metabase.models.dashboard-test/with-dash-in-collection)
+                             (metabase.api.card-test/with-ordered-items)]}}}
 
                 metabase.api.alert-test
                 {:linters {:unresolved-symbol
@@ -450,8 +451,7 @@
                 metabase.api.card-test
                 {:linters {:unresolved-symbol
                            {:exclude [(metabase.api.card-test/with-temp-native-card)
-                                      (metabase.api.card-test/with-temp-native-card-with-params)
-                                      (metabase.api.card-test/with-ordered-items)]}}
+                                      (metabase.api.card-test/with-temp-native-card-with-params)]}}
                  :lint-as {metabase.api.card-test/with-persistence-setup cljs.test/async}}
 
                 metabase.api.collection-test
@@ -459,7 +459,11 @@
                            {:exclude
                             [(metabase.api.collection-test/with-french-user-and-personal-collection)
                              (metabase.api.collection-test/with-collection-hierarchy)
-                             &ids]}}}}
+                             &ids]}}}
+
+                metabase.api.dashboard-test
+                {:lint-as {metabase.api.dashboard-test/with-chain-filter-fixtures clojure.core/fn
+                           metabase.api.dashboard-test/let-url clojure.core/let}}}
 
  :config-in-comment {:linters {:unresolved-symbol {:level :off}
                                }}}
