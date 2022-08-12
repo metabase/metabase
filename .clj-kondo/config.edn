@@ -447,7 +447,8 @@
                              (metabase.test/discard-setting-changes)
                              (metabase.test.util/discard-setting-changes)]}}
                  :lint-as {metabase.api.dashboard-test/with-chain-filter-fixtures clojure.core/fn
-                           metabase.test/with-temp-env-var-value clojure.core/let}}
+                           metabase.test/with-temp-env-var-value clojure.core/let
+                           metabase.test.util.async/with-open-channels clojure.core/let}}
 
                 metabase.api.alert-test
                 {:linters {:unresolved-symbol
