@@ -36,6 +36,7 @@ const BUTTON_VARIANTS = [
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   as?: ElementType;
   className?: string;
+  href?: string;
 
   icon?: string | ReactNode;
   iconSize?: number;
