@@ -50,7 +50,7 @@
                         :breakout       [[:field "price" {:base-type :type/Integer}]]
                         :source-query   {:source-table (mt/id :venues)}
                         :source-card-id (u/the-id card)}
-                       (qp/query->expected-cols (mt/mbql-query :venues)))
+                       (qp/query->expected-cols (mt/mbql-query venues)))
                       :info {:card-id (u/the-id card)})
                (resolve-card-id-source-tables
                 (wrap-inner-query
@@ -64,7 +64,7 @@
                        {:source-query   {:source-table (mt/id :checkins)}
                         :source-card-id (u/the-id card)
                         :filter         [:between [:field "date" {:base-type :type/Date}] "2015-01-01" "2015-02-01"]}
-                       (qp/query->expected-cols (mt/mbql-query :checkins)))
+                       (qp/query->expected-cols (mt/mbql-query checkins)))
                       :info {:card-id (u/the-id card)})
                (resolve-card-id-source-tables
                 (wrap-inner-query
@@ -123,9 +123,9 @@
                                     :source-card-id  (u/the-id card-1)
                                     :source-metadata nil}
                    :source-card-id (u/the-id card-2)}
-                  (qp/query->expected-cols (mt/mbql-query :venues)))
+                  (qp/query->expected-cols (mt/mbql-query venues)))
                  (assoc-in [:query :source-query :source-metadata]
-                           (mt/derecordize (qp/query->expected-cols (mt/mbql-query :venues))))
+                           (mt/derecordize (qp/query->expected-cols (mt/mbql-query venues))))
                  (assoc :info {:card-id (u/the-id card-2)}))
              (resolve-card-id-source-tables
               (wrap-inner-query
@@ -320,7 +320,7 @@
                          :info {:card-id Integer/MAX_VALUE})]
         (is (= (assoc (mt/mbql-query nil {:source-query    {:source-table (mt/id :venues)}
                                           :source-card-id  card-id
-                                          :source-metadata (mt/derecordize (qp/query->expected-cols (mt/mbql-query :venues)))})
+                                          :source-metadata (mt/derecordize (qp/query->expected-cols (mt/mbql-query venues)))})
                       :info {:card-id Integer/MAX_VALUE})
                (resolve-card-id-source-tables query)))))))
 
