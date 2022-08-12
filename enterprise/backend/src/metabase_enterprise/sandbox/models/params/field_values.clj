@@ -54,10 +54,13 @@
   [{:keys [table_id id] :as _field}]
   (when-let [gtap (table-id->gtap table_id)]
     (let [login-attributes     (:login_attributes @api/*current-user*)
-          attribute_remappings (:attribute_remappings gtap)]
+          attribute_remappings (:attribute_remappings gtap)
+          field-ids            (db/select-field :id Field :table_id table_id)]
       [(:card_id gtap)
        (into {} (for [[k v] attribute_remappings
-                      :when (= (mbql.u/match-one v [:dimension [:field id _]] id) id)]
+                      ;; get any attribute that map to field inside the same table
+                      :when (contains? field-ids
+                                       (mbql.u/match-one v [:dimension [:field field-id _]] field-id))]
                   {k (get login-attributes k)}))])))
 
 (defenterprise get-or-create-field-values-for-current-user!*
