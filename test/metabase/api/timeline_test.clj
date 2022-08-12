@@ -101,8 +101,8 @@
                                       (when start [:start start])
                                       (when end [:end end]))))
 
-(defn- event-names [timelines]
-  (->> timelines (mapcat :events) (map :name) set))
+(defn- event-names [timeline]
+  (->> timeline :events (map :name) set))
 
 (deftest timelines-range-test
   (testing "GET /api/timeline/:id?include=events&start=TIME&end=TIME"
