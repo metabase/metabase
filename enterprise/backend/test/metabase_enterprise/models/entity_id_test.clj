@@ -9,7 +9,7 @@
     metabase.db.data-migrations
     metabase.models
     metabase.models.revision-test
-    [toucan.models :refer [IModel properties]]))
+    [toucan.models :refer [IModel]]))
 
 (comment metabase.models/keep-me
          metabase.db.data-migrations/keep-me
