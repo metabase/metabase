@@ -84,7 +84,7 @@ export default function FilterPopover({
 
   // if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
   useEffect(() => {
-    if (filter && query !== previousQuery) {
+    if (filter && previousQuery && query !== previousQuery) {
       setFilter(filter.setQuery(query));
     }
   }, [query, previousQuery, filter]);
