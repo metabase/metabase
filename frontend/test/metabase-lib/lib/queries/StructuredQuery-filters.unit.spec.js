@@ -1,4 +1,8 @@
-import { ORDERS, PRODUCTS } from "__support__/sample_database_fixture";
+import {
+  metadata,
+  ORDERS,
+  PRODUCTS,
+} from "__support__/sample_database_fixture";
 
 import Dimension from "metabase-lib/lib/Dimension";
 
@@ -70,7 +74,9 @@ describe("StructuredQuery", () => {
         const f = q.filters()[0];
         expect(f.isDimension(["field", ORDERS.TOTAL.id, null])).toBe(true);
         expect(
-          f.isDimension(Dimension.parseMBQL(["field", ORDERS.TOTAL.id, null])),
+          f.isDimension(
+            Dimension.parseMBQL(["field", ORDERS.TOTAL.id, null], metadata),
+          ),
         ).toBe(true);
       });
       it("should return false for different dimensions", () => {

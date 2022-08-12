@@ -812,21 +812,19 @@ describe("Dimension", () => {
       });
       describe("isEqual", () => {
         it("should return true for another Dimension with the same underlying MBQL", () => {
-          const anotherDimension = Dimension.parseMBQL([
-            "field",
-            ORDERS.TOTAL.id,
-            { "join-alias": "join1" },
-          ]);
+          const anotherDimension = Dimension.parseMBQL(
+            ["field", ORDERS.TOTAL.id, { "join-alias": "join1" }],
+            metadata,
+          );
           expect(dimension.isEqual(anotherDimension)).toBe(true);
         });
       });
       describe("isSameBaseDimension", () => {
         it("should return true for another Dimension with the same underlying MBQL", () => {
-          const anotherDimension = Dimension.parseMBQL([
-            "field",
-            ORDERS.TOTAL.id,
-            { "join-alias": "join1" },
-          ]);
+          const anotherDimension = Dimension.parseMBQL(
+            ["field", ORDERS.TOTAL.id, { "join-alias": "join1" }],
+            metadata,
+          );
           expect(dimension.isSameBaseDimension(anotherDimension)).toBe(true);
         });
       });
