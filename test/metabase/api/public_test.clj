@@ -1,5 +1,14 @@
 (ns metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
+  {:clj-kondo/config
+   '{:lint-as {metabase.api.public-test/with-required-param-card clojure.core/fn
+               metabase.api.public-test/with-temp-public-dashboard clojure.core/fn
+               metabase.api.public-test/with-temp-public-dashboard-and-card clojure.core/fn}
+     :linters {:unresolved-symbol
+               {:exclude
+                [(metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing)
+                 (metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing)
+                 (metabase.api.public-test/with-temp-public-card)]}}}}
   (:require [cheshire.core :as json]
             [clojure.string :as str]
             [clojure.test :refer :all]
