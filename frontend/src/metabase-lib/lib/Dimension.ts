@@ -740,9 +740,12 @@ export class FieldDimension extends Dimension {
 
   isEqual(somethingElse) {
     if (isFieldDimension(somethingElse)) {
+      const thisField = this.field();
+      const otherField = somethingElse.field();
       return (
-        somethingElse._fieldIdOrName === this._fieldIdOrName &&
-        _.isEqual(somethingElse._options, this._options)
+        thisField.id === otherField.id &&
+        thisField.table_id === otherField.table_id &&
+        _.isEqual(this._options, somethingElse._options)
       );
     }
 
