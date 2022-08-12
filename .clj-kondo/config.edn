@@ -443,7 +443,14 @@
 
                 metabase.api.alert-test
                 {:linters {:unresolved-symbol
-                           {:exclude [(metabase.api.alert-test/with-alert-in-collection)]}}}}
+                           {:exclude [(metabase.api.alert-test/with-alert-in-collection)]}}}
+
+                metabase.api.card-test
+                {:linters {:unresolved-symbol
+                           {:exclude [(metabase.api.card-test/with-temp-native-card)
+                                      (metabase.api.card-test/with-temp-native-card-with-params)
+                                      (metabase.api.card-test/with-ordered-items)]}}
+                 :lint-as {metabase.api.card-test/with-persistence-setup cljs.test/async}}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}
