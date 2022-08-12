@@ -42,7 +42,7 @@
       :unqualified/local-def)))
 
 (defn dataset
-  [{{[_ dataset & body] :children, :as node} :node}]
+  [{{[_ dataset & body] :children} :node}]
   (let [body (case (dataset-type dataset)
                ;; non-symbol, qualified symbols, and unqualified symbols from the current namespace/let-bound can all
                ;; get converted from something like
@@ -97,7 +97,7 @@
    form))
 
 (defn $ids
-  [{{[_$ids & args] :children} :node}]
+  [{{[_ & args] :children} :node}]
   ;; `$ids` accepts either
   ;;
   ;;    ($ids form)
@@ -116,8 +116,7 @@
     {:node (replace-$id-special-tokens body)}))
 
 (defn mbql-query
-[{{[_mbql-query & args] :children} :node}]
-(binding [*print-meta* true])
+  [{{[_ & args] :children} :node}]
   ;; `mbql-query` accepts either
   ;;
   ;;    (mbql-query table)
@@ -129,7 +128,21 @@
   ;; and table may be `nil`.
   ;;
   ;; table is only relevant for expanding the special tokens so we can ignore it either way.
-(let [query (if (= (count args) 1)
-              (hooks/map-node [])
-              (second args))]
-  {:node (replace-$id-special-tokens query)}))
+  (let [[table query] (if (= (count args) 1)
+                        [(first args)
+                         (hooks/map-node [])]
+                        args)]
+    (when-not ((some-fn symbol? nil?) (hooks/sexpr table))
+      (hooks/reg-finding! (assoc (meta table)
+                                 :message "First arg to mbql-query should be either a table name symbol or nil."
+                                 :type ::mbql-query-first-arg)))
+    (let [result (replace-$id-special-tokens query)
+          ;; HACK I'm not sure WHY it works but I ran into https://github.com/clj-kondo/clj-kondo/issues/1773 when
+          ;; trying to get this working -- for some magical reason wrapping the whole thing in a `do` form seems to fix
+          ;; it. Once that bug is resolved we can go ahead and remove this line
+          result (with-meta (hooks/list-node (with-meta (list
+                                                         (hooks/token-node 'do)
+                                                         result)
+                                                        (meta query)))
+                            (meta query))]
+      {:node result})))

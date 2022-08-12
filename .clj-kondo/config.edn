@@ -451,6 +451,9 @@
     :missing-docstring {:level :off}
     :private-call      {:level :off}
 
+    ;; custom linters
+    :hooks.metabase.test.data/mbql-query-first-arg {:level :error}
+
     ;; FIXME
     :unused-binding       {:level :off}
     :unresolved-symbol    {:level :off}
