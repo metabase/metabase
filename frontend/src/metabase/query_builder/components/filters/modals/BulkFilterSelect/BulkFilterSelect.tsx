@@ -93,7 +93,6 @@ export const BulkFilterSelect = ({
           onChangeFilter={handleChange}
           onClose={closePopover}
           checkedColor="brand"
-          commitOnBlur
         />
       )}
     />
