@@ -19,7 +19,8 @@
                       (taoensso.nippy/extend-freeze)
                       (taoensso.nippy/extend-thaw)
                       (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
-                      (clojure.tools.macro/macrolet)]}
+                      (clojure.tools.macro/macrolet)
+                      ]}
            :refer-all {:level   :warning
                        :exclude [clojure.test]}
            ;; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
@@ -431,9 +432,18 @@
 
  :ns-groups [{:pattern ".*-test" :name test-group}]
 
- :config-in-ns {test-group {:linters {:private-call {:level :off}
-                                      :unused-binding {:level :off}
-                                      :missing-docstring {:level :off}}}}
+ :config-in-ns {test-group
+                {:linters
+                 {:private-call {:level :off}
+                  :unused-binding {:level :off}
+                  :missing-docstring {:level :off}
+                  :deprecated-var {:level :off}
+                  :unresolved-symbol
+                  {:exclude [(metabase.models.pulse-test/with-pulse-in-collection)]}}}
+
+                metabase.api.alert-test
+                {:linters {:unresolved-symbol
+                           {:exclude [(metabase.api.alert-test/with-alert-in-collection)]}}}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}
