@@ -439,7 +439,8 @@
                   :missing-docstring {:level :off}
                   :deprecated-var {:level :off}
                   :unresolved-symbol
-                  {:exclude [(metabase.models.pulse-test/with-pulse-in-collection)]}}}
+                  {:exclude [(metabase.models.pulse-test/with-pulse-in-collection)
+                             (metabase.models.collection-test/with-collection-hierarchy)]}}}
 
                 metabase.api.alert-test
                 {:linters {:unresolved-symbol
@@ -450,8 +451,14 @@
                            {:exclude [(metabase.api.card-test/with-temp-native-card)
                                       (metabase.api.card-test/with-temp-native-card-with-params)
                                       (metabase.api.card-test/with-ordered-items)]}}
-                 :lint-as {metabase.api.card-test/with-persistence-setup cljs.test/async}}}
+                 :lint-as {metabase.api.card-test/with-persistence-setup cljs.test/async}}
 
- :config-in-comment
- {:linters {:unresolved-symbol {:level :off}
-            }}}
+                metabase.api.collection-test
+                {:linters {:unresolved-symbol
+                           {:exclude
+                            [(metabase.api.collection-test/with-french-user-and-personal-collection)
+                             (metabase.api.collection-test/with-collection-hierarchy)
+                             &ids]}}}}
+
+ :config-in-comment {:linters {:unresolved-symbol {:level :off}
+                               }}}
