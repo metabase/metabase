@@ -409,6 +409,8 @@
    metabase.test/run-mbql-query                               hooks.metabase.test.data/$ids
    metabase.test/with-temp                                    hooks.toucan.util.test/with-temp
    metabase.test/with-temp*                                   hooks.toucan.util.test/with-temp*
+   toucan.util.test/with-temp                                 hooks.toucan.util.test/with-temp
+   toucan.util.test/with-temp*                                hooks.toucan.util.test/with-temp*
    metabase-enterprise.serialization.test-util/with-temp-dpc  hooks.toucan.util.test/with-temp*
    metabase.test/with-temporary-setting-values                hooks.metabase.test.util/with-temporary-setting-values
    metabase.test.data/$ids                                    hooks.metabase.test.data/$ids
@@ -422,8 +424,6 @@
    metabase.api.common/define-routes                     macros.metabase.api.common/define-routes
 
    toucan.models/defmodel                          macros.toucan.models/defmodel
-   toucan.util.test/with-temp                      macros.toucan.util.test/with-temp
-   toucan.util.test/with-temp*                     macros.toucan.util.test/with-temp*
    clojurewerkz.quartzite.jobs/build               macros.quartz/build-job
    clojurewerkz.quartzite.triggers/build           macros.quartz/build-trigger
    clojurewerkz.quartzite.schedule.cron/schedule   macros.quartz/schedule
@@ -432,7 +432,8 @@
  :ns-groups [{:pattern ".*-test" :name test-group}]
 
  :config-in-ns {test-group {:linters {:private-call {:level :off}
-                                      :unused-binding {:level :off}}}}
+                                      :unused-binding {:level :off}
+                                      :missing-docstring {:level :off}}}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}
