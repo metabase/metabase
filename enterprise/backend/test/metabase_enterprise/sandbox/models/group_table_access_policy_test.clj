@@ -44,7 +44,7 @@
                      (fn [query]
                        (mt/with-temp* [Card                   [card {:dataset_query   query
                                                                      :result_metadata (qp/query->expected-cols query)}]
-                                       GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
+                                       GroupTableAccessPolicy [_    {:table_id (mt/id :venues)
                                                                      :group_id (u/the-id (perms-group/all-users))
                                                                      :card_id  (:id card)}]]
                          :ok))
@@ -62,7 +62,7 @@
                      (fn [query]
                        (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query venues)
                                                                      :result_metadata (qp/query->expected-cols (mt/mbql-query venues))}]
-                                       GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
+                                       GroupTableAccessPolicy [_    {:table_id (mt/id :venues)
                                                                      :group_id (u/the-id (perms-group/all-users))
                                                                      :card_id  (:id card)}]]
                          (db/update! Card (:id card) :dataset_query query)
@@ -86,7 +86,7 @@
                      (fn [metadata]
                        (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query venues)
                                                                      :result_metadata metadata}]
-                                       GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
+                                       GroupTableAccessPolicy [_    {:table_id (mt/id :venues)
                                                                      :group_id (u/the-id (perms-group/all-users))
                                                                      :card_id  (:id card)}]]
                          :ok))
@@ -104,7 +104,7 @@
                      (fn [metadata]
                        (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query venues)
                                                                      :result_metadata (qp/query->expected-cols (mt/mbql-query venues))}]
-                                       GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
+                                       GroupTableAccessPolicy [_    {:table_id (mt/id :venues)
                                                                      :group_id (u/the-id (perms-group/all-users))
                                                                      :card_id  (:id card)}]]
                          (db/update! Card (:id card) :result_metadata metadata)

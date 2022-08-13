@@ -690,7 +690,7 @@
                     PulseCard    [_               {:pulse_id pulse-id
                                                    :card_id  card-id-2
                                                    :position 1}]
-                    PulseChannel [{pc-id :id}     {:pulse_id     pulse-id
+                    PulseChannel [_               {:pulse_id     pulse-id
                                                    :channel_type "slack"
                                                    :details      {:channel "#general"}}]]
       (pulse.test-util/slack-test-setup

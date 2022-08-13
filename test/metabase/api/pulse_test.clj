@@ -169,7 +169,7 @@
     (testing "legacy pulse"
       (mt/with-temp* [Card [card-1]
                       Card [card-2]
-                      Dashboard [{dashboard-id :id} {:name "Birdcage KPIs"}]
+                      Dashboard [_ {:name "Birdcage KPIs"}]
                       Collection [collection]]
         (api.card-test/with-cards-in-readable-collection [card-1 card-2]
           (mt/with-model-cleanup [Pulse]
@@ -576,7 +576,7 @@
                       Pulse                 [pulse {:collection_id (u/the-id collection)}]
                       PulseChannel          [pc    {:pulse_id (u/the-id pulse)}]
                       PulseChannelRecipient [pcr   {:pulse_channel_id (u/the-id pc), :user_id (mt/user->id :rasta)}]
-                      Card                  [card]]
+                      Card                  [_]]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:archived true})
@@ -783,17 +783,17 @@
     (testing "can fetch dashboard subscriptions by user ID -- should return subscriptions created by the user,
            or subscriptions for which the user is a known recipient. Should exclude pulses."
       (mt/with-temp* [Dashboard             [{dashboard-id :id}]
-                      Pulse                 [creator-pulse   {:name "LuckyCreator",
-                                                              :creator_id (mt/user->id :lucky)
+                      Pulse                 [_creator-pulse  {:name         "LuckyCreator"
+                                                              :creator_id   (mt/user->id :lucky)
                                                               :dashboard_id dashboard-id}]
-                      Pulse                 [recipient-pulse {:name "LuckyRecipient",
+                      Pulse                 [recipient-pulse {:name         "LuckyRecipient"
                                                               :dashboard_id dashboard-id}]
-                      Pulse                 [other-pulse     {:name "Other",
+                      Pulse                 [_other-pulse    {:name         "Other"
                                                               :dashboard_id dashboard-id}]
-                      Pulse                 [excluded-pulse  {:name "Excluded"}]
+                      Pulse                 [_excluded-pulse {:name "Excluded"}]
                       PulseChannel          [pulse-channel   {:pulse_id (u/the-id recipient-pulse)}]
-                      PulseChannelRecipient [_               {:pulse_channel_id (u/the-id pulse-channel),
-                                                              :user_id (mt/user->id :lucky)}]]
+                      PulseChannelRecipient [_               {:pulse_channel_id (u/the-id pulse-channel)
+                                                              :user_id          (mt/user->id :lucky)}]]
         (is (= #{"LuckyCreator" "LuckyRecipient"}
                (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :lucky)))))))
         (is (= #{"LuckyRecipient" "Other"}
@@ -1017,8 +1017,8 @@
 
 (deftest preview-pulse-test
   (testing "GET /api/pulse/preview_card/:id"
-    (mt/with-temp* [Collection [collection]
-                    Card       [card  {:dataset_query (mt/mbql-query checkins {:limit 5})}]]
+    (mt/with-temp* [Collection [_]
+                    Card       [card {:dataset_query (mt/mbql-query checkins {:limit 5})}]]
       (letfn [(preview [expected-status-code]
                 (client/client-full-response (mt/user->credentials :rasta)
                                              :get expected-status-code (format "pulse/preview_card_png/%d" (u/the-id card))))]
@@ -1033,7 +1033,7 @@
                                                         (throw (ex-info "Can't register fonts!"
                                                                         {}
                                                                         (NullPointerException.))))]
-            (let [{{:strs [Content-Type]} :headers, :keys [body]} (mt/suppress-output (preview 500))]
+            (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 500)]
               (is (= "application/json;charset=utf-8"
                      Content-Type))
               (is (schema= {:message  (s/eq "Can't register fonts!")
@@ -1051,11 +1051,11 @@
                                                     :details       {:other  "stuff"
                                                                     :emails ["foo@bar.com"]}}]]
       (testing "Should be able to delete your own subscription"
-        (mt/with-temp PulseChannelRecipient [pcr {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+        (mt/with-temp PulseChannelRecipient [_ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= nil
                  (mt/user-http-request :rasta :delete 204 (str "pulse/" pulse-id "/subscription"))))))
 
       (testing "Users can't delete someone else's pulse subscription"
-        (mt/with-temp PulseChannelRecipient [pcr {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+        (mt/with-temp PulseChannelRecipient [_ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= "Not found."
                  (mt/user-http-request :lucky :delete 404 (str "pulse/" pulse-id "/subscription")))))))))

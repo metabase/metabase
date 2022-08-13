@@ -91,13 +91,13 @@
                (-> (mt/user-http-request :crowberto :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules))))))
 
-    (mt/with-temp* [Database [db {:name "My DB", :engine ::test-driver}]
-                    Table    [t1 {:name "Table 1", :db_id (:id db)}]
-                    Table    [t2 {:name "Table 2", :db_id (:id db)}]
-                    Table    [t3 {:name "Table 3", :db_id (:id db), :visibility_type "hidden"}]
-                    Field    [f1 {:name "Field 1.1", :table_id (:id t1)}]
-                    Field    [f2 {:name "Field 2.1", :table_id (:id t2)}]
-                    Field    [f3 {:name "Field 2.2", :table_id (:id t2)}]]
+    (mt/with-temp* [Database [db  {:name "My DB", :engine ::test-driver}]
+                    Table    [t1  {:name "Table 1", :db_id (:id db)}]
+                    Table    [t2  {:name "Table 2", :db_id (:id db)}]
+                    Table    [_t3 {:name "Table 3", :db_id (:id db), :visibility_type "hidden"}]
+                    Field    [f1  {:name "Field 1.1", :table_id (:id t1)}]
+                    Field    [f2  {:name "Field 2.1", :table_id (:id t2)}]
+                    Field    [f3  {:name "Field 2.2", :table_id (:id t2)}]]
       (testing "`?include=tables` -- should be able to include Tables"
         (is (= {:tables [(table-details t1)
                          (table-details t2)]}
@@ -423,9 +423,9 @@
               (is (= expected-keys
                      (set (keys db))))))))
       (testing "Make sure databases don't paginate"
-        (mt/with-temp* [Database [{db-id-1 :id} {:engine ::test-driver}]
-                        Database [{db-id-2 :id} {:engine ::test-driver}]
-                        Database [{db-id-3 :id} {:engine ::test-driver}]]
+        (mt/with-temp* [Database [_ {:engine ::test-driver}]
+                        Database [_ {:engine ::test-driver}]
+                        Database [_ {:engine ::test-driver}]]
           (is (< 1 (count (:data (mt/user-http-request :rasta :get 200 "database" :limit 1 :offset 0))))))))
 
 
@@ -433,7 +433,7 @@
     (doseq [query-param ["?include_tables=true"
                          "?include=tables"]]
       (testing query-param
-        (mt/with-temp Database [{db-id :id, db-name :name} {:engine (u/qualified-name ::test-driver)}]
+        (mt/with-temp Database [_ {:engine (u/qualified-name ::test-driver)}]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 (str "database" query-param)))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= (expected-tables db)
@@ -441,8 +441,8 @@
 
 (deftest databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
-    (mt/with-temp Card [card (assoc (card-with-native-query "Some Card")
-                                    :result_metadata [{:name "col_name"}])]
+    (mt/with-temp Card [_ (assoc (card-with-native-query "Some Card")
+                                 :result_metadata [{:name "col_name"}])]
       (testing "We should be able to include the saved questions virtual DB (without Tables) with the param ?saved=true"
         (is (= {:name               "Saved Questions"
                 :id                 mbql.s/saved-questions-virtual-database-id
@@ -928,9 +928,9 @@
   (testing "GET /api/database/:id/schema/:schema\n"
     (testing "Permissions: Can we fetch the Tables in a schema?"
       (mt/with-temp* [Database [{db-id :id}]
-                      Table    [t1 {:db_id db-id, :schema "schema1", :name "t1"}]
-                      Table    [t2 {:db_id db-id, :schema "schema2"}]
-                      Table    [t3 {:db_id db-id, :schema "schema1", :name "t3"}]]
+                      Table    [t1  {:db_id db-id, :schema "schema1", :name "t1"}]
+                      Table    [_t2 {:db_id db-id, :schema "schema2"}]
+                      Table    [t3  {:db_id db-id, :schema "schema1", :name "t3"}]]
         (testing "if we have full DB perms"
           (is (= ["t1" "t3"]
                  (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
@@ -968,7 +968,7 @@
     (testing "should return a 403 for a user that doesn't have read permissions"
       (testing "for the DB"
         (mt/with-temp* [Database [{database-id :id}]
-                        Table    [{table-id :id} {:db_id database-id, :schema "test"}]]
+                        Table    [_ {:db_id database-id, :schema "test"}]]
           (perms/revoke-data-perms! (perms-group/all-users) database-id)
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "test"))))))
@@ -984,7 +984,7 @@
 
     (testing "Should return a 404 if the schema isn't found"
       (mt/with-temp* [Database [{db-id :id}]
-                      Table    [{t1-id :id} {:db_id db-id, :schema "schema1"}]]
+                      Table    [_ {:db_id db-id, :schema "schema1"}]]
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404 (format "database/%d/schema/%s" db-id "not schema1"))))))
 
@@ -1057,9 +1057,9 @@
                                                 :dataset true)]
                       Card       [card-2 (assoc (card-with-native-query "Card 2")
                                                 :dataset true)]
-                      Card       [card-3 (assoc (card-with-native-query "error")
-                                                ;; regular saved question should not be in the results
-                                                :dataset false)]]
+                      Card       [_card-3 (assoc (card-with-native-query "error")
+                                                 ;; regular saved question should not be in the results
+                                                 :dataset false)]]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
@@ -1114,7 +1114,7 @@
                            "my_schema/"
                            "my_schema\\"]]
         (testing (format "\nschema name = %s" (pr-str schema-name))
-          (mt/with-temp Table [{table-id :id} {:db_id db-id, :schema schema-name, :name "my/table"}]
+          (mt/with-temp Table [_ {:db_id db-id, :schema schema-name, :name "my/table"}]
             (testing "\nFetch schemas"
               (testing "\nGET /api/database/:id/schemas/"
                 (is (= [schema-name]

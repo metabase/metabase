@@ -219,7 +219,7 @@
 (deftest update-pulse-channel!-test
   (mt/with-temp Pulse [{pulse-id :id}]
     (testing "simple starting case where we modify the schedule hour and add a recipient"
-      (mt/with-temp PulseChannel [{channel-id :id, :as channel} {:pulse_id pulse-id}]
+      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
                 :entity_id      true
                 :channel_type   :email
@@ -237,7 +237,7 @@
                  :recipients    [{:email "foo@bar.com"}]})))))
 
     (testing "monthly schedules require a schedule_frame and can optionally omit they schedule_day"
-      (mt/with-temp PulseChannel [{channel-id :id :as channel} {:pulse_id pulse-id}]
+      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
                 :entity_id      true
                 :channel_type  :email

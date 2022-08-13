@@ -110,8 +110,8 @@
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (mt/with-temp Database [db-filtered database]
-    (let [sync-results (sync/sync-database! db-filtered {:scan :schema})
-          tables       (db/select Table :db_id (u/the-id db-filtered))]
+    (sync/sync-database! db-filtered {:scan :schema})
+    (let [tables (db/select Table :db_id (u/the-id db-filtered))]
       (doseq [table tables]
         (assert-table-fn table)))))
 

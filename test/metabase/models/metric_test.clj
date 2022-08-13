@@ -24,12 +24,11 @@
 
 (deftest retrieve-metrics-test
   (mt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id-1 :id}    {:db_id database-id}]
-                  Table    [{table-id-2 :id}    {:db_id database-id}]
-                  Metric   [{segement-id-1 :id
-                             :as segment-1}     {:table_id table-id-1, :name "Metric 1", :description nil}]
-                  Metric   [{metric-id-2 :id}   {:table_id table-id-2}]
-                  Metric   [{metric-id3 :id}    {:table_id table-id-1, :archived true}]]
+                  Table    [{table-id-1 :id} {:db_id database-id}]
+                  Table    [{table-id-2 :id} {:db_id database-id}]
+                  Metric   [segment-1        {:table_id table-id-1, :name "Metric 1", :description nil}]
+                  Metric   [_                {:table_id table-id-2}]
+                  Metric   [_                {:table_id table-id-1, :archived true}]]
     (is (= [(merge
              metric-defaults
              {:creator_id (mt/user->id :rasta)
