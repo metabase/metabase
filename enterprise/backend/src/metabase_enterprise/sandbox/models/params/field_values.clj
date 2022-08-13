@@ -51,7 +51,7 @@
 
   ;; (field-id->gtap-attributes-for-current-user (Field 3))
   ;; -> [1, {\"State\" \"CA\"}]"
-  [{:keys [table_id _id] :as _field}]
+  [{:keys [table_id] :as _field}]
   (when-let [gtap (table-id->gtap table_id)]
     (let [login-attributes     (:login_attributes @api/*current-user*)
           attribute_remappings (:attribute_remappings gtap)
