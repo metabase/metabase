@@ -6,7 +6,7 @@
             [metabase.test :as mt]))
 
 (deftest application-permissions-test
-  (mt/with-temp* [PermissionsGroup [{group-id :id}]]
+  (mt/with-temp PermissionsGroup [_]
     (testing "GET /api/ee/advanced-permissions/application/graph"
       (premium-features-test/with-premium-features #{}
         (testing "Should require a token with `:advanced-permissions`"

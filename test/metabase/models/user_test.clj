@@ -380,7 +380,7 @@
 
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist
-        (mt/with-temp User [user]
+        (mt/with-temp User [_]
           (with-groups [group {:name "Group"} {}]
             (u/ignore-exceptions
               (user/set-permissions-groups! (test.users/fetch-user :lucky) #{group})))
@@ -426,7 +426,7 @@
         (is (thrown-with-msg?
              Exception
              #"Assert failed: \(i18n/available-locale\? locale\)"
-             (mt/with-temp User [{user-id :id} {:locale "en_XX"}])))))
+             (mt/with-temp User [_ {:locale "en_XX"}])))))
 
     (testing "updating a User"
       (mt/with-temp User [{user-id :id} {:locale "en_US"}]

@@ -255,7 +255,7 @@
       (mt/with-temp* [LoginHistory [_ {:user_id   (mt/user->id :rasta)
                                        :device_id (str (java.util.UUID/randomUUID))
                                        :timestamp #t "2021-03-18T19:52:41.808482Z"}]
-                      Card [card1 {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+                      Card [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -273,8 +273,8 @@
                    mt/boolean-ids-and-timestamps
                    (dissoc :is_qbnewb :last_login))))))
     (testing "check that `has_question_and_dashboard` is `true`."
-      (mt/with-temp* [Dashboard [dash1 {:name "dash1" :creator_id (mt/user->id :rasta)}]
-                      Card      [card1 {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+      (mt/with-temp* [Dashboard [_ {:name "dash1" :creator_id (mt/user->id :rasta)}]
+                      Card      [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -500,7 +500,7 @@
                                            :last_name    "Era"
                                            :email        "cam.era@metabase.com"
                                            :is_superuser true}]
-                      Collection [coll]]
+                      Collection [_]]
         (letfn [(user [] (into {} (-> (db/select-one [User :id :first_name :last_name :is_superuser :email], :id user-id)
                                       (hydrate :personal_collection_id :personal_collection_name)
                                       (dissoc :id :personal_collection_id :common_name))))]

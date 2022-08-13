@@ -101,21 +101,21 @@
               :slack (pulse.test-util/slack-test-setup (thunk)))))))))
 
 (defn- tests
-  "Convenience for writing multiple tests using `do-test`. `common` is a map of shared properties as passed to `do-test`
-  that is deeply merged with the individual maps for each test. Other args are alternating `testing` context messages
-  and properties as passed to `do-test`:
+  "Convenience for writing multiple tests using [[do-test]]. `common` is a map of shared properties as passed
+  to [[do-test]] that is deeply merged with the individual maps for each test. Other args are alternating `testing`
+  context messages and properties as passed to [[do-test]]:
 
     (tests
      ;; shared properties used for both tests
      {:card {:dataset_query (mt/mbql-query)}}
 
      \"Test 1\"
-     {:assert {:email (fn [_ _] (is ...))}}
+     {:assert {:email (fn [_object-ids _response] (is ...))}}
 
      \"Test 2\"
      ;; override just the :display property of the Card
      {:card   {:display \"table\"}
-      :assert {:email (fn [_ _] (is ...))}})"
+      :assert {:email (fn [_object-ids _response] (is ...))}})"
   {:style/indent 1}
   [common & {:as message->m}]
   (doseq [[message m] message->m]
@@ -137,8 +137,8 @@
     (mt/with-temp* [Card          [{card-id-1 :id}]
                     Card          [{card-id-2 :id}]
                     Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
-                    DashboardCard [dashcard-1 {:dashboard_id dashboard-id :card_id card-id-1}]
-                    DashboardCard [dashcard-2 {:dashboard_id dashboard-id :card_id card-id-2}]
+                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-1}]
+                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-2}]
                     User [{user-id :id}]]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= (count result) 2))
@@ -151,19 +151,19 @@
                     Card          [{card-id-2 :id}]
                     Card          [{card-id-3 :id}]
                     Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
-                    DashboardCard [dashcard-1 {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}]
-                    DashboardCard [dashcard-2 {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}]
-                    DashboardCard [dashcard-3 {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}]
+                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}]
+                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}]
+                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}]
                     User [{user-id :id}]]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= [card-id-3 card-id-2 card-id-1]
                (map #(-> % :card :id) result))))))
   (testing "virtual (text) cards are returned as a viz settings map"
-    (mt/with-temp* [Card          [{card-id-1 :id}]
-                    Card          [{card-id-2 :id}]
+    (mt/with-temp* [Card          [_]
+                    Card          [_]
                     Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
-                    DashboardCard [dashcard-1 {:dashboard_id dashboard-id
-                                               :visualization_settings {:virtual_card {}, :text "test"}}]
+                    DashboardCard [_ {:dashboard_id dashboard-id
+                                      :visualization_settings {:virtual_card {}, :text "test"}}]
                     User [{user-id :id}]]
       (is (= [{:virtual_card {}, :text "test"}] (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
 
@@ -350,7 +350,7 @@
 
      :assert
      {:slack
-      (fn [{:keys [card-id]} [pulse-results]]
+      (fn [_object-ids [pulse-results]]
         (is (= {:blocks [{:type "section" :text {:type "mrkdwn" :text "abcdefghi…"}}]}
                (nth (:attachments (pulse.test-util/thunk->boolean pulse-results)) 2))))}}))
 

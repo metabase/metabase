@@ -43,7 +43,7 @@
         (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
                                                     (original-destroy id destroyed-spec)
                                                     (reset! destroyed? true))]
-          (jdbc/with-db-connection [conn spec]
+          (jdbc/with-db-connection [_conn spec]
             (jdbc/execute! spec ["CREATE TABLE birds (name varchar)"])
             (jdbc/execute! spec ["INSERT INTO birds values ('rasta'),('lucky')"])
             (mt/with-temp Database [database {:engine :h2, :details connection-details}]

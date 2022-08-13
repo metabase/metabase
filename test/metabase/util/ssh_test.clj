@@ -39,7 +39,7 @@
   []
   (try
     (let [password-auth    (reify org.apache.sshd.server.auth.password.PasswordAuthenticator
-                             (authenticate [_ username password session]
+                             (authenticate [_ username password _session]
                                (and
                                 (= username ssh-username)
                                 (= password ssh-password))))

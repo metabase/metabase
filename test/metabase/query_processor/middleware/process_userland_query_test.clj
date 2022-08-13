@@ -90,12 +90,11 @@
           "QueryExecution saved in the DB should have query execution info. empty `:data` should get added to failures"))))
 
 (deftest viewlog-call-test
-  (let [query {:query? true}]
-    (testing "no viewlog event with nil card id"
-      (let [call-count (atom 0)]
-        (with-redefs [events/publish-event! (fn [& args] (swap! call-count inc))]
-          (mt/test-qp-middleware process-userland-query/process-userland-query {:query? true} {} [] nil)
-          (is (= 0 @call-count)))))))
+  (testing "no viewlog event with nil card id"
+    (let [call-count (atom 0)]
+      (with-redefs [events/publish-event! (fn [& _] (swap! call-count inc))]
+        (mt/test-qp-middleware process-userland-query/process-userland-query {:query? true} {} [] nil)
+        (is (= 0 @call-count))))))
 
 (defn- async-middleware [qp]
   (fn async-middleware-qp [query rff context]

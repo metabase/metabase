@@ -6,7 +6,8 @@
 
 (sql-jdbc.tx/add-test-extensions! :sqlite)
 
-(defmethod tx/dbdef->connection-details :sqlite [_ context dbdef]
+(defmethod tx/dbdef->connection-details :sqlite
+  [_driver _context dbdef]
   {:db (str (tx/escaped-database-name dbdef) ".sqlite")})
 
 (doseq [[base-type sql-type] {:type/BigInteger "BIGINT"

@@ -16,6 +16,7 @@
 
 (api/defendpoint POST "/:id/dimension"
   "Sets the dimension for the given object with ID."
+  #_{:clj-kondo/ignore [:unused-binding]}
   [id :as {{dimension-type :type, dimension-name :name} :body}]
   {dimension-type          (su/api-param "type" (s/enum "internal" "external"))
    dimension-name          su/NonBlankString})

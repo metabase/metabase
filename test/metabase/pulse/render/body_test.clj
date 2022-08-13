@@ -5,6 +5,7 @@
             [metabase.pulse.render.body :as body]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.test-util :as render.tu]
+            [metabase.test :as mt]
             [schema.core :as s]))
 
 (use-fixtures :each
@@ -632,13 +633,7 @@
                   (body/render :progress :inline pacific-tz
                                render.tu/test-card
                                nil
-                               {:cols col :rows rows}))
-        prune   (fn prune [html-tree]
-                  (walk/prewalk (fn no-maps [x]
-                                  (if (vector? x)
-                                    (filterv (complement map?) x)
-                                    x))
-                                html-tree))]
+                               {:cols col :rows rows}))]
     (testing "Renders without error"
       (let [rendered-info (render [[25]])]
         (is (has-inline-image? rendered-info))))
@@ -648,7 +643,7 @@
 
 (def donut-info #'body/donut-info)
 
-(deftest donut-info-test
+(deftest ^:parallel donut-info-test
   (let [rows [["a" 45] ["b" 45] ["c" 5] ["d" 5]]]
     (testing "If everything is above the threshold does nothing"
       (is (= rows (:rows (donut-info 4 rows)))))
@@ -663,15 +658,16 @@
         (is (= {"a" "50%" "b" "50%" "Other" "0%"}
                (:percentages (donut-info 5 rows))))))))
 
-(deftest format-percentage-test
-  (let [value 12345.54321]
-    (is (= "1,234,543.21%" (body/format-percentage 12345.4321 ".,")))
-    (is (= "1&234&543^21%" (body/format-percentage 12345.4321 "^&")))
-    (is (= "1,234,543 21%" (body/format-percentage 12345.4321 " ")))
-    (is (= "1,234,543.21%" (body/format-percentage 12345.4321 nil)))
-    (is (= "1,234,543.21%" (body/format-percentage 12345.4321 "")))))
+(deftest ^:parallel format-percentage-test
+  (mt/are+ [value expected] (= expected
+                               (body/format-percentage 12345.4321 value))
+    ".," "1,234,543.21%"
+    "^&" "1&234&543^21%"
+    " "  "1,234,543 21%"
+    nil  "1,234,543.21%"
+    ""   "1,234,543.21%"))
 
-(deftest x-and-y-axis-label-info-test
+(deftest ^:parallel x-and-y-axis-label-info-test
   (let [x-col {:display_name "X col"}
         y-col {:display_name "Y col"}]
     (testing "no custom viz settings"
