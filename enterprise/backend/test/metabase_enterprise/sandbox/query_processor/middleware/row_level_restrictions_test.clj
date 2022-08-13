@@ -477,17 +477,20 @@
                             (assoc col
                                    :id id
                                    :table_id (mt/id :venues)
-                                   :field_ref [:field id nil])))]
+                                   :field_ref [:field id nil])))
+          expected-outer-cols (fn []
+                                (map #(assoc-in % [:options :nested/outer] true)
+                                     (expected-cols)))]
       (testing "A query with a simple attributes-based sandbox should have the same metadata"
         (mt/with-gtaps {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
                         :attributes {"cat" 50}}
-            (is (= (expected-cols)
+            (is (= (expected-outer-cols)
                    (cols)))))
 
       (testing "A query with an equivalent MBQL query sandbox should have the same metadata"
         (mt/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                         :attributes {"cat" 50}}
-            (is (= (expected-cols)
+            (is (= (expected-outer-cols)
                    (cols)))))
 
       (testing "A query with an equivalent native query sandbox should have the same metadata"

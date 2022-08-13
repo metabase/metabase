@@ -31,7 +31,9 @@
                      [4 "Wurstküche"                   29 33.9997 -118.465 2]
                      [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]]
               :cols (mapv
-                     (partial qp.test/col :venues)
+                     (fn [col]
+                       (-> (qp.test/col :venues col)
+                           (assoc-in [:options :nested/outer] true)))
                      [:id :name :category_id :latitude :longitude :price])}
              (qp.test/rows-and-cols
                (mt/format-rows-by :venues
@@ -347,7 +349,9 @@
 (deftest filter-by-field-literal-test
   (testing "make sure we can filter by a field literal"
     (is (= {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]]
-            :cols (mapv (partial qp.test/col :venues)
+            :cols (mapv (fn [col]
+                          (-> (qp.test/col :venues col)
+                              (assoc-in [:options :nested/outer] true)))
                         [:id :name :category_id :latitude :longitude :price])}
            (qp.test/rows-and-cols
              (mt/run-mbql-query venues
@@ -502,7 +506,9 @@
 
 (deftest correct-column-metadata-test
   (testing "make sure a query using a source query comes back with the correct columns metadata"
-    (is (= (map (partial qp.test/col :venues)
+    (is (= (map (fn [col]
+                  (-> (qp.test/col :venues col)
+                      (assoc-in [:options :nested/outer] true)))
                 [:id :name :category_id :latitude :longitude :price])
            ;; todo: i don't know why the results don't have the information
            (mt/cols
