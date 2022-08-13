@@ -73,8 +73,8 @@
                     Card                [card2]
                     Dashboard           [dashboard]
                     DashboardCard       [dc-1 {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card1)}]
-                    DashboardCard       [dc-2 {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card2)}]
-                    DashboardCardSeries [dcs-1 {:dashboardcard_id (u/the-id dc-1), :card_id (u/the-id card2)}]]
+                    DashboardCard       [_    {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card2)}]
+                    DashboardCardSeries [_    {:dashboardcard_id (u/the-id dc-1), :card_id (u/the-id card2)}]]
       (testing "get multi-cards"
         (is (= 1 (count (dashboard-card/dashcard->multi-cards dc-1))))))))
 

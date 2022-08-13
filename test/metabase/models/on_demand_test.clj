@@ -106,7 +106,7 @@
               {:db    {:is_on_demand true}
                :card  {:dataset_query (basic-native-query)}
                :field {:name "New Field"}}
-              (fn [{:keys [table field card]}]
+              (fn [{:keys [field card]}]
                 ;; now change the query to one that references our Field in a
                 ;; on-demand DB. Field should have updated values
                 (db/update! Card (u/the-id card)
@@ -203,7 +203,7 @@
              ;; Create a On-Demand DB and MBQL Card
              (do-with-updated-fields-for-dashboard
               {:db {:is_on_demand true}}
-              (fn [{:keys [table field card dash dashcard updated-field-names]}]
+              (fn [{:keys [table card dash dashcard updated-field-names]}]
                 ;; create a Dashboard and add a DashboardCard with a param mapping
                 (mt/with-temp Field [new-field {:table_id         (u/the-id table)
                                                 :name             "New Field"
@@ -223,14 +223,14 @@
       (is (= #{}
              (do-with-updated-fields-for-dashboard
               {:db {:is_on_demand false}}
-              (fn [{:keys [field card dash updated-field-names]}]
+              (fn [{:keys [field card dash]}]
                 (add-dashcard-with-parameter-mapping! dash card field))))))
 
     (testing "with changed param referencing Field in non-On-Demand DB should *not* get updated FieldValues"
       (is (= #{}
              (do-with-updated-fields-for-dashboard
               {:db {:is_on_demand false}}
-              (fn [{:keys [table field card dash dashcard updated-field-names]}]
+              (fn [{:keys [table card dash dashcard]}]
                 (mt/with-temp Field [new-field {:table_id (u/the-id table), :has_field_values "list"}]
                   (dashboard/update-dashcards! dash
                                                [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))))

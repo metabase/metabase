@@ -141,7 +141,7 @@
 ;; https://www.quartz-scheduler.org/api/2.1.7/org/quartz/JobExecutionContext.html#put(java.lang.Object,%20java.lang.Object)
 (deftype MockJobExecutionContext [job-data-map]
   org.quartz.JobExecutionContext
-  (getMergedJobDataMap [this] (org.quartz.JobDataMap. job-data-map))
+  (getMergedJobDataMap [_this] (org.quartz.JobDataMap. job-data-map))
 
   qc/JobDataMapConversion
   (from-job-data [this]

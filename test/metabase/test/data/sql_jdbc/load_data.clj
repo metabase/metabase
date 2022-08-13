@@ -96,7 +96,7 @@
 
 (defn load-data-get-rows
   "Used by `make-load-data-fn`; get a sequence of row maps for use in a `insert!` when loading table data."
-  [driver dbdef tabledef]
+  [_driver _dbdef tabledef]
   (let [fields-for-insert (mapv (comp keyword :field-name)
                                 (:field-definitions tabledef))]
     ;; TIMEZONE FIXME
@@ -106,7 +106,7 @@
 (defn- make-insert!
   "Used by `make-load-data-fn`; creates the actual `insert!` function that gets passed to the `insert-middleware-fns`
   described above."
-  [driver conn {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
+  [driver conn {:keys [database-name], :as _dbdef} {:keys [table-name], :as _tabledef}]
   (let [components       (for [component (sql.tx/qualified-name-components driver database-name table-name)]
                            (ddl.i/format-name driver (u/qualified-name component)))
         table-identifier (sql.qp/->honeysql driver (apply hx/identifier :table components))]

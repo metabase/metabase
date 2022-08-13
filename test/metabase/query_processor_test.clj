@@ -154,7 +154,7 @@
     (field-literal-col :venues :price)
     (field-literal-col (aggregate-col :count))"
   {:arglists '([col] [table-kw field-kw])}
-  ([{field-name :name, base-type :base_type, unit :unit, :as col}]
+  ([{field-name :name, base-type :base_type, :as col}]
    (-> col
        (assoc :field_ref [:field field-name {:base-type base-type}]
               :source    :fields)
@@ -172,7 +172,7 @@
     (field-literal-col-keep-extra-cols :venues :price)
     (field-literal-col-keep-extra-cols (aggregate-col :count))"
   {:arglists '([col] [table-kw field-kw])}
-  ([{field-name :name, base-type :base_type, unit :unit, :as col}]
+  ([{field-name :name, base-type :base_type, :as col}]
    (assoc col
           :field_ref [:field field-name {:base-type base-type}]
           :source    :fields))

@@ -239,8 +239,8 @@
 (deftest update-field-values-no-human-readable-values-test
   (testing "POST /api/field/:id/values"
     (testing "Human readable values are optional"
-      (mt/with-temp* [Field       [{field-id :id}       list-field]
-                      FieldValues [{field-value-id :id} {:values (range 5 10), :field_id field-id}]]
+      (mt/with-temp* [Field       [{field-id :id} list-field]
+                      FieldValues [_              {:values (range 5 10), :field_id field-id}]]
         (testing "fetch initial values"
           (is (= {:values [[5] [6] [7] [8] [9]], :field_id true, :has_more_values false}
                  (mt/boolean-ids-and-timestamps
@@ -259,7 +259,7 @@
   (testing "POST /api/field/:id/values"
     (testing "Existing field values can be updated (with their human readable values)"
       (mt/with-temp* [Field [{field-id :id} list-field]
-                      FieldValues [{field-value-id :id} {:values (conj (range 1 5) nil), :field_id field-id}]]
+                      FieldValues [_ {:values (conj (range 1 5) nil), :field_id field-id}]]
         (testing "fetch initial values"
           (is (= {:values [[nil] [1] [2] [3] [4]], :field_id true, :has_more_values false}
                  (mt/boolean-ids-and-timestamps
@@ -300,7 +300,7 @@
   (testing "POST /api/field/:id/values"
     (mt/with-temp Field [{field-id :id} list-field]
       (testing "should be able to unset FieldValues"
-        (mt/with-temp FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id}]
+        (mt/with-temp FieldValues [_ {:values (range 1 5), :field_id field-id}]
           (testing "before updating values"
             (is (= {:values [[1] [2] [3] [4]], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
@@ -312,9 +312,9 @@
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))[]))
 
       (testing "should be able to unset just the human-readable values"
-        (mt/with-temp FieldValues [{field-value-id :id} {:values                (range 1 5)
-                                                         :field_id              field-id
-                                                         :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
+        (mt/with-temp FieldValues [_ {:values                (range 1 5)
+                                      :field_id              field-id
+                                      :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
           (testing "before updating values"
             (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
@@ -329,7 +329,7 @@
       (mt/with-temp Field [{field-id :id} {:name "Field Test", :base_type :type/Integer, :has_field_values "list"}]
         (is (= "If remapped values are specified, they must be specified for all field values"
                (mt/user-http-request :crowberto :post 400 (format "field/%d/values" field-id)
-                {:values [[1 "$"] [2 "$$"] [3] [4]]})))))))
+                                     {:values [[1 "$"] [2 "$$"] [3] [4]]})))))))
 
 (defn- dimension-for-field [field-id]
   (-> (Field :id field-id)

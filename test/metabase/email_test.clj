@@ -204,7 +204,7 @@
 
 (defn mock-send-email!
   "To stub out email sending, instead returning the would-be email contents as a string"
-  [smtp-credentials email-details]
+  [_smtp-credentials email-details]
   (-> email-details
       message/make-jmessage
       message/message->str))

@@ -361,9 +361,9 @@
       (mt/with-temp-copy-of-db
         (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
         (mt/with-temp* [Collection [collection]
-                        Card       [{card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
-                                                                 :dataset_query (mt/mbql-query venues
-                                                                                  {:order-by [[:asc $id]], :limit 2})}]
+                        Card       [{card-1-id :id} {:collection_id (u/the-id collection)
+                                                     :dataset_query (mt/mbql-query venues
+                                                                      {:order-by [[:asc $id]], :limit 2})}]
                         Card       [card-2 {:collection_id (u/the-id collection)
                                             :dataset_query (mt/native-query
                                                              {:query         "SELECT * FROM {{card}}"
@@ -377,7 +377,7 @@
               (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
                       [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
                      (mt/rows
-                       (qp/process-query (:dataset_query card-2))))))))))))
+                      (qp/process-query (:dataset_query card-2))))))))))))
 
 (deftest card-query-errors-test
   (testing "error conditions for :card parameters"
