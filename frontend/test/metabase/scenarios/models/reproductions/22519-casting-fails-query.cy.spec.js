@@ -36,7 +36,6 @@ describe("issue 22519", () => {
 
     turnIntoModel();
 
-    cy.wait("@dataset");
     cy.findByText("xavier");
   });
 });
