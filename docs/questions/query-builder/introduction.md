@@ -163,7 +163,7 @@ Once you're done setting your metrics and groupings, click **Visualize** to see 
 
 ## Visualizing your data
 
-If you want to jump ahead and learn about [how to change the visualization](../sharing-results/visualizing-results.md) of your results, by all means, feel free.
+If you want to jump ahead and learn about [how to change the visualization](../sharing/visualizing-results.md) of your results, by all means, feel free.
 
 ## Returning to the notebook editor
 
