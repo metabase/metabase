@@ -33,25 +33,29 @@ title: Metabase documentation
 
 ## Asking questions
 
+- [Overview](./questions/start.md)
+
 ### Query builder
 
-- [Asking questions](./users-guide/04-asking-questions.md)
-- [Custom expressions](./users-guide/expressions.md)
-- [List of expressions: aggregations and functions](./users-guide/expressions-list.md)
-- [Visualizing data](./users-guide/05-visualizing-results.md)
-- [Using results to ask new questions](./users-guide/referencing-saved-questions-in-queries.md)
-- [Joining data](./users-guide/join.md)
+- [Asking questions](./questions/query-builder/introduction.md)
+- [Custom expressions](./questions/query-builder/expressions.md)
+- [List of expressions: aggregations and functions](./questions/query-builder/expressions-list.md)
+- [Joining data](./questions/query-builder//join.md)
 
 ### SQL and native queries
 
-- [The native SQL editor](./users-guide/writing-sql.md)
-- [Viewing metadata](./users-guide/12-data-model-reference.md)
-- [SQL templates](./users-guide/13-sql-parameters.md)
-- [SQL snippets](./users-guide/sql-snippets.md)
+- [The native SQL editor](./questions/native-editor/writing-sql.md)
+- [Viewing metadata](./questions/native-editor/data-model-reference.md)
+- [SQL templates](./questions/native-editor/sql-parameters.md)
+- [Using results to ask new questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
+- [SQL snippets](./questions/native-editor/sql-snippets.md)
+- [SQL snippet permissions](./questions/native-editor/snippet-permissions.md)
 
-### Alerts
+### Sharing
 
-- [Setting and getting alerts](./users-guide/15-alerts.md)
+- [Sharing answers](./questions/sharing/answers.md)
+- [Visualizing data](./questions/sharing/visualizing-results.md)
+- [Setting and getting alerts](./questions/sharing/alerts.md)
 
 ## Dashboards
 

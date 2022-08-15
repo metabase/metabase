@@ -124,7 +124,7 @@ case(isnull([Feedback]), "Unknown feedback.", [Feedback])
 - [Custom expressions documentation][custom-expressions-doc]
 - [Custom expressions tutorial][custom-expressions-learn]
 
-[custom-expressions-doc]: ../expressions
+[custom-expressions-doc]: ../expressions.md
 [custom-expressions-learn]: /learn/questions/custom-expressions
 [data-types]: /learn/databases/data-types-overview#examples-of-data-types
 [notebook-editor-def]: /glossary/notebook_editor

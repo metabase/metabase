@@ -55,8 +55,8 @@ If a person in that blocked group belongs to _another_ group that _does_ have th
 
 "Corresponding data access" here refers to whether the saved question was created using the graphical query builder, or the native/SQL editor, as the required permissions to overrule a block differ depending on how the question was created.
 
-- If the question was created using the [graphical query builder](../users-guide/04-asking-questions.md), the person would also need to be in a group with **Unrestricted data access** or **Sandboxed access** to the relevant database (or table) to view that question.
-- If the question was created using the [native/SQL editor](../users-guide/writing-sql.md), the person would need to be a member of a group with both **Unrestricted data access** and **Native query editing** set to **YES** to view that question.
+- If the question was created using the [graphical query builder](../questions/query-builder/introduction.md), the person would also need to be in a group with **Unrestricted data access** or **Sandboxed access** to the relevant database (or table) to view that question.
+- If the question was created using the [native/SQL editor](../questions/native-editor/writing-sql.md), the person would need to be a member of a group with both **Unrestricted data access** and **Native query editing** set to **YES** to view that question.
 
 ### Table permissions
 
@@ -64,7 +64,7 @@ When you select [Granular access](#granular-access) for a database, you'll be pr
 
 #### Unrestricted access to the table
 
-Groups with unrestricted access can use the [graphical query builder](../users-guide/04-asking-questions.md) to ask questions about this table.
+Groups with unrestricted access can use the [graphical query builder](../questions/query-builder/introduction.md) to ask questions about this table.
 
 #### No self-service access to the table
 
@@ -118,7 +118,7 @@ This setting defines whether a person can edit the connection settings for the d
 - [Advanced data sandboxing: limiting access to columns][sandbox-columns]
 
 [collections]: 06-collections.md
-[dashboard-subscriptions]: ../users-guide/dashboard-subscriptions.md
+[dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-sandboxing]: ../enterprise-guide/data-sandboxes.md
 [permissions-overview]: 05-setting-permissions.md
 [sandbox-columns]: /learn/permissions/data-sandboxing-column-permissions.html

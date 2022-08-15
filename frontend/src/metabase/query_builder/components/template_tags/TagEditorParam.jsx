@@ -236,7 +236,7 @@ export class TagEditorParam extends Component {
                 {t`There aren't any filter widgets for this type of field yet.`}{" "}
                 <Link
                   to={MetabaseSettings.docsUrl(
-                    "users-guide/13-sql-parameters",
+                    "questions/native-editor/sql-parameters",
                     "the-field-filter-variable-type",
                   )}
                   target="_blank"

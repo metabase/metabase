@@ -1,12 +1,14 @@
 ---
 title: SQL variables
+redirect_from:
+  - /docs/latest/users-guide/13-sql-parameters
 ---
 
 # SQL variables 
 
 You can create SQL templates by adding variables to your SQL queries in the [Native/SQL editor][sql-editor]. These variables will create filter widgets that you can use to change the variable's value in the query. You can also add parameters to your question's URL to set the filters' values, so that when the question loads, those values are inserted into the variables.
 
-![Variables](images/sql-parameters/02-widget.png)
+![Variables](../images/02-widget.png)
 
 ## Defining variables
 
@@ -173,7 +175,7 @@ When you set the **Variable type** to "Field Filter", Metabase will present an o
 
 If you're not seeing the option to display a filter widget, make sure the mapped field is set to one of the above types, and then try manually syncing your database from the "Databases" section of the Admin Panel to force Metabase to scan and cache the field's values.
 
-If you want to map a Field Filter to a field that isn't one of the compatible types listed above, you'll need an Admin to change the field type for that column. See [metadata editing](../data-modeling/metadata-editing.md).
+If you want to map a Field Filter to a field that isn't one of the compatible types listed above, you'll need an Admin to change the field type for that column. See [metadata editing](../../data-modeling/metadata-editing.md).
 
 ## Field Filter syntax
 
@@ -208,7 +210,7 @@ The kind of filter widget that Metabase displays when you create a Field Filter 
 
 Date fields will either have a simple date filter (for Date variables) or a dynamic date picker (for Field Filters mapped to a date field).
 
-If you want to change the filter widget for a particular field, you'll need to ask an Admin to update that field in [the data model](../data-modeling/metadata-editing.md) and set the desired "Filtering on this field" option.
+If you want to change the filter widget for a particular field, you'll need to ask an Admin to update that field in [the data model](../../data-modeling/metadata-editing.md) and set the desired "Filtering on this field" option.
 
 ### Filter widget with plain input box
 
@@ -259,7 +261,7 @@ The kind of dashboard filter that can be used with the SQL question depends on t
 
 If you add a **Date** variable to the question, then it's only possible to use the dashboard filter option **Single Date**. So if you are trying to use one of the other Time options on the dashboard, you'll need to change the variable to a [Field Filter](#the-field-filter-variable-type) variable and map it to a date column.
 
-![Field filter](images/sql-parameters/state-field-filter.png)
+![Field filter](../images/state-field-filter.png)
 
 More on [Dashboard filters][dashboard-filters].
 
@@ -277,10 +279,10 @@ More on [Dashboard filters][dashboard-filters].
 
 Learn how to [refer to a saved question in a SQL query](referencing-saved-questions-in-queries.md).
 
-[sql-editor]: ./writing-sql.html
-[dashboard-filters]: ../dashboards/filters.html
+[sql-editor]: ./writing-sql.md
+[dashboard-filters]: ../../dashboards/filters.md
 [field-filter]: /learn/sql-questions/field-filters.html
 [sql-variables]: /learn/sql-questions/sql-variables.html
-[troubleshooting-filters]: ../troubleshooting-guide/filters.html
-[troubleshooting-sql]: ../troubleshooting-guide/sql.html
+[troubleshooting-filters]: ../../troubleshooting-guide/filters.md
+[troubleshooting-sql]: ../../troubleshooting-guide/sql.md
 [basic-input]: /learn/sql-questions/sql-variables.html#basic-input-variable-text
