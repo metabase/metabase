@@ -1,19 +1,21 @@
 ---
-title: Sharing and embedding dashboards or questions
+title: Sharing questions using public links
+redirect_from:
+  - /docs/latest/administration-guide/12-public-links
 ---
 
-## Sharing and embedding dashboards or questions
+## Sharing questions using public links
 
 Sometimes you'll want to share a dashboard or question you've saved with someone that isn't a part of your organization or company, or someone who doesn't need access to your full Metabase instance. Metabase lets administrators create public links and simple embeds to let you do just that.
 
 ### Turning public links on
 
-![Enable public sharing](images/public-links/enable-public-sharing.png)
+![Enable public sharing](./images/enable-public-sharing.png)
 First things first, you'll need to go to the Admin Panel and enable public sharing. In the future, you'll see dashboards and questions you've shared listed here, and you'll be able to revoke any public links that you no longer want to be used.
 
 ### Enable sharing on your dashboard or saved question
 
-![Enable sharing](images/public-links/enable-links.png)
+![Enable sharing](./images/enable-links.png)
 
 Next, exit the Admin Panel and go to question that you want to share, then click on the `Sharing and Embedding` icon in the bottom-right of the screen (it looks like an arrow pointing up and to the right). Then click on the toggle to enable public sharing for this question.
 
@@ -56,9 +58,3 @@ To specify multiple values for filters, though, you'll need to separate them wit
 ```
 /dashboard/42?id=7&customer_name=janet
 ```
-
----
-
-## Next: embedding dashboards and charts in other applications
-
-If you're trying to do more complex, integrated embedding in your own web application, then you can check out the [documentation for that feature](13-embedding.md).

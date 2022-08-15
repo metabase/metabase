@@ -1,5 +1,7 @@
 ---
 title: SQL variables
+redirect_from:
+  - /docs/latest/users-guide/13-sql-parameters
 ---
 
 # SQL variables 

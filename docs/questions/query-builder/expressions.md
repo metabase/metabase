@@ -1,5 +1,7 @@
 ---
 title: Custom expressions in the query builder
+redirect_from:
+  - /docs/latest/users-guide/expressions
 ---
 
 # Custom expressions in the query builder
@@ -20,7 +22,7 @@ When using the query builder, you can use expressions to create new:
 
 This page covers the basics of expressions. You can check out a [full list of expressions][expression-list] in Metabase, or walk through a tutorial that shows you how you can use [custom expressions in the notebook editor][custom-expressions].
 
-## Types of expressions 
+## Types of expressions
 
 There are two basic types of expressions, **Aggregations** and **Functions**. Check out a [full list of expressions][expression-list].
 
@@ -52,7 +54,7 @@ You can refer to columns in the current table, or to columns that are linked via
 
 ## Referencing Segments and metrics
 
-You can refer to saved [Segments or Metrics](../administration-guide/07-segments-and-metrics.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
+You can refer to saved [Segments or Metrics](../../data-modeling/segments-and-metrics.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
 
 ## Filter expressions and conditionals
 
@@ -77,7 +79,7 @@ See a full list of [expressions][expression-list].
 
 For a tutorial on expressions, see [Custom expressions in the notebook editor][custom-expressions].
 
-[aggregations]: expressions-list.html#aggregations
-[custom-expressions]: https://www.metabase.com/learn/questions/custom-expressions.html
-[expression-list]: expressions-list.html
-[functions]: expressions-list.html#functions
+[aggregations]: ./expressions-list.md#aggregations
+[custom-expressions]: https://www.metabase.com/learn/questions/custom-expressions
+[expression-list]: ./expressions-list.md
+[functions]: ./expressions-list.md#functions

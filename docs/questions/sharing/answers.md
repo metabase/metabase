@@ -1,5 +1,7 @@
 ---
 title: Saving and editing your questions
+redirect_from:
+  - /docs/latest/users-guide/06-sharing-answers
 ---
 
 # Saving and editing your questions
@@ -8,7 +10,7 @@ title: Saving and editing your questions
 
 Whenever you’ve arrived at an answer that you want to save for later, click the **Save** button in the top right of the screen. This will also save the visualization option you’ve chosen for your answer.
 
-![Save button](images/sharing-answers/save-button.png)
+![Save button](../images/save-button.png)
 
 A modal will appear, prompting you to give your question a name and description, and to pick which [collection][collections] to save it in. Note that your administrator might have set things up so that you're only allowed to [save questions in certain collection][collection-permissions], but you can always save things in your Personal Collection. After saving your question, you'll be asked if you want to add it to a new or existing dashboard.
 
@@ -24,7 +26,7 @@ You can export the results of a question by clicking on the __Download arrow__ (
 
 Once you save your question, a down arrow will appear to the right of the question's title. Clicking on the down arrow will bring up the **Question detail sidebar**, which gives you some options:
 
-![Question detail sidebar](images/sharing-answers/question-details-sidebar.png)
+![Question detail sidebar](../images/question-details-sidebar.png)
 
 - **Edit details** (Pencil icon). Change the title of the question, and add some description for context. Adding a description will also make the question easier to find using the search bar. You can also select more options to [cache the results of the question](#caching-results).
 - **Add to dashbboard** (Dashboard icon with plus symbol). See [dashboards][dashboards].
@@ -52,7 +54,7 @@ Administrators can **Verify** a question by clicking on the **Verify checkmark**
 
 Once verified, the question will have a verified icon next to the question's title.
 
-![Verified icon](images/sharing-answers/verified-icon.png)
+![Verified icon](../images/verified-icon.png)
 
 Verified questions are also more likely to show up higher in search suggestions and search results.
 
@@ -66,9 +68,9 @@ Below each edit entry in the timeline, you can click on **Revert** to reinstate 
 
 ## Sharing questions with public links
 
-If your Metabase administrator has enabled [public sharing](../administration-guide/12-public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the sharing icon to find its public links. Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post.
+If your Metabase administrator has enabled [public sharing](../../embedding/public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the sharing icon to find its public links. Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post.
 
-![Share icon](images/sharing-answers/share-icon.png)
+![Share icon](../images/share-icon.png)
 
 To share a question, click on the arrow pointing up and to the right in the bottom right of the question.
 
@@ -76,16 +78,10 @@ To share a question, click on the arrow pointing up and to the right in the bott
 
 You can set up questions to run periodically and notify you if the results are interesting. Check out [Alerts][alerts].
 
----
-
-## Next: collections
-
-Next, we'll learn about how to organize our questions in [collections][collections].
-
-[alerts]: 15-alerts.md
+[alerts]: ./alerts.md
 [archiving-items]: collections.html#archiving-items
 [caching]: ../administration-guide/14-caching.md
 [collections]: collections.html
 [collection-permissions]: ../administration-guide/06-collections.md
-[dashboards]: 07-dashboards.md
+[dashboards]: ../../dashboards/start.md
 [model]: ../data-modeling/models.md
