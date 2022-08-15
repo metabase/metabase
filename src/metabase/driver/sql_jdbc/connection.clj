@@ -20,7 +20,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti connection-details->spec
-  "Given a Database `details-map`, return a JDBC connection spec."
+  "Given a Database `details-map`, return an unpooled JDBC connection spec. Driver authors should implement this method,
+  but you probably shouldn't be *USE* this method directly! If you want a pooled connection spec (which you almost
+  certainly do), use [[db->pooled-connection-spec]] instead."
   {:arglists '([driver details-map])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

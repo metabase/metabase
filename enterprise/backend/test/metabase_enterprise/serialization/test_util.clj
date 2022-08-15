@@ -79,9 +79,7 @@
                 (binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 data-source)]
                   (testing (format "\nApp DB = %s" (pr-str connection-string))
                     (thunk))))]
-        (do-with-app-db
-         (fn []
-           (mdb/setup-db!)))
+        (do-with-app-db mdb/setup-db!)
         (f do-with-app-db)))))
 
 (defn do-with-source-and-dest-dbs [f]

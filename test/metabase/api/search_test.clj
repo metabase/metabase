@@ -12,6 +12,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.search.config :as search-config]
+            [metabase.search.scoring :as scoring]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
@@ -48,7 +49,7 @@
 
 (defn- sorted-results [results]
   (->> results
-       (sort-by (juxt (comp (var-get #'metabase.search.scoring/model->sort-position) :model)))
+       (sort-by (juxt (comp (var-get #'scoring/model->sort-position) :model)))
        reverse))
 
 (defn- make-result
@@ -266,7 +267,7 @@
   (testing "It sorts by dashboard count"
     (mt/with-temp* [Card          [{card-id-3 :id} {:name "dashboard-count 3"}]
                     Card          [{card-id-5 :id} {:name "dashboard-count 5"}]
-                    Card          [{card-id-0 :id} {:name "dashboard-count 0"}]
+                    Card          [_               {:name "dashboard-count 0"}]
                     Dashboard     [{dashboard-id :id}]
                     DashboardCard [_               {:card_id card-id-3, :dashboard_id dashboard-id}]
                     DashboardCard [_               {:card_id card-id-3, :dashboard_id dashboard-id}]
@@ -501,31 +502,31 @@
 
 (deftest table-test
   (testing "You should see Tables in the search results!\n"
-    (mt/with-temp Table [table {:name "Round Table"}]
+    (mt/with-temp Table [_ {:name "Round Table"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "Round Table")]
                (search-request-data user :q "Round Table"))))))
   (testing "You should not see hidden tables"
-    (mt/with-temp* [Table [normal {:name "Foo Visible"}]
-                    Table [hidden {:name "Foo Hidden", :visibility_type "hidden"}]]
+    (mt/with-temp* [Table [_normal {:name "Foo Visible"}]
+                    Table [_hidden {:name "Foo Hidden", :visibility_type "hidden"}]]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "Foo Visible")]
                (search-request-data user :q "Foo"))))))
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
-      (mt/with-temp Table [table {:name "Round Table" :display_name lancelot}]
+      (mt/with-temp Table [_ {:name "Round Table" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "Round Table") :name lancelot)]
                  (search-request-data user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
-      (mt/with-temp Table [table {:name table-name}]
+      (mt/with-temp Table [_ {:name table-name}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
                  (search-request-data user :q table-name :archived true)))))))
   (testing "*archived* tables should not appear in search results"
     (let [table-name (mt/random-name)]
-      (mt/with-temp Table [table {:name table-name, :active false}]
+      (mt/with-temp Table [_ {:name table-name, :active false}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
                  (search-request-data user :q table-name)))))))
@@ -563,8 +564,8 @@
 
 (deftest collection-namespaces-test
   (testing "Search should only return Collections in the 'default' namespace"
-    (mt/with-temp* [Collection [c1 {:name "Normal Collection"}]
-                    Collection [c2 {:name "Coin Collection", :namespace "currency"}]]
+    (mt/with-temp* [Collection [_c1 {:name "Normal Collection"}]
+                    Collection [_c2 {:name "Coin Collection", :namespace "currency"}]]
       (is (= ["Normal Collection"]
              (->> (search-request-data :crowberto :q "Collection")
                   (filter #(and (= (:model %) "collection")
@@ -584,9 +585,9 @@
                         s/Keyword s/Any}
                        (search-for-pulses pulse))))
         (mt/with-temp* [Card      [card-1]
-                        PulseCard [pc-1 {:pulse_id (:id pulse), :card_id (:id card-1)}]
+                        PulseCard [_ {:pulse_id (:id pulse), :card_id (:id card-1)}]
                         Card      [card-2]
-                        PulseCard [pc-2 {:pulse_id (:id pulse), :card_id (:id card-2)}]]
+                        PulseCard [_ {:pulse_id (:id pulse), :card_id (:id card-2)}]]
           (testing "Create some Pulse Cards: should still be able to search for it it"
             (is (schema= {:name     (s/eq "Electro-Magnetic Pulse")
                           s/Keyword s/Any}
@@ -600,12 +601,12 @@
 (deftest card-dataset-query-test
   (testing "Search results should match a native query's dataset_query column, but not an MBQL query's one."
     ;; https://github.com/metabase/metabase/issues/24132
-    (mt/with-temp* [Card [mbql-card   {:name          "Venues Count"
-                                       :query_type    "query"
-                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-                    Card [native-card {:name          "Another SQL query"
-                                       :query_type    "native"
-                                       :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]]
+    (mt/with-temp* [Card [_mbql-card   {:name          "Venues Count"
+                                        :query_type    "query"
+                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                    Card [_native-card {:name          "Another SQL query"
+                                        :query_type    "native"
+                                        :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]]
       (is (= ["Another SQL query"]
              (->> (search-request-data :rasta :q "aggregation")
                   (map :name)))))))

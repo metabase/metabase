@@ -1,9 +1,10 @@
 (ns metabase.task.sync-databases-test
   "Tests for the logic behind scheduling the various sync operations of Databases. Most of the actual logic we're
-  testing is part of `metabase.models.database`, so there's an argument to be made that these sorts of tests could
+  testing is part of [[metabase.models.database]], so there's an argument to be made that these sorts of tests could
   just as easily belong to a `database-test` namespace."
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
+            [clojurewerkz.quartzite.conversion :as qc]
             [java-time :as t]
             [metabase.models.database :refer [Database]]
             [metabase.sync.schedules :as sync.schedules]
@@ -140,9 +141,9 @@
 ;; https://www.quartz-scheduler.org/api/2.1.7/org/quartz/JobExecutionContext.html#put(java.lang.Object,%20java.lang.Object)
 (deftype MockJobExecutionContext [job-data-map]
   org.quartz.JobExecutionContext
-  (getMergedJobDataMap [this] (org.quartz.JobDataMap. job-data-map))
+  (getMergedJobDataMap [_this] (org.quartz.JobDataMap. job-data-map))
 
-  clojurewerkz.quartzite.conversion/JobDataMapConversion
+  qc/JobDataMapConversion
   (from-job-data [this]
     (.getMergedJobDataMap this)))
 

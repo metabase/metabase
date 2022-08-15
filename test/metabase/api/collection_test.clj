@@ -99,8 +99,8 @@
 
     (testing "check that we don't see collections if we don't have permissions for them"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
-                        Collection [collection-2 {:name "Collection 2"}]]
+        (mt/with-temp* [Collection [collection-1  {:name "Collection 1"}]
+                        Collection [_             {:name "Collection 2"}]]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
           (is (= ["Collection 1"
                   "Rasta Toucan's Personal Collection"]
@@ -110,8 +110,8 @@
                                     (str/includes? collection-name "Personal Collection"))))
                       (map :name)))))))
 
-    (mt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
-                    Collection [collection-2 {:name "Regular Collection"}]]
+    (mt/with-temp* [Collection [_ {:name "Archived Collection", :archived true}]
+                    Collection [_ {:name "Regular Collection"}]]
       (letfn [(remove-other-collections [collections]
                 (filter (fn [{collection-name :name}]
                           (or (#{"Our analytics" "Archived Collection" "Regular Collection"} collection-name)
@@ -342,7 +342,7 @@
                       Dashboard  [{dashboard-id :id}
                                   {:name          "Dine & Dashboard"
                                    :collection_id collection-id-or-nil}]
-                      Pulse      [{pulse-id :id, :as pulse}
+                      Pulse      [{pulse-id :id, :as _pulse}
                                   {:name          "Electro-Magnetic Pulse"
                                    :collection_id collection-id-or-nil}]
                       ;; this is a dashboard subscription
@@ -432,25 +432,25 @@
                                              (str "collection/" (u/the-id collection) "/items"))))))))
     (testing "check that limit and offset work and total comes back"
       (mt/with-temp* [Collection [collection]
-                      Card       [card3        {:collection_id (u/the-id collection)}]
-                      Card       [card2        {:collection_id (u/the-id collection)}]
-                      Card       [card1        {:collection_id (u/the-id collection)}]]
+                      Card       [_ {:collection_id (u/the-id collection)}]
+                      Card       [_ {:collection_id (u/the-id collection)}]
+                      Card       [_ {:collection_id (u/the-id collection)}]]
         (is (= 2 (count (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "1")))))
         (is (= 1 (count (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "2")))))
         (is (= 3 (:total (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "1"))))))
 
     (testing "check that pinning filtering exists"
       (mt/with-temp* [Collection [collection]
-                      Card       [card3        {:collection_id (u/the-id collection)
-                                                :collection_position 1
-                                                :name "pinned-1"}]
-                      Card       [card2        {:collection_id (u/the-id collection)
-                                                :collection_position 1
-                                                :name "pinned-2"}]
-                      Card       [card1        {:collection_id (u/the-id collection)
-                                                :name "unpinned-card"}]
-                      Timeline   [timeline     {:collection_id (u/the-id collection)
-                                                :name "timeline"}]]
+                      Card       [_ {:collection_id (u/the-id collection)
+                                     :collection_position 1
+                                     :name "pinned-1"}]
+                      Card       [_ {:collection_id (u/the-id collection)
+                                     :collection_position 1
+                                     :name "pinned-2"}]
+                      Card       [_ {:collection_id (u/the-id collection)
+                                     :name "unpinned-card"}]
+                      Timeline   [_ {:collection_id (u/the-id collection)
+                                     :name "timeline"}]]
         (letfn [(fetch [pin-state]
                   (:data (mt/user-http-request :crowberto :get 200
                                                (str "collection/" (u/the-id collection) "/items")
@@ -807,8 +807,10 @@
 (defn- api-get-collection-ancestors
   "Call the API with Rasta to fetch `collection-or-id` and put the `:effective_` results in a nice format for the tests
   below."
-  [collection-or-id & additional-get-params]
-  (format-ancestors (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection-or-id)))))
+  [collection-or-id & additional-query-params]
+  (format-ancestors (apply mt/user-http-request :rasta :get 200
+                           (str "collection/" (u/the-id collection-or-id))
+                           additional-query-params)))
 
 (defn- api-get-collection-children
   [collection-or-id & additional-get-params]
@@ -954,10 +956,10 @@
           (letfn [(items [limit offset]
                     (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                                  :limit (str limit), :offset (str offset))))]
-            (let [[a-1 b-1 :as items-1] (items 2 0)]
+            (let [[_a-1 b-1 :as items-1] (items 2 0)]
               (is (= 2
                      (count items-1)))
-              (let [[a-2 b-2 :as items-2] (items 2 1)]
+              (let [[a-2 _b-2 :as items-2] (items 2 1)]
                 (is (= 2
                        (count items-2)))
                 (is (= b-1 a-2))
@@ -1388,7 +1390,7 @@
   (testing "PUT /api/collection/:id"
     (testing "Archiving a collection should delete any alerts associated with questions in the collection"
       (mt/with-temp* [Collection            [{collection-id :id}]
-                      Card                  [{card-id :id :as card} {:collection_id collection-id}]
+                      Card                  [{card-id :id} {:collection_id collection-id}]
                       Pulse                 [{pulse-id :id} {:alert_condition  "rows"
                                                              :alert_first_only false
                                                              :creator_id       (mt/user->id :rasta)
@@ -1398,10 +1400,10 @@
                                                              :card_id  card-id
                                                              :position 0}]
                       PulseChannel          [{pc-id :id}    {:pulse_id pulse-id}]
-                      PulseChannelRecipient [{pcr-id-1 :id} {:user_id          (mt/user->id :crowberto)
-                                                             :pulse_channel_id pc-id}]
-                      PulseChannelRecipient [{pcr-id-2 :id} {:user_id          (mt/user->id :rasta)
-                                                             :pulse_channel_id pc-id}]]
+                      PulseChannelRecipient [_ {:user_id          (mt/user->id :crowberto)
+                                                :pulse_channel_id pc-id}]
+                      PulseChannelRecipient [_ {:user_id          (mt/user->id :rasta)
+                                                :pulse_channel_id pc-id}]]
         (mt/with-fake-inbox
           (mt/with-expected-messages 2
             (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id)
@@ -1428,7 +1430,7 @@
         ;; would also need perms for B
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp* [Collection [collection-a]
-                          Collection [collection-b {:location (collection/children-location collection-a)}]]
+                          Collection [_collection-b {:location (collection/children-location collection-a)}]]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-a)
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
@@ -1483,7 +1485,7 @@
             ;; C*
             (mt/with-non-admin-groups-no-root-collection-perms
               (mt/with-temp* [Collection [collection-a]
-                              Collection [collection-b {:location (collection/children-location collection-a)}]
+                              Collection [_collection-b {:location (collection/children-location collection-a)}]
                               Collection [collection-c]]
                 (doseq [collection [collection-a collection-c]]
                   (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection))
@@ -1529,20 +1531,20 @@
                                     :collection_id (u/the-id coll-a)}]
                     Timeline [tl-b {:name          "Timeline B"
                                     :collection_id (u/the-id coll-b)}]
-                    Timeline [tl-b-old {:name          "Timeline B-old"
-                                        :collection_id (u/the-id coll-b)
-                                        :archived      true}]
-                    Timeline [tl-c {:name          "Timeline C"
-                                    :collection_id (u/the-id coll-c)}]
-                    TimelineEvent [event-aa {:name        "event-aa"
-                                             :timeline_id (u/the-id tl-a)}]
-                    TimelineEvent [event-ab {:name        "event-ab"
-                                             :timeline_id (u/the-id tl-a)}]
-                    TimelineEvent [event-ba {:name        "event-ba"
-                                             :timeline_id (u/the-id tl-b)}]
-                    TimelineEvent [event-bb {:name        "event-bb"
-                                             :timeline_id (u/the-id tl-b)
-                                             :archived    true}]]
+                    Timeline [_tl-b-old {:name          "Timeline B-old"
+                                         :collection_id (u/the-id coll-b)
+                                         :archived      true}]
+                    Timeline [_tl-c {:name          "Timeline C"
+                                     :collection_id (u/the-id coll-c)}]
+                    TimelineEvent [_event-aa {:name        "event-aa"
+                                              :timeline_id (u/the-id tl-a)}]
+                    TimelineEvent [_event-ab {:name        "event-ab"
+                                              :timeline_id (u/the-id tl-a)}]
+                    TimelineEvent [_event-ba {:name        "event-ba"
+                                              :timeline_id (u/the-id tl-b)}]
+                    TimelineEvent [_event-bb {:name        "event-bb"
+                                              :timeline_id (u/the-id tl-b)
+                                              :archived    true}]]
       (testing "Timelines in the collection of the card are returned"
         (is (= #{"Timeline A"}
                (timeline-names (timelines-request coll-a false)))))

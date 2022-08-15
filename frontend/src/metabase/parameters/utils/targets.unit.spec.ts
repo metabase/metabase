@@ -104,8 +104,10 @@ describe("parameters/utils/targets", () => {
         },
       });
 
-      expect(getParameterTargetField(target, metadata, question)).toBe(
-        PRODUCTS.CATEGORY,
+      expect(getParameterTargetField(target, metadata, question)).toEqual(
+        expect.objectContaining({
+          id: PRODUCTS.CATEGORY.id,
+        }),
       );
     });
 
@@ -118,8 +120,10 @@ describe("parameters/utils/targets", () => {
       const question = SAMPLE_DATABASE.question({
         "source-table": PRODUCTS.id,
       });
-      expect(getParameterTargetField(target, metadata, question)).toBe(
-        PRODUCTS.CATEGORY,
+      expect(getParameterTargetField(target, metadata, question)).toEqual(
+        expect.objectContaining({
+          id: PRODUCTS.CATEGORY.id,
+        }),
       );
     });
   });

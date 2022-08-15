@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Users from "metabase/entities/users";
+import Button from "metabase/core/components/Button";
 import AuthLayout from "../../containers/AuthLayout";
 import { ForgotPasswordData } from "../../types";
 import {
@@ -99,10 +100,7 @@ const ForgotPasswordSuccess = (): JSX.Element => {
       <InfoMessage>
         {t`Check your email for instructions on how to reset your password.`}
       </InfoMessage>
-      <InfoLink
-        className="Button Button--primary"
-        to="/auth/login"
-      >{t`Back to sign in`}</InfoLink>
+      <Button primary as="a" href="/auth/login">{t`Back to sign in`}</Button>
     </InfoBody>
   );
 };

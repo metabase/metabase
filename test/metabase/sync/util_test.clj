@@ -67,7 +67,7 @@
         created-task-history-ids (atom [])
         orig-log-fn              @#'metabase.sync.util/log-sync-summary
         orig-store-fn            @#'metabase.sync.util/store-sync-summary!]
-    (with-redefs [metabase.sync.util/log-sync-summary    (fn [operation database {:keys [steps] :as operation-metadata}]
+    (with-redefs [metabase.sync.util/log-sync-summary    (fn [operation database operation-metadata]
                                                            (swap! step-info-atom conj operation-metadata)
                                                            (orig-log-fn operation database operation-metadata))
                   metabase.sync.util/store-sync-summary! (fn [operation database operation-metadata]
@@ -153,8 +153,7 @@
             results       (#'sync-util/make-log-sync-summary-str operation
                                                                  (database/map->DatabaseInstance {:name db-name})
                                                                  (create-test-sync-summary step-name
-                                                                                           (fn [step-info]
-                                                                                             step-log-text)))]
+                                                                                           (constantly step-log-text)))]
         (testing "has-operation?"
           (is (= true
                  (str/includes? results operation))))
@@ -268,7 +267,7 @@
             has finished"
       (let [table-id (db/select-one-field :id Table :db_id (:id (mt/db)))
             _        (db/update! Table table-id :initial_sync_status "incomplete")
-            table    (Table table-id)]
+            _table   (Table table-id)]
         (sync/sync-database! (mt/db))
         (is (= "complete" (db/select-one-field :initial_sync_status Table :id table-id)))))
 
@@ -277,7 +276,7 @@
             db       (Database (:id (mt/db)))
             table-id (db/select-one-field :id Table :db_id (:id (mt/db)))
             _        (db/update! Table table-id :initial_sync_status "incomplete")
-            table    (Table table-id)]
+            _table   (Table table-id)]
         (sync/sync-database! db {:scan :schema})
         (is (= "complete" (db/select-one-field :initial_sync_status Database :id (:id db))))
         (is (= "complete" (db/select-one-field :initial_sync_status Table :id table-id)))))

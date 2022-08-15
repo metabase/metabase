@@ -39,7 +39,7 @@
 
       (testing "Could update with obfuscated password"
         (mt/user-http-request :crowberto :put 200 "ldap/settings"
-                              (update (ldap-test-details) :ldap-password #(setting/obfuscate-value %))))
+                              (update (ldap-test-details) :ldap-password setting/obfuscate-value)))
 
       (testing "Requires superusers"
         (is (= "You don't have permissions to do that."

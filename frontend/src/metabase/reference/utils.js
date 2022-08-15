@@ -45,15 +45,6 @@ export const databaseToForeignKeys = database =>
         .reduce((map, foreignKey) => assoc(map, foreignKey.id, foreignKey), {})
     : {};
 
-export const fieldsToFormFields = fields =>
-  Object.keys(fields)
-    .map(key => [
-      `${key}.display_name`,
-      `${key}.semantic_type`,
-      `${key}.fk_target_field_id`,
-    ])
-    .reduce((array, keys) => array.concat(keys), []);
-
 // TODO Atte Keinänen 7/3/17: Construct question with Question of metabase-lib instead of this using function
 export const getQuestion = ({
   dbId,

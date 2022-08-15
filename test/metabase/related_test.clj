@@ -3,7 +3,7 @@
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.models :refer [Card Collection Metric Segment]]
-            [metabase.related :as related :refer :all]
+            [metabase.related :as related]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.one-off-dbs :as one-off-dbs]))
@@ -59,18 +59,18 @@
                                                    {:table_id   $$venues
                                                     :definition {:source-table $$venues
                                                                  :filter       [:!= $name nil]}})]
-                  Card       [{card-id-a :id :as card-a}
+                  Card       [{card-id-a :id}
                               {:table_id      (mt/id :venues)
                                :dataset_query (mt/mbql-query venues
                                                 {:aggregation [[:sum $price]]
                                                  :breakout    [$category_id]})}]
-                  Card       [{card-id-b :id :as card-b}
+                  Card       [{card-id-b :id}
                               {:table_id      (mt/id :venues)
                                :collection_id collection-id
                                :dataset_query (mt/mbql-query venues
                                                 {:aggregation [[:sum $longitude]]
                                                  :breakout    [$category_id]})}]
-                  Card       [{card-id-c :id :as card-c}
+                  Card       [{card-id-c :id}
                               {:table_id      (mt/id :venues)
                                :dataset_query (mt/mbql-query venues
                                                 {:aggregation [[:sum $longitude]]

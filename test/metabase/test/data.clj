@@ -125,7 +125,7 @@
   (The 'cheatsheet' above is listed first so I can easily look at it with `autocomplete-mode` in Emacs.) This macro
   does the following:
 
-  *  Expands symbols like `$field` into calls to `id`, and wraps them in `:field-id`. See the dox for `$ids` for
+  *  Expands symbols like `$field` into calls to `id`, and wraps them in `:field-id`. See the dox for [[$ids]] for
      complete details.
   *  Wraps 'inner' query with the standard `{:database (data/id), :type :query, :query {...}}` boilerplate
   *  Adds `:source-table` clause if `:source-table` or `:source-query` is not already present"
@@ -204,7 +204,7 @@
 
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the
-  current DB (for `metabase.test.data` functions like `id` and `db`), and execute `body`.
+  current DB (for [[metabase.test.data]] functions like [[id]] and [[db]]), and execute `body`.
 
   `dataset` can be one of the following:
 

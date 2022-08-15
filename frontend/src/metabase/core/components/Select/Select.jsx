@@ -28,6 +28,7 @@ class Select extends Component {
     children: PropTypes.any,
 
     value: PropTypes.any.isRequired,
+    name: PropTypes.string,
     defaultValue: PropTypes.any,
     onChange: PropTypes.func.isRequired,
     multiple: PropTypes.bool,
@@ -132,7 +133,7 @@ class Select extends Component {
   itemIsClickable = option => !this.props.optionDisabledFn(option);
 
   handleChange = option => {
-    const { multiple, onChange } = this.props;
+    const { name, multiple, onChange } = this.props;
     const optionValue = this.props.optionValueFn(option);
     let value;
     if (multiple) {
@@ -144,7 +145,7 @@ class Select extends Component {
     } else {
       value = optionValue;
     }
-    onChange({ target: { value } });
+    onChange({ target: { name, value } });
     if (!multiple) {
       this._popover.close();
       this.handleClose();

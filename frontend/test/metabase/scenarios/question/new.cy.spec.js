@@ -9,8 +9,10 @@ import {
   summarize,
   startNewQuestion,
   visitQuestion,
+  visitQuestionAdhoc,
 } from "__support__/e2e/helpers";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -396,6 +398,22 @@ describe("scenarios > question > new", () => {
 
         assertColumnResized();
       });
+  });
+
+  it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          filter: ["=", ["field-id", ORDERS.USER_ID], 1],
+        },
+        database: SAMPLE_DB_ID,
+      },
+    });
+
+    cy.findByText("User ID is 1");
+    cy.findByText("37.65");
   });
 });
 

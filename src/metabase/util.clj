@@ -109,7 +109,7 @@
 
 (defn state?
   "Is `s` a state string?"
-  ^Boolean [^String s]
+  ^Boolean [s]
   (boolean
     (when (string? s)
       (contains? #{"alabama" "alaska" "arizona" "arkansas" "california" "colorado" "connecticut" "delaware"
@@ -898,9 +898,9 @@
 
 (defn ip-address?
   "Whether string `s` is a valid IP (v4 or v6) address."
-  [^String s]
+  [s]
   (and (string? s)
-       (.isValid (org.apache.commons.validator.routines.InetAddressValidator/getInstance) s)))
+       (.isValid (org.apache.commons.validator.routines.InetAddressValidator/getInstance) ^String s)))
 
 (defn sorted-take
   "A reducing function that maintains a queue of the largest items as determined by `kompare`. The queue is bounded

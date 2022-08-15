@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models.card :as card :refer :all]
+            [metabase.models.card :as card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.database :as database :refer [Database]]
             [metabase.models.field :refer [Field]]

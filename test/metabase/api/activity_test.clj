@@ -152,11 +152,11 @@
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
                                     :visualization_settings {}}]
-                  Card      [archived  {:name                   "archived-card"
-                                        :creator_id             (mt/user->id :crowberto)
-                                        :display                "table"
-                                        :archived               true
-                                        :visualization_settings {}}]
+                  Card      [_archived  {:name                   "archived-card"
+                                         :creator_id             (mt/user->id :crowberto)
+                                         :display                "table"
+                                         :archived               true
+                                         :visualization_settings {}}]
                   Dashboard [dash1 {:name        "rand-name"
                                     :description "rand-name"
                                     :creator_id  (mt/user->id :crowberto)}]
@@ -164,8 +164,8 @@
                                     :description "just another dashboard"
                                     :creator_id  (mt/user->id :crowberto)}]
                   Table     [table1 {:name "rand-name"}]
-                  Table     [hidden-table {:name            "hidden table"
-                                           :visibility_type "hidden"}]
+                  Table     [_hidden-table {:name            "hidden table"
+                                            :visibility_type "hidden"}]
                   Card      [dataset {:name                   "rand-name"
                                       :dataset                true
                                       :creator_id             (mt/user->id :crowberto)

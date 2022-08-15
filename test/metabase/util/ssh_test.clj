@@ -39,7 +39,7 @@
   []
   (try
     (let [password-auth    (reify org.apache.sshd.server.auth.password.PasswordAuthenticator
-                             (authenticate [_ username password session]
+                             (authenticate [_ username password _session]
                                (and
                                 (= username ssh-username)
                                 (= password ssh-password))))
@@ -90,7 +90,7 @@
 
 (defn- start-mock-servers! []
   (try
-    (doseq [start-server! [#(start-ssh-mock-server-with-password!)
+    (doseq [start-server! [start-ssh-mock-server-with-password!
                            #(start-ssh-mock-server-with-public-key!
                              ssh-publickey ssh-mock-server-with-publickey-port)
                            #(start-ssh-mock-server-with-public-key!
@@ -105,9 +105,8 @@
 (defn- do-with-mock-servers [thunk]
   (try
     (stop-mock-servers!)
-    (try
-      (start-mock-servers!)
-      (thunk))
+    (start-mock-servers!)
+    (thunk)
     (finally
       (stop-mock-servers!))))
 

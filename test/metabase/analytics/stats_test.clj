@@ -1,6 +1,6 @@
 (ns metabase.analytics.stats-test
   (:require [clojure.test :refer :all]
-            [metabase.analytics.stats :as stats :refer :all]
+            [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
             [metabase.email :as email]
             [metabase.integrations.slack :as slack]
             [metabase.models.card :refer [Card]]

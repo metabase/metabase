@@ -69,7 +69,7 @@
         (migrate!)
         (doseq [e [e1 e2]]
           (is (= true
-                 (db/exists? User :email (u/lower-case-en e1)))))))))
+                 (db/exists? User :email (u/lower-case-en e)))))))))
 
 (deftest semantic-type-migration-tests
   (testing "updates each of the coercion types"

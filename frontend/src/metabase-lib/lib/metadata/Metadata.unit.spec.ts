@@ -139,19 +139,7 @@ describe("Metadata", () => {
       expect(metadata.segmentsList()).toEqual([segmentA, segmentB]);
     });
   });
-  describe("question", () => {
-    it("should return a new question using the metadata instance", () => {
-      const card = {
-        name: "Question",
-        id: 1,
-      };
-      const metadata = new Metadata();
-      const question = metadata.question(card);
-      expect(question).toBeInstanceOf(Question);
-      expect(question.card()).toBe(card);
-      expect(question.metadata()).toBe(metadata);
-    });
-  });
+
   [
     ["segment", obj => new Segment(obj)],
     ["metric", obj => new Metric(obj)],
