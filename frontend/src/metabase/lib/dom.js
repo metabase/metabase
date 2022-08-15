@@ -295,6 +295,8 @@ export function open(
     openInSameWindow = url => clickLink(url, false),
     // custom function for opening in new window
     openInBlankWindow = url => clickLink(url, true),
+    // custom function for opening in same app instance
+    openInSameOrigin = openInSameWindow,
     ignoreSiteUrl = false,
     ...options
   } = {},
@@ -303,6 +305,8 @@ export function open(
 
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);
+  } else if (isSameOrigin(url)) {
+    openInSameOrigin(url, getLocation(url));
   } else {
     openInSameWindow(url);
   }
@@ -358,6 +362,15 @@ const getOrigin = url => {
     return new URL(url).origin;
   } catch {
     return null;
+  }
+};
+
+const getLocation = url => {
+  try {
+    const { pathname, search, hash } = new URL(url);
+    return { pathname, search, hash };
+  } catch {
+    return {};
   }
 };
 

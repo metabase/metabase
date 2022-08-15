@@ -1,5 +1,5 @@
 import _ from "underscore";
-
+import { push } from "react-router-redux";
 import { open } from "metabase/lib/dom";
 
 export function performAction(action, { dispatch, onChangeCardAndRun }) {
@@ -15,7 +15,10 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
     const url = action.url();
     const ignoreSiteUrl = action.ignoreSiteUrl;
     if (url) {
-      open(url, { ignoreSiteUrl });
+      open(url, {
+        openInSameOrigin: (url, location) => dispatch(push(location)),
+        ignoreSiteUrl,
+      });
       didPerform = true;
     }
   }
