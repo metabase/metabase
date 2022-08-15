@@ -6,16 +6,20 @@ title: Embedding overview
 
 ## [Introduction](./introduction)
 
-What is embedding, and how does it work?
+Share your data securely.
 
 ## [Signed embedding](./signed-embedding)
 
-Putting charts and dashboards in your app.
+Put interactive charts and dashboards in your app.
 
 ## [Full-app embedding](./full-app-embedding)
 
-Putting charts, dashboards, _and_ the [query builder](/glossary/query_builder) in your app.
+Put interactive charts, dashboards, _and_ the [query builder](/glossary/query_builder) in your app.
 
 ## [Appearance](../appearance/start)
 
 Customize the look and feel of your embedded charts and dashboards.
+
+## [Sharing results externally](../questions/start#sharing-results-externally)
+
+Make your data open to the public.

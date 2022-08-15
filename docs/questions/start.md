@@ -60,6 +60,18 @@ Save questions, download results, and share links.
 
 Choose from a variety of visualization types.
 
-### [Sharing](./sharing/alerts.md)
+### [Alerts](./sharing/alerts.md)
 
 Get results via email or Slack, either on a schedule, or only when something interesting happens.
+
+## Sharing results externally
+
+Make your data open to the public.
+
+### [Public links](./public-links)
+
+Send someone a link to your chart or dashboard, and tell them not to share it.
+
+### iframes
+
+Display a public link inside an iframe.
