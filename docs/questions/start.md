@@ -30,7 +30,7 @@ Also known as the SQL editor (we say native because you can also query data sour
 
 ### [Introduction to the native query editor](./native-editor/writing-sql.md)
 
-Write native code to query your data source.
+Write native code to query your database.
 
 ### [Viewing metadata](./native-editor/data-model-reference.md)
 
