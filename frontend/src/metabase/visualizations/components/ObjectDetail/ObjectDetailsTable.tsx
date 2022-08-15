@@ -49,7 +49,7 @@ export function DetailsTableCell({
   let isLink;
 
   if (isColumnName && column !== null) {
-    const columnSettings = settings.column(column);
+    const columnSettings = settings.column?.(column) || {};
     const clicked = {
       row,
       column,
@@ -144,6 +144,9 @@ export function DetailsTable({
   const { cols: columns } = data;
   const { cols, row } = React.useMemo(() => {
     const columnSettings = settings["detail.columns"];
+    if (!columnSettings) {
+      return { cols: columns, row: zoomedRow };
+    }
     const columnIndexes = columnSettings
       .filter((columnSetting: any) => columnSetting.enabled)
       .map((columnSetting: any) =>

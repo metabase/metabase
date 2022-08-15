@@ -36,7 +36,7 @@ describe("scenarios > question > null", () => {
 
     cy.log("'No Results since at least v0.34.3");
     cy.get("#detail-shortcut").click();
-    cy.findByText("Discount");
+    cy.contains("Discount ($)");
     cy.findByText("Empty");
   });
 
