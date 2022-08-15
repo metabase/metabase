@@ -1,12 +1,14 @@
 ---
 title: SQL snippet folders and permissions
+redirect_from:
+  - /docs/latest/enterprise-guide/sql-snippets
 ---
 
 # SQL snippet folders and permissions
 
 {% include plans-blockquote.html feature="SQL snippet controls" %}
 
-This article covers **SQL snippet folders**, which allow you to organize and set permissions on [SQL snippets](../users-guide/sql-snippets.md).
+This article covers **SQL snippet folders**, which allow you to organize and set permissions on [SQL snippets](./sql-snippets.md).
 
 Folder permissions should not be considered a security feature, but instead a feature that helps organize and standardize snippets. Although folders are distinct and separate from Collections, they both serve an organizational function: Collections gather and permission dashboards and questions; folders gather and permission snippets. For more info, see the [discussion on permissions below](#permissions).
 
@@ -18,21 +20,21 @@ The **Top folder** is the snippet sidebar's default folder. It is the root folde
 
 ### Creating a new SQL snippet folder
 
-You can create a SQL snippet folder from the **Snippets** menu in the [SQL editor](../users-guide/writing-sql.html).
+You can create a SQL snippet folder from the **Snippets** menu in the [SQL editor](./writing-sql.md).
 
-![Create new snippet folder](./images/sql-snippets/snippet-folder.png)
+![Create new snippet folder](../images/snippet-folder.png)
 
 1. Click on the **Snippets** menu icon (the snippet icon looks like a block of text or code with three uneven horizontal lines).
 2. Click on the **+** icon and select **New folder**.
 3. Give your folder a name, and optionally **Add a description** and/or place the folder in an existing folder (the **Folder this should be in** option).
 
-![Create new folder modal](./images/sql-snippets/create-new-folder-modal.png)
+![Create new folder modal](../images/create-new-folder-modal.png)
 
 ### Creating a new SQL snippet
 
 On [some plans](https://www.metabase.com/pricing), when creating a SQL snippet, you'll also see an additional option to add that snippet to an existing folder (the **Folder this should be in** option).
 
-![Add a snippet enterprise modal](./images/sql-snippets/enterprise-add-snippet.png)
+![Add a snippet enterprise modal](../images/enterprise-add-snippet.png)
 
 The default location is the **Top folder**, which is the root folder for all snippets and folders. You can add a snippet to a folder at any time (or relocate a snippet to another folder, provided you have Edit permission to both folders).
 
@@ -52,7 +54,7 @@ When changing permissions on a folder that has sub-folders, you have an option t
 
 ### Options for folder permissions
 
-![Change permissions](./images/sql-snippets/change-permissions.png)
+![Change permissions](../images/change-permissions.png)
 
 There are three options for changing snippet folder permissions:
 
@@ -84,4 +86,6 @@ In three parts:
 
 Because of how snippet folder permissions work, we recommend that you consider snippet folder permissions as an additional tool for snippet organization, not as method of preventing access to the SQL code those snippets contain. Use folder permissions to keep the snippet sidebar tidy by exposing teams to folders relevant to their analytical domain, and restrict editing permissions to key snippets in your organization to keep important SQL code accurate and safe from bugs introduced by unvetted edits.
 
-Learn more about [SQL snippets](https://www.metabase.com/blog/sql-snippets/index.html).
+## Further reading
+
+- [SQL snippets](https://www.metabase.com/learn/sql-questions/sql-snippets).

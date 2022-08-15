@@ -79,9 +79,9 @@ To share a question, click on the arrow pointing up and to the right in the bott
 You can set up questions to run periodically and notify you if the results are interesting. Check out [Alerts][alerts].
 
 [alerts]: ./alerts.md
-[archiving-items]: collections.html#archiving-items
-[caching]: ../administration-guide/14-caching.md
-[collections]: collections.html
-[collection-permissions]: ../administration-guide/06-collections.md
+[archiving-items]: ../../users-guide/collections.md#archiving-items
+[caching]: ../../administration-guide/14-caching.md
+[collections]: ../../users-guide/collections.md
+[collection-permissions]: ../../administration-guide/06-collections.md
 [dashboards]: ../../dashboards/start.md
-[model]: ../data-modeling/models.md
+[model]: ../../data-modeling/models.md

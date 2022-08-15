@@ -33,7 +33,7 @@ To change how the answer to your question is displayed, click on the **Visualiza
 
 If a particular visualization doesn’t really make sense for your answer, that option will appear grayed out in the sidebar. You can still select a grayed-out option, though you might need to open the chart options to make your selection work with your data.
 
-Once a question returns results, you can save the question, download the results, or add the question to a [dashboard](../dashboards/start.md).
+Once a question returns results, you can save the question, download the results, or add the question to a [dashboard](../../dashboards/start.md).
 
 ## Visualization types and options
 
@@ -85,7 +85,7 @@ Open up the settings for your table and you'll see the Columns tab, which displa
 
 To hide a column, click the X icon on it; that'll send it down to the **More columns** area in case you want to bring it back. To add a linked column, just click the + icon on it, which will bring it to the **Visible columns** section. Click and drag any of the columns listed there to rearrange the order in which they appear. Another super easy way to rearrange columns without having to open up the visualization settings is to simply click and drag on a column's heading to move it where you'd like it to go.
 
-> Changing these options doesn't change the actual table itself; these changes create a custom view of the table that you can save as a **question** in Metabase and refer to later, share with others, or add to a [dashboard](07-dashboards.md).
+> Changing these options doesn't change the actual table itself; these changes create a custom view of the table that you can save as a **question** in Metabase and refer to later, share with others, or add to a [dashboard](../../dashboards/start.md).
 
 #### Column formatting options
 
@@ -158,7 +158,7 @@ Pivot tables are not currently available for the following databases in Metabase
 - Google Analytics
 - MongoDB
 
-Pivot tables work for simple and custom questions with summarized data for all other [officially supported databases](../databases/connecting.md#officially-supported-databases). They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data.
+Pivot tables work for simple and custom questions with summarized data for all other [officially supported databases](../../databases/connecting.md#officially-supported-databases). They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data.
 
 In the settings for the Pivot Table visualization, you can assign fields to one of three "buckets":
 
@@ -255,7 +255,7 @@ There's quite a bit you can do in this tab, but the options available will depen
 - **Set the colors and labels** for the series on your chart.
 - **Change the style of your lines** for Line and Area charts, and choose whether to display dots on the lines.
 - **Specify how to handle missing values**. Use the "Replace missing values with…" setting to change how your chart deals with missing values. You can use linear interpolation, or display those points as zero or as nothing.
-- **Add a goal line**. Goal lines can be used in conjunction with [alerts](15-alerts.md) to send an email or a Slack message when your metric cross this line.
+- **Add a goal line**. Goal lines can be used in conjunction with [alerts](./alerts.md) to send an email or a Slack message when your metric cross this line.
 - **Add a trend line**. If you're looking at a time series chart, you can turn on a trend line to show where things are heading.
 - **Show values on data points**. The default setting will try and fit as many values on your chart as will fit nicely, but you can also force Metabase to show the values for each and every data point, which it will do begrudgingly. Showing values also works with multi-series charts, but be aware that the more data points you add, the more crowded with values the charts will become.
 

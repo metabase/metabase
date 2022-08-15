@@ -9,7 +9,7 @@ redirect_from:
 Metabase's two core concepts are questions and their corresponding answers. Everything else is based around questions and answers. To ask a question in Metabase, click the **+ New** button in the upper right of the main navigation bar, and select either:
 
 - Question
-- [SQL query](../sql-and-native-queries/writing-sql.md)
+- [SQL query](../native-editor/writing-sql.md)
 
 This page covers how to ask a question using Metabase's graphical query builder, the "Question" option.
 
@@ -205,7 +205,7 @@ The row limit step lets you limit how many rows you want from the previous resul
 
 ## Viewing the SQL that powers your question
 
-Under the hood, all Metabase questions are SQL (gasp!). If you're curious to see the SQL that will get run when you ask your question, you can click the little console icon in the top-right of the notebook editor. In the modal that opens up, you'll also be given the option to start a new query in the SQL editor using this generated SQL as a starting point (assuming you have [SQL permissions](../administration-guide/data-permissions.md#native-query-editing) to that database). It's a nice little shortcut to have Metabase write some boilerplate SQL for you, but then allows you to tweak and customize the query.
+Under the hood, all Metabase questions are SQL (gasp!). If you're curious to see the SQL that will get run when you ask your question, you can click the little console icon in the top-right of the notebook editor. In the modal that opens up, you'll also be given the option to start a new query in the SQL editor using this generated SQL as a starting point (assuming you have [SQL permissions](../../administration-guide/data-permissions.md#native-query-editing) to that database). It's a nice little shortcut to have Metabase write some boilerplate SQL for you, but then allows you to tweak and customize the query.
 
 ## Play around with saved questions
 
@@ -222,4 +222,4 @@ If you find yourself using the same saved question as a starting point for multi
 - [Visualize results](../sharing/visualizing-results.md).
 - [Asking questions](/learn/questions)
 
-[model]: ../data-modeling/models.md
+[model]: ../../data-modeling/models.md

@@ -28,25 +28,29 @@ You can join data to combine your current data with another table, or even with 
 
 Also known as the SQL editor (we say native because you can also query data sources that don't use SQL, like MongoDB and Google Analytics).
 
-### [Introduction to the native query editor](./sql-and-native-queries/writing-sql.md)
+### [Introduction to the native query editor](./native-editor/writing-sql.md)
 
 Write native code to query your data source.
 
-### [Viewing metadata](./sql-and-native-queries/data-model-reference.md)
+### [Viewing metadata](./native-editor/data-model-reference.md)
 
 Metabase's data model reference can help you understand your tables and fields.
 
-### [SQL templates](./sql-and-native-queries/sql-parameters.md)
+### [SQL templates](./native-editor/sql-parameters.md)
 
 Use variables to make native queries interactive.
 
-### [SQL snippets](./sql-and-native-queries/sql-snippets.md)
+### [SQL snippets](./native-editor/sql-snippets.md)
 
 Reuse and share bits of SQL.
 
-## [Sharing results](sharing/)
+### [SQL snippet permissions](./native-editor/snippet-permissions.md)
 
-There are many different ways to share results.
+Organize snippets into folders that require permissions to view.
+
+## Sharing results
+
+There are many different ways to share the results of questions.
 
 ### [Sharing answers](./sharing/answers.md)
 
