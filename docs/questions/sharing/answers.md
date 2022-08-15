@@ -34,7 +34,7 @@ Once you save your question, a down arrow will appear to the right of the questi
 - **Turn this into a model**. See [Models][model].
 - **Duplicate** (Square with little square). Create a copy of the question. Keep in mind that whenever you start editing a saved question, Metabase will create a copy of the question. You can either save your edits as a new question, or overwrite the original saved question.
 - **Archive** (Folder with down arrow). See [Archiving items][archiving-items].
-- **Bookmark** Save the question as a favorite, which will show up in the bookmarks section of your navigation sidebar. See [Bookmarks](03-basic-exploration.md#bookmarks).
+- **Bookmark** Save the question as a favorite, which will show up in the bookmarks section of your navigation sidebar. See [Bookmarks](../../users-guide/03-basic-exploration.md#bookmarks).
 
 ### Caching results
 

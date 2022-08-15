@@ -236,7 +236,7 @@ If you have a bar chart like Count of Users by Age, where the x-axis is a number
 
 By default, Metabase will automatically choose a good way to bin your results. But you can change how many bins your result has, or turn the binning off entirely, by clicking on the area to the right of the column you're grouping by:
 
-![Binning options](images/notebook/histogram-bins.png)
+![Binning options](../images/histogram-bins.png)
 
 [Learn more about histograms](https://www.metabase.com/learn/basics/visualizing-data/histograms.html).
 

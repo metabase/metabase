@@ -283,6 +283,6 @@ Learn how to [refer to a saved question in a SQL query](referencing-saved-questi
 [dashboard-filters]: ../../dashboards/filters.md
 [field-filter]: /learn/sql-questions/field-filters.html
 [sql-variables]: /learn/sql-questions/sql-variables.html
-[troubleshooting-filters]: ../troubleshooting-guide/filters.md
-[troubleshooting-sql]: ../troubleshooting-guide/sql.md
+[troubleshooting-filters]: ../../troubleshooting-guide/filters.md
+[troubleshooting-sql]: ../../troubleshooting-guide/sql.md
 [basic-input]: /learn/sql-questions/sql-variables.html#basic-input-variable-text

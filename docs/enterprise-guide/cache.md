@@ -22,5 +22,5 @@ To learn how to set caching preferences on individual questions, check out our [
 
 For an overview of site-wide caching available to all Metabase editions, check out our [Adminstrator's guide][caching-admin].
 
-[caching]: ../users-guide/06-sharing-answers.md#caching-results
+[caching]: ../questions/sharing/answers.md#caching-results
 [caching-admin]: ../administration-guide/14-caching.html
