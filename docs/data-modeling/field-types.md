@@ -7,7 +7,7 @@ redirect_from:
 # Field types in Metabase
 
 
-While data types indicate to a database how it should interpret the values in a field, __field types__ or __semantic types__ describe the _meaning_ of a field. For example, a column's data type could be ```type/text``` but the semantic type may be __Email__. Field types are just one example of metadata—information about data—that [Admins can change](../administration-guide/03-metadata-editing.md) in Metabase.
+While data types indicate to a database how it should interpret the values in a field, __field types__ or __semantic types__ describe the _meaning_ of a field. For example, a column's data type could be ```type/text``` but the semantic type may be __Email__. Field types are just one example of metadata—information about data—that [Admins can change](./metadata-editing.md) in Metabase.
 
 Field types dictate how Metabase displays its data, as well as the column’s special functionality, if any. By marking columns in a table as __Latitude__ and __Longitude__, Metabase can use the columns to create pin and heat maps. Similarly, designating a column as a __URL__ allows users to click on the link to visit that URL. 
 
@@ -87,7 +87,7 @@ When you [X-ray](../users-guide/14-x-rays.md) a table, Metabase considers both t
 
 ### Field Filters
 
-Knowing what field types are and how they work is helpful when using [field filters](/learn/sql-questions/field-filters.html), as you can only create field filters for [certain field types](../users-guide/13-sql-parameters.md#field-filter-compatible-types).
+Knowing what field types are and how they work is helpful when using [field filters](/learn/sql-questions/field-filters.html), as you can only create field filters for [certain field types](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
 
 ### Editing types in the Data Model page
 

@@ -64,7 +64,7 @@ The default language for all users across the Metabase UI, system emails, pulses
 
 ### First day of the week
 
-If you need to, you can change the first day of the week for your instance (the default is Sunday). Setting the first day of the week affects things like grouping by week and filtering in questions built using the [query builder](../users-guide/04-asking-questions.html). This setting doesn't affect [SQL queries](../users-guide/writing-sql.html).
+If you need to, you can change the first day of the week for your instance (the default is Sunday). Setting the first day of the week affects things like grouping by week and filtering in questions built using the [query builder](../questions/query-builder/introduction.md). This setting doesn't affect [SQL queries](../questions/native-editor/writing-sql.md).
 
 ### Localization options
 

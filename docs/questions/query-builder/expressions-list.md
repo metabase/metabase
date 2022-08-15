@@ -1,5 +1,7 @@
 ---
 title: List of expressions
+redirect_from:
+  - /docs/latest/users-guide/expression-list
 ---
 
 # List of expressions
@@ -466,4 +468,4 @@ If you're using or maintaining a third-party database driver, please [refer to t
 
 See [Custom expressions in the notebook editor](https://www.metabase.com/blog/custom-expressions/index.html) to learn more.
 
-[expressions]: ./expressions.html
+[expressions]: ./expressions.md

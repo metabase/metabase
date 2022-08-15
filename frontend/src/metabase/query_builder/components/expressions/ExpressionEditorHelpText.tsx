@@ -60,7 +60,9 @@ const HelpText = ({ helpText, width, target }: HelpTextProps) => {
               <ExternalLink
                 className="link text-bold block my1"
                 target="_blank"
-                href={MetabaseSettings.docsUrl("users-guide/expressions")}
+                href={MetabaseSettings.docsUrl(
+                  "questions/query-builder/expressions",
+                )}
               >
                 <Icon name="reference" size={12} className="mr1" />
                 {t`Learn more`}
