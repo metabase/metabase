@@ -330,28 +330,16 @@ class StructuredQueryInner extends AtomicQuery {
     const sourceQuery = this.sourceQuery();
 
     if (sourceQuery) {
+      const fields = sourceQuery.columnDimensions().map(dimension => {
+        return dimension?.field();
+      });
+
       return new Table({
         id: this.sourceTableId(),
         name: "",
         display_name: "",
         db: sourceQuery.database(),
-        fields: sourceQuery.columns().map(
-          column =>
-            new Field({
-              ...column,
-              // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
-              id: [
-                "field",
-                column.name,
-                {
-                  "base-type": column.base_type,
-                },
-              ],
-              source: "fields",
-              // HACK: need to thread the query through to this fake Field
-              query: this,
-            }),
-        ),
+        fields,
         segments: [],
         metrics: [],
       });
