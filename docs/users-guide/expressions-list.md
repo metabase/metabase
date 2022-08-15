@@ -34,8 +34,8 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [exp](#exp)
   - [floor](#floor)
   - [interval](#interval)
-  - [isempty](#isempty)
-  - [isnull](#isnull)
+  - [isempty](./expressions/isempty)
+  - [isnull](./expressions/isnull)
   - [lefttrim](#lefttrim)
   - [length](#length)
   - [log](#log)
@@ -296,7 +296,7 @@ Example: `interval([Created At], -1, "month")`.
 
 Related: [between](#between).
 
-### isempty
+### [isempty](./expressions/isempty)
 
 Returns true if the column is empty.
 
@@ -304,7 +304,7 @@ Syntax: `isempty(column)`
 
 Example: `isempty([Discount])` would return true if there were no value in the discount field.
 
-### isnull
+### [isnull](./expressions/isnull)
 
 Returns true if the column is null.
 
