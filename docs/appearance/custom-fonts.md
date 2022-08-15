@@ -1,52 +1,14 @@
 ---
-title: Fonts
-redirect_from:
-  - /docs/latest/enterprise-guide/fonts
+title: Custom fonts
 ---
-
-# Fonts
-
-{% include plans-blockquote.html feature="Customizable font" %}
-
-On paid plans, you can customize the font Metabase uses (the default is [Lato](https://fonts.google.com/specimen/Lato)). You can choose from a curated set of Google Fonts that accommodate the regular, bold, and heavy font weights that Metabase relies on for its various UI elements.
-
-You can set fonts for:
-
-- [Your entire Metabase](./whitelabeling.md)
-- [Individual embedded charts and dashboards](./customize-embeds.md#setting-fonts-for-embedded-items)
-
-## Included fonts
-
-To change your Metabase font, click on the **gear** icon in the upper right of the screen and select **Admin settings** > **Settings** > **Appearance**. Under **Font**, select from a list of included fonts.
-
-- [Custom font](#custom-fonts)
-- [Lato](https://fonts.google.com/specimen/Lato)
-- [Lora](https://fonts.google.com/specimen/Lora)
-- [Merriweather](https://fonts.google.com/specimen/Merriweather)
-- [Montserrat](https://fonts.google.com/specimen/Montserrat)
-- [Noto Sans](https://fonts.google.com/specimen/Noto+Sans)
-- [Open Sans](https://fonts.google.com/specimen/Open+Sans)
-- [Oswald](https://fonts.google.com/specimen/Oswald)
-- [Playfair Display](https://fonts.google.com/specimen/Playfair+Display)
-- [Poppins](https://fonts.google.com/specimen/Poppins)
-- [PT Sans](https://fonts.google.com/specimen/PT+Sans)
-- [PT Serif](https://fonts.google.com/specimen/PT+Serif)
-- [Raleway](https://fonts.google.com/specimen/Raleway)
-- [Roboto](https://fonts.google.com/specimen/Roboto)
-- [Roboto Condensed](https://fonts.google.com/specimen/Roboto+Condensed)
-- [Roboto Mono](https://fonts.google.com/specimen/Roboto+Mono)
-- [Roboto Slab](https://fonts.google.com/specimen/Roboto+Slab)
-- [Slabo 27px](https://fonts.google.com/specimen/Slabo+27px)
-- [Source Sans Pro](https://fonts.google.com/specimen/Source+Sans+Pro)
-- [Ubuntu](https://fonts.google.com/specimen/Ubuntu)
-
-Comic Sans is currently not included.
 
 ## Custom fonts
 
-To set a custom font, click on the **gear** icon in the upper right of the screen and select **Admin settings** > **Settings** > **Appearance**.
+Add a custom font if you can't find your favorite among the [included fonts](./fonts#included-fonts).
 
-For **Font**, select **Custom...** and enter URLs to your font files.
+1. Click on the **gear** icon and select **Admin settings** > **Settings** > **Appearance**.
+2. Go to **Font** and select **Custom...**.
+3. Enter URLs to your font files.
 
 ## Font style options
 
@@ -60,7 +22,7 @@ You only need to set the first style (Regular 400); the browser will fill in the
 
 For best results, set at least the 400 and 700 styles. If you have a single font file that contains multiple font styles within the same family, enter the URL in multiple fields to tell Metabase to prefer the weights in that font file. Metabase will use those styles to override the font styles set by the browser.
 
-### Supported font file formats
+## Supported font file formats
 
 For custom fonts, Metabase supports woff, woff2, ttf files. If the URL you provide lacks a specific file extension, Metabase will assume it's a woff2 file.
 
@@ -124,13 +86,6 @@ Note that in the raw link, there is no `/blob/` directory in the URL.
 
 To support multiple character sets, for example both Latin and Cyrillic, you'll need to merge font files.
 
-## Customizing the font for individual embedded items
-
-In addition to the [included fonts](#included-fonts), if you set a custom font for your Metabase, that font will be selectable as the "Use instance font" in menus. See [Customize embeds](./customize-embeds.md).
-
 ## Further reading
 
-- [White labeling Metabase](./whitelabeling.md)
-
-
-
+- [White labeling Metabase](./whitelabeling.html)
