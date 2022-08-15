@@ -55,13 +55,13 @@ You can mark certain collections as [official](../users-guide/collections.html#o
 
 People can ask administrators to verify their questions.
 
-- [Question moderation](../users-guide/06-sharing-answers.html#question-moderation)
+- [Question moderation](../questions/sharing/answers.md#question-moderation)
 
 ## Advanced caching controls
 
 All Metabase editions include global caching controls. Paid plans includes additional caching options that let you control caching for individual questions.
 
-- [Caching controls for individual questions](../users-guide/06-sharing-answers.html#caching-results)
+- [Caching controls for individual questions](../questions/sharing/answers.md#caching-results)
 
 ## Auditing
 

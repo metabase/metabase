@@ -102,5 +102,5 @@ Here Admins can get an overview of all of the [Dashboard subscriptions][dashboar
 
 Admins can add and remove people from a subscription or alert by clicking on the item's __Recipients__. Admins can also delete the subscription or alert entirely by clicking on the **X** on the relevant line.
 
-[alerts]: ../users-guide/15-alerts.md
-[dashboard-subscriptions]: ../users-guide/dashboard-subscriptions.md
+[alerts]: ../questions/sharing/alerts.md
+[dashboard-subscriptions]: ../dashboards/subscriptions.md

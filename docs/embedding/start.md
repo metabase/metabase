@@ -8,6 +8,10 @@ title: Dashboards overview
 
 How to embed charts and dashboards in applications and websites.
 
+## [Public links](./public-links.md)
+
+Sharing questions using public links.
+
 ## [Full-app embedding](./full-app-embedding.md)
 
 How to embed the graphical query builder and more in your application.
