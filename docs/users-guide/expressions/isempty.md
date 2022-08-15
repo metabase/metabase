@@ -38,9 +38,9 @@ For example, in the column below, the empty cells could contain either:
 
 Combine `isempty` with the [`case` expression](./case) to replace empty strings with something more descriptive.
 
-If the second row's blank cell is actually an empty string, then `isempty` will return `true`. The `case` statement evaluates `true` to return the first output "No feedback".
+Let's say that the second row's blank cell is actually an empty string, so `isempty` will return `true`. The `case` statement evaluates `true` to return the first output "No feedback".
 
-If the first row's blank cell is actually a `null`, (or even an emoji that blends into your table background), then `isempty` will return `false`, and `case` will return whatever's in the Feedback column as the default output.
+The first row's blank cell doesn't have an empty string, but because it's blank, we're not sure what's in it either---it could be a `null`, or even an emoji that blends into your table background. No matter what the edge case is, `isempty` will return `false`, and `case` will return whatever's in the Feedback column as the default output.
 
 ## Accepted data types
 

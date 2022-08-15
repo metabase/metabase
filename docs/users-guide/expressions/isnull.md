@@ -36,9 +36,9 @@ In Metabase tables, `null`s are displayed as blank cells. For example, in the Fe
 
 Combine `isnull` with the [`case` expression](./case) to replace "unknown" information with something more descriptive.
 
-If the first row's blank cell is actually a `null`, then `isnull` will return `true`. The `case` statement evaluates `true` to return the first output "Unknown feedback".
+Let's say that the first row's blank cell is actually a `null`, so `isnull` will return `true`. The `case` statement evaluates `true` to return the first output "Unknown feedback".
 
-If the second row's blank cell is actually an empty string (or even an emoji that blends into your table's background), then `isnull` will return `false`, and `case` will return whatever's in the Feedback column as the default output.
+The second row's blank cell doesn't have a `null`, but we're not sure what's in it either---it could be an empty string, or even an emoji that blends into your table's background. No matter what the edge case is, `isnull` will return `false`, and `case` will return whatever's in the Feedback column as the default output.
 
 ## Accepted data types
 
