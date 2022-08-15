@@ -565,11 +565,15 @@ export default class Dimension {
     return this.withoutOptions("binning");
   }
 
+  withoutJoinAlias(): Dimension {
+    return this.withoutOptions("join-alias");
+  }
+
   /**
    * Return a copy of this Dimension with any temporal bucketing or binning options removed.
    */
   baseDimension(): Dimension {
-    return this.withoutTemporalBucketing().withoutBinning();
+    return this.withoutTemporalBucketing().withoutBinning().withJoinAlias();
   }
 
   /**
@@ -742,9 +746,18 @@ export class FieldDimension extends Dimension {
     if (isFieldDimension(somethingElse)) {
       const thisField = this.field();
       const otherField = somethingElse.field();
+      // const thisOptions = thisField.reference()[2];
+      // const otherOptions = otherField.reference()[2];
+
+      // hack to handle scenarios where a dimension has been improperly instantiated'
+      // without any metadata, so it cannot parse which table it is associated with.
+      // virtual tables MUST match because IDs are not sufficiently unique
+      const usesVirtualTable =
+        _.isString(thisField.table_id) || _.isString(otherField.table_id);
+
       return (
         thisField.id === otherField.id &&
-        thisField.table_id === otherField.table_id &&
+        (!usesVirtualTable || thisField.table_id === otherField.table_id) &&
         _.isEqual(this._options, somethingElse._options)
       );
     }
