@@ -6,7 +6,6 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
             [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
-            [metabase.query-processor.middleware.fetch-source-query-test :as fetch-source-query-test]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]
             [metabase.util :as u]

@@ -70,6 +70,11 @@
                      :results_metadata {:columns metadata}
                      :insights         insights)))))))
 
+(defn- remove-remapped-columns
+  [metadata]
+  (update-in metadata [:data :cols]
+             (fn [cols-metadata] (filter #(not (:remapped_from %)) cols-metadata))))
+
 (defn record-and-return-metadata!
   "Post-processing middleware that records metadata about the columns returned when running the query."
   [{{:keys [skip-results-metadata?]} :middleware, :as query} rff]
@@ -77,4 +82,5 @@
     rff
     (let [record! (partial record-metadata! query)]
       (fn record-and-return-metadata!-rff* [metadata]
-        (insights-xform metadata record! (rff metadata))))))
+        (let [metadata (remove-remapped-columns metadata)]
+          (insights-xform metadata record! (rff metadata)))))))
