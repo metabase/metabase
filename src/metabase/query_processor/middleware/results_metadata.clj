@@ -61,8 +61,7 @@
    rf
    [(qr/insights-rf orig-metadata)]
    (fn combine [result {:keys [metadata insights]}]
-     (let [cols-metadata (filter #(not (:remapped_from %)) (get-in result [:data :cols]))
-           metadata      (merge-final-column-metadata cols-metadata metadata)]
+     (let [metadata (merge-final-column-metadata (get-in result [:data :cols]) metadata)]
        (record! metadata)
        (rf (cond-> result
              (map? result)
