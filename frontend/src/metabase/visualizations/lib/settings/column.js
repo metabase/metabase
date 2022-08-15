@@ -316,6 +316,7 @@ export const NUMBER_COLUMN_SETTINGS = {
       const symbol = getCurrencySymbol(c);
       const code = getCurrency(c, "code");
       const name = getCurrency(c, "name");
+      const symbol_native = getCurrencySymbol(c, true);
       return {
         options: [
           ...(symbol !== code
@@ -333,6 +334,10 @@ export const NUMBER_COLUMN_SETTINGS = {
           {
             name: t`Name` + ` ` + `(${name})`,
             value: "name",
+          },
+          {
+            name: t`Local Symbol` + ` ` + `(${symbol_native})`,
+            value: "symbol_native",
           },
         ],
       };
@@ -414,6 +419,9 @@ export const NUMBER_COLUMN_SETTINGS = {
       ) {
         if (settings["currency_style"] === "symbol") {
           return getCurrencySymbol(settings["currency"]);
+        }
+        if (settings["currency_style"] === "symbol_native") {
+          return getCurrencySymbol(settings["currency"], true);
         }
         return getCurrency(settings["currency"], settings["currency_style"]);
       }
