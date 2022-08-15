@@ -42,6 +42,6 @@ Monitoring access sets permissions on the following Admin tabs:
 This setting determines who can set up:
 
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
-- [Alerts](../users-guide/15-alerts.md)
+- [Alerts](../questions/sharing/alerts.md)
 
 People will need to be in groups with either view or edit access to the collection that contains the dashboard or question in order to set up alerts. See [Collection permissions](06-collections.md).

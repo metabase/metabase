@@ -12,7 +12,7 @@ Here's how it works. First, create and save a question that returns the result s
 
 We could create this model using the notebook editor, like so:
 
-![Example notebook](images/saved-questions/example-notebook.png).
+![Example notebook](../images/example-notebook.png).
 
 Alternatively, we could create that model from a SQL question:
 
@@ -38,7 +38,7 @@ FROM {% raw %}{{#{% endraw %}
 
 Metabase will slide out a sidebar where we can select a question to reference. We'll search for our "Gizmo orders in 2019" question:
 
-![Select a question from the variable sidebar](images/saved-questions/variable-sidebar.png)
+![Select a question from the variable sidebar](../images/variable-sidebar.png)
 
 We'll select that question, and Metabase will update our code with the question's ID, `5`:
 
@@ -84,7 +84,7 @@ FROM 2019_gizmo_orders
 
 For other ways to standardize analytics, check out:
 
-- [Segments and Metrics](../administration-guide/07-segments-and-metrics.md)
+- [Segments and Metrics](../../data-modeling/segments-and-metrics.md)
 - [SQL Snippets](https://www.metabase.com/learn/building-analytics/sql-templates/sql-snippets.html)
 - [SQL Snippets vs Saved Questions vs. Views](https://www.metabase.com/learn/building-analytics/sql-templates/organizing-sql.html)
 
@@ -96,14 +96,8 @@ For other ways to standardize analytics, check out:
 
 ## Need help?
 
-If you're having trouble with your SQL query, go to the [SQL troubleshooting guide](../troubleshooting-guide/sql.html).
-
----
-
-## Next: automated X-ray explorations
-
-Learn about how to easily and quickly see automatic explorations of your data with Metabase's powerful [X-ray feature](14-x-rays.md).
+If you're having trouble with your SQL query, go to the [SQL troubleshooting guide](../../troubleshooting-guide/sql.md).
 
 
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte
-[model]: ../data-modeling/models.md
+[model]: ../../data-modeling/models.md

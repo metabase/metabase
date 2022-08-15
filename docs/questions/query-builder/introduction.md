@@ -1,5 +1,7 @@
 ---
 title: Asking questions
+redirect_from:
+  - /docs/latest/users-guide/04-asking-questions
 ---
 
 # Asking questions
@@ -7,7 +9,7 @@ title: Asking questions
 Metabase's two core concepts are questions and their corresponding answers. Everything else is based around questions and answers. To ask a question in Metabase, click the **+ New** button in the upper right of the main navigation bar, and select either:
 
 - Question
-- [SQL query](./writing-sql.md)
+- [SQL query](../native-editor/writing-sql.md)
 
 This page covers how to ask a question using Metabase's graphical query builder, the "Question" option.
 
@@ -33,7 +35,7 @@ Note that there are some kinds of saved questions that can't be used as source d
 
 Once you select your data, Metabase will take you the query builder. Say you selected **Raw data** > **Sample databse** > **Orders**, then you'll see something like this:
 
-![Metabase query builder](./images/asking-questions/notebook-editor.png)
+![Metabase query builder](../images/notebook-editor.png)
 
 This is the query builder's notebook editor. It has three default steps.
 
@@ -43,7 +45,7 @@ This is the query builder's notebook editor. It has three default steps.
 
 To the right of completed step is a **Preview** button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.
 
-![Previewing results](./images/notebook/preview-table.png)
+![Previewing results](../images/preview-table.png)
 
 ## Picking data
 
@@ -57,7 +59,7 @@ You can also select multiple tables from the same database by [joining them](./j
 
 Filtering just means narrowing things down based on certain criteria. You're probably already familiar with filtering when looking for something online, like when shopping. Maybe you only want to see olive-colored pants, or books where the author's last name is "Borges," or pictures of people wearing olive-colored pants reading Jorge Luis Borges.
 
-![Filtering](./images/notebook/filter-step.png)
+![Filtering](../images/filter-step.png)
 
 When you add a filter step, you can select one or more columns to filter on. Depending on the type of column you pick, you'll get different options, like a calendar for date columns.
 
@@ -71,7 +73,7 @@ You can add subsequent filter steps after each summarize step. This lets you do 
 
 Once you're happy with your filter, click **Add filter**, and visualize your results. Your data will be updated with the filter applied.
 
-![An active filter](./images/notebook/filter-badge.png)
+![An active filter](../images/filter-badge.png)
 
 If you want to edit your filter, just click the little purple filter at the top of the screen. If you click on the X, you'll remove your filter. You can add as many filters as you need.
 
@@ -79,9 +81,9 @@ If you want to edit your filter, just click the little purple filter at the top 
 
 When viewing a table or chart, clicking on the **Filter** will bring up the filter modal:
 
-![Bulk filter modal](./images/asking-questions/bulk-filter-modal.png)
+![Bulk filter modal](../images/bulk-filter-modal.png)
 
-Here you can add multiple filters to your question in one go. Filter options will differ depending on the [field type](./field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal. When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom right of the filter modal. Any filters you apply here will show up in the notebook editor, and vice versa.
+Here you can add multiple filters to your question in one go. Filter options will differ depending on the [field type](../../data-modeling/field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal. When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom right of the filter modal. Any filters you apply here will show up in the notebook editor, and vice versa.
 
 ### Filtering by date
 
@@ -92,17 +94,17 @@ One important thing to understand when filtering on a date column is the differe
 
 ### Filtering by a segment
 
-If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called [**Segments**](../administration-guide/07-segments-and-metrics.md), and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
+If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called [**Segments**](../../data-modeling/segments-and-metrics.md), and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
 
 ### Filters with `OR`
 
-![Filter expression](./images/expressions/filter-expression.png)
+![Filter expression](../images/filter-expression.png)
 
-If you have a more complex filter you're trying to express, you can pick **Custom Expression** from the add filter menu to create a filter expression. You can use comparison operators like greater than, `>`, or less than ,`<`, as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`. Learn more about writing [expressions](./expressions.md) or skip right to the [list of expressions](expressions-list.md).
+If you have a more complex filter you're trying to express, you can pick **Custom Expression** from the add filter menu to create a filter expression. You can use comparison operators like greater than, `>`, or less than ,`<`, as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`. Learn more about writing [expressions](./expressions.md) or skip right to the [list of expressions](./expressions-list.md).
 
 ## Summarizing and grouping by
 
-![Summarizing](./images/notebook/summarize-step.png)
+![Summarizing](../images/summarize-step.png)
 
 When we have a question like "how many people downloaded our app each day last week?", we're asking for a **summary** of the data. A summary is usually made up of two parts: one or more _numbers_ we care about (called a "metric" in data-speak), and how we want to see that number _grouped_ or _broken out_. To answer that example question of "How many people downloaded our app each day last week?"
 
@@ -137,7 +139,7 @@ Common metrics include:
 
 If you summarize and add a grouping you can then summarize _again_. You can also add steps to filter and/or join in between. For example, your first summarization step could be to get the count of orders per month, and you could then add a second summarization step to get the average monthly order total by selecting the `Average of…` your `count` column.
 
-![Multiple summarize steps](./images/notebook/multiple-summarize-steps.png)
+![Multiple summarize steps](../images/multiple-summarize-steps.png)
 
 You can also add metrics and groupings on the results page in a sidebar: the top of the sidebar where you pick the number ("metric") you want to see, and the part below is where you pick how to group that number (or how to "break it out").
 
@@ -147,45 +149,45 @@ If your admins have created any named metrics that are specific to your company 
 
 Depending on the grouping column you select, Metabase will show you what it thinks is the best default visualization or chart for this summary. So if you select a date column, you'll see a line chart like this (you can click the green **Summarize** button to view the summarize sidebar).
 
-![Grouping by a date column](./images/notebook/summarize-timeseries.png)
+![Grouping by a date column](../images/summarize-timeseries.png)
 
 When you click on a different grouping column than the one you currently have selected, the grouping will switch to use that column instead. But if you want to _add_ an additional grouping, just click the plus (+) icon on the right side of the column. To remove a grouping, click on the X icon.
 
-![Multiple groupings](./images/notebook/summarize-timeseries-breakout.png)
+![Multiple groupings](../images/summarize-timeseries-breakout.png)
 
 Some grouping columns will give you the option of choosing how big or small to make the groupings. So for example, if you've picked a Date column to group by, you can click on the words `by month` to change the grouping to day, week, hour, quarter, year, etc. If you're grouping by a numeric column, like age, Metabase will automatically "bin" the results, so you'll see your metric grouped in age brackets, like 0–10, 11–20, 21–30, etc. Just like with dates, you can click on the current binning option to change it to a specific number of bins. It's not currently possible to choose your own ranges for bins, though.
 
-![Multiple groupings](./images/notebook/histogram-bins.png)
+![Multiple groupings](../images/histogram-bins.png)
 
 Once you're done setting your metrics and groupings, click **Visualize** to see your results in all their glory.
 
 ## Visualizing your data
 
-If you want to jump ahead and learn about [how to change the visualization](05-visualizing-results.md) of your results, by all means, feel free.
+If you want to jump ahead and learn about [how to change the visualization](../sharing/visualizing-results.md) of your results, by all means, feel free.
 
 ## Returning to the notebook editor
 
 To return to the notebook editor for a question, click on the show editor button in the upper right.
 
-![Show editor](./images/asking-questions/show-editor.png)
+![Show editor](../images/show-editor.png)
 
 ## Viewing an individual record's details
 
 To see more info about a given record (a user, order, venue, etc.), click on a record's ID number (or primary key). You can see all fields related to that one record and all connected tables that are hidden in the table view for the sake of readability. To page through the other records in the current table, press the right or left arrow keys, or click on the arrows to the right or left of the screen.
 
-![Record details](./images/notebook/record-details.png)
+![Record details](../images/record-details.png)
 
 ## Custom expressions
 
 Custom expressions allow you to use spreadsheet-like functions and simple arithmetic within or between aggregation functions.
 
-![Custom expression](./images/expressions/aggregation-expression.png)
+![Custom expression](../images/aggregation-expression.png)
 
  For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md).
 
 ### Creating custom columns
 
-![Custom column](./images/expressions/custom-column.png)
+![Custom column](../images/custom-column.png)
 
 Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Custom columns that you add aren't permanently added to your table; they'll only be present in the given question.
 
@@ -193,7 +195,7 @@ You can use the following math operators in your formulas: `+`, `–`, `*` (mult
 
 ## Sorting results
 
-![Sorting](./images/notebook/sort-step.png)
+![Sorting](../images/sort-step.png)
 
 The sorting step lets you pick one or more columns to sort your results by. For each column you pick, you can also choose whether to sort ascending or descending; just click the arrow to change from ascending (up arrow) to descending (down arrow).
 
@@ -203,13 +205,13 @@ The row limit step lets you limit how many rows you want from the previous resul
 
 ## Viewing the SQL that powers your question
 
-Under the hood, all Metabase questions are SQL (gasp!). If you're curious to see the SQL that will get run when you ask your question, you can click the little console icon in the top-right of the notebook editor. In the modal that opens up, you'll also be given the option to start a new query in the SQL editor using this generated SQL as a starting point (assuming you have [SQL permissions](../administration-guide/data-permissions.md#native-query-editing) to that database). It's a nice little shortcut to have Metabase write some boilerplate SQL for you, but then allows you to tweak and customize the query.
+Under the hood, all Metabase questions are SQL (gasp!). If you're curious to see the SQL that will get run when you ask your question, you can click the little console icon in the top-right of the notebook editor. In the modal that opens up, you'll also be given the option to start a new query in the SQL editor using this generated SQL as a starting point (assuming you have [SQL permissions](../../administration-guide/data-permissions.md#native-query-editing) to that database). It's a nice little shortcut to have Metabase write some boilerplate SQL for you, but then allows you to tweak and customize the query.
 
 ## Play around with saved questions
 
 Each time you start modifying a saved question, Metabase will create a new question for you. The query builder will display the name of your starting question under **Data**.
 
-![Starting from a saved question](./images/notebook/started-from-saved-question.png)
+![Starting from a saved question](../images/started-from-saved-question.png)
 
 Feel free to play around with any saved question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from.
 
@@ -217,7 +219,7 @@ If you find yourself using the same saved question as a starting point for multi
 
 ## Further reading
 
-- [Visualize results](05-visualizing-results.md).
+- [Visualize results](../sharing/visualizing-results.md).
 - [Asking questions](/learn/questions)
 
-[model]: ../data-modeling/models.md
+[model]: ../../data-modeling/models.md
