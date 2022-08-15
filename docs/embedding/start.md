@@ -4,8 +4,6 @@ title: Embedding overview
 
 # Embedding overview
 
-## [Introduction](./introduction)
-
 Share your data securely.
 
 ## [Signed embedding](./signed-embedding)
