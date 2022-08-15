@@ -229,7 +229,7 @@ The SQL `CASE WHEN` statement:
 SELECT
     CASE WHEN "Has Wings" = TRUE  AND "Has Face" = TRUE  THEN "Bird"
          WHEN "Has Wings" = TRUE  AND "Has Face" = FALSE THEN "Plane"
-         WHEN "Has Wings" = FALSE AND "Has Face" = TRUE  THEN "Superman" 
+         WHEN "Has Wings" = FALSE AND "Has Face" = TRUE  THEN "Superman"
          ELSE "Unknown" END
 FROM mystery_sightings
 ```
@@ -331,9 +331,9 @@ case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
 [aggregate-functions]: ../expressions-list#aggregations
 [business-logic]: /learn/analytics/avoiding-data-jargon#create-specific-language-and-shared-definitions
 [countif]: ../expressions-list#countif
-[custom-expressions-doc]: ../expressions
-[custom-expressions-list]: ../expressions-list
-[custom-expressions-learn]: /learn/questions/custom-expressions
+[custom-expressions-doc]: ../expressions.md
+[custom-expressions-list]: ../expressions-list.md
+[custom-expressions-learn]: /learn/questions/custom-expressions.md
 [data-sandboxing-docs]: ../../enterprise-guide/data-sandboxes.html#filtering-a-sandboxed-table
 [data-types]: /learn/databases/data-types-overview#examples-of-data-types
 [filter-learn]: /learn/questions/searching-tables
@@ -342,4 +342,4 @@ case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/
 [spreadsheets-to-bi]: /blog/spreadsheets-to-bi
 [sql-reference-guide]: /learn/debugging-sql/sql-syntax.html#common-sql-reference-guides
-[sumif]: ../expressions-list#sumif
+[sumif]: ../expressions-list.md#sumif

@@ -1,5 +1,7 @@
 ---
 title: The SQL editor
+redirect-from:
+  - /docs/latest/users-guide/writing-sql
 ---
 
 # The SQL editor
@@ -23,14 +25,14 @@ After clicking **SQL query**, you'll see an editor where you can write and run q
 To try it out, make sure you've selected the [Sample Database][sample-database-gloss], then paste in this short SQL query:
 
 ```
-SELECT 
-    sum(subtotal), 
+SELECT
+    sum(subtotal),
     created_at
-FROM orders 
+FROM orders
 GROUP BY created_at;
 ```
 
-Don't worry if you don't understand this just yet. Click the blue **Run query** button to execute your query. 
+Don't worry if you don't understand this just yet. Click the blue **Run query** button to execute your query.
 
 You'll notice that the table that comes back is the same as if you had used the [query builder][asking-questions] to ask for the sum of `Subtotal` in the `Orders` table, grouped by the `Created At` date.
 
@@ -81,7 +83,7 @@ If you're having trouble with your SQL query, go to the [SQL troubleshooting gui
 Now that you have an answer to your question, you can learn about [visualizing answers](05-visualizing-results.md).
 
 [asking-questions]: ../users-guide/04-asking-questions.html#creating-a-new-question-with-the-query-builder
-[learn-sql]: https://www.metabase.com/learn/sql-questions 
+[learn-sql]: https://www.metabase.com/learn/sql-questions
 [ref-models]: ./referencing-saved-questions-in-queries.md
 [sample-database-gloss]: /glossary/sample_database
 [sql-gloss]: /glossary/sql

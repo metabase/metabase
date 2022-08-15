@@ -219,7 +219,7 @@ If you find yourself using the same saved question as a starting point for multi
 
 ## Further reading
 
-- [Visualize results](../../sharing-results/visualizing-results.md).
+- [Visualize results](../sharing/visualizing-results.md).
 - [Asking questions](/learn/questions)
 
 [model]: ../data-modeling/models.md

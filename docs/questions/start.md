@@ -44,12 +44,18 @@ Use variables to make native queries interactive.
 
 Reuse and share bits of SQL.
 
-## Sharing results
+## [Sharing results](sharing/)
 
+There are many different ways to share results.
 
+### [Sharing answers](./sharing/answers.md)
 
-### Sharing answers
+Save questions, download results, and share links.
 
-### Visualizing results
+### [Visualizing results](./sharing/visualizing-results.md)
 
-### Alerts
+Choose from a variety of visualization types.
+
+### [Sharing](./sharing/alerts.md)
+
+Get results via email or Slack, either on a schedule, or only when something interesting happens.
