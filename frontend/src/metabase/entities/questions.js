@@ -103,6 +103,7 @@ const Questions = createEntity({
     "dataset_query",
     "display",
     "description",
+    "message_no_results",
     "visualization_settings",
     "parameters",
     "parameter_mappings",

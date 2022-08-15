@@ -61,6 +61,7 @@ function getQuestion({
   isSaved,
   name = "Q1",
   description = "Example",
+  message_no_results = "Example message",
   collection_id = null,
   can_write = true,
 } = {}) {
@@ -70,6 +71,7 @@ function getQuestion({
     extraCardParams.id = 1; // if a card has an id, it means it's saved
     extraCardParams.name = name;
     extraCardParams.description = description;
+    extraCardParams.message_no_results = message_no_results;
     extraCardParams.collection_id = collection_id;
     extraCardParams.can_write = can_write;
   }
@@ -107,7 +109,7 @@ function getDirtyQuestion(originalQuestion) {
   });
 }
 
-async function fillForm({ name, description }) {
+async function fillForm({ name, description, message_no_results }) {
   if (name) {
     const input = screen.getByLabelText("Name");
     await userEvent.clear(input);
@@ -117,6 +119,13 @@ async function fillForm({ name, description }) {
     const input = screen.getByLabelText("Description");
     await userEvent.clear(input);
     await userEvent.type(input, description);
+  }
+  if (message_no_results) {
+    const input = screen.getByLabelText(
+      "Set the custom message when there are no results to display",
+    );
+    userEvent.clear(input);
+    userEvent.type(input, message_no_results);
   }
 }
 
@@ -196,6 +205,15 @@ describe("SaveQuestionModal", () => {
       expect(screen.getByLabelText("Description")).toHaveValue("");
     });
 
+    it("should display empty message no results input", async () => {
+      await setup(getQuestion());
+      expect(
+        screen.getByLabelText(
+          "Set the custom message when there are no results to display",
+        ),
+      ).toHaveValue("");
+    });
+
     it("should call onCreate correctly with default form values", async () => {
       const question = getQuestion();
       const { onCreateMock } = await setup(question);
@@ -209,6 +227,7 @@ describe("SaveQuestionModal", () => {
         ...question.card(),
         name: EXPECTED_SUGGESTED_NAME,
         description: null,
+        message_no_results: null,
         collection_id: null,
       });
     });
@@ -221,6 +240,7 @@ describe("SaveQuestionModal", () => {
         await fillForm({
           name: "My favorite orders",
           description: "So many of them",
+          message_no_results: "Great work",
         });
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
       });
@@ -230,11 +250,12 @@ describe("SaveQuestionModal", () => {
         ...question.card(),
         name: "My favorite orders",
         description: "So many of them",
+        message_no_results: "Great work",
         collection_id: null,
       });
     });
 
-    it("should trim name and description", async () => {
+    it("should trim name, description and message_no_results", async () => {
       const question = getQuestion();
       const { onCreateMock } = await setup(question);
 
@@ -242,6 +263,7 @@ describe("SaveQuestionModal", () => {
         await fillForm({
           name: "    My favorite orders ",
           description: "  So many of them   ",
+          message_no_results: "   Great work    ",
         });
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
       });
@@ -251,6 +273,7 @@ describe("SaveQuestionModal", () => {
         ...question.card(),
         name: "My favorite orders",
         description: "So many of them",
+        message_no_results: "Great work",
         collection_id: null,
       });
     });
@@ -262,7 +285,11 @@ describe("SaveQuestionModal", () => {
       const { onCreateMock } = await setup(question);
 
       await act(async () => {
-        await fillForm({ name: "foo", description: "bar" });
+        await fillForm({
+          name: "foo",
+          description: "bar",
+          message_no_results: "foobar",
+        });
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
       });
 
@@ -271,6 +298,7 @@ describe("SaveQuestionModal", () => {
         ...question.card(),
         name: "foo",
         description: "bar",
+        message_no_results: "foobar",
         collection_id: null,
       });
     });
@@ -312,6 +340,7 @@ describe("SaveQuestionModal", () => {
       const CARD = {
         name: "Q1",
         description: "Example description",
+        message_no_results: "Example message no results",
         collection_id: null,
       };
       const originalQuestion = getQuestion({ isSaved: true, ...CARD });
@@ -328,6 +357,11 @@ describe("SaveQuestionModal", () => {
       expect(screen.getByLabelText("Description")).toHaveValue(
         CARD.description,
       );
+      expect(
+        screen.getByLabelText(
+          "Set the custom message when there are no results to display",
+        ),
+      ).toHaveValue(CARD.message_no_results);
       expect(screen.queryByText("Our analytics")).toBeInTheDocument();
     });
 
@@ -356,7 +390,11 @@ describe("SaveQuestionModal", () => {
 
       await act(async () => {
         await userEvent.click(screen.getByText("Save as new question"));
-        await fillForm({ name: "My Q", description: "Sample" });
+        await fillForm({
+          name: "My Q",
+          description: "Sample",
+          message_no_results: "Sample message",
+        });
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
       });
 
@@ -365,6 +403,7 @@ describe("SaveQuestionModal", () => {
         ...dirtyQuestion.card(),
         name: "My Q",
         description: "Sample",
+        message_no_results: "Sample message",
       });
     });
 
@@ -376,6 +415,11 @@ describe("SaveQuestionModal", () => {
         await userEvent.click(screen.getByText("Save as new question"));
         await userEvent.clear(screen.getByLabelText("Name"));
         await userEvent.clear(screen.getByLabelText("Description"));
+        await userEvent.clear(
+          screen.getByLabelText(
+            "Set the custom message when there are no results to display",
+          ),
+        );
       });
 
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
@@ -456,9 +500,22 @@ describe("SaveQuestionModal", () => {
     it("shouldn't allow to save a question if form is invalid", async () => {
       await setup(getQuestion());
 
+      userEvent.clear(screen.getByLabelText("Name"));
+      userEvent.clear(screen.getByLabelText("Description"));
+      userEvent.clear(
+        screen.getByLabelText(
+          "Set the custom message when there are no results to display",
+        ),
+      );
+
       await act(async () => {
         await userEvent.clear(screen.getByLabelText("Name"));
         await userEvent.clear(screen.getByLabelText("Description"));
+        await userEvent.clear(
+          screen.getByLabelText(
+            "Set the custom message when there are no results to display",
+          ),
+        );
       });
 
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
@@ -485,6 +542,7 @@ describe("SaveQuestionModal", () => {
         await fillForm({
           name: "Should not be erased",
           description: "This should not be erased too",
+          message_no_results: "This also should not be erased",
         });
         await userEvent.click(
           screen.getByText(/Replace original question, ".*"/),
@@ -496,6 +554,11 @@ describe("SaveQuestionModal", () => {
       expect(screen.getByLabelText("Description")).toHaveValue(
         "This should not be erased too",
       );
+      expect(
+        screen.getByLabelText(
+          "Set the custom message when there are no results to display",
+        ),
+      ).toHaveValue("This also should not be erased");
     });
 
     it("should allow to replace the question if new question form is invalid (metabase#13817)", async () => {

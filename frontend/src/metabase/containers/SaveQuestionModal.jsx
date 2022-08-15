@@ -63,6 +63,12 @@ export default class SaveQuestionModal extends Component {
           : details.description
           ? details.description.trim()
           : null,
+      message_no_results:
+        details.saveType === "overwrite"
+          ? originalCard.message_no_results
+          : details.message_no_results
+          ? details.message_no_results.trim()
+          : null,
       collection_id,
     };
 
@@ -87,6 +93,7 @@ export default class SaveQuestionModal extends Component {
           ? generateQueryDescription(tableMetadata, card.dataset_query.query)
           : "",
       description: card.description || "",
+      message_no_results: card.message_no_results || "",
       collection_id:
         card.collection_id === undefined || isReadonly
           ? initialCollectionId
@@ -122,6 +129,7 @@ export default class SaveQuestionModal extends Component {
               validate: this.validateName,
             },
             { name: "description" },
+            { name: "message_no_results" },
             { name: "collection_id" },
           ]}
           onSubmit={this.handleSubmit}
@@ -160,6 +168,11 @@ export default class SaveQuestionModal extends Component {
                       name="collection_id"
                       title={t`Which collection should this go in?`}
                       type="collection"
+                    />
+                    <FormField
+                      name="message_no_results"
+                      title={t`Set the custom message when there are no results to display`}
+                      placeholder={t`No results!`}
                     />
                   </div>
                 )}

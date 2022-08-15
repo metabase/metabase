@@ -56,6 +56,7 @@
    :dataset_query       {}
    :dataset             false
    :description         nil
+   :message_no_results  nil
    :display             "scalar"
    :enable_embedding    false
    :entity_id           nil
@@ -501,6 +502,7 @@
                :rasta :put 200 (str "card/" (:id card))
                (assoc card
                       :description "a change that doesn't change the query"
+                      :message_no_results "this change should not change the query"
                       :name "compelling title"
                       :cache_ttl 20000
                       :display "table"
@@ -767,12 +769,26 @@
         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description nil})
         (is (nil? (db/select-one-field :description Card :id (u/the-id card))))))))
 
+(deftest clear-message-no-results-test
+  (testing "Can we clear the message of no results of a Card? (#4738)"
+    (mt/with-temp Card [card {:message_no_results "Great work"}]
+      (with-cards-in-writeable-collection card
+        (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:message_no_results nil})
+        (is (nil? (db/select-one-field :message_no_results Card :id (u/the-id card))))))))
+
 (deftest description-should-be-blankable-as-well
   (mt/with-temp Card [card {:description "What a nice Card"}]
     (with-cards-in-writeable-collection card
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description ""})
       (is (= ""
              (db/select-one-field :description Card :id (u/the-id card)))))))
+
+(deftest message-no-results-should-be-blankable-as-well
+  (mt/with-temp Card [card {:message_no_results "Great work"}]
+    (with-cards-in-writeable-collection card
+      (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:message_no_results ""})
+      (is (= ""
+             (db/select-one-field :message_no_results Card :id (u/the-id card)))))))             
 
 (deftest update-card-parameters-test
   (testing "PUT /api/card/:id"
@@ -1713,6 +1729,9 @@
             (testing "Changing description"
               (remains-verified
                (update-card card {:description "foo"})))
+            (testing "Changing message no results"
+              (remains-verified
+               (update-card card {:message_no_results "foo"})))
             (testing "Changing name"
               (remains-verified
                (update-card card {:name "foo"})))

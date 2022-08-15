@@ -44,6 +44,7 @@ export function serializeCardForUrl(card) {
   const cardCopy = {
     name: card.name,
     description: card.description,
+    message_no_results: card.message_no_results,
     dataset_query: dataset_query,
     display: card.display,
     displayIsLocked: card.displayIsLocked,

@@ -24,6 +24,14 @@ const COMMON_SETTINGS = {
     dashboard: true,
     useRawSeries: true,
   },
+  "card.message_no_results": {
+    title: t`Message when there are no results to display`,
+    widget: "input",
+    getDefault: series =>
+      series.length === 1 ? series[0].card.message_no_results : null,
+    dashboard: true,
+    useRawSeries: true,
+  },
   click_behavior: {},
 };
 

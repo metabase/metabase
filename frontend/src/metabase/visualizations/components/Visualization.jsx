@@ -327,7 +327,7 @@ class Visualization extends React.PureComponent {
       onOpenChartSettings,
     } = this.props;
     const { visualization } = this.state;
-    const small = width < 330;
+    const small = width < 330 && height < 200;
 
     // these may be overridden below
     let { series, hovered, clicked } = this.state;
@@ -445,6 +445,10 @@ class Visualization extends React.PureComponent {
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
       (replacementContent && (dashcard.sizeY !== 1 || isMobile));
+    const messageNoResults = () =>
+      settings["card.message_no_results"] === null
+        ? t`No results!`
+        : t`${settings["card.message_no_results"]}`;
 
     return (
       <div
@@ -476,10 +480,12 @@ class Visualization extends React.PureComponent {
               (isDashboard ? "text-slate-light" : "text-slate")
             }
           >
-            <Tooltip tooltip={t`No results!`} isEnabled={small}>
+            <Tooltip tooltip={messageNoResults()} isEnabled={small}>
               <img data-testid="no-results-image" src={NoResults} />
             </Tooltip>
-            {!small && <span className="h4 text-bold">{t`No results!`}</span>}
+            {!small && (
+              <span className="h4 text-bold">{messageNoResults()}</span>
+            )}
           </div>
         ) : error ? (
           <div

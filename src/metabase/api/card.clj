@@ -282,7 +282,7 @@ saved later when it is ready."
   [{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data}]
   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
   ;; `api/maybe-reconcile-collection-position!`
-  (let [data-keys            [:dataset_query :description :display :name :visualization_settings
+  (let [data-keys            [:dataset_query :description :message_no_results :display :name :visualization_settings
                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                     :creator_id api/*current-user-id*
@@ -320,12 +320,13 @@ saved later when it is ready."
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
-  [:as {{:keys [collection_id collection_position dataset_query description display name
+  [:as {{:keys [collection_id collection_position dataset_query description message_no_results display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl], :as body} :body}]
   {name                   su/NonBlankString
    parameters             (s/maybe [su/Parameter])
    parameter_mappings     (s/maybe [su/ParameterMapping])
    description            (s/maybe su/NonBlankString)
+   message_no_results     (s/maybe su/NonBlankString)
    display                su/NonBlankString
    visualization_settings su/Map
    collection_id          (s/maybe su/IntGreaterThanZero)
@@ -522,7 +523,7 @@ saved later when it is ready."
      ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
      ;; modified if they're passed in as non-nil
      (u/select-keys-when card-updates
-       :present #{:collection_id :collection_position :description :cache_ttl :dataset}
+       :present #{:collection_id :collection_position :description :message_no_results :cache_ttl :dataset}
        :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
                   :parameters :parameter_mappings :embedding_params :result_metadata :collection_preview})))
     ;; Fetch the updated Card from the DB
@@ -544,7 +545,7 @@ saved later when it is ready."
 
 (api/defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
+  [id :as {{:keys [dataset_query description message_no_results display name visualization_settings archived collection_id
                    collection_position enable_embedding embedding_params result_metadata parameters
                    cache_ttl dataset collection_preview]
             :as   card-updates} :body}]
@@ -554,6 +555,7 @@ saved later when it is ready."
    dataset                (s/maybe s/Bool)
    display                (s/maybe su/NonBlankString)
    description            (s/maybe s/Str)
+   message_no_results     (s/maybe s/Str)
    visualization_settings (s/maybe su/Map)
    archived               (s/maybe s/Bool)
    enable_embedding       (s/maybe s/Bool)

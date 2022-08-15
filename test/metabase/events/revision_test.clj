@@ -32,6 +32,7 @@
    :embedding_params       nil
    :id                     (u/the-id card)
    :made_public_by_id      nil
+   :message_no_results     nil
    :name                   (:name card)
    :parameters             []
    :parameter_mappings     []
