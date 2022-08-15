@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Card Field]]
+            [metabase.models :refer [Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
             [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
@@ -252,32 +252,3 @@
                                        :condition    [:= $category_id &cat.*categories.id]}]
                        :order-by     [[:asc $name]]
                        :limit        3}))))))))
-
-(deftest add-implicit-fields-skip-remapped-fields-test
-  (testing "when source query has remapped fields, don't include them in `:fields` (#23449)"
-   (mt/with-everything-store
-     (mt/with-column-remappings [venues.price {1 "$" 2 "$$" 3 "$$$" 4 "$$$$"}]
-       (let [card-result-metadata (get-in (mt/run-mbql-query venues {:limit 1}) [:data :results_metadata :columns])
-             remapped-column      (->> card-result-metadata
-                                       (filter (fn [x] (some? (:remapped_from x))))
-                                       first)]
-         (testing "result metadata of the source query should have a remapped field"
-           (is (= {:remapped_from "PRICE"
-                   :id            nil}
-                  (select-keys remapped-column [:remapped_from :id]))))
-         (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query venues)
-                                            :result_metadata card-result-metadata}]
-           (testing "the `:fields` shouldn't include remapped fields "
-             (is (= (mt/$ids [$venues.id
-                              $venues.name
-                              $venues.category_id
-                              $venues.latitude
-                              $venues.longitude
-                              $venues.price])
-                    (-> {:query        {:source-table (str "card__" card-id)}
-                         :type         :query
-                         :database     (mt/id)}
-                        fetch-source-query-test/resolve-card-id-source-tables
-                        add-source-metadata/add-source-metadata-for-source-queries
-                        qp.add-implicit-clauses/add-implicit-mbql-clauses
-                        (get-in [:query :fields])))))))))))

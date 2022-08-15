@@ -49,7 +49,7 @@
      (merge
       (select-keys final-col [:id :description :display_name :semantic_type :fk_target_field_id
                               :settings :field_ref :name :base_type :effective_type
-                              :coercion_strategy :semantic_type :remapped_from :remapped_to])
+                              :coercion_strategy :semantic_type])
       insights-col
       (when (= our-base-type :type/*)
         {:base_type final-base-type})))
@@ -61,7 +61,8 @@
    rf
    [(qr/insights-rf orig-metadata)]
    (fn combine [result {:keys [metadata insights]}]
-     (let [metadata (merge-final-column-metadata (-> result :data :cols) metadata)]
+     (let [cols-metadata (filter #(not (:remapped_from %)) (get-in result [:data :cols]))
+           metadata      (merge-final-column-metadata cols-metadata metadata)]
        (record! metadata)
        (rf (cond-> result
              (map? result)

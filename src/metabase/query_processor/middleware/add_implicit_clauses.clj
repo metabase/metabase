@@ -59,10 +59,7 @@
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
   [source-metadata :- (su/non-empty [mbql.s/SourceQueryMetadata])]
   (distinct
-   (for [{field-name :name, base-type :base_type, field-id :id, field-ref :field_ref :as field} source-metadata
-         ;; Fields with remapped_from attribute are not real fields that exists in the table,
-         ;; rather they were created by [[metabase.query-processor.middleware.add-dimension-projections/remap-results]] middleware.
-         :when (not (some? (:remapped_from field)))]
+   (for [{field-name :name, base-type :base_type, field-id :id, field-ref :field_ref :as field} source-metadata]
      ;; return field-ref directly if it's a `:field` clause already. It might include important info such as
      ;; `:join-alias` or `:source-field`. Remove binning/temporal bucketing info. The Field should already be getting
      ;; bucketed in the source query; don't need to apply bucketing again in the parent query.
