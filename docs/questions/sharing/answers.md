@@ -1,10 +1,10 @@
 ---
-title: Saving and editing your questions
+title: Sharing answers
 redirect_from:
   - /docs/latest/users-guide/06-sharing-answers
 ---
 
-# Saving and editing your questions
+# Sharing answers
 
 ## How to save a question
 
