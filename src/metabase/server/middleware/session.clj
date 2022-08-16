@@ -46,19 +46,6 @@
 (def ^:private ^String metabase-session-timeout-cookie  "metabase.TIMEOUT")
 (def ^:private ^String anti-csrf-token-header           "x-metabase-anti-csrf-token")
 
-(defmulti session-cookie-name
-  "Returns the appropriate cookie name for the session type"
-  {:arglists '([session-type])}
-  (fn [session-type] session-type))
-
-(defmethod session-cookie-name :normal
-  [_]
-  metabase-session-cookie)
-
-(defmethod session-cookie-name :full-app-embed
-  [_]
-  metabase-embedded-session-cookie)
-
 (defn- clear-cookie [response cookie-name]
   (response/set-cookie response cookie-name nil {:expires "Thu, 1 Jan 1970 00:00:00 GMT", :path "/"}))
 
@@ -137,6 +124,15 @@
     (-> response
         wrap-body-if-needed
         (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options))))
+
+(defn session-cookie-name
+  "Returns the appropriate cookie name for the session type."
+  [session-type]
+  (case session-type
+    :normal
+    metabase-session-cookie
+    :full-app-embed
+    metabase-embedded-session-cookie))
 
 (s/defn set-session-cookies
   "Add the appropriate cookies to the `response` for the Session."
