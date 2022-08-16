@@ -95,7 +95,10 @@
    (when (request.u/https? request)
      {:secure true})))
 
-(defn set-timeout-cookie
+(defn set-session-timeout-cookie
+  "Sets the session timeout cookie on the response.
+   If the timeout setting is on, the cookie has an appropriately timed expires attribute.
+   If the timeout setting is off, the cookie has a max-age attribute, so it expires in the far future."
   [response request request-time]
   (let [response       (wrap-body-if-needed response)
         timeout        (session-timeout-seconds)
@@ -131,7 +134,7 @@
             "https://www.chromestatus.com/feature/5633521622188032")))
     (-> response
         (wrap-body-if-needed)
-        (set-timeout-cookie request request-time)
+        (set-session-timeout-cookie request request-time)
         (response/set-cookie metabase-session-cookie (str session-uuid) cookie-options))))
 
 (s/defmethod set-session-cookies :full-app-embed
@@ -368,7 +371,7 @@
   []
   (session-timeout->seconds (session-timeout)))
 
-(defn reset-session-timeout-on-response
+(defn reset-session-timeout*
   "Implementation for `reset-cookie-timeout` respond handler."
   [request response request-time]
   (if (and
@@ -376,7 +379,7 @@
        (:metabase-session-type request)
        ;; Do not reset the timeout if it is being updated in the response, e.g. if it is being deleted
        (not (contains? (:cookies response) metabase-session-timeout-cookie)))
-    (set-timeout-cookie response request request-time)
+    (set-session-timeout-cookie response request request-time)
     response))
 
 (defn reset-session-timeout
@@ -388,5 +391,5 @@
           request-time (t/zoned-date-time (t/zone-id "GMT"))]
       (handler request
                (fn [response]
-                 (respond (reset-session-timeout-on-response request response request-time)))
+                 (respond (reset-session-timeout* request response request-time)))
                raise))))
