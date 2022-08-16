@@ -45,6 +45,19 @@
 (def ^:private ^String metabase-session-timeout-cookie  "metabase.TIMEOUT")
 (def ^:private ^String anti-csrf-token-header           "x-metabase-anti-csrf-token")
 
+(defmulti session-cookie-name
+  "Returns the appropriate cookie name for the session type"
+  {:arglists '([session-type])}
+  (fn [session-type] session-type))
+
+(defmethod session-cookie-name :normal
+  [_]
+  metabase-session-cookie)
+
+(defmethod session-cookie-name :full-app-embed
+  [_]
+  metabase-embedded-session-cookie)
+
 (defn- clear-cookie [response cookie-name]
   (response/set-cookie response cookie-name nil {:expires "Thu, 1 Jan 1970 00:00:00 GMT", :path "/"}))
 
@@ -72,19 +85,18 @@
     ;; Otherwise check whether the user selected "remember me" during login
     (get-in request [:body :remember])))
 
-(defmulti set-session-cookies
-  "Add an appropriate cookie to persist a newly created Session to `response`."
-  {:arglists '([request response session request-time])}
-  (fn [_ _ {session-type :type} _] (keyword session-type)))
+(defmulti default-session-cookie-attributes
+  "The appropriate cookie attributes to persist a newly created Session to `response`."
+  {:arglists '([session-type request])}
+  (fn [session-type _] session-type))
 
-(defmethod set-session-cookies :default
-  [_ _ session _]
-  (throw (ex-info (str (tru "Invalid session. Expected an instance of Session."))
-           {:session session})))
+(defmethod default-session-cookie-attributes :default
+  [session-type _]
+  (throw (ex-info (str (tru "Invalid session-type."))
+           {:session-type session-type})))
 
-(declare session-timeout-seconds)
-
-(defn default-session-cookie-options [request]
+(defmethod default-session-cookie-attributes :normal
+  [_ request]
   (merge
    {:same-site config/mb-session-cookie-samesite
     ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
@@ -95,30 +107,45 @@
    (when (request.u/https? request)
      {:secure true})))
 
+(defmethod default-session-cookie-attributes :full-app-embed
+  [_ request]
+  (merge
+   {:path "/"}
+   (when (request.u/https? request)
+     ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
+     ;; security is provided via anti-CSRF token. Note that most browsers will only accept
+     ;; SameSite=None with secure cookies, thus we are setting it only over HTTPS to prevent
+     ;; the cookie from being rejected in case of same-domain embedding.
+     {:same-site :none
+      :secure    true})))
+
+(declare session-timeout-seconds)
+
 (defn set-session-timeout-cookie
-  "Sets the session timeout cookie on the response.
-   If the timeout setting is on, the cookie has an appropriately timed expires attribute.
-   If the timeout setting is off, the cookie has a max-age attribute, so it expires in the far future."
-  [response request request-time]
+  "Add an appropriate timeout cookie to track whether the session should timeout or not, according to the [[session-timeout]] setting.
+   If the session-timeout setting is on, the cookie has an appropriately timed expires attribute.
+   If the session-timeout setting is off, the cookie has a max-age attribute, so it expires in the far future."
+  [response request session-type request-time]
   (let [response       (wrap-body-if-needed response)
         timeout        (session-timeout-seconds)
         cookie-options (merge
-                        (default-session-cookie-options request)
+                        (default-session-cookie-attributes session-type request)
                         (if (some? timeout)
                           {:expires (t/format :rfc-1123-date-time (t/plus request-time (t/seconds timeout)))}
                           {:max-age (* 60 (config/config-int :max-session-age))}))]
     (-> response
-        (wrap-body-if-needed)
+        wrap-body-if-needed
         (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options))))
 
-(s/defmethod set-session-cookies :normal
+(s/defn set-session-cookies
   [request
    response
-   {session-uuid :id} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}
+   {session-uuid :id
+    session-type :type
+    anti-csrf-token :anti_csrf_token} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}
    request-time]
-  (let [response       (wrap-body-if-needed response)
-        cookie-options (merge
-                        (default-session-cookie-options request)
+  (let [cookie-options (merge
+                        (default-session-cookie-attributes session-type request)
                         {:http-only true}
                         ;; If permanent cookies should be used, set the `Max-Age` directive; cookies with no
                         ;; `Max-Age` and no `Expires` directives are session cookies, and are deleted when the
@@ -133,34 +160,13 @@
             " "
             "https://www.chromestatus.com/feature/5633521622188032")))
     (-> response
-        (wrap-body-if-needed)
-        (set-session-timeout-cookie request request-time)
-        (response/set-cookie metabase-session-cookie (str session-uuid) cookie-options))))
+        wrap-body-if-needed
+        (cond-> (= session-type :full-app-embed)
+          (assoc-in [:headers anti-csrf-token-header] anti-csrf-token))
+        (set-session-timeout-cookie request session-type request-time)
+        (response/set-cookie (session-cookie-name session-type) (str session-uuid) cookie-options))))
 
-(s/defmethod set-session-cookies :full-app-embed
-  [request
-   response
-   {session-uuid    :id
-    anti-csrf-token :anti_csrf_token} :- {:id       (s/cond-pre UUID u/uuid-regex)
-                                          s/Keyword s/Any}
-   request-time]
-  (let [response       (wrap-body-if-needed response)
-        timeout (session-timeout-seconds)
-        cookie-options (merge
-                        {:path "/"}
-                        (when (some? timeout)
-                          {:expires (t/format :rfc-1123-date-time (t/plus request-time (t/seconds timeout)))})
-                        (when (request.u/https? request)
-                          ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
-                          ;; security is provided via anti-CSRF token. Note that most browsers will only accept
-                          ;; SameSite=None with secure cookies, thus we are setting it only over HTTPS to prevent
-                          ;; the cookie from being rejected in case of same-domain embedding.
-                          {:same-site :none
-                           :secure    true}))]
-    (-> response
-        (assoc-in [:headers anti-csrf-token-header] anti-csrf-token)
-        (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options)
-        (response/set-cookie metabase-embedded-session-cookie (str session-uuid) (assoc cookie-options :http-only true)))))
+(session-cookie-name :full-app-embed)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                wrap-session-id                                                 |
@@ -379,7 +385,7 @@
        (:metabase-session-type request)
        ;; Do not reset the timeout if it is being updated in the response, e.g. if it is being deleted
        (not (contains? (:cookies response) metabase-session-timeout-cookie)))
-    (set-session-timeout-cookie response request request-time)
+    (set-session-timeout-cookie response request (:metabase-session-type request) request-time)
     response))
 
 (defn reset-session-timeout

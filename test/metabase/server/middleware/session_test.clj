@@ -132,37 +132,40 @@
    :type             :full-app-embed})
 
 (deftest set-full-app-embedding-session-cookie-test
-  (mt/with-temporary-setting-values [session-timeout nil]
-    (testing "test that we can set a full-app-embedding session cookie"
-      (is (= {:body    {}
-              :status  200
-              :cookies {embedded-session-cookie {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
-                                                 :http-only true
-                                                 :path      "/"}
-                        session-timeout-cookie  {:value     "alive"
-                                                 :path      "/"}}
-              :headers {anti-csrf-token-header test-anti-csrf-token}}
-             (mw.session/set-session-cookies {}
-                                            {}
-                                            test-full-app-embed-session
-                                            (t/zoned-date-time "2022-07-06T02:00Z[UTC]")))))
-    (testing "test that we can set a full-app-embedding session cookie with SameSite=None over HTTPS"
-      (is (= {:body    {}
-              :status  200
-              :cookies {embedded-session-cookie {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
-                                                 :http-only true
-                                                 :path      "/"
-                                                 :same-site :none
-                                                 :secure    true}
-                        session-timeout-cookie  {:value     "alive"
-                                                 :path      "/"
-                                                 :same-site :none
-                                                 :secure    true}}
-              :headers {anti-csrf-token-header test-anti-csrf-token}}
-             (mw.session/set-session-cookies {:headers {"x-forwarded-protocol" "https"}}
-                                            {}
-                                            test-full-app-embed-session
-                                            (t/zoned-date-time "2022-07-06T02:01Z[UTC]")))))))
+  (with-redefs [env/env (assoc env/env :max-session-age "1")]
+    (mt/with-temporary-setting-values [session-timeout nil]
+      (testing "test that we can set a full-app-embedding session cookie"
+        (is (= {:body    {}
+                :status  200
+                :cookies {embedded-session-cookie {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
+                                                   :http-only true
+                                                   :path      "/"}
+                          session-timeout-cookie  {:value     "alive"
+                                                   :path      "/"
+                                                   :max-age   60}}
+                :headers {anti-csrf-token-header test-anti-csrf-token}}
+               (mw.session/set-session-cookies {}
+                                               {}
+                                               test-full-app-embed-session
+                                               (t/zoned-date-time "2022-07-06T02:00Z[UTC]")))))
+      (testing "test that we can set a full-app-embedding session cookie with SameSite=None over HTTPS"
+        (is (= {:body    {}
+                :status  200
+                :cookies {embedded-session-cookie {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
+                                                   :http-only true
+                                                   :path      "/"
+                                                   :same-site :none
+                                                   :secure    true}
+                          session-timeout-cookie  {:value     "alive"
+                                                   :path      "/"
+                                                   :same-site :none
+                                                   :secure    true
+                                                   :max-age   60}}
+                :headers {anti-csrf-token-header test-anti-csrf-token}}
+               (mw.session/set-session-cookies {:headers {"x-forwarded-protocol" "https"}}
+                                               {}
+                                               test-full-app-embed-session
+                                               (t/zoned-date-time "2022-07-06T02:01Z[UTC]"))))))))
 
 
 ;;; ---------------------------------------- TEST wrap-session-id middleware -----------------------------------------
@@ -419,11 +422,7 @@
       (mt/with-temporary-setting-values [session-timeout {:amount 60
                                                           :unit   "minutes"}]
         (testing "with normal sessions"
-          (let [request {:cookies               {session-cookie         {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
-                                                                         :same-site :lax,
-                                                                         :path      "/",
-                                                                         :max-age   60,
-                                                                         :http-only true}
+          (let [request {:cookies               {session-cookie         {:value "8df268ab-00c0-4b40-9413-d66b966b696a"}
                                                  session-timeout-cookie {:value "alive"}}
                          :metabase-session-id   session-id
                          :metabase-session-type :normal}]
@@ -435,17 +434,12 @@
                    (mw.session/reset-session-timeout* request response request-time)))))
 
         (testing "with embedded sessions"
-          (let [request {:cookies               {embedded-session-cookie {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
-                                                                          :same-site :lax,
-                                                                          :path      "/",
-                                                                          :max-age   60,
-                                                                          :http-only true}
+          (let [request {:cookies               {embedded-session-cookie {:value "8df268ab-00c0-4b40-9413-d66b966b696a"}
                                                  session-timeout-cookie  {:value "alive"}}
                          :metabase-session-id   session-id
                          :metabase-session-type :full-app-embed}]
             (is (= {:body    "some body",
                     :cookies {session-timeout-cookie {:value     "alive"
-                                                      :same-site :lax
                                                       :path      "/"
                                                       :expires   "Sat, 1 Jan 2022 01:00:00 GMT"}}}
                    (mw.session/reset-session-timeout* request response request-time)))))))
