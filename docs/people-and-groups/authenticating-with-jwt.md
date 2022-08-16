@@ -1,5 +1,7 @@
 ---
 title: JWT-based authentication
+redirect_from:
+  - /docs/latest/enterprise-guide/authenticating-with-jwt
 ---
 
 # JWT-based authentication
@@ -76,9 +78,3 @@ You can find example code that uses JWT authentication in the [SSO examples repo
 
 - [JWT example in a Clojure app](https://github.com/metabase/sso-examples/tree/master/clj-jwt-example)
 - [JWT example in JavaScript (Node) app](https://github.com/metabase/sso-examples/tree/master/nodejs-jwt-example)
-
----
-
-## Next: Creating data sandboxes for your user groups
-
-Data sandboxes automatically filter specific tables for your users based on who they are. We'll show you [how to set these up](data-sandboxes.md) next.

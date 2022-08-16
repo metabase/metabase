@@ -1,5 +1,7 @@
 ---
 title: General settings
+redirect_from:
+  - /docs/latest/administration-guide/08-configuration-settings
 ---
 
 ## General settings

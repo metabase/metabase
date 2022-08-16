@@ -1,12 +1,14 @@
 ---
 title: Collections
+redirect_from:
+  - /docs/latest/users-guide/collections
 ---
 
 # Collections
 
  After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions.
 
-![Our analytics](images/collections/our-analytics-page.png)
+![Our analytics](./images/our-analytics-page.png)
 
 Collections are the main way to organize questions, dashboards, and [models][models]. You can think of them like folders or directories. You can nest collections in other collections, and move collections around. One thing to note is that a single item, like a question or dashboard, can only be in one collection at a time (excluding parent collections).
 
@@ -22,7 +24,7 @@ They're just basic collections. You can put stuff in them.
 
 These are special collections, in that they have a badge to let people know that the items in this collection are the ones people should be looking at (or whatever "official" means to you). Questions and dashboards in official collections are also more likely to show up at the top of search results.
 
-![Official collections](images/collections/official-collection.png)
+![Official collections](./images/official-collection.png)
 
 ## Collection permissions
 
@@ -40,19 +42,19 @@ You can use your personal collection as a scratch space to put experiments and e
 
 ## Pinned items
 
-![Pins](images/collections/pinned-items.png)
+![Pins](./images/pinned-items.png)
 
 In each collection, you can pin important or useful dashboards, models, and questions to make them stick to the top of the screen. Pinned items will also be displayed as large cards to make them stand out well. If you have Curate permissions for a collection, you can pin and un-pin things, and drag and drop pins to change their order.
 
 Any dashboards that are pinned in the main "Our analytics" collection will also show up on the homepage.
 
-If you just want to organize _your_ favorite items, you should [bookmark them](03-basic-exploration.md#bookmarks) (only you can see your bookmarks).
+If you just want to organize _your_ favorite items, you should [bookmark them](./basic-exploration.md#bookmarks) (only you can see your bookmarks).
 
 ## Moving items from collection to collection
 
 To move a question, dashboard, or pulse into a collection, or from one collection to another, just click and drag it onto the collection where you want it to go. You can also click on the `…` menu to the right of the question and pick the Move action. If you're trying to move several things at once, click on the items' icons to select them, then click the Move action that pops up at the bottom of the screen.
 
-![Selecting questions](images/collections/question-checkbox.png)
+![Selecting questions](./images/question-checkbox.png)
 
 Note that you have to have Curate permission for the collection that you're moving a question into _and_ the collection you're moving the question out of.
 
@@ -72,5 +74,5 @@ You can add events to collections, and organize those events into timelines. See
 
 Next, we'll learn about [creating dashboards and adding questions to them][dashboards].
 
-[dashboards]: 07-dashboards.md
+[dashboards]: dashboards/introduction.md
 [models]: ../data-modeling/models.md

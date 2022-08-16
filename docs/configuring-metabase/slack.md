@@ -1,5 +1,7 @@
 ---
 title: Setting up Slack
+redirect_from:
+  - /docs/latest/administration-guide/09-setting-up-slack
 ---
 
 # Setting up Slack

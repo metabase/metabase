@@ -1,37 +1,17 @@
 ---
 title: Authenticating with SAML
+redirect_from:
+  - /docs/latest/enterprise-guide/authenticating-with-saml
 ---
 
 # Authenticating with SAML
 
 {% include plans-blockquote.html feature="SAML authentication" %}
 
-The open source edition of Metabase includes the option to set up [single sign-on (SSO)](../administration-guide/sso.html) with [Google Sign-in or LDAP](../administration-guide/10-single-sign-on.html), but the [some plans](https://www.metabase.com/pricing) let you connect your SAML- or [JWT](../enterprise-guide/authenticating-with-jwt.html)-based SSO. Integrating your SSO with Metabase allows you to:
+The open source edition of Metabase includes the option to set up [single sign-on (SSO)](../administration-guide/sso.md) with [Google Sign-in or LDAP](../administration-guide/10-single-sign-on.md), but the [some plans](https://www.metabase.com/pricing) let you connect your SAML- or [JWT](../enterprise-guide/authenticating-with-jwt.md)-based SSO. Integrating your SSO with Metabase allows you to:
 
 - automatically pass user attributes from your SSO to Metabase in order to power data sandboxes
 - let your users access Metabase without re-authenticating.
-
-## Table of contents
-
-<div class='doc-toc' markdown=1>
-- [Turning on SAML-based SSO](#turning-on-saml-based-sso).
-- [Setting up SAML with your IdP](#setting-up-saml-with-your-idp).
-- [Generic SAML configuration](#generic-saml-configuration).
-  - [URL the IdP should redirect back to](#url-the-idp-should-redirect-back-to).
-  - [User attributes](#user-attributes).
-  - [Settings for signing SSO requests (optional)](#settings-for-signing-sso-requests-optional).
-- [Enabling SAML authentication in Metabase](#enabling-saml-authentication-in-metabase).
-  - [SAML identity provider URL](#saml-identity-provider-url).
-  - [SAML identity provider issuer](#saml-identity-provider-issuer).
-  - [SAML identity provider certificate](#saml-identity-provider-certificate).
-  - [Settings for signing SSO requests (optional)](#settings-for-signing-sso-requests-optional-1).
-- [Synchronizing group membership with your IdP](#synchronizing-group-membership-with-your-idp).
-- [Configuring the group schema in Metabase](#configuring-the-group-schema-in-metabase).
-- [Disabling password log-in](#disabling-password-log-in).
-- [New user notification emails](#new-user-notification-emails).
-- [Example code using SAML](#example-code-using-saml).
-- [Troubleshooting SAML issues](#troubleshooting-saml-issues).
-</div>
 
 ## Turning on SAML-based SSO
 
@@ -55,11 +35,11 @@ First you'll need to make sure things are configured correctly with your IdP. Ea
 
 We've written up some guides for the most common providers:
 
-- [Setting up SAML with Auth0](saml-auth0.html)
-- [Setting up SAML with Azure AD](authenticating-with-saml-azure-ad.html)
-- [Setting up SAML with Google](saml-google.html)
-- [Setting up SAML with Keycloak](saml-keycloak.html)
-- [Setting up SAML with Okta](saml-okta.html)
+- [Setting up SAML with Auth0](saml-auth0.md)
+- [Setting up SAML with Azure AD](authenticating-with-saml-azure-ad.md)
+- [Setting up SAML with Google](saml-google.md)
+- [Setting up SAML with Keycloak](saml-keycloak.md)
+- [Setting up SAML with Okta](saml-okta.md)
 
 **If you don't see your IdP listed here:**
 
@@ -75,23 +55,23 @@ However, the names of the fields in the Metabase SAML form won't always match th
 
 ### URL the IdP should redirect back to
 
-The redirect URL is the web address that people will be sent to after signing in with your IdP. To redirect people to your Metabase, your redirect URL should be your Metabase [Site URL](../administration-guide/08-configuration-settings.html#site-url), with `/auth/sso` at the end.
+The redirect URL is the web address that people will be sent to after signing in with your IdP. To redirect people to your Metabase, your redirect URL should be your Metabase [Site URL](../administration-guide/08-configuration-settings.md#site-url), with `/auth/sso` at the end.
 
 For example, if your Metabase Site URL is `https://metabase.yourcompany.com`, you'll use `https://metabase.yourcompany.com/auth/sso` as the redirect URL in your IdP's SAML form.
 
 Different IdPs use different names for the redirect URL. Here are some common examples:
 
-| Provider                       | Name                     |
-| ------------------------------ | ------------------------ |
-| [Auth0](saml-auth0.html)       | Application Callback URL |
-| [Okta](saml-okta.html)         | Single Sign On URL       |
-| OneLogin                       | ACS (Consumer) URL       |
+| Provider               | Name                     |
+| ---------------------- | ------------------------ |
+| [Auth0](saml-auth0.md) | Application Callback URL |
+| [Okta](saml-okta.md)   | Single Sign On URL       |
+| OneLogin               | ACS (Consumer) URL       |
 
 ### User attributes
 
 Metabase will automatically log in people who've been authenticated by your SAML identity provider. In order to do so, the first assertion returned in the identity provider's SAML response _must_ contain attributes for each person's first name, last name, and email.
 
-Most IdPs already include these assertions by default, but some (such as [Okta](saml-okta.html)) must be configured to include them.
+Most IdPs already include these assertions by default, but some (such as [Okta](./saml-okta.md)) must be configured to include them.
 
 Generally you'll need to paste these user attributes (first name, last name, and email) into fields labelled "Name", "Attributes" or "Parameters".
 
@@ -111,11 +91,11 @@ Metabase will redirect login requests to the Identity Provider URL, where people
 
 Different IdPs use different names for the Identity Provider URL. Here are some common examples:
 
-| Provider                       | Name                                 |
-| ------------------------------ | ------------------------------------ |
-| [Auth0](saml-auth0.html)       | Identity Provider Login URL          |
-| [Okta](saml-okta.html)         | Identity Provider Single-Sign On URL |
-| OneLogin                       | SAML 2.0 Endpoint (HTTP)             |
+| Provider               | Name                                 |
+| ---------------------- | ------------------------------------ |
+| [Auth0](saml-auth0.md) | Identity Provider Login URL          |
+| [Okta](saml-okta.md)   | Identity Provider Single-Sign On URL |
+| OneLogin               | SAML 2.0 Endpoint (HTTP)             |
 
 ### SAML Identity Provider Issuer
 
@@ -123,11 +103,11 @@ This is a unique identifier for the IdP. You might also see it referred to as "E
 
 We recommend that you set this value to make your SAML configuration more secure.
 
-| Provider                       | Name                        |
-| ------------------------------ | --------------------------- |
-| [Auth0](saml-auth0.html)       | Identity Provider Login URL |
-| [Okta](saml-okta.html)         | Identity Provider Issuer    |
-| OneLogin                       | Issuer URL                  |
+| Provider               | Name                        |
+| ---------------------- | --------------------------- |
+| [Auth0](saml-auth0.md) | Identity Provider Login URL |
+| [Okta](saml-okta.md)   | Identity Provider Issuer    |
+| OneLogin               | Issuer URL                  |
 
 ### SAML Identity Provider Certificate
 
@@ -137,11 +117,11 @@ Your IdP might have you download this certificate as a file (usually `.cer` or `
 
 Note that your certificate text may include header and footer comments that look like `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----`. These comments should be included when pasting your certificate text into Metabase.
 
-| Provider                       | Name                |
-| ------------------------------ | ------------------- |
-| [Auth0](saml-auth0.html)       | Signing Certificate |
-| [Okta](saml-okta.html)         | X.509 Certificate   |
-| OneLogin                       | X.509 Certificate   |
+| Provider               | Name                |
+| ---------------------- | ------------------- |
+| [Auth0](saml-auth0.md) | Signing Certificate |
+| [Okta](saml-okta.md)   | X.509 Certificate   |
+| OneLogin               | X.509 Certificate   |
 
 ### Settings for signing SSO requests (optional)
 
@@ -187,4 +167,4 @@ You can find example code that uses SAML authentication in the [SSO examples rep
 
 ## Troubleshooting SAML issues
 
-For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/saml.html).
+- [Troubleshooting SAML](../troubleshooting-guide/saml.md).

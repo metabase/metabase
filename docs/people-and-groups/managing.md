@@ -1,5 +1,7 @@
 ---
 title: Managing people and groups
+redirect_from:
+  - /docs/latest/administration-guide/04-managing-users
 ---
 
 # Managing people and groups

@@ -1,5 +1,7 @@
 ---
 title: Caching query results
+redirect_from:
+  - /docs/latest/administration-guide/14-caching
 ---
 
 # Caching query results

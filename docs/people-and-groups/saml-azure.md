@@ -1,5 +1,7 @@
 ---
 title: Using Azure AD as the Identity Provider with Metabase and SAML
+redirect_from:
+  - /docs/latest/enterprise-guide/authenticating-with-saml-azure-ad
 ---
 
 # Using Azure AD as the Identity Provider with Metabase and SAML
@@ -12,7 +14,7 @@ title: Using Azure AD as the Identity Provider with Metabase and SAML
 
 ## Enable SAML in Metabase
 
-First, follow our guide to [enable SAML authentication](authenticating-with-saml.html).
+First, follow our guide to [enable SAML authentication](authenticating-with-saml.md).
 
 ## Add an Enterprise Application in Azure AD
 

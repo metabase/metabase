@@ -1,5 +1,7 @@
 ---
 title: Exploring in Metabase
+redirect_from:
+  - /docs/latest/users-guide/03-basic-exploration
 ---
 
 # Exploring in Metabase

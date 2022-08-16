@@ -36,9 +36,3 @@ To get started, click the `Add a map` button. A modal will appear, asking for:
 If you do not currently have a GeoJSON file, there are many tools available to create one, such as
 [MapShaper](https://mapshaper.org/) or [GeoJSON.io](http://geojson.io/). If you're just interested in reading more about
 GeoJSON, we recommend that you start [here](https://geojson.org/).
-
----
-
-## Next: editing metadata
-Taking just a few minutes to edit and add info to your database’s metadata can greatly enhance your experience with
-Metabase. Let’s learn how to [edit your metadata](03-metadata-editing.md).

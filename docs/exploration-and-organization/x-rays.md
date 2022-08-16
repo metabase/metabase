@@ -1,5 +1,7 @@
 ---
 title: X-rays
+redirect_from:
+  - /docs/latest/users-guide/14-x-rays
 ---
 
 # X-rays
@@ -10,18 +12,18 @@ X-rays are a fast and easy way to get automatic insights and explorations of you
 
 One great way to explore your data in general in Metabase is to click on points of interest in charts or tables, which shows you ways to further explore that point. We've added X-rays to this action menu, so if you for example find a point on your line chart that seems extra interesting, give it a click and X-ray it! We think you'll like what you see.
 
-![X-ray action in drill-through menu](images/x-rays/drill-through.png)
+![X-ray action in drill-through menu](./images/drill-through.png)
 
 ## Comparisons
 
 To see how the value of a bar, point, or geographic region compares to the rest of the data, click on it to pull up the action menu, then select **Compare to the rest**.
 
-![Compare menu](images/x-rays/x-ray-compare-popover.png)
+![Compare menu](./images/x-ray-compare-popover.png)
 
 If you're already looking at an X-ray of a table or a segment, Metabase will also give you the option to compare the current table or segment to other segments of the table, if there are any. This is a fast, powerful way to see, for example, how different segments of your users or orders compare to each other.
 
-![Comparison](images/x-rays/x-ray-comparison-1.png)
-![Comparison](images/x-rays/x-ray-comparison-2.png)
+![Comparison](./images/x-ray-comparison-1.png)
+![Comparison](./images/x-ray-comparison-2.png)
 
 ## Table X-rays
 
@@ -33,17 +35,17 @@ You can also view an X-ray by browsing to a table and clicking on the lightning 
 
 From the Browse Data page, you can also click on `Learn about our data` to view the Data Reference section. From here you can navigate through databases, tables, columns, metrics, or segments, and you can click on the X-ray link in the left sidebar to see an X-ray of the item you're currently viewing.
 
-![Data Reference X-ray](images/x-rays/data-reference.png)
+![Data Reference X-ray](./images/data-reference.png)
 
 ## Exploring newly added data sources
 
 If you're an administrator, when you first connect a database to Metabase, Metabot will offer to show you some automated explorations of your newly-connected data.
 
-![X-ray example](images/x-rays/suggestions.png)
+![X-ray example](./images/suggestions.png)
 
 Click on one of these to see an X-ray.
 
-![X-ray example](images/x-rays/x-rays-browse.png)
+![X-ray example](./images/x-rays-browse.png)
 
 You can see more suggested X-rays over on the right-hand side of the screen. Browsing through X-rays like this is a pretty fun way of getting a quick overview of your data.
 
@@ -65,4 +67,3 @@ If you come across an X-ray that's particularly interesting, you can save it as 
 If for some reason X-rays aren't a good fit for your team or your data, administrators can turn them off completely in the general settings area of the Admin Panel.
 
 The X-ray suggestions that appear on the homepage of Metabase will be hidden if you pin any dashboards in the "Our Analytics" collection. You can also manually remove these suggestions for all users by hovering over that section on the homepage and clicking the `X` next to "Try these X-rays based on your data" when logged in as an administrator. This won't disable the X-ray features in the rest of Metabase.
-

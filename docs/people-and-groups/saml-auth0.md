@@ -1,5 +1,7 @@
 ---
 title: Setting up SAML with Auth0
+redirect_from:
+  - /docs/latest/enterprise-guide/saml-auth0
 ---
 
 # Setting up SAML with Auth0

@@ -1,5 +1,7 @@
 ---
 title: Authenticating with Google Sign-In or LDAP
+redirect_from:
+  - /docs/latest/administration-guide/10-single-sign-on
 ---
 
 # Authenticating with Google Sign-In or LDAP
@@ -9,19 +11,6 @@ Enabling [Google Sign-In](#enabling-google-sign-in) or [LDAP](#enabling-ldap-aut
 If you'd like to have people authenticate with [SAML][saml-docs] or [JWT][jwt-docs], Metabase's [paid plans](https://www.metabase.com/pricing) let you do just that.
 
 As time goes on we may add other auth providers. If you have a service you’d like to see work with Metabase, please let us know by [filing an issue](http://github.com/metabase/metabase/issues/new).
-
-- [Enabling Google Sign-In](#enabling-google-sign-in)
-  - [Working in the Google developer console](#working-in-the-google-developer-console)
-  - [Creating Metabase accounts with Google Sign-in](#creating-metabase-accounts-with-google-sign-in)
-- [Enabling LDAP authentication](#enabling-ldap-authentication)
-  - [LDAP user schema](#ldap-user-schema)
-  - [LDAP group mapping](#ldap-group-mapping)
-  - [LDAP group membership filter](#ldap-group-membership-filter)
-- [Syncing user attributes at login](#syncing-user-attributes-at-login)
-  - [Syncing user attributes with Google](#syncing-user-attributes-with-google)
-  - [Syncing user attributes with LDAP](#syncing-user-attributes-with-ldap)
-- [Changing an account's login method from email to SSO](#changing-an-accounts-login-method-from-email-to-sso)
-- [Troubleshooting login issues](#troubleshooting-login-issues)
 
 ## Enabling Google Sign-In
 
@@ -136,12 +125,12 @@ Note that you must have at least one account with email and password login. This
 
 ## Troubleshooting login issues
 
-See [Troubleshooting logins](../troubleshooting-guide/cant-log-in.md).
+ - [Troubleshooting logins](../troubleshooting-guide/cant-log-in.md).
 
-[data-sandboxing-docs]: ../enterprise-guide/data-sandboxes.html
-[google-saml-docs]: ../enterprise-guide/saml-google.html
-[jwt-docs]: ../enterprise-guide/authenticating-with-jwt.html
-[saml-docs]: ../enterprise-guide/authenticating-with-saml.html
-[sso-docs]: ../administration-guide/sso.html
-[user-attributes-docs]: ../enterprise-guide/data-sandboxes.html#getting-user-attributes
+[data-sandboxing-docs]: ../permissions/data-sandboxes.md
+[google-saml-docs]: ../saml-google.md
+[jwt-docs]: ./authenticating-with-jwt.md
+[saml-docs]: ./authenticating-with-saml.md
+[sso-docs]: ./administration-guide/sso.md
+[user-attributes-docs]: ../enterprise-guide/data-sandboxes.md#getting-user-attributes
 [user-attributes-def]: /glossary/attribute#user-attributes-in-metabase

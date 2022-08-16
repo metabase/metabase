@@ -1,16 +1,18 @@
 ---
 title: Permissions overview
+redirect_from:
+  - /docs/latest/administration-guide/05-setting-permissions
 ---
 
 # Permissions overview
 
-There are always going to be sensitive bits of information in your data, and thankfully Metabase provides a rich set of tools to ensure that people on your team only see the data they’re supposed to. 
+There are always going to be sensitive bits of information in your data, and thankfully Metabase provides a rich set of tools to ensure that people on your team only see the data they’re supposed to.
 
 If instead you're wondering about what data Metabase the company can see, check out our page on [data privacy and security](https://www.metabase.com/security).
 
 ## Key points regarding permissions
 
-- Permissions are granted to [groups](04-managing-users.md#groups), not people.
+- Permissions are granted to [groups](../people-and-groups/managing.md#groups), not people.
 - People can be in more than one group.
 - If a person is in multiple groups, they will have the _most permissive_ access granted to them across all of their groups. For example, if a person is in three groups, and any one of those groups has access to a database, then that person will have access to that database.
 
@@ -64,13 +66,12 @@ Whenever you change permissions for a group, make sure you:
 
 [collections]: 06-collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
-[data-permissions]: data-permissions.md
-[pulses]: ../users-guide/10-pulses.md
-[data-sandboxing]: ../enterprise-guide/data-sandboxes.md
+[data-permissions]: ./data.md
+[data-sandboxing]: ./data-sandboxes.md
 [permissions]: /learn/permissions/
-[sandbox-columns]: /learn/permissions/data-sandboxing-column-permissions.html
-[sandbox-rows]: /learn/permissions/data-sandboxing-row-permissions.html
-[slack-integration]: 09-setting-up-slack.md
-[sql-snippet-folders]: ../enterprise-guide/sql-snippets.html
-[table-permissions]: data-permissions.md#table-permissions
-[troubleshooting-permissions]: ../troubleshooting-guide/permissions.html
+[sandbox-columns]: /learn/permissions/data-sandboxing-column-permissions
+[sandbox-rows]: /learn/permissions/data-sandboxing-row-permissionsk
+[slack-integration]: ../configuring-metabase/slack.md
+[sql-snippet-folders]: ../questions/native-editor/sql-snippets.md
+[table-permissions]: data.md#table-permissions
+[troubleshooting-permissions]: ../troubleshooting-guide/permissions.md

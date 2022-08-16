@@ -1,10 +1,12 @@
 ---
 title: Collection permissions
+redirect_from:
+  - /docs/latest/administration-guide/06-collections
 ---
 
 # Collection permissions
 
-![Collection detail](images/collections/collection-detail.png)
+![Collection detail](./images/collection-detail.png)
 
 You can use [collections](../users-guide/collections) to organize questions, dashboards, models, timelines, and other collections. You can set permissions on those collections to determine which groups of people can view and curate collections' items.
 
@@ -18,13 +20,13 @@ Metabase starts out with a default top-level collection which is called **Our an
 
 ### Setting permissions for collections
 
-You can set permissions on collections by clicking on the lock icon in the top-right of the screen while viewing the collection and clicking on **Edit permissions**. Only Administrators can edit collection permissions. Each [user group](05-setting-permissions.md) can have either View, Curate, or No access to a collection:
+You can set permissions on collections by clicking on the lock icon in the top-right of the screen while viewing the collection and clicking on **Edit permissions**. Only Administrators can edit collection permissions. Each [user group](overview.md) can have either View, Curate, or No access to a collection:
 
-![Permissions](images/collections/collection-permissions.png)
+![Permissions](./images/collection-permissions.png)
 
 If you want to see the bigger picture of what permissions your user groups have for all your collections, just click the link that says **See all collection permissions**, which takes you to the Admin Panel. You'll see a list of your collections down along the left, and clicking on any of those will bring up a list of each group's permission settings for that collection.
 
-![Collection Permissions](images/collections/admin-panel-collections.png)
+![Collection Permissions](./images/admin-panel-collections.png)
 
 Just like with data access permissions, collection permissions are _additive_, meaning that if a user belongs to more than one group, if one of their groups has a more restrictive setting for a collection than another one of their groups, they'll be given the _more permissive_ setting. This is especially important to remember when dealing with the All Users group: since all users are members of this group, if you give the All Users group Curate access to a collection, then _all_ users will be given Curate access for that collection, even if they also belong to a group with _less_ access than that.
 
@@ -40,7 +42,7 @@ You can _unarchive_ items. In the Collections list sidebar, at the bottom, click
 
 ## Pinning items in collections
 
-![Pins](images/collections/pinned-items.png)
+![Pins](./images/pinned-items.png)
 
 People in groups with Curate access to a collection can pin items in the collection. Pinning an item in a collection turns the item into a handsome card at the top of the collection.
 
@@ -54,7 +56,7 @@ The "Our analytics" collection and individual personal collections are invincibl
 
 ### Personal collections
 
-Each person has a personal collection where they're always allowed to save things, even if they don't have Curate permissions for any other collections. 
+Each person has a personal collection where they're always allowed to save things, even if they don't have Curate permissions for any other collections.
 
 Administrators can see and edit the contents of every user's personal collection (even those belonging to other Administrators) by clicking on the **Other users' personal collections** link at the bottom of the sidebar when viewing "Our analytics".
 
@@ -64,16 +66,15 @@ A personal collection works just like any other collection except that its permi
 
 - [Working with collection permissions][collection-permissions].
 
-[collections]: 06-collections.md
-[collection-permissions]: /learn/permissions/collection-permissions.html
+[collections]: ../exploration-and-organization/collections.md
+[collection-permissions]: /learn/permissions/collection-permissions
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
-[data-permissions]: data-permissions.md
-[pulses]: ../users-guide/10-pulses.md
-[data-sandboxing]: ../enterprise-guide/data-sandboxes.md
-[offical-collections]: ../users-guide/collections.html#official-collections
+[data-permissions]: ./data.md
+[data-sandboxing]: ../permissions/data-sandboxes.md
+[offical-collections]: ../exploration-and-organization/collections.md#official-collections
 [permissions]: /learn/permissions/
-[sandbox-columns]: /learn/permissions/data-sandboxing-column-permissions.html
-[sandbox-rows]: /learn/permissions/data-sandboxing-row-permissions.html
-[slack-integration]: 09-setting-up-slack.md
-[sql-snippet-folders]: ../enterprise-guide/sql-snippets.md
-[table-permissions]: data-permissions.md#table-permissions
+[sandbox-columns]: /learn/permissions/data-sandboxing-column-permissions
+[sandbox-rows]: /learn/permissions/data-sandboxing-row-permissions
+[slack-integration]: ../configuring-metabase/slack.md
+[sql-snippet-folders]: ../questions/native-editor/sql-snippets.md
+[table-permissions]: ./data.md#table-permissions

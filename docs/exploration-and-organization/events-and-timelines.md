@@ -1,5 +1,7 @@
 ---
 title: Events and timelines
+redirect_from:
+  - /docs/latest/users-guide/events-and-timelines
 ---
 
 # Events and timelines
@@ -20,7 +22,7 @@ Collections can have timelines, and timelines can contain events. In practice wh
 
 ## Event and timeline permissions
 
-Anyone with [view access](../administration-guide/06-collections.md) to a collection can view the collection's events and timelines.
+Anyone with [view access](../permissions/collections.md) to a collection can view the collection's events and timelines.
 
 Anyone with curate access to a collection can add events and timelines to that collection.
 
@@ -28,7 +30,7 @@ Anyone with curate access to a collection can add events and timelines to that c
 
 When viewing a [collection](collections.md), you can view, add, or edit events by clicking on the **calendar** icon in the upper right.
 
-![In a collection, view or add events by clicking on the calendar icon](./images/events-and-timelines/event-calendar.png)
+![In a collection, view or add events by clicking on the calendar icon](./images/event-calendar.png)
 
 Once you create an event, the event will show up in charts in the collection, provided:
 
@@ -37,7 +39,7 @@ Once you create an event, the event will show up in charts in the collection, pr
 
 You'll see an icon along the x-axis that plots the event. A vertical line will extend from the event to show when the data plotted on the chart intersects with the event.
 
-![An event on a chart](./images/events-and-timelines/example-event.png)
+![An event on a chart](./images/example-event.png)
 
 ### Adding events when viewing a question
 

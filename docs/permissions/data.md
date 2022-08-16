@@ -1,5 +1,7 @@
 ---
 title: Data permissions
+redirect_from:
+  - /docs/latest/administration-guide/data-permissions
 ---
 
 # Data permissions
@@ -47,11 +49,11 @@ Note that [Block](#block-access) access is unavailable for individual tables/sch
 
 {% include plans-blockquote.html feature="Block access" %}
 
-**Block** ensures people in a group can’t see the data from this database, regardless of their permissions at the collection level. 
+**Block** ensures people in a group can’t see the data from this database, regardless of their permissions at the collection level.
 
 Even if a question is in a collection that the group has access to, but that question queries a database that is blocked for that group, people in that group won't be able to view that question _unless_ they're in another group with the relevant data permissions. Essentially, what Block does is make collections permissions insufficient to view a question.
 
-If a person in that blocked group belongs to _another_ group that _does_ have the corresponding data access, that more privileged access will take precedence (overruling the block), and they'll be able to view that question. 
+If a person in that blocked group belongs to _another_ group that _does_ have the corresponding data access, that more privileged access will take precedence (overruling the block), and they'll be able to view that question.
 
 "Corresponding data access" here refers to whether the saved question was created using the graphical query builder, or the native/SQL editor, as the required permissions to overrule a block differ depending on how the question was created.
 
@@ -100,7 +102,7 @@ You can set permissions on whether people in a group can download results (and h
 You can define whether a group can [edit metadata](03-metadata-editing.md). Options are:
 
 - Yes (meaning, they can edit metadata for that data source).
-- No 
+- No
 - Granular (to set permissions specific to each table).
 
 ## Manage database
@@ -111,7 +113,7 @@ This setting defines whether a person can edit the connection settings for the d
 
 ## Further reading
 
-- [Permissions overview](05-setting-permissions.md)
+- [Permissions overview](overview.md)
 - [Learn permissions](/learn/permissions)
 - [Troubleshooting permissions](../troubleshooting-guide/permissions.md)
 - [Data sandboxing: setting row-level permissions][sandbox-rows]
@@ -119,8 +121,8 @@ This setting defines whether a person can edit the connection settings for the d
 
 [collections]: 06-collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
-[data-sandboxing]: ../enterprise-guide/data-sandboxes.md
-[permissions-overview]: 05-setting-permissions.md
+[data-sandboxing]: ./data-sandboxes.md
+[permissions-overview]: ./overview.md
 [sandbox-columns]: /learn/permissions/data-sandboxing-column-permissions.html
 [sandbox-rows]: /learn/permissions/data-sandboxing-row-permissions.html
-[sql-snippet-folders]: ../enterprise-guide/sql-snippets.md
+[sql-snippet-folders]: ../questions/native-editor/sql-snippets.md
