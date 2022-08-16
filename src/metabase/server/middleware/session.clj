@@ -64,15 +64,6 @@
                                                        metabase-embedded-session-cookie
                                                        metabase-session-timeout-cookie]))
 
-(defn- use-permanent-cookies?
-  "Check if we should use permanent cookies for a given request, which are not cleared when a browser sesion ends."
-  [request]
-  (if (public-settings/session-cookies)
-    ;; Disallow permanent cookies if MB_SESSION_COOKIES is set
-    false
-    ;; Otherwise check whether the user selected "remember me" during login
-    (get-in request [:body :remember])))
-
 (defmulti default-session-cookie-attributes
   "The appropriate cookie attributes to persist a newly created Session to `response`."
   {:arglists '([session-type request])}
@@ -133,6 +124,15 @@
     metabase-session-cookie
     :full-app-embed
     metabase-embedded-session-cookie))
+
+(defn- use-permanent-cookies?
+  "Check if we should use permanent cookies for a given request, which are not cleared when a browser sesion ends."
+  [request]
+  (if (public-settings/session-cookies)
+    ;; Disallow permanent cookies if MB_SESSION_COOKIES is set
+    false
+    ;; Otherwise check whether the user selected "remember me" during login
+    (get-in request [:body :remember])))
 
 (s/defn set-session-cookies
   "Add the appropriate cookies to the `response` for the Session."
