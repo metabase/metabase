@@ -61,6 +61,10 @@ export function pivot(question, breakouts = [], dimensions = []) {
   }
 }
 
+function isJoinedColumn(column) {
+  return column.source_alias != null;
+}
+
 export function distribution(question, column) {
   const query = question.query();
   if (query instanceof StructuredQuery) {
@@ -70,6 +74,12 @@ export function distribution(question, column) {
       ? fieldRefWithOption(fieldRefForColumn(column), "binning", {
           strategy: "default",
         })
+      : isJoinedColumn(column)
+      ? fieldRefWithOption(
+          fieldRefForColumn(column),
+          "join-alias",
+          column.source_alias,
+        )
       : fieldRefForColumn(column);
     return query
       .clearAggregations()
