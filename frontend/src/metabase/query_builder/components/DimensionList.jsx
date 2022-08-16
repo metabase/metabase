@@ -62,7 +62,10 @@ export default class DimensionList extends Component {
     const dimensions = this._getDimensions();
     return (
       item.dimension &&
-      _.any(dimensions, d => item.dimension.isSameBaseDimension(d))
+      _.any(dimensions, d =>
+        // shouldn't need to do this but these dimensions don't retain their join-alias
+        item.dimension.withoutJoinAlias().isSameBaseDimension(d),
+      )
     );
   };
 

@@ -43,7 +43,10 @@ export const DimensionList = ({
   onRemoveDimension,
 }) => {
   const isDimensionSelected = dimension =>
-    dimensions.some(d => d.isSameBaseDimension(dimension));
+    dimensions.some(d => {
+      // shouldn't need to do this, but breakout dimensions don't retain their join-alias option
+      return d.isSameBaseDimension(dimension.withoutJoinAlias());
+    });
 
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
