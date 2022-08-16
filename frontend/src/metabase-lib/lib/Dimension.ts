@@ -1141,9 +1141,14 @@ export class FieldDimension extends Dimension {
     if (this.fk()) {
       const fkDisplayName =
         this.fk() && stripId(this.fk().field().displayName());
-      displayName = `${fkDisplayName} ${FK_SYMBOL} ${displayName}`;
+      if (!displayName.startsWith(`${fkDisplayName} ${FK_SYMBOL}`)) {
+        displayName = `${fkDisplayName} ${FK_SYMBOL} ${displayName}`;
+      }
     } else if (this.joinAlias()) {
-      displayName = `${this.joinAlias()} ${FK_SYMBOL} ${displayName}`;
+      const joinAlias = this.joinAlias();
+      if (!displayName.startsWith(`${joinAlias} ${FK_SYMBOL}`)) {
+        displayName = `${joinAlias} ${FK_SYMBOL} ${displayName}`;
+      }
     }
 
     if (this.temporalUnit()) {
