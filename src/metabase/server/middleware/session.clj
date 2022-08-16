@@ -84,42 +84,55 @@
 
 (declare session-timeout-seconds)
 
+(defn default-session-cookie-options [request]
+  (merge
+   {:same-site config/mb-session-cookie-samesite
+    ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
+    ;; up breaking things
+    :path      "/" #_(site-path)}
+   ;; If the authentication request request was made over HTTPS (hopefully always except for
+   ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
+   (when (request.u/https? request)
+     {:secure true})))
+
+(defn set-timeout-cookie
+  [response request request-time]
+  (let [response       (wrap-body-if-needed response)
+        timeout        (session-timeout-seconds)
+        cookie-options (merge
+                        (default-session-cookie-options request)
+                        (if (some? timeout)
+                          {:expires (t/format :rfc-1123-date-time (t/plus request-time (t/seconds timeout)))}
+                          {:max-age (* 60 (config/config-int :max-session-age))}))]
+    (-> response
+        (wrap-body-if-needed)
+        (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options))))
+
 (s/defmethod set-session-cookies :normal
   [request
    response
    {session-uuid :id} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}
    request-time]
   (let [response       (wrap-body-if-needed response)
-        timeout        (session-timeout-seconds)
-        is-https?      (request.u/https? request)
         cookie-options (merge
-                        {:same-site config/mb-session-cookie-samesite
-                         ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
-                         ;; up breaking things
-                         :path      "/" #_(site-path)}
-                        (cond
-                          (some? timeout)
-                          {:expires (t/format :rfc-1123-date-time (t/plus request-time (t/seconds timeout)))}
-                          ;; If permanent cookies should be used, set the `Max-Age` directive; cookies with no
-                          ;; `Max-Age` and no `Expires` directives are session cookies, and are deleted when the
-                          ;; browser is closed.
-                          ;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#define_the_lifetime_of_a_cookie
-                          ;; max-session age-is in minutes; Max-Age= directive should be in seconds
-                          (use-permanent-cookies? request)
-                          {:max-age (* 60 (config/config-int :max-session-age))})
-                        ;; If the authentication request request was made over HTTPS (hopefully always except for
-                        ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
-                        (when is-https?
-                          {:secure true}))]
-    (when (and (= config/mb-session-cookie-samesite :none) (not is-https?))
+                        (default-session-cookie-options request)
+                        {:http-only true}
+                        ;; If permanent cookies should be used, set the `Max-Age` directive; cookies with no
+                        ;; `Max-Age` and no `Expires` directives are session cookies, and are deleted when the
+                        ;; browser is closed.
+                        ;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#define_the_lifetime_of_a_cookie
+                        ;; max-session age-is in minutes; Max-Age= directive should be in seconds
+                        (when (use-permanent-cookies? request)
+                          {:max-age (* 60 (config/config-int :max-session-age))}))]
+    (when (and (= config/mb-session-cookie-samesite :none) (request.u/https? request))
       (log/warn
        (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
             " "
             "https://www.chromestatus.com/feature/5633521622188032")))
     (-> response
         (wrap-body-if-needed)
-        (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options)
-        (response/set-cookie metabase-session-cookie (str session-uuid) (assoc cookie-options :http-only true)))))
+        (set-timeout-cookie request request-time)
+        (response/set-cookie metabase-session-cookie (str session-uuid) cookie-options))))
 
 (s/defmethod set-session-cookies :full-app-embed
   [request
@@ -363,8 +376,7 @@
        (:metabase-session-type request)
        ;; Do not reset the timeout if it is being updated in the response, e.g. if it is being deleted
        (not (contains? (:cookies response) metabase-session-timeout-cookie)))
-    (set-session-cookies request response {:id   (:metabase-session-id request)
-                                           :type (:metabase-session-type request)} request-time)
+    (set-timeout-cookie response request request-time)
     response))
 
 (defn reset-session-timeout
