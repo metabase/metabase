@@ -774,15 +774,16 @@
         show-total     (if (nil? (:waterfall.show_total viz-settings))
                          true
                          (:waterfall.show_total viz-settings))
-        settings       (let [{inc-col :waterfall.increase_color
-                              dec-col :waterfall.decrease_color
-                              total-col :waterfall.total_color} viz-settings]
-                         (-> (->js-viz x-col y-col viz-settings)
-                             (update :colors merge
-                                     (when inc-col {:waterfallPositive inc-col})
-                                     (when dec-col {:waterfallNegative dec-col})
-                                     (when total-col {:waterfallTotal total-col}))
-                             (assoc :showTotal show-total)))
+        colors         (public-settings/application-colors)
+        settings       (let [inc-col   (or (:waterfall.increase_color viz-settings) (:accent1 colors))
+                             dec-col   (or (:waterfall.decrease_color viz-settings) (:accent3 colors))
+                             total-col (:waterfall.total_color viz-settings)]
+                       (-> (->js-viz x-col y-col viz-settings)
+                           (update :colors merge
+                                   (when inc-col {:waterfallPositive inc-col})
+                                   (when dec-col {:waterfallNegative dec-col})
+                                   (when total-col {:waterfallTotal total-col}))
+                           (assoc :showTotal show-total)))
         image-bundle   (image-bundle/make-image-bundle
                          render-type
                          (render-fn rows
