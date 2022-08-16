@@ -50,10 +50,10 @@
                                                    :collection_id collection-id}]
                       Collection [{sub-collection-id :id :as coll2} {:name "Sub Collection"
                                                                      :location (format "/%d/" collection-id)}]
-                      Collection [{deep-collection-id :id :as coll3} {:name "Deep Collection"
-                                                                      :location (format "/%d/%d/"
-                                                                                        collection-id
-                                                                                        sub-collection-id)}]]
+                      Collection [coll3 {:name "Deep Collection"
+                                         :location (format "/%d/%d/"
+                                                           collection-id
+                                                           sub-collection-id)}]]
         (let [card1-name "/collections/root/cards/Root Card"
               card2-name "/collections/root/collections/A Collection/cards/Collection Card"
               coll-name  "/collections/root/collections/A Collection"

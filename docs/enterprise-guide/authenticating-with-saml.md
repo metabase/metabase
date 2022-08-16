@@ -188,9 +188,3 @@ You can find example code that uses SAML authentication in the [SSO examples rep
 ## Troubleshooting SAML issues
 
 For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/saml.html).
-
----
-
-## Next: JWT-based SSO
-
-If SAML isn’t your bag, find out how to enable [JWT-based SSO](authenticating-with-jwt.html).

@@ -72,7 +72,7 @@ describe.skip("scenarios > dashboard > parameters in text cards", () => {
 
     addTextBox("Variable: {{foo}}", { parseSpecialCharSequences: false });
     editDashboard();
-    setFilter("Number", "Equal to");
+    setFilter("Time", "Relative Date");
 
     cy.findByText("Select…").click();
     cy.findByText("foo").click();
@@ -80,12 +80,10 @@ describe.skip("scenarios > dashboard > parameters in text cards", () => {
 
     filterWidget().click();
     popover().within(() => {
-      cy.findByRole("textbox").type(`1{enter}`);
-      cy.findByRole("textbox").click().type("2{enter}");
-      cy.button("Add filter").click();
+      cy.findByText("Today").click();
     });
 
-    cy.findByText("Variable: 1 et 2").should("exist");
+    cy.findByText("Variable: Aujourd'hui").should("exist");
 
     // Let's make sure the localization was reset back to the user locale by checking that specific text exists in
     // English on the homepage.

@@ -79,7 +79,7 @@
   (cond
     (and (map? expected) (map? actual))
     (into {}
-          (comp (filter (fn [[k v]]
+          (comp (filter (fn [[k _v]]
                           (contains? expected k)))
                 (map (fn [[k v]]
                        [k (remove-keys-not-in-expected (get expected k) v)])))

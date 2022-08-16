@@ -107,7 +107,7 @@ export function InlineCategoryPickerComponent({
       <SimpleCategoryFilterPicker
         filter={filter ?? newFilter}
         onChange={onChange}
-        options={fieldValues.flat().filter(isValidOption)}
+        options={fieldValues.filter(([value]) => isValidOption(value))}
       />
     );
   }

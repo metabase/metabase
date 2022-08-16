@@ -5,11 +5,12 @@
   This file makes it impossible to forget to add entity_id to new entities. It tests that every entity is either
   explicitly excluded, or has the :entity_id property."
   (:require
-    [clojure.test :refer :all]
-    metabase.db.data-migrations
-    metabase.models
-    metabase.models.revision-test
-    [toucan.models :refer [IModel properties]]))
+   [clojure.test :refer :all]
+   metabase.db.data-migrations
+   metabase.models
+   metabase.models.revision-test
+   [metabase.models.serialization.hash :as serdes.hash]
+   [toucan.models :refer [IModel]]))
 
 (comment metabase.models/keep-me
          metabase.db.data-migrations/keep-me
@@ -84,4 +85,4 @@
   (doseq [model (->> (extenders IModel)
                      (remove entities-not-exported))]
     (testing (format "Model %s should implement IdentityHashable" (.getSimpleName model))
-      (is (extends? metabase.models.serialization.hash/IdentityHashable model)))))
+      (is (extends? serdes.hash/IdentityHashable model)))))

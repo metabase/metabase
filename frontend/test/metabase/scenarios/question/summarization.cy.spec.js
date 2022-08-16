@@ -7,6 +7,10 @@ import {
   visitQuestion,
 } from "__support__/e2e/helpers";
 
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+
 describe("scenarios > question > summarize sidebar", () => {
   beforeEach(() => {
     restore();
@@ -100,5 +104,53 @@ describe("scenarios > question > summarize sidebar", () => {
       "aria-selected",
       "true",
     );
+  });
+
+  it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
+    cy.createQuestion(
+      {
+        name: "14649_min",
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              [
+                "aggregation-options",
+                ["sum", ["field", ORDERS.SUBTOTAL, null]],
+                { name: "Revenue", "display-name": "Revenue" },
+              ],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          aggregation: [
+            ["min", ["field", "Revenue", { "base-type": "type/Float" }]],
+          ],
+        },
+
+        display: "scalar",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByText("49.54");
+  });
+
+  it("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
+    cy.visit("/question/1/notebook");
+    summarize({ mode: "notebook" });
+    cy.findByText("Count of rows").click();
+    cy.findByText("Pick a column to group by").click();
+    cy.findByText("Created At")
+      .closest(".List-item")
+      .findByText("by month")
+      .click({ force: true });
+    // First a reality check - "Minute" is the only string visible in UI and this should pass
+    cy.findAllByText("Minute")
+      .first() // TODO: cy.findAllByText(string).first() is necessary workaround that will be needed ONLY until (metabase#15570) gets fixed
+      .isVisibleInPopover();
+    // The actual check that will fail until this issue gets fixed
+    cy.findAllByText("Week").first().isVisibleInPopover();
   });
 });

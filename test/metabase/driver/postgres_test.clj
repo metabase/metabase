@@ -11,6 +11,7 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models.database :refer [Database]]
@@ -339,7 +340,7 @@
             json-part (json/generate-string {:bob :dobbs})
             insert    (str "CREATE TABLE json_alias_test (json_part JSON NOT NULL);"
                          (format "INSERT INTO json_alias_test (json_part) VALUES ('%s');" json-part))]
-        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [insert]))
         (mt/with-temp* [Database [database    {:engine :postgres, :details details}]
                         Table    [table       {:db_id (u/the-id database) :name "json_alias_test"}]
@@ -383,7 +384,7 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"
                                                                  :json-unfolding true})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [(str "CREATE TABLE describe_json_table (coherent_json_val JSON NOT NULL, incoherent_json_val JSON NOT NULL);"
                                     "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2, \"c\": \"2017-01-13T17:09:22.222\"}', '{\"a\": 1, \"b\": 2, \"c\": 3, \"d\": 44}');"
                                     "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3, \"c\": \"2017-01-13T17:09:42.411\"}', '{\"a\": [1, 2], \"b\": \"blurgle\", \"c\": 3.22}');")]))
@@ -442,7 +443,7 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-with-schema-test"
                                                                  :json-unfolding true})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [(str "CREATE SCHEMA bobdobbs;"
                                     "CREATE TABLE bobdobbs.describe_json_table (trivial_json JSONB NOT NULL);"
                                     "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")]))
@@ -465,7 +466,7 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-funky-names-test"
                                                                  :json-unfolding true})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [(str "CREATE SCHEMA \"AAAH_#\";"
                                     "CREATE TABLE \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json JSONB NOT NULL);"
                                     "INSERT INTO \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json) VALUES ('{\"a\": 1}');")]))
@@ -492,15 +493,15 @@
             big-json (json/generate-string big-map)
             sql      (str "CREATE TABLE big_json_table (big_json JSON NOT NULL);"
                           (format "INSERT INTO big_json_table (big_json) VALUES ('%s');" big-json))]
-        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [sql]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= metabase.driver.sql-jdbc.sync.describe-table/max-nested-field-columns
+          (is (= sql-jdbc.describe-table/max-nested-field-columns
                  (count
-                   (sql-jdbc.sync/describe-nested-field-columns
-                     :postgres
-                     database
-                     {:name "big_json_table"}))))
+                  (sql-jdbc.sync/describe-nested-field-columns
+                   :postgres
+                   database
+                   {:name "big_json_table"}))))
           (is (str/includes?
                 (get-in (mt/with-log-messages-for-level :warn
                               (sql-jdbc.sync/describe-nested-field-columns
@@ -961,7 +962,7 @@
 (deftest can-set-ssl-key-via-gui
   (testing "ssl key can be set via the gui (#20319)"
     (with-redefs [secret/value->file!
-                  (fn [{:keys [connection-property-name id value] :as secret} driver?]
+                  (fn [{:keys [connection-property-name value] :as _secret} _driver?]
                     (str "file:" connection-property-name "=" value))]
       (is (= "file:ssl-key=/clientkey.pkcs12"
              (:sslkey

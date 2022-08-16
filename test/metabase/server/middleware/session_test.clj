@@ -71,10 +71,9 @@
                 :same-site :lax
                 :http-only true
                 :path      "/"}
-               (let [env env/env]
-                 (mt/with-temporary-setting-values [session-cookies true]
-                   (-> (mw.session/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal} request-time)
-                       (get-in [:cookies "metabase.SESSION"]))))))))))
+               (mt/with-temporary-setting-values [session-cookies true]
+                 (-> (mw.session/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal} request-time)
+                     (get-in [:cookies "metabase.SESSION"])))))))))
 
 ;; if request is an HTTPS request then we should set `:secure true`. There are several different headers we check for
 ;; this. Make sure they all work.
@@ -223,17 +222,17 @@
     ;; for some reason Toucan seems to be busted with models with non-integer IDs and `with-temp` doesn't seem to work
     ;; the way we'd expect :/
     (try
-      (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :lucky)})
-      (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
-             (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
+      (mt/with-temp Session [_ {:id (str test-uuid), :user_id (mt/user->id :lucky)}]
+        (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
+               (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
       (finally
         (db/delete! Session :id (str test-uuid)))))
 
   (testing "superusers should come back as `:is-superuser?`"
     (try
-      (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :crowberto)})
-      (is (= {:metabase-user-id (mt/user->id :crowberto), :is-superuser? true, :is-group-manager? false, :user-locale nil}
-             (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
+      (mt/with-temp Session [_ {:id (str test-uuid), :user_id (mt/user->id :crowberto)}]
+        (is (= {:metabase-user-id (mt/user->id :crowberto), :is-superuser? true, :is-group-manager? false, :user-locale nil}
+               (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
       (finally
         (db/delete! Session :id (str test-uuid)))))
 
@@ -262,59 +261,59 @@
 
   (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
     (try
-      (db/insert! Session {:id              (str test-uuid)
-                           :user_id         (mt/user->id :lucky)
-                           :anti_csrf_token test-anti-csrf-token})
-      (is (= nil
-             (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
+      (mt/with-temp Session [_ {:id              (str test-uuid)
+                                :user_id         (mt/user->id :lucky)
+                                :anti_csrf_token test-anti-csrf-token}]
+        (is (= nil
+               (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
       (finally
         (db/delete! Session :id (str test-uuid))))
 
     (testing "...but if we do specifiy the token, they should come back"
       (try
-        (db/insert! Session {:id              (str test-uuid)
-                             :user_id         (mt/user->id :lucky)
-                             :anti_csrf_token test-anti-csrf-token})
-        (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
-               (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token)))
+        (mt/with-temp Session [_ {:id              (str test-uuid)
+                                  :user_id         (mt/user->id :lucky)
+                                  :anti_csrf_token test-anti-csrf-token}]
+          (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
+                 (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token))))
         (finally
           (db/delete! Session :id (str test-uuid))))
 
       (testing "(unless the token is wrong)"
         (try
-          (db/insert! Session {:id              (str test-uuid)
-                               :user_id         (mt/user->id :lucky)
-                               :anti_csrf_token test-anti-csrf-token})
-          (is (= nil
-                 (#'mw.session/current-user-info-for-session (str test-uuid) (str/join (reverse test-anti-csrf-token)))))
+          (mt/with-temp Session [_ {:id              (str test-uuid)
+                                    :user_id         (mt/user->id :lucky)
+                                    :anti_csrf_token test-anti-csrf-token}]
+            (is (= nil
+                   (#'mw.session/current-user-info-for-session (str test-uuid) (str/join (reverse test-anti-csrf-token))))))
           (finally
             (db/delete! Session :id (str test-uuid)))))))
 
   (testing "if we specify an anti-csrf token we shouldn't get back a session without that token"
     (try
-      (db/insert! Session {:id      (str test-uuid)
-                           :user_id (mt/user->id :lucky)})
-      (is (= nil
-             (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token)))
+      (mt/with-temp Session [_ {:id      (str test-uuid)
+                                :user_id (mt/user->id :lucky)}]
+        (is (= nil
+               (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token))))
       (finally
         (db/delete! Session :id (str test-uuid)))))
 
   (testing "shouldn't fetch expired sessions"
     (try
-      (db/insert! Session {:id      (str test-uuid)
-                           :user_id (mt/user->id :lucky)})
-      ;; use low-level `execute!` because updating is normally disallowed for Sessions
-      (db/execute! {:update Session, :set {:created_at (java.sql.Date. 0)}, :where [:= :id (str test-uuid)]})
-      (is (= nil
-             (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
+      (mt/with-temp Session [_ {:id      (str test-uuid)
+                                :user_id (mt/user->id :lucky)}]
+        ;; use low-level `execute!` because updating is normally disallowed for Sessions
+        (db/execute! {:update Session, :set {:created_at (java.sql.Date. 0)}, :where [:= :id (str test-uuid)]})
+        (is (= nil
+               (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
       (finally
         (db/delete! Session :id (str test-uuid)))))
 
   (testing "shouldn't fetch sessions for inactive users"
     (try
-      (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)})
-      (is (= nil
-             (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
+      (mt/with-temp Session [_ {:id (str test-uuid), :user_id (mt/user->id :trashbird)}]
+        (is (= nil
+               (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
       (finally
         (db/delete! Session :id (str test-uuid))))))
 

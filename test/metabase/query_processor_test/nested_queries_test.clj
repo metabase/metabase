@@ -151,7 +151,7 @@
   (testing "Aggregations in both nested and outer query have correct metadata (#19403)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
       (mt/dataset sample-dataset
-        (mt/with-temp* [Card [{card-id :id :as card}
+        (mt/with-temp* [Card [{card-id :id}
                               {:dataset_query
                                (mt/$ids :products
                                         {:type     :query

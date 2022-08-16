@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import Form from "metabase/containers/Form";
+import Form from "metabase/containers/FormikForm";
 import forms from "metabase/entities/timelines/forms";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
 import { canonicalCollectionId } from "metabase/collections/utils";

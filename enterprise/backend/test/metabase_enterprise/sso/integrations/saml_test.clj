@@ -5,7 +5,7 @@
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase.config :as config]
             [metabase.http-client :as client]
-            [metabase.integrations.ldap :refer [ldap-enabled]]
+            [metabase.integrations.ldap :as ldap]
             [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.user :refer [User]]
@@ -27,7 +27,7 @@
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- disable-other-sso-types [thunk]
-  (mt/with-temporary-setting-values [ldap-enabled false
+  (mt/with-temporary-setting-values [ldap/ldap-enabled false
                                      jwt-enabled  false]
     (thunk)))
 

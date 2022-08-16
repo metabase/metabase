@@ -235,7 +235,7 @@
       qualify? (update :components (partial cons (query-db-name))))))
 
 (defmethod sql.qp/->honeysql [:snowflake :time]
-  [driver [_ value unit]]
+  [driver [_ value _unit]]
   (hx/->time (sql.qp/->honeysql driver value)))
 
 (defmethod driver/table-rows-seq :snowflake

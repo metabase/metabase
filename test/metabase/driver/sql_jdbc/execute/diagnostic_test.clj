@@ -23,8 +23,7 @@
           (let [{:keys [::sql-jdbc.execute.diagnostic/driver
                         ::sql-jdbc.execute.diagnostic/database-id
                         ::sql-jdbc.execute.diagnostic/active-connections
-                        ::sql-jdbc.execute.diagnostic/total-connections
-                        ::sql-jdbc.execute.diagnostic/threads-waiting]} diag-info]
+                        ::sql-jdbc.execute.diagnostic/total-connections]} diag-info]
             ;; the diag info driver should match the current one
             (is (= driver/*driver* driver))
             ;; the diag info database-id should also match the current one

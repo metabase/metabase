@@ -3,7 +3,6 @@
   (:require [clojure.test :refer :all]
             [clojure.tools.logging :as log]
             [clojure.tools.logging.impl :as log.impl]
-            [metabase.logger :as mb.logger]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [potemkin :as p]
             [schema.core :as s])
@@ -141,7 +140,6 @@
                          (.getFilter parent-logger))]
       (.addLogger (configuration) (logger-name a-namespace) new-logger)
       (.updateLoggers (logger-context))
-      (mb.logger/clear-memoized-ns-loggers!)
       (println "Created a new logger for" (logger-name a-namespace)))))
 
 (s/defn set-ns-log-level!

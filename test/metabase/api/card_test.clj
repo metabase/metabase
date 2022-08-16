@@ -118,7 +118,7 @@
   {:style/indent 0}
   [f]
   (mt/with-temp* [Database   [db    {:details (:details (mt/db)), :engine :h2}]
-                  Table      [table {:db_id (u/the-id db), :name "CATEGORIES"}]
+                  Table      [_     {:db_id (u/the-id db), :name "CATEGORIES"}]
                   Card       [card  {:dataset_query {:database (u/the-id db)
                                                      :type     :native
                                                      :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]]
@@ -159,7 +159,7 @@
 (defn- do-with-temp-native-card-with-params {:style/indent 0} [f]
   (mt/with-temp*
     [Database   [db    {:details (:details (mt/db)), :engine :h2}]
-     Table      [table {:db_id (u/the-id db), :name "VENUES"}]
+     Table      [_     {:db_id (u/the-id db), :name "VENUES"}]
      Card       [card  {:dataset_query
                         {:database (u/the-id db)
                          :type     :native
@@ -473,14 +473,6 @@
                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:cache_ttl nil})
                 (:cache_ttl (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))))))))))
 
-(defn- fingerprint-integers->doubles
-  "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
-  new card"
-  [metadata]
-  (update metadata :fingerprint (fn [fingerprint] (-> fingerprint
-                                                      (update-in [:type :type/Number :min] double)
-                                                      (update-in [:type :type/Number :max] double)))))
-
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -501,8 +493,8 @@
                      (db/select-one-field :result_metadata Card :name card-name))))))))))
 
 (deftest updating-card-updates-metadata
-  (let [query          (mt/mbql-query :venues {:fields [$id $name]})
-        modified-query (mt/mbql-query :venues {:fields [$id $name $price]})
+  (let [query          (mt/mbql-query venues {:fields [$id $name]})
+        modified-query (mt/mbql-query venues {:fields [$id $name $price]})
         norm           (comp str/upper-case :name)
         to-native      (fn [q]
                          {:database (:database q)
@@ -646,7 +638,7 @@
     ;; able to ad-hoc query it now.
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (let [query        (mt/mbql-query :venues)
+      (let [query        (mt/mbql-query venues)
             create-card! (fn [test-user expected-status-code]
                            (mt/with-model-cleanup [Card]
                              (mt/user-http-request test-user :post expected-status-code "card"
@@ -1170,16 +1162,16 @@
     ;; able to ad-hoc query it now.
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query :venues)}]
+      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query venues)}]
         (let [update-card! (fn [test-user expected-status-code request-body]
                              (mt/user-http-request test-user :put expected-status-code (format "card/%d" card-id)
                                                    request-body))]
           (testing "\nadmin"
             (testing "*should* be allowed to update query"
               (is (schema= {:id            (s/eq card-id)
-                            :dataset_query (s/eq (mt/obj->json->obj (mt/mbql-query :checkins)))
+                            :dataset_query (s/eq (mt/obj->json->obj (mt/mbql-query checkins)))
                             s/Keyword      s/Any}
-                           (update-card! :crowberto 200 {:dataset_query (mt/mbql-query :checkins)})))))
+                           (update-card! :crowberto 200 {:dataset_query (mt/mbql-query checkins)})))))
 
           (testing "\nnon-admin"
             (testing "should be allowed to update fields besides query"
@@ -1191,12 +1183,12 @@
             (testing "should *not* be allowed to update query"
               (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
                 (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
-                              :query          (s/eq (mt/obj->json->obj (mt/mbql-query :users)))
+                              :query          (s/eq (mt/obj->json->obj (mt/mbql-query users)))
                               :required-perms [perms/Path]
                               :actual-perms   [perms/Path]
                               :trace          [s/Any]
                               s/Keyword       s/Any}
-                             (update-card! :rasta 403 {:dataset_query (mt/mbql-query :users)}))))
+                             (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
               (testing "make sure query hasn't changed in the DB"
                 (is (= (mt/mbql-query checkins)
                        (db/select-one-field :dataset_query Card :id card-id)))))
@@ -1204,7 +1196,7 @@
             (testing "should be allowed to update other fields if query is passed in but hasn't changed (##11719)"
               (is (schema= {:id            (s/eq card-id)
                             :name          (s/eq "Another new name")
-                            :dataset_query (s/eq (mt/obj->json->obj (mt/mbql-query :checkins)))
+                            :dataset_query (s/eq (mt/obj->json->obj (mt/mbql-query checkins)))
                             s/Keyword      s/Any}
                            (update-card! :rasta 200 {:name "Another new name", :dataset_query (mt/mbql-query checkins)}))))))))))
 
@@ -1393,20 +1385,20 @@
                                     :collection_id (u/the-id coll-a)}]
                     Timeline [tl-b {:name          "Timeline B"
                                     :collection_id (u/the-id coll-b)}]
-                    Timeline [tl-b-old {:name          "Timeline B-old"
-                                        :collection_id (u/the-id coll-b)
-                                        :archived      true}]
-                    Timeline [tl-c {:name          "Timeline C"
-                                    :collection_id (u/the-id coll-c)}]
-                    TimelineEvent [event-aa {:name        "event-aa"
-                                             :timeline_id (u/the-id tl-a)}]
-                    TimelineEvent [event-ab {:name        "event-ab"
-                                             :timeline_id (u/the-id tl-a)}]
-                    TimelineEvent [event-ba {:name        "event-ba"
-                                             :timeline_id (u/the-id tl-b)}]
-                    TimelineEvent [event-bb {:name        "event-bb"
-                                             :timeline_id (u/the-id tl-b)
-                                             :archived    true}]]
+                    Timeline [_ {:name          "Timeline B-old"
+                                 :collection_id (u/the-id coll-b)
+                                 :archived      true}]
+                    Timeline [_ {:name          "Timeline C"
+                                 :collection_id (u/the-id coll-c)}]
+                    TimelineEvent [_ {:name        "event-aa"
+                                      :timeline_id (u/the-id tl-a)}]
+                    TimelineEvent [_ {:name        "event-ab"
+                                      :timeline_id (u/the-id tl-a)}]
+                    TimelineEvent [_ {:name        "event-ba"
+                                      :timeline_id (u/the-id tl-b)}]
+                    TimelineEvent [_ {:name        "event-bb"
+                                      :timeline_id (u/the-id tl-b)
+                                      :archived    true}]]
       (testing "Timelines in the collection of the card are returned"
         (is (= #{"Timeline A"}
                (timeline-names (timelines-request card-a false)))))
@@ -1440,17 +1432,17 @@
                     Timeline [tl-a {:name          "Timeline A"
                                     :collection_id (u/the-id collection)}]
                     ;; the temp defaults set {:time_matters true}
-                    TimelineEvent [event-a {:name        "event-a"
-                                            :timeline_id (u/the-id tl-a)
+                    TimelineEvent [_ {:name        "event-a"
+                                      :timeline_id (u/the-id tl-a)
                                             :timestamp   #t "2020-01-01T10:00:00.0Z"}]
-                    TimelineEvent [event-b {:name        "event-b"
-                                            :timeline_id (u/the-id tl-a)
+                    TimelineEvent [_ {:name        "event-b"
+                                      :timeline_id (u/the-id tl-a)
                                             :timestamp   #t "2021-01-01T10:00:00.0Z"}]
-                    TimelineEvent [event-c {:name        "event-c"
-                                            :timeline_id (u/the-id tl-a)
+                    TimelineEvent [_ {:name        "event-c"
+                                      :timeline_id (u/the-id tl-a)
                                             :timestamp   #t "2022-01-01T10:00:00.0Z"}]
-                    TimelineEvent [event-d {:name        "event-d"
-                                            :timeline_id (u/the-id tl-a)
+                    TimelineEvent [_ {:name        "event-d"
+                                      :timeline_id (u/the-id tl-a)
                                             :timestamp   #t "2023-01-01T10:00:00.0Z"}]]
       (testing "Events are properly filtered when given only `start=` parameter"
         (is (= #{"event-c" "event-d"}
@@ -1462,8 +1454,8 @@
         (is (= #{"event-b" "event-c"}
                (event-names (timelines-range-request card {:start "2020-12-01T10:00:00.0Z"
                                                            :end   "2022-12-01T10:00:00.0Z"})))))
-      (mt/with-temp TimelineEvent [event-a2 {:name         "event-a2"
-                                             :timeline_id  (u/the-id tl-a)
+      (mt/with-temp TimelineEvent [_ {:name         "event-a2"
+                                      :timeline_id  (u/the-id tl-a)
                                              :timestamp    #t "2020-01-01T10:00:00.0Z"
                                              :time_matters false}]
         (testing "Events are properly filtered considering the `time_matters` state."
@@ -1866,10 +1858,10 @@
                                :as new-collection} {:name "New Collection"}]
                   Card       [card-a               {:name "a", :collection_id coll-id-1, :collection_position 1}]
                   Card       [card-b               {:name "b", :collection_id coll-id-1, :collection_position 2}]
-                  Card       [card-c               {:name "c", :collection_id coll-id-1, :collection_position 3}]
-                  Card       [card-d               {:name "d", :collection_id coll-id-2, :collection_position 1}]
-                  Card       [card-e               {:name "e", :collection_id coll-id-2, :collection_position 2}]
-                  Card       [card-f               {:name "f", :collection_id coll-id-2, :collection_position 3}]]
+                  Card       [_                    {:name "c", :collection_id coll-id-1, :collection_position 3}]
+                  Card       [_                    {:name "d", :collection_id coll-id-2, :collection_position 1}]
+                  Card       [_                    {:name "e", :collection_id coll-id-2, :collection_position 2}]
+                  Card       [_                    {:name "f", :collection_id coll-id-2, :collection_position 3}]]
     (is (= {:response    {:status "ok"}
             :collections ["New Collection" "New Collection"]}
            (POST-card-collections! :crowberto 200 new-collection [card-a card-b])))
@@ -1890,7 +1882,7 @@
                                :as new-collection} {:name "New Collection"}]
                   Card       [card-a               {:name "a", :collection_id coll-id-1}]
                   Card       [card-b               {:name "b", :collection_id coll-id-2, :collection_position 1}]
-                  Card       [card-c               {:name "c", :collection_id coll-id-2, :collection_position 2}]]
+                  Card       [_card-c              {:name "c", :collection_id coll-id-2, :collection_position 2}]]
     (is (= {:response    {:status "ok"}
             :collections ["New Collection" "New Collection"]}
            (POST-card-collections! :crowberto 200 new-collection [card-a card-b])))
@@ -2003,7 +1995,7 @@
 (deftest test-that-we-can-fetch-a-list-of-publicly-accessible-cards
   (testing "GET /api/card/public"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (mt/with-temp Card [card (shared-card)]
+      (mt/with-temp Card [_ (shared-card)]
         (testing "Test that it requires superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "card/public"))))
@@ -2016,7 +2008,7 @@
 (deftest test-that-we-can-fetch-a-list-of-embeddable-cards
   (testing "GET /api/card/embeddable"
     (mt/with-temporary-setting-values [enable-embedding true]
-      (mt/with-temp Card [card {:enable_embedding true}]
+      (mt/with-temp Card [_ {:enable_embedding true}]
         (is (= [{:name true, :id true}]
                (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
                  (m/map-vals boolean (select-keys card [:name :id])))))))))
@@ -2097,10 +2089,10 @@
                                             :type :query
                                             :query {:source-table
                                                     (str "card__" (u/the-id native-ds))}}}]]
-        (doseq [[query-type card-id nested-id] [[:mbql
-                                                 (u/the-id mbql-ds) (u/the-id mbql-nested)]
-                                                [:native
-                                                 (u/the-id native-ds) (u/the-id native-nested)]]]
+        (doseq [[_query-type card-id nested-id] [[:mbql
+                                                  (u/the-id mbql-ds) (u/the-id mbql-nested)]
+                                                 [:native
+                                                  (u/the-id native-ds) (u/the-id native-nested)]]]
           (query! card-id) ;; populate metadata
           (let [metadata (db/select-one-field :result_metadata Card :id card-id)
                 ;; simulate updating metadat with user changed stuff
@@ -2122,8 +2114,8 @@
                           (map only-user-edits)
                           (map #(update % :semantic_type keyword)))))))))))
   (testing "Cards preserve edits to metadata when query changes"
-    (let [query          (mt/mbql-query :venues {:fields [$id $name]})
-          modified-query (mt/mbql-query :venues {:fields [$id $name $price]})
+    (let [query          (mt/mbql-query venues {:fields [$id $name]})
+          modified-query (mt/mbql-query venues {:fields [$id $name $price]})
           norm           (comp str/upper-case :name)
           to-native      (fn [q]
                            {:database (:database q)

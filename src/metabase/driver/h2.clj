@@ -58,7 +58,6 @@
   [_]
   :monday)
 
-
 ;; TODO - it would be better not to put all the options in the connection string in the first place?
 (defn- connection-string->file+options
   "Explode a `connection-string` like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.

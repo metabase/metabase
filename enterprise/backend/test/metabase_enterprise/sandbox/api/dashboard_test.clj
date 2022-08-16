@@ -32,7 +32,7 @@
     (testing "Should check current user's data permissions for the `parameter_mapping`"
       (mt/with-gtaps {:gtaps {:venues {}}}
         (api.dashboard-test/do-with-add-card-parameter-mapping-permissions-fixtures
-         (fn [{:keys [card-id dashboard-id mappings add-card! dashcards]}]
+         (fn [{:keys [card-id mappings add-card! dashcards]}]
            (testing "Should be able to add a card with `parameter_mapping` with only sandboxed perms"
              (perms/grant-permissions! (perms-group/all-users) (perms/table-segmented-query-path (mt/id :venues)))
              (is (schema= {:card_id            (s/eq card-id)
@@ -54,7 +54,7 @@
     (testing "Should check current user's data permissions for the `parameter_mapping`"
       (mt/with-gtaps {:gtaps {:venues {}}}
         (api.dashboard-test/do-with-update-cards-parameter-mapping-permissions-fixtures
-         (fn [{:keys [dashboard-id card-id original-mappings update-mappings! update-size! new-dashcard-info new-mappings]}]
+         (fn [{:keys [dashboard-id card-id update-mappings! new-mappings]}]
            (testing "Should be able to update `:parameter_mappings` *with* only sandboxed perms"
              (perms/grant-permissions! (perms-group/all-users) (perms/table-segmented-query-path (mt/id :venues)))
              (is (= {:status "ok"}

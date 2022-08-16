@@ -89,6 +89,7 @@ class Dashboard extends Component {
     closeSidebar: PropTypes.func.isRequired,
     openAddQuestionSidebar: PropTypes.func.isRequired,
     showAddQuestionSidebar: PropTypes.bool.isRequired,
+    embedOptions: PropTypes.object,
   };
 
   static defaultProps = {
@@ -225,6 +226,7 @@ class Dashboard extends Component {
       setParameterIndex,
       setEditingParameter,
       isHeaderVisible,
+      embedOptions,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -315,6 +317,7 @@ class Dashboard extends Component {
                     ref={element => (this.parametersWidgetRef = element)}
                     isNavbarOpen={isNavbarOpen}
                     isSticky={isParametersWidgetSticky}
+                    topNav={embedOptions?.top_nav}
                   >
                     {parametersWidget}
                   </ParametersWidgetContainer>

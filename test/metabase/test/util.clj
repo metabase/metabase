@@ -278,7 +278,7 @@
   (add-watch
    model-var
    ::reload
-   (fn [_ reference _ _]
+   (fn [_key _reference _old-state _new-state]
      (println (format "%s changed, reloading with-temp-defaults" model-var))
      (set-with-temp-defaults!))))
 

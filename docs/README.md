@@ -33,37 +33,46 @@ title: Metabase documentation
 
 ## Asking questions
 
+- [Overview](./questions/start.md)
+
 ### Query builder
 
-- [Asking questions](./users-guide/04-asking-questions.md)
-- [Custom expressions](./users-guide/expressions.md)
-- [List of expressions: aggregations and functions](./users-guide/expressions-list.md)
-- [Visualizing data](./users-guide/05-visualizing-results.md)
-- [Using results to ask new questions](./users-guide/referencing-saved-questions-in-queries.md)
-- [Joining data](./users-guide/join.md)
+- [Asking questions](./questions/query-builder/introduction.md)
+- [Custom expressions](./questions/query-builder/expressions.md)
+- [List of expressions: aggregations and functions](./questions/query-builder/expressions-list.md)
+- [Joining data](./questions/query-builder//join.md)
 
 ### SQL and native queries
 
-- [The native SQL editor](./users-guide/writing-sql.md)
-- [Viewing metadata](./users-guide/12-data-model-reference.md)
-- [SQL templates](./users-guide/13-sql-parameters.md)
-- [SQL snippets](./users-guide/sql-snippets.md)
+- [The native SQL editor](./questions/native-editor/writing-sql.md)
+- [Viewing metadata](./questions/native-editor/data-model-reference.md)
+- [SQL templates](./questions/native-editor/sql-parameters.md)
+- [Using results to ask new questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
+- [SQL snippets](./questions/native-editor/sql-snippets.md)
+- [SQL snippet permissions](./questions/native-editor/snippet-permissions.md)
 
-### Alerts
+### Sharing
 
-- [Setting and getting alerts](./users-guide/15-alerts.md)
+- [Sharing answers](./questions/sharing/answers.md)
+- [Visualizing data](./questions/sharing/visualizing-results.md)
+- [Setting and getting alerts](./questions/sharing/alerts.md)
 
 ## Dashboards
 
-- [Creating dashboards](./users-guide/07-dashboards.md)
-- [Dashboard filters](./users-guide/08-dashboard-filters.md)
-- [Interactive dashboards](./users-guide/interactive-dashboards.md)
-- [Dashboard charts with multiple series](./users-guide/09-multi-series-charting.md)
-- [Setting up dashboard subscriptions](./users-guide/dashboard-subscriptions.md)
+- [Overview](./dashboards/start.md)
+- [Creating dashboards](./dashboards/introduction.md)
+- [Dashboard filters](./dashboards/filters.md)
+- [Interactive dashboards](./dashboards/interactive.md)
+- [Dashboard charts with multiple series](./dashboards/multiple-series.md)
+- [Setting up dashboard subscriptions](./dashboards/subscriptions.md)
 
-## Models
+## Data modeling
 
-- [Models](./users-guide/models.md)
+- [Overview](./data-modeling/start.md)
+- [Models](./data-modeling/models.md)
+- [Metadata-editing](./data-modeling/metadata-editing.md)
+- [Field types](./data-modeling/field-types.md)
+- [Creating segments and metrics](./data-modeling/segments-and-metrics.md)
 
 ## Finding things and keeping organized
 
@@ -103,12 +112,11 @@ title: Metabase documentation
 
 ## Databases
 
-- [Adding data sources](./administration-guide/01-managing-databases.md)
-- [Encrypting your database connection](./operations-guide/encrypting-database-details-at-rest.md)
-- [Editing your database metadata](./administration-guide/03-metadata-editing.md)
-- [Creating segments and metrics](./administration-guide/07-segments-and-metrics.md)
-- [SSH tunneling](./administration-guide/ssh-tunnel-for-database-connections.md)
-- [SSL certificate](./administration-guide/secure-database-connections-with-ssl-certificates.md)
+- [Overview](./databases/start.md)
+- [Adding data sources](./databases/connecting.md)
+- [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
+- [SSH tunneling](./databases/ssh-tunnel.md)
+- [SSL certificate](./databases/ssl-certificates.md)
 
 ## Configuring Metabase
 

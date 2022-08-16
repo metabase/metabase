@@ -150,6 +150,7 @@ class DatabaseEditApp extends Component {
                     onSubmit={handleSubmit}
                     submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
                     submitButtonComponent={Button}
+                    useLegacyForm
                   >
                     {({
                       Form,

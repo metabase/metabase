@@ -25,7 +25,7 @@ See [how to install Metabase](../operations-guide/installing-metabase.md).
 - [Caching query results](14-caching.md)
 - [Customizing your map settings](20-custom-maps.md)
 - [SSH tunneling in Metabase](ssh-tunnel-for-database-connections.md)
-- [Securing database connections using an SSL certificate](secure-database-connections-with-ssl-certificates.md)
+- [Securing database connections using an SSL certificate](../databases/ssl-certificates.md)
 
 ## Curating your data
 

@@ -66,7 +66,7 @@ A personal collection works just like any other collection except that its permi
 
 [collections]: 06-collections.md
 [collection-permissions]: /learn/permissions/collection-permissions.html
-[dashboard-subscriptions]: ../users-guide/dashboard-subscriptions.md
+[dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-permissions]: data-permissions.md
 [pulses]: ../users-guide/10-pulses.md
 [data-sandboxing]: ../enterprise-guide/data-sandboxes.md
