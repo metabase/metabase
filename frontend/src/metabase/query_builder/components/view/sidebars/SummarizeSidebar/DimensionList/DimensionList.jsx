@@ -6,6 +6,7 @@ import TextInput from "metabase/components/TextInput";
 import Icon from "metabase/components/Icon";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { isVirtualCardId } from "metabase/lib/saved-questions";
 
 import { DimensionListItem } from "./DimensionListItem";
 import {
@@ -44,8 +45,9 @@ export const DimensionList = ({
 }) => {
   const isDimensionSelected = dimension =>
     dimensions.some(d => {
-      // shouldn't need to do this, but breakout dimensions don't retain their join-alias option
-      return d.isSameBaseDimension(dimension.withoutJoinAlias());
+      return isVirtualCardId(dimension?.query()?.table()?.id)
+        ? d.isSameBaseDimension(dimension.withoutJoinAlias())
+        : d.isSameBaseDimension(dimension);
     });
 
   const [filter, setFilter] = useState("");
