@@ -7,6 +7,7 @@ import {
 } from "metabase/lib/redux";
 import { push } from "react-router-redux";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { getDefaultEngine } from "metabase/lib/engine";
 
 import { MetabaseApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
@@ -120,7 +121,7 @@ export const initializeDatabase = function (databaseId) {
       const newDatabase = {
         name: "",
         auto_run_queries: true,
-        engine: "postgres",
+        engine: getDefaultEngine(),
         details: {},
         created: false,
       };
