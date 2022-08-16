@@ -565,15 +565,11 @@ export default class Dimension {
     return this.withoutOptions("binning");
   }
 
-  withoutJoinAlias(): Dimension {
-    return this.withoutOptions("join-alias");
-  }
-
   /**
    * Return a copy of this Dimension with any temporal bucketing or binning options removed.
    */
   baseDimension(): Dimension {
-    return this.withoutTemporalBucketing().withoutBinning().withJoinAlias();
+    return this.withoutTemporalBucketing().withoutBinning();
   }
 
   /**
