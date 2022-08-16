@@ -727,7 +727,9 @@ describeEE("formatting > sandboxes", () => {
         native: { query: "SELECT CAST(ID AS VARCHAR) AS ID FROM ORDERS;" },
       });
 
-      cy.visit("/admin/permissions/data/database/1/schema/PUBLIC/table/2");
+      cy.visit(
+        `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
+      );
       cy.wait("@tablePermissions");
       cy.icon("eye")
         .eq(1) // No better way of doing this, undfortunately (see table above)
