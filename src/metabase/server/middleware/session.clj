@@ -29,7 +29,8 @@
 
 ;; How do authenticated API requests work? Metabase first looks for a cookie called `metabase.SESSION`. This is the
 ;; normal way of doing things; this cookie gets set automatically upon login. `metabase.SESSION` is an HttpOnly
-;; cookie and thus can't be viewed by FE code.
+;; cookie and thus can't be viewed by FE code. If the session is a full-app embedded session, then the cookie is
+;; `metabase.EMBEDDED_SESSION` instead.
 ;;
 ;; If that cookie is isn't present, we look for the `metabase.SESSION_ID`, which is the old session cookie set in
 ;; 0.31.x and older. Unlike `metabase.SESSION`, this cookie was set directly by the frontend and thus was not
@@ -138,6 +139,7 @@
         (response/set-cookie metabase-session-timeout-cookie "alive" cookie-options))))
 
 (s/defn set-session-cookies
+  "Add the appropriate cookies to the `response` for the Session."
   [request
    response
    {session-uuid :id
