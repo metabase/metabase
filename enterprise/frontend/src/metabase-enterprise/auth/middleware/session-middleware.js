@@ -44,7 +44,7 @@ export const createSessionMiddleware = (
             }
           } else {
             const url = location.pathname + location.search + location.hash;
-            store.dispatch(logout(url, false));
+            store.dispatch(logout(url));
           }
         }
       }, COOKIE_POOLING_TIMEOUT);
