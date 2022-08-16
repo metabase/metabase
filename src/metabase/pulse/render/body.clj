@@ -779,9 +779,9 @@
                               total-col :waterfall.total_color} viz-settings]
                          (-> (->js-viz x-col y-col viz-settings)
                              (update :colors merge
-                                     (when inc-col {:waterfall.increase_color inc-col})
-                                     (when dec-col {:waterfall.increase_color dec-col})
-                                     (when total-col {:waterfall.increase_color total-col}))
+                                     (when inc-col {:waterfallPositive inc-col})
+                                     (when dec-col {:waterfallNegative dec-col})
+                                     (when total-col {:waterfallTotal total-col}))
                              (assoc :showTotal show-total)))
         image-bundle   (image-bundle/make-image-bundle
                          render-type
