@@ -168,6 +168,9 @@ export const XYChart = ({
           yScaleLeft={yScaleLeft}
           yScaleRight={yScaleRight}
           xAccessor={xScale.lineAccessor}
+          showValues={Boolean(settings.show_values)}
+          valueFormatter={value => formatNumber(value, settings.y.format)}
+          valueProps={labelProps}
         />
 
         {settings.goal && (
