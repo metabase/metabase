@@ -2099,7 +2099,29 @@
                                                   :result_metadata (fn [m]
                                                                      (map #(assoc % :description "") m))))
                             :result_metadata
-                            (map :description))))))))))))
+                            (map :description)))))))))))
+  (testing "Cards preserve edits to `visibility_type` (#22520)"
+    (mt/with-temp* [Card [model {:dataset_query (mt/mbql-query venues
+                                                               {:fields [$id $name]
+                                                                :limit 2})
+                                 :dataset       true}]]
+      (let [updated-metadata (-> model :result_metadata vec
+                                 (assoc-in [1 :visibility_type]
+                                           :details-only))
+            response         (mt/user-http-request :crowberto :put 200 (format "card/%d" (u/the-id model))
+                                                   (assoc model :result_metadata updated-metadata))]
+        ;; check they come back from saving the question
+        (is (= "details-only" (-> response :result_metadata last :visibility_type))
+            "saving metadata lacks visibility type")
+        (let [query-result (mt/user-http-request :crowberto :post 202 (format "card/%d/query"
+                                                                              (u/the-id model)))]
+          ;; ensure future responses also include them
+          (is (= "details-only" (-> query-result
+                                    :data :results_metadata :columns last :visibility_type))
+              "subsequent query lacks visibility type")
+          (is (= "details-only" (-> query-result
+                                    :data :cols last :visibility_type))
+              "in cols (important for the saved metadata)"))))))
 
 (defn- do-with-persistence-setup [f]
   ;; mt/with-temp-scheduler actually just reuses the current scheduler. The scheduler factory caches by name set in
