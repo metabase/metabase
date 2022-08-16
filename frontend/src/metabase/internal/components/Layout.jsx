@@ -105,6 +105,16 @@ export const InternalLayout = fitViewport(({ children }) => {
               <Label>Icons</Label>
             </Link>
           </li>
+          <li>
+            <Link className="link" to={"/_internal/modals"}>
+              <Label>Modals</Label>
+            </Link>
+          </li>
+          <li>
+            <Link className="link" to={"/_internal/static-viz"}>
+              <Label>Static Visualizations</Label>
+            </Link>
+          </li>
           <li className="my3">
             Components
             <IndentedList>
