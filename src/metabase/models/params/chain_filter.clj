@@ -415,7 +415,7 @@
    :middleware {:disable-remaps? true}})
 
 
-;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
+;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:param-key/values) -------------------------
 
 (s/defn ^:private unremapped-chain-filter
   "Chain filtering without all the fancy remapping stuff on top of it."
@@ -557,7 +557,7 @@
 
 (s/defn chain-filter
   "Fetch a sequence of possible values of Field with `field-id` by restricting the possible values to rows that match
-  values of other Fields in the `constraints` map. Powers the `GET /api/dashboard/:id/param/:key/values` chain filter
+  values of other Fields in the `constraints` map. Powers the `GET /api/dashboard/:id/param/:param-key/values` chain filter
   API endpoint.
 
     ;; fetch possible values of venue price (between 1 and 4 inclusive) where category name is 'BBQ'

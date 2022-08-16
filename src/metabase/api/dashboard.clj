@@ -36,7 +36,8 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
+            [toucan.hydrate :refer [hydrate]]
+            [metabase.query-processor.middleware.permissions :as qp.perms])
   (:import java.util.UUID))
 
 (defn- dashboards-list [filter-option]
@@ -573,6 +574,9 @@
                  field-id          (param-key->field-ids dashboard param-key)]
              [field-id value])))
 
+(defn- get-card-id-from-resolved-params [resolved-params param-key]
+  (-> resolved-params (get param-key) :mappings first :card_id))
+
 (s/defn chain-filter
   "C H A I N filters!
 
@@ -592,35 +596,37 @@
     param-key                   :- su/NonBlankString
     constraint-param-key->value :- su/Map
     query                       :- (s/maybe su/NonBlankString)]
-   (let [dashboard (hydrate dashboard :resolved-params)]
-     (when-not (get (:resolved-params dashboard) param-key)
+   (let [{:keys [resolved-params] :as dashboard'} (hydrate dashboard :resolved-params)]
+     (when-not (get resolved-params param-key)
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
-                       {:resolved-params (keys (:resolved-params dashboard))
+                       {:resolved-params (keys resolved-params)
                         :status-code     400})))
-     (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
-           field-ids   (param-key->field-ids dashboard param-key)]
-      (when (empty? field-ids)
-        (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                        {:param       (get (:resolved-params dashboard) param-key)
-                         :status-code 400})))
-       ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
-       ;; separate query for each Field (for parameters that are mapped to more than one Field)
-      (try
-        (let [results (map (if (seq query)
-                               #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                               #(chain-filter/chain-filter % constraints :limit result-limit))
-                           field-ids)
-              values (distinct (mapcat :values results))
-              has_more_values (boolean (some true? (map :has_more_values results)))]
-          ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
-          {:values          (if (sequential? (first values))
-                              (sort-by second values)
-                              (sort values))
-           :has_more_values has_more_values})
-        (catch clojure.lang.ExceptionInfo e
-          (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-            (api/throw-403 e)
-            (throw e))))))))
+     (binding [qp.perms/*card-id* (or qp.perms/*card-id*
+                                      (get-card-id-from-resolved-params resolved-params param-key))]
+       (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
+             field-ids   (param-key->field-ids dashboard param-key)]
+         (when (empty? field-ids)
+           (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
+                           {:param       (get (:resolved-params dashboard) param-key)
+                            :status-code 400})))
+         ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
+         ;; separate query for each Field (for parameters that are mapped to more than one Field)
+         (try
+           (let [results (map (if (seq query)
+                                #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                                #(chain-filter/chain-filter % constraints :limit result-limit))
+                              field-ids)
+                 values (distinct (mapcat :values results))
+                 has_more_values (boolean (some true? (map :has_more_values results)))]
+             ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
+             {:values          (if (sequential? (first values))
+                                 (sort-by second values)
+                                 (sort values))
+              :has_more_values has_more_values})
+           (catch clojure.lang.ExceptionInfo e
+             (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+               (api/throw-403 e)
+               (throw e)))))))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
