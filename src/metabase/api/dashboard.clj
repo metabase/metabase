@@ -28,6 +28,7 @@
             [metabase.query-processor.dashboard :as qp.dashboard]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
@@ -36,8 +37,7 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [metabase.query-processor.middleware.permissions :as qp.perms])
+            [toucan.hydrate :refer [hydrate]])
   (:import java.util.UUID))
 
 (defn- dashboards-list [filter-option]
@@ -596,7 +596,7 @@
     param-key                   :- su/NonBlankString
     constraint-param-key->value :- su/Map
     query                       :- (s/maybe su/NonBlankString)]
-   (let [{:keys [resolved-params] :as dashboard'} (hydrate dashboard :resolved-params)]
+   (let [{:keys [resolved-params]} (hydrate dashboard :resolved-params)]
      (when-not (get resolved-params param-key)
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys resolved-params)
