@@ -80,7 +80,7 @@ export const XYChart = ({
     xTicksDimensions.width,
     settings.labels,
     style.axes.ticks.fontSize,
-    !!settings.goal,
+    !!settings.goal || !!settings.show_values,
   );
 
   const { xMin, xMax, yMin, innerHeight, innerWidth } = calculateBounds(
@@ -151,6 +151,9 @@ export const XYChart = ({
             yScaleRight={yScaleRight}
             xAccessor={xScale.barAccessor}
             bandwidth={xScale.bandwidth}
+            showValues={Boolean(settings.show_values)}
+            valueFormatter={value => formatNumber(value, settings.y.format)}
+            valueProps={labelProps}
           />
         )}
         <AreaSeries

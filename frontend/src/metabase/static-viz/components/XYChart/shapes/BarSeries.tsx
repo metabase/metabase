@@ -3,11 +3,16 @@ import { Bar } from "@visx/shape";
 import { Group } from "@visx/group";
 import { scaleBand } from "@visx/scale";
 import { PositionScale } from "@visx/shape/lib/types";
-import {
+import { getY } from "metabase/static-viz/components/XYChart/utils";
+import { Text } from "@visx/text";
+
+import type {
   Series,
   SeriesDatum,
 } from "metabase/static-viz/components/XYChart/types";
-import { getY } from "metabase/static-viz/components/XYChart/utils";
+import type { TextProps } from "@visx/text";
+
+const VALUES_MARGIN = 6;
 
 interface BarSeriesProps {
   series: Series[];
@@ -15,6 +20,9 @@ interface BarSeriesProps {
   yScaleRight: PositionScale | null;
   xAccessor: (datum: SeriesDatum) => number;
   bandwidth: number;
+  showValues: boolean;
+  valueFormatter: (value: number) => string;
+  valueProps: Partial<TextProps>;
 }
 
 export const BarSeries = ({
@@ -23,6 +31,9 @@ export const BarSeries = ({
   yScaleRight,
   xAccessor,
   bandwidth,
+  showValues,
+  valueFormatter,
+  valueProps,
 }: BarSeriesProps) => {
   const innerBarScaleDomain = series.map((_, index) => index);
 
@@ -56,14 +67,28 @@ export const BarSeries = ({
               const height = Math.abs(yValue - yZero);
 
               return (
-                <Bar
-                  key={index}
-                  fill={series.color}
-                  width={width}
-                  height={height}
-                  x={x}
-                  y={y}
-                />
+                <>
+                  <Bar
+                    key={index}
+                    fill={series.color}
+                    width={width}
+                    height={height}
+                    x={x}
+                    y={y}
+                  />
+                  {showValues && (
+                    <Text
+                      x={x + width / 2}
+                      y={y - VALUES_MARGIN}
+                      width={width}
+                      textAnchor="middle"
+                      verticalAnchor="end"
+                      {...valueProps}
+                    >
+                      {valueFormatter(getY(datum))}
+                    </Text>
+                  )}
+                </>
               );
             })}
           </Fragment>

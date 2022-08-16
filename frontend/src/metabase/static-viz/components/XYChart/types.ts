@@ -48,6 +48,7 @@ export type ChartSettings = {
     value: number;
     label: string;
   };
+  show_values?: boolean;
   labels: {
     left?: string;
     bottom?: string;
