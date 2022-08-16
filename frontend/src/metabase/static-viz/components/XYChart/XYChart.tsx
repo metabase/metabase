@@ -162,6 +162,9 @@ export const XYChart = ({
           yScaleRight={yScaleRight}
           xAccessor={xScale.lineAccessor}
           areStacked={settings.stacking === "stack"}
+          showValues={Boolean(settings.show_values)}
+          valueFormatter={value => formatNumber(value, settings.y.format)}
+          valueProps={labelProps}
         />
         <LineSeries
           series={lines}
