@@ -168,8 +168,6 @@
         (set-session-timeout-cookie request session-type request-time)
         (response/set-cookie (session-cookie-name session-type) (str session-uuid) cookie-options))))
 
-(session-cookie-name :full-app-embed)
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                wrap-session-id                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
