@@ -6,24 +6,34 @@ title: Dashboards overview
 
 ## [Introduction to embedding](./introduction.md)
 
-How to embed charts and dashboards in applications and websites.
+Share your data securely.
 
-## [Public links](./public-links.md)
+## [Signed embedding](./signed-embedding.md)
 
-Sharing questions using public links.
+Put interactive charts and dashboards in your app.
 
 ## [Full-app embedding](./full-app-embedding.md)
 
-How to embed the graphical query builder and more in your application.
+Put interactive charts, dashboards, _and_ the [query builder](/glossary/query_builder) in your app.
+
+# Sharing results externally
+
+Make your data open to the public.
+
+## [Public links](./public-links)
+
+Send someone a link to your chart or dashboard, and tell them not to share it.
+
+## iframes
+
+Display a public link inside an iframe.
+
+# Appearance
+
+## [Appearance](./whitelabeling.md)
+
+Customize the look and feel of your charts and dashboards.
 
 ## [Customize embeds](./customize-embeds.md)
 
-Introduction to customizing embedded charts and dashboards.
-
-## [Whitelabeling](./whitelabeling.md)
-
-How to customize the look and feel of embedded charts and dashboards to match your application's branding.
-
-## [Fonts](./fonts.md)
-
-How to customize the fonts in your charts and dashboards.
+Additional customization for _embedded_ charts and dashboards.
