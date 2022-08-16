@@ -42,7 +42,7 @@ Default: `20160`
 
 Session expiration, defined in minutes (default is 2 weeks), which will log out users after the defined period and require re-authentication.
 
-Note: This setting is not an idle/inactivity timeout. If you set this to 15 minutes, your users have to login (or re-authenticate) again every 15 minutes.
+Note: This setting is not an idle/inactivity timeout. If you set this to 15 minutes, your users have to login (or re-authenticate) again every 15 minutes. Use [MB_SESSION_TIMEOUT](#mb_session_timeout) to control timeout based on inactivity.
 
 Use [MB_SESSION_COOKIES](#mb_session_cookies) to also expire sessions, when browser is closed.
 
@@ -370,6 +370,8 @@ Type: string<br>
 Default: `null`
 
 URL of origin allowed to embed the full Metabase application.
+
+Related to [MB_SESSION_COOKIE_SAMESITE](#mb_session_cookie_samesite). Read more about [FullApp Embedding](../embedding/full-app-embedding.md).
 
 ### `MB_EMBEDDING_SECRET_KEY`
 
@@ -744,7 +746,7 @@ Type: string<br>
 Default: `"(member={dn})"`<br>
 Since: v40.0
 
-Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively.
+Group membership lookup filter. The placeholders `{dn}` and `{uid}` will be replaced by the user's Distinguished Name and UID, respectively.
 
 ### `MB_LDAP_GROUP_SYNC`
 
@@ -1139,6 +1141,8 @@ When using FullApp embedding, and the embedding website is hosted under a domain
 
 Setting the variable to `"none"` requires you to use HTTPS, otherwise browsers will reject the request.
 
+Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [FullApp Embedding](../embedding/full-app-embedding.md).
+
 Learn more about SameSite cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite
 
 ### `MB_SESSION_COOKIES`
@@ -1230,6 +1234,8 @@ Default: `null`
 
 The base URL where users access Metabase, e.g. `https://metabase.example.com` or `https://example.com/metabase`.
 
+This URL is critical for things like SSO authentication, email links, embedding and more. Even difference with `http://` vs `https://` can cause problems. Make sure that the address defined is how Metabase is being accessed.
+
 ### `MB_SLACK_APP_TOKEN`
 
 Type: string<br>
@@ -1237,6 +1243,8 @@ Default: `null`<br>
 Since: v42.0
 
 Slack API bearer token obtained from https://api.slack.com/web#authentication
+
+In previous versions before v42.0, the variable `MB_SLACK_TOKEN` was used, but that is deprecated and should not be used anymore.
 
 ### `MB_SLACK_FILES_CHANNEL`
 
