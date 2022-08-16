@@ -6,6 +6,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
             [metabase.query-processor.util :as qp.util]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.test :as mt]
@@ -247,20 +248,21 @@
 (deftest results-metadata-should-have-field-refs-test
   (testing "QP results metadata should include Field refs"
     (mt/dataset sample-dataset
-      (letfn [(do-test []
+      (letfn [(do-test [remap]
                 (let [results-metadata       (get-in (mt/run-mbql-query orders {:limit 10})
                                                      [:data :results_metadata :columns])
-                      expected-cols          (qp/query->expected-cols (mt/mbql-query orders))]
+                      expected-cols          (cond->> (qp/query->expected-cols (mt/mbql-query orders))
+                                               remap
+                                               (filter #(nil? (get-in % [:options ::qp.add-dimension-projections/new-field-dimension-id]))))]
                   (testing "Card results metadata shouldn't differ wildly from QP expected cols"
                     (letfn [(select-keys-to-compare [cols]
                               (map #(select-keys % [:name :base_type :id :field_ref]) cols))]
                       (is (= (select-keys-to-compare results-metadata)
                              (select-keys-to-compare expected-cols)))))))]
-        (do-test)
-        (testing "With an FK column remapping"
-          ;; Add column remapping from Orders Product ID -> Products.Title
+        (do-test false)
+        (testing "results_metadata shouldn't contains remapped fields (#23449)"
           (mt/with-column-remappings [orders.product_id products.title]
-            #_(do-test)))))))
+            (do-test true)))))))
 
 (deftest field-refs-should-be-correct-fk-forms-test
   (testing "Field refs included in results metadata should be wrapped correctly e.g. in `fk->` form"

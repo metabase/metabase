@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Field]]
+            [metabase.models.field :refer [Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
             [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
