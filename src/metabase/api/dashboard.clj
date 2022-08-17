@@ -574,9 +574,6 @@
                  field-id          (param-key->field-ids dashboard param-key)]
              [field-id value])))
 
-(defn- get-card-id-from-resolved-params [resolved-params param-key]
-  (-> resolved-params (get param-key) :mappings first :card_id))
-
 (s/defn chain-filter
   "C H A I N filters!
 
@@ -601,12 +598,9 @@
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys resolved-params)
                         :status-code     400})))
-     (binding [qp.perms/*card-id* (or qp.perms/*card-id*
-                                      (and ;; fixes #24832
-                                        ;; when we are using constrained filters
-                                        (not-empty constraint-param-key->value)
-                                        ;; make sure that the proper card-id is bound
-                                        (get-card-id-from-resolved-params resolved-params param-key)))]
+     (binding [qp.perms/*card-id*
+               ;; make sure that the proper card-id is bound (#24832)
+               (-> (get resolved-params param-key) :mappings first :card_id)]
        (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
              field-ids   (param-key->field-ids dashboard param-key)]
          (when (empty? field-ids)
