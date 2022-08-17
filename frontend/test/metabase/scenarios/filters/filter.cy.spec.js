@@ -759,7 +759,7 @@ describe("scenarios > question > filter", () => {
   describe("currency filters", () => {
     beforeEach(() => {
       // set the currency on the Orders/Discount column to Euro
-      cy.visit("/admin/datamodel/database/1/table/2");
+      cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}`);
       // this value isn't actually selected, it's just the default
       cy.findByText("US Dollar").click();
       cy.findByText("Euro").click();
