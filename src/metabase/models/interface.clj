@@ -207,6 +207,10 @@
   :in  u/qualified-name
   :out keyword)
 
+(models/add-type! :keyword-set
+  :in json-in
+  :out (comp #(into #{} (map keyword) %) json-out-with-keywordization))
+
 ;;; properties
 
 (defn now
