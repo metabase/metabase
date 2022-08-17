@@ -211,13 +211,12 @@ class Dashboard extends Component {
     const {
       addParameter,
       dashboard,
-      isDataApp,
       isEditing,
       isEditingParameter,
       isFullscreen,
       isNightMode,
       isSharing,
-      parameters: allParameters,
+      parameters,
       parameterValues,
       isNavbarOpen,
       showAddQuestionSidebar,
@@ -233,17 +232,6 @@ class Dashboard extends Component {
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
-
-    const parameters = isDataApp
-      ? // Writeback hack for prototyping purposes
-        // We need ID parameters to configure custom destinations,
-        // but in the end we don't want to keep them visible to the user
-        // This lets us achieve the desired behavior
-        // when ID parameters are only visible in dashboard editing mode
-        allParameters.filter(parameter =>
-          isEditing ? parameter : parameter.type !== "id",
-        )
-      : allParameters;
 
     const parametersWidget = (
       <SyncedParametersList
@@ -331,7 +319,7 @@ class Dashboard extends Component {
                       {...this.props}
                       isNightMode={shouldRenderAsNightMode}
                       onEditingChange={this.setEditing}
-                      isDataApp={isDataApp}
+                      isDataApp={this.props.isDataApp}
                     />
                   ) : (
                     <DashboardEmptyState
