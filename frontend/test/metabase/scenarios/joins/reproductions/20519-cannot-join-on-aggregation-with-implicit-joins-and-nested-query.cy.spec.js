@@ -3,6 +3,8 @@ import {
   enterCustomColumnDetails,
   visualize,
 } from "__support__/e2e/helpers";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -63,7 +65,9 @@ describe("issue 20519", () => {
 });
 
 function switchToNotebookView() {
-  cy.intercept("GET", "/api/database/1/schema/PUBLIC").as("publicSchema");
+  cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
+    "publicSchema",
+  );
 
   cy.icon("notebook").click();
   cy.wait("@publicSchema");

@@ -10,7 +10,7 @@ import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { normal, admin } = USERS;
-const { DATA_GROUP } = USER_GROUPS;
+const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
 const TOTAL_USERS = Object.entries(USERS).length;
 const TOTAL_GROUPS = Object.entries(USER_GROUPS).length;
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -354,7 +354,7 @@ describe("scenarios > admin > people", () => {
 
       it("should allow paginating group members forward and backward", () => {
         const PAGE_SIZE = 25;
-        cy.visit("admin/people/groups/1");
+        cy.visit(`admin/people/groups/${ALL_USERS_GROUP}`);
 
         // Total
         cy.findByText(`${NEW_TOTAL_USERS} members`);

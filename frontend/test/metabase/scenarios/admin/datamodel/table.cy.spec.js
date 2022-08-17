@@ -1,4 +1,5 @@
 import { restore, filter, visitQuestion } from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -10,12 +11,12 @@ describe("scenarios > admin > databases > table", () => {
   });
 
   it("should see four tables in sample database", () => {
-    cy.visit("/admin/datamodel/database/1");
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     cy.get(".AdminList-item").should("have.length", 4);
   });
 
   it("should be able to see details of each table", () => {
-    cy.visit("/admin/datamodel/database/1");
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     cy.findByText(
       "Select any table to see its schema and add or edit metadata.",
     );
@@ -39,7 +40,7 @@ describe("scenarios > admin > databases > table", () => {
 
   describe("in orders table", () => {
     beforeEach(() => {
-      cy.visit("/admin/datamodel/database/1/table/2");
+      cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}`);
     });
 
     it("should see multiple fields", () => {
