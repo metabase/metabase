@@ -7,7 +7,6 @@ import AccordionList from "metabase/core/components/AccordionList";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
-import { isVirtualCardId } from "metabase/lib/saved-questions";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 import { DimensionPicker } from "./DimensionPicker";
@@ -65,9 +64,8 @@ export default class DimensionList extends Component {
     return (
       item.dimension &&
       _.any(dimensions, d => {
-        return isVirtualCardId(dimension?.query()?.table()?.id)
-          ? d.isSameBaseDimension(dimension.withoutJoinAlias())
-          : d.isSameBaseDimension(dimension);
+        // sometimes `dimension` has a join-alias and `d` doesn't -- with/without is equivalent in this scenario
+        return d.isSameBaseDimension(dimension.withoutJoinAlias());
       })
     );
   };
