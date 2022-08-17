@@ -4,15 +4,16 @@ import { connect } from "react-redux";
 
 import Header from "metabase/writeback/components/HttpAction/Header";
 import HttpAction from "metabase/writeback/components/HttpAction/HttpAction";
-import { ActionType } from "metabase/writeback/types";
-import { useWritebackAction } from "../hooks";
 import {
   createHttpAction,
   CreateHttpActionPayload,
-} from "metabase/query_builder/actions";
+} from "metabase/writeback/actions";
+import { getHttpActionTemplateTagParameter } from "metabase/writeback/utils";
+import { ActionType } from "metabase/writeback/types";
+
+import { useWritebackAction } from "../hooks";
 
 import { Container, Content } from "./ActionPage.styled";
-import { getHttpActionTemplateTagParameter } from "../utils";
 
 type Props = {
   createHttpAction: (payload: CreateHttpActionPayload) => void;
