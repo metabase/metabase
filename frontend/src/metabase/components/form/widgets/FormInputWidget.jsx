@@ -14,6 +14,7 @@ const propTypes = {
   autoFocus: PropTypes.bool,
   helperText: PropTypes.node,
   tabIndex: PropTypes.string,
+  fieldName: PropTypes.string,
 };
 
 const FormInputWidget = forwardRef(function FormInputWidget(
@@ -25,24 +26,28 @@ const FormInputWidget = forwardRef(function FormInputWidget(
     autoFocus,
     helperText,
     tabIndex,
+    fieldName,
   },
   ref,
 ) {
   return (
-    <Input
-      {...formDomOnlyProps(field)}
-      type={type}
-      placeholder={placeholder}
-      aria-labelledby={`${field.name}-label`}
-      readOnly={readOnly}
-      autoFocus={autoFocus}
-      error={field.visited && !field.active && field.error != null}
-      rightIcon={helperText && "info"}
-      rightIconTooltip={helperText}
-      tabIndex={tabIndex}
-      fullWidth
-      ref={ref}
-    />
+    <div>
+      <div className="h6 text-bold text-uppercase text-light">{fieldName}</div>
+      <Input
+        {...formDomOnlyProps(field)}
+        type={type}
+        placeholder={placeholder}
+        aria-labelledby={`${field.name}-label`}
+        readOnly={readOnly}
+        autoFocus={autoFocus}
+        error={field.visited && !field.active && field.error != null}
+        rightIcon={helperText && "info"}
+        rightIconTooltip={helperText}
+        tabIndex={tabIndex}
+        fullWidth
+        ref={ref}
+      />
+    </div>
   );
 });
 
