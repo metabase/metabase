@@ -89,7 +89,7 @@ describe("scenarios > admin > databases > list", () => {
   it("should let you access edit page a database", () => {
     cy.visit("/admin/databases");
     cy.contains("Sample Database").click();
-    cy.location("pathname").should("eq", `admin/databases/${SAMPLE_DB_ID}`);
+    cy.location("pathname").should("eq", `/admin/databases/${SAMPLE_DB_ID}`);
   });
 
   it("should let you bring back the sample database", () => {
