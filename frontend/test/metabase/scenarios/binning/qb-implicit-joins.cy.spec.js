@@ -48,7 +48,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
     it("should work for number", () => {
       changeBinningForDimension({
         name: "Price",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         toBinning: "50 bins",
       });
 
@@ -61,7 +61,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
     it("should work for longitude", () => {
       changeBinningForDimension({
         name: "Longitude",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         // Test is currently incorrect in that it displays wrong binning options (please see: https://github.com/metabase/metabase/issues/16674)
         // Once #16674 gets fixed, update the following line to say: `bucketSize: "Bin every 20 degrees"`
         toBinning: "20°",
@@ -112,7 +112,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 
       changeBinningForDimension({
         name: "Price",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         toBinning: "50 bins",
       });
 
@@ -129,7 +129,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 
       changeBinningForDimension({
         name: "Longitude",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         // Test is currently incorrect in that it displays wrong binning options (please see: https://github.com/metabase/metabase/issues/16674)
         // Once #16674 gets fixed, update the following line to say: `bucketSize: "Bin every 20 degrees"`
         toBinning: "20°",
