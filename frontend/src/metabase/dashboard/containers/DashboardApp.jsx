@@ -164,8 +164,6 @@ const DashboardApp = props => {
     setIsShowingToaster(false);
   }, []);
 
-  const isDataApp = dashboard?.name.endsWith(" App");
-
   return (
     <DataAppContext>
       <div className="shrink-below-content-size full-height">
@@ -173,7 +171,6 @@ const DashboardApp = props => {
           editingOnLoad={editingOnLoad}
           addCardOnLoad={addCardOnLoad}
           {...props}
-          isDataApp={isDataApp}
         />
         {/* For rendering modal urls */}
         {props.children}
