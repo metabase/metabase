@@ -49,7 +49,7 @@ If you can’t solve your problem using the troubleshooting guides:
 
 
 [admin-permissions]: ../permissions/start.md
-[cant-see-tables]: ./cant-see-tables.md
+[cant-see-tables]: cant-see-tables.md
 [check-permissions]: ./data-permissions.md#checking-someones-access-to-a-table-or-schema
 [collection-permissions]: ../permissions/collections.md
 [collections-restricted-data]: ./data-permissions.md#a-user-group-can-view-collections-that-contain-restricted-data

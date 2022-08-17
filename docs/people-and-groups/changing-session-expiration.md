@@ -1,5 +1,7 @@
 ---
 title: Changing session expiration
+redirect_from:
+  - /docs/latest/operations-guide/changing-session-expiration
 ---
 
 # Changing session expiration

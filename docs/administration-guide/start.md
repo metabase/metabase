@@ -21,7 +21,7 @@ See [how to install Metabase](../operations-guide/installing-metabase.md).
 - [Setting up Slack integration](09-setting-up-slack.md)
 - [Configuring settings](08-configuration-settings.md)
 - [Setting formatting defaults](19-formatting-settings.md)
-- [Changing localization settings](localization.md)
+- [Changing localization settings](../configuring-metabase/localization.md)
 - [Caching query results](14-caching.md)
 - [Customizing your map settings](20-custom-maps.md)
 - [SSH tunneling in Metabase](ssh-tunnel-for-database-connections.md)

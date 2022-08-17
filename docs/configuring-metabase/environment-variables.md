@@ -1156,7 +1156,7 @@ When set to `true`, the user login session will expire when the browser is close
 
 This overrides the "Remember me" checkbox when logging in.
 
-Also see the [Changing session expiration](changing-session-expiration.md) documentation page.
+Also see the [Changing session expiration](../people-and-groups/changing-session-expiration.md) documentation page.
 
 ### `MB_SESSION_TIMEOUT`
 

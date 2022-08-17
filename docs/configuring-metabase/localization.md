@@ -1,5 +1,7 @@
 ---
 title: Languages and localization
+redirect_from:
+  - /docs/latest/administration-guide/localization
 ---
 
 # Languages and localization

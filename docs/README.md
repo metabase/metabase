@@ -49,7 +49,6 @@ title: Metabase documentation
 - [SQL templates](./questions/native-editor/sql-parameters.md)
 - [Using results to ask new questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
 - [SQL snippets](./questions/native-editor/sql-snippets.md)
-- [SQL snippet permissions](./questions/native-editor/snippet-permissions.md)
 
 ### Sharing
 
@@ -108,7 +107,7 @@ title: Metabase documentation
 - [Collection permissions](./permissions/collections.md)
 - [Application permissions](./permissions/application.md)
 - [Sandboxing data based on user attributes](./permissions/data-sandboxes.md)
-- [SQL snippets folder permissions](./permissions/sql-snippets.md)
+- [SQL snippets folder permissions](./permissions/snippets.md)
 
 ## Embedding questions and dashboards
 

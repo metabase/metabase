@@ -36,7 +36,7 @@ You can use Models to create derived tables on the fly. See [Models][models].
 
 [Dashboards][dashboards] are a set of questions and text cards that you want to be able to refer to regularly.
 
-If you click on a part of a chart, such as a bar in a bar chart, or a dot on a line chart, you'll see a the **Action menu**, with actions you can take to dive deeper into that result, branch off from it in a different direction, or create an [X-ray](14-x-rays.md) to see an automatic exploration of the data.
+If you click on a part of a chart, such as a bar in a bar chart, or a dot on a line chart, you'll see a the **Action menu**, with actions you can take to dive deeper into that result, branch off from it in a different direction, or create an [X-ray](x-rays.md) to see an automatic exploration of the data.
 
 ![Drill through](images/drill-through.png)
 
