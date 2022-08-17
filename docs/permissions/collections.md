@@ -8,7 +8,7 @@ redirect_from:
 
 ![Collection detail](./images/collection-detail.png)
 
-You can use [collections](../users-guide/collections) to organize questions, dashboards, models, timelines, and other collections. You can set permissions on those collections to determine which groups of people can view and curate collections' items.
+You can use [collections](../exploration-and-organization/collections.md) to organize questions, dashboards, models, timelines, and other collections. You can set permissions on those collections to determine which groups of people can view and curate collections' items.
 
 Metabase starts out with a default top-level collection which is called **Our analytics**, which every other collection is saved inside of.
 
@@ -20,7 +20,7 @@ Metabase starts out with a default top-level collection which is called **Our an
 
 ### Setting permissions for collections
 
-You can set permissions on collections by clicking on the lock icon in the top-right of the screen while viewing the collection and clicking on **Edit permissions**. Only Administrators can edit collection permissions. Each [user group](overview.md) can have either View, Curate, or No access to a collection:
+You can set permissions on collections by clicking on the lock icon in the top-right of the screen while viewing the collection and clicking on **Edit permissions**. Only Administrators can edit collection permissions. Each [user group](./introduction.md) can have either View, Curate, or No access to a collection:
 
 ![Permissions](./images/collection-permissions.png)
 

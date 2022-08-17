@@ -130,5 +130,5 @@ If you can’t solve your problem using the troubleshooting guides:
 [table-schema-access]: ./data-permissions.md#people-have-the-wrong-access-to-a-table-or-schema
 [troubleshooting-data-sandboxing]: ./sandboxing.md
 [troubleshooting-permissions]: ./permissions.md
-[unrestricted]: ../administration-guide/data-permissions.html#unrestricted-access
+[unrestricted]: ../permissions/data.md#unrestricted-access
 [view-edit]: ./cant-view-or-edit.md

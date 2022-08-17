@@ -113,7 +113,7 @@ To make someone an admin of Metabase, you just need to add them to the Administr
 
 #### All users
 
-The **All Users** group is another special one. Every Metabase user is always a member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](../permissions/google-and-ldap.md) enabled, new users who join that way will be automatically added to the All Users group.
+The **All Users** group is another special one. Every Metabase user is always a member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](./google-and-ldap.md) enabled, new users who join that way will be automatically added to the All Users group.
 
 It's important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. See [Setting permissions](../permissions/start.md).
 

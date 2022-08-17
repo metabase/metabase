@@ -172,7 +172,7 @@ The administrator can [create a new group][groups] to capture precisely who's al
 [jwt-auth]: ../people-and-groups/authenticating-with-jwt.md
 [locked-parameters]: /learn/embedding/embedding-charts-and-dashboards.html#hide-or-lock-parameters-to-restrict-what-data-is-shown
 [permissions]: /learn/permissions/data-permissions.html
-[public-sharing]: ../emebedding/public-links.html
+[public-sharing]: ../embedding/public-links.html
 [row-permissions]: /learn/permissions/data-sandboxing-row-permissions
 [sandboxing-your-data]: ../permissions/data-sandboxes.md
 [signed-embedding]: /learn/embedding/embedding-charts-and-dashboards.html#enable-embedding-in-other-applications

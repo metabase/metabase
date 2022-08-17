@@ -59,7 +59,7 @@ If you can’t solve your problem using the troubleshooting guides:
 [data-permissions]: ../permissions/data.md
 [discourse]: https://discourse.metabase.com/
 [granular]: ../permissions/data.md#granular-access
-[group-permissions]: ../administration-guide/05-setting-permissions.html#key-points-regarding-permissions
+[group-permissions]: ../permissions/introduction.md#key-points-regarding-permissions
 [known-issues]: ./known-issues.md
 [learn-permissions]: /learn/permissions
 [permission-denied]: ./data-permissions.md#getting-a-permission-denied-error-message

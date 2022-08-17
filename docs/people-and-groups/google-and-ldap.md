@@ -100,7 +100,7 @@ Group membership lookup filter. The placeholders {dn} and {uid} will be replaced
 
 - [Using LDAP for authentication and access control](/learn/permissions/ldap-auth-access-control.html)
 - [LDAP troubleshooting guide](../troubleshooting-guide/ldap.html)
-- [Permissions overview](05-setting-permissions.html)
+- [Permissions overview](../permissions/start.md)
 
 ## Syncing user attributes at login
 

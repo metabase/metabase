@@ -9,7 +9,7 @@ redirect_from:
 {% include plans-blockquote.html feature="Google SAML authentication" %}
 
 1. Set up a [custom SAML application](https://support.google.com/a/answer/6087519) with Google (the identity provider).
-2. [Configure SAML in Metabase](../enterprise-guide/authenticating-with-saml.html#enabling-saml-authentication-in-metabase) (the service provider).
+2. [Configure SAML in Metabase](./authenticating-with-saml.md#enabling-saml-authentication-in-metabase) (the service provider).
 
 For more information, check out our guide for [authenticating with SAML](../authenticating-with-saml.md).
 

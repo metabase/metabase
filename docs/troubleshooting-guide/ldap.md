@@ -24,7 +24,7 @@ services:
     image: metabase/metabase:latest
     container_name: metabase-ldap
     hostname: metabase-ldap
-    volumes: 
+    volumes:
     - /dev/urandom:/dev/random:ro
     ports:
       - 3000:3000
@@ -59,7 +59,7 @@ services:
       - LDAP_GROUP=readers
     networks:
       - metanet1
-networks: 
+networks:
   metanet1:
     driver: bridge
 ```
@@ -84,7 +84,7 @@ If you run into an issue, check that you can login to your LDAP directory and is
 
 [apache-directory-studio]: https://directory.apache.org/studio/
 [ldap-learn]: /learn/permissions/ldap-auth-access-control.html
-[ldap-docs]: ../administration-guide/10-single-sign-on.html#enabling-ldap-authentication
+[ldap-docs]: ../people-and-groups/google-and-ldap.md#enabling-ldap-authentication
 
 ## Are you still stuck?
 

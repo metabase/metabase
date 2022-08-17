@@ -113,16 +113,16 @@ This setting defines whether a person can edit the connection settings for the d
 
 ## Further reading
 
-- [Permissions overview](overview.md)
+- [Permissions introduction](./introduction.md)
 - [Learn permissions](/learn/permissions)
 - [Troubleshooting permissions](../troubleshooting-guide/permissions.md)
 - [Data sandboxing: setting row-level permissions][sandbox-rows]
 - [Advanced data sandboxing: limiting access to columns][sandbox-columns]
 
-[collections]: 06-collections.md
+[collections]: ./collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-sandboxing]: ./data-sandboxes.md
-[permissions-overview]: ./overview.md
+[permissions-overview]: ./introduction.md
 [sandbox-columns]: /learn/permissions/data-sandboxing-column-permissions.html
 [sandbox-rows]: /learn/permissions/data-sandboxing-row-permissions.html
 [sql-snippet-folders]: ../questions/native-editor/sql-snippets.md

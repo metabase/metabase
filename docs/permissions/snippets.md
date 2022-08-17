@@ -8,7 +8,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="SQL snippet controls" %}
 
-This article covers **SQL snippet folders**, which allow you to organize and set permissions on [SQL snippets](./sql-snippets.md).
+This article covers **SQL snippet folders**, which allow you to organize and set permissions on [SQL snippets](../questions/native-editor/sql-snippets.md).
 
 Folder permissions should not be considered a security feature, but instead a feature that helps organize and standardize snippets. Although folders are distinct and separate from Collections, they both serve an organizational function: Collections gather and permission dashboards and questions; folders gather and permission snippets. For more info, see the [discussion on permissions below](#permissions).
 
@@ -20,21 +20,21 @@ The **Top folder** is the snippet sidebar's default folder. It is the root folde
 
 ### Creating a new SQL snippet folder
 
-You can create a SQL snippet folder from the **Snippets** menu in the [SQL editor](./writing-sql.md).
+You can create a SQL snippet folder from the **Snippets** menu in the [SQL editor](../questions/native-editor/writing-sql.md).
 
-![Create new snippet folder](../images/snippet-folder.png)
+![Create new snippet folder](./images/snippet-folder.png)
 
 1. Click on the **Snippets** menu icon (the snippet icon looks like a block of text or code with three uneven horizontal lines).
 2. Click on the **+** icon and select **New folder**.
 3. Give your folder a name, and optionally **Add a description** and/or place the folder in an existing folder (the **Folder this should be in** option).
 
-![Create new folder modal](../images/create-new-folder-modal.png)
+![Create new folder modal](./images/create-new-folder-modal.png)
 
 ### Creating a new SQL snippet
 
 On [some plans](https://www.metabase.com/pricing), when creating a SQL snippet, you'll also see an additional option to add that snippet to an existing folder (the **Folder this should be in** option).
 
-![Add a snippet enterprise modal](../images/enterprise-add-snippet.png)
+![Add a snippet enterprise modal](./images/enterprise-add-snippet.png)
 
 The default location is the **Top folder**, which is the root folder for all snippets and folders. You can add a snippet to a folder at any time (or relocate a snippet to another folder, provided you have Edit permission to both folders).
 
@@ -42,7 +42,7 @@ Note that snippet names must be unique; folders do not affect this requirement.
 
 ## Permissions
 
-Administrators (and only administrators) can set snippet visibility and editability by placing snippets in **folders**, then granting groups one of three permission levels with respect to those folders. If you're familiar with [collection permissions](../../permissions/collections.md#setting-permissions-for-collections), the functionality is similar. For more on how collection and folder permissions work together, see [how folder permissions work](#how-folder-permissions-work) below.
+Administrators (and only administrators) can set snippet visibility and editability by placing snippets in **folders**, then granting groups one of three permission levels with respect to those folders. If you're familiar with [collection permissions](./collections.md#setting-permissions-for-collections), the functionality is similar. For more on how collection and folder permissions work together, see [how folder permissions work](#how-folder-permissions-work) below.
 
 ### Changing permissions on a folder
 
@@ -54,7 +54,7 @@ When changing permissions on a folder that has sub-folders, you have an option t
 
 ### Options for folder permissions
 
-![Change permissions](../images/change-permissions.png)
+![Change permissions](./images/change-permissions.png)
 
 There are three options for changing snippet folder permissions:
 
@@ -68,7 +68,7 @@ Archiving or unarchiving snippets does not affect a snippet's permissions. If, f
 
 ### How folder permissions work
 
-As with collection permissions, folder permissions are additive, meaning that the more permissive access overrules less permissive access. See [Setting permissions](../../permissions/start.md) for a more detailed discussion.
+As with collection permissions, folder permissions are additive, meaning that the more permissive access overrules less permissive access. See [Setting permissions](./start.md) for a more detailed discussion.
 
 But snippet folder permissions require some more effort to unpack, as permissions for snippet folders must work in conjunction with permissions for data and collections.
 

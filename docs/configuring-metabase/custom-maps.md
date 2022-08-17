@@ -1,5 +1,7 @@
 ---
 title: Custom maps
+redirect_from:
+  - /docs/latest/administration-guide/20-custom-maps
 ---
 
 # Custom maps

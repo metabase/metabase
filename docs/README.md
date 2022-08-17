@@ -77,7 +77,7 @@ title: Metabase documentation
 
 ## Finding things and keeping organized
 
-- [Basic exploration](./exploration-and-organization/basic-exploration.md)
+- [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
 
@@ -97,7 +97,7 @@ title: Metabase documentation
   - [Auth0](./people-and-groups/saml-auth0.md)
   - [Azure AD](./people-and-groups/saml-azure.md)
   - [Google](./people-and-groups/saml-google.md)
-  - [Keycloak](./people-and-group/saml-keycloak.md)
+  - [Keycloak](./people-and-groups/saml-keycloak.md)
   - [Okta](./people-and-groups/saml-okta.md)
 
 ## Permissions

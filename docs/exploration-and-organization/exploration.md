@@ -37,7 +37,8 @@ You can use Models to create derived tables on the fly. See [Models][models].
 [Dashboards][dashboards] are a set of questions and text cards that you want to be able to refer to regularly.
 
 If you click on a part of a chart, such as a bar in a bar chart, or a dot on a line chart, you'll see a the **Action menu**, with actions you can take to dive deeper into that result, branch off from it in a different direction, or create an [X-ray](14-x-rays.md) to see an automatic exploration of the data.
-![Drill through](images/drill-through/drill-through.png)
+
+![Drill through](images/drill-through.png)
 
 In this example of orders by product category over time, clicking on a dot on this line chart gives us the ability to:
 
@@ -49,13 +50,13 @@ In this example of orders by product category over time, clicking on a dot on th
 
 Clicking on a table cell will often allow you to filter the results using a comparison operator, like =, >, or <. For example, you can click on a table cell, and select the less than operator `<` to filter for values that are less than the selected value.
 
-![Comparison operator filters](images/drill-through/comparison-operator-filters.png)
+![Comparison operator filters](images/comparison-operator-filters.png)
 
 Lastly, clicking on the ID of an item in a table gives you the option to go to a detail view for that single record. For example, you can click on a customer's ID to see the profile view for that customer.
 
-![Detail view](images/drill-through/detail-view.png)
+![Detail view](images/detail-view.png)
 
-When you add questions to a dashboard, you can have even more control over what happens when people click on your chart. In addition to the default action menu, you can add a [custom destination](https://www.metabase.com/learn/building-analytics/dashboards/custom-destinations.html) or [update a filter](https://www.metabase.com/learn/building-analytics/dashboards/cross-filtering.html). Check out [interactive dashboards](interactive-dashboards.md). to learn more.
+When you add questions to a dashboard, you can have even more control over what happens when people click on your chart. In addition to the default action menu, you can add a [custom destination](https://www.metabase.com/learn/building-analytics/dashboards/custom-destinations.html) or [update a filter](https://www.metabase.com/learn/building-analytics/dashboards/cross-filtering). Check out [interactive dashboards](../dashboards/interactive.md). to learn more.
 
 ## Exploring saved questions
 
@@ -63,7 +64,7 @@ In Metabase parlance, every chart on a dashboard is called a "question." Clickin
 
 When you're looking at the detail view of a question, you can use all the same actions mentioned above. You can also click on the headings of tables to see more options, like summing the values of a column, or filtering based on that column.
 
-![Heading actions](images/drill-through/heading-actions.png)
+![Heading actions](images/heading-actions.png)
 
 One of our personal favorite ways to explore is with the **Distribution** option. This will show you how many rows there are in a given table, grouped by the column you clicked on. So if you have a Users table, if you click on an Age column and select Distribution, you'll see a bar chart with the count of users you have in each age bracket.
 
@@ -73,7 +74,7 @@ Use the search bar to find dashboards, questions, collections, and pulses. You c
 
 Searches take into account items’ titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display which collection each item is saved in, what kind of object it is, and whether it’s pinned. Note that you'll only ever see items in collections you have permission to view.
 
-![Search results](./images/basic-exploration/search-results.png)
+![Search results](./images/search-results.png)
 
 ## Bookmarks
 
@@ -95,6 +96,6 @@ Some things to remember with bookmarks:
 - Items that you bookmark will get a boost in your search results (but not the search results of other people).
 - To reorder bookmarks, simply drag and drop them in the sidebar.
 
-[collections]: collections.md
-[dashboards]: 07-dashboards.md
+[collections]: ./collections.md
+[dashboards]: ../dashboards/start.md
 [models]: ../data-modeling/models.md

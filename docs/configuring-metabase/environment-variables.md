@@ -48,7 +48,7 @@ Note: This setting is not an idle/inactivity timeout. If you set this to 15 minu
 
 Use [MB_SESSION_COOKIES](#mb_session_cookies) to also expire sessions, when browser is closed.
 
-Also see the [Changing session expiration](changing-session-expiration.md) documentation page.
+Also see the [Changing session expiration](../people-and-groups/changing-session-expiration.md) documentation page.
 
 ### `MB_ADMIN_EMAIL`
 
@@ -451,7 +451,7 @@ Default: `null`
 
 When set, this will encrypt database credentials stored in the application database. Requirement: minimum 16 characters base64-encoded string.
 
-Also see documentation page [Encrypting database details at rest](encrypting-database-details-at-rest.md).
+Also see documentation page [Encrypting database details at rest](../databases/encrypting-details-at-rest.md).
 
 ### `MB_GOOGLE_AUTH_AUTO_CREATE_ACCOUNTS_DOMAIN`
 
@@ -1165,7 +1165,7 @@ Type: string<br>
 Default: `null`<br>
 Since: v44.0
 
-Time before inactive users are logged out. By default, sessions last according to [MAX_SESSION_AGE](#max_session_age) and [MB_SESSION_COOKIES](#max_session_cookies).
+Time before inactive users are logged out. By default, sessions last according to [MAX_SESSION_AGE](#max_session_age) and [MB_SESSION_COOKIES](#mb_session_cookies).
 
 Has to be in the format `"{:amount 60 :unit 'minutes'}"` where the unit is one of "seconds", "minutes" or "hours".
 

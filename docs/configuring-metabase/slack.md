@@ -24,7 +24,7 @@ From any Metabase page, go to **Admin settings** > **Settings** > **Slack**.
 
 Click on **Open Slack Apps**. Metabase will open a new browser tab and send you over to the Slack website to create the Slack app.
 
-On the Slack website, click **Create an App**. 
+On the Slack website, click **Create an App**.
 
 ### Pick a workspace to develop your app
 
@@ -82,11 +82,5 @@ In your Slack workspace, create a public channel named whatever you want — we 
 ## Save your changes in Metabase
 
 In Metabase, click on the **Save changes** button and that’s it! Metabase will automatically run a quick test to check that the API token and your dedicated Slack channel are working properly. If something goes wrong, it'll give you an error message.
-
----
-
-## Next: configuring Metabase
-
-There are a few other settings you configure in Metabase. [Learn how](08-configuration-settings).
 
 [dashboard-subscriptions]: ../dashboards/subscriptions.md

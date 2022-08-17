@@ -18,6 +18,10 @@ Restricting group access to databases, schemas, and tables.
 
 Granting group access to collections of questions, dashboards, models, and sub-collections.
 
+## [SQL snippet folder permissions](./snippets.md)
+
+Organize snippets into folders that require permissions to view.
+
 ## [Application permissions](./application.md)
 
 Granting group access to different Metabase features.

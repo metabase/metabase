@@ -71,7 +71,7 @@ If you can’t solve your problem using the troubleshooting guides:
 [materialize-views-learn]: /learn/administration/making-dashboards-faster.html#materialize-views-create-new-tables-to-store-query-results
 [model-button-image]: /learn/images/models/model-icon.png
 [model-docs]: ../data-modeling/models.md
-[nested-query-settings-docs]: ../configuring-metabase/-settings.md#enabled-nested-queries
+[nested-query-settings-docs]: ../configuring-metabase/settings.md#enabled-nested-queries
 [replicate-database-learn]: /learn/administration/making-dashboards-faster.html#replicate-your-database
 [sql-explain-learn]: /learn/sql-questions/sql-best-practices.html#explain
 [summary-tables-learn]: /learn/administration/making-dashboards-faster.html#aggregate-data-ahead-of-time-with-summary-tables

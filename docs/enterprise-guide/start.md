@@ -10,28 +10,28 @@ The [Enterprise and Pro][pricing] editions of Metabase provide additional featur
 
 Metabase Pro is hosted, so you should already be setup with all the paid features, but you may have to activate a Metabase Enterprise edition to access all the features.
 
-- [Getting and activating the Enterprise edition](activating-the-enterprise-edition.html)
+- [Getting and activating the Enterprise edition](activating-the-enterprise-edition.md)
 
 ## Authentication
 
 Paid plans include more ways to authenticate people and manage groups.
 
-- [Authenticating with SAML](authenticating-with-saml.html)
-  - [Setting up SAML with Auth0](saml-auth0.html)
-  - [Setting up SAML with Azure AD](authenticating-with-saml-azure-ad.html)
-  - [Setting up SAML with Google](saml-google.html)
-  - [Setting up SAML with Keycloak](saml-keycloak.html)
-  - [Setting up SAML with Okta](saml-okta.html)
-- [Authenticating with JWT](authenticating-with-jwt.html)
+- [Authenticating with SAML](../people-and-groups/authenticating-with-saml.md)
+  - [Setting up SAML with Auth0](../people-and-groups/saml-auth0.md)
+  - [Setting up SAML with Azure AD](../people-and-groups/authenticating-with-saml-azure.md)
+  - [Setting up SAML with Google](../people-and-groups/saml-google.html)
+  - [Setting up SAML with Keycloak](../people-and-groups/saml-keycloak.md)
+  - [Setting up SAML with Okta](../people-and-groups/saml-okta.md)
+- [Authenticating with JWT](../people-and-groups/authenticating-with-jwt.md)
 
 ## Permissions
 
 Paid plans include more ways to manage permissions, including data sandboxing, which brings row and column-level permissions to Metabase.
 
-- [Data sandboxes](data-sandboxes.html)
-- [Block permissions](../administration-guide/data-permissions.html#block-access)
-- [SQL snippet controls](sql-snippets.html)
-- [Application permissions](../administration-guide/application-permissions.html)
+- [Data sandboxes](../permissions/data-sandboxes.md)
+- [Block permissions](../permissions/data.md#block-access)
+- [SQL snippet controls](../permissions/snippets.md)
+- [Application permissions](../permissions/application.md)
 
 ## Embedding
 
@@ -49,7 +49,7 @@ Send different groups of people the contents of the dashboard with different fil
 
 ## Official collections
 
-You can mark certain collections as [official](../users-guide/collections.html#official-collections), which helps people find your most important questions, dashboards, and models.
+You can mark certain collections as [official](../exploration-and-organization/collections.md#official-collections), which helps people find your most important questions, dashboards, and models.
 
 ## Question moderation
 
