@@ -593,8 +593,8 @@ function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
               {actions.map(action => (
                 <ActionOption
                   key={action.id}
-                  name={action.card?.name || action.name}
-                  description={action.card?.description || action.description}
+                  name={action.name}
+                  description={action.description}
                   isSelected={clickBehavior.action === action.id}
                   onClick={() =>
                     updateSettings({
@@ -607,15 +607,11 @@ function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
               ))}
               {selectedAction && (
                 <ClickMappings
-                  object={
-                    selectedAction.type === "query"
-                      ? selectedAction.card
-                      : selectedAction
-                  }
+                  isAction
+                  object={selectedAction}
                   dashcard={dashcard}
                   clickBehavior={clickBehavior}
                   updateSettings={updateSettings}
-                  isHTTPAction={selectedAction.type === "http"}
                 />
               )}
             </>

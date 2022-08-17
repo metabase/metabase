@@ -17,14 +17,13 @@ import { TemplateTag } from "metabase-types/types/Query";
 
 import {
   WritebackAction,
-  HttpAction,
-  RowAction,
   ParameterMappings,
   ParametersMappedToValues,
   ParametersSourceTargetMap,
   ActionClickBehaviorData,
   ActionClickExtraData,
   ActionClickBehavior,
+  ActionParameterTuple,
 } from "./types";
 
 const DB_WRITEBACK_FEATURE = "actions";
@@ -57,7 +56,7 @@ const isAutomaticDateTimeField = (field: Field) => {
   return AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type);
 };
 
-const isEditableField = (field: Field) => {
+export const isEditableField = (field: Field) => {
   const isRealField = typeof field.id === "number";
   if (!isRealField) {
     // Filters out custom, aggregated columns, etc.
@@ -78,18 +77,6 @@ const isEditableField = (field: Field) => {
   return true;
 };
 
-const isQueryAction = (
-  action: WritebackAction,
-): action is WritebackAction & RowAction => {
-  return action.type === "query";
-};
-
-const isHttpAction = (
-  action: WritebackAction,
-): action is WritebackAction & HttpAction => {
-  return action.type === "http";
-};
-
 export const isActionButtonDashCard = (dashCard: DashCard) =>
   dashCard.visualization_settings?.virtual_card?.display === "action-button";
 
@@ -99,19 +86,6 @@ export const getActionButtonEmitterId = (dashCard: DashCard) =>
 export const getActionButtonActionId = (dashCard: DashCard) =>
   dashCard.visualization_settings?.click_behavior?.action;
 
-export function getActionTemplateTagType(tag: TemplateTag) {
-  const { type } = tag;
-  if (type === "date") {
-    return "date/single";
-  } else if (type === "text") {
-    return "string/=";
-  } else if (type === "number") {
-    return "number/=";
-  } else {
-    return "string/=";
-  }
-}
-
 export function getActionParameterType(parameter: Parameter) {
   const { type } = parameter;
   if (type === "category") {
@@ -120,42 +94,40 @@ export function getActionParameterType(parameter: Parameter) {
   return type;
 }
 
-const getQueryActionParameterMappings = (
-  action: WritebackAction & RowAction,
-) => {
-  const templateTags = Object.values(
-    action.card.dataset_query.native["template-tags"],
-  );
+function isParametersTuple(
+  listOrListOfTuples: ActionParameterTuple[] | Parameter[],
+): listOrListOfTuples is ActionParameterTuple[] {
+  const [sample] = listOrListOfTuples;
+  if (!sample) {
+    return false;
+  }
+  return Array.isArray(sample);
+}
 
-  const parameterMappings: ParameterMappings = {};
-
-  templateTags.forEach(tag => {
-    parameterMappings[tag.id] = getTemplateTagParameterTarget(tag);
+function getParametersFromTuples(
+  parameterTuples: ActionParameterTuple[] | Parameter[],
+): Parameter[] {
+  if (!isParametersTuple(parameterTuples)) {
+    return parameterTuples;
+  }
+  return parameterTuples.map(tuple => {
+    const [, parameter] = tuple;
+    return parameter;
   });
+}
 
-  return parameterMappings;
-};
-
-const getHttpActionParameterMappings = (
-  action: WritebackAction & HttpAction,
-) => {
-  const parameters = Object.values(action.template.parameters);
+export const getActionEmitterParameterMappings = (action: WritebackAction) => {
+  const parameters = getParametersFromTuples(action.parameters);
   const parameterMappings: ParameterMappings = {};
 
   parameters.forEach(parameter => {
     parameterMappings[parameter.id] = [
       "variable",
-      ["template-tag", parameter.name],
+      ["template-tag", parameter.slug],
     ];
   });
 
   return parameterMappings;
-};
-
-export const getActionEmitterParameterMappings = (action: WritebackAction) => {
-  return isQueryAction(action)
-    ? getQueryActionParameterMappings(action)
-    : getHttpActionParameterMappings(action);
 };
 
 export function getHttpActionTemplateTagParameter(
@@ -185,90 +157,51 @@ export function getActionParameters(
 ) {
   const action = extraData.actions[clickBehavior.action];
 
-  const isQueryAction = action.type === "query";
-  const tagsMap = isQueryAction
-    ? action.card.dataset_query.native["template-tags"]
-    : action.template.parameters;
-  const templateTags = Object.values(tagsMap);
-
-  const parameters: ParametersMappedToValues = {};
+  const parameters = getParametersFromTuples(action.parameters);
+  const parameterValuesMap: ParametersMappedToValues = {};
 
   Object.values(parameterMapping).forEach(({ id, source, target }) => {
-    const targetTemplateTag = templateTags.find(tag => tag.id === id);
+    const targetParameter = parameters.find(parameter => parameter.id === id);
+    if (targetParameter) {
+      const result = formatSourceForTarget(source, target, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+      // For some reason it's sometimes [1] and sometimes just 1
+      const value = Array.isArray(result) ? result[0] : result;
 
-    const result = formatSourceForTarget(source, target, {
-      data,
-      extraData,
-      clickBehavior,
-    });
-    // For some reason it's sometimes [1] and sometimes just 1
-    const value = Array.isArray(result) ? result[0] : result;
-
-    parameters[id] = {
-      value,
-      type: isQueryAction
-        ? getActionTemplateTagType(targetTemplateTag)
-        : getActionParameterType(targetTemplateTag),
-    };
-  });
-
-  return parameters;
-}
-
-function getNotProvidedQueryActionParameters(
-  action: RowAction,
-  parameters: ParametersMappedToValues,
-) {
-  const mappedParameterIDs = Object.keys(parameters);
-
-  const emptyParameterIDs: ParameterId[] = [];
-  mappedParameterIDs.forEach(parameterId => {
-    const { value } = parameters[parameterId];
-    if (value === undefined) {
-      emptyParameterIDs.push(parameterId);
+      parameterValuesMap[id] = {
+        value,
+        type: getActionParameterType(targetParameter),
+      };
     }
   });
 
-  const tagsMap = action.card.dataset_query.native["template-tags"];
-  const templateTags = Object.values(tagsMap);
-
-  return templateTags.filter(tag => {
-    if (!tag.required) {
-      return false;
-    }
-    const isNotMapped = !mappedParameterIDs.includes(tag.id);
-    const isMappedButNoValue = emptyParameterIDs.includes(tag.id);
-    return isNotMapped || isMappedButNoValue;
-  });
-}
-
-function getNotProvidedHTTPActionParameters(
-  action: HttpAction,
-  parameters: ParametersMappedToValues,
-) {
-  const mappedParameterIDs = Object.keys(parameters);
-
-  const emptyParameterIDs: ParameterId[] = [];
-  mappedParameterIDs.forEach(parameterId => {
-    const { value } = parameters[parameterId];
-    if (value === undefined) {
-      emptyParameterIDs.push(parameterId);
-    }
-  });
-
-  const allParameters = Object.values(action.parameters);
-  return allParameters.filter(parameter => {
-    const isNotMapped = !mappedParameterIDs.includes(parameter.id);
-    const isMappedButNoValue = emptyParameterIDs.includes(parameter.id);
-    return isNotMapped || isMappedButNoValue;
-  });
+  return parameterValuesMap;
 }
 
 export function getNotProvidedActionParameters(
   action: WritebackAction,
-  parameters: ParametersMappedToValues,
+  parameterValuesMap: ParametersMappedToValues,
 ) {
-  return action.type === "query"
-    ? getNotProvidedQueryActionParameters(action, parameters)
-    : getNotProvidedHTTPActionParameters(action, parameters);
+  const parameters = getParametersFromTuples(action.parameters);
+  const mappedParameterIDs = Object.keys(parameterValuesMap);
+
+  const emptyParameterIDs: ParameterId[] = [];
+  mappedParameterIDs.forEach(parameterId => {
+    const { value } = parameterValuesMap[parameterId];
+    if (value === undefined) {
+      emptyParameterIDs.push(parameterId);
+    }
+  });
+
+  return parameters.filter(parameter => {
+    if ("default" in parameter) {
+      return false;
+    }
+    const isNotMapped = !mappedParameterIDs.includes(parameter.id);
+    const isMappedButNoValue = emptyParameterIDs.includes(parameter.id);
+    return isNotMapped || isMappedButNoValue;
+  });
 }
