@@ -20,9 +20,6 @@
 (use-fixtures :each (fn [thunk]
                       (mt/suppress-output (thunk))))
 
-(use-fixtures :each (fn [thunk]
-                      (thunk)))
-
 (defn- card-metadata [card]
   (db/select-one-field :result_metadata Card :id (u/the-id card)))
 
