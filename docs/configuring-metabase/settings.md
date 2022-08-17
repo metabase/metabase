@@ -44,7 +44,7 @@ This option turns determines whether or not you allow [anonymous data about your
 
 ### Enable X-rays
 
-[X-rays](../users-guide/14-x-rays.md) are a great way to allow your users to quickly explore your data or interesting parts of charts, or to see a comparison of different things. But if you're dealing with data sources where allowing users to run x-rays on them would incur burdonsome performance or monetary costs, you can turn them off here.
+[X-rays](../exploration-and-organization/x-rays.md) are a great way to allow your users to quickly explore your data or interesting parts of charts, or to see a comparison of different things. But if you're dealing with data sources where allowing users to run x-rays on them would incur burdonsome performance or monetary costs, you can turn them off here.
 
 ### Enabled Nested Queries
 
@@ -55,9 +55,3 @@ By default, Metabase allows your users to use a previously saved question as a s
 By default, Metabase attempts to make field and table names more readable by changing things like `somehorriblename` to `Some Horrible Name`. This does not work well for languages other than English, or for fields that have lots of abbreviations or codes in them. If you'd like to turn this setting off, you can do so from the Admin Panel under Settings > General > Friendly Table and Field Names.
 
 To manually fix field or table names if they still look wrong, you can go to the Metadata section of the Admin Panel, select the database that contains the table or field you want to edit, select the table, and then edit the name(s) in the input boxes that appear.
-
----
-
-## Next: Formatting data
-
-Customize the default language for Metabase, as well as how numbers, dates, times, and currencies should be displayed in Metabase with [formatting settings](19-formatting-settings.md).

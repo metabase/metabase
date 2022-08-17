@@ -28,7 +28,7 @@ These are special collections, in that they have a badge to let people know that
 
 ## Collection permissions
 
-[Administrators can give you different kinds of access](../administration-guide/06-collections.md) to each collection:
+[Administrators can give you different kinds of access](../permissions/collections.md) to each collection:
 
 - **View access:** you can see the collection and its contents, but you can't modify anything or put anything new into the collection.
 - **Curate access:** you can edit, move, or archive the collection and its contents. You can also move or save new things in it and create new collections inside of it, and can also pin items in the collection to the top of the screen. Only administrators can edit permissions for collections, however.
@@ -48,7 +48,7 @@ In each collection, you can pin important or useful dashboards, models, and ques
 
 Any dashboards that are pinned in the main "Our analytics" collection will also show up on the homepage.
 
-If you just want to organize _your_ favorite items, you should [bookmark them](./basic-exploration.md#bookmarks) (only you can see your bookmarks).
+If you just want to organize _your_ favorite items, you should [bookmark them](./exploration.md#bookmarks) (only you can see your bookmarks).
 
 ## Moving items from collection to collection
 
@@ -70,9 +70,5 @@ If you have second thoughts and want to bring an archived item back, you can see
 
 You can add events to collections, and organize those events into timelines. See [Events and timelines](events-and-timelines.md).
 
-## Next: creating dashboards
-
-Next, we'll learn about [creating dashboards and adding questions to them][dashboards].
-
-[dashboards]: dashboards/introduction.md
+[dashboards]: ../dashboards/introduction.md
 [models]: ../data-modeling/models.md

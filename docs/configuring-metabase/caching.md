@@ -35,7 +35,3 @@ Lastly, you can set the maximum size of each question's cache in kilobytes, to p
 ## Advanced caching controls
 
 Paid plans ship with [additional caching options](../enterprise-guide/cache.md).
-
-## Next: map customization
-
-If you need to use a map tile server other than the one Metabase provides, you can find more information [on the next page](20-custom-maps.md).

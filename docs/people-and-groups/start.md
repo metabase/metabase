@@ -23,9 +23,9 @@ We recommend that you set up [Single Sign-on][sso-def] for your Metabase install
 - [Google Sign-in][google-sign-in]
 - [LDAP][ldap]
 
-### SSO for Metabase paid versions
+### SSO for Metabase paid plans
 
-With paid versions, you have more options to help manage lots of people and groups.
+With some paid plans, you have more options to help orchestrate lots of people and groups.
 
 - [JWT][jwt]
 - LDAP advanced features
