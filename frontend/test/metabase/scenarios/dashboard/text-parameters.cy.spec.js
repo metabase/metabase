@@ -12,9 +12,7 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
-// Disabling for now as parameters in text cards
-// are currently conflicting with writeback's own implementation
-describe.skip("scenarios > dashboard > parameters in text cards", () => {
+describe("scenarios > dashboard > parameters in text cards", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
