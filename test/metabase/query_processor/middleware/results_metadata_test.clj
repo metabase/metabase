@@ -20,6 +20,9 @@
 (use-fixtures :each (fn [thunk]
                       (mt/suppress-output (thunk))))
 
+(use-fixtures :each (fn [thunk]
+                      (thunk)))
+
 (defn- card-metadata [card]
   (db/select-one-field :result_metadata Card :id (u/the-id card)))
 
@@ -259,22 +262,24 @@
                    (select-keys-to-compare expected-cols)))))
 
         (testing "results_metadata shouldn't contains remapped fields (#23449)"
-          (testing "using fk"
-            (mt/with-column-remappings [reviews.product_id products.title]
-              (let [results-metadata        (get-in (mt/run-mbql-query reviews {:limit 10})
-                                                    [:data :results_metadata :columns])
-                    expected-cols           (qp/query->expected-cols (mt/mbql-query reviews))
-                    remove-remapped-columns (fn [cols]
-                                              (filter #(nil? (get-in % [:options ::qp.add-dimension-projections/new-field-dimension-id])) cols))]
-                (testing "there is a remapped column in the expected-cols"
-                  (is (= "TITLE"
-                         (->> expected-cols
-                              (filter #(get-in % [:options ::qp.add-dimension-projections/new-field-dimension-id]))
-                              first
-                              :name))))
-                (testing "but there are none in the saved results-metadata"
-                  (is (= (select-keys-to-compare results-metadata)
-                         (select-keys-to-compare (remove-remapped-columns expected-cols)))))))))))))
+          (mt/with-column-remappings [reviews.product_id products.title]
+            (let [results-metadata        (get-in (mt/run-mbql-query reviews {:limit 10})
+                                                  [:data :results_metadata :columns])
+                  expected-cols           (qp/query->expected-cols (mt/mbql-query reviews))
+                  remove-remapped-columns (fn [cols]
+                                            (filter #(nil? (get-in % [:options ::qp.add-dimension-projections/new-field-dimension-id])) cols))]
+              (testing "there is a remapped column in the expected-cols"
+                (is (= "TITLE"
+                       (->> expected-cols
+                            (filter #(get-in % [:options ::qp.add-dimension-projections/new-field-dimension-id]))
+                            first
+                            :name))))
+              (testing "the number of columns in results_metadata is exactly the number of columns in DB"
+                (is (= 6 ;; for the reviews table
+                       (count results-metadata))))
+              (testing "but there are none in the saved results-metadata"
+                (is (= (select-keys-to-compare results-metadata)
+                       (select-keys-to-compare (remove-remapped-columns expected-cols))))))))))))
 
 (deftest field-refs-should-be-correct-fk-forms-test
   (testing "Field refs included in results metadata should be wrapped correctly e.g. in `fk->` form"
