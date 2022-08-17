@@ -179,14 +179,12 @@ export default class DashCard extends Component {
       parameterValues,
     );
 
-    const isStandardCRUDActionsRow = mainCard.display === "actions";
     const isActionButton = mainCard.display === "action-button";
 
     const hideBackground =
       !isEditing &&
       (mainCard.visualization_settings["dashcard.background"] === false ||
         mainCard.display === "list" ||
-        isStandardCRUDActionsRow ||
         isActionButton);
 
     const isEditingDashboardLayout =

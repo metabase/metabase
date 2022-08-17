@@ -61,7 +61,7 @@ export function getParameterMappingOptions(
     return tagNames ? tagNames.map(buildTextTagOption) : [];
   }
 
-  if (card.display === "actions" || card.display === "action-button") {
+  if (card.display === "action-button") {
     // action cards don't have parameters
     return [];
   }

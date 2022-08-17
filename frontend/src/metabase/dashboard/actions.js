@@ -309,26 +309,6 @@ export const addTextDashCardToDashboard = function ({ dashId }) {
   });
 };
 
-export const addActionsDashCardToDashboard = ({ dashId }) => {
-  const virtualActionsCard = {
-    ...createCard(),
-    display: "actions",
-    archived: false,
-  };
-  const dashcardOverrides = {
-    card: virtualActionsCard,
-    sizeX: 5,
-    sizeY: 1,
-    visualization_settings: {
-      virtual_card: virtualActionsCard,
-    },
-  };
-  return addDashCardToDashboard({
-    dashId: dashId,
-    dashcardOverrides: dashcardOverrides,
-  });
-};
-
 export const addActionButtonDashCardToDashboard = ({ dashId }) => {
   const virtualActionsCard = {
     ...createCard(),
