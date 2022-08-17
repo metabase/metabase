@@ -84,6 +84,26 @@ const nullCategoryField = new Field({
   metadata,
 });
 
+const remappedCategoryField = new Field({
+  database_type: "test",
+  semantic_type: "type/Category",
+  effective_type: "type/Text",
+  base_type: "type/Text",
+  table_id: 8,
+  name: "small_category_field",
+  has_field_values: "list",
+  values: [
+    ["Michaelangelo", "party turtle"],
+    ["Donatello", "engineer turtle"],
+    ["Raphael", "cool turtle"],
+    ["Leonardo", "leader turtle"],
+  ],
+  dimensions: {},
+  dimension_options: [],
+  id: 141,
+  metadata,
+});
+
 // @ts-ignore
 metadata.fields[smallCategoryField.id] = smallCategoryField;
 // @ts-ignore
@@ -92,6 +112,8 @@ metadata.fields[largeCategoryField.id] = largeCategoryField;
 metadata.fields[emptyCategoryField.id] = emptyCategoryField;
 // @ts-ignore
 metadata.fields[nullCategoryField.id] = nullCategoryField;
+// @ts-ignore
+metadata.fields[remappedCategoryField.id] = remappedCategoryField;
 
 const card = {
   dataset_query: {
@@ -111,6 +133,7 @@ const smallDimension = smallCategoryField.dimension();
 const largeDimension = largeCategoryField.dimension();
 const emptyDimension = emptyCategoryField.dimension();
 const nullDimension = nullCategoryField.dimension();
+const remappedDimension = remappedCategoryField.dimension();
 
 describe("InlineCategoryPicker", () => {
   beforeEach(() => {
@@ -264,6 +287,33 @@ describe("InlineCategoryPicker", () => {
     expect(screen.getByLabelText("Leonardo")).toBeChecked();
     expect(screen.getByLabelText("Raphael")).not.toBeChecked();
     expect(screen.getByLabelText("Michaelangelo")).not.toBeChecked();
+  });
+
+  it("should display remapped field values if present", () => {
+    const testFilter = new Filter(
+      ["=", ["field", remappedCategoryField.id, null], "Donatello", "Leonardo"],
+      null,
+      query,
+    );
+    const changeSpy = jest.fn();
+    const fetchSpy = jest.fn();
+
+    render(
+      <InlineCategoryPickerComponent
+        filter={testFilter}
+        newFilter={testFilter}
+        onChange={changeSpy}
+        fieldValues={remappedCategoryField.values}
+        fetchFieldValues={fetchSpy}
+        dimension={remappedDimension}
+      />,
+    );
+
+    screen.getByTestId("category-picker");
+    expect(screen.getByLabelText("engineer turtle")).toBeChecked();
+    expect(screen.getByLabelText("leader turtle")).toBeChecked();
+    expect(screen.getByLabelText("cool turtle")).not.toBeChecked();
+    expect(screen.getByLabelText("party turtle")).not.toBeChecked();
   });
 
   it("should save a filter based on selection", () => {

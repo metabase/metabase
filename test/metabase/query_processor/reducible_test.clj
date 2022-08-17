@@ -11,7 +11,7 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
-(defn- print-rows-rff [metadata]
+(defn- print-rows-rff [_metadata]
   (fn
     ([] 0)
 

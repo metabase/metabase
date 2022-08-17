@@ -8,7 +8,7 @@ import Form, {
   FormField,
   FormSubmit,
   FormMessage,
-} from "metabase/containers/Form";
+} from "metabase/containers/FormikForm";
 
 import { updateSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
@@ -38,6 +38,7 @@ class SettingsGoogleForm extends Component {
         style={{ maxWidth: 520 }}
         initialValues={initialValues}
         onSubmit={updateSettings}
+        overwriteOnInitialValuesChange
       >
         <Breadcrumbs
           crumbs={[

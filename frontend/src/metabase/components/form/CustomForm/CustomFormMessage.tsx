@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import FormMessage from "metabase/components/form/FormMessage";
 
-import { FormLegacyContext, LegacyContextTypes } from "./types";
+import { CustomFormLegacyContext, LegacyContextTypes } from "./types";
 
 export interface CustomFormMessageProps {
   className?: string;
@@ -13,7 +13,7 @@ export interface CustomFormMessageProps {
 function CustomFormMessage({
   error,
   ...props
-}: CustomFormMessageProps & FormLegacyContext) {
+}: CustomFormMessageProps & CustomFormLegacyContext) {
   if (error) {
     return <FormMessage {...props} message={error} />;
   }
@@ -22,7 +22,7 @@ function CustomFormMessage({
 
 const CustomFormMessageLegacyContext = (
   props: CustomFormMessageProps,
-  context: FormLegacyContext,
+  context: CustomFormLegacyContext,
 ) => <CustomFormMessage {...props} {...context} />;
 
 CustomFormMessageLegacyContext.contextTypes = _.pick(

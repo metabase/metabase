@@ -50,6 +50,8 @@ import {
   canManageSubscriptions,
 } from "metabase/selectors/user";
 
+import { getEmbedOptions } from "metabase/selectors/embed";
+
 import * as dashboardActions from "../actions";
 import { parseHashOptions } from "metabase/lib/browser";
 import * as Urls from "metabase/lib/urls";
@@ -87,6 +89,7 @@ const mapStateToProps = (state, props) => {
     isLoadingComplete: getIsLoadingComplete(state),
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
+    embedOptions: getEmbedOptions(state),
   };
 };
 

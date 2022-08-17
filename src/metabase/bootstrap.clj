@@ -13,4 +13,4 @@
 (defn -main
   "Main entrypoint. Invokes [[metabase.core/-main]]"
   [& args]
-  ((requiring-resolve 'metabase.core/-main) args))
+  (apply (requiring-resolve 'metabase.core/-main) args))

@@ -1018,15 +1018,6 @@ describe("Question", () => {
   });
 
   describe("Question.prototype.parameters", () => {
-    const fakeMetadata = {
-      fields: {
-        1: { id: 1 },
-      },
-      field(id) {
-        return this.fields[id];
-      },
-    };
-
     it("should return an empty array if no parameters are set on the structured question", () => {
       const question = new Question(card, metadata);
       expect(question.parameters()).toEqual([]);
@@ -1046,7 +1037,7 @@ describe("Question", () => {
                 id: "bbb",
                 type: "dimension",
                 "widget-type": "category",
-                dimension: ["field", 1, null],
+                dimension: ["field", PRODUCTS.CATEGORY.id, null],
               },
               bar: {
                 name: "bar",
@@ -1059,17 +1050,14 @@ describe("Question", () => {
         },
       };
 
-      const question = new Question(
-        nativeQuestionWithTemplateTags,
-        fakeMetadata,
-      );
+      const question = new Question(nativeQuestionWithTemplateTags, metadata);
       expect(question.parameters()).toEqual([
         {
           default: undefined,
           fields: [
-            {
-              id: 1,
-            },
+            expect.objectContaining({
+              id: PRODUCTS.CATEGORY.id,
+            }),
           ],
           hasVariableTemplateTagTarget: false,
           id: "bbb",
@@ -1091,13 +1079,13 @@ describe("Question", () => {
     });
 
     it("should return a question's parameters + metadata and the parameter's value if present", () => {
-      const question = new Question(card, fakeMetadata)
+      const question = new Question(card, metadata)
         .setParameters([
           {
             type: "category",
             name: "foo",
             id: "foo_id",
-            target: ["dimension", ["field", 1, null]],
+            target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
           },
           {
             type: "category",
@@ -1115,9 +1103,13 @@ describe("Question", () => {
           type: "category",
           name: "foo",
           id: "foo_id",
-          target: ["dimension", ["field", 1, null]],
+          target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
           value: "abc",
-          fields: [{ id: 1 }],
+          fields: [
+            expect.objectContaining({
+              id: PRODUCTS.CATEGORY.id,
+            }),
+          ],
           hasVariableTemplateTagTarget: false,
         },
         {

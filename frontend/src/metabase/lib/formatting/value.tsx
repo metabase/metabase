@@ -53,7 +53,7 @@ export function formatValue(value: unknown, options: OptionsType = {}) {
       view_as: null, // turns off any link rendering
     };
   }
-  const formatted: any = formatValueRaw(value, options);
+  const formatted = formatValueRaw(value, options);
   let maybeJson = {};
   try {
     maybeJson = JSON.parse(value as string);
@@ -114,7 +114,10 @@ export function getRemappedValue(
   }
 }
 
-export function formatValueRaw(value: unknown, options: OptionsType = {}) {
+export function formatValueRaw(
+  value: unknown,
+  options: OptionsType = {},
+): React.ReactElement | Moment | string | number | null {
   options = {
     jsx: false,
     remap: true,
@@ -151,7 +154,7 @@ export function formatValueRaw(value: unknown, options: OptionsType = {}) {
   ) {
     return renderLinkTextForClick(
       options.click_behavior.linkTextTemplate,
-      getDataFromClicked(options.clicked),
+      getDataFromClicked(options.clicked) as any,
     );
   } else if (
     (isURL(column) && options.view_as !== null) ||
@@ -163,14 +166,18 @@ export function formatValueRaw(value: unknown, options: OptionsType = {}) {
   } else if (isTime(column)) {
     return formatTime(value as Moment);
   } else if (column && column.unit != null) {
-    return formatDateTimeWithUnit(value, column.unit, options);
+    return formatDateTimeWithUnit(
+      value as string | number,
+      column.unit,
+      options,
+    );
   } else if (
     isDate(column) ||
     moment.isDate(value) ||
     moment.isMoment(value) ||
     moment(value as string, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
   ) {
-    return formatDateTimeWithUnit(value, "minute", options);
+    return formatDateTimeWithUnit(value as string | number, "minute", options);
   } else if (typeof value === "string") {
     if (column?.semantic_type != null) {
       return value;

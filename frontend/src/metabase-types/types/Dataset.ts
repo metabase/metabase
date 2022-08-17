@@ -1,3 +1,8 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 import { ISO8601Time } from ".";
 import { FieldId } from "./Field";
 import { DatasetQuery } from "./Card";

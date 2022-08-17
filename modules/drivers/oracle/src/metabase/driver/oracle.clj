@@ -68,7 +68,7 @@
   [_ column-type]
   (database-type->base-type column-type))
 
-(defn- non-ssl-spec [details spec host port sid service-name]
+(defn- non-ssl-spec [_details spec host port sid service-name]
   (assoc spec :subname (str "@" host
                             ":" port
                             (when sid
@@ -461,7 +461,7 @@
     (.getString rs i)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPTZ]
-  [driver ^ResultSet rs _ ^Integer i]
+  [_driver ^ResultSet rs _ ^Integer i]
   ;; Oracle `TIMESTAMPTZ` types can have either a zone offset *or* a zone ID; you could fetch either `OffsetDateTime`
   ;; or `ZonedDateTime` using `.getObject`, but fetching the wrong type will result in an Exception, meaning we have
   ;; try both and wrap the first in a try-catch. As far as I know there's now way to tell whether the value has a zone

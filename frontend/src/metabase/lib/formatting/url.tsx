@@ -53,7 +53,10 @@ function getLinkText(value: string, options: OptionsType) {
   const hasCustomizedText = link_text && clicked;
 
   if (isExplicitLink && hasCustomizedText) {
-    return renderLinkTextForClick(link_text, getDataFromClicked(clicked));
+    return renderLinkTextForClick(
+      link_text,
+      getDataFromClicked(clicked) as any,
+    );
   }
 
   return (
@@ -70,7 +73,7 @@ function getLinkUrl(
   const hasCustomizedUrl = link_url && clicked;
 
   if (isExplicitLink && hasCustomizedUrl) {
-    return renderLinkURLForClick(link_url, getDataFromClicked(clicked));
+    return renderLinkURLForClick(link_url, getDataFromClicked(clicked) as any);
   }
 
   const protocol = getUrlProtocol(value);

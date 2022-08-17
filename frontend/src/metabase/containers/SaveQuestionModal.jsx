@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { CSSTransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 
-import Form, { FormField, FormFooter } from "metabase/containers/Form";
+import Form, { FormField, FormFooter } from "metabase/containers/FormikForm";
 import ModalContent from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
 import * as Q_DEPRECATED from "metabase/lib/query";
@@ -25,8 +25,8 @@ export default class SaveQuestionModal extends Component {
     multiStep: PropTypes.bool,
   };
 
-  validateName = (name, context) => {
-    if (context.form.saveType.value !== "overwrite") {
+  validateName = (name, { values }) => {
+    if (values.saveType !== "overwrite") {
       // We don't care if the form is valid when overwrite mode is enabled,
       // as original question's data will be submitted instead of the form values
       return validate.required()(name);

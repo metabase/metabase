@@ -94,7 +94,7 @@ psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
 ```
 ### Testing the connection status
 
-1. Go to the Metabase [SQL editor](../users-guide/writing-sql.html).
+1. Go to the Metabase [SQL editor](../questions/native-editor/writing-sql.md).
 2. Test the connection to your database by running:
     ```
     SELECT 1
@@ -108,4 +108,4 @@ If you can’t solve your problem using the troubleshooting guides:
 - Search for [known bugs or limitations][known-issues].
 
 [discourse]: https://discourse.metabase.com/
-[known-issues]: ./known-issues.html
+[known-issues]: ./known-issues.md

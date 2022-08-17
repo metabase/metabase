@@ -51,7 +51,7 @@ const checkIfParametersWidgetShouldBeSticky = dashboard => {
 
   const offsetTop = getOffsetTop(dashboard);
 
-  return getMainElement().scrollTop >= offsetTop;
+  return getMainElement().scrollTop > offsetTop;
 };
 
 const updateParametersAndCardsContainerStyle = (dashboard, shouldBeSticky) => {

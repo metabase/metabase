@@ -363,6 +363,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+;; TODO -- I think we should rename this to `features` since `driver/driver-features` is a bit redundant.
 (def driver-features
   "Set of all features a driver can support."
   #{

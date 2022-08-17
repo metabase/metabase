@@ -137,6 +137,7 @@ class QuestionInner {
         fields: {},
         metrics: {},
         segments: {},
+        questions: {},
       });
     this._parameterValues = parameterValues || {};
     this._update = update;

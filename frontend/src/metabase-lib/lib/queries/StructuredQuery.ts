@@ -331,6 +331,7 @@ class StructuredQueryInner extends AtomicQuery {
 
     if (sourceQuery) {
       return new Table({
+        id: this.sourceTableId(),
         name: "",
         display_name: "",
         db: sourceQuery.database(),

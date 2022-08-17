@@ -107,7 +107,7 @@
           card-ids))
 
 (defmulti ^:private assert-loaded-entity
-  (fn [entity fingerprint]
+  (fn [entity _fingerprint]
     (type entity)))
 
 (defmethod assert-loaded-entity (type Card)
@@ -123,7 +123,7 @@
               [col-key col-val] col
               col-ref (mb.viz/parse-db-column-ref col-key)
               {:keys [::mb.viz/field-id]} col-ref
-              [{col-name :name col-field-ref :fieldRef col-enabled :enabled :as tbl-col} & _] (:table.columns vs)
+              [{col-name :name col-field-ref :fieldRef col-enabled :enabled :as _tbl-col} & _] (:table.columns vs)
               [_ col-field-id _] col-field-ref]
           (is (some? (:table.columns vs)))
           (is (some? (:column_settings vs)))
@@ -381,7 +381,7 @@
             (doseq [[model entity] (:entities fingerprint)]
               (testing (format "%s \"%s\"" (type model) (:name entity))
                 (is (or (-> entity :name nil?)
-                        (if-let [loaded (db/select-one model :name (:name entity))]
+                        (when-let [loaded (db/select-one model :name (:name entity))]
                           (assert-loaded-entity loaded fingerprint))
                         (and (-> entity :archived) ; archived card hasn't been dump-loaded
                              (= (:name entity) "My Arch Card"))

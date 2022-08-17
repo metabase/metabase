@@ -2,15 +2,18 @@
 import React from "react";
 import { connect } from "react-redux";
 
-import FilterList from "./FilterList";
 import { getMetadata } from "metabase/selectors/metadata";
+import Question from "metabase-lib/lib/Question";
+
+import FilterList from "./FilterList";
 
 function QueryDefinition({ className, object, metadata }) {
-  const query = metadata
-    .question({
+  const query = new Question(
+    {
       dataset_query: { type: "query", query: object.definition },
-    })
-    .query();
+    },
+    metadata,
+  ).query();
   const aggregations = query.aggregations();
   const filters = query.filters();
   return (

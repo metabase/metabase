@@ -13,7 +13,11 @@ import {
 } from "metabase/parameters/utils/dashboards";
 import Field from "metabase-lib/lib/metadata/Field";
 
-import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
+import {
+  SAMPLE_DATABASE,
+  PRODUCTS,
+  metadata,
+} from "__support__/sample_database_fixture";
 
 describe("metabase/parameters/utils/dashboards", () => {
   describe("createParameter", () => {
@@ -590,11 +594,7 @@ describe("metabase/parameters/utils/dashboards", () => {
   });
 
   describe("getTargetField", () => {
-    const target = ["dimension", ["field", 4, null]];
-
-    const metadata = {
-      field: jest.fn(),
-    };
+    const target = ["dimension", ["field", PRODUCTS.CATEGORY.id, null]];
 
     it("should return null when given a card without a `dataset_query`", () => {
       const card = {
@@ -605,29 +605,22 @@ describe("metabase/parameters/utils/dashboards", () => {
     });
 
     it("should return the field that maps to the mapping target", () => {
-      const field = {
-        id: 4,
-        name: "foo",
-      };
-
-      metadata.field.mockImplementation(id => {
-        if (id === 4) {
-          return field;
-        }
-      });
+      const field = PRODUCTS.CATEGORY;
 
       const card = {
         id: 1,
         dataset_query: {
           type: "query",
-          database: 1,
+          database: SAMPLE_DATABASE.id,
           query: {
-            "source-table": 1,
+            "source-table": PRODUCTS.id,
           },
         },
       };
 
-      expect(getTargetField(target, card, metadata)).toEqual(field);
+      expect(getTargetField(target, card, metadata)).toEqual(
+        expect.objectContaining({ id: field.id }),
+      );
     });
   });
 

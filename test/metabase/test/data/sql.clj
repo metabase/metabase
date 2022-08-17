@@ -7,8 +7,7 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.query-processor :as qp]
             [metabase.test.data :as data]
-            [metabase.test.data.interface :as tx])
-  (:import metabase.test.data.interface.FieldDefinition))
+            [metabase.test.data.interface :as tx]))
 
 (driver/register! :sql/test-extensions, :abstract? true)
 
@@ -46,9 +45,9 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod qualified-name-components :sql/test-extensions
-  ([_ db-name]                       [db-name])
-  ([_ db-name table-name]            [table-name])
-  ([_ db-name table-name field-name] [table-name field-name]))
+  ([_ db-name]                        [db-name])
+  ([_ _db-name table-name]            [table-name])
+  ([_ _db-name table-name field-name] [table-name field-name]))
 
 (defn qualify-and-quote
   "Qualify names and combine into a single, quoted string. By default, this passes the results of
@@ -199,7 +198,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod create-table-sql :sql/test-extensions
-  [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions table-comment]}]
+  [driver {:keys [database-name], :as _dbdef} {:keys [table-name field-definitions table-comment]}]
   (let [quot          #(sql.u/quote-name driver :field (ddl.i/format-name driver %))
         pk-field-name (quot (pk-field-name driver))]
     (format "CREATE TABLE %s (%s %s, %s, PRIMARY KEY (%s)) %s;"
@@ -246,7 +245,7 @@
 
 (defmulti add-fk-sql
   "Return a `ALTER TABLE ADD CONSTRAINT FOREIGN KEY` statement."
-  {:arglists '([driver dbdef tabledef, ^FieldDefinition fielddef])}
+  {:arglists '([driver dbdef tabledef fielddef])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -267,7 +266,7 @@
             (quot :field (pk-field-name driver)))))
 
 (defmethod tx/count-with-template-tag-query :sql/test-extensions
-  [driver table field param-type]
+  [driver table field _param-type]
   ;; generate a SQL query like SELECT count(*) ... WHERE last_login = 1
   ;; then replace 1 with a template tag like {{last_login}}
   (driver/with-driver driver

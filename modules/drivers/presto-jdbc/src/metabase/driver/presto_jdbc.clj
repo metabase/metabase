@@ -352,13 +352,13 @@
   (let [sql (presto-common/describe-catalog-sql driver catalog)]
     (log/trace (trs "Running statement in all-schemas: {0}" sql))
     (into []
-          (map (fn [{:keys [schema] :as full}]
+          (map (fn [{:keys [schema]}]
                  (when-not (contains? presto-common/excluded-schemas schema)
                    (describe-schema driver conn catalog schema))))
           (jdbc/reducible-query {:connection conn} sql))))
 
 (defmethod driver/describe-database :presto-jdbc
-  [driver {{:keys [catalog schema] :as details} :details :as database}]
+  [driver {{:keys [catalog schema] :as _details} :details :as database}]
   (with-open [conn (-> (sql-jdbc.conn/db->pooled-connection-spec database)
                        jdbc/get-connection)]
     (let [schemas (if schema #{(describe-schema driver conn catalog schema)}
@@ -366,7 +366,7 @@
       {:tables (reduce set/union schemas)})))
 
 (defmethod driver/describe-table :presto-jdbc
-  [driver {{:keys [catalog] :as details} :details :as database} {schema :schema, table-name :name}]
+  [driver {{:keys [catalog] :as _details} :details :as database} {schema :schema, table-name :name}]
   (with-open [conn (-> (sql-jdbc.conn/db->pooled-connection-spec database)
                      jdbc/get-connection)]
     (let [sql (presto-common/describe-table-sql driver catalog schema table-name)]
@@ -375,7 +375,7 @@
        :name   table-name
        :fields (into
                  #{}
-                 (map-indexed (fn [idx {:keys [column type] :as col}]
+                 (map-indexed (fn [idx {:keys [column type] :as _col}]
                                 {:name column
                                  :database-type type
                                  :base-type         (presto-common/presto-type->base-type type)
@@ -418,9 +418,9 @@
         (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
     stmt))
 
-(defn- ^PrestoConnection pooled-conn->presto-conn
+(defn- pooled-conn->presto-conn
   "Unwraps the C3P0 `pooled-conn` and returns the underlying `PrestoConnection` it holds."
-  [^C3P0ProxyConnection pooled-conn]
+  ^PrestoConnection [^C3P0ProxyConnection pooled-conn]
   (.unwrap pooled-conn PrestoConnection))
 
 (defmethod sql-jdbc.execute/connection-with-timezone :presto-jdbc
@@ -493,10 +493,10 @@
   ;; same rationale as above
   (set-time-param ps i t))
 
-(defn- ^LocalTime sql-time->local-time
+(defn- sql-time->local-time
   "Converts the given instance of `java.sql.Time` into a `java.time.LocalTime`, including milliseconds. Needed for
   similar reasons as `set-time-param` above."
-  [^Time sql-time]
+  ^LocalTime [^Time sql-time]
   ;; Java 11 adds a simpler `ofInstant` method, but since we need to run on JDK 8, we can't use it
   ;; https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/LocalTime.html#ofInstant(java.time.Instant,java.time.ZoneId)
   (let [^LocalTime lt (t/local-time sql-time)
@@ -522,14 +522,14 @@
           ;; else the base-type is time without time zone, so just return the local-time value
           local-time)))))
 
-(defn- ^PrestoConnection rs->presto-conn
+(defn- rs->presto-conn
   "Returns the `PrestoConnection` associated with the given `ResultSet` `rs`."
-  [^ResultSet rs]
+  ^PrestoConnection [^ResultSet rs]
   (-> (.. rs getStatement getConnection)
       pooled-conn->presto-conn))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIMESTAMP]
-  [_ ^ResultSet rset ^ResultSetMetaData rsmeta ^Integer i]
+  [_driver ^ResultSet rset _rsmeta ^Integer i]
   (let [zone     (.getTimeZoneId (rs->presto-conn rset))]
     (fn []
       (when-let [s (.getString rset i)]

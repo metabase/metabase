@@ -207,7 +207,7 @@
   (->date (sql.qp/->honeysql driver expr) (hx/literal "start of year")))
 
 (defmethod sql.qp/add-interval-honeysql-form :sqlite
-  [driver hsql-form amount unit]
+  [_driver hsql-form amount unit]
   (let [[multiplier sqlite-unit] (case unit
                                    :second  [1 "seconds"]
                                    :minute  [1 "minutes"]
@@ -268,11 +268,11 @@
    (mapv (partial sql.qp/->honeysql driver) args)))
 
 (defmethod sql.qp/->honeysql [:sqlite :floor]
-  [driver [_ arg]]
+  [_driver [_ arg]]
   (hsql/call :round (hsql/call :- arg 0.5)))
 
 (defmethod sql.qp/->honeysql [:sqlite :ceil]
-  [driver [_ arg]]
+  [_driver [_ arg]]
   (hsql/call :round (hsql/call :+ arg 0.5)))
 
 
@@ -338,9 +338,11 @@
   [_]
   (hsql/call :datetime (hx/literal :now)))
 
-;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them
+;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them. So skip that
+;; step. SQLite doesn't have a notion of session timezones so don't do that either. The only thing we're doing here from
+;; the default impl is setting the transaction isolation level
 (defmethod sql-jdbc.execute/connection-with-timezone :sqlite
-  [driver database ^String timezone-id]
+  [driver database _timezone-id]
   (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
       (sql-jdbc.execute/set-best-transaction-level! driver conn)

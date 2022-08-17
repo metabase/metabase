@@ -222,7 +222,7 @@
 (deftest analyze-db!-return-value-test
   (testing "Returns values"
     (mt/with-temp* [Table [table (fake-table)]
-                    Field [field (fake-field table)]]
+                    Field [_     (fake-field table)]]
       (let [results (analyze-table! table)]
         (testing "has the steps performed"
           (is (= ["fingerprint-fields" "classify-fields" "classify-tables"]
@@ -244,7 +244,7 @@
   (testing "re-hiding a table should not cause it to be analyzed"
     ;; create an initially hidden table
     (mt/with-temp* [Table [table (fake-table :visibility_type "hidden")]
-                    Field [field (fake-field table)]]
+                    Field [_     (fake-field table)]]
       ;; switch the table to visible (triggering a sync) and get the last sync time
       (let [last-sync-time (do (set-table-visibility-type-via-api! table nil)
                                (latest-sync-time table))]

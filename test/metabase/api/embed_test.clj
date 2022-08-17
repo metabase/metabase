@@ -566,9 +566,9 @@
                                                        :type     :query
                                                        :query    {:source-table (mt/id :venues)}}}]
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
-          (mt/with-temp DashboardCardSeries [series {:dashboardcard_id (u/the-id dashcard)
-                                                     :card_id          (u/the-id series-card)
-                                                     :position         0}]
+          (mt/with-temp DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
+                                                :card_id          (u/the-id series-card)
+                                                :position         0}]
             (is (= "completed"
                    (:status (client/client :get 202 (str (dashcard-url (assoc dashcard :card_id (u/the-id series-card))))))))))))))
 
@@ -1151,19 +1151,19 @@
                    (mt/rows (client/client :get 202 (str (card-query-url card "") "?NAME=Hudson%20Borer")))
                    (mt/rows (client/client :get 202 (str (card-query-url card "") "?NAME=Hudson%20Borer&NAME=x"))))))
           (testing "Dashcard"
-            (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:enable_embedding true
-                                                                          :embedding_params {:name "enabled"}
-                                                                          :parameters       [{:name      "Name"
-                                                                                              :slug      "name"
-                                                                                              :id        "_name_"
-                                                                                              :type      "string/="
-                                                                                              :sectionId "string"}]}]
+            (mt/with-temp* [Dashboard [{dashboard-id :id} {:enable_embedding true
+                                                           :embedding_params {:name "enabled"}
+                                                           :parameters       [{:name      "Name"
+                                                                               :slug      "name"
+                                                                               :id        "_name_"
+                                                                               :type      "string/="
+                                                                               :sectionId "string"}]}]
 
-                            DashboardCard [{dashcard-id :id, :as dashcard} {:card_id            card-id
-                                                                            :dashboard_id       dashboard-id
-                                                                            :parameter_mappings [{:parameter_id "_name_"
-                                                                                                  :card_id      card-id
-                                                                                                  :target       [:dimension [:template-tag "NAME"]]}]}]]
+                            DashboardCard [dashcard {:card_id            card-id
+                                                     :dashboard_id       dashboard-id
+                                                     :parameter_mappings [{:parameter_id "_name_"
+                                                                           :card_id      card-id
+                                                                           :target       [:dimension [:template-tag "NAME"]]}]}]]
               (is (= [[1]]
                      (mt/rows (client/client :get 202 (str (dashcard-url dashcard) "?name=Hudson%20Borer")))
                      (mt/rows (client/client :get 202 (str (dashcard-url dashcard) "?name=Hudson%20Borer&name=x"))))))))))))

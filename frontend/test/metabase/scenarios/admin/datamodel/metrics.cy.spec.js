@@ -266,7 +266,18 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.visit("/admin/datamodel/metrics");
       cy.findByText("New metric").click();
       cy.findByText("Select a table").click();
-      cy.findByText("Orders").click();
+
+      // Ugly hack to prevent failures that started after https://github.com/metabase/metabase/pull/24682 has been merged.
+      // For unknon reasons, popover doesn't open with expanded list of all Sample Database tables. Rather. it shows
+      // Sample Database (collapsed) only. We need to click on it to expand it.
+      // This conditional mechanism prevents failures even if that popover opens expanded in the future.
+      cy.get(".List-section").then($list => {
+        if ($list.length !== 5) {
+          cy.findByText("Sample Database").click();
+        }
+        cy.findByText("Orders").click();
+      });
+
       cy.findByText("Add filters to narrow your answer").click();
       cy.findByText("Custom Expression").click();
       cy.get(".ace_text-input").clear().type("[ID] > 0 OR [ID] < 9876543210");

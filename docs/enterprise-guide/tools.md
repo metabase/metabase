@@ -23,7 +23,7 @@ You can select and rerun multiple questions at a time while you troubleshoot to 
 
 Here you can view the:
 
-- [Models](../users-guide/models.md) being cached,
+- [Models](../data-modeling/models.md) being cached,
 - The status of the last caching query,
 - When the model was last cached,
 - And who created the cache.

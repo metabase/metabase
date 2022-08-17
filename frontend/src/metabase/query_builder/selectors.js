@@ -11,6 +11,7 @@ import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
+import { MetabaseApi } from "metabase/services";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
@@ -29,6 +30,7 @@ import { getAlerts } from "metabase/alert/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { parseTimestamp } from "metabase/lib/time";
 import { getSortedTimelines } from "metabase/lib/timelines";
+import { getSetting } from "metabase/selectors/settings";
 import {
   getXValues,
   isTimeseries,
@@ -829,3 +831,25 @@ export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
+
+export const getAutocompleteResultsFn = state => {
+  const matchStyle = getSetting(state, "native-query-autocomplete-match-style");
+
+  if (matchStyle === "off") {
+    return null;
+  }
+
+  return function autocompleteResults(query) {
+    const dbId = state.qb.card?.dataset_query?.database;
+    if (!dbId) {
+      return [];
+    }
+
+    const apiCall = MetabaseApi.db_autocomplete_suggestions({
+      dbId,
+      query,
+      matchStyle,
+    });
+    return apiCall;
+  };
+};

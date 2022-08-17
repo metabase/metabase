@@ -179,6 +179,7 @@
                    :query-hash (qp.util/query-hash {})}})
       (is (= [{:base_type    :type/DateTime
                :effective_type    :type/DateTime
+               :visibility_type :normal
                :coercion_strategy nil
                :display_name "Date"
                :name         "DATE"
@@ -248,21 +249,32 @@
 (deftest results-metadata-should-have-field-refs-test
   (testing "QP results metadata should include Field refs"
     (mt/dataset sample-dataset
-      (letfn [(do-test [remap]
-                (let [results-metadata       (get-in (mt/run-mbql-query orders {:limit 10})
-                                                     [:data :results_metadata :columns])
-                      expected-cols          (cond->> (qp/query->expected-cols (mt/mbql-query orders))
-                                               remap
-                                               (filter #(nil? (get-in % [:options ::qp.add-dimension-projections/new-field-dimension-id]))))]
-                  (testing "Card results metadata shouldn't differ wildly from QP expected cols"
-                    (letfn [(select-keys-to-compare [cols]
-                              (map #(select-keys % [:name :base_type :id :field_ref]) cols))]
-                      (is (= (select-keys-to-compare results-metadata)
-                             (select-keys-to-compare expected-cols)))))))]
-        (do-test false)
+      (letfn [(select-keys-to-compare [cols]
+                (map #(select-keys % [:name :base_type :id :field_ref]) cols))]
+        (let [results-metadata (get-in (mt/run-mbql-query orders {:limit 10})
+                                       [:data :results_metadata :columns])
+              expected-cols    (qp/query->expected-cols (mt/mbql-query orders))]
+          (testing "Card results metadata shouldn't differ wildly from QP expected cols"
+            (is (= (select-keys-to-compare results-metadata)
+                   (select-keys-to-compare expected-cols)))))
+
         (testing "results_metadata shouldn't contains remapped fields (#23449)"
-          (mt/with-column-remappings [orders.product_id products.title]
-            (do-test true)))))))
+          (testing "using fk"
+            (mt/with-column-remappings [reviews.product_id products.title]
+              (let [results-metadata        (get-in (mt/run-mbql-query reviews {:limit 10})
+                                                    [:data :results_metadata :columns])
+                    expected-cols           (qp/query->expected-cols (mt/mbql-query reviews))
+                    remove-remapped-columns (fn [cols]
+                                              (filter #(nil? (get-in % [:options ::qp.add-dimension-projections/new-field-dimension-id])) cols))]
+                (testing "there is a remapped column in the expected-cols"
+                  (is (= "TITLE"
+                         (->> expected-cols
+                              (filter #(get-in % [:options ::qp.add-dimension-projections/new-field-dimension-id]))
+                              first
+                              :name))))
+                (testing "but there are none in the saved results-metadata"
+                  (is (= (select-keys-to-compare results-metadata)
+                         (select-keys-to-compare (remove-remapped-columns expected-cols)))))))))))))
 
 (deftest field-refs-should-be-correct-fk-forms-test
   (testing "Field refs included in results metadata should be wrapped correctly e.g. in `fk->` form"
