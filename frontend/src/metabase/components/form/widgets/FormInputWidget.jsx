@@ -14,7 +14,7 @@ const propTypes = {
   autoFocus: PropTypes.bool,
   helperText: PropTypes.node,
   tabIndex: PropTypes.string,
-  fieldName: PropTypes.string,
+  subtitle: PropTypes.string,
 };
 
 const FormInputWidget = forwardRef(function FormInputWidget(
@@ -26,13 +26,12 @@ const FormInputWidget = forwardRef(function FormInputWidget(
     autoFocus,
     helperText,
     tabIndex,
-    fieldName,
+    subtitle,
   },
   ref,
 ) {
   return (
     <div>
-      <div className="h6 text-bold text-uppercase text-light">{fieldName}</div>
       <Input
         {...formDomOnlyProps(field)}
         type={type}
@@ -45,6 +44,7 @@ const FormInputWidget = forwardRef(function FormInputWidget(
         rightIconTooltip={helperText}
         tabIndex={tabIndex}
         fullWidth
+        subtitle={subtitle}
         ref={ref}
       />
     </div>

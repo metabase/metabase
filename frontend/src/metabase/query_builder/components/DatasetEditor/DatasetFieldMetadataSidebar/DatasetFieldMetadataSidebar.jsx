@@ -79,10 +79,9 @@ function getFormFields({ dataset, field }) {
   return formFieldValues =>
     [
       {
-        // TODO: change the widget from FormInputWidget
         name: "display_name",
         title: t`Display name`,
-        fieldName: field.name,
+        subtitle: field.name,
       },
       {
         name: "description",
