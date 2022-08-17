@@ -365,6 +365,12 @@
    "#c589b9" "#efce8c" "#b5f95c" "#e35850" "#554dbf" "#bec589" "#8cefc6" "#5cc2f9" "#55e350" "#bf4d4f"
    "#89c3c5" "#be8cef" "#f95cd0" "#50e3ae" "#bf974d" "#899bc5" "#ef8cde" "#f95c67"])
 
+(def ^:private application-colors
+  "Colors for charts. These are defined in /metabase/frontend/src/metabase/lib/colors/palette.ts and merged with `public-settings/application-colors`."
+  (merge
+    (js-svg/default-colors)
+    (public-settings/application-colors)))
+
 (defn format-percentage
   "Format a percentage which includes site settings for locale. The first arg is a numeric value to format. The second
   is an optional string of decimal and grouping symbols to be used, ie \".,\". There will soon be a values.clj file

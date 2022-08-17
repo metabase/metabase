@@ -107,3 +107,20 @@ function progress(data, settings) {
     settings: JSON.parse(settings),
   });
 }
+
+function default_colors() {
+    const defaults = StaticViz.defaultColors;
+    let light_colors = {};
+    Object.keys(defaults).map(k => {
+        const name = k.toString() + "-light";
+        light_colors[name] = StaticViz.color_from_name(name);
+    });
+    let dark_colors = {};
+    Object.keys(defaults).map(k => {
+        const name = k.toString() + "-dark";
+        dark_colors[name] = StaticViz.color_from_name(name);
+    });
+
+    let all_colors = {"default": defaults, "light": light_colors, "dark": dark_colors,};
+    return JSON.stringify(all_colors);
+}

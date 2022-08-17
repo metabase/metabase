@@ -39,6 +39,18 @@
   ;; todo is this thread safe? Should we have a resource pool on top of this? Or create them fresh for each invocation
   (delay (static-viz-context)))
 
+(defn default-colors
+  []
+  (let [{:keys [default light dark]} (-> (js/execute-fn-name @context "default_colors")
+                                         str
+                                         json/parse-string
+                                         (update-keys keyword))]
+    (-> (merge
+          default
+          (into {} (remove (fn [[k v]] (= k v)) light))
+          (into {} (remove (fn [[k v]] (= k v)) dark)))
+        (update-keys keyword))))
+
 (defn- post-process
   "Mutate in place the elements of the svg document. Remove the fill=transparent attribute in favor of
   fill-opacity=0.0. Our svg image renderer only understands the latter. Mutation is unfortunately necessary as the
