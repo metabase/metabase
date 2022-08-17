@@ -26,7 +26,7 @@ On the **Google Identity Provider details** page:
 ## Filling out the Metabase SAML form
 
 1. From your Google **IdP metadata**, locate the **issuer**.
-   - The **issuer** should be a URL that starts with `https://accounts.google.com/o/saml2/`.
+   - The **issuer** looks like this: `https://accounts.google.com/o/saml2/`.
 2. Go to your Metabase SAML form (**Admin settings** > **Authentication** > **SAML**).
 2. Put the **issuer** in the Metabase **SAML Identity Provider Issuer** field. 
 3. Put the **SSO URL** in the Metabase **SAML Identity Provider URL** field.
@@ -51,7 +51,7 @@ For example, to add the attribute "First name":
 1. Click **Add another mapping**.
 2. Under **Google Directory attributes**, choose **Basic information** > **First name** as the attribute field name.
 3. Go to your Metabase SAML form, and look for **SAML attributes** > **User's first name attribute**.
-   - The attribute should look this: `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname`.
+   - The attribute looks like this: `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname`.
 4. Paste the **User's first name attribute** under your Google **App attributes**.
 5. Repeat steps 1-3 for the attributes "Last name" and "Email".
 
