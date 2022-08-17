@@ -24,8 +24,13 @@ export type WritebackActionCard = SavedCard<NativeDatasetQuery> & {
   is_write: true;
 };
 
+export type ActionParameterTuple = [string, Parameter];
+
 export interface WritebackActionBase {
   id: number;
+  name: string;
+  description: string | null;
+  parameters: ActionParameterTuple[];
   "updated-at": string;
   "created-at": string;
 }
@@ -38,11 +43,7 @@ export interface RowAction {
 
 export interface HttpAction {
   type: "http";
-  name: string;
-  description: string;
   template: HttpActionTemplate;
-  parameters: Record<ParameterId, Parameter>;
-  parameter_mappings: Record<ParameterId, ParameterTarget>;
   response_handle: string | null;
   error_handle: string | null;
 }
