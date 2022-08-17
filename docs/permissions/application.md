@@ -18,15 +18,15 @@ To set application permissions, got to the top right of the screen and click on 
 
 Settings access defines which groups can view and edit the settings under the Admin > Settings tab. These settings include:
 
-- [Settings](08-configuration-settings.md)
-- [Email](02-setting-up-email.md)
-- [Slack](09-setting-up-slack.md)
-- [Authentication](10-single-sign-on.md)
-- [Maps](20-custom-maps.md)
-- [Localization](localization.md)
-- [Public sharing](12-public-links.md)
-- [Embedding in other applications](13-embedding.md)
-- [Caching](14-caching.md)
+- [Settings](../configuring-metabase/settings.md)
+- [Email](../configuring-metabase/email.md)
+- [Slack](../configuring-metabase/slack.md)
+- [Authentication](../people-and-groups/start.md)
+- [Maps](../configuring-metabase/custom-maps.md)
+- [Localization](../configuring-metabase/localization.md)
+- [Public sharing](../questions/sharing/public-links.md)
+- [Embedding in other applications](../embedding/start.md)
+- [Caching](../configuring-metabase/caching.md)
 - [White labeling](../embedding/whitelabeling.md)
 
 ## Monitoring access
@@ -44,4 +44,4 @@ This setting determines who can set up:
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
 - [Alerts](../questions/sharing/alerts.md)
 
-People will need to be in groups with either view or edit access to the collection that contains the dashboard or question in order to set up alerts. See [Collection permissions](06-collections.md).
+People will need to be in groups with either view or edit access to the collection that contains the dashboard or question in order to set up alerts. See [Collection permissions](../permissions/collections.md).

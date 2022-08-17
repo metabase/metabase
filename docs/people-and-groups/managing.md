@@ -16,7 +16,7 @@ To start managing people, click on the **gear** icon > **Admin settings** > **Pe
 
 To add a new person, click **Add person** in the upper right corner. You’ll be prompted to enter their name and email address.
 
-If you’ve already [configured Metabase to use email](02-setting-up-email.md), Metabase will send the new user an invite email. Otherwise, it’ll give you a temporary password that you’ll have to send to the person you’re inviting by hand.
+If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the new user an invite email. Otherwise, it’ll give you a temporary password that you’ll have to send to the person you’re inviting by hand.
 
 ### Deactivating an account
 
@@ -49,13 +49,13 @@ Search for a person and look for an icon beside their name.
 - If they log in using Google credentials, Metabase displays a Google icon.
 - If they log in using an email address and password stored in Metabase, no icon is shown.
 
-Note that the type of user is set when the account is first created: if you create a user in Metabase, but that person then logs in via Google or some other form of [SSO](sso.md), the latter's icon will _not_ show up next to their name.
+Note that the type of user is set when the account is first created: if you create a user in Metabase, but that person then logs in via Google or some other form of SSO, the latter's icon will _not_ show up next to their name.
 
 ### Resetting someone’s password
 
-If you've already [configured your email settings](02-setting-up-email.md), people can reset their passwords using the "forgot password" link on the login screen. If you haven't yet configured your email settings, they will see a message telling them to ask an admin to reset their password for them.
+If you've already [configured your email settings](../configuring-metabase/email.md), people can reset their passwords using the "forgot password" link on the login screen. If you haven't yet configured your email settings, they will see a message telling them to ask an admin to reset their password for them.
 
-To reset a password for someone, just click the three dots icon next to their account and choose **Reset Password**. If you haven’t [configured your email settings](02-setting-up-email.md) yet, you’ll be given a temporary password that you’ll have to share with that person. Otherwise, they’ll receive a password reset email.
+To reset a password for someone, just click the three dots icon next to their account and choose **Reset Password**. If you haven’t [configured your email settings](../configuring-metabase/email.md) yet, you’ll be given a temporary password that you’ll have to share with that person. Otherwise, they’ll receive a password reset email.
 
 ### Resetting the admin password
 
@@ -92,7 +92,7 @@ This action doesn't affect email distribution lists that are managed outside of 
 
 ## Groups
 
-To determine [who has access to what](05-setting-permissions.md), you’ll need to
+To determine [who has access to what](../permissions/start.md), you’ll need to
 
 - Create one or more groups.
 - Choose which level of access that group has to different databases, collections, and so on.
@@ -113,9 +113,9 @@ To make someone an admin of Metabase, you just need to add them to the Administr
 
 #### All users
 
-The **All Users** group is another special one. Every Metabase user is always a member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](10-single-sign-on.md) enabled, new users who join that way will be automatically added to the All Users group.
+The **All Users** group is another special one. Every Metabase user is always a member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](../permissions/google-and-ldap.md) enabled, new users who join that way will be automatically added to the All Users group.
 
-It's important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. See [Setting permissions](05-setting-permissions.md).
+It's important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. See [Setting permissions](../permissions/start.md).
 
 ### Managing groups
 
@@ -135,9 +135,9 @@ To remove a group, click the X icon to the right of a group in the list to remov
 
 Adding people to groups allows you to assign
 
-- [Data access](05-setting-permissions.md),
-- [Collection permissions](06-collections.md),
-- [Application permissions](application-permissions.md).
+- [Data access](../permissions/data.md),
+- [Collection permissions](../permissions/collections.md),
+- [Application permissions](../permissions/application.md).
 
 To add someone to one or more groups, just click the Groups dropdown and click the checkboxes next to the group(s) you want to add the person to. You can also add people from the group's page.
 
@@ -170,6 +170,6 @@ For guidance on which groups you should create for your Metabase, check out [Per
 
 ## Further reading
 
-- [Configure Single Sign-On](10-single-sign-on.md).
-- [Permissions overview](05-setting-permissions.md)
+- [Configure Single Sign-On](./start.md).
+- [Permissions overview](../permissions/start.md)
 - [Learn permissions](https://www.metabase.com/learn/permissions/)

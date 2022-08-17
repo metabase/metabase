@@ -80,7 +80,7 @@ Sandboxed access to a table can restrict access to columns and rows of a table. 
 
 ## Native query editing
 
-Members of a group with Native query editing set to Yes can write new SQL/native queries using the [native query editor](https://www.metabase.com/docs/latest/users-guide/writing-sql.html). This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
+Members of a group with Native query editing set to Yes can write new SQL/native queries using the [native query editor](../questions/native-editor/writing-sql.md). This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
 
 People in a group without Native query editing permissions will still be able to view the results of questions created from SQL/native queries (though just the results, not the query), provided they 1) have collection access to the question, and 2) the question doesn't query a database that is [blocked](#block-access) for that group.
 
@@ -99,7 +99,7 @@ You can set permissions on whether people in a group can download results (and h
 
 {% include plans-blockquote.html feature="Data model permissions" %}
 
-You can define whether a group can [edit metadata](03-metadata-editing.md). Options are:
+You can define whether a group can [edit metadata](../data-modeling/metadata-editing.md). Options are:
 
 - Yes (meaning, they can edit metadata for that data source).
 - No

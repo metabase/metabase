@@ -1,5 +1,7 @@
 ---
 title: Handling timezones in Metabase
+redirect_from:
+  - /docs/latest/operations-guide/handling-timezones
 ---
 
 # Handling timezones in Metabase

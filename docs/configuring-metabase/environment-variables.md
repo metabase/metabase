@@ -1,5 +1,7 @@
 ---
 title: Environment variables
+redirect_from:
+  - /docs/latest/operations-guide/environment-variables
 ---
 
 # Environment variables

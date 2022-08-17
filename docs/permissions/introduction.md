@@ -25,7 +25,7 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 ### Data permissions
 
-- [Databases connected to Metabase](./data-permissions.md)
+- [Databases connected to Metabase](./data.md)
 - [Tables and schemas][table-permissions] in those databases
 - [Rows and columns][data-sandboxing], a.k.a. data sandboxing (available on paid plans)
 
@@ -41,7 +41,7 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 ### Application permissions
 
-[Application permissions](application-permissions.md) (available on paid plans) dictate access to Metabase application-level features, including:
+[Application permissions](application.md) (available on paid plans) dictate access to Metabase application-level features, including:
 
 - **Settings**: The Settings tab in the Admin panel.
 - **Monitoring access**: The Tools, Audit, and Troubleshooting tabs in the Admin panel.
@@ -60,11 +60,11 @@ Whenever you change permissions for a group, make sure you:
 
 ## Further reading
 
-- [Managing people and groups](04-managing-users.md)
+- [Managing people and groups](../people-and-groups/managing.md)
 - [Permissions guide][permissions]
 - [Troubleshooting permissions][troubleshooting-permissions]
 
-[collections]: 06-collections.md
+[collections]: ../exploration-and-organization/collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-permissions]: ./data.md
 [data-sandboxing]: ./data-sandboxes.md

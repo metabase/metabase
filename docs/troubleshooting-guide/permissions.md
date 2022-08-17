@@ -48,24 +48,24 @@ If you can’t solve your problem using the troubleshooting guides:
 - Search for [known bugs or limitations][known-issues].
 
 
-[admin-permissions]: ../administration-guide/05-setting-permissions.html
-[cant-see-tables]: ./cant-see-tables.html
-[check-permissions]: ./data-permissions#checking-someones-access-to-a-table-or-schema
-[collection-permissions]: ../administration-guide/06-collections.html
-[collections-restricted-data]: ./data-permissions#a-user-group-can-view-collections-that-contain-restricted-data
-[connecting-database]: ../administration-guide/01-managing-databases.html
-[data-browser]: /learn/getting-started/data-browser.html
-[data-model]: ../administration-guide/03-metadata-editing.html
-[data-permissions]: ../administration-guide/data-permissions.html
+[admin-permissions]: ../permissions/start.md
+[cant-see-tables]: ./cant-see-tables.md
+[check-permissions]: ./data-permissions.md#checking-someones-access-to-a-table-or-schema
+[collection-permissions]: ../permissions/collections.md
+[collections-restricted-data]: ./data-permissions.md#a-user-group-can-view-collections-that-contain-restricted-data
+[connecting-database]: ../databases/connecting.md
+[data-browser]: /learn/getting-started/data-browser
+[data-model]: ../data-modeling/metadata-editing.md
+[data-permissions]: ../permissions/data.md
 [discourse]: https://discourse.metabase.com/
-[granular]: ../administration-guide/data-permissions.html#granular-access
+[granular]: ../permissions/data.md#granular-access
 [group-permissions]: ../administration-guide/05-setting-permissions.html#key-points-regarding-permissions
-[known-issues]: ./known-issues.html
-[learn-permissions]: /learn/permissions/index.html
-[permission-denied]: ./data-permissions#getting-a-permission-denied-error-message
-[proxies]: ./proxies.html
-[sandboxing]: ./sandboxing.html
-[setting-collection-permissions]: ../administration-guide/06-collections.html#setting-permissions-for-collections
+[known-issues]: ./known-issues.md
+[learn-permissions]: /learn/permissions
+[permission-denied]: ./data-permissions.md#getting-a-permission-denied-error-message
+[proxies]: ./proxies.md
+[sandboxing]: ./sandboxing.md
+[setting-collection-permissions]: ../permissions/collections.md#setting-permissions-for-collections
 [sql-access]: ./data-permissions#a-user-group-cant-access-the-sql-editor
 [sql-sandboxing]: ./sandboxing.html#is-the-question-written-in-sql
 [table-schema-access]: ./data-permissions#a-user-group-has-the-wrong-access-to-a-table-or-schema

@@ -6,7 +6,7 @@ redirect_from:
 
 # Authenticating with Google Sign-In or LDAP
 
-Enabling [Google Sign-In](#enabling-google-sign-in) or [LDAP](#enabling-ldap-authentication) for [single sign-on (SSO)][sso-docs] lets your team log in with a click instead of using email and password. It can also be used to let people sign up for Metabase accounts without an admin having to create them first. You can find these options in the **Settings** section of the **Admin Panel**, under **Authentication**.
+Enabling [Google Sign-In](#enabling-google-sign-in) or [LDAP](#enabling-ldap-authentication) for single sign-on (SSO) lets your team log in with a click instead of using email and password. It can also be used to let people sign up for Metabase accounts without an admin having to create them first. You can find these options in the **Settings** section of the **Admin Panel**, under **Authentication**.
 
 If you'd like to have people authenticate with [SAML][saml-docs] or [JWT][jwt-docs], Metabase's [paid plans](https://www.metabase.com/pricing) let you do just that.
 
@@ -76,7 +76,7 @@ This default command will work for most LDAP servers, since `inetOrgPerson` is a
 
 ### LDAP group mapping
 
-Manually assigning people to [groups](04-managing-users.html#groups) in Metabase after they've logged in via SSO can get tedious. Instead, you can take advantage of the groups that already exist in your LDAP directory by enabling [group mappings](/learn/permissions/ldap-auth-access-control.html#group-management).
+Manually assigning people to [groups](./managing.md#groups) in Metabase after they've logged in via SSO can get tedious. Instead, you can take advantage of the groups that already exist in your LDAP directory by enabling [group mappings](/learn/permissions/ldap-auth-access-control.html#group-management).
 
 Scroll to **Group Schema** on the same LDAP settings page, and click the toggle to enable group mapping. Selecting **Edit Mapping** will bring up a modal where you can create and edit mappings, specifying which LDAP group corresponds to which Metabase group.
 
@@ -131,6 +131,5 @@ Note that you must have at least one account with email and password login. This
 [google-saml-docs]: ../saml-google.md
 [jwt-docs]: ./authenticating-with-jwt.md
 [saml-docs]: ./authenticating-with-saml.md
-[sso-docs]: ./administration-guide/sso.md
-[user-attributes-docs]: ../enterprise-guide/data-sandboxes.md#getting-user-attributes
+[user-attributes-docs]: ../permissions/data-sandboxes.md#getting-user-attributes
 [user-attributes-def]: /glossary/attribute#user-attributes-in-metabase

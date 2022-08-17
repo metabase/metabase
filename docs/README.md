@@ -86,9 +86,9 @@ title: Metabase documentation
 - [Overview](./people-and-groups/start.md)
 - [Editing your account settings](./people-and-groups/account-settings.md)
 - [Managing people and groups](./people-and-groups/managing.md)
-- [Password complexity](./operations-guide/changing-password-complexity.md)
-- [Session expiration](./operations-guide/changing-session-expiration.md)
-- [Google Sign-In or LDAP](./administration-guide/google-and-ldap.md)
+- [Password complexity](./people-and-groups/changing-password-complexity.md)
+- [Session expiration](./people-and-groups/changing-session-expiration.md)
+- [Google Sign-In or LDAP](./people-and-groups/google-and-ldap.md)
 
 ### Paid SSO options
 
@@ -135,11 +135,11 @@ title: Metabase documentation
 - [Email](./configuring-metabase/email.md)
 - [Slack](./configuring-metabase/slack.md)
 - [Environment variables](./configuring-metabase/environment-variables.md)
-- [Handling timezones](./operations-guide/handling-timezones.md)
-- [Customizing the Metabase Jetty Webserver](./operations-guide/customizing-jetty-webserver.md)
+- [Handling timezones](./configuring-metabase/timezones.md)
 - [Localization](./configuring-metabase/localization.md)
-- [Caching query results](./administration-guide/14-caching.md)
-- [Custom map settings](./administration-guide/20-custom-maps.md)
+- [Caching query results](./configuring-metabase/caching.md)
+- [Custom map settings](./configuring-metabase/custom-maps.md)
+- [Customizing the Metabase Jetty Webserver](./configuring-metabase/customizing-jetty-webserver.md)
 
 ## Usage and performance tools
 
