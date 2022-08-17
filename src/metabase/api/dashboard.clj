@@ -602,11 +602,11 @@
                        {:resolved-params (keys resolved-params)
                         :status-code     400})))
      (binding [qp.perms/*card-id* (or qp.perms/*card-id*
-                                      (and
-                                       ;; when we are using constrained filters
-                                       (not-empty constraint-param-key->value)
-                                       ;; make sure that the proper card-id is bound
-                                       (get-card-id-from-resolved-params resolved-params param-key)))]
+                                      (and ;; fixes #24832
+                                        ;; when we are using constrained filters
+                                        (not-empty constraint-param-key->value)
+                                        ;; make sure that the proper card-id is bound
+                                        (get-card-id-from-resolved-params resolved-params param-key)))]
        (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
              field-ids   (param-key->field-ids dashboard param-key)]
          (when (empty? field-ids)

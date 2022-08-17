@@ -19,6 +19,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.streaming.test-util :as streaming.test-util]
             [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
@@ -1392,6 +1393,19 @@
   (add-query-params (str (format "dashboard/%d/params/%s/search/" (u/the-id dashboard-or-id) (name param-key))
                          query)
                     query-params))
+
+(deftest dashboard-chain-filter-permissions-test
+  (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+    (let [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
+      (testing (str "\nGET /api/" url "\n")
+        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
+          ;; shut off the cache:
+          (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
+            (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
+              (is
+                (=
+                  {:values ["Japanese" "Steakhouse"], :has_more_values false}
+                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))))
 
 (deftest dashboard-chain-filter-test
   (testing "GET /api/dashboard/:id/params/:param-key/values"
