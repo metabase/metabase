@@ -2,7 +2,7 @@ import React from "react";
 
 import Header from "metabase/writeback/components/HttpAction/Header";
 import HttpAction from "metabase/writeback/components/HttpAction/HttpAction";
-import { ActionType, WritebackAction } from "metabase/writeback/types";
+import { WritebackAction } from "metabase/writeback/types";
 import { useWritebackAction } from "../hooks";
 import _ from "underscore";
 import Actions from "metabase/entities/actions";

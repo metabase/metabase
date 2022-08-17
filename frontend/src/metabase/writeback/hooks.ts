@@ -1,5 +1,4 @@
 import React from "react";
-import { t } from "ttag";
 import _ from "underscore";
 import { isEqual } from "lodash";
 
@@ -38,26 +37,6 @@ export type CreateActionHook = {
   setTemplateTags: (templateTags: TemplateTags) => void;
 };
 
-const getName = (action: Partial<WritebackAction>): string => {
-  if (action.type === "http") {
-    return action.name || t`New Action`;
-  } else if (action.type === "query") {
-    return action.card?.name || t`New Action`;
-  } else {
-    throw new Error("Action type is not supported");
-  }
-};
-
-const getDescription = (action: Partial<WritebackAction>): string => {
-  if (action.type === "http") {
-    return action?.description || "";
-  } else if (action.type === "query") {
-    return action.card?.description || "";
-  } else {
-    throw new Error("Action type is not supported");
-  }
-};
-
 const getData = (action: Partial<WritebackAction>): unknown => {
   if (action.type === "http") {
     const { name, description, ...rest } = action;
@@ -89,9 +68,9 @@ export const useWritebackAction = (
   action: Partial<WritebackAction> & { type: ActionType },
 ): CreateActionHook => {
   const { type } = action;
-  const [name, setName] = React.useState<string>(getName(action));
+  const [name, setName] = React.useState<string>(action?.name || "");
   const [description, setDescription] = React.useState<string>(
-    getDescription(action),
+    action?.description || "",
   );
   const [responseHandler, setResponseHandler] = React.useState<string>(
     getResponseHandler(action),

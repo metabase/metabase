@@ -115,11 +115,11 @@ class ClickMappingsInner extends React.Component {
 
 const ClickMappings = _.compose(
   loadQuestionMetadata((state, props) =>
-    props.isDash || props.isHTTPAction ? null : props.object,
+    props.isDash || props.isAction ? null : props.object,
   ),
   withUserAttributes,
   connect((state, props) => {
-    const { object, isDash, isHTTPAction, dashcard, clickBehavior } = props;
+    const { object, isDash, dashcard, clickBehavior } = props;
     const metadata = getMetadata(state, props);
     let parameters = getParameters(state, props);
 
@@ -138,8 +138,8 @@ const ClickMappings = _.compose(
 
     const [setTargets, unsetTargets] = _.partition(
       getTargetsWithSourceFilters({
+        isAction: props.isAction,
         isDash,
-        isHTTPAction,
         dashcard,
         object,
         metadata,

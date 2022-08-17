@@ -18,8 +18,8 @@ import {
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 import * as Urls from "metabase/lib/urls";
 import {
-  getActionTemplateTagType,
-  getActionParameterType,
+  getActionParameters,
+  getNotProvidedActionParameters,
 } from "metabase/writeback/utils";
 
 export default ({ question, clicked }) => {
@@ -172,91 +172,6 @@ export default ({ question, clicked }) => {
     },
   ];
 };
-
-function getActionParameters(
-  parameterMapping = {},
-  { data, extraData, clickBehavior },
-) {
-  const action = extraData.actions[clickBehavior.action];
-
-  const isQueryAction = action.type === "query";
-  const tagsMap = isQueryAction
-    ? action.card.dataset_query.native["template-tags"]
-    : action.template.parameters;
-  const templateTags = Object.values(tagsMap);
-
-  const parameters = {};
-
-  Object.values(parameterMapping).forEach(({ id, source, target }) => {
-    const targetTemplateTag = templateTags.find(tag => tag.id === id);
-
-    const result = formatSourceForTarget(source, target, {
-      data,
-      extraData,
-      clickBehavior,
-    });
-    // For some reason it's sometimes [1] and sometimes just 1
-    const value = Array.isArray(result) ? result[0] : result;
-
-    parameters[id] = {
-      value,
-      type: isQueryAction
-        ? getActionTemplateTagType(targetTemplateTag)
-        : getActionParameterType(targetTemplateTag),
-    };
-  });
-
-  return parameters;
-}
-
-function getNotProvidedActionParameters(action, parameters) {
-  return action.type === "query"
-    ? getNotProvidedQueryActionParameters(action, parameters)
-    : getNotProvidedHTTPActionParameters(action, parameters);
-}
-
-function getNotProvidedQueryActionParameters(action, parameters) {
-  const mappedParameterIDs = Object.keys(parameters);
-
-  const emptyParameterIDs = [];
-  mappedParameterIDs.forEach(parameterId => {
-    const { value } = parameters[parameterId];
-    if (value === undefined) {
-      emptyParameterIDs.push(parameterId);
-    }
-  });
-
-  const tagsMap = action.card.dataset_query.native["template-tags"];
-  const templateTags = Object.values(tagsMap);
-
-  return templateTags.filter(tag => {
-    if (!tag.required) {
-      return false;
-    }
-    const isNotMapped = !mappedParameterIDs.includes(tag.id);
-    const isMappedButNoValue = emptyParameterIDs.includes(tag.id);
-    return isNotMapped || isMappedButNoValue;
-  });
-}
-
-function getNotProvidedHTTPActionParameters(action, parameters) {
-  const mappedParameterIDs = Object.keys(parameters);
-
-  const emptyParameterIDs = [];
-  mappedParameterIDs.forEach(parameterId => {
-    const { value } = parameters[parameterId];
-    if (value === undefined) {
-      emptyParameterIDs.push(parameterId);
-    }
-  });
-
-  const allParameters = Object.values(action.parameters);
-  return allParameters.filter(parameter => {
-    const isNotMapped = !mappedParameterIDs.includes(parameter.id);
-    const isMappedButNoValue = emptyParameterIDs.includes(parameter.id);
-    return isNotMapped || isMappedButNoValue;
-  });
-}
 
 function getParameterIdValuePairs(
   parameterMapping,

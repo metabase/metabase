@@ -57,11 +57,10 @@ function ActionParametersInputModal({
   }
 
   const action = emitter.action;
-  const title = action.type === "query" ? action.card.name : action.name;
 
   return (
     <Modal onClose={closeActionParametersModal}>
-      <ModalContent title={title} onClose={closeActionParametersModal}>
+      <ModalContent title={action.name} onClose={closeActionParametersModal}>
         <ActionParametersInputForm
           {...formProps}
           onSubmitSuccess={closeActionParametersModal}
