@@ -30,6 +30,7 @@ const propTypes = {
     left: PropTypes.string,
     bottom: PropTypes.string,
   }),
+  getColor: PropTypes.func,
 };
 
 const layout = {
@@ -62,6 +63,7 @@ const TimeSeriesLineChart = ({
   accessors = DATE_ACCESSORS,
   settings,
   labels,
+  getColor,
 }) => {
   data = sortTimeSeries(data);
   const colors = settings?.colors;
@@ -109,9 +111,9 @@ const TimeSeriesLineChart = ({
         labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
-        labelProps={getLabelProps(layout)}
+        labelProps={getLabelProps(layout, getColor)}
         tickFormat={value => formatNumber(value, settings?.y)}
-        tickLabelProps={() => getYTickLabelProps(layout)}
+        tickLabelProps={() => getYTickLabelProps(layout, getColor)}
       />
       <AxisBottom
         scale={xScale}
@@ -120,9 +122,9 @@ const TimeSeriesLineChart = ({
         numTicks={layout.numTicks}
         stroke={palette.textLight}
         tickStroke={palette.textLight}
-        labelProps={getLabelProps(layout)}
+        labelProps={getLabelProps(layout, getColor)}
         tickFormat={value => formatDate(value, settings?.x)}
-        tickLabelProps={() => getXTickLabelProps(layout)}
+        tickLabelProps={() => getXTickLabelProps(layout, false, getColor)}
       />
     </svg>
   );
