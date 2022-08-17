@@ -42,7 +42,7 @@ Note that snippet names must be unique; folders do not affect this requirement.
 
 ## Permissions
 
-Administrators (and only administrators) can set snippet visibility and editability by placing snippets in **folders**, then granting groups one of three permission levels with respect to those folders. If you're familiar with [collection permissions](../../administration-guide/06-collections.md#setting-permissions-for-collections), the functionality is similar. For more on how collection and folder permissions work together, see [how folder permissions work](#how-folder-permissions-work) below.
+Administrators (and only administrators) can set snippet visibility and editability by placing snippets in **folders**, then granting groups one of three permission levels with respect to those folders. If you're familiar with [collection permissions](../../permissions/collections.md#setting-permissions-for-collections), the functionality is similar. For more on how collection and folder permissions work together, see [how folder permissions work](#how-folder-permissions-work) below.
 
 ### Changing permissions on a folder
 
@@ -68,7 +68,7 @@ Archiving or unarchiving snippets does not affect a snippet's permissions. If, f
 
 ### How folder permissions work
 
-As with collection permissions, folder permissions are additive, meaning that the more permissive access overrules less permissive access. See [Setting permissions](../../administration-guide/05-setting-permissions.md) for a more detailed discussion.
+As with collection permissions, folder permissions are additive, meaning that the more permissive access overrules less permissive access. See [Setting permissions](../../permissions/start.md) for a more detailed discussion.
 
 But snippet folder permissions require some more effort to unpack, as permissions for snippet folders must work in conjunction with permissions for data and collections.
 
