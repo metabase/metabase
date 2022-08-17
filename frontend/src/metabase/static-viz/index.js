@@ -4,6 +4,6 @@ import StaticChart from "./containers/StaticChart";
 
 export function RenderChart(type, options) {
   return ReactDOMServer.renderToStaticMarkup(
-    <StaticChart type={type} options={options} />,
+    <StaticChart type={type} options={options} colors={options.colors} />,
   );
 }
