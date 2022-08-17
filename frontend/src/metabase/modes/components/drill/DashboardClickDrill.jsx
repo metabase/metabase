@@ -66,7 +66,6 @@ export default ({ question, clicked }) => {
           openActionParametersModal({
             emitterId: emitterId,
             props: {
-              description: settings["user_input_modal.description"],
               missingParameters,
               onSubmit: filledMissingParameters =>
                 executeRowAction({

@@ -2,15 +2,12 @@ import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { useDataAppContext } from "metabase/writeback/containers/DataAppContext";
 import { getActionParameterType } from "metabase/writeback/utils";
 import { ParametersMappedToValues } from "metabase/writeback/types";
 
-import RootForm from "metabase/containers/Form";
+import Form from "metabase/containers/Form";
 import { Parameter, ParameterId } from "metabase-types/types/Parameter";
 import { Dispatch } from "metabase-types/store";
-
-import { FormDescription } from "./ActionParametersInputForm.styled";
 
 interface Props {
   description?: string;
@@ -61,14 +58,11 @@ function formatParametersBeforeSubmit(
 }
 
 function ActionParametersInputForm({
-  description,
   missingParameters,
   dispatch,
   onSubmit,
   onSubmitSuccess,
 }: Props) {
-  const dataAppContext = useDataAppContext();
-
   const form = useMemo(() => {
     return {
       fields: missingParameters.map(getFormFieldForParameter),
@@ -87,23 +81,7 @@ function ActionParametersInputForm({
     [missingParameters, onSubmit, onSubmitSuccess, dispatch],
   );
 
-  return (
-    <RootForm form={form} onSubmit={handleSubmit} submitTitle={t`Execute`}>
-      {({ Form, FormField, FormFooter, formFields }: any) => (
-        <Form>
-          {description && (
-            <FormDescription>
-              {dataAppContext.format(description)}
-            </FormDescription>
-          )}
-          {formFields.map((field: any) => (
-            <FormField key={field.name} name={field.name} />
-          ))}
-          <FormFooter />
-        </Form>
-      )}
-    </RootForm>
-  );
+  return <Form form={form} onSubmit={handleSubmit} submitTitle={t`Execute`} />;
 }
 
 export default connect()(ActionParametersInputForm);
