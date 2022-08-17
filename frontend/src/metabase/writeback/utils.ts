@@ -1,19 +1,12 @@
 import { TYPE } from "metabase/lib/types";
 import { formatSourceForTarget } from "metabase/lib/click-behavior";
 
-import {
-  getTemplateTagParameterTarget,
-  getTemplateTagType,
-} from "metabase/parameters/utils/cards";
-import { ParameterWithTarget } from "metabase/parameters/types";
-
 import Database from "metabase-lib/lib/metadata/Database";
 import Field from "metabase-lib/lib/metadata/Field";
 
 import { Database as IDatabase } from "metabase-types/types/Database";
 import { DashCard } from "metabase-types/types/Dashboard";
 import { Parameter, ParameterId } from "metabase-types/types/Parameter";
-import { TemplateTag } from "metabase-types/types/Query";
 
 import {
   WritebackAction,
@@ -129,19 +122,6 @@ export const getActionEmitterParameterMappings = (action: WritebackAction) => {
 
   return parameterMappings;
 };
-
-export function getHttpActionTemplateTagParameter(
-  tag: TemplateTag,
-): ParameterWithTarget {
-  return {
-    id: tag.id,
-    type: tag["widget-type"] || getTemplateTagType(tag),
-    target: getTemplateTagParameterTarget(tag),
-    name: tag.name,
-    slug: tag.name,
-    default: tag.default,
-  };
-}
 
 export function getActionParameters(
   parameterMapping: ParametersSourceTargetMap = {},
