@@ -12634,6 +12634,12 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  remarks: Optional markdown description of the event
+                  name: description
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
                   name: card_id
                   type: int
                   remarks: 'ID of the underlying query the newmetric is based on'
@@ -12652,6 +12658,13 @@ databaseChangeLog:
                   remarks: JSON object holding the dimensions, a sequence of breakout clauses for the metric
                   name: dimensions
                   type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Whether or not the newmetric has been archived
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
                   constraints:
                     nullable: false
               - column:
