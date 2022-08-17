@@ -175,7 +175,6 @@
     cloverage/cloverage                                   {:mvn/version "1.2.2"}
     eftest/eftest                                         {:mvn/version "0.5.9"}
     jonase/eastwood                                       {:mvn/version "1.2.2"}
-    lein-check-namespace-decls/lein-check-namespace-decls {:mvn/version "1.0.4"} ; misnomer since this works on Clojure CLI now too
     pjstadig/humane-test-output                           {:mvn/version "0.11.0"}
     reifyhealth/specmonstah                               {:mvn/version "2.0.0"
                                                            :exclusions  [org.clojure/clojure
@@ -278,11 +277,6 @@
     "modules/drivers/vertica/test"]}
 
 ;;; Linters
-
-  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
-  :namespace-checker
-  {:exec-fn   metabase.linters.namespace-checker/check-namespace-decls
-   :exec-args {:prefix-rewriting false}}
 
   ;; clojure -M:dev:ee:ee-dev:drivers:drivers-dev:check
   :check
