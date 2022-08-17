@@ -15,6 +15,7 @@
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-test :as dashboard-test]
             [metabase.models.field-values :as field-values]
+            [metabase.models.params.chain-filter :as chain-filter]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -1400,7 +1401,7 @@
       (testing (str "\nGET /api/" url "\n")
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
           ;; shut off the cache:
-          (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
+          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
               (is
                 (=
