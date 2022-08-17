@@ -128,6 +128,7 @@
         (throw e)))))
 
 (defn migrate!
-  "Run migrations for the Metabase application database."
-  []
-  (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source) :up))
+  "Run migrations for the Metabase application database. Default is `:up`. Can also be passed `:down-one`."
+  ([] (migrate! :up))
+  ([direction]
+   (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source) direction)))

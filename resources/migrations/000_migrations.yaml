@@ -12605,6 +12605,90 @@ databaseChangeLog:
         - dropTable:
             tableName: emitter_action
 
+  - changeSet:
+      id: v45.00-020
+      author: dpsutton
+      comment: Added 0.45.0 - newmetrics
+      changes:
+        - createTable:
+            tableName: newmetric
+            remarks: Table holding newmetric information
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  remarks: 'name of the newmetric'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: display_name
+                  type: varchar(255)
+                  remarks: 'display name of the newmetric'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: 'ID of the underlying query the newmetric is based on'
+                  constraints:
+                    nullable: false
+                    references: report_card(id)
+                    foreignKeyName: fk_newmetric_card_id
+                    deleteCascade: true
+              - column:
+                  remarks: JSON object holding the primary measure, an aggregation clause for the metric
+                  name: measure
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: JSON object holding the dimensions, a sequence of breakout clauses for the metric
+                  name: dimensions
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: ID of the user who created the event
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_newmetric_creator_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the newmetric was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the event was modified
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v45.00-021
+      author: dpsutton
+      comment: Added 0.45.0 - newmetric user_id index
+      changes:
+        - createIndex:
+            tableName: newmetric
+            columns:
+              - column:
+                  name: creator_id
+            indexName: idx_newmetric_user_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
