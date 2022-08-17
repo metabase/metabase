@@ -16,7 +16,8 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
     const ignoreSiteUrl = action.ignoreSiteUrl;
     if (url) {
       open(url, {
-        openInSameOrigin: (url, location) => dispatch(push(location)),
+        openInSameOrigin: (url, location) =>
+          dispatch(push({ ...location, state: Date.now() })),
         ignoreSiteUrl,
       });
       didPerform = true;
