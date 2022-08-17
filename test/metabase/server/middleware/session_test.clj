@@ -131,37 +131,40 @@
    :type             :full-app-embed})
 
 (deftest set-full-app-embedding-session-cookie-test
-  (mt/with-temporary-setting-values [session-timeout nil]
-    (testing "test that we can set a full-app-embedding session cookie"
-      (is (= {:body    {}
-              :status  200
-              :cookies {embedded-session-cookie {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
-                                                 :http-only true
-                                                 :path      "/"}
-                        session-timeout-cookie  {:value     "alive"
-                                                 :path      "/"}}
-              :headers {anti-csrf-token-header test-anti-csrf-token}}
-             (mw.session/set-session-cookies {}
-                                            {}
-                                            test-full-app-embed-session
-                                            (t/zoned-date-time "2022-07-06T02:00Z[UTC]")))))
-    (testing "test that we can set a full-app-embedding session cookie with SameSite=None over HTTPS"
-      (is (= {:body    {}
-              :status  200
-              :cookies {embedded-session-cookie {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
-                                                 :http-only true
-                                                 :path      "/"
-                                                 :same-site :none
-                                                 :secure    true}
-                        session-timeout-cookie  {:value     "alive"
-                                                 :path      "/"
-                                                 :same-site :none
-                                                 :secure    true}}
-              :headers {anti-csrf-token-header test-anti-csrf-token}}
-             (mw.session/set-session-cookies {:headers {"x-forwarded-protocol" "https"}}
-                                            {}
-                                            test-full-app-embed-session
-                                            (t/zoned-date-time "2022-07-06T02:01Z[UTC]")))))))
+  (with-redefs [env/env (assoc env/env :max-session-age "1")]
+    (mt/with-temporary-setting-values [session-timeout nil]
+      (testing "test that we can set a full-app-embedding session cookie"
+        (is (= {:body    {}
+                :status  200
+                :cookies {embedded-session-cookie {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
+                                                   :http-only true
+                                                   :path      "/"}
+                          session-timeout-cookie  {:value     "alive"
+                                                   :path      "/"
+                                                   :max-age   60}}
+                :headers {anti-csrf-token-header test-anti-csrf-token}}
+               (mw.session/set-session-cookies {}
+                                               {}
+                                               test-full-app-embed-session
+                                               (t/zoned-date-time "2022-07-06T02:00Z[UTC]")))))
+      (testing "test that we can set a full-app-embedding session cookie with SameSite=None over HTTPS"
+        (is (= {:body    {}
+                :status  200
+                :cookies {embedded-session-cookie {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
+                                                   :http-only true
+                                                   :path      "/"
+                                                   :same-site :none
+                                                   :secure    true}
+                          session-timeout-cookie  {:value     "alive"
+                                                   :path      "/"
+                                                   :same-site :none
+                                                   :secure    true
+                                                   :max-age   60}}
+                :headers {anti-csrf-token-header test-anti-csrf-token}}
+               (mw.session/set-session-cookies {:headers {"x-forwarded-protocol" "https"}}
+                                               {}
+                                               test-full-app-embed-session
+                                               (t/zoned-date-time "2022-07-06T02:01Z[UTC]"))))))))
 
 
 ;;; ---------------------------------------- TEST wrap-session-id middleware -----------------------------------------
@@ -414,11 +417,11 @@
              (mw.session/session-timeout->seconds {:amount 0
                                                    :unit   "minutes"}))))
 
-    (testing "non-nil `session-timeout-seconds` should set the expiry relative to the request time"
+    (testing "non-nil `session-timeout-seconds` should set the expiry of the timeout cookie relative to the request time"
       (mt/with-temporary-setting-values [session-timeout {:amount 60
                                                           :unit   "minutes"}]
         (testing "with normal sessions"
-          (let [request {:cookies               {session-cookie         {:value session-id}
+          (let [request {:cookies               {session-cookie         {:value "8df268ab-00c0-4b40-9413-d66b966b696a"}
                                                  session-timeout-cookie {:value "alive"}}
                          :metabase-session-id   session-id
                          :metabase-session-type :normal}]
@@ -426,60 +429,29 @@
                     :cookies {session-timeout-cookie {:value     "alive"
                                                       :same-site :lax
                                                       :path      "/"
-                                                      :expires   "Sat, 1 Jan 2022 01:00:00 GMT"},
-                              session-cookie         {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
-                                                      :same-site :lax,
-                                                      :path      "/",
-                                                      :expires   "Sat, 1 Jan 2022 01:00:00 GMT",
-                                                      :http-only true}}}
-                   (mw.session/reset-session-timeout-on-response request response request-time)))))
+                                                      :expires   "Sat, 1 Jan 2022 01:00:00 GMT"}}}
+                   (mw.session/reset-session-timeout* request response request-time)))))
 
         (testing "with embedded sessions"
-          (let [request {:cookies               {embedded-session-cookie {:value session-id}
+          (let [request {:cookies               {embedded-session-cookie {:value "8df268ab-00c0-4b40-9413-d66b966b696a"}
                                                  session-timeout-cookie  {:value "alive"}}
                          :metabase-session-id   session-id
                          :metabase-session-type :full-app-embed}]
             (is (= {:body    "some body",
-                    :headers {"x-metabase-anti-csrf-token" nil}
-                    :cookies {session-timeout-cookie  {:value   "alive"
-                                                       :path    "/"
-                                                       :expires "Sat, 1 Jan 2022 01:00:00 GMT"},
-                              embedded-session-cookie {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
-                                                       :http-only true,
-                                                       :path      "/",
-                                                       :expires   "Sat, 1 Jan 2022 01:00:00 GMT"}}}
-                   (mw.session/reset-session-timeout-on-response request response request-time)))))))
+                    :cookies {session-timeout-cookie {:value     "alive"
+                                                      :path      "/"
+                                                      :expires   "Sat, 1 Jan 2022 01:00:00 GMT"}}}
+                   (mw.session/reset-session-timeout* request response request-time)))))))
 
     (testing "If the request does not have session cookies (because they have expired), they should not be reset."
       (mt/with-temporary-setting-values [session-timeout {:amount 60
                                                           :unit   "minutes"}]
         (let [request {:cookies {}}]
           (is (= response
-                 (mw.session/reset-session-timeout-on-response request response request-time))))))
+                 (mw.session/reset-session-timeout* request response request-time))))))
 
-    (testing "If [[public-settings/session-cookies]] is true, then the session and timeout cookies
-              shouldn't have a max age or expires attribute."
-      (with-redefs [env/env (assoc env/env :max-session-age "1")]
-        (mt/with-temporary-setting-values [session-timeout nil
-                                           public-settings/session-cookies true]
-          (let [request {:metabase-session-id             session-id
-                         :metabase-session-type           :normal
-                         :cookies {session-cookie         {:value "session-id"}
-                                   session-timeout-cookie {:value "alive"}}}
-                session {:id session-id, :type :normal}]
-            (is (= {:body    "some body"
-                    :cookies {"metabase.TIMEOUT" {:value     "alive"
-                                                  :same-site :lax
-                                                  :path      "/"},
-                              "metabase.SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a"
-                                                  :same-site :lax
-                                                  :path      "/"
-                                                  :http-only true}}}
-                   (mw.session/set-session-cookies request response session request-time)))))))
-
-    (testing "If [[public-settings/session-cookies]] is false, the user has checked 'Remember me'
-              on login, and there is session-timeout is nil, the session and timeout cookies should
-              have a max-age."
+    (testing "If [[public-settings/session-cookies]] is false and the `:remember` flag is set, then the session cookie
+              should have a max age attribute."
       (with-redefs [env/env (assoc env/env :max-session-age "1")]
         (mt/with-temporary-setting-values [session-timeout nil
                                            public-settings/session-cookies false]
@@ -490,14 +462,37 @@
                                                  session-timeout-cookie {:value "alive"}}}
                 session {:id   session-id
                          :type :normal}]
-            (is (= {:body    "some body",
+            (is (= {:body    "some body"
                     :cookies {"metabase.TIMEOUT" {:value     "alive"
                                                   :same-site :lax
+                                                  :max-age   60
+                                                  :path      "/"},
+                              "metabase.SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a"
+                                                  :same-site :lax
                                                   :path      "/"
-                                                  :max-age   60},
-                              "metabase.SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a",
-                                                  :same-site :lax,
-                                                  :path      "/",
-                                                  :max-age   60,
+                                                  :max-age   60
+                                                  :http-only true}}}
+                   (mw.session/set-session-cookies request response session request-time)))))))
+
+    (testing "If [[public-settings/session-cookies]] is true and the `:remember` flag is set, then the session cookie
+              shouldn't have a max age attribute."
+      (with-redefs [env/env (assoc env/env :max-session-age "1")]
+        (mt/with-temporary-setting-values [session-timeout nil
+                                           public-settings/session-cookies true]
+          (let [request {:metabase-session-id   session-id
+                         :metabase-session-type :normal
+                         :remember              "true"
+                         :cookies               {session-cookie         {:value "session-id"}
+                                                 session-timeout-cookie {:value "alive"}}}
+                session {:id   session-id
+                         :type :normal}]
+            (is (= {:body    "some body"
+                    :cookies {"metabase.TIMEOUT" {:value     "alive"
+                                                  :same-site :lax
+                                                  :max-age   60
+                                                  :path      "/"},
+                              "metabase.SESSION" {:value     "8df268ab-00c0-4b40-9413-d66b966b696a"
+                                                  :same-site :lax
+                                                  :path      "/"
                                                   :http-only true}}}
                    (mw.session/set-session-cookies request response session request-time)))))))))
