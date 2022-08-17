@@ -273,14 +273,14 @@ export default class DashCard extends Component {
             this.props.onUpdateVisualizationSettings
           }
           replacementContent={
-            (clickBehaviorSidebarDashcard != null || isEditingParameter) &&
+            clickBehaviorSidebarDashcard != null &&
             isVirtualDashCard(dashcard) ? (
               <div className="flex full-height align-center justify-center">
                 <h4 className="text-medium">
                   {dashcard.visualization_settings.virtual_card.display ===
                   "text"
                     ? t`Text card`
-                    : t`Standard actions`}
+                    : t`Action button`}
                 </h4>
               </div>
             ) : isEditingParameter && !isActionButton ? (
