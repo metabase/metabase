@@ -29,42 +29,65 @@ describe("scenarios > admin > people", () => {
   });
 
   describe("user management", () => {
-    it("should render (metabase-enterprise#210)", () => {
+    it("should be possible to switch beteween 'People' and 'Groups' tabs and to add/remove users to groups (metabase-enterprise#210, metabase#12693, metabase#21521)", () => {
       cy.visit("/admin/people");
 
       assertTableRowsCount(TOTAL_USERS);
-
       cy.findByText(`${TOTAL_USERS} people found`);
 
       // A small sidebar selector
       cy.get(".AdminList-items").within(() => {
         cy.findByText("People").should("have.class", "selected");
-        cy.findByText("Groups").click();
-      });
-
-      cy.log("Switch to 'Groups' and make sure it renders properly");
-      cy.get(".PageTitle").contains("Groups");
-
-      assertTableRowsCount(TOTAL_GROUPS);
-
-      cy.get(".AdminList-items").within(() => {
+        cy.log("Switch to 'Groups' and make sure it renders properly");
+        cy.findByText("Groups").as("groupsTab").click();
         cy.findByText("Groups").should("have.class", "selected");
       });
 
+      cy.get(".PageTitle").contains("Groups");
+      assertTableRowsCount(TOTAL_GROUPS);
+
       cy.log(
-        "**Dig into one of the user groups and make sure its members are listed**",
+        "Dig into one of the user groups and make sure its members are listed",
       );
       cy.findByText("All Users").click();
       cy.get(".PageTitle").contains("All Users");
 
       // The same list as for "People"
       assertTableRowsCount(TOTAL_USERS);
-    });
+      cy.findByText(`${TOTAL_USERS} members`);
 
-    it("should load the members when navigating to the group directly", () => {
+      // We cannot add new users to the "All users" group directly
+      cy.button("Add members").should("not.exist");
+
+      // Navigate to the collection group using the UI
+      const GROUP = "collection";
+
+      cy.get("@groupsTab").click();
+      cy.findByText(GROUP).closest("tr").contains("3");
+      cy.findByText(GROUP).click();
+
+      cy.findByText("3 members");
+
+      cy.button("Add members").click();
+      cy.focused().type("Bobby");
+      cy.findByText("Bobby Tables").click();
+      cy.button("Add").click();
+
+      cy.findByText("4 members");
+
+      removeUserFromGroup("Bobby Tables");
+      cy.findByText("3 members");
+
+      // should load the members when navigating to the group directly
       cy.visit(`/admin/people/groups/${DATA_GROUP}`);
-      cy.findByText("No Collection Tableton");
-      cy.findByText("Robert Tableton");
+      cy.findByText("2 members");
+
+      removeUserFromGroup("No Collection Tableton");
+      cy.findByText("1 member");
+
+      removeUserFromGroup("Robert Tableton");
+      cy.findByText("0 members");
+      cy.findByText("A group is only as good as its members.");
     });
 
     it("should allow admin to create new users", () => {
@@ -519,4 +542,8 @@ function assertLinkMatchesUrl(text, url) {
   cy.findByRole("link", { name: text })
     .should("have.attr", "href")
     .and("eq", url);
+}
+
+function removeUserFromGroup(fullName) {
+  cy.findByText(fullName).closest("tr").find(".Icon-close").click();
 }
