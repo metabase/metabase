@@ -12661,6 +12661,18 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  remarks: JSON object holding the allowed granularities, treated as a set
+                  name: granularities
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Default granularity of the measure
+                  name: default_granularity
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
                   remarks: Whether or not the newmetric has been archived
                   name: archived
                   type: boolean
