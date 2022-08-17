@@ -8,6 +8,8 @@ import {
   getDimensionByName,
   summarize,
   startNewQuestion,
+  filter,
+  filterField,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -531,6 +533,27 @@ describe("scenarios > question > nested", () => {
         "Removing invalid MBQL clause",
       );
     });
+  });
+
+  it("should be able to use integer filter on a nested query based on a saved native question (metabase#15808)", () => {
+    cy.createNativeQuestion({
+      name: "15808",
+      native: { query: "select * from products" },
+    });
+    startNewQuestion();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("15808").click();
+    visualize();
+
+    filter();
+    filterField("RATING", {
+      operator: "Equal to",
+      value: "4",
+    });
+    cy.findByTestId("apply-filters").click();
+
+    cy.findByText("Synergistic Granite Chair");
+    cy.findByText("Rustic Paper Wallet").should("not.exist");
   });
 });
 
