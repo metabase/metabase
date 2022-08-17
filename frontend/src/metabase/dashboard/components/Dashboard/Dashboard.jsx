@@ -20,10 +20,14 @@ import {
 import DashboardGrid from "../DashboardGrid";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
+import DashboardPageNav from "./DashboardPageNav";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
 import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
+
+// this is a kludge, that should be easily replaced with a check for whether the current dashboard is part of an app
+const IS_APP_FIXME_PLEASE = true;
 
 // NOTE: move DashboardControls HoC to container
 
@@ -46,6 +50,7 @@ class Dashboard extends Component {
       .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
     isNavbarOpen: PropTypes.bool.isRequired,
+    closeNavbar: PropTypes.func,
     isHeaderVisible: PropTypes.bool,
     isAdditionalInfoVisible: PropTypes.bool,
 
@@ -124,6 +129,10 @@ class Dashboard extends Component {
     main.addEventListener("resize", this.throttleParameterWidgetStickiness, {
       passive: true,
     });
+
+    if (IS_APP_FIXME_PLEASE && this.props.isNavbarOpen) {
+      this.props.closeNavbar();
+    }
   }
 
   componentDidUpdate(prevProps) {
@@ -266,7 +275,7 @@ class Dashboard extends Component {
       >
         {() => (
           <DashboardStyled>
-            {isHeaderVisible && (
+            {isHeaderVisible && !IS_APP_FIXME_PLEASE && (
               <HeaderContainer
                 isFullscreen={isFullscreen}
                 isNightMode={shouldRenderAsNightMode}
@@ -294,6 +303,7 @@ class Dashboard extends Component {
             )}
 
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
+              {IS_APP_FIXME_PLEASE && <DashboardPageNav />}
               <ParametersAndCardsContainer
                 data-testid="dashboard-parameters-and-cards"
                 ref={element => (this.parametersAndCardsContainerRef = element)}

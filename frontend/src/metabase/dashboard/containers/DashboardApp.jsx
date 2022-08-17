@@ -18,7 +18,7 @@ import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
-import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
+import { getIsNavbarOpen, setErrorPage, closeNavbar } from "metabase/redux/app";
 
 import {
   getIsEditing,
@@ -97,6 +97,7 @@ const mapDispatchToProps = {
   ...dashboardActions,
   archiveDashboard: id => Dashboards.actions.setArchived({ id }, true),
   fetchDatabaseMetadata,
+  closeNavbar,
   setErrorPage,
   onChangeLocation: push,
 };
