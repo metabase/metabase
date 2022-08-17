@@ -62,9 +62,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       changeBinningForDimension({
         name: "Longitude",
         fromBinning: "Auto bin",
-        // Test is currently incorrect in that it displays wrong binning options (please see: https://github.com/metabase/metabase/issues/16674)
-        // Once #16674 gets fixed, update the following line to say: `bucketSize: "Bin every 20 degrees"`
-        toBinning: "20°",
+        toBinning: "Bin every 20 degrees",
       });
 
       assertQueryBuilderState({
@@ -130,9 +128,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       changeBinningForDimension({
         name: "Longitude",
         fromBinning: "Auto bin",
-        // Test is currently incorrect in that it displays wrong binning options (please see: https://github.com/metabase/metabase/issues/16674)
-        // Once #16674 gets fixed, update the following line to say: `bucketSize: "Bin every 20 degrees"`
-        toBinning: "20°",
+        toBinning: "Bin every 20 degrees",
       });
 
       assertQueryBuilderState({
