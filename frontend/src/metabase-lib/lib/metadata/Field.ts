@@ -244,7 +244,7 @@ class FieldInner extends Base {
     return getIconForField(this);
   }
 
-  reference() {
+  reference(): FieldRef {
     if (Array.isArray(this.id)) {
       // if ID is an array, it's a MBQL field reference, typically "field"
       return this.id;
