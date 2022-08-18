@@ -204,7 +204,7 @@ const QuestionActions = ({
     }
 
     extraButtons.push({
-      title: t`Turn into a metric`,
+      title: t`Make a metric from this`,
       icon: "star",
       disabled: !canBeMetric,
       action: () => {
