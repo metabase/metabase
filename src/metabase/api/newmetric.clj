@@ -1,6 +1,5 @@
 (ns metabase.api.newmetric
   (:require [metabase.api.common :as api]
-            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.newmetric :refer [Newmetric]]
             [metabase.util.schema :as su]
@@ -13,8 +12,11 @@
    name         su/NonBlankString
    display_name (s/maybe s/Str)
    description  (s/maybe s/Str)
-   measure      mbql.s/Aggregation
-   dimensions   [[(s/one su/NonBlankString "name") (s/one mbql.s/Field "clause")]]}
+   ;; todo: normalize and then check
+   ;; measure      mbql.s/Aggregation
+   ;; dimensions   [[(s/one su/NonBlankString "name") (s/one mbql.s/Field "clause")]]
+   }
+
   (db/insert! Newmetric body))
 
 ;; name display_name card_id measure dimensions archived creator_id created_at updated_at
@@ -29,3 +31,5 @@
    measure      any?
    dimensions   any?}
   (db/update! Newmetric metric-updates))
+
+(api/define-routes)

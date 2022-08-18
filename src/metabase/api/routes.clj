@@ -18,6 +18,7 @@
             [metabase.api.geojson :as api.geojson]
             [metabase.api.ldap :as api.ldap]
             [metabase.api.login-history :as api.login-history]
+            [metabase.api.newmetric :as api.newmetric]
             [metabase.api.metric :as api.metric]
             [metabase.api.native-query-snippet :as api.native-query-snippet]
             [metabase.api.notify :as api.notify]
@@ -82,6 +83,7 @@
   (context "/login-history"        [] (+auth api.login-history/routes))
   (context "/premium-features"     [] (+auth api.premium-features/routes))
   (context "/metric"               [] (+auth api.metric/routes))
+  (context "/newmetric"            [] (+auth api.newmetric/routes))
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
   (context "/notify"               [] (+apikey api.notify/routes))
   (context "/permissions"          [] (+auth api.permissions/routes))
