@@ -101,11 +101,6 @@ class TableInner extends Base {
     return this.aggregation_operators_lookup[short];
   }
 
-  // @deprecated: use aggregationOperators
-  get aggregation_operators() {
-    return this.aggregationOperators();
-  }
-
   // @deprecated: use aggregationOperatorsLookup
   get aggregation_operators_lookup() {
     return this.aggregationOperatorsLookup();
