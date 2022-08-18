@@ -73,7 +73,7 @@ export const InputField = styled.input<InputProps>`
   ${props =>
     props.subtitle &&
     css`
-      padding-top: 1.25rem;
+      padding-top: 1.75rem;
     `};
 `;
 
@@ -95,7 +95,7 @@ export const InputRightButton = styled(InputButton)`
 export const InputSubtitle = styled.div`
   color: ${color("text-light")};
   position: absolute;
-  top: 0.6em;
+  top: 1.25em;
   left: 1.25em;
   font-family: ${monospaceFontFamily};
   font-size: 0.75em;
