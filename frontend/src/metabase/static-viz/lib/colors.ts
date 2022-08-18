@@ -1,13 +1,15 @@
 import { colors, color } from "metabase/lib/colors/palette";
 import { ColorPalette } from "metabase/lib/colors/types";
 
-export const createColorGetter = (instanceColors: ColorPalette = {}) => {
+export type ColorGetter = (colorName: string) => string;
+
+export const createColorGetter = (
+  instanceColors: ColorPalette = {},
+): ColorGetter => {
   const palette = { ...colors, ...instanceColors };
 
   return (colorName: string) => color(colorName, palette);
 };
-
-export type ColorGetter = ReturnType<typeof createColorGetter>;
 
 export type WaterfallColors = {
   waterfallTotal: string;

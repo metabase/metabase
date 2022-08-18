@@ -69,7 +69,6 @@ const TimeSeriesWaterfallChart = ({
   getColor,
 }) => {
   data = sortTimeSeries(data);
-  const colors = settings?.colors ?? {};
   const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
@@ -104,7 +103,7 @@ const TimeSeriesWaterfallChart = ({
     const y = yScale(Math.max(entry.start, entry.end));
     const fill = getWaterfallEntryColor(
       entry,
-      getWaterfallColors(colors, getColor),
+      getWaterfallColors(settings?.colors, getColor),
     );
 
     return { x, y, width, height, fill };

@@ -26,8 +26,8 @@ import { FUNNEL_CHART_TYPE } from "../../components/FunnelChart/constants";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import { StaticChartProps } from "./types";
 
-const StaticChart = ({ type, options, colors = {} }: StaticChartProps) => {
-  const getColor = createColorGetter(colors);
+const StaticChart = ({ type, options }: StaticChartProps) => {
+  const getColor = createColorGetter(options.colors);
   const chartProps = { ...options, getColor };
 
   switch (type) {

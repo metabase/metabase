@@ -75,7 +75,6 @@ const CategoricalWaterfallChart = ({
     accessors,
     settings?.showTotal,
   );
-  const colors = settings?.colors ?? {};
   const isVertical = entries.length > 10;
   const xTickWidth = getXTickWidth(
     data,
@@ -116,7 +115,7 @@ const CategoricalWaterfallChart = ({
 
     const fill = getWaterfallEntryColor(
       entry,
-      getWaterfallColors(colors, getColor),
+      getWaterfallColors(settings?.colors, getColor),
     );
 
     return { x, y, width, height, fill };
