@@ -3,6 +3,7 @@ import { Text, TextProps } from "@visx/text";
 import { AxisBottom, AxisLeft, AxisRight } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
+import { assoc } from "icepick";
 
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import {
@@ -141,6 +142,21 @@ export const XYChart = ({
   const areXTicksHidden = settings.x.tick_display === "hide";
   const xLabelOffset = areXTicksHidden ? -style.axes.ticks.fontSize : undefined;
 
+  // Use the same logic as in https://github.com/metabase/metabase/blob/1276595f073883853fed219ac185d0293ced01b8/frontend/src/metabase/visualizations/lib/chart_values.js#L178-L179
+  const getAvgLength = (compact: boolean) => {
+    const lengths = series
+      .flatMap(s => s.data)
+      .map(
+        ([_, yValue]) =>
+          formatNumber(
+            yValue,
+            maybeAssoc(settings.y.format, "compact", compact),
+          ).length,
+      );
+    return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
+  };
+  const compact = getAvgLength(true) < getAvgLength(false) - 3;
+
   return (
     <svg width={width} height={height + legendHeight}>
       <Group top={margin.top} left={xMin}>
@@ -160,7 +176,12 @@ export const XYChart = ({
             xAccessor={xScale.barAccessor}
             bandwidth={xScale.bandwidth}
             showValues={Boolean(settings.show_values)}
-            valueFormatter={value => formatNumber(value, settings.y.format)}
+            valueFormatter={value =>
+              formatNumber(
+                value,
+                maybeAssoc(settings.y.format, "compact", compact),
+              )
+            }
             valueProps={valueProps}
           />
         )}
@@ -171,7 +192,12 @@ export const XYChart = ({
           xAccessor={xScale.lineAccessor}
           areStacked={settings.stacking === "stack"}
           showValues={Boolean(settings.show_values)}
-          valueFormatter={value => formatNumber(value, settings.y.format)}
+          valueFormatter={value =>
+            formatNumber(
+              value,
+              maybeAssoc(settings.y.format, "compact", compact),
+            )
+          }
           valueProps={valueProps}
         />
         <LineSeries
@@ -180,7 +206,12 @@ export const XYChart = ({
           yScaleRight={yScaleRight}
           xAccessor={xScale.lineAccessor}
           showValues={Boolean(settings.show_values)}
-          valueFormatter={value => formatNumber(value, settings.y.format)}
+          valueFormatter={value =>
+            formatNumber(
+              value,
+              maybeAssoc(settings.y.format, "compact", compact),
+            )
+          }
           valueProps={valueProps}
         />
 
@@ -270,4 +301,12 @@ export const XYChart = ({
       />
     </svg>
   );
+};
+
+const maybeAssoc: typeof assoc = (collection, key, value) => {
+  if (collection == null) {
+    return collection;
+  }
+
+  return assoc(collection, key, value);
 };
