@@ -16,6 +16,22 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
+const ordersJoinProductsQuery = {
+  "source-table": ORDERS_ID,
+  joins: [
+    {
+      fields: "all",
+      "source-table": PRODUCTS_ID,
+      condition: [
+        "=",
+        ["field", ORDERS.PRODUCT_ID, null],
+        ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+      ],
+      alias: "Products",
+    },
+  ],
+};
+
 describe("scenarios > question > nested", () => {
   beforeEach(() => {
     restore();
@@ -264,14 +280,14 @@ describe("scenarios > question > nested", () => {
   it("'distribution' should work on a joined table from a saved question (metabase#14787)", () => {
     // Set the display really wide and really tall to avoid any scrolling
     cy.viewport(1600, 1200);
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
-    ordersJoinProducts("14787");
-    // This repro depends on these exact steps - it has to be opened from the saved questions
-    startNewQuestion();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("14787").click();
+    const baseQuestionDetails = {
+      name: "14787",
+      query: ordersJoinProductsQuery,
+    };
 
-    visualize();
+    createNestedQuestion({ baseQuestionDetails });
 
     // The column title
     cy.findByText("Products → Category").click();
