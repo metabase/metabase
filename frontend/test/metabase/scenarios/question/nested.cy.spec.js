@@ -452,14 +452,12 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should be able to use integer filter on a nested query based on a saved native question (metabase#15808)", () => {
-    cy.createNativeQuestion({
+    const baseQuestionDetails = {
       name: "15808",
-      native: { query: "select * from products" },
-    });
-    startNewQuestion();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("15808").click();
-    visualize();
+      native: { query: "select * from products limit 5" },
+    };
+
+    createNestedQuestion({ baseQuestionDetails });
 
     filter();
     filterField("RATING", {
