@@ -259,6 +259,14 @@ export const getRoutes = store => (
           <Route path=":slug/:objectId" component={QueryBuilder} />
         </Route>
 
+        <Route path="/metric">
+          <IndexRoute component={QueryBuilder} />
+          <Route path=":slug" component={QueryBuilder} />
+          <Route path=":slug/settings" component={QueryBuilder} />
+          <Route path=":slug/metadata" component={QueryBuilder} />
+          <Route path=":slug/:objectId" component={QueryBuilder} />
+        </Route>
+
         <Route path="browse" component={BrowseApp}>
           <IndexRoute component={DatabaseBrowser} />
           <Route path=":slug" component={SchemaBrowser} />
