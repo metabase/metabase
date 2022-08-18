@@ -97,6 +97,7 @@
     "remark-gfm": "1.0.0",
     "reselect": "^3.0.0",
     "screenfull": "^4.2.1",
+    "server-text-width": "^1.0.2",
     "simple-statistics": "^3.0.0",
     "slugg": "^1.2.1",
     "styled-system": "2.2.5",
