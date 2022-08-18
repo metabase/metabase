@@ -49,6 +49,7 @@ title: Metabase documentation
 - [SQL templates](./questions/native-editor/sql-parameters.md)
 - [Using results to ask new questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
 - [SQL snippets](./questions/native-editor/sql-snippets.md)
+- [SQL snippet folder permissions](./permissions/snippets.md)
 
 ### Sharing
 

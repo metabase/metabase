@@ -10,7 +10,7 @@ Site name, report timezone, and more settings.
 
 ## [Email](./email.md)
 
-Set up email for Alerts and Dashboard subscriptions.
+Set up email for [Alerts](../questions/sharing/alerts.md) and [Dashboard subscriptions](../dashboards/subscriptions.md).
 
 ## [Slack](./slack.md)
 
