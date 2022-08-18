@@ -10,6 +10,8 @@
             [metabase.db.data-migrations :refer [DataMigrations]]
             [metabase.db.setup :as mdb.setup]
             [metabase.models :refer [Activity
+                                     App
+                                     AppNavItem
                                      ApplicationPermissionsRevision
                                      BookmarkOrdering
                                      Card
@@ -103,6 +105,8 @@
    DashboardCard
    DashboardCardSeries
    Activity
+   App
+   AppNavItem
    Pulse
    PulseCard
    PulseChannel
