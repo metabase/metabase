@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -21,6 +21,7 @@ import {
 } from "metabase/lib/data-modeling/utils";
 
 import Question from "metabase-lib/lib/Question";
+import { canBeUsedAsMetric } from "metabase-lib/lib/newmetrics/utils";
 
 import {
   QuestionActionsDivider,
@@ -91,6 +92,8 @@ const QuestionActions = ({
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
   const isNative = question.isNative();
+
+  const canBeMetric = useMemo(() => canBeUsedAsMetric(question), [question]);
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
@@ -191,6 +194,16 @@ const QuestionActions = ({
           : t`Turn into an action`,
         icon: "bolt",
         action: isAction ? turnActionIntoQuestion : turnQuestionIntoAction,
+      });
+    }
+
+    if (canBeMetric) {
+      extraButtons.push({
+        title: t`Turn into a metric`,
+        icon: "star",
+        action: () => {
+          console.log("sike!");
+        },
       });
     }
   }
