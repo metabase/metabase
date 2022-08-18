@@ -3,6 +3,7 @@ import {
   popover,
   openOrdersTable,
   remapDisplayValueToFK,
+  visitQuestion,
   visitQuestionAdhoc,
   visualize,
   getDimensionByName,
@@ -17,75 +18,79 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-describe("scenarios > question > nested (metabase#12568)", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-
-    // Create a simple question of orders by week
-    cy.createQuestion(
-      {
-        name: "GH_12568: Simple",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-        },
-        display: "line",
-      },
-      { loadMetadata: true },
-    );
-
-    // Create a native question of orders by day
-    cy.createNativeQuestion(
-      {
-        name: "GH_12568: SQL",
-        native: {
-          query:
-            "SELECT date_trunc('day', CREATED_AT) as date, COUNT(*) as count FROM ORDERS GROUP BY date_trunc('day', CREATED_AT)",
-        },
-        display: "scalar",
-      },
-      { loadMetadata: true, interceptAlias: "secondCardQuery" },
-    );
-
-    startNewQuestion();
-
-    cy.contains("Saved Questions").click();
-  });
-
-  it("should allow Distribution on a Saved Simple Question", () => {
-    cy.contains("GH_12568: Simple").click();
-    visualize();
-    cy.contains("Count").click();
-    cy.contains("Distribution").click();
-    cy.contains("Count by Count: Auto binned");
-    cy.get(".bar").should("have.length.of.at.least", 8);
-  });
-
-  it("should allow Sum over time on a Saved Simple Question", () => {
-    cy.contains("GH_12568: Simple").click();
-    visualize();
-    cy.contains("Count").click();
-    cy.contains("Sum over time").click();
-    cy.contains("Sum of Count");
-    cy.get(".dot").should("have.length.of.at.least", 10);
-  });
-
-  it("should allow Distribution on a Saved SQL Question", () => {
-    cy.contains("GH_12568: SQL").click();
-    visualize();
-    cy.contains("COUNT").click();
-    cy.contains("Distribution").click();
-    cy.contains("Count by COUNT: Auto binned");
-    cy.get(".bar").should("have.length.of.at.least", 8);
-  });
-});
-
 describe("scenarios > question > nested", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+  });
+
+  it("should allow 'Distribution' and 'Sum over time' on nested questions (metabase#12568)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    // Make sure it works for a GUI question
+    const guiQuestionDetails = {
+      name: "GH_12568: Simple",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      },
+      display: "line",
+    };
+
+    createNestedQuestion(
+      {
+        baseQuestionDetails: guiQuestionDetails,
+        nestedQuestionDetails: { name: "Nested GUI" },
+      },
+      { loadBaseQuestionMetadata: true },
+    );
+
+    cy.contains("Count").click();
+    cy.contains("Distribution").click();
+    cy.wait("@dataset");
+    cy.contains("Count by Count: Auto binned");
+    cy.get(".bar").should("have.length.of.at.least", 8);
+
+    // Go back to the nested question and make sure Sum over time works
+    cy.findByText("Nested GUI").click();
+
+    cy.contains("Count").click();
+    cy.contains("Sum over time").click();
+    cy.contains("Sum of Count");
+    cy.findByText("137");
+
+    // Make sure it works for a SQL question
+    const sqlQuestionDetails = {
+      name: "GH_12568: SQL",
+      native: {
+        query:
+          "SELECT date_trunc('year', CREATED_AT) as date, COUNT(*) as count FROM ORDERS GROUP BY date_trunc('year', CREATED_AT)",
+      },
+      display: "scalar",
+    };
+
+    createNestedQuestion(
+      {
+        baseQuestionDetails: sqlQuestionDetails,
+        nestedQuestionDetails: { name: "Nested SQL" },
+      },
+      { loadBaseQuestionMetadata: true },
+    );
+
+    cy.contains("COUNT").click();
+    cy.contains("Distribution").click();
+    cy.wait("@dataset");
+    cy.contains("Count by COUNT: Auto binned");
+    cy.get(".bar").should("have.length.of.at.least", 5);
+
+    cy.findByText("Nested SQL").click();
+
+    cy.contains("COUNT").click();
+    cy.contains("Sum over time").click();
+    cy.wait("@dataset");
+    cy.contains("Sum of COUNT");
+    cy.findByText("744");
   });
 
   it("should handle duplicate column names in nested queries (metabase#10511)", () => {
@@ -522,4 +527,30 @@ function ordersJoinProducts(name) {
       ],
     },
   });
+}
+
+function createNestedQuestion(
+  { baseQuestionDetails, nestedQuestionDetails },
+  { loadBaseQuestionMetadata = false, visitNestedQuestion = true },
+) {
+  createBaseQuestion(baseQuestionDetails).then(({ body: { id } }) => {
+    loadBaseQuestionMetadata && visitQuestion(id);
+
+    return cy.createQuestion(
+      {
+        name: "Nested Question",
+        query: {
+          "source-table": `card__${id}`,
+        },
+        ...nestedQuestionDetails,
+      },
+      { visitQuestion: visitNestedQuestion },
+    );
+  });
+
+  function createBaseQuestion(query) {
+    return query.native
+      ? cy.createNativeQuestion(query)
+      : cy.createQuestion(query);
+  }
 }
