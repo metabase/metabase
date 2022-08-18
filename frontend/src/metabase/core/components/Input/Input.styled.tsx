@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import { monospaceFontFamily, space } from "metabase/styled-components/theme";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { InputSize } from "./types";
 
@@ -11,6 +11,7 @@ export interface InputProps {
   fullWidth?: boolean;
   hasLeftIcon?: boolean;
   hasRightIcon?: boolean;
+  subtitle?: string;
 }
 
 export const InputRoot = styled.div<InputProps>`
@@ -68,6 +69,12 @@ export const InputField = styled.input<InputProps>`
       line-height: 1rem;
       padding: 0.4375rem 0.625rem;
     `};
+
+  ${props =>
+    props.subtitle &&
+    css`
+      padding-top: 1.75rem;
+    `};
 `;
 
 export const InputButton = styled(IconButtonWrapper)`
@@ -83,4 +90,13 @@ export const InputLeftButton = styled(InputButton)`
 
 export const InputRightButton = styled(InputButton)`
   right: 0;
+`;
+
+export const InputSubtitle = styled.div`
+  color: ${color("text-light")};
+  position: absolute;
+  top: 1.25em;
+  left: 1.25em;
+  font-family: ${monospaceFontFamily};
+  font-size: 0.75em;
 `;
