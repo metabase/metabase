@@ -68,7 +68,7 @@ function getSemanticTypeOptions() {
   ];
 }
 
-function getFormFields({ dataset }) {
+function getFormFields({ dataset, field }) {
   const visibilityTypeOptions = field_visibility_types
     .filter(type => type.id !== "sensitive")
     .map(type => ({
@@ -78,7 +78,11 @@ function getFormFields({ dataset }) {
 
   return fieldFormValues =>
     [
-      { name: "display_name", title: t`Display name` },
+      {
+        name: "display_name",
+        title: t`Display name`,
+        subtitle: field.name,
+      },
       {
         name: "description",
         title: t`Description`,
@@ -172,9 +176,9 @@ function DatasetFieldMetadataSidebar({
 
   const form = useMemo(
     () => ({
-      fields: getFormFields({ dataset }),
+      fields: getFormFields({ dataset, field }),
     }),
-    [dataset],
+    [field, dataset],
   );
 
   const [tab, setTab] = useState(TAB.SETTINGS);

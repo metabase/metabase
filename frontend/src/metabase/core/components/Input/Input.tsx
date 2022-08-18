@@ -12,6 +12,7 @@ import {
   InputLeftButton,
   InputRightButton,
   InputRoot,
+  InputSubtitle,
 } from "./Input.styled";
 import { InputSize } from "./types";
 
@@ -29,6 +30,7 @@ export interface InputProps extends InputAttributes {
   leftIconTooltip?: ReactNode;
   rightIcon?: string;
   rightIconTooltip?: ReactNode;
+  subtitle?: string;
   onLeftIconClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   onRightIconClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }
@@ -47,6 +49,7 @@ const Input = forwardRef(function Input(
     rightIconTooltip,
     onLeftIconClick,
     onRightIconClick,
+    subtitle,
     ...props
   }: InputProps,
   ref: Ref<HTMLDivElement>,
@@ -58,6 +61,8 @@ const Input = forwardRef(function Input(
       style={style}
       fullWidth={fullWidth}
     >
+      {subtitle && <InputSubtitle>{subtitle}</InputSubtitle>}
+
       <InputField
         {...props}
         ref={inputRef}
@@ -65,6 +70,7 @@ const Input = forwardRef(function Input(
         hasError={error}
         fullWidth={fullWidth}
         hasRightIcon={Boolean(rightIcon)}
+        subtitle={subtitle}
       />
       {leftIcon && (
         <Tooltip tooltip={leftIconTooltip} placement="left" offset={[0, 24]}>
