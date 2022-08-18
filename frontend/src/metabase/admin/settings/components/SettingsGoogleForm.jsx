@@ -54,7 +54,7 @@ class SettingsGoogleForm extends Component {
           {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
             <ExternalLink
               href={MetabaseSettings.docsUrl(
-                "administration-guide/10-single-sign-on",
+                "people-and-groups/google-and-ldap",
                 "enabling-google-sign-in",
               )}
               target="_blank"

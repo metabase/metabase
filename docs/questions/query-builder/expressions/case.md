@@ -334,7 +334,7 @@ case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
 [custom-expressions-doc]: ../expressions.md
 [custom-expressions-list]: ../expressions-list.md
 [custom-expressions-learn]: /learn/questions/custom-expressions.md
-[data-sandboxing-docs]: ../../../enterprise-guide/data-sandboxes.md#filtering-a-sandboxed-table
+[data-sandboxing-docs]: ../../../permissions/data-sandboxes.md#filtering-a-sandboxed-table
 [data-types]: /learn/databases/data-types-overview#examples-of-data-types
 [filter-learn]: /learn/questions/searching-tables
 [notebook-editor-def]: /glossary/notebook_editor
