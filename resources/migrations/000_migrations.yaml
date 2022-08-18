@@ -12680,6 +12680,15 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  remarks: ID of the collection containing the newmetric
+                  name: collection_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: collection(id)
+                    foreignKeyName: fk_newmetric_collection_id
+                    deleteCascade: true
+              - column:
                   remarks: ID of the user who created the event
                   name: creator_id
                   type: int
