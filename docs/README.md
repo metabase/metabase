@@ -49,7 +49,7 @@ title: Metabase documentation
 - [SQL templates](./questions/native-editor/sql-parameters.md)
 - [Using results to ask new questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
 - [SQL snippets](./questions/native-editor/sql-snippets.md)
-- [SQL snippet permissions](./questions/native-editor/snippet-permissions.md)
+- [SQL snippet folder permissions](./permissions/snippets.md)
 
 ### Sharing
 
@@ -72,43 +72,53 @@ title: Metabase documentation
 - [Models](./data-modeling/models.md)
 - [Metadata-editing](./data-modeling/metadata-editing.md)
 - [Field types](./data-modeling/field-types.md)
+- [Default formatting](./data-modeling/formatting.md)
 - [Creating segments and metrics](./data-modeling/segments-and-metrics.md)
 
 ## Finding things and keeping organized
 
-- [Basic exploration](./users-guide/03-basic-exploration.md)
-- [Sharing and organizing your saved questions](./users-guide/06-sharing-answers.md)
-- [Collections](./users-guide/collections.md)
-- [Events and timelines](./users-guide/events-and-timelines.md)
+- [Basic exploration](./exploration-and-organization/exploration.md)
+- [Collections](./exploration-and-organization/collections.md)
+- [Events and timelines](./exploration-and-organization/events-and-timelines.md)
 
 ## People and groups
 
-- [Editing your account settings](./users-guide/account-settings.md)
-- [Managing people and groups](./administration-guide/04-managing-users.md)
-- [Single Sign-on (SSO)](./administration-guide/sso.html)
-  - [Google Sign-In or LDAP](./administration-guide/10-single-sign-on.html)
-  - [SAML](./enterprise-guide/authenticating-with-saml.html)
-  - [JWT](./enterprise-guide/authenticating-with-jwt.html)
-- [Password complexity](./operations-guide/changing-password-complexity.md)
-- [Session expiration](./operations-guide/changing-session-expiration.md)
+- [Overview](./people-and-groups/start.md)
+- [Editing your account settings](./people-and-groups/account-settings.md)
+- [Managing people and groups](./people-and-groups/managing.md)
+- [Password complexity](./people-and-groups/changing-password-complexity.md)
+- [Session expiration](./people-and-groups/changing-session-expiration.md)
+- [Google Sign-In or LDAP](./people-and-groups/google-and-ldap.md)
+
+### Paid SSO options
+
+- [JWT](./people-and-groups/authenticating-with-jwt.md)
+- [SAML](./people-and-groups/authenticating-with-saml.md)
+  - [Auth0](./people-and-groups/saml-auth0.md)
+  - [Azure AD](./people-and-groups/saml-azure.md)
+  - [Google](./people-and-groups/saml-google.md)
+  - [Keycloak](./people-and-groups/saml-keycloak.md)
+  - [Okta](./people-and-groups/saml-okta.md)
 
 ## Permissions
 
-- [Permissions overview](./administration-guide/05-setting-permissions.md)
-- [Data permissions](./administration-guide/data-permissions.md)
-- [Collection permissions](./administration-guide/06-collections.md)
-- [Application permissions](./administration-guide/application-permissions.md)
-- [Sandboxing data based on user attributes](./enterprise-guide/data-sandboxes.md)
-- [SQL snippets folder permissions](./enterprise-guide/sql-snippets.md)
+- [Overview](./permissions/start.md)
+- [Permissions introduction](./permissions/introduction.md)
+- [Data permissions](./permissions/data.md)
+- [Collection permissions](./permissions/collections.md)
+- [Application permissions](./permissions/application.md)
+- [Sandboxing data based on user attributes](./permissions/data-sandboxes.md)
+- [SQL snippets folder permissions](./permissions/snippets.md)
 
 ## Embedding questions and dashboards
 
-- [Public links for dashboards and questions](./administration-guide/12-public-links.md)
-- [Embedding Metabase in other applications](./administration-guide/13-embedding.md)
+- [Embedding overview](./embedding/start.md)
+- [Embedding Metabase in other applications](./embedding/introduction.md)
+- [Public links for dashboards and questions](./embedding/public-links.md)
 - [Customizing the appearance of embedded items](./enterprise-guide/customize-embeds.md)
-- [Embedding the entire Metabase app in your own web app](./enterprise-guide/full-app-embedding.md)
+- [Embedding the entire Metabase app in your own web app](./embedding/full-app-embedding.md)
+- [White labeling charts (branding)](./embedding/whitelabeling.md)
 - [Embedding example apps](https://github.com/metabase/embedding-reference-apps)
-- [White labeling charts (branding)](./enterprise-guide/whitelabeling.md)
 
 ## Databases
 
@@ -120,16 +130,16 @@ title: Metabase documentation
 
 ## Configuring Metabase
 
-- [Settings](./administration-guide/08-configuration-settings.md)
-- [Email](./administration-guide/02-setting-up-email.md)
-- [Slack](./administration-guide/09-setting-up-slack.md)
-- [Environment variables](./operations-guide/environment-variables.md)
-- [Handling timezones](./operations-guide/handling-timezones.md)
-- [Customizing the Metabase Jetty Webserver](./operations-guide/customizing-jetty-webserver.md)
-- [Default formatting](./administration-guide/19-formatting-settings.md)
-- [Localization](./administration-guide/localization.md)
-- [Caching query results](./administration-guide/14-caching.md)
-- [Custom map settings](./administration-guide/20-custom-maps.md)
+- [Overview](./configuring-metabase/start.md)
+- [Settings](./configuring-metabase/settings.md)
+- [Email](./configuring-metabase/email.md)
+- [Slack](./configuring-metabase/slack.md)
+- [Environment variables](./configuring-metabase/environment-variables.md)
+- [Handling timezones](./configuring-metabase/timezones.md)
+- [Localization](./configuring-metabase/localization.md)
+- [Caching query results](./configuring-metabase/caching.md)
+- [Custom map settings](./configuring-metabase/custom-maps.md)
+- [Customizing the Metabase Jetty Webserver](./configuring-metabase/customizing-jetty-webserver.md)
 
 ## Usage and performance tools
 
