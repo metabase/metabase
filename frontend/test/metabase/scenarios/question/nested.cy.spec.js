@@ -4,6 +4,7 @@ import {
   openOrdersTable,
   remapDisplayValueToFK,
   visitQuestion,
+  visitQuestionAdhoc,
   visualize,
   getDimensionByName,
   summarize,
@@ -12,6 +13,7 @@ import {
   filterField,
 } from "__support__/e2e/helpers";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -218,60 +220,30 @@ describe("scenarios > question > nested", () => {
     cy.findAllByText("Awesome Concrete Shoes");
   });
 
-  ["remapped", "default"].forEach(test => {
-    describe(`${test.toUpperCase()} version: question with joins as a base for new quesiton(s) (metabase#14724)`, () => {
-      const QUESTION_NAME = "14724";
-      const SECOND_QUESTION_NAME = "14724_2";
+  it("nested questions based on a saved question with joins should work (metabase#14724)", () => {
+    const baseQuestionDetails = {
+      name: "14724",
+      query: ordersJoinProductsQuery,
+    };
 
-      beforeEach(() => {
-        if (test === "remapped") {
-          cy.log("Remap Product ID's display value to `title`");
-          remapDisplayValueToFK({
-            display_value: ORDERS.PRODUCT_ID,
-            name: "Product ID",
-            fk: PRODUCTS.TITLE,
-          });
-        }
-
-        cy.server();
-        cy.route("POST", "/api/dataset").as("dataset");
-      });
-
-      it("should handle single-level nesting", () => {
-        ordersJoinProducts(QUESTION_NAME);
-
-        // Start new question from a saved one
-        startNewQuestion();
-        cy.findByText("Saved Questions").click();
-        cy.findByText(QUESTION_NAME).click();
-
-        visualize(response => {
-          expect(response.body.error).not.to.exist;
+    ["default", "remapped"].forEach(scenario => {
+      if (scenario === "remapped") {
+        cy.log("Remap Product ID's display value to `title`");
+        remapDisplayValueToFK({
+          display_value: ORDERS.PRODUCT_ID,
+          name: "Product ID",
+          fk: PRODUCTS.TITLE,
         });
+      }
 
-        cy.contains("37.65");
-      });
+      // should hangle single-level nesting
+      createNestedQuestion({ baseQuestionDetails });
 
-      it("should handle multi-level nesting", () => {
-        // Use the original question qith joins, then save it again
-        ordersJoinProducts(QUESTION_NAME).then(
-          ({ body: { id: ORIGINAL_QUESTION_ID } }) => {
-            cy.createQuestion({
-              name: SECOND_QUESTION_NAME,
-              query: { "source-table": `card__${ORIGINAL_QUESTION_ID}` },
-            });
-          },
-        );
+      cy.contains("37.65");
 
-        // Start new question from already saved nested question
-        startNewQuestion();
-        cy.findByText("Saved Questions").click();
-        cy.findByText(SECOND_QUESTION_NAME).click();
-
-        visualize(response => {
-          expect(response.body.error).not.to.exist;
-        });
-
+      // should handle multi-level nesting
+      cy.get("@nestedQuestionId").then(id => {
+        visitNestedQueryAdHoc(id);
         cy.contains("37.65");
       });
     });
@@ -507,27 +479,6 @@ describe("scenarios > question > nested", () => {
   });
 });
 
-function ordersJoinProducts(name) {
-  return cy.createQuestion({
-    name,
-    query: {
-      "source-table": ORDERS_ID,
-      joins: [
-        {
-          fields: "all",
-          "source-table": PRODUCTS_ID,
-          condition: [
-            "=",
-            ["field", ORDERS.PRODUCT_ID, null],
-            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-          ],
-          alias: "Products",
-        },
-      ],
-    },
-  });
-}
-
 function createNestedQuestion(
   { baseQuestionDetails, nestedQuestionDetails },
   { loadBaseQuestionMetadata = false, visitNestedQuestion = true } = {},
@@ -543,7 +494,11 @@ function createNestedQuestion(
         },
         ...nestedQuestionDetails,
       },
-      { visitQuestion: visitNestedQuestion },
+      {
+        visitQuestion: visitNestedQuestion,
+        wrapId: true,
+        idAlias: "nestedQuestionId",
+      },
     );
   });
 
@@ -552,4 +507,14 @@ function createNestedQuestion(
       ? cy.createNativeQuestion(query)
       : cy.createQuestion(query);
   }
+}
+
+function visitNestedQueryAdHoc(id) {
+  return visitQuestionAdhoc({
+    dataset_query: {
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: { "source-table": `card__${id}` },
+    },
+  });
 }
