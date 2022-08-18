@@ -81,4 +81,4 @@ If you are having problems installing or using a community driver, your best bet
 
 ## Write your own driver
 
-Check out [Guide to writing a Metabase driver](./developers-guide/drivers/start.md).
+Check out [Guide to writing a Metabase driver](./drivers/start.md).

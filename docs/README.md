@@ -159,12 +159,13 @@ redirect_from:
 - [API reference](./api-documentation.md)
 - [API tutorial](/learn/administration/metabase-api)
 
-## Paid plans
+## Premium features
 
 The Enterprise and Pro plans of Metabase offer additional features.
 
-- [Getting and activating the Enterprise edition](./enterprise-guide/activating-the-enterprise-edition.md)
-- [List of premium features](enterprise-guide/start.md)
+- [Overview](./paid-features/start.md)
+- [Getting and activating the Enterprise edition](./paid-features/activating-the-enterprise-edition.md)
+- [List of premium features](./paid-features/overview.md)
 
 ## Metabase community
 

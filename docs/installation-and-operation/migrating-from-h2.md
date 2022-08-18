@@ -129,7 +129,7 @@ Make sure you use the same version of Metabase you've been using. If you want to
 
 Create another copy of your H2 file that you extracted from the container when you backed up your app db (step 2).
 
-From the directory with your H2 file and your Metabase JAR, run the migration command, `load-from-h2`. Use the appropriate connection string or [environment variables](environment-variables.md) for the target database you want to migrate to. The command would look something like:
+From the directory with your H2 file and your Metabase JAR, run the migration command, `load-from-h2`. Use the appropriate connection string or [environment variables](../configuring-metabase/environment-variables.md) for the target database you want to migrate to. The command would look something like:
 
 ```
 export MB_DB_TYPE=postgres
