@@ -151,7 +151,7 @@ function DatasetFieldMetadataSidebar({
       setShouldAnimateFieldChange(true);
       // setTimeout is required as form fields are rerendered pretty frequently
       setTimeout(() => {
-        displayNameInputRef.current.select();
+        displayNameInputRef.current?.select();
       });
     }
   }, [field, previousField]);
@@ -372,4 +372,4 @@ function DatasetFieldMetadataSidebar({
 
 DatasetFieldMetadataSidebar.propTypes = propTypes;
 
-export default DatasetFieldMetadataSidebar;
+export default React.memo(DatasetFieldMetadataSidebar);

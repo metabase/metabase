@@ -565,6 +565,10 @@ export default class Dimension {
     return this.withoutOptions("binning");
   }
 
+  withoutJoinAlias(): Dimension {
+    return this.withoutOptions("join-alias");
+  }
+
   /**
    * Return a copy of this Dimension with any temporal bucketing or binning options removed.
    */
@@ -982,8 +986,10 @@ export class FieldDimension extends Dimension {
       { ...this._options, ...options },
       this._metadata,
       this._query,
-      this._fieldInstance && {
+      {
         _fieldInstance: this._fieldInstance,
+        _subDisplayName: this._subDisplayName,
+        _subTriggerDisplayName: this._subTriggerDisplayName,
       },
     );
   }
@@ -1141,9 +1147,14 @@ export class FieldDimension extends Dimension {
     if (this.fk()) {
       const fkDisplayName =
         this.fk() && stripId(this.fk().field().displayName());
-      displayName = `${fkDisplayName} ${FK_SYMBOL} ${displayName}`;
+      if (!displayName.startsWith(`${fkDisplayName} ${FK_SYMBOL}`)) {
+        displayName = `${fkDisplayName} ${FK_SYMBOL} ${displayName}`;
+      }
     } else if (this.joinAlias()) {
-      displayName = `${this.joinAlias()} ${FK_SYMBOL} ${displayName}`;
+      const joinAlias = this.joinAlias();
+      if (!displayName.startsWith(`${joinAlias} ${FK_SYMBOL}`)) {
+        displayName = `${joinAlias} ${FK_SYMBOL} ${displayName}`;
+      }
     }
 
     if (this.temporalUnit()) {

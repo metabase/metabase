@@ -254,7 +254,7 @@ describe("binning related reproductions", () => {
 
       changeBinningForDimension({
         name: "Average of Subtotal",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         toBinning: "10 bins",
       });
 
@@ -270,7 +270,7 @@ describe("binning related reproductions", () => {
 
       changeBinningForDimension({
         name: "Average of Subtotal",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         toBinning: "10 bins",
       });
 
