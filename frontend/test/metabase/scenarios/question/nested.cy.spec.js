@@ -185,8 +185,6 @@ describe("scenarios > question > nested", () => {
       "Related issue [#14629](https://github.com/metabase/metabase/issues/14629)",
     );
 
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     cy.log("Remap Product ID's display value to `title`");
     remapDisplayValueToFK({
       display_value: ORDERS.PRODUCT_ID,
@@ -194,19 +192,12 @@ describe("scenarios > question > nested", () => {
       fk: PRODUCTS.TITLE,
     });
 
-    cy.createQuestion({
+    const baseQuestionDetails = {
       name: "Orders (remapped)",
-      query: { "source-table": ORDERS_ID },
-    });
+      query: { "source-table": ORDERS_ID, limit: 5 },
+    };
 
-    // Try to use saved question as a base for a new / nested question
-    startNewQuestion();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("Orders (remapped)").click();
-
-    visualize(response => {
-      expect(response.body.error).not.to.exist;
-    });
+    createNestedQuestion({ baseQuestionDetails });
 
     cy.findAllByText("Awesome Concrete Shoes");
   });
