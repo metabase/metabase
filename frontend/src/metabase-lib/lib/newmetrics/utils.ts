@@ -1,7 +1,9 @@
+import { isProduction } from "metabase/env";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import Dimension from "metabase-lib/lib/Dimension";
 import Field from "metabase-lib/lib/metadata/Field";
-import { Aggregation } from "metabase-types/types/Query";
+import { Aggregation, ConcreteField } from "metabase-types/types/Query";
 import { Metric } from "metabase-types/api/newmetric";
 
 function findDateField(question: Question) {
@@ -51,6 +53,9 @@ export function generateFakeMetricFromQuestion(
   const dateField = findDateField(question) as Field;
   const columnName = dateField.name;
   const ref = dateField.reference();
+  if (ref[0] === "aggregation") {
+    return null;
+  }
 
   return {
     id: question.id(),
@@ -67,4 +72,41 @@ export function generateFakeMetricFromQuestion(
     created_at: "",
     updated_at: "",
   };
+}
+
+export function applyMetricToQuestion(
+  question: Question,
+  metric: Metric,
+): Question {
+  const query = question.query() as StructuredQuery;
+  const { dimensions } = metric;
+  const [, dateFieldRef] = dimensions[0];
+  // convert the fieldRef to a dimension so that we can set a temporal-unit
+  // in the fieldRef's option arg
+  const dateDimension = Dimension.parseMBQL(
+    dateFieldRef,
+    query.metadata(),
+    query,
+  );
+
+  if (!dateDimension) {
+    throw new Error("Could not parse the Metric's date dimension");
+  }
+
+  const dateDimensionWithTemporalUnit = dateDimension.withTemporalUnit(
+    isProduction ? "day" : "month",
+  );
+  const newFieldRef = dateDimensionWithTemporalUnit.mbql() as ConcreteField;
+  let metricQuery = query.addBreakout(newFieldRef);
+
+  if (isProduction) {
+    metricQuery = metricQuery.addFilter([
+      "time-interval",
+      dateFieldRef,
+      -30,
+      "day",
+    ]);
+  }
+
+  return metricQuery.question();
 }

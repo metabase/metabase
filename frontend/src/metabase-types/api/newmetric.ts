@@ -1,4 +1,4 @@
-import { Aggregation, Field } from "metabase-types/types/Query";
+import { Aggregation, ConcreteField } from "metabase-types/types/Query";
 import { CardId } from "metabase-types/api/card";
 
 export type UnsavedMetric = Partial<Metric>;
@@ -11,8 +11,7 @@ export type Metric = {
   archived: boolean;
   card_id: CardId;
   measure: Aggregation;
-  // maybe should be ConcreteField
-  dimensions: [string, Field][];
+  dimensions: [string, ConcreteField][];
   granularities: string[];
   default_granularity: string;
   creator_id: number;
