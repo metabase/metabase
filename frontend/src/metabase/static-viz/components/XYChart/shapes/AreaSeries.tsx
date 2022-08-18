@@ -57,34 +57,42 @@ export const AreaSeries = ({
 
         const yAccessor = (d: SeriesDatum) => yScale(getY(d)) ?? 0;
         return (
-          <>
-            <LineArea
-              key={s.name}
-              yScale={yScale}
-              color={s.color}
-              data={s.data}
-              x={xAccessor}
-              y={yAccessor}
-              y1={yScale(0) ?? 0}
-            />
-            {showValues &&
-              s.data.map((datum, index) => {
-                return (
-                  <Text
-                    key={index}
-                    x={xAccessor(datum)}
-                    y={yAccessor(datum) - VALUES_MARGIN}
-                    textAnchor="middle"
-                    verticalAnchor="end"
-                    {...valueProps}
-                  >
-                    {valueFormatter(getY(datum))}
-                  </Text>
-                );
-              })}
-          </>
+          <LineArea
+            key={s.name}
+            yScale={yScale}
+            color={s.color}
+            data={s.data}
+            x={xAccessor}
+            y={yAccessor}
+            y1={yScale(0) ?? 0}
+          />
         );
       })}
+      {/* Render all data point values last so they stay on top of the area chart background making them more legible */}
+      {showValues &&
+        series.map(s => {
+          const yScale = s.yAxisPosition === "left" ? yScaleLeft : yScaleRight;
+
+          if (!yScale) {
+            return null;
+          }
+
+          const yAccessor = (d: SeriesDatum) => yScale(getY(d)) ?? 0;
+          return s.data.map((datum, index) => {
+            return (
+              <Text
+                key={index}
+                x={xAccessor(datum)}
+                y={yAccessor(datum) - VALUES_MARGIN}
+                textAnchor="middle"
+                verticalAnchor="end"
+                {...valueProps}
+              >
+                {valueFormatter(getY(datum))}
+              </Text>
+            );
+          });
+        })}
     </Group>
   );
 };

@@ -86,5 +86,10 @@ export type ChartStyle = {
     fontSize: number;
     lineHeight: number;
   };
+  value?: {
+    color: string;
+    fontSize: number;
+    fontWeight: number;
+  };
   goalColor: string;
 };

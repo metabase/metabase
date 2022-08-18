@@ -129,6 +129,14 @@ export const XYChart = ({
     textAnchor: "end",
   };
 
+  const valueProps: Partial<TextProps> = {
+    fontSize: style.value?.fontSize,
+    fontFamily: style.fontFamily,
+    fontWeight: style.value?.fontWeight,
+    fill: style.value?.color,
+    letterSpacing: 0.5,
+  };
+
   const areXTicksRotated = settings.x.tick_display === "rotate-45";
   const areXTicksHidden = settings.x.tick_display === "hide";
   const xLabelOffset = areXTicksHidden ? -style.axes.ticks.fontSize : undefined;
@@ -153,7 +161,7 @@ export const XYChart = ({
             bandwidth={xScale.bandwidth}
             showValues={Boolean(settings.show_values)}
             valueFormatter={value => formatNumber(value, settings.y.format)}
-            valueProps={labelProps}
+            valueProps={valueProps}
           />
         )}
         <AreaSeries
@@ -164,7 +172,7 @@ export const XYChart = ({
           areStacked={settings.stacking === "stack"}
           showValues={Boolean(settings.show_values)}
           valueFormatter={value => formatNumber(value, settings.y.format)}
-          valueProps={labelProps}
+          valueProps={valueProps}
         />
         <LineSeries
           series={lines}
@@ -173,7 +181,7 @@ export const XYChart = ({
           xAccessor={xScale.lineAccessor}
           showValues={Boolean(settings.show_values)}
           valueFormatter={value => formatNumber(value, settings.y.format)}
-          valueProps={labelProps}
+          valueProps={valueProps}
         />
 
         {settings.goal && (
