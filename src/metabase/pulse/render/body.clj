@@ -16,6 +16,7 @@
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.types :as types]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.ui-logic :as ui-logic]
             [schema.core :as s])
@@ -380,6 +381,14 @@
                (DecimalFormat. base))]
      (.format fmt value))))
 
+(defn format-month
+  "Format a date as Month, Year."
+  [s]
+  (try
+    (->> (u.date/parse s)
+         (u.date/format "MMMM, Y"))
+    (catch Exception _ s)))
+
 (defn- donut-info
   "Process rows with a minimum slice threshold. Collapses any segments below the threshold given as a percentage (the
   value 25 for 25%) into a single category as \"Other\". "
@@ -419,17 +428,19 @@
      [:div
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]
-      (into [:div {:style (style/style {:clear :both :width "540px" :color "#4C5773"})}]
+      (into [:table {:style (style/style {:color "#4C5773" :width "50%" :padding-left "12px"})}]
             (for [label (map first rows)]
-              [:div {:style (style/style {:float       :left :margin-right "12px"
-                                          :font-family "Lato, sans-serif"
-                                          :font-size   "16px"})}
-               [:span {:style (style/style {:color (legend-colors label)})}
-                "•"]
-               [:span {:style (style/style {:margin-left "6px"})}
-                label]
-               [:span {:style (style/style {:margin-left "6px"})}
-                (percentages label)]]))]}))
+              (let [font-size 24
+                    h (- font-size 4)]
+                [:tr {:style (style/style {:margin-right "12px"
+                                           :font-family  "Lato, sans-serif"
+                                           :font-size    (str font-size "px")})}
+                 [:td {:style (style/style {:color (legend-colors label)})}
+                  "•"]
+                 [:td {:style (style/style {:width "auto" :height (str h "px")})}
+                  (format-month label)]
+                 [:td {:style (style/style {:height (str h "px")})}
+                  (percentages label)]])))]}))
 
 (s/defmethod render :progress :- common/RenderedPulseCard
   [_ render-type _timezone-id _card dashcard {:keys [cols rows viz-settings] :as _data}]
