@@ -197,15 +197,14 @@ const QuestionActions = ({
       });
     }
 
-    if (canBeMetric) {
-      extraButtons.push({
-        title: t`Turn into a metric`,
-        icon: "star",
-        action: () => {
-          console.log("sike!");
-        },
-      });
-    }
+    extraButtons.push({
+      title: t`Turn into a metric`,
+      icon: "star",
+      disabled: !canBeMetric,
+      action: () => {
+        console.log("sike!");
+      },
+    });
   }
 
   if (!question.query().readOnly()) {
