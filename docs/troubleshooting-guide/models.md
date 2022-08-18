@@ -65,14 +65,14 @@ If you can’t solve your problem using the troubleshooting guides:
 [discourse]: https://discourse.metabase.com/
 [flatten-json-learn]: /learn/administration/making-dashboards-faster.html#pull-data-out-of-json-and-slot-its-keys-into-columns
 [indexes-learn]: /learn/administration/making-dashboards-faster.html#index-frequently-queried-columns
-[known-issues]: ./known-issues.html
+[known-issues]: ./known-issues.md
 [known-issues-models]: https://github.com/metabase/metabase/labels/Querying%2FModels
 [limit-data-learn]: /learn/administration/making-dashboards-faster.html#ask-for-less-data
 [materialize-views-learn]: /learn/administration/making-dashboards-faster.html#materialize-views-create-new-tables-to-store-query-results
 [model-button-image]: /learn/images/models/model-icon.png
 [model-docs]: ../data-modeling/models.md
-[nested-query-settings-docs]: ../administration-guide/08-configuration-settings.html#enabled-nested-queries
+[nested-query-settings-docs]: ../configuring-metabase/settings.md#enabled-nested-queries
 [replicate-database-learn]: /learn/administration/making-dashboards-faster.html#replicate-your-database
 [sql-explain-learn]: /learn/sql-questions/sql-best-practices.html#explain
 [summary-tables-learn]: /learn/administration/making-dashboards-faster.html#aggregate-data-ahead-of-time-with-summary-tables
-[troubleshooting-sandboxing]: ./sandboxing.html
+[troubleshooting-sandboxing]: ./sandboxing.md

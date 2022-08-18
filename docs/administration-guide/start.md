@@ -21,7 +21,7 @@ See [how to install Metabase](../operations-guide/installing-metabase.md).
 - [Setting up Slack integration](09-setting-up-slack.md)
 - [Configuring settings](08-configuration-settings.md)
 - [Setting formatting defaults](19-formatting-settings.md)
-- [Changing localization settings](localization.md)
+- [Changing localization settings](../configuring-metabase/localization.md)
 - [Caching query results](14-caching.md)
 - [Customizing your map settings](20-custom-maps.md)
 - [SSH tunneling in Metabase](ssh-tunnel-for-database-connections.md)
@@ -29,23 +29,23 @@ See [how to install Metabase](../operations-guide/installing-metabase.md).
 
 ## Curating your data
 
-- [Editing your database metadata](03-metadata-editing.md)
-- [Creating segments and metrics](07-segments-and-metrics.md)
+- [Editing your database metadata](../data-modeling/metadata-editing.md)
+- [Creating segments and metrics](../data-modeling/segments-and-metrics.md)
 
 ## Adding and managing users
 
-- [Managing user accounts](04-managing-users.md)
-- [Authenticating with Google Sign-In or LDAP](10-single-sign-on.md)
+- [Managing user accounts](../people-and-groups/managing.md)
+- [Authenticating with Google Sign-In or LDAP](../people-and-groups/google-and-ldap.md)
 
 ## Setting permissions and access
 
-- [Permissions overview](05-setting-permissions.md)
-- [Setting data permissions](data-permissions.md)
-- [Creating and managing collections](06-collections.md)
-- [Application permissions](application-permissions.md)
+- [Permissions introduction](../permissions/introduction.md)
+- [Setting data permissions](../permissions/data.md)
+- [Creating and managing collections](../permissions/collections.md)
+- [Application permissions](../permissions/application.md)
 
 ## Embedding and sharing with public links
 
-- [Sharing dashboards and questions with public links](12-public-links.md)
-- [Embedding Metabase in other Applications](13-embedding.md)
-- [Customizing embeds](../enterprise-guide/customize-embeds.md)
+- [Embedding Metabase in other Applications](../embedding/introduction.md)
+- [Sharing dashboards and questions with public links](../embedding/public-links.md)
+- [Customizing embeds](../embedding/customize-embeds.md)
