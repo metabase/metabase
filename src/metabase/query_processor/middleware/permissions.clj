@@ -86,16 +86,33 @@
   (doseq [{query :dataset_query} (qp.resolve-referenced/tags-referenced-cards outer-query)]
     (check-query-permissions* query)))
 
+(def ^:dynamic *internal-ui-query*
+  "The motivating example is the chain-filters dropdown, where the user has access to the collection
+
+  Bind this if we know the user has access to a resource, and the query is being run to populate a dropdown.
+
+
+  you can already see if you can do it fixme
+  "
+  nil)
+
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [outer-query :- su/Map]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
-    (if *card-id*
+    (cond
+
+      *internal-ui-query*
+      true
+
+      *card-id*
       (do
         (check-card-read-perms *card-id*)
         (when-not (has-data-perms? (required-perms outer-query))
           (check-block-permissions outer-query)))
+
+      :else
       (check-ad-hoc-query-perms outer-query))))
 
 (defn check-query-permissions
