@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import { connect } from "react-redux";
 
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 import TableSimple from "../components/TableSimple";
@@ -21,6 +22,8 @@ import {
   isAvatarURL,
 } from "metabase/lib/schema_metadata";
 
+import { getDatasetEditorTab } from "metabase/query_builder/selectors";
+
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 import ChartSettingsTableFormatting, {
   isFormattable,
@@ -34,7 +37,11 @@ import cx from "classnames";
 
 import { getIn } from "icepick";
 
-export default class Table extends Component {
+const mapStateToProps = state => ({
+  datasetEditorTab: getDatasetEditorTab(state),
+});
+
+class Table extends Component {
   static uiName = t`Table`;
   static identifier = "table";
   static iconName = "table";
@@ -185,7 +192,9 @@ export default class Table extends Component {
         cols.map(col => ({
           name: col.name,
           fieldRef: col.field_ref,
-          enabled: col.visibility_type !== "details-only",
+          enabled:
+            this.props.datasetEditorTab === "metadata" ||
+            col.visibility_type !== "details-only",
         })),
       getProps: ([
         {
@@ -432,3 +441,5 @@ export default class Table extends Component {
     );
   }
 }
+
+export default _.compose(connect(mapStateToProps))(Table);
