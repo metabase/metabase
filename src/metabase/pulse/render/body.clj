@@ -776,9 +776,9 @@
                          (:waterfall.show_total viz-settings))
         settings       (-> (->js-viz x-col y-col viz-settings)
                            (update :colors assoc
-                                   :waterfallTotal (or (:waterfall.total_color viz-settings) (nth colors 0))
-                                   :waterfallPositive (or (:waterfall.increase_color viz-settings) (nth colors 1))
-                                   :waterfallNegative (or (:waterfall.decrease_color viz-settings) (nth colors 2)))
+                                   :waterfallTotal (:waterfall.total_color viz-settings)
+                                   :waterfallPositive (:waterfall.increase_color viz-settings)
+                                   :waterfallNegative (:waterfall.decrease_color viz-settings))
                            (assoc :showTotal show-total))
         image-bundle   (image-bundle/make-image-bundle
                         render-type
