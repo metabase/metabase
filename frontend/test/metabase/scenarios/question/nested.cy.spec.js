@@ -4,7 +4,6 @@ import {
   openOrdersTable,
   remapDisplayValueToFK,
   visitQuestion,
-  visitQuestionAdhoc,
   visualize,
   getDimensionByName,
   summarize,
@@ -13,7 +12,6 @@ import {
   filterField,
 } from "__support__/e2e/helpers";
 
-import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -143,11 +141,8 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should apply metrics including filter to the nested question (metabase#12507)", () => {
-    const METRIC_NAME = "Sum of discounts";
-
-    cy.log("Create a metric with a filter");
-    cy.request("POST", "/api/metric", {
-      name: METRIC_NAME,
+    const metric = {
+      name: "Sum of discounts",
       description: "Discounted orders.",
       table_id: ORDERS_ID,
       definition: {
@@ -155,37 +150,34 @@ describe("scenarios > question > nested", () => {
         aggregation: [["count"]],
         filter: ["!=", ["field", ORDERS.DISCOUNT, null], 0],
       },
-    }).then(({ body: { id: metricId } }) => {
-      // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
-      const ORIGINAL_QUERY = {
-        "source-table": ORDERS_ID,
-        aggregation: [["metric", metricId]],
-        breakout: [
-          ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
-        ],
-      };
+    };
 
-      // Create new question which uses previously defined metric
-      cy.createQuestion({
-        name: "12507",
-        query: ORIGINAL_QUERY,
-      }).then(({ body: { id: questionId } }) => {
-        cy.log("Create and visit a nested question based on the previous one");
-        visitQuestionAdhoc({
-          dataset_query: {
-            type: "query",
-            query: {
-              "source-table": `card__${questionId}`,
-              filter: [">", ["field", ORDERS.TOTAL, null], 50],
-            },
-            database: SAMPLE_DB_ID,
+    cy.log("Create a metric with a filter");
+    cy.request("POST", "/api/metric", metric).then(
+      ({ body: { id: metricId } }) => {
+        // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
+        const baseQuestionDetails = {
+          name: "12507",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["metric", metricId]],
+            breakout: [
+              ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
+            ],
           },
-        });
+        };
+
+        const nestedQuestionDetails = {
+          filter: [">", ["field", ORDERS.TOTAL, null], 50],
+        };
+
+        // Create new question which uses previously defined metric
+        createNestedQuestion({ baseQuestionDetails, nestedQuestionDetails });
 
         cy.log("Reported failing since v0.35.2");
-        cy.get(".cellData").contains(METRIC_NAME);
-      });
-    });
+        cy.get(".cellData").contains(metric.name);
+      },
+    );
   });
 
   it("should handle remapped display values in a base QB question (metabase#10474)", () => {
@@ -531,7 +523,7 @@ function ordersJoinProducts(name) {
 
 function createNestedQuestion(
   { baseQuestionDetails, nestedQuestionDetails },
-  { loadBaseQuestionMetadata = false, visitNestedQuestion = true },
+  { loadBaseQuestionMetadata = false, visitNestedQuestion = true } = {},
 ) {
   createBaseQuestion(baseQuestionDetails).then(({ body: { id } }) => {
     loadBaseQuestionMetadata && visitQuestion(id);
