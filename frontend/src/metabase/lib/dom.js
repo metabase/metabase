@@ -1,4 +1,5 @@
 import _ from "underscore";
+import querystring from "querystring";
 import { isCypressActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -368,7 +369,8 @@ const getOrigin = url => {
 const getLocation = url => {
   try {
     const { pathname, search, hash } = new URL(url);
-    return { pathname, search, hash };
+    const query = querystring.parse(search.substring(1));
+    return { pathname, search, query, hash };
   } catch {
     return {};
   }
