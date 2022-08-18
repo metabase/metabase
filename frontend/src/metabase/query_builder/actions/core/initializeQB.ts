@@ -31,6 +31,7 @@ import { Card, SavedCard } from "metabase-types/types/Card";
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { redirectToNewQuestionFlow, updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
+import { initializeMetricMode } from "../newmetrics";
 
 import { resetQB } from "./core";
 import { loadMetadataForCard } from "./metadata";
@@ -233,6 +234,11 @@ async function handleQBInit(
     location.pathname?.startsWith("/model")
   ) {
     dispatch(setErrorPage(NOT_FOUND_ERROR));
+    return;
+  }
+
+  if (isSavedCard(card) && location.pathname?.startsWith("/metric")) {
+    dispatch(initializeMetricMode(card));
     return;
   }
 
