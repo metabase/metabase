@@ -16,7 +16,7 @@ Even if you don't understand SQL or how to use it, it's worthwhile to get an ide
 
 ## Starting a new SQL query
 
-Select **+ New** in the main nav bar. If you have the [permissions](../../administration-guide/05-setting-permissions.md) to use the SQL editor, you'll see an option to start a new **SQL query** next to a little console icon.
+Select **+ New** in the main nav bar. If you have the [permissions](../../permission/data.md) to use the SQL editor, you'll see an option to start a new **SQL query** next to a little console icon.
 
 After clicking **SQL query**, you'll see an editor where you can write and run queries in SQL (or your database's native querying language).
 
