@@ -11,8 +11,9 @@ import {
 import Question from "metabase-lib/lib/Question";
 import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
+import { setErrorPage } from "metabase/redux/app";
 
-import { getQuestion } from "../selectors";
+import { getQuestion, getMetric } from "../selectors";
 import { runQuestionQuery } from "./querying";
 import { loadMetadataForCard } from "./core/metadata";
 
@@ -59,17 +60,32 @@ export const initializeMetricCard =
 
     const fakeMetric = generateFakeMetricFromQuestion(baseQuestion);
     if (!fakeMetric) {
-      throw new Error("Could not generate fake metric from question");
+      dispatch(setErrorPage("Could not generate fake metric from question"));
+      return;
     }
-    const metricQuestion = applyMetricToQuestion(baseQuestion, fakeMetric)
+
+    const metricQuestion = applyMetricToQuestion(baseQuestion, fakeMetric);
+    if (!metricQuestion) {
+      dispatch(setErrorPage("Failed to apply fake metric to question"));
+      return;
+    }
+
+    const metricCard = metricQuestion
       .setDefaultDisplay()
       // initializeQB does this to saved, structured cards, so we should, too?
-      .lockDisplay();
+      .lockDisplay()
+      .card();
+    // setting an `originalCard` breaks things badly
+    // const originalCard = { ...metricCard };
 
     dispatch({
       type: INITIALIZE_QB,
       payload: {
-        card: metricQuestion.card(),
+        metric: fakeMetric,
+        card: metricCard,
+        uiControls: {
+          queryBuilderMode: "view",
+        },
       },
     });
     // no need for setTimeout because there shouldn't be any paremeter widgets
