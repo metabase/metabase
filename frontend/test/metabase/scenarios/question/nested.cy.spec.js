@@ -373,28 +373,22 @@ describe("scenarios > question > nested", () => {
     });
 
     function assertOnFilter({ name, filter, value } = {}) {
-      cy.createQuestion(
-        {
-          name,
-          query: {
-            "source-table": ORDERS_ID,
-            filter,
-            aggregation: [["count"]],
-          },
-          type: "query",
-          display: "scalar",
+      cy.createQuestion({
+        name,
+        query: {
+          "source-table": ORDERS_ID,
+          filter,
+          aggregation: [["count"]],
         },
-        { visitQuestion: true },
-      );
+        type: "query",
+        display: "scalar",
+      }).then(({ body: { id } }) => {
+        visitQuestion(id);
+        cy.get(".ScalarValue").findByText(value);
 
-      cy.get(".ScalarValue").findByText(value);
-
-      // Start new question based on the saved one
-      startNewQuestion();
-      cy.findByText("Saved Questions").click();
-      cy.findByText(name).click();
-      visualize();
-      cy.get(".ScalarValue").findByText(value);
+        visitNestedQueryAdHoc(id);
+        cy.get(".ScalarValue").findByText(value);
+      });
     }
   });
 
