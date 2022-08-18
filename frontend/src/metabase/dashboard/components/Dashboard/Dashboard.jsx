@@ -63,7 +63,6 @@ class Dashboard extends Component {
     cancelFetchDashboardCardData: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     fetchDashboardCardData: PropTypes.func.isRequired,
-    setParameterValuesFromQueryParams: PropTypes.func.isRequired,
     initialize: PropTypes.func.isRequired,
     onRefreshPeriodChange: PropTypes.func,
     saveDashboardAndCards: PropTypes.func.isRequired,
@@ -128,27 +127,13 @@ class Dashboard extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const {
-      dashboardId,
-      dashboard,
-      parameterValues,
-      location,
-      fetchDashboardCardData,
-      setParameterValuesFromQueryParams,
-    } = this.props;
-
-    if (dashboardId !== prevProps.dashboardId) {
-      this.loadDashboard(dashboardId);
+    if (prevProps.dashboardId !== this.props.dashboardId) {
+      this.loadDashboard(this.props.dashboardId);
     } else if (
-      !_.isEqual(parameterValues, prevProps.parameterValues) ||
-      (dashboard && !prevProps.dashboard)
+      !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
+      (!prevProps.dashboard && this.props.dashboard)
     ) {
-      fetchDashboardCardData({ reload: false, clear: true });
-    } else if (
-      location.state &&
-      !_.isEqual(location.state, prevProps.location.state)
-    ) {
-      setParameterValuesFromQueryParams(location.query);
+      this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
   }
 
