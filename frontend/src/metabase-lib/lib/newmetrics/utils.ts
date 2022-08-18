@@ -77,7 +77,7 @@ export function generateFakeMetricFromQuestion(
 export function applyMetricToQuestion(
   question: Question,
   metric: Metric,
-): Question {
+): Question | null {
   const query = question.query() as StructuredQuery;
   const { dimensions } = metric;
   const [, dateFieldRef] = dimensions[0];
@@ -90,7 +90,7 @@ export function applyMetricToQuestion(
   );
 
   if (!dateDimension) {
-    throw new Error("Could not parse the Metric's date dimension");
+    return null;
   }
 
   const dateDimensionWithTemporalUnit = dateDimension.withTemporalUnit(

@@ -395,6 +395,15 @@ export const originalCard = handleActions(
   null,
 );
 
+export const metric = handleActions(
+  {
+    [INITIALIZE_QB]: {
+      next: (state, { payload }) => payload?.metric ?? null,
+    },
+  },
+  null,
+);
+
 // references to FK tables specifically used on the ObjectDetail page.
 export const tableForeignKeyReferences = handleActions(
   {
