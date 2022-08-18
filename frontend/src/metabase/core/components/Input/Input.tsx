@@ -30,9 +30,9 @@ export interface InputProps extends InputAttributes {
   leftIconTooltip?: ReactNode;
   rightIcon?: string;
   rightIconTooltip?: ReactNode;
+  subtitle?: string;
   onLeftIconClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   onRightIconClick?: (event: MouseEvent<HTMLButtonElement>) => void;
-  subtitle?: string;
 }
 
 const Input = forwardRef(function Input(

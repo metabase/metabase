@@ -31,23 +31,21 @@ const FormInputWidget = forwardRef(function FormInputWidget(
   ref,
 ) {
   return (
-    <div>
-      <Input
-        {...formDomOnlyProps(field)}
-        type={type}
-        placeholder={placeholder}
-        aria-labelledby={`${field.name}-label`}
-        readOnly={readOnly}
-        autoFocus={autoFocus}
-        error={field.visited && !field.active && field.error != null}
-        rightIcon={helperText && "info"}
-        rightIconTooltip={helperText}
-        tabIndex={tabIndex}
-        fullWidth
-        subtitle={subtitle}
-        ref={ref}
-      />
-    </div>
+    <Input
+      {...formDomOnlyProps(field)}
+      type={type}
+      placeholder={placeholder}
+      aria-labelledby={`${field.name}-label`}
+      readOnly={readOnly}
+      autoFocus={autoFocus}
+      error={field.visited && !field.active && field.error != null}
+      rightIcon={helperText && "info"}
+      rightIconTooltip={helperText}
+      tabIndex={tabIndex}
+      fullWidth
+      subtitle={subtitle}
+      ref={ref}
+    />
   );
 });
 
