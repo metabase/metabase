@@ -35,6 +35,10 @@ export default class DimensionOptions {
     return !!this.all().find(dim => dimension.isSameBaseDimension(dim));
   }
 
+  find(predicate: (dimension: Dimension) => boolean): Dimension | null {
+    return this.all().find(predicate) ?? null;
+  }
+
   sections({ extraItems = [] } = {}): DimensionOptionsSection[] {
     const dimension =
       this.dimensions.find(dimension => !dimension.isExpression()) ??
