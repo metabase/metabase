@@ -42,6 +42,9 @@ export const AreaSeries = ({
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         yScale={yScaleLeft!}
         xAccessor={xAccessor}
+        showValues={showValues}
+        valueFormatter={valueFormatter}
+        valueProps={valueProps}
       />
     );
   }
