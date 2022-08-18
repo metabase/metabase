@@ -1,5 +1,7 @@
 ---
 title: "Developer's Guide"
+redirect_from:
+  - /docs/latest/developers-guide
 ---
 
 # Developer's Guide
@@ -35,6 +37,5 @@ This guide contains detailed information on how to work on Metabase codebase.
 
 ## Database drivers
 
-Learn how to write a driver to connect Metabase to your database.
-
+- [Partner and community drivers](./developers-guide-drivers.md)
 - [Guide to writing a driver](drivers/start.md)

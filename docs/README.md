@@ -11,7 +11,7 @@ title: Metabase documentation
 
 - [Troubleshooting guides](troubleshooting-guide/index.md)
 - [Metabase forum](https://discourse.metabase.com/)
-- [Configuring logging](./operations-guide/log-configuration.md)
+- [Configuring logging](./installation-and-operation/log-configuration.md)
 
 ## Tutorials and guides
 
@@ -19,17 +19,18 @@ title: Metabase documentation
 
 ## Installation and operation
 
-- [Installing Metabase](./operations-guide/installing-metabase.md)
-- [Setting up Metabase](setting-up-metabase.md)
-- [How to upgrade Metabase](./operations-guide/upgrading-metabase.md)
-- [Application database](./operations-guide/configuring-application-database.md)
-- [Backing up Metabase](./operations-guide/backing-up-metabase-application-data.md)
-- [Migrating to a production application database](./operations-guide/migrating-from-h2.md)
-- [Running database migrations manually](./operations-guide/running-migrations-manually.md)
-- [A word on Java versions](./operations-guide/java-versions.md)
-- [How to setup monitoring via JMX](./operations-guide/jmx-monitoring.md)
+- [Installing Metabase](./installation-and-operation/installing-metabase.md)
+- [Setting up Metabase](./installation-and-operation/setting-up-metabase.md)
+- [How to upgrade Metabase](./installation-and-operation/upgrading-metabase.md)
+- [Application database](./installation-and-operation/configuring-application-database.md)
+- [Backing up Metabase](./installation-and-operation/backing-up-metabase-application-data.md)
+- [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
+- [Running database migrations manually](./installation-and-operation/running-migrations-manually.md)
+- [A word on Java versions](./installation-and-operation/java-versions.md)
+- [How to setup monitoring via JMX](./installation-and-operation/jmx-monitoring.md)
 - [Serialization: copying one Metabase instance to another](./enterprise-guide/serialization.md)
 - [Supported browsers](./administration-guide/supported-browsers.md)
+- [Some info on privacy and GDPR](./installation-and-operation/privacy.md)
 
 ## Asking questions
 
@@ -77,6 +78,7 @@ title: Metabase documentation
 
 ## Finding things and keeping organized
 
+- [Overview](./exploration-and-organization/start.md)
 - [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
@@ -112,7 +114,7 @@ title: Metabase documentation
 
 ## Embedding questions and dashboards
 
-- [Embedding overview](./embedding/start.md)
+- [Overview](./embedding/start.md)
 - [Embedding Metabase in other applications](./embedding/introduction.md)
 - [Public links for dashboards and questions](./embedding/public-links.md)
 - [Customizing the appearance of embedded items](./enterprise-guide/customize-embeds.md)
@@ -143,8 +145,9 @@ title: Metabase documentation
 
 ## Usage and performance tools
 
-- [Auditing tools](./enterprise-guide/audit.md)
-- [Tracking query errors](./enterprise-guide/tools.md)
+- [Overview](./usage-and-performance-tools/start.md)
+- [Auditing tools](./usage-and-performance-tools/audit.md)
+- [Tracking query errors](./usage-and-performance-tools/tools.md)
 
 ## Metabase API
 
@@ -166,23 +169,12 @@ The Enterprise and Pro plans of Metabase offer additional features.
 - [Metabase Blog](/blog)
 - [Source code repository on GitHub](https://github.com/metabase/metabase)
 
-## Documentation guides
+## [Developers guide](developers-guide/start.md)
 
-- [Users guide](users-guide/start.md)
-- [Admin guide](administration-guide/start.md)
-- [Operations guide](operations-guide/start.md)
-- [Troubleshooting guide](troubleshooting-guide/index.md)
-- [Developers guide](developers-guide/start.md)
+Contribute to the Metabase open source project!
 
-## Metabase Cloud
+## [Metabase Cloud](/cloud/docs)
 
-- [Docs specific to our hosted version](/cloud/docs)
+## [Data and Business Intelligence Glossary](/glossary)
 
-## Privacy
-
-- [Some info on privacy and GDPR](privacy.md)
-
-## Reference
-
-- [Anonymous Information Collection Reference](information-collection.md)
-- [Data and Business Intelligence Glossary](/glossary)
+Data jargon explained.

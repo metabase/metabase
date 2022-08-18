@@ -4,6 +4,10 @@ title: "Configuring Metabase"
 
 # Configuring Metabase
 
+## [Setting up Metabase](./setting-up-metabase.md)
+
+A walkthrough of when you first boot up your Metabase.
+
 ## [General settings](./settings.md)
 
 Site name, report timezone, and more settings.
@@ -23,3 +27,7 @@ Set language, datetime, and currency settings.
 ## [Caching](./caching.md)
 
 Cache query results for faster loading times.
+
+## [Metabase logs configuration](./log-configuration.md)
+
+Tell Metabase what to log.
