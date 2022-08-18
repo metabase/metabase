@@ -93,11 +93,20 @@ export default class ChartSettingOrderedColumns extends Component {
     );
 
   render() {
-    const { value, question, columns } = this.props;
+    const {
+      value,
+      question,
+      columns,
+      allowAdditionalFieldOptions = true,
+    } = this.props;
     const query = question && question.query();
 
     let additionalFieldOptions = { count: 0 };
-    if (columns && query instanceof StructuredQuery) {
+    if (
+      columns &&
+      query instanceof StructuredQuery &&
+      allowAdditionalFieldOptions
+    ) {
       additionalFieldOptions = query.fieldsOptions(dimension => {
         return !_.find(columns, column =>
           dimension.isSameBaseDimension(column.field_ref),
@@ -113,6 +122,8 @@ export default class ChartSettingOrderedColumns extends Component {
         .map((columnSetting, index) => ({ ...columnSetting, index })),
       columnSetting => columnSetting.enabled,
     );
+
+    console.log(value, columns);
 
     return (
       <div className="list">

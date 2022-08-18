@@ -26,6 +26,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
+import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 
 const propTypes = {
   headerIcon: PropTypes.shape(iconPropTypes),
@@ -109,6 +110,22 @@ export default class Funnel extends Component {
       useRawSeries: true,
       showColumnSetting: true,
     }),
+    "funnel.columns": {
+      section: t`Data`,
+      title: t`Breakouts`,
+      widget: ChartSettingOrderedColumns,
+      getDefault: props => {
+        console.log(props);
+        return props.map(p => ({
+          name: p.card.name,
+          enabled: true,
+        }));
+      },
+      getProps: props => ({
+        columns: props.map(p => ({ ...p.card, display_name: p.card.name })),
+        allowAdditionalFieldOptions: false,
+      }),
+    },
     ...metricSetting("funnel.metric", {
       section: t`Data`,
       title: t`Measure`,
