@@ -18,8 +18,11 @@ function hasDateField(question: Question): boolean {
   return !!dateDimension;
 }
 
-export function canBeUsedAsMetric(question: Question): boolean {
+export function canBeUsedAsMetric(
+  question: Question | null | undefined,
+): question is Question {
   return (
+    !!question &&
     question.isStructured() &&
     (question.query() as StructuredQuery).aggregations().length === 1 &&
     hasDateField(question)
