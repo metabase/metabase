@@ -1,10 +1,10 @@
 (ns metabase.models.app
-  (:require [metabase.models.interface :as mi]
+  (:require [medley.core :as m]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.models :as models]
-            [medley.core :as m]))
+            [toucan.models :as models]))
 
 (models/defmodel App :app)
 (models/defmodel AppNavItem :app_nav_item)
@@ -25,6 +25,7 @@
          {:types (constantly {:options :json})}))
 
 (defn nav-items
+  "Hydrates app's nav-items."
   {:batched-hydrate :app/nav-items}
   [apps]
   (let [nav-items (db/select AppNavItem :app_id [:in (map :id apps)])
