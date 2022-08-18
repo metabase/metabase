@@ -30,7 +30,7 @@ Paid plans include more ways to manage permissions, including data sandboxing, w
 
 - [Data sandboxes](../permissions/data-sandboxes.md)
 - [Block permissions](../permissions/data.md#block-access)
-- [SQL snippet controls](../permissions/snippets.md)
+- [SQL snippet folder permissions](../permissions/snippets.md)
 - [Application permissions](../permissions/application.md)
 
 ## Embedding

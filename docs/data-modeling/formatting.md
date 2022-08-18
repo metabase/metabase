@@ -24,7 +24,7 @@ The options you'll see here will depend on the field's type. They're generally t
 
 ### Numbers
 
-- `Show a mini bar chart:` this only applies to situations where this number is displayed in a table, and if it's on it will show a bar next to each value in this column to show how large or small it is relative to the other values in the column.
+- `Show a mini bar chart:` only applies to table visualizations. Displays a bar for each value to show large or small it is relative to the other values in the column.
 - `Style:` lets you choose to display the number as a plain number, a percent, in scientific notation, or as a currency.
 - `Separator style:` this gives you various options for how commas and periods are used to separate the number.
 - `Minimum number of decimal places:` forces the number to be displayed with exactly this many decimal places.
