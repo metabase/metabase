@@ -8,7 +8,6 @@ import {
   visualize,
   getDimensionByName,
   summarize,
-  startNewQuestion,
   filter,
   filterField,
 } from "__support__/e2e/helpers";
@@ -299,41 +298,32 @@ describe("scenarios > question > nested", () => {
     }
   });
 
-  ["count", "average"].forEach(test => {
-    it(`${test.toUpperCase()}:\n should be able to use aggregation functions on saved native question (metabase#15397)`, () => {
-      cy.createNativeQuestion(
-        {
-          name: "15397",
-          native: {
-            query:
-              "select count(*), orders.product_id from orders group by orders.product_id;",
-          },
-        },
-        { loadMetadata: true },
-      );
+  it("should be able to use aggregation functions on saved native question (metabase#15397)", () => {
+    cy.createNativeQuestion({
+      name: `15397`,
+      native: {
+        query:
+          "select count(*), orders.product_id from orders group by orders.product_id;",
+      },
+    }).then(({ body: { id } }) => {
+      visitQuestion(id);
 
-      startNewQuestion();
-      cy.findByText("Saved Questions").click();
-      cy.findByText("15397").click();
+      visitNestedQueryAdHoc(id);
 
-      visualize();
+      // Count
       summarize();
 
-      if (test === "average") {
-        cy.findByTestId("sidebar-right")
-          .should("be.visible")
-          .findByText("Count")
-          .click();
-        cy.findByText("Average of ...").click();
-        popover().findByText("COUNT(*)").click();
-        cy.wait("@dataset");
-      }
-
       cy.findByText("Group by").parent().findByText("COUNT(*)").click();
+      cy.wait("@dataset");
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
-      });
+      cy.get(".bar").should("have.length.of.at.least", 5);
+
+      // Replace "Count" with the "Average"
+      cy.findByTestId("aggregation-item").contains("Count").click();
+      cy.findByText("Average of ...").click();
+      popover().findByText("COUNT(*)").click();
+      cy.wait("@dataset");
+
       cy.get(".bar").should("have.length.of.at.least", 5);
     });
   });
