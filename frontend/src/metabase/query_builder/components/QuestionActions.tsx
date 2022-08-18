@@ -10,7 +10,10 @@ import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 
-import { softReloadCard } from "metabase/query_builder/actions";
+import {
+  softReloadCard,
+  createMetricFromQuestion,
+} from "metabase/query_builder/actions";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { State } from "metabase-types/store";
@@ -45,6 +48,7 @@ const mapStateToProps = (state: State, props: Props) => ({
 
 const mapDispatchToProps = {
   softReloadCard,
+  createMetricFromQuestion,
 };
 
 interface Props {
@@ -62,6 +66,7 @@ interface Props {
   onModelPersistenceChange: () => void;
   isModerator: boolean;
   softReloadCard: () => void;
+  createMetricFromQuestion: () => void;
 }
 
 const QuestionActions = ({
@@ -76,6 +81,7 @@ const QuestionActions = ({
   onModelPersistenceChange,
   isModerator,
   softReloadCard,
+  createMetricFromQuestion,
 }: Props) => {
   const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
 
@@ -187,7 +193,7 @@ const QuestionActions = ({
       icon: "star",
       disabled: !canBeMetric,
       action: () => {
-        console.log("sike!");
+        createMetricFromQuestion();
       },
     });
   }
