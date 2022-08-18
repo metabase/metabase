@@ -3,7 +3,11 @@ import { push } from "react-router-redux";
 
 import { Dispatch, GetState } from "metabase-types/store";
 import { Card } from "metabase-types/types/Card";
-import { canBeUsedAsMetric } from "metabase-lib/lib/newmetrics/utils";
+import {
+  canBeUsedAsMetric,
+  generateFakeMetricFromQuestion,
+  applyMetricToQuestion,
+} from "metabase-lib/lib/newmetrics/utils";
 import Question from "metabase-lib/lib/Question";
 import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -51,11 +55,21 @@ export const initializeMetricCard =
   (card: Card) => async (dispatch: Dispatch, getState: GetState) => {
     await dispatch(loadMetadataForCard(card));
     const metadata = getMetadata(getState());
-    const question = new Question(card, metadata).lockDisplay();
+    const baseQuestion = new Question(card, metadata);
+
+    const fakeMetric = generateFakeMetricFromQuestion(baseQuestion);
+    if (!fakeMetric) {
+      throw new Error("Could not generate fake metric from question");
+    }
+    const metricQuestion = applyMetricToQuestion(baseQuestion, fakeMetric)
+      .setDefaultDisplay()
+      // initializeQB does this to saved, structured cards, so we should, too?
+      .lockDisplay();
+
     dispatch({
       type: INITIALIZE_QB,
       payload: {
-        card: question.card(),
+        card: metricQuestion.card(),
       },
     });
     // no need for setTimeout because there shouldn't be any paremeter widgets
