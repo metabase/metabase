@@ -39,7 +39,7 @@ Now that you have your database info you can connect to your database. Sweet, sw
 
 ![adddatabase](images/AddDatabaseInfo.png)
 
-For more on connecting to databases, see [Adding and managing databases](./administration-guide/01-managing-databases.md).
+For more on connecting to databases, see [Adding and managing databases](../databases/connecting.md).
 
 ## Usage data preferences
 
@@ -61,5 +61,3 @@ Once you're done here simply follow the link to **Take me to Metabase**.  And if
 
 ## Getting started with Metabase
 For a tutorial on getting up and running with questions and dashboards, head over to [Learn Metabase](/learn/getting-started/getting-started.html).
-
-For information on adding team members, connecting additional databases, configuring Metabase settings, and more, check out the [Admin Guide](./administration-guide/start.md).

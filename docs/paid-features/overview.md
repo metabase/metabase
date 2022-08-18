@@ -1,10 +1,12 @@
 ---
-title: Enterprise and Pro plans
+title: Overview of premium features
+redirect_from:
+  - /docs/latest/enterprise-guide/start
 ---
 
-# Enterprise and Pro plans
+# Overview of premium features
 
-The [Enterprise and Pro][pricing] editions of Metabase provide additional features that help organizations scale Metabase and deliver self-service, embedded analytics.
+Metabase's [Enterprise and Pro][pricing] plans provide additional features that help organizations scale Metabase and deliver self-service, embedded analytics.
 
 ## Setting up
 
@@ -37,15 +39,15 @@ Paid plans include more ways to manage permissions, including data sandboxing, w
 
 You can embed all of Metabase in your app.
 
-- [Embedding the entire Metabase app in your app](full-app-embedding.html)
-- [Customizing how Metabase looks with white labeling](whitelabeling.html)
-- [Customizing embedded items](./customize-embeds.md)
+- [Embedding the entire Metabase app in your app](../embedding/full-app-embedding.md)
+- [Customizing how Metabase looks with white labeling](../embedding/whitelabeling.md)
+- [Customizing embedded items](../embedding//customize-embeds.md)
 
 ## Dashboard subscription customization
 
 Send different groups of people the contents of the dashboard with different filters applied. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber.
 
-- [Customizing filter values for each dashboard subscription](dashboard-subscriptions.html)
+- [Customizing filter values for each dashboard subscription](../dashboards/subscriptions.md)
 
 ## Official collections
 
@@ -67,18 +69,18 @@ All Metabase editions include global caching controls. Paid plans includes addit
 
 See how people are using your Metabase.
 
-- [Using the audit logs](audit.html)
+- [Using the audit logs](../usage-and-performance-tools/audit.md)
 
 ## Admin tools
 
 See which queries are failing to help keep your Metabase tidy.
 
-- [Tracking query errors](tools.html)
+- [Tracking query errors](../usage-and-performance-tools/tools.md)
 
 ## Serialization
 
 You can export Metabase application data and use that to spin up new instances preloaded with questions, dashboards, and collections.
 
-- [Serialization](serialization.html)
+- [Serialization](../installation-and-operation/serialization.md)
 
 [pricing]: https://www.metabase.com/pricing/

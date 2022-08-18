@@ -1,5 +1,10 @@
 ---
 title: Metabase documentation
+redirect_from:
+  - /docs/latest/enterprise-guide
+  - /docs/latest/users-guide
+  - /docs/latest/administration-guide
+  - /docs/latest/operations-guide
 ---
 
 ## Getting started
@@ -11,7 +16,7 @@ title: Metabase documentation
 
 - [Troubleshooting guides](troubleshooting-guide/index.md)
 - [Metabase forum](https://discourse.metabase.com/)
-- [Configuring logging](./installation-and-operation/log-configuration.md)
+- [Configuring logging](./configuring-metabase/log-configuration.md)
 
 ## Tutorials and guides
 
@@ -20,14 +25,12 @@ title: Metabase documentation
 ## Installation and operation
 
 - [Installing Metabase](./installation-and-operation/installing-metabase.md)
-- [Setting up Metabase](./installation-and-operation/setting-up-metabase.md)
 - [How to upgrade Metabase](./installation-and-operation/upgrading-metabase.md)
 - [Application database](./installation-and-operation/configuring-application-database.md)
 - [Backing up Metabase](./installation-and-operation/backing-up-metabase-application-data.md)
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
-- [Running database migrations manually](./installation-and-operation/running-migrations-manually.md)
 - [A word on Java versions](./installation-and-operation/java-versions.md)
-- [How to setup monitoring via JMX](./installation-and-operation/jmx-monitoring.md)
+- [How to setup monitoring via JMX](./installation-and-operation/monitoring-metabase.md)
 - [Serialization: copying one Metabase instance to another](./enterprise-guide/serialization.md)
 - [Supported browsers](./administration-guide/supported-browsers.md)
 - [Some info on privacy and GDPR](./installation-and-operation/privacy.md)
@@ -133,10 +136,12 @@ title: Metabase documentation
 ## Configuring Metabase
 
 - [Overview](./configuring-metabase/start.md)
+- [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
 - [Settings](./configuring-metabase/settings.md)
 - [Email](./configuring-metabase/email.md)
 - [Slack](./configuring-metabase/slack.md)
 - [Environment variables](./configuring-metabase/environment-variables.md)
+- [Configuring logging](./configuring-metabase/log-configuration.md)
 - [Handling timezones](./configuring-metabase/timezones.md)
 - [Localization](./configuring-metabase/localization.md)
 - [Caching query results](./configuring-metabase/caching.md)

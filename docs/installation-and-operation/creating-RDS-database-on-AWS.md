@@ -66,20 +66,18 @@ On the edit page, you need to delete the IP address that appears as default, the
 
 ![RDS Edit Inbound Rule](images/RDSEditInboundRuleSG.png)
 
-# Step 4
+## Step 4
 
-After having finished all the previous steps, go to the your Elastic Beanstalk deployment and add the RDS instance as the Application Database with [Environment variables](environment-variables.html) under the [Software configuration](running-metabase-on-elastic-beanstalk.html#set-or-change-environment-variables).
+After having finished all the previous steps, go to the your Elastic Beanstalk deployment and add the RDS instance as the Application Database with [Environment variables](../configuring-metabase/environment-variables.md) under the [Software configuration](running-metabase-on-elastic-beanstalk.html#set-or-change-environment-variables).
 
----
-
-# Decouple your RDS database from the Elastic Beanstalk deployment
+## Decouple your RDS database from the Elastic Beanstalk deployment
 
 In the previous versions of this guide, we recommended the creation of an Elastic Beanstalk deployment (AWS's service for deploying applications easily) that had a RDS (AWS's Relational Database Service) database included in the creation by default thanks to the magic of CloudFormation (AWS's Infrastructure as a Code service). While this was an easier approach to simplify the deployments, we found out that this approach was not the optimal for building a future-proof architecture, since leaving the creation of the database to Elastic Beanstalk lead to limitations in the configuration of the database that would limit the choice for users. That's the reason why we now recommend creating the database separately from the Metabase deployment and glue them together manually, or even separate both components with this guide:
 
 - This procedure will generate downtime, so make sure to communicate to your users that Metabase will be down while you recreate the environment with the new database.
 - You'll need the master username and password for the database you used when you created the Elastic Beanstalk instance.
 
-## Step 1
+### Step 1
 
 Identify the RDS endpoint that your Elastic Beanstalk is using by going to the configuration of the Environment and finding the endpoint value on the Database section.
 ![RDS endpooint](images/EBDatabaseEndpoint.png)
@@ -88,14 +86,14 @@ Identify the RDS endpoint that your Elastic Beanstalk is using by going to the c
 - In case the Retention option has a different value, visit your RDS instance and take a snapshot of the database used by the Elastic Beanstalk application.
   ![RDS snapshot](images/RDSTakeSnapshot.png)
 
-## Step 2
+### Step 2
 
 Go to the Elastic Beanstalk Metabase Application, select the running environment, and terminate it. Confirm that the database will be terminated **with snapshot**)
 ![Terminate environment](images/EBTerminateEnvironment.png)
 
 This step can take around 20 minutes. If the deletion fails, you'll have to identify through CloudFormation which resources failed to be deleted and delete them yourself.
 
-## Step 3
+### Step 3
 
 Return to RDS and select the **Snapshots** option on the left of the page. You should see a Manual Snapshot listed.
 ![RDS Snapshots](images/RDSSnapshotsMenu.png)

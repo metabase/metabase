@@ -57,7 +57,7 @@ Safety first! See [Backing up Metabase Application Data](backing-up-metabase-app
 
 ### 4. Run the Metabase data migration command
 
-Run the migration command, `load-from-h2`, using the appropriate [environment variables](environment-variables.md) for the target database you want to migrate to.
+Run the migration command, `load-from-h2`, using the appropriate [environment variables](../configuring-metabase/environment-variables.md) for the target database you want to migrate to.
 
 You can find details about specifying MySQL and Postgres databases at [Configuring the application database](configuring-application-database.md).
 

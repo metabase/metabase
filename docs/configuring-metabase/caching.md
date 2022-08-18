@@ -43,7 +43,7 @@ All Metabase editions include global caching controls. Some plans include additi
 
 You can override your default caching options for each database connection, caching the results for more or less time than the default time-to-live (TTL) duration set by your site-wide settings. Setting caching per question is especially useful when data relevant to the question has a different natural cadence than your site-wide caching rule.
 
-Go to **Admin settings** > **Databases** and select your database connection. Under **Advanced settings**, set the **Default result cache duration**, which determines how long to keep question results for that database. By default, Metabase will use the value you supply on the [cache settings page](#cache-settings), but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance.
+Go to **Admin settings** > **Databases** and select your database connection. Under **Advanced settings**, set the **Default result cache duration**, which determines how long to keep question results for that database. By default, Metabase will use the value you supply on the [cache settings page](#caching-settings), but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance.
 
 ### Caching per question
 

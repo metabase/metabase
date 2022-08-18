@@ -6,7 +6,7 @@ title: Paid features
 
 Some [Metabase plans](/pricing) offer additional features to help organizations manage lots of people asking lots of questions. Much of the documentation for these features is grouped with relevant feature clusters, so this section is meant more as an index of all the cool tools you get on these paid plans.
 
-## [List of premium features](./paid-features.md)
+## [List of premium features](./overview.md)
 
 What you get when you're one of our premium plans.
 

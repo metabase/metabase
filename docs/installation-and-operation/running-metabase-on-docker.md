@@ -100,7 +100,7 @@ If you've already been running Metabase with the default application database (H
 
 ### Customizing the Metabase Jetty server
 
-You can use any of the custom settings from [Customizing the Metabase Jetty Webserver](customizing-jetty-webserver.md) by setting environment variables in your Docker run command.
+You can use any of the custom settings from [Customizing the Metabase Jetty Webserver](../configuring-metabase/customizing-jetty-webserver.md) by setting environment variables in your Docker run command.
 
 ### Docker-specific environment variables
 
@@ -256,7 +256,7 @@ secrets:
      file: db_user.txt
 ```
 
-We currently support the following [environment variables](environment-variables.html) to be used as secrets:
+We currently support the following [environment variables](../configuring-metabase/environment-variables.html) to be used as secrets:
 
 - MB_DB_USER
 - MB_DB_PASS

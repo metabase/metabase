@@ -39,7 +39,3 @@ java -Dhttps.proxyHost=[your proxy's hostname] -Dhttps.proxyPort=[your proxy's p
 
 Depending on your organization’s setup, you may need to take additional configuration steps. If the command above doesn't work for you, we recommend reaching out to your internal infrastructure or dev ops teams for assistance.
 
----
-
-## Next: setting up SSO
-We'll walk through how to connect your SSO to Metabase, starting with [SAML-based SSO](authenticating-with-saml.md).
