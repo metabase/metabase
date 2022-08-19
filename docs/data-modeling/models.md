@@ -78,7 +78,7 @@ You can edit the model's query by clicking on the down arrow next to the model's
 
 See [asking questions][question].
 
-## [Refer to a model in the SQL query editor](../users-guide/referencing-saved-questions-in-queries)
+## [Refer to a model in the SQL query editor](../questions/native-editor/referencing-saved-questions-in-queries.md)
 
 You can refer to a model in a SQL query just like you can refer to a saved question:
 

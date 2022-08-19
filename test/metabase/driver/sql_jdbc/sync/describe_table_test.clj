@@ -20,12 +20,12 @@
 (deftest describe-table-test
   (is (= {:name "VENUES",
           :fields
-          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true}
-            {:name "NAME", :database-type "VARCHAR", :base-type :type/Text, :database-position 1}
-            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2}
-            {:name "LATITUDE", :database-type "DOUBLE", :base-type :type/Float, :database-position 3}
-            {:name "LONGITUDE", :database-type "DOUBLE", :base-type :type/Float, :database-position 4}
-            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5}}}
+          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true :database-required false}
+            {:name "NAME", :database-type "VARCHAR", :base-type :type/Text, :database-position 1 :database-required false}
+            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2 :database-required false}
+            {:name "LATITUDE", :database-type "DOUBLE", :base-type :type/Float, :database-position 3 :database-required false}
+            {:name "LONGITUDE", :database-type "DOUBLE", :base-type :type/Float, :database-position 4 :database-required false}
+            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5 :database-required false}}}
          (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
 
 (deftest describe-table-fks-test

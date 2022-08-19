@@ -178,7 +178,7 @@
    rff
    post-processing-middleware))
 
-(def ^:private around-middleware
+(def around-middleware
   "Middleware that goes AROUND *all* the other middleware (even for pre-processing only or compilation only). Has the
   form
 

@@ -25,6 +25,8 @@ import { formatDateTimeWithUnit, formatRange } from "./date";
 import { formatNumber } from "./numbers";
 import { formatCoordinate } from "./geography";
 import { formatStringFallback } from "./strings";
+import { formatImage } from "./image";
+
 import { renderLinkTextForClick } from "metabase/lib/formatting/link";
 import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 
@@ -157,7 +159,7 @@ export function formatValueRaw(
       getDataFromClicked(options.clicked) as any,
     );
   } else if (
-    (isURL(column) && options.view_as !== null) ||
+    (isURL(column) && options.view_as == null) ||
     options.view_as === "link"
   ) {
     return formatUrl(value as string, options);
@@ -179,11 +181,13 @@ export function formatValueRaw(
   ) {
     return formatDateTimeWithUnit(value as string | number, "minute", options);
   } else if (typeof value === "string") {
-    if (column?.semantic_type != null) {
-      return value;
-    } else {
-      return formatStringFallback(value, options);
+    if (options.view_as === "image") {
+      return formatImage(value, options);
     }
+    if (column?.semantic_type) {
+      return value;
+    }
+    return formatStringFallback(value, options);
   } else if (typeof value === "number" && isCoordinate(column)) {
     const range = rangeForValue(value, column);
     if (range && !options.noRange) {

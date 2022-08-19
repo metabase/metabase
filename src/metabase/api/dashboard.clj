@@ -206,6 +206,7 @@
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
       (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series] :collection_authority_level :can_write :param_fields)
+      (cond-> api/*is-superuser?* (hydrate [:emitters [:action :card]]))
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
@@ -608,7 +609,7 @@
       (try
         (let [results (map (if (seq query)
                                #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                #(chain-filter/chain-filter % constraints :limit result-limit))
+                               #(chain-filter/chain-filter % constraints :limit result-limit))
                            field-ids)
               values (distinct (mapcat :values results))
               has_more_values (boolean (some true? (map :has_more_values results)))]

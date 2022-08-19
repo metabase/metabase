@@ -2,6 +2,7 @@
 title: Embedding Metabase in other applications
 redirect_from:
   - /docs/latest/administration-guide/13-embedding
+  - /docs/latest/administration-guide/12-public-links
 ---
 
 # Embedding Metabase in other applications

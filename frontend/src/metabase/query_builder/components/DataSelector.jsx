@@ -1483,7 +1483,7 @@ const TablePicker = ({
             {t`Is a question missing?`}
             <ExternalLink
               href={MetabaseSettings.docsUrl(
-                "users-guide/referencing-saved-questions-in-queries",
+                "questions/native-editor/referencing-saved-questions-in-queries",
               )}
               target="_blank"
               className="block link"

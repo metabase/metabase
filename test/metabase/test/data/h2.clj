@@ -13,6 +13,7 @@
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.test.data.sql-jdbc.spec :as spec]
+            [metabase.test.data.sql.ddl :as ddl]
             [toucan.db :as db]))
 
 (sql-jdbc.tx/add-test-extensions! :h2)
@@ -89,6 +90,10 @@
 (defmethod ddl.i/format-name :h2
   [_ s]
   (str/upper-case s))
+
+(defmethod ddl/drop-db-ddl-statements :h2
+  [_driver _dbdef & _options]
+  ["SHUTDOWN;"])
 
 (defmethod tx/id-field-type :h2 [_] :type/BigInteger)
 
