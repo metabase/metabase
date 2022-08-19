@@ -14,5 +14,9 @@
   Takes an options map which is passed on to [[serdes.base/extract-all]] for each model. The options are documented
   there."
   [opts]
-  (eduction cat (for [model serdes.models/exported-models]
-                   (serdes.base/extract-all model opts))))
+  (let [model-pred (if (:data-model-only opts)
+                     #{"Database" "Dimension" "Field" "FieldValues" "Metric" "Segment" "Table"}
+                     (constantly true))]
+    (eduction cat (for [model serdes.models/exported-models
+                        :when (model-pred model)]
+                    (serdes.base/extract-all model opts)))))
