@@ -1147,27 +1147,28 @@
 
 (defn annotate-collections
   "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are
-  in the collection at that level."
-  [{:keys [dataset card] :as _coll-type-ids} collections]
-  (let [parent-info (reduce (fn [m {:keys [location id] :as _collection}]
-                              (let [parent-ids (set (location-path->ids location))]
-                                (cond-> m
-                                  (contains? dataset id)
-                                  (update :dataset set/union parent-ids)
-                                  (contains? card id)
-                                  (update :card set/union parent-ids))))
-                            {:dataset #{} :card #{}}
-                            collections)]
+  in the collection at that level. `coll-type-ids` is a map from a type (:dataset, :card, :newmetric) to sets of
+  collection ids which have those items."
+  [coll-type-ids collections]
+  (let [id->parent-ids  (into {} (map (fn [{:keys [id location]}] [id (set (location-path->ids location))]))
+                              collections)
+        ;; parent info for "below". Each id has parents. When a collection has a :card, :newmetric, or :dataset, all
+        ;; of its parents have that :below.
+        parent-type-ids (update-vals coll-type-ids (fn [ids]
+                                                     (into #{} (mapcat id->parent-ids)
+                                                           ids)))]
     (map (fn [{:keys [id] :as collection}]
-           (let [types (cond-> #{}
-                         (contains? (:dataset parent-info) id)
-                         (conj :dataset)
-                         (contains? (:card parent-info) id)
-                         (conj :card))]
+           (let [below-types (keep (fn [[t ids]]
+                                     (when (contains? ids id)
+                                       t))
+                                   parent-type-ids)
+                 here-types  (keep (fn [[t ids]]
+                                     (when (contains? ids id)
+                                       t))
+                                   coll-type-ids)]
              (cond-> collection
-               (seq types) (assoc :below types)
-               (contains? dataset id) (update :here (fnil conj #{}) :dataset)
-               (contains? card id) (update :here (fnil conj #{}) :card))))
+               (seq below-types) (assoc :below (set below-types))
+               (seq here-types)  (assoc :here (set here-types)))))
          collections)))
 
 (defn collections->tree

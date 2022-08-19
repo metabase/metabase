@@ -25,6 +25,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
             [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+            [metabase.models.newmetric :refer [Newmetric]]
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
@@ -104,7 +105,9 @@
                               (db/reducible-query {:select    [:collection_id :dataset]
                                                    :modifiers [:distinct]
                                                    :from      [:report_card]
-                                                   :where     [:= :archived false]}))]
+                                                   :where     [:= :archived false]}))
+        coll-type-ids (assoc coll-type-ids :newmetric
+                             (db/select-field :collection_id Newmetric))]
     (->> (db/select Collection
                     {:where [:and
                              (when exclude-archived

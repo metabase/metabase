@@ -1500,16 +1500,16 @@
   (is (= [{:name     "A"
            :id       1
            :location "/"
-           :below    #{:dataset :card}
+           :below    #{:dataset :card :newmetric}
            :children [{:name "B", :id 2, :location "/1/", :children []}
                       {:name     "C"
                        :id       3
                        :location "/1/"
-                       :below    #{:dataset :card}
+                       :below    #{:dataset :card :newmetric}
                        :children [{:name     "D"
                                    :id       4
                                    :location "/1/3/"
-                                   :here     #{:dataset}
+                                   :here     #{:dataset :newmetric}
                                    :below    #{:dataset}
                                    :children [{:name "E", :id 5, :location "/1/3/4/",
                                                :children [] :here #{:dataset}}]}
@@ -1517,11 +1517,16 @@
                                    :id       6
                                    :location "/1/3/"
                                    :here     #{:card}
-                                   :children [{:name "G", :id 7, :location "/1/3/6/", :children []}]}]}]}
+                                   :below    #{:newmetric}
+                                   :children [{:name "G"
+                                               :id 7
+                                               :location "/1/3/6/"
+                                               :here     #{:newmetric}
+                                               :children []}]}]}]}
           {:name "aaa", :id 9, :location "/", :children [] :here #{:card}}
           {:name "H", :id 8, :location "/", :children []}]
          (collection/collections->tree
-          {:dataset #{4 5} :card #{6 9}}
+          {:dataset #{4 5} :card #{6 9} :newmetric #{4 7}}
           [{:name "A", :id 1, :location "/"}
            {:name "B", :id 2, :location "/1/"}
            {:name "C", :id 3, :location "/1/"}
