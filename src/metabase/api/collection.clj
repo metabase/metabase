@@ -254,7 +254,7 @@
   (for [row rows]
     (dissoc row
             ;; todo: will need collection_position soon, probably collection preview as well
-            :display :collection_position :authority_level :moderated_status
+            :display :collection_position :authority_level :moderated_status :icon :personal_owner_id
             :collection_preview :dataset_query)))
 
 (defmethod post-process-collection-children :snippet
