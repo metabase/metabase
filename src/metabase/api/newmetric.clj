@@ -64,14 +64,9 @@
    {:type :query
     :database (:database_id card)
     :query {:source-table (str "card__" (:id card))
-            :breakout    (into [] dimensions)
+            :breakout    dimensions
             ;; todo: filters?
             :aggregation [(:measure metric)]}}))
-
-(defn- run-query-async
-  ;; todo: export formats?
-  ;; copying liberally from dataset.clj
-  [{:keys [database] :as query}])
 
 (api/defendpoint ^:streaming POST "/:id/query"
   "Run a query for a metric"
@@ -85,6 +80,7 @@
                      (:dataset underlying)
                      (assoc :metadata/dataset-metadata (:result_metadata underlying)))]
     (binding [qp.perms/*card-id* (:id underlying)]
+      ;; todo: metric event (events/publish-event! :metric-read ...)
       (qp.streaming/streaming-response [context :api]
         (qp/process-query-and-save-execution! query info context)))))
 
