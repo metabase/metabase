@@ -1,9 +1,9 @@
 import { t } from "ttag";
 import { push } from "react-router-redux";
 import { LocationDescriptorObject } from "history";
+import _ from "underscore";
 
 import { Dispatch, GetState } from "metabase-types/store";
-import { SavedCard } from "metabase-types/types/Card";
 import {
   canBeUsedAsMetric,
   generateFakeMetricFromQuestion,
@@ -11,15 +11,22 @@ import {
 } from "metabase-lib/lib/newmetrics/utils";
 import Question from "metabase-lib/lib/Question";
 import { addUndo } from "metabase/redux/undo";
-import { getMetadata } from "metabase/selectors/metadata";
 import { setErrorPage } from "metabase/redux/app";
 import NewMetrics from "metabase/entities/new-metrics";
 import Questions from "metabase/entities/questions";
 import { extractEntityId } from "metabase/lib/urls";
 import { Metric } from "metabase-types/api/newmetric";
+import { defer } from "metabase/lib/promise";
+import { NewMetricApi } from "metabase/services";
 
-import { getQuestion } from "../selectors";
-import { runQuestionQuery } from "./querying";
+import { getQuestion, getCard } from "../selectors";
+import {
+  RUN_QUERY,
+  QUERY_ERRORED,
+  QUERY_COMPLETED,
+  loadStartUIControls,
+  loadCompleteUIControls,
+} from "./querying";
 import { loadMetadataForCard } from "./core/metadata";
 
 // avoiding the circular dependency
@@ -94,6 +101,7 @@ export const initializeMetricCard =
     await dispatch(loadMetadataForCard(baseQuestion.card()));
 
     // using properties on the metric, make changes to the question's query
+    // we need to do this right now because we need to convice the QB code that the question is runnin' things.
     const metricQuestion = applyMetricToQuestion(baseQuestion, metric);
     if (!metricQuestion) {
       throw new Error("Failed to apply fake metric to question");
@@ -103,6 +111,8 @@ export const initializeMetricCard =
     }
 
     const metricCard = metricQuestion
+      // eventually let user decide this?
+      .setDisplay("line")
       // initializeQB does this to saved, structured cards, so we should, too?
       .lockDisplay()
       .card();
@@ -123,5 +133,73 @@ export const initializeMetricCard =
 
     // Timeout to allow Parameters widget to set parameterValues
     // Currently, there shouldn't be any parameters, but that might now always be the case
-    setTimeout(() => dispatch(runQuestionQuery({ shouldUpdateUrl: false })), 0);
+    setTimeout(() => dispatch(runMetricQuery({ id: metric.id })), 0);
   };
+
+// The `id` prop -- there might be scenarios where there is poor access to `id` but we want to run the QB's query again
+// perhaps fallback to looking at the metric in qb store
+const runMetricQuery =
+  ({ id }: { id: number }) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    const card = getCard(getState());
+
+    dispatch(loadStartUIControls());
+
+    const cancelQueryDeferred = defer();
+
+    // run the metric query
+    // todo: when finished, should send performance data to the backend
+    try {
+      dispatch({
+        type: RUN_QUERY,
+        payload: {
+          cancelQueryDeferred,
+        },
+      });
+
+      const results = await NewMetricApi.query(
+        { id },
+        {
+          cancelled: cancelQueryDeferred.promise,
+        },
+      );
+
+      // todo: does this happen?
+      if (results.error) {
+        throw new Error(results.error);
+      }
+
+      const { data } = results;
+      // ensure this is defined so that the reducers associated with QUERY_COMPLETED override card.result_metadata
+      const resultsMetadata = data?.results_metadata?.columns ?? [];
+
+      dispatch({
+        type: QUERY_COMPLETED,
+        payload: {
+          card,
+          display: "line",
+          result_metadata: resultsMetadata,
+          // QB viz selectors expect this to be an array
+          queryResults: [results],
+        },
+      });
+      dispatch(loadCompleteUIControls());
+    } catch (error) {
+      if (!isCancelled(error)) {
+        dispatch({
+          type: QUERY_ERRORED,
+          payload: {
+            error,
+          },
+        });
+      }
+    }
+  };
+
+function isCancelled(error: unknown): boolean {
+  if (_.isObject(error) && error.isCancelled) {
+    return true;
+  }
+
+  return false;
+}
