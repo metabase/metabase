@@ -34,6 +34,7 @@ import {
   sortSeries,
   getLegendColumns,
   calculateStackedItems,
+  getValueStep,
 } from "metabase/static-viz/components/XYChart/utils";
 import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
 
@@ -143,6 +144,7 @@ export const XYChart = ({
   const xLabelOffset = areXTicksHidden ? -style.axes.ticks.fontSize : undefined;
 
   // Use the same logic as in https://github.com/metabase/metabase/blob/1276595f073883853fed219ac185d0293ced01b8/frontend/src/metabase/visualizations/lib/chart_values.js#L178-L179
+  // TODO: set compact per series
   const getAvgLength = (compact: boolean) => {
     const lengths = series
       .flatMap(s => s.data)
@@ -156,6 +158,27 @@ export const XYChart = ({
     return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
   };
   const compact = getAvgLength(true) < getAvgLength(false) - 3;
+  const valueFormatter = (value: number): string =>
+    formatNumber(value, maybeAssoc(settings.y.format, "compact", compact));
+
+  const barsValueStep = getValueStep(
+    bars,
+    valueFormatter,
+    valueProps,
+    innerWidth,
+  );
+  const areasValueStep = getValueStep(
+    areas,
+    valueFormatter,
+    valueProps,
+    innerWidth,
+  );
+  const linesValueStep = getValueStep(
+    lines,
+    valueFormatter,
+    valueProps,
+    innerWidth,
+  );
 
   return (
     <svg width={width} height={height + legendHeight}>
@@ -176,13 +199,9 @@ export const XYChart = ({
             xAccessor={xScale.barAccessor}
             bandwidth={xScale.bandwidth}
             showValues={Boolean(settings.show_values)}
-            valueFormatter={value =>
-              formatNumber(
-                value,
-                maybeAssoc(settings.y.format, "compact", compact),
-              )
-            }
+            valueFormatter={valueFormatter}
             valueProps={valueProps}
+            valueStep={barsValueStep}
           />
         )}
         <AreaSeries
@@ -192,13 +211,9 @@ export const XYChart = ({
           xAccessor={xScale.lineAccessor}
           areStacked={settings.stacking === "stack"}
           showValues={Boolean(settings.show_values)}
-          valueFormatter={value =>
-            formatNumber(
-              value,
-              maybeAssoc(settings.y.format, "compact", compact),
-            )
-          }
+          valueFormatter={valueFormatter}
           valueProps={valueProps}
+          valueStep={areasValueStep}
         />
         <LineSeries
           series={lines}
@@ -206,13 +221,9 @@ export const XYChart = ({
           yScaleRight={yScaleRight}
           xAccessor={xScale.lineAccessor}
           showValues={Boolean(settings.show_values)}
-          valueFormatter={value =>
-            formatNumber(
-              value,
-              maybeAssoc(settings.y.format, "compact", compact),
-            )
-          }
+          valueFormatter={valueFormatter}
           valueProps={valueProps}
+          valueStep={linesValueStep}
         />
 
         {settings.goal && (

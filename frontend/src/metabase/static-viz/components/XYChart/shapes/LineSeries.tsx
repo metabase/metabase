@@ -21,6 +21,7 @@ interface LineSeriesProps {
   showValues: boolean;
   valueFormatter: (value: number) => string;
   valueProps: Partial<TextProps>;
+  valueStep: number;
 }
 
 export const LineSeries = ({
@@ -31,6 +32,7 @@ export const LineSeries = ({
   showValues,
   valueFormatter,
   valueProps,
+  valueStep,
 }: LineSeriesProps) => {
   return (
     <Group>
@@ -61,15 +63,17 @@ export const LineSeries = ({
                   (index >= s.data.length - 1 ||
                     getY(s.data[index + 1]) > getY(datum));
                 return (
-                  <Value
-                    key={index}
-                    x={xAccessor(datum)}
-                    y={yAccessor(datum)}
-                    valueProps={valueProps}
-                    showLabelBelow={showLabelBelow}
-                  >
-                    {valueFormatter(getY(datum))}
-                  </Value>
+                  index % valueStep === 0 && (
+                    <Value
+                      key={index}
+                      x={xAccessor(datum)}
+                      y={yAccessor(datum)}
+                      valueProps={valueProps}
+                      showLabelBelow={showLabelBelow}
+                    >
+                      {valueFormatter(getY(datum))}
+                    </Value>
+                  )
                 );
               })}
           </>

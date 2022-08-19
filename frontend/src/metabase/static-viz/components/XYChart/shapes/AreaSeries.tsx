@@ -22,6 +22,7 @@ interface AreaSeriesProps {
   showValues: boolean;
   valueFormatter: (value: number) => string;
   valueProps: Partial<TextProps>;
+  valueStep: number;
 }
 
 export const AreaSeries = ({
@@ -33,6 +34,7 @@ export const AreaSeries = ({
   showValues,
   valueFormatter,
   valueProps,
+  valueStep,
 }: AreaSeriesProps) => {
   if (areStacked) {
     return (
@@ -45,6 +47,7 @@ export const AreaSeries = ({
         showValues={showValues}
         valueFormatter={valueFormatter}
         valueProps={valueProps}
+        valueStep={valueStep}
       />
     );
   }
@@ -83,16 +86,18 @@ export const AreaSeries = ({
           const yAccessor = (d: SeriesDatum) => yScale(getY(d)) ?? 0;
           return s.data.map((datum, index) => {
             return (
-              <Text
-                key={index}
-                x={xAccessor(datum)}
-                y={yAccessor(datum) - VALUES_MARGIN}
-                textAnchor="middle"
-                verticalAnchor="end"
-                {...valueProps}
-              >
-                {valueFormatter(getY(datum))}
-              </Text>
+              index % valueStep === 0 && (
+                <Text
+                  key={index}
+                  x={xAccessor(datum)}
+                  y={yAccessor(datum) - VALUES_MARGIN}
+                  textAnchor="middle"
+                  verticalAnchor="end"
+                  {...valueProps}
+                >
+                  {valueFormatter(getY(datum))}
+                </Text>
+              )
             );
           });
         })}

@@ -23,6 +23,7 @@ interface BarSeriesProps {
   showValues: boolean;
   valueFormatter: (value: number) => string;
   valueProps: Partial<TextProps>;
+  valueStep: number;
 }
 
 export const BarSeries = ({
@@ -34,6 +35,7 @@ export const BarSeries = ({
   showValues,
   valueFormatter,
   valueProps,
+  valueStep,
 }: BarSeriesProps) => {
   const innerBarScaleDomain = series.map((_, index) => index);
 
@@ -76,7 +78,7 @@ export const BarSeries = ({
                     x={x}
                     y={y}
                   />
-                  {showValues && (
+                  {showValues && index % valueStep === 0 && (
                     <Text
                       x={x + width / 2}
                       y={y - VALUES_MARGIN}
