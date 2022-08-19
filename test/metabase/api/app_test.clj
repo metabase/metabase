@@ -2,6 +2,8 @@
   (:require
     [clojure.test :refer [deftest is testing]]
     [metabase.models :refer [App Collection Dashboard]]
+    [metabase.models.permissions :as perms]
+    [metabase.models.permissions-group :as perms-group]
     [metabase.test :as mt]))
 
 (deftest create-test
@@ -60,3 +62,52 @@
                       App [{app_id :id} {:collection_id collection_id}]]
         (is (partial= {:collection_id collection_id}
                       (mt/user-http-request :rasta :put 200 (str "app/" app_id) {})))))))
+
+(deftest list-apps-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (let [app-data {:nav_items [{:options {:item "stuff"}}]
+                    :options {:frontend "stuff"}}]
+      (mt/with-temp* [Collection [{collection_id :id :as collection}]
+                      Dashboard [{dashboard_id :id}]
+                      App [{app-id :id} (assoc app-data :collection_id collection_id :dashboard_id dashboard_id)]]
+        (let [expected (merge app-data {:id app-id
+                                        :collection_id collection_id
+                                        :dashboard_id dashboard_id
+                                        :collection collection})]
+          (testing "can query non-archived apps"
+            (is (partial= [expected]
+                          (mt/user-http-request :crowberto :get 200 "app"))))))
+      (testing "can only see apps with permission for"
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
+                          Collection [collection-2 {:name "Collection 2"}]
+                          Dashboard [{dashboard_id :id}]
+                          App [{app-id :id} (assoc app-data :collection_id (:id collection-1) :dashboard_id dashboard_id)]
+                          App [_            (assoc app-data :collection_id (:id collection-2) :dashboard_id dashboard_id)]]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
+            (let [expected (merge app-data {:id app-id
+                                            :collection_id (:id collection-1)
+                                            :dashboard_id dashboard_id
+                                            :collection collection-1})]
+              (is (partial= [expected]
+                            (mt/user-http-request :rasta :get 200 "app")))))))
+      (testing "archives"
+        (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
+                        Collection [collection-2 {:name "Collection 2" :archived true}]
+                        Dashboard [{dashboard_id :id}]
+                        App [{app-1-id :id}   (assoc app-data :collection_id (:id collection-1) :dashboard_id dashboard_id)]
+                        App [{app-2-id :id} (assoc app-data :collection_id (:id collection-2) :dashboard_id dashboard_id)]]
+          (testing "listing normal apps"
+            (let [expected (merge app-data {:id app-1-id
+                                            :collection_id (:id collection-1)
+                                            :dashboard_id dashboard_id
+                                            :collection collection-1})]
+             (is (partial= [expected]
+                           (mt/user-http-request :rasta :get 200 "app")))))
+          (testing "listing archived"
+            (let [expected (merge app-data {:id app-2-id
+                                            :collection_id (:id collection-2)
+                                            :dashboard_id dashboard_id
+                                            :collection collection-2})]
+              (is (partial= [expected]
+                            (mt/user-http-request :rasta :get 200 "app/?archived=true"))))))))))
