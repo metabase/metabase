@@ -14,13 +14,12 @@
   {collection_id su/IntGreaterThanOrEqualToZero
    dashboard_id (s/maybe su/IntGreaterThanOrEqualToZero)
    options (s/maybe su/Map)
-   nav_items (s/maybe [{:options (s/maybe su/Map)}])}
+   nav_items (s/maybe [(s/maybe su/Map)])}
   (api/write-check Collection collection_id)
-  (api/check
-    (not (db/select-one-id App :collection_id collection_id))
-    400 "An App already exists on this Collection")
+  (api/check (not (db/select-one-id App :collection_id collection_id))
+    [400 "An App already exists on this Collection"])
   (let [app (db/insert! App (select-keys body [:dashboard_id :collection_id :options :nav_items]))]
-   (hydrate app :collection)))
+    (hydrate app :collection)))
 
 (api/defendpoint PUT "/:app-id"
   "Endpoint to change an app"
@@ -28,7 +27,7 @@
   {app-id su/IntGreaterThanOrEqualToZero
    dashboard_id (s/maybe su/IntGreaterThanOrEqualToZero)
    options (s/maybe su/Map)
-   nav_items (s/maybe [{:options (s/maybe su/Map)}])}
+   nav_items (s/maybe [(s/maybe su/Map)])}
   (api/write-check Collection (db/select-one-field :collection_id App :id app-id))
   (db/update! App app-id (select-keys body [:dashboard_id :options :nav_items]))
   (hydrate (App app-id) :collection))
