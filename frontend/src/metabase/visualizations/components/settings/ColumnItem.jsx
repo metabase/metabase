@@ -22,8 +22,8 @@ const ActionIcon = ({ icon, onClick }) => (
 
 const ColumnItem = ({ title, onAdd, onRemove, onClick, onEdit, draggable }) => (
   <ColumnItemRoot draggable={draggable} onClick={onClick}>
-    {draggable && <ColumnItemDragHandle name="grabber2" />}
     <ColumnItemContainer>
+      {draggable && <ColumnItemDragHandle name="grabber2" />}
       <ColumnItemContent>
         <ColumnItemSpan>{title}</ColumnItemSpan>
         {onEdit && <ActionIcon icon="ellipsis" onClick={onEdit} />}

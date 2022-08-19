@@ -8,6 +8,8 @@ export const ColumnItemRoot = styled.div`
   overflow: hidden;
   display: flex;
   align-items: center;
+  border: 1px solid ${color("border")};
+  border-radius: 0.5rem;
 
   ${props =>
     props.draggable &&
@@ -15,7 +17,7 @@ export const ColumnItemRoot = styled.div`
     cursor: grab;
     &:hover {
       ${ColumnItemDragHandle} {
-        opacity: 1;
+        color: ${color("brand")};
       }
     }
     `}
@@ -34,18 +36,18 @@ export const ColumnItemSpan = styled.span`
 `;
 
 export const ColumnItemContent = styled.div`
-  padding: 0 0.5rem;
+  padding: 0 0.625rem;
   position: relative;
   align-items: center;
   display: flex;
+  flex: auto;
 `;
 
 export const ColumnItemContainer = styled.div`
   padding: 0.5rem;
   position: relative;
-  border: 1px solid ${color("border")};
-  border-radius: 0.5rem;
   flex: auto;
+  display: flex;
 `;
 
 export const ColumnItemIcon = styled(Icon)`
@@ -60,7 +62,5 @@ export const ColumnItemIcon = styled(Icon)`
 `;
 
 export const ColumnItemDragHandle = styled(Icon)`
-  opacity: 0;
-  margin-right: 0.5rem;
   color: ${color("text-medium")};
 `;
