@@ -69,28 +69,41 @@ export const BarSeries = ({
               const height = Math.abs(yValue - yZero);
 
               return (
-                <>
-                  <Bar
-                    key={index}
-                    fill={series.color}
+                <Bar
+                  key={index}
+                  fill={series.color}
+                  width={width}
+                  height={height}
+                  x={x}
+                  y={y}
+                />
+              );
+            })}
+            {/* Render all data point values last so they stay on top of the chart elements making them more legible */}
+            {series.data.map((datum, index) => {
+              const groupX = xAccessor(datum);
+              const innerX = innerBarScale(seriesIndex) ?? 0;
+
+              const x = groupX + innerX;
+              const width = innerBarScale.bandwidth();
+
+              const yZero = yScale(0) ?? 0;
+              const yValue = yScale(getY(datum)) ?? 0;
+              const y = Math.min(yValue, yZero);
+              return (
+                showValues &&
+                index % valueStep === 0 && (
+                  <Text
+                    x={x + width / 2}
+                    y={y - VALUES_MARGIN}
                     width={width}
-                    height={height}
-                    x={x}
-                    y={y}
-                  />
-                  {showValues && index % valueStep === 0 && (
-                    <Text
-                      x={x + width / 2}
-                      y={y - VALUES_MARGIN}
-                      width={width}
-                      textAnchor="middle"
-                      verticalAnchor="end"
-                      {...valueProps}
-                    >
-                      {valueFormatter(getY(datum))}
-                    </Text>
-                  )}
-                </>
+                    textAnchor="middle"
+                    verticalAnchor="end"
+                    {...valueProps}
+                  >
+                    {valueFormatter(getY(datum))}
+                  </Text>
+                )
               );
             })}
           </Fragment>

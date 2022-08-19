@@ -49,7 +49,7 @@ export const AreaSeriesStacked = ({
           />
         );
       })}
-      {/* Render all data point values last so they stay on top of the area chart background making them more legible */}
+      {/* Render all data point values last so they stay on top of the chart elements making them more legible */}
       {showValues &&
         series[series.length - 1].stackedData?.map((datum, index) => {
           return (

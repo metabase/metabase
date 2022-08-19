@@ -74,7 +74,7 @@ export const AreaSeries = ({
           />
         );
       })}
-      {/* Render all data point values last so they stay on top of the area chart background making them more legible */}
+      {/* Render all data point values last so they stay on top of the chart elements making them more legible */}
       {showValues &&
         series.map(s => {
           const yScale = s.yAxisPosition === "left" ? yScaleLeft : yScaleRight;
