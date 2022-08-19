@@ -70,8 +70,7 @@ export function generateFakeMetricFromQuestion(
   }
 
   return {
-    name: `${question.id()}_metric`,
-    display_name: `${question.displayName()} Metric`,
+    name: `${question.displayName()} Metric`,
     description: "",
     archived: false,
     card_id: question.id(),
