@@ -1,6 +1,15 @@
 // backend returns model = "card" instead of "question"
-export const entityTypeForModel = model =>
-  model === "card" || model === "dataset" ? "questions" : `${model}s`;
+export const entityTypeForModel = model => {
+  switch (model) {
+    case "card":
+    case "dataset":
+      return "questions";
+    case "newmetric":
+      return "newMetrics";
+    default:
+      return `${model}s`;
+  }
+};
 
 export const entityTypeForObject = object =>
   object && entityTypeForModel(object.model);
