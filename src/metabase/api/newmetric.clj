@@ -45,7 +45,7 @@
 ;; name display_name card_id measure dimensions archived creator_id created_at updated_at
 
 (api/defendpoint PUT "/:id"
-  "Update a `Card`."
+  "Update a `Newmetric`."
   [id :as {{:keys [name display_name description card_id measure dimensions] :as metric-updates} :body}]
   {card_id      su/IntGreaterThanZero
    name         su/NonBlankString
@@ -54,6 +54,11 @@
   (validate-dimensions! dimensions)
   (validate-measure! measure)
   (db/update! Newmetric id metric-updates))
+
+(api/defendpoint GET "/:id"
+  "Get a `Newmetric`"
+  [id]
+  (api/read-check (Newmetric id)))
 
 (defn- query-for-metric
   [card metric choices]
