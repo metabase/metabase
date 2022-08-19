@@ -38,7 +38,7 @@ import cx from "classnames";
 import { getIn } from "icepick";
 
 const mapStateToProps = state => ({
-  datasetEditorTab: getDatasetEditorTab(state),
+  datasetEditorTab: "qb" in state && getDatasetEditorTab(state),
 });
 
 class Table extends Component {
