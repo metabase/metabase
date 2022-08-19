@@ -196,6 +196,11 @@ async function handleQBInit(
   dispatch(resetQB());
   dispatch(cancelQuery());
 
+  if (location.pathname?.startsWith("/metric")) {
+    dispatch(initializeMetricMode(location, params));
+    return;
+  }
+
   const queryParams = location.query;
   const cardId = Urls.extractEntityId(params.slug);
   const uiControls: UIControls = getQueryBuilderModeFromLocation(location);
@@ -234,11 +239,6 @@ async function handleQBInit(
     location.pathname?.startsWith("/model")
   ) {
     dispatch(setErrorPage(NOT_FOUND_ERROR));
-    return;
-  }
-
-  if (isSavedCard(card) && location.pathname?.startsWith("/metric")) {
-    dispatch(initializeMetricMode(card));
     return;
   }
 
