@@ -13,6 +13,7 @@
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.ddl.interface :as ddl.i]
+            [metabase.driver.postgres.actions :as postgres.actions]
             [metabase.driver.postgres.ddl :as postgres.ddl]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -37,6 +38,8 @@
            metabase.util.honeysql_extensions.Identifier))
 
 (comment
+  ;; method impls live in these namespaces.
+  postgres.actions/keep-me
   postgres.ddl/keep-me)
 
 (driver/register! :postgres, :parent :sql-jdbc)
@@ -60,6 +63,12 @@
 (defmethod driver/database-supports? [:postgres :persist-models-enabled]
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
+
+(doseq [feature [:actions :actions/custom]]
+  (defmethod driver/database-supports? [:postgres feature]
+    [driver _feat _db]
+    ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
+    (= driver :postgres)))
 
 (defn- ->timestamp [honeysql-form]
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))

@@ -64,3 +64,6 @@ With some paid plans, you have more options to help orchestrate lots of people a
 [saml-google]: ./saml-google.md
 [saml-keycloak]: ./saml-keycloak.md
 [sso-def]: /glossary/sso
+
+## [Accessibility](.//accessibility.md)
+

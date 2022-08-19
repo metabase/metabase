@@ -1,5 +1,6 @@
 (ns metabase.models
-  (:require [metabase.models.activity :as activity]
+  (:require [metabase.models.action :as action]
+            [metabase.models.activity :as activity]
             [metabase.models.application-permissions-revision :as a-perm-revision]
             [metabase.models.bookmark :as bookmark]
             [metabase.models.card :as card]
@@ -10,6 +11,7 @@
             [metabase.models.dashboard-card-series :as dashboard-card-series]
             [metabase.models.database :as database]
             [metabase.models.dimension :as dimension]
+            [metabase.models.emitter :as emitter]
             [metabase.models.field :as field]
             [metabase.models.field-values :as field-values]
             [metabase.models.login-history :as login-history]
@@ -42,7 +44,8 @@
             [potemkin :as p]))
 
 ;; Fool the linter
-(comment activity/keep-me
+(comment action/keep-me
+         activity/keep-me
          card/keep-me
          bookmark/keep-me
          collection/keep-me
@@ -52,6 +55,7 @@
          dashboard-card-series/keep-me
          database/keep-me
          dimension/keep-me
+         emitter/keep-me
          field/keep-me
          field-values/keep-me
          a-perm-revision/keep-me
@@ -84,6 +88,7 @@
          view-log/keep-me)
 
 (p/import-vars
+ [action Action HTTPAction QueryAction]
  [activity Activity]
  [bookmark CardBookmark]
  [bookmark DashboardBookmark]
@@ -97,6 +102,9 @@
  [dashboard-card-series DashboardCardSeries]
  [database Database]
  [dimension Dimension]
+ [emitter CardEmitter]
+ [emitter DashboardEmitter]
+ [emitter Emitter]
  [field Field]
  [field-values FieldValues]
  [login-history LoginHistory]

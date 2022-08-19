@@ -10,10 +10,27 @@
             [medley.core :as m]
             [metabase.api.card :as api.card]
             [metabase.api.pivots :as api.pivots]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as client]
-            [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview PersistedInfo Pulse
-                                     PulseCard PulseChannel PulseChannelRecipient Table Timeline TimelineEvent ViewLog]]
+            [metabase.models :refer [Card
+                                     CardBookmark
+                                     CardEmitter
+                                     Collection
+                                     Dashboard
+                                     Database
+                                     Emitter
+                                     ModerationReview
+                                     PersistedInfo
+                                     Pulse
+                                     PulseCard
+                                     PulseChannel
+                                     PulseChannelRecipient
+                                     QueryAction
+                                     Table
+                                     Timeline
+                                     TimelineEvent
+                                     ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -330,6 +347,7 @@
                        :parameter_mappings     [{:parameter_id "abc123", :card_id 10,
                                                  :target ["dimension" ["template-tags" "category"]]}]
                        :dataset_query          true
+                       :is_write               false
                        :query_type             "query"
                        :visualization_settings {:global {:title nil}}
                        :database_id            true
@@ -371,6 +389,21 @@
                                      "Each parameter must be a map with :id and :type keys")}}
           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
                                                              :parameters             "abc"})))))
+
+(deftest create-card-disallow-setting-enable-embedding-test
+  (testing "POST /api/card"
+    (testing "Ignore values of `enable_embedding` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
+      ;; should be ignored regardless of the value of the `enable-embedding` Setting.
+      (doseq [enable-embedding? [true false]]
+        (mt/with-temporary-setting-values [enable-embedding enable-embedding?]
+          (mt/with-model-cleanup [Card]
+            (is (schema= {:enable_embedding (s/eq false)
+                          s/Keyword         s/Any}
+                         (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
+                                                                            :display                :table
+                                                                            :dataset_query          (mt/mbql-query venues)
+                                                                            :visualization_settings {}
+                                                                            :enable_embedding       true})))))))))
 
 (deftest save-empty-card-test
   (testing "POST /api/card"
@@ -673,6 +706,7 @@
                                              :first_name   "Rasta"
                                              :email        "rasta@metabase.com"})
                    :dataset_query          (mt/obj->json->obj (:dataset_query card))
+                   :is_write               false
                    :display                "table"
                    :query_type             "query"
                    :visualization_settings {}
@@ -708,6 +742,22 @@
                           mt/boolean-ids-and-timestamps
                           :moderation_reviews
                           (map clean)))))))))))
+
+(deftest fetch-card-emitter-test
+  (testing "GET /api/card/:id"
+    (testing "Fetch card with an emitter"
+      (mt/with-temp* [Card [read-card {:name "Test Read Card"}]
+                      Card [write-card {:is_write true :name "Test Write Card"}]
+                      Emitter [{emitter-id :id} {:action_id (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))}]]
+        (db/insert! CardEmitter {:emitter_id emitter-id
+                                 :card_id (u/the-id read-card)})
+        (testing "admin sees emitters"
+          (is (partial=
+               {:emitters [{:action {:type "query" :card {:name "Test Write Card"}}}]}
+               (mt/user-http-request :crowberto :get 200 (format "card/%d" (u/the-id read-card))))))
+        (testing "non-admin does not see emitters"
+          (is (nil?
+               (:emitters (mt/user-http-request :rasta :get 200 (format "card/%d" (u/the-id read-card)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                UPDATING A CARD                                                 |
@@ -1885,6 +1935,24 @@
         (is (= "Not found."
                (mt/user-http-request :crowberto :post 404 (format "card/%d/public_link" Integer/MAX_VALUE))))))))
 
+(deftest disallow-sharing-is-write-card-test
+  (testing "POST /api/card/:id/public_link"
+    (testing "Disallow sharing an is_write (QueryAction) Card (#22846)"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp Card [{card-id :id} {:is_write true}]
+          (is (= "You cannot share an is_write Card."
+                 (mt/user-http-request :crowberto :post 400 (format "card/%d/public_link" card-id)))))))))
+
+(deftest disallow-embbeding-is-write-card-test
+  (testing "PUT /api/card/:id"
+    (testing "Disallow making an is_write (QueryAction) Card embeddable (#22846)"
+      (mt/with-temporary-setting-values [enable-embedding true]
+        (mt/with-temp Card [{card-id :id} {:is_write true}]
+          (is (= "You cannot enable embedding for an is_write Card."
+                 (mt/user-http-request :crowberto :put 400
+                                       (format "card/%d" card-id)
+                                       {:enable_embedding true}))))))))
+
 (deftest share-already-shared-card-test
   (testing "POST /api/card/:id/public_link"
     (testing "Attempting to share a Card that's already shared should return the existing public UUID"
@@ -2123,6 +2191,141 @@
                                     :data :cols last :visibility_type))
               "in cols (important for the saved metadata)"))))))
 
+;;;; Setting `is_write`
+
+(defn- do-with-actions-enabled [thunk]
+  (mt/with-temporary-setting-values [experimental-enable-actions true]
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
+      (thunk))))
+
+(defmacro ^:private with-actions-enabled {:style/indent 0} [& body]
+  `(do-with-actions-enabled (fn [] ~@body)))
+
+(defn- test-update-is-write-card [{:keys [user query status-code before-fn result-fn]
+                                   :or   {user  :crowberto
+                                          query (mt/native-query {:query "UPDATE whatever SET whatever = {{whatever}};"})}}]
+  (testing "PUT /api/card/:id"
+    (doseq [initial-value [true false]
+            :let          [new-value (not initial-value)]]
+      (testing (format "Change is_write %s => %s" initial-value new-value)
+        (mt/with-temp Card [{card-id :id} {:dataset_query query}]
+          (when initial-value
+            ;; get around any `pre-update` restrictions or the like
+            (db/execute! {:update Card, :set {:is_write true}, :where [:= :id card-id]}))
+          (when before-fn
+            (before-fn (Card card-id)))
+          (let [result (mt/user-http-request user :put status-code (str "card/" card-id) {:is_write new-value})]
+            (result-fn result))
+          (let [fail?          (>= status-code 400)
+                expected-value (if fail?
+                                 initial-value
+                                 new-value)]
+            (testing "Application DB value"
+              (is (= expected-value
+                     (db/select-one-field :is_write Card :id card-id))))
+            (testing "GET /api/card/:id value"
+              (is (partial= {:is_write expected-value}
+                            (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))
+            (when fail?
+              (testing "\nNo-op update should be allowed."
+                (is (some? (mt/user-http-request user :put 200 (str "card/" card-id) {:is_write initial-value})))))))))))
+
+(defn- test-create-is-write-card [{:keys [user query status-code result-fn]
+                                   :or   {user  :crowberto
+                                          query (mt/native-query {:query "SELECT 1;"})}}]
+  (mt/with-model-cleanup [Card]
+    (testing "POST /api/card"
+      (let [result (mt/user-http-request user :post status-code "card" (merge (mt/with-temp-defaults Card)
+                                                                              {:is_write      true
+                                                                               :dataset_query query}))]
+        (result-fn result)
+        (when (map? result)
+          (when-let [card-id (:id result)]
+            (let [fail? (>= status-code 400)]
+              (testing "Application DB value"
+                (is (= (if fail?
+                         false
+                         true)
+                       (db/select-one-field :is_write Card :id card-id)))))))))))
+
+(deftest set-is-write-actions-disabled-globally-test
+  (with-actions-enabled
+    (mt/with-temporary-setting-values [experimental-enable-actions false]
+      (doseq [f [test-update-is-write-card
+                 test-create-is-write-card]]
+        (f {:status-code 400
+            :result-fn   (fn [result]
+                           (is (= {:errors {:is_write "Cannot mark Saved Question as 'is_write': Actions are not enabled."}}
+                                  result)))})))))
+
+(deftest set-is-write-actions-disabled-for-database-test
+  (with-actions-enabled
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
+      (testing "Sanity check: make sure database-enable-actions was actually set to `false`"
+        (is (= {:database-enable-actions false}
+               (db/select-one-field :settings Database :id (mt/id)))))
+      (doseq [f [test-update-is-write-card
+                 test-create-is-write-card]]
+        (f {:status-code 400
+            :result-fn   (fn [result]
+                           (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Actions are not enabled for Database [\d,]+\."}}
+                                        result)))})))))
+
+(driver/register! ::feature-flag-test-driver, :parent :h2)
+
+(defmethod driver/database-supports? [::feature-flag-test-driver :actions]
+  [_driver _feature _database]
+  false)
+
+(deftest set-is-write-driver-does-not-support-actions-test
+  (with-actions-enabled
+    (mt/with-temp-vals-in-db Database (mt/id) {:engine (u/qualified-name ::feature-flag-test-driver)}
+      (doseq [f [test-update-is-write-card
+                 test-create-is-write-card]]
+        (f {:status-code 400
+            :result-fn   (fn [result]
+                           (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Actions are not enabled for Database [\d,]+\."}}
+                                        result)))})))))
+
+(deftest set-is-write-card-is-dataset-test
+  (with-actions-enabled
+    (test-update-is-write-card
+     {:before-fn   (fn [{card-id :id}]
+                     (db/update! Card card-id :dataset true))
+      :status-code 400
+      :result-fn   (fn [result]
+                     (is (= {:errors {:is_write "Cannot mark Saved Question as 'is_write': Saved Question is a Dataset."}}
+                            result)))})))
+
+(deftest set-is-write-user-is-not-admin-test
+  (with-actions-enabled
+    (doseq [f [test-update-is-write-card
+               test-create-is-write-card]]
+      (f {:status-code 403
+          :user                 :rasta
+          :result-fn            (fn [result]
+                                  (is (= "You don't have permissions to do that."
+                                         result)))}))))
+
+(deftest set-is-write-card-query-is-not-native-query-test
+  (with-actions-enabled
+    (doseq [f [test-update-is-write-card
+               test-create-is-write-card]]
+      (f {:status-code 400
+          :query       (mt/mbql-query venues)
+          :result-fn   (fn [result]
+                         (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Query must be a native query."}}
+                                      result)))}))))
+
+(deftest set-is-write-happy-path-test
+  (with-actions-enabled
+    (doseq [f [test-update-is-write-card
+               test-create-is-write-card]]
+      ;; TODO -- Setting `is_write` also needs to create the `Action` and `QueryAction`. Unsetting should delete those
+      ;; rows. Add tests for these once that code is in place.
+      (f {:status-code 200
+          :result-fn            (fn [result]
+                                  (is (map? result)))}))))
 (defn- do-with-persistence-setup [f]
   ;; mt/with-temp-scheduler actually just reuses the current scheduler. The scheduler factory caches by name set in
   ;; the resources/quartz.properties file and we reuse that scheduler

@@ -304,6 +304,7 @@ class DashboardGrid extends Component {
         isFullscreen={this.props.isFullscreen}
         isNightMode={this.props.isNightMode}
         isMobile={isMobile}
+        isDataApp={this.props.isDataApp}
         onRemove={this.onDashCardRemove.bind(this, dc)}
         onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
         onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(

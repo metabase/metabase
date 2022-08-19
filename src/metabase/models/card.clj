@@ -4,6 +4,7 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.models.action :as action]
             [metabase.models.collection :as collection]
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as mi]
@@ -190,6 +191,15 @@
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
+(defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
+  (when is-write?
+    (when-not (db/select-one action/QueryAction :card_id card-id)
+      (action/insert! {:card_id card-id :type :query}))))
+
+(defn- delete-actions-when-not-writable! [{is-write? :is_write card-id :id}]
+  (when (not is-write?)
+    (db/delete! action/QueryAction :card_id card-id)))
+
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
@@ -210,7 +220,8 @@
   (u/prog1 card
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! field-ids))))
+      (field-values/update-field-values-for-on-demand-dbs! field-ids))
+    (create-actions-when-is-writable! card)))
 
 (defonce
   ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
@@ -253,10 +264,15 @@
     (params/assert-valid-parameters changes)
     (params/assert-valid-parameter-mappings changes)
     ;; additional checks (Enterprise Edition only)
-    (@pre-update-check-sandbox-constraints changes)))
+    (@pre-update-check-sandbox-constraints changes)
+    ;; create Action and QueryAction when is_write is set true
+    (create-actions-when-is-writable! changes)
+    ;; delete Action and QueryAction when is_write is set false
+    (delete-actions-when-not-writable! changes)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
+  (db/delete! 'QueryAction :card_id id)
   (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
   (db/delete! 'Revision :model "Card", :model_id id))
 

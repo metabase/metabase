@@ -32,6 +32,7 @@ export type Column = {
   expression_name?: any;
   settings?: ColumnSettings;
   field_ref?: Field;
+  visibility_type?: "normal" | "details-only" | "hidden";
 };
 
 export type Value =
@@ -55,4 +56,5 @@ export type Dataset = {
   data: DatasetData;
   json_query: DatasetQuery;
   error?: string;
+  row_count?: number;
 };
