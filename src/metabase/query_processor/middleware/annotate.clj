@@ -519,12 +519,17 @@
   [source-metadata cols dataset?]
   (let [index           (fn [col] (or (:id col) (:name col "")))
         index->metadata (m/index-by index source-metadata)]
-    (for [col cols]
+    (for [{:keys [source] :as col} cols]
       (if-let [source-metadata-for-field (-> col index index->metadata)]
         (merge-source-metadata-col source-metadata-for-field
                                    (merge col
                                           (when dataset?
-                                            (select-keys source-metadata-for-field qp.util/preserved-keys))))
+                                            (select-keys source-metadata-for-field qp.util/preserved-keys))
+                                          ;; the display_name of aggregation or breakout column are
+                                          ;; inferred from the source column display_name, so we want to make sure
+                                          ;; we don't override the display_name with the display_name of the dataset metadata
+                                          (when (and dataset? (#{:aggregation :breakout} source))
+                                            {:display_name (:display_name col)})))
         col))))
 
 (declare mbql-cols)

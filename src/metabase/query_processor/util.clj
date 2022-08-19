@@ -127,7 +127,12 @@
   ensure survives."
   [fresh pre-existing]
   (let [by-key (m/index-by (comp field-ref->key :field_ref) pre-existing)]
-    (for [{:keys [field_ref] :as col} fresh]
+    (for [{:keys [field_ref source] :as col} fresh]
       (if-let [existing (get by-key (field-ref->key field_ref))]
-        (merge col (select-keys existing preserved-keys))
+        (merge col (select-keys existing preserved-keys)
+               (when (#{:aggregation :breakout} source)
+                 ;; the display_name of aggregation or breakout column are
+                 ;; inferred from the source column display_name, so we want to make sure
+                 ;; we don't override the display_name with the display_name of the dataset metadata
+                 {:display_name (:display_name col)}))
         col))))
