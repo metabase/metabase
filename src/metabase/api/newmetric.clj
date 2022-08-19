@@ -1,5 +1,7 @@
 (ns metabase.api.newmetric
-  (:require [metabase.api.common :as api]
+  (:require [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
+            [metabase.api.common :as api]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
@@ -7,7 +9,7 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -60,18 +62,31 @@
   [id]
   (api/read-check (Newmetric id)))
 
+(defn- include-granularity
+  [dimensions choices]
+  ;; hacky
+  (if-let [granularity (some-> choices :granularity keyword)]
+    (walk/postwalk (fn [form]
+                     (if (and (map? form) (:temporal-unit form))
+                       (assoc form :temporal-unit granularity)
+                       form))
+                   dimensions)
+    dimensions))
+
 (defn- query-for-metric
   [card metric choices]
   (let [keyed-dimensions (into {} (:dimensions metric))
         ;; todo: assert they are all there
-        dimensions (or (vals (select-keys keyed-dimensions (:dimensions choices)))
-                       [(-> metric :dimensions first second)])]
-   {:type :query
-    :database (:database_id card)
-    :query {:source-table (str "card__" (:id card))
-            :breakout    dimensions
-            ;; todo: filters?
-            :aggregation [(:measure metric)]}}))
+        dimensions (-> (or (vals (select-keys keyed-dimensions (:dimensions choices)))
+                           [(-> metric :dimensions first second)])
+                       (include-granularity choices))]
+    (log/debug (str (trs "Using dimensions: ") (pr-str dimensions)))
+    {:type :query
+     :database (:database_id card)
+     :query {:source-table (str "card__" (:id card))
+             :breakout    dimensions
+             ;; todo: filters?
+             :aggregation [(:measure metric)]}}))
 
 (api/defendpoint ^:streaming POST "/:id/query"
   "Run a query for a metric"
