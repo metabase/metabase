@@ -12680,6 +12680,19 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: collection_preview
+                  type: boolean
+                  remarks: Indicating whether the newmetric should be visualized in the collection preview
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: collection_position
+                  type: smallint
+                  remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+                  constraints:
+                    nullable: true
+              - column:
                   remarks: ID of the collection containing the newmetric
                   name: collection_id
                   type: int
