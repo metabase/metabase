@@ -46,7 +46,7 @@ export const SET_DOCUMENT_TITLE_TIMEOUT_ID =
   "metabase/qb/SET_DOCUMENT_TITLE_TIMEOUT_ID";
 const setDocumentTitleTimeoutId = createAction(SET_DOCUMENT_TITLE_TIMEOUT_ID);
 
-const loadCompleteUIControls = createThunkAction(
+export const loadCompleteUIControls = createThunkAction(
   LOAD_COMPLETE_UI_CONTROLS,
   () => (dispatch, getState) => {
     const timeoutId = getTimeoutId(getState());
@@ -137,7 +137,7 @@ export const runQuestionQuery = ({
   };
 };
 
-const loadStartUIControls = createThunkAction(
+export const loadStartUIControls = createThunkAction(
   LOAD_START_UI_CONTROLS,
   () => (dispatch, getState) => {
     const loadingMessage = PLUGIN_SELECTORS.getLoadingMessage(getState());

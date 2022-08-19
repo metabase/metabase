@@ -6,7 +6,7 @@ import Field from "metabase-lib/lib/metadata/Field";
 import { Aggregation, ConcreteField } from "metabase-types/types/Query";
 import { Metric } from "metabase-types/api/newmetric";
 
-function findDateField(question: Question) {
+function findDateDimension(question: Question) {
   const query = question.query() as StructuredQuery;
 
   // note: `query.dimension()` excludes join dimensions, which I think we want to include
@@ -16,17 +16,20 @@ function findDateField(question: Question) {
     return field.isDate();
   });
 
-  return dateDimension?.field();
+  return dateDimension;
 }
 
-function hasDateField(question: Question): boolean {
-  if (!question.isStructured()) {
-    return false;
-  }
+function findNumberDimension(question: Question) {
+  const query = question.query() as StructuredQuery;
 
-  const dateField = findDateField(question);
+  // note: `query.dimension()` excludes join dimensions, which I think we want to include
+  const dimensionOptions = query.dimensionOptions();
+  const numberDimension = dimensionOptions.find(dimension => {
+    const field = dimension.field();
+    return field.isNumber() && !field.isID();
+  });
 
-  return !!dateField;
+  return numberDimension;
 }
 
 export function canBeUsedAsMetric(
@@ -35,8 +38,8 @@ export function canBeUsedAsMetric(
   return (
     !!question &&
     question.isStructured() &&
-    (question.query() as StructuredQuery).aggregations().length === 1 &&
-    hasDateField(question)
+    !!findDateDimension(question) &&
+    !!findNumberDimension(question)
   );
 }
 
@@ -48,12 +51,21 @@ export function generateFakeMetricFromQuestion(
     return null;
   }
 
-  const query = question.query() as StructuredQuery;
-  const aggregation = query.aggregations()[0].raw() as Aggregation;
-  const dateField = findDateField(question) as Field;
-  const columnName = dateField.name;
-  const ref = dateField.reference();
-  if (ref[0] === "aggregation") {
+  const dateDimension = findDateDimension(question) as Dimension;
+  const columnName = dateDimension.columnName();
+  // having a defined "temporal-unit" here messes things up -- beware!
+  const dateRef = dateDimension.baseDimension().mbql();
+
+  const numberDimension = findNumberDimension(question) as Dimension;
+  const numberRef = numberDimension.mbql();
+
+  // refs must be `ConcreteField`s
+  if (
+    !dateRef ||
+    !numberRef ||
+    dateRef[0] === "aggregation" ||
+    numberRef[0] === "aggregation"
+  ) {
     return null;
   }
 
@@ -63,9 +75,9 @@ export function generateFakeMetricFromQuestion(
     description: "",
     archived: false,
     card_id: question.id(),
-    measure: aggregation,
-    dimensions: [[columnName, ref]],
-    granularities: [],
+    measure: ["sum", numberRef],
+    dimensions: [[columnName, dateRef]],
+    granularities: ["quarter", "week", "month", "year"],
     default_granularity: "month",
     collection_id: null,
   };
@@ -76,7 +88,7 @@ export function applyMetricToQuestion(
   metric: Metric,
 ): Question | null {
   const query = question.query() as StructuredQuery;
-  const { dimensions } = metric;
+  const { dimensions, measure } = metric;
   const [, dateFieldRef] = dimensions[0];
   // convert the fieldRef to a dimension so that we can set a temporal-unit
   // in the fieldRef's option arg
@@ -94,7 +106,7 @@ export function applyMetricToQuestion(
     isProduction ? "day" : "month",
   );
   const newFieldRef = dateDimensionWithTemporalUnit.mbql() as ConcreteField;
-  let metricQuery = query.addBreakout(newFieldRef);
+  let metricQuery = query.addAggregation(measure).addBreakout(newFieldRef);
 
   if (isProduction) {
     metricQuery = metricQuery.addFilter([
