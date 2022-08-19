@@ -1,6 +1,11 @@
 import Settings from "metabase/lib/settings";
 import { formatSQL } from "metabase/lib/formatting";
 
+export function getDefaultEngine() {
+  const engines = Object.keys(Settings.get("engines"));
+  return engines.includes("postgres") ? "postgres" : engines[0];
+}
+
 export function getEngineNativeType(engine) {
   switch (engine) {
     case "mongo":
