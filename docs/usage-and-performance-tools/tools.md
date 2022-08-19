@@ -6,7 +6,6 @@ redirect_from:
 
 # Admin tools
 
-
 The Admin **Tools** tab contains features for troubleshooting. To get to the Admin tools sections, go to the top right of the screen and click on the **gear** icon > **Admin settings** > **Tools**.
 
 ## Question error logs
