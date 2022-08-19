@@ -442,4 +442,4 @@ class Table extends Component {
   }
 }
 
-export default _.compose(connect(mapStateToProps))(Table);
+export default connect(mapStateToProps)(Table);
