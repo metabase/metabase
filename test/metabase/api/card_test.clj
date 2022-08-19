@@ -2378,3 +2378,17 @@
           (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
                               (u/the-id parchived)))
               "Scheduled refresh of archived model"))))))
+
+(deftest model-validation
+  (with-temp-native-card-with-params [_ card]
+    (testing "You cannot create a card with variables as a model"
+      (is (= "A model made from a native SQL question cannot have a variable or field filter."
+             (mt/user-http-request :rasta :post 400 "card"
+                                   (merge
+                                    (mt/with-temp-defaults Card)
+                                    {:dataset       true
+                                     :query_type    "native"
+                                     :dataset_query (:dataset_query card)})))))
+    (testing  "You cannot update a model to have variables"
+      (is (= "A model made from a native SQL question cannot have a variable or field filter."
+             (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:dataset true}))))))
