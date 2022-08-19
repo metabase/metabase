@@ -360,7 +360,7 @@ export function shouldOpenInBlankWindow(
 
 const getOrigin = url => {
   try {
-    return new URL(url).origin;
+    return new URL(url, window.location.origin).origin;
   } catch {
     return null;
   }
@@ -368,7 +368,7 @@ const getOrigin = url => {
 
 const getLocation = url => {
   try {
-    const { pathname, search, hash } = new URL(url);
+    const { pathname, search, hash } = new URL(url, window.location.origin);
     const query = querystring.parse(search.substring(1));
     return { pathname, search, query, hash };
   } catch {
