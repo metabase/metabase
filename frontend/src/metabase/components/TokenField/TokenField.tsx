@@ -9,7 +9,6 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { TokenFieldAddon, TokenFieldItem } from "../TokenFieldItem";
 
 import {
-  KEYCODE_ESCAPE,
   KEYCODE_ENTER,
   KEYCODE_TAB,
   KEYCODE_UP,
@@ -303,7 +302,6 @@ export default class TokenField extends Component<
 
     // enter, tab, comma
     if (
-      keyCode === KEYCODE_ESCAPE ||
       keyCode === KEYCODE_TAB ||
       // We check event.key for comma presses because some keyboard layouts
       // (e.g. Russian) have a letter on that key and require a modifier to type
