@@ -1,7 +1,7 @@
 ---
 title: Running Metabase on Debian as a service with nginx
 redirect_from:
-  - /docs/latest/running-metabase-on-debian
+  - /docs/latest/operations-guide/running-metabase-on-debian
 ---
 
 # Running Metabase on Debian as a service with nginx
