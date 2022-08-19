@@ -338,10 +338,10 @@ export const card = handleActions(
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { card } }) => ({
+      next: (state, { payload: { card, result_metadata, display } }) => ({
         ...state,
-        display: card.display,
-        result_metadata: card.result_metadata,
+        display: display ?? card.display,
+        result_metadata: result_metadata ?? card.result_metadata,
         visualization_settings: card.visualization_settings,
       }),
     },
