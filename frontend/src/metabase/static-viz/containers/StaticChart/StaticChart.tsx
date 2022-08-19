@@ -23,34 +23,38 @@ import LineAreaBarChart from "../../components/LineAreaBarChart";
 import { LINE_AREA_BAR_CHART_TYPE } from "../../components/LineAreaBarChart/constants";
 import Funnel from "../../components/FunnelChart";
 import { FUNNEL_CHART_TYPE } from "../../components/FunnelChart/constants";
+import { createColorGetter } from "metabase/static-viz/lib/colors";
 import { StaticChartProps } from "./types";
 
 const StaticChart = ({ type, options }: StaticChartProps) => {
+  const getColor = createColorGetter(options.colors);
+  const chartProps = { ...options, getColor };
+
   switch (type) {
     case CATEGORICAL_AREA_CHART_TYPE:
-      return <CategoricalAreaChart {...options} />;
+      return <CategoricalAreaChart {...chartProps} />;
     case CATEGORICAL_BAR_CHART_TYPE:
-      return <CategoricalBarChart {...options} />;
+      return <CategoricalBarChart {...chartProps} />;
     case CATEGORICAL_DONUT_CHART_TYPE:
-      return <CategoricalDonutChart {...options} />;
+      return <CategoricalDonutChart {...chartProps} />;
     case CATEGORICAL_LINE_CHART_TYPE:
-      return <CategoricalLineChart {...options} />;
+      return <CategoricalLineChart {...chartProps} />;
     case CATEGORICAL_WATERFALL_CHART_TYPE:
-      return <CategoricalWaterfallChart {...options} />;
+      return <CategoricalWaterfallChart {...chartProps} />;
     case TIME_SERIES_AREA_CHART_TYPE:
-      return <TimeSeriesAreaChart {...options} />;
+      return <TimeSeriesAreaChart {...chartProps} />;
     case TIME_SERIES_BAR_CHART_TYPE:
-      return <TimeSeriesBarChart {...options} />;
+      return <TimeSeriesBarChart {...chartProps} />;
     case TIME_SERIES_LINE_CHART_TYPE:
-      return <TimeSeriesLineChart {...options} />;
+      return <TimeSeriesLineChart {...chartProps} />;
     case TIME_SERIES_WATERFALL_CHART_TYPE:
-      return <TimeSeriesWaterfallChart {...options} />;
+      return <TimeSeriesWaterfallChart {...chartProps} />;
     case PROGRESS_BAR_TYPE:
-      return <ProgressBar {...options} />;
+      return <ProgressBar {...chartProps} />;
     case LINE_AREA_BAR_CHART_TYPE:
-      return <LineAreaBarChart {...options} />;
+      return <LineAreaBarChart {...chartProps} />;
     case FUNNEL_CHART_TYPE:
-      return <Funnel {...options} />;
+      return <Funnel {...chartProps} />;
   }
 };
 

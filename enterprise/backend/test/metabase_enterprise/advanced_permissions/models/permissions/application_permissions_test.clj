@@ -3,7 +3,7 @@
             [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as g-perms]
             [metabase.models :refer [ApplicationPermissionsRevision PermissionsGroup]]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.test :as mt]
             [toucan.db :as db]))
 
@@ -16,11 +16,11 @@
     (testing "group should be in graph if one of application permission is enabled"
       (let [graph (g-perms/graph)]
         (is (= 0 (:revision graph)))
-        (is (partial= {(:id (group/admin))
+        (is (partial= {(:id (perms-group/admin))
                        {:monitoring   :yes
                         :setting      :yes
                         :subscription :yes}
-                       (:id (group/all-users))
+                       (:id (perms-group/all-users))
                        {:monitoring   :no
                         :setting      :no
                         :subscription :yes}}
@@ -67,7 +67,7 @@
 
   (testing "Failed when try to update permission for admin group"
     (with-new-group-and-current-graph group-id current-graph
-      (let [new-graph (assoc-in current-graph [:groups (:id (group/admin)) :subscription] :no)]
+      (let [new-graph (assoc-in current-graph [:groups (:id (perms-group/admin)) :subscription] :no)]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"You cannot create or revoke permissions for the 'Admin' group."

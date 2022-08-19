@@ -1,9 +1,0 @@
-.token {
-  padding: 5px 14px;
-  border-radius: 100px;
-  line-height: 16px;
-}
-.token-blue {
-  color: var(--color-brand);
-  border: 1px solid color-mod(var(--color-brand) alpha(-65%));
-}

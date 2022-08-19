@@ -30,16 +30,9 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
           height: null,
         };
 
-        if (isCypressActive) {
-          this._updateSize = this.__updateSize;
-        } else {
-          this._refreshMode =
-            typeof refreshMode === "function"
-              ? refreshMode(props)
-              : refreshMode;
-          const refreshFn = REFRESH_MODE[this._refreshMode];
-          this._updateSize = refreshFn(this.__updateSize);
-        }
+        this._printMediaQuery = window.matchMedia && window.matchMedia("print");
+        const refreshFn = REFRESH_MODE[this._getRefreshMode()];
+        this._updateSize = refreshFn(this.__updateSize);
       }
 
       _getElement() {
@@ -61,9 +54,7 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
       componentDidUpdate() {
         // update ResizeObserver if element changes
         this._updateResizeObserver();
-        if (typeof refreshMode === "function" && !isCypressActive) {
-          this._updateRefreshMode();
-        }
+        this._updateRefreshMode();
       }
 
       componentWillUnmount() {
@@ -71,8 +62,18 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
         this._teardownQueryMediaListener();
       }
 
+      _getRefreshMode = () => {
+        if (isCypressActive || this._printMediaQuery?.matches) {
+          return "none";
+        } else if (typeof refreshMode === "function") {
+          return refreshMode(this.props);
+        } else {
+          return refreshMode;
+        }
+      };
+
       _updateRefreshMode = () => {
-        const nextMode = refreshMode(this.props);
+        const nextMode = this._getRefreshMode();
         if (nextMode === this._refreshMode) {
           return;
         }
@@ -81,6 +82,11 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
         this._updateSize = refreshFn(this.__updateSize);
         resizeObserver.subscribe(this._currentElement, this._updateSize);
         this._refreshMode = nextMode;
+      };
+
+      _updateSizeAndRefreshMode = () => {
+        this._updateRefreshMode();
+        this._updateSize();
       };
 
       // ResizeObserver, ensure re-layout when container element changes size
@@ -104,16 +110,16 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
 
       // media query listener, ensure re-layout when printing
       _initMediaQueryListener() {
-        if (window.matchMedia) {
-          this._mql = window.matchMedia("print");
-          this._mql.addListener(this._updateSize);
-        }
+        this._printMediaQuery?.addEventListener(
+          "change",
+          this._updateSizeAndRefreshMode,
+        );
       }
       _teardownQueryMediaListener() {
-        if (this._mql) {
-          this._mql.removeListener(this._updateSize);
-          this._mql = null;
-        }
+        this._printMediaQuery?.removeEventListener(
+          "change",
+          this._updateSizeAndRefreshMode,
+        );
       }
 
       __updateSize = () => {

@@ -302,6 +302,9 @@ export default class NativeQuery extends AtomicQuery {
   validateTemplateTags() {
     return this.templateTags()
       .map(tag => {
+        if (!tag["display-name"]) {
+          return new ValidationError(t`Missing wiget label: ${tag.name}`);
+        }
         const dimension = new TemplateTagDimension(
           tag.name,
           this.metadata(),

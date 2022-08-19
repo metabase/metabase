@@ -39,6 +39,7 @@ export const QueryBuilderMain = styled.main<{ isSidebarOpen: boolean }>`
       css`
         display: none !important;
       `};
+    position: relative;
   }
 `;
 

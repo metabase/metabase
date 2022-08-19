@@ -58,7 +58,6 @@
   i18n.tu/keep-me
   initialize/keep-me
   metabase.test.redefs/keep-me
-  mt.tu/keep-me
   mw.session/keep-me
   qp/keep-me
   qp.test-util/keep-me

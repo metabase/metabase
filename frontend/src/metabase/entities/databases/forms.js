@@ -141,11 +141,7 @@ function shouldShowEngineProvidedField(field, details) {
 
 function getSshDescription() {
   const link = (
-    <ExternalLink
-      href={MetabaseSettings.docsUrl(
-        "administration-guide/ssh-tunnel-for-database-connections",
-      )}
-    >
+    <ExternalLink href={MetabaseSettings.docsUrl("databases/ssh-tunnel")}>
       {t`Learn more`}
     </ExternalLink>
   );

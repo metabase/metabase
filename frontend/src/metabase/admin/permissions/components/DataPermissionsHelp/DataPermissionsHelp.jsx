@@ -53,9 +53,7 @@ export const DataPermissionsHelp = () => (
 
     <DataPermissionsHelpFooter>
       <DataPermissionsHelpLink
-        href={MetabaseSettings.docsUrl(
-          "administration-guide/05-setting-permissions",
-        )}
+        href={MetabaseSettings.docsUrl("permissions/introduction")}
         target="_blank"
       >
         <DataPermissionsHelpLinkIcon size={28} name="reference" />

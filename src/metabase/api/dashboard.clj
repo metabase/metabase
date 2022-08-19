@@ -608,7 +608,7 @@
       (try
         (let [results (map (if (seq query)
                                #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                #(chain-filter/chain-filter % constraints :limit result-limit))
+                               #(chain-filter/chain-filter % constraints :limit result-limit))
                            field-ids)
               values (distinct (mapcat :values results))
               has_more_values (boolean (some true? (map :has_more_values results)))]

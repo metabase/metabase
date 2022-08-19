@@ -3,9 +3,9 @@ import { restore, popover, visitAlias } from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const SAMPLE_DB_URL = "/admin/datamodel/database/1";
+const SAMPLE_DB_URL = `/admin/datamodel/database/${SAMPLE_DB_ID}`;
 
 // [quarantine] flaky
 describe.skip("scenarios > admin > datamodel > editor", () => {
@@ -115,7 +115,10 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
 
     // click over to products and back so we refresh the columns
     cy.contains("Products").click();
-    cy.url().should("include", "/admin/datamodel/database/1/table/1");
+    cy.url().should(
+      "include",
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${PRODUCTS_ID}`,
+    );
     cy.contains("Orders").click();
 
     // created at should still be there

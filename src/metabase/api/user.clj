@@ -1,7 +1,6 @@
 (ns metabase.api.user
   "/api/user endpoints"
-  (:require [cemerick.friend.credentials :as creds]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
             [java-time :as t]
@@ -20,6 +19,7 @@
             [metabase.server.middleware.offset-paging :as mw.offset-paging]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
+            [metabase.util.password :as u.password]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -126,6 +126,9 @@
   [status query group_id include_deactivated]
   (cond-> {}
         true (hh/merge-where (status-clause status include_deactivated))
+        true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+                               (when (segmented-user?)
+                                 [:= :core_user.id api/*current-user-id*])))
         (some? query) (hh/merge-where (query-clause query))
         (some? group_id) (hh/merge-right-join :permissions_group_membership
                                               [:= :core_user.id :permissions_group_membership.user_id])
@@ -378,7 +381,7 @@
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
-      (api/checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user))
+      (api/checkp (u.password/bcrypt-verify (str (:password_salt user) old_password) (:password user))
         "old_password"
         (tru "Invalid password"))))
   (user/set-password! id password)

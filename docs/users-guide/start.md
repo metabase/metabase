@@ -6,47 +6,46 @@ title: User guide
 
 ## Some basics
 
-- [An overview of Metabase](01-what-is-metabase.md)
 - [Basic exploration in Metabase](03-basic-exploration.md)
-- [Field types in Metabase](field-types.md)
+- [Field types in Metabase](../data-modeling/field-types.md)
 - [Getting automatic insights with X-rays](14-x-rays.md)
 
 ## Asking questions with the query builder
 
-- [Asking questions in Metabase](04-asking-questions.md)
-- [Writing custom expressions in the notebook editor](expressions.md)
-- [Full list of expressions: aggregations and functions](expressions-list.md)
-- [How to visualize the answers to questions](05-visualizing-results.md)
-- [Referencing saved question in queries](referencing-saved-questions-in-queries.md)
+- [Asking questions in Metabase](../questions/query-builder/introduction.md)
+- [Writing custom expressions in the notebook editor](../questions/query-builder/expressions.md)
+- [Full list of expressions: aggregations and functions](../questions/query-builder/expressions-list.md)
 - [Joining data](join.md)
 
 ## Saving questions in collections
 
-- [Sharing and organizing your saved questions](06-sharing-answers.md)
+- [Sharing and organizing your saved questions](../questions/sharing/answers.md)
+- [How to visualize the answers to questions](../questions/sharing/visualizing-results.md)
 - [Collections](collections.md)
 - [Events and timelines](events-and-timelines.md)
 
 ## Dashboards
 
-- [Creating dashboards](07-dashboards.md)
-- [Adding filters to dashboards](08-dashboard-filters.md)
-- [Making dashboards interactive](interactive-dashboards.md)
-- [Creating dashboard charts with multiple series](09-multi-series-charting.md)
+- [Dashboard overview](../dashboards/start.md)
+- [Creating dashboards](../dashboards/introduction.md)
+- [Adding filters to dashboards](../dashboards/filters.md)
+- [Making dashboards interactive](../dashboards/interactive.md)
+- [Creating dashboard charts with multiple series](../dashboards/multiple-series.md)
 
 ## Setting up subscriptions and alerts
 
-- [Dashboard subscriptions](dashboard-subscriptions.md)
-- [Question alerts](15-alerts.md)
+- [Dashboard subscriptions](../dashboards/subscriptions.md)
+- [Question alerts](../questions/sharing/alerts.md)
 
 ## Writing SQL
 
-- [Using the SQL editor](writing-sql.md)
-- [Referencing your data model while writing SQL](12-data-model-reference.md)
-- [Creating SQL Templates](13-sql-parameters.md)
-- [Using SQL snippets to reuse and share code](sql-snippets.md)
+- [Using the SQL editor](../questions/native-editor/writing-sql.md)
+- [Referencing your data model while writing SQL](../questions/native-editor/data-model-reference.md)
+- [Creating SQL Templates](../questions/native-editor/sql-parameters.md)
+- [Referencing saved question in queries](../questions/native-editor/referencing-saved-questions-in-queries.md)
+- [Using SQL snippets to reuse and share code](../questions/native-editor/sql-snippets.md)
 
 ## Your Metabase account settings
 
 - [Editing your account settings](account-settings.md)
 
-Let's get started with an overview of [What Metabase does](01-what-is-metabase.md).

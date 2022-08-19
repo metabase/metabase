@@ -46,6 +46,9 @@ const EditableReferenceHeader = ({
           <InputBlurChange
             className={S.headerTextInput}
             type="text"
+            name={
+              hasDisplayName ? displayNameFormField.name : nameFormField.name
+            }
             placeholder={entity.name}
             onChange={
               hasDisplayName

@@ -1,5 +1,5 @@
 import React, { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ResetPassword, { ResetPasswordProps } from "./ResetPassword";
 
@@ -27,18 +27,34 @@ describe("ResetPassword", () => {
   });
 
   it("should show a success message when the form is submitted", async () => {
+    const onShowToast = jest.fn();
+    const onRedirect = jest.fn();
+
     const props = getProps({
       onResetPassword: jest.fn().mockResolvedValue({}),
       onValidatePasswordToken: jest.fn().mockResolvedValue({}),
+      onShowToast,
+      onRedirect,
     });
 
-    render(<ResetPassword {...props} />);
+    render(
+      <ResetPassword
+        {...props}
+        onShowToast={onShowToast}
+        onRedirect={onRedirect}
+      />,
+    );
 
     const button = await screen.findByText("Save new password");
+
     userEvent.click(button);
 
-    const message = await screen.findByText("All done!");
-    expect(message).toBeInTheDocument();
+    await waitFor(() => {
+      expect(onRedirect).toHaveBeenCalledWith("/");
+      expect(onShowToast).toHaveBeenCalledWith({
+        message: "You've updated your password.",
+      });
+    });
   });
 });
 
@@ -48,6 +64,8 @@ const getProps = (opts?: Partial<ResetPasswordProps>): ResetPasswordProps => {
     onResetPassword: jest.fn(),
     onValidatePassword: jest.fn(),
     onValidatePasswordToken: jest.fn(),
+    onShowToast: jest.fn(),
+    onRedirect: jest.fn(),
     ...opts,
   };
 };

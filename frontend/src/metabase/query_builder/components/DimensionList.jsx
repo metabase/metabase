@@ -7,8 +7,8 @@ import AccordionList from "metabase/core/components/AccordionList";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
-
 import { FieldDimension } from "metabase-lib/lib/Dimension";
+
 import { DimensionPicker } from "./DimensionPicker";
 import { FieldListGroupingTrigger } from "./DimensionList.styled";
 
@@ -60,9 +60,13 @@ export default class DimensionList extends Component {
 
   itemIsSelected = item => {
     const dimensions = this._getDimensions();
+    const { dimension } = item;
     return (
       item.dimension &&
-      _.any(dimensions, d => item.dimension.isSameBaseDimension(d))
+      _.any(dimensions, d => {
+        // sometimes `dimension` has a join-alias and `d` doesn't -- with/without is equivalent in this scenario
+        return d.isSameBaseDimension(dimension.withoutJoinAlias());
+      })
     );
   };
 

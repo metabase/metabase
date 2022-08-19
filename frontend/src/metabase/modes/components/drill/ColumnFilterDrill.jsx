@@ -22,11 +22,11 @@ export default function ColumnFilterDrill({ question, clicked }) {
     return [];
   }
 
-  const { column } = clicked;
-  const initialFilter = new Filter([], null, query).setDimension(
-    column.field_ref,
-    { useDefaultOperator: true },
-  );
+  const { dimension } = clicked;
+  const fieldRef = dimension.mbql();
+  const initialFilter = new Filter([], null, query).setDimension(fieldRef, {
+    useDefaultOperator: true,
+  });
 
   return [
     {

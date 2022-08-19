@@ -102,10 +102,7 @@ function App({
       <ScrollToTop>
         <AppContainer className="spread">
           {isAppBarVisible && <AppBar isNavBarVisible={isNavBarVisible} />}
-          <AppContentContainer
-            isAdminApp={isAdminApp}
-            isAppBarVisible={isAppBarVisible}
-          >
+          <AppContentContainer isAdminApp={isAdminApp}>
             {isNavBarVisible && <Navbar />}
             <AppContent ref={setViewportElement}>
               <ContentViewportContext.Provider value={viewportElement ?? null}>

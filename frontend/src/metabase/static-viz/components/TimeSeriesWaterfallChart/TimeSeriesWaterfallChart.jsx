@@ -20,6 +20,7 @@ import {
 } from "metabase/static-viz/lib/waterfall";
 import { sortTimeSeries } from "../../lib/sort";
 import { DATE_ACCESSORS } from "../../constants/accessors";
+import { getWaterfallColors } from "../../lib/colors";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -37,6 +38,7 @@ const propTypes = {
     left: PropTypes.string,
     bottom: PropTypes.string,
   }),
+  getColor: PropTypes.func,
 };
 
 const layout = {
@@ -52,14 +54,6 @@ const layout = {
     size: 11,
     family: "Lato, sans-serif",
   },
-  colors: {
-    brand: "#509ee3",
-    textLight: "#b8bbc3",
-    textMedium: "#949aab",
-    waterfallTotal: "#4C5773",
-    waterfallPositive: "#88BF4D",
-    waterfallNegative: "#EF8C8C",
-  },
   numTicks: 4,
   barPadding: 0.2,
   labelFontWeight: 700,
@@ -72,9 +66,9 @@ const TimeSeriesWaterfallChart = ({
   accessors = DATE_ACCESSORS,
   settings,
   labels,
+  getColor,
 }) => {
   data = sortTimeSeries(data);
-  const colors = settings?.colors;
   const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
@@ -83,7 +77,6 @@ const TimeSeriesWaterfallChart = ({
   const innerWidth = xMax - xMin;
   const leftLabel = labels?.left;
   const bottomLabel = labels?.bottom;
-  const palette = { ...layout.colors, ...colors };
 
   const entries = calculateWaterfallEntries(
     data,
@@ -108,7 +101,10 @@ const TimeSeriesWaterfallChart = ({
     const height = Math.abs(yScale(entry.start) - yScale(entry.end));
     const x = xScale(entry.x);
     const y = yScale(Math.max(entry.start, entry.end));
-    const fill = getWaterfallEntryColor(entry, palette);
+    const fill = getWaterfallEntryColor(
+      entry,
+      getWaterfallColors(settings?.colors, getColor),
+    );
 
     return { x, y, width, height, fill };
   };
@@ -133,9 +129,9 @@ const TimeSeriesWaterfallChart = ({
         labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
-        labelProps={getLabelProps(layout)}
+        labelProps={getLabelProps(layout, getColor)}
         tickFormat={value => formatNumber(value, settings?.y)}
-        tickLabelProps={() => getYTickLabelProps(layout)}
+        tickLabelProps={() => getYTickLabelProps(layout, getColor)}
       />
       <AxisBottom
         scale={xScale}
@@ -143,11 +139,11 @@ const TimeSeriesWaterfallChart = ({
         top={yMax + layout.margin.top}
         label={bottomLabel}
         numTicks={layout.numTicks}
-        stroke={palette.textLight}
-        tickStroke={palette.textLight}
-        labelProps={getLabelProps(layout)}
+        stroke={getColor("text-light")}
+        tickStroke={getColor("text-light")}
+        labelProps={getLabelProps(layout, getColor)}
         tickFormat={value => formatTimescaleWaterfallTick(value, settings)}
-        tickLabelProps={() => getXTickLabelProps(layout)}
+        tickLabelProps={() => getXTickLabelProps(layout, false, getColor)}
       />
     </svg>
   );

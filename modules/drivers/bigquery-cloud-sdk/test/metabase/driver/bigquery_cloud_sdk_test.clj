@@ -394,17 +394,16 @@
 (deftest global-max-rows-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "The limit middleware prevents us from fetching more pages than are necessary to fulfill query max-rows"
-      (mt/with-open-channels [canceled-chan (a/promise-chan)]
-        (let [page-size          100
-              max-rows           1000
-              num-page-callbacks (atom 0)]
-          (binding [bigquery/*page-size*     page-size
-                    bigquery/*page-callback* (fn []
-                                               (swap! num-page-callbacks inc))]
-            (mt/dataset sample-dataset
-              (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
-                (is (= max-rows (count rows)))
-                (is (= (/ max-rows page-size) @num-page-callbacks))))))))))
+      (let [page-size          100
+            max-rows           1000
+            num-page-callbacks (atom 0)]
+        (binding [bigquery/*page-size*     page-size
+                  bigquery/*page-callback* (fn []
+                                             (swap! num-page-callbacks inc))]
+          (mt/dataset sample-dataset
+            (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
+              (is (= max-rows (count rows)))
+              (is (= (/ max-rows page-size) @num-page-callbacks)))))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (mt/with-temp Database [db-filtered database]

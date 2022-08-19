@@ -235,7 +235,7 @@
       qualify? (update :components (partial cons (query-db-name))))))
 
 (defmethod sql.qp/->honeysql [:snowflake :time]
-  [driver [_ value unit]]
+  [driver [_ value _unit]]
   (hx/->time (sql.qp/->honeysql driver value)))
 
 (defmethod driver/table-rows-seq :snowflake
@@ -313,10 +313,10 @@
 (defmethod driver/can-connect? :snowflake
   [driver {:keys [db], :as details}]
   (and ((get-method driver/can-connect? :sql-jdbc) driver details)
-       (let [spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)
-             sql  (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
-         (jdbc/query spec sql)
-         true)))
+       (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
+         (let [sql (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
+           (jdbc/query spec sql)
+           true))))
 
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
@@ -335,6 +335,15 @@
 
 ;; Like Vertica, Snowflake doesn't seem to be able to return a LocalTime/OffsetTime like everyone else, but it can
 ;; return a String that we can parse
+
+(defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/TIMESTAMP_WITH_TIMEZONE]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs %d) [TIMESTAMP_WITH_TIMEZONE] -> %s -> %s" i (pr-str s) (pr-str t))
+        t))))
+
 (defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/TIME]
   [_ ^ResultSet rs _ ^Integer i]
   (fn []

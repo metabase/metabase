@@ -27,6 +27,7 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
+import { RowToggleIconRoot } from "./PivotTable.styled";
 
 const getBgLightColor = (hasCustomColors, isNightMode) => {
   if (isNightMode) {
@@ -603,10 +604,7 @@ function RowToggleIcon({
         settingValue => settingValue.concat(ref);
 
   return (
-    <div
-      className={cx(
-        "flex align-center cursor-pointer text-brand-hover text-light",
-      )}
+    <RowToggleIconRoot
       style={{
         padding: "4px",
         borderRadius: "4px",
@@ -622,7 +620,7 @@ function RowToggleIcon({
       }}
     >
       <Icon name={isCollapsed ? "add" : "dash"} size={8} />
-    </div>
+    </RowToggleIconRoot>
   );
 }
 

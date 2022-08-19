@@ -26,6 +26,8 @@ const BreakoutPopover = ({
       className={className}
       width={width}
       field={breakout}
+      query={query}
+      metadata={query.metadata()}
       fieldOptions={fieldOptions}
       onFieldChange={field => {
         onChangeBreakout(field);

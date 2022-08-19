@@ -24,12 +24,6 @@
                                                            org.quartz-scheduler/quartz]}
   colorize/colorize                         {:mvn/version "0.1.1"               ; string output with ANSI color codes (for logging)
                                              :exclusions  [org.clojure/clojure]}
-  com.cemerick/friend                       {:mvn/version "0.2.3"               ; auth library
-                                             :exclusions  [commons-codec/commons-codec
-                                                           net.sourceforge.nekohtml/nekohtml
-                                                           org.apache.httpcomponents/httpclient
-                                                           ring/ring-core
-                                                           slingshot/slingshot]}
   com.clearspring.analytics/stream          {:mvn/version "2.9.8"               ; Various sketching algorithms
                                              :exclusions  [it.unimi.dsi/fastutil
                                                            org.slf4j/slf4j-api]}
@@ -122,9 +116,9 @@
   org.graalvm.js/js                         {:mvn/version "22.1.0"}             ; JavaScript engine
   org.liquibase/liquibase-core              {:mvn/version "4.10.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
-  org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.5"}              ; MySQL/MariaDB driver
+  org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.6"}              ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
-  org.postgresql/postgresql                 {:mvn/version "42.3.5"}             ; Postgres driver
+  org.postgresql/postgresql                 {:mvn/version "42.4.1"}             ; Postgres driver
   org.quartz-scheduler/quartz               {:mvn/version "2.3.2"}              ; Quartz job scheduler, provided by quartzite but this is a newer version.
   org.slf4j/slf4j-api                       {:mvn/version "1.7.36"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
@@ -177,10 +171,10 @@
   {:extra-deps
    {clj-http-fake/clj-http-fake                           {:mvn/version "1.0.3"
                                                            :exclusions  [slingshot/slingshot]}
+    clj-kondo/clj-kondo                                   {:mvn/version "2022.08.03"} ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage                                   {:mvn/version "1.2.2"}
     eftest/eftest                                         {:mvn/version "0.5.9"}
     jonase/eastwood                                       {:mvn/version "1.2.2"}
-    lein-check-namespace-decls/lein-check-namespace-decls {:mvn/version "1.0.4"} ; misnomer since this works on Clojure CLI now too
     pjstadig/humane-test-output                           {:mvn/version "0.11.0"}
     reifyhealth/specmonstah                               {:mvn/version "2.0.0"
                                                            :exclusions  [org.clojure/clojure
@@ -196,6 +190,9 @@
                  "-Dfile.encoding=UTF-8"
                  "-Duser.language=en"
                  "-Duser.country=US"
+                 ;; set the logging properties set in metabase.bootstrap. calling (dev) will load it but putting here to be sure
+                 "-Dlog4j2.contextSelector=org.apache.logging.log4j.core.selector.BasicContextSelector"
+                 "-Dclojure.tools.logging.factory=clojure.tools.logging.impl/log4j2-factory"
                  ;; If Clojure fails to start (e.g. because of a compilation error somewhere) print the error
                  ;; report/stacktrace to stderr rather than to a random EDN file in /tmp/
                  "-Dclojure.main.report=stderr"
@@ -224,7 +221,7 @@
   ;; clojure -M:run:drivers (include all drivers)
   ;; clojure -M:run:ee (include EE code)
   :run
-  {:main-opts ["-m" "metabase.core"]
+  {:main-opts ["-m" "metabase.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=dev"
                "-Djava.awt.headless=true"                   ; prevent Java icon from randomly popping up in macOS dock
                "-Dmb.jetty.port=3000"]}
@@ -283,11 +280,6 @@
     "modules/drivers/vertica/test"]}
 
 ;;; Linters
-
-  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
-  :namespace-checker
-  {:exec-fn   metabase.linters.namespace-checker/check-namespace-decls
-   :exec-args {:prefix-rewriting false}}
 
   ;; clojure -M:dev:ee:ee-dev:drivers:drivers-dev:check
   :check

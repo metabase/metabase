@@ -11,7 +11,7 @@
             [metabase.models.pulse-test :as pulse-test]
             [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
-            [metabase.test.data.users :refer :all]
+            [metabase.test.data.users :refer [fetch-user user->client user->id]]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
             [metabase.test.util :as tu]
             [metabase.util :as u]
@@ -824,7 +824,7 @@
                            Pulse                 [alert (basic-alert)]
                            PulseCard             [_     (pulse-card alert card)]
                            PulseChannel          [pc-1  (assoc (pulse-channel alert) :channel_type :email)]
-                           PulseChannel          [pc-2  (assoc (pulse-channel alert) :channel_type :slack)]
+                           PulseChannel          [_pc-2 (assoc (pulse-channel alert) :channel_type :slack)]
                            PulseChannelRecipient [_     (recipient pc-1 :rasta)]]
              (with-alerts-in-readable-collection [alert]
                (with-alert-setup
@@ -845,7 +845,7 @@
                            Pulse                 [alert (basic-alert)]
                            PulseCard             [_     (pulse-card alert card)]
                            PulseChannel          [pc-1  (assoc (pulse-channel alert) :channel_type :email, :enabled false)]
-                           PulseChannel          [pc-2  (assoc (pulse-channel alert) :channel_type :slack)]
+                           PulseChannel          [_pc-2 (assoc (pulse-channel alert) :channel_type :slack)]
                            PulseChannelRecipient [_     (recipient pc-1 :rasta)]]
              (with-alerts-in-readable-collection [alert]
                (with-alert-setup

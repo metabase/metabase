@@ -226,7 +226,7 @@
                   (doseq [[message perms] {"with full DB perms"                   (perms/data-perms-path (mt/id))
                                            "with perms for the Table in question" (perms/table-query-path (mt/id :venues))}]
                     (mt/with-temp Permissions [_ {:group_id group-2-id, :object perms}]
-                      (testing "Should be able to run the query"
+                      (testing (format "Should be able to run the query %s" message)
                         (doseq [[message f] {"ad-hoc queries"  run-ad-hoc-query
                                              "Saved Questions" run-saved-question}]
                           (testing message

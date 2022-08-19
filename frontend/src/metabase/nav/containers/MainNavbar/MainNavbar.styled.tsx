@@ -36,12 +36,6 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   overflow-x: hidden;
   z-index: 4;
 
-  transition: width 0.2s;
-
-  @media (prefers-reduced-motion) {
-    transition: none;
-  }
-
   ${props => props.isOpen && openSidebarCSS};
 
   ${breakpointMaxSmall} {

@@ -105,7 +105,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
                 <ExpressionListItem
                   onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
                   isHighlighted={isHighlighted}
-                  className="flex align-center px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit"
+                  className="hover-parent hover--inherit"
                 >
                   <Icon
                     name={icon}

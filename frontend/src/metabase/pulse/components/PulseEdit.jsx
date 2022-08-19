@@ -141,7 +141,7 @@ class PulseEdit extends Component {
     const link = (
       <a
         className="link"
-        href={MetabaseSettings.docsUrl("users-guide/dashboard-subscriptions")}
+        href={MetabaseSettings.docsUrl("dashboards/subscriptions")}
       >{t`dashboard subscriptions`}</a>
     );
     return (
