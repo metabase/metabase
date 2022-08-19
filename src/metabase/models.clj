@@ -93,7 +93,6 @@
  [action Action HTTPAction QueryAction]
  [activity Activity]
  [app App]
- [app AppNavItem]
  [bookmark CardBookmark]
  [bookmark DashboardBookmark]
  [bookmark CollectionBookmark]

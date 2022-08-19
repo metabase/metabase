@@ -19,16 +19,16 @@
       (mt/with-temp* [Collection [{collection_id :id}]]
         (is (partial= {:collection_id collection_id}
                       (mt/user-http-request :rasta :post 200 "app" {:collection_id collection_id})))))
-    (testing "With initial dashboard and nav-items"
+    (testing "With initial dashboard and nav_items"
       (mt/with-temp* [Collection [{collection_id :id}]
                       Dashboard [{dashboard_id :id}]]
-        (let [nav-items [{:options {:click_behavior {}}}]]
+        (let [nav_items [{:options {:click_behavior {}}}]]
           (is (partial= {:collection_id collection_id
                          :dashboard_id dashboard_id
-                         :nav-items nav-items}
+                         :nav_items nav_items}
                         (mt/user-http-request :crowberto :post 200 "app" {:collection_id collection_id
                                                                           :dashboard_id dashboard_id
-                                                                          :nav-items nav-items}))))))))
+                                                                          :nav_items nav_items}))))))))
 
 (deftest update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
