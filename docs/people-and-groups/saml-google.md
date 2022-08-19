@@ -8,9 +8,9 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Google SAML authentication" %}
 
-1. Set up a [custom SAML app](https://support.google.com/a/answer/6087519) in your [Google admin console](admin.google.com).
+1. Set up a [custom SAML app](https://support.google.com/a/answer/6087519) in your [Google admin console](https://admin.google.com).
 2. As you follow Google's instructions, you'll need to:
-  - [Save information about Google for Metabase](#saving-google-idp-information-for-metabase).
+  - [Save information about Google for Metabase](#saving-google-idp-info-for-metabase).
   - [Provide Google info to Metabase](#filling-out-the-metabase-saml-form).
   - [Provide Metabase info to Google ](#filling-out-service-provider-details).
   - [Set up attribute mappings in Google](#setting-up-attribute-mappings).
