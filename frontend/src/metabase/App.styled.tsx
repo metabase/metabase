@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
@@ -8,6 +9,7 @@ export const AppContainer = styled.div`
 
 export const AppContentContainer = styled.div<{
   isAdminApp: boolean;
+  isAnimationEnabled: boolean | undefined;
 }>`
   flex-grow: 1;
   display: flex;
@@ -21,6 +23,14 @@ export const AppContentContainer = styled.div<{
     height: 100%;
     overflow: visible !important;
   }
+
+  ${props =>
+    !props.isAnimationEnabled &&
+    css`
+      * {
+        transition: none !important;
+      }
+    `}
 `;
 
 export const AppContent = styled.main`

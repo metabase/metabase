@@ -15,6 +15,9 @@ export interface BaseUser {
   date_joined: string;
   last_login: string;
   first_login: string;
+  settings: {
+    "enable-animations": string;
+  } | null;
 }
 
 export interface User extends BaseUser {

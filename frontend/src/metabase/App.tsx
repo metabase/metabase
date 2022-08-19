@@ -52,6 +52,7 @@ interface AppStateProps {
   isAdminApp: boolean;
   isAppBarVisible: boolean;
   isNavBarVisible: boolean;
+  isAnimationEnabled: boolean | undefined;
 }
 
 interface AppRouterOwnProps {
@@ -69,6 +70,8 @@ const mapStateToProps = (
   isAdminApp: getIsAdminApp(state, props),
   isAppBarVisible: getIsAppBarVisible(state, props),
   isNavBarVisible: getIsNavBarVisible(state, props),
+  isAnimationEnabled:
+    state?.currentUser?.settings?.["enable-animations"] !== "false",
 });
 
 class ErrorBoundary extends React.Component<{
@@ -88,6 +91,7 @@ function App({
   isAdminApp,
   isAppBarVisible,
   isNavBarVisible,
+  isAnimationEnabled,
   children,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
@@ -102,7 +106,10 @@ function App({
       <ScrollToTop>
         <AppContainer className="spread">
           {isAppBarVisible && <AppBar isNavBarVisible={isNavBarVisible} />}
-          <AppContentContainer isAdminApp={isAdminApp}>
+          <AppContentContainer
+            isAdminApp={isAdminApp}
+            isAnimationEnabled={isAnimationEnabled}
+          >
             {isNavBarVisible && <Navbar />}
             <AppContent ref={setViewportElement}>
               <ContentViewportContext.Provider value={viewportElement ?? null}>

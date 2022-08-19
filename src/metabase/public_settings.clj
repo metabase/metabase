@@ -557,3 +557,10 @@
                     (not (db/exists? 'Database :is_sample false, :initial_sync_status "complete"))
                     ;; frontend should set this value to `true` after the modal has been shown once
                     v))))
+
+(defsetting enable-animations
+  (deferred-tru "Enable interface animations")
+  :visibility :authenticated
+  :user-local :only
+  :type       :boolean
+  :default    true)

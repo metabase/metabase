@@ -15,4 +15,7 @@ export type User = {
   is_superuser: boolean;
   date_joined: string;
   last_login: string;
+  settings: {
+    "enable-animations": string;
+  } | null;
 };
