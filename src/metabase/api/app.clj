@@ -9,6 +9,9 @@
     [toucan.db :as db]
     [toucan.hydrate :refer [hydrate]]))
 
+(defn- hydrate-details [apps]
+  (hydrate apps [:collection :can_write]))
+
 (api/defendpoint POST "/"
   "Endpoint to create an app"
   [:as {{:keys [collection_id dashboard_id options nav_items] :as body} :body}]
@@ -20,7 +23,7 @@
   (api/check (not (db/select-one-id App :collection_id collection_id))
     [400 "An App already exists on this Collection"])
   (let [app (db/insert! App (select-keys body [:dashboard_id :collection_id :options :nav_items]))]
-    (hydrate app :collection)))
+    (hydrate-details app)))
 
 (api/defendpoint PUT "/:app-id"
   "Endpoint to change an app"
@@ -31,7 +34,7 @@
    nav_items (s/maybe [(s/maybe su/Map)])}
   (api/write-check Collection (db/select-one-field :collection_id App :id app-id))
   (db/update! App app-id (select-keys body [:dashboard_id :options :nav_items]))
-  (hydrate (App app-id) :collection))
+  (hydrate-details (App app-id)))
 
 ;; TODO handle personal collections, see collection/personal-collection-with-ui-details
 (api/defendpoint GET "/"
@@ -42,18 +45,18 @@
   [archived]
   {archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)]
-    (-> (db/select [App :app.*]
-          {:left-join [:collection [:= :collection.id :app.collection_id]]
-           :where    [:and
-                      [:= :collection.archived archived?]
-                      (collection/visible-collection-ids->honeysql-filter-clause
-                       (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-           :order-by [[:%lower.collection.name :asc]]})
-        (hydrate :collection))))
+    (hydrate-details
+     (db/select [App :app.*]
+       {:left-join [:collection [:= :collection.id :app.collection_id]]
+        :where    [:and
+                   [:= :collection.archived archived?]
+                   (collection/visible-collection-ids->honeysql-filter-clause
+                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+        :order-by [[:%lower.collection.name :asc]]}))))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific App"
   [id]
-  (hydrate (api/read-check App id) :collection))
+  (hydrate-details (api/read-check App id)))
 
 (api/define-routes)

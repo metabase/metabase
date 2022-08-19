@@ -73,7 +73,7 @@
         (let [expected (merge app-data {:id app-id
                                         :collection_id collection_id
                                         :dashboard_id dashboard_id
-                                        :collection collection})]
+                                        :collection (assoc collection :can_write true)})]
           (testing "can query non-archived apps"
             (is (partial= [expected]
                           (mt/user-http-request :crowberto :get 200 "app"))))))
@@ -88,7 +88,7 @@
             (let [expected (merge app-data {:id app-id
                                             :collection_id (:id collection-1)
                                             :dashboard_id dashboard_id
-                                            :collection collection-1})]
+                                            :collection (assoc collection-1 :can_write false)})]
               (is (partial= [expected]
                             (mt/user-http-request :rasta :get 200 "app")))))))
       (testing "archives"
@@ -101,14 +101,14 @@
             (let [expected (merge app-data {:id app-1-id
                                             :collection_id (:id collection-1)
                                             :dashboard_id dashboard_id
-                                            :collection collection-1})]
+                                            :collection (assoc collection-1 :can_write true)})]
              (is (partial= [expected]
                            (mt/user-http-request :rasta :get 200 "app")))))
           (testing "listing archived"
             (let [expected (merge app-data {:id app-2-id
                                             :collection_id (:id collection-2)
                                             :dashboard_id dashboard_id
-                                            :collection collection-2})]
+                                            :collection (assoc collection-2 :can_write true)})]
               (is (partial= [expected]
                             (mt/user-http-request :rasta :get 200 "app/?archived=true"))))))))))
 
@@ -123,7 +123,7 @@
           (let [expected (merge app-data {:id app-id
                                           :collection_id collection_id
                                           :dashboard_id dashboard_id
-                                          :collection collection})]
+                                          :collection (assoc collection :can_write true)})]
             (is (partial= expected
                           (mt/user-http-request :crowberto :get 200 (str "app/" app-id))))))
         (testing "that app detail properly checks permissions"
