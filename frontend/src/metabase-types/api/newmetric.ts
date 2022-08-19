@@ -14,6 +14,7 @@ export type Metric = {
   dimensions: [string, ConcreteField][];
   granularities: string[];
   default_granularity: string;
+  collection_id: number | null;
   creator_id: number;
   created_at: string;
   updated_at: string;
