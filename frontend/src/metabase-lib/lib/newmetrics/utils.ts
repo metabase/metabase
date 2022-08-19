@@ -42,7 +42,7 @@ export function canBeUsedAsMetric(
 
 export function generateFakeMetricFromQuestion(
   question: Question,
-): Metric | null {
+): Partial<Metric> | null {
   // guaranteeing the below type assertions are valid
   if (!canBeUsedAsMetric(question)) {
     return null;
@@ -58,7 +58,6 @@ export function generateFakeMetricFromQuestion(
   }
 
   return {
-    id: question.id(),
     name: `${question.id()}_metric`,
     display_name: `${question.displayName()} Metric`,
     description: "",
@@ -67,10 +66,8 @@ export function generateFakeMetricFromQuestion(
     measure: aggregation,
     dimensions: [[columnName, ref]],
     granularities: [],
-    default_granularity: "",
-    creator_id: 1,
-    created_at: "",
-    updated_at: "",
+    default_granularity: "month",
+    collection_id: null,
   };
 }
 
