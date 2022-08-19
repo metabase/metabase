@@ -32,6 +32,7 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
+import { FieldFingerprint } from "metabase-types/api/field";
 import { Field as FieldRef } from "metabase-types/types/Query";
 import { FieldDimension } from "../Dimension";
 import Table from "./Table";
@@ -50,8 +51,10 @@ export const LONG_TEXT_MIN = 80;
 class FieldInner extends Base {
   id: number | FieldRef;
   name: string;
+  description: string | null;
   semantic_type: string | null;
-  fingerprint: any;
+  database_required: boolean;
+  fingerprint?: FieldFingerprint;
   base_type: string | null;
   table?: Table;
   target?: Field;

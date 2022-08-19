@@ -574,13 +574,20 @@ export default class TokenField extends Component<
     const valuesList = (
       <TokenFieldContainer
         style={style}
+        className={cx(className, {
+          "TokenField--focused": isFocused,
+        })}
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {!!prefix && (
           <PrefixContainer data-testid="input-prefix">{prefix}</PrefixContainer>
         )}
         {value.map((v, index) => (
-          <TokenFieldItem key={index} isValid={validateValue(v)}>
+          <TokenFieldItem
+            key={index}
+            className="TokenField-ItemWrapper"
+            isValid={validateValue(v)}
+          >
             <span style={{ ...defaultStyleValue, ...valueStyle }}>
               {valueRenderer(v)}
             </span>
@@ -600,7 +607,7 @@ export default class TokenField extends Component<
           </TokenFieldItem>
         ))}
         {canAddItems && (
-          <TokenInputItem>
+          <TokenInputItem className="TokenField-NewItemInputContainer">
             <input
               ref={this.inputRef}
               style={{ ...defaultStyleValue, ...valueStyle }}

@@ -109,6 +109,12 @@ class DashboardHeader extends Component {
     this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
   }
 
+  onAddActionButton() {
+    this.props.addActionButtonDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+    });
+  }
+
   onDoneEditing() {
     this.props.onEditingChange(false);
   }
@@ -175,6 +181,8 @@ class DashboardHeader extends Component {
       dashboard,
       parametersWidget,
       isBookmarked,
+      isAdmin,
+      isDataApp,
       isEditing,
       isFullscreen,
       isEditable,
@@ -229,6 +237,23 @@ class DashboardHeader extends Component {
           </a>
         </Tooltip>,
       );
+
+      if (isAdmin && isDataApp) {
+        buttons.push(
+          <Tooltip key="add-action-button" tooltip={t`Add action button`}>
+            <a
+              data-metabase-event="Dashboard;Add Action Button"
+              key="add-action-button"
+              className="text-brand-hover cursor-pointer"
+              onClick={() => this.onAddActionButton()}
+            >
+              <DashboardHeaderButton>
+                <Icon name="play" size={18} />
+              </DashboardHeaderButton>
+            </a>
+          </Tooltip>,
+        );
+      }
 
       const {
         isAddParameterPopoverOpen,

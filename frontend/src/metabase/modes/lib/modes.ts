@@ -1,3 +1,4 @@
+import ActionMode from "../components/modes/ActionMode";
 import SegmentMode from "../components/modes/SegmentMode";
 import MetricMode from "../components/modes/MetricMode";
 import TimeseriesMode from "../components/modes/TimeseriesMode";
@@ -10,6 +11,7 @@ import { QueryMode } from "metabase-types/types/Visualization";
 import Question from "metabase-lib/lib/Question";
 import { getMode as getModeFromLib } from "metabase-lib/lib/Mode";
 import {
+  MODE_TYPE_ACTION,
   MODE_TYPE_NATIVE,
   MODE_TYPE_SEGMENT,
   MODE_TYPE_METRIC,
@@ -25,6 +27,9 @@ export function getMode(question: Question): QueryMode | any | null {
   }
 
   switch (mode) {
+    case MODE_TYPE_ACTION:
+      return ActionMode;
+
     case MODE_TYPE_NATIVE:
       return NativeMode;
 
