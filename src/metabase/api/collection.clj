@@ -124,7 +124,7 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models" "timeline"})
+  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "newmetric" "no_models" "timeline"})
 
 (def ^:private ModelString
   (apply s/enum valid-model-param-values))
@@ -234,11 +234,27 @@
             [:= :collection_id (:id collection)]
             [:= :archived (boolean archived?)]]})
 
+(defmethod collection-children-query :newmetric
+  [_model collection {:keys [archived? _pinned-state]}]
+  {:select [:id :name :display_name [(hx/literal "newmetric") :model] :description]
+   :from   [Newmetric]
+   :where  [:and
+            [:= :collection_id (:id collection)]
+            [:= :archived (boolean archived?)]]})
+
 (defmethod post-process-collection-children :timeline
   [_ rows]
   (for [row rows]
     (dissoc row
             :description :display :collection_position :authority_level :moderated_status
+            :collection_preview :dataset_query)))
+
+(defmethod post-process-collection-children :newmetric
+  [_ rows]
+  (for [row rows]
+    (dissoc row
+            ;; todo: will need collection_position soon, probably collection preview as well
+            :display :collection_position :authority_level :moderated_status
             :collection_preview :dataset_query)))
 
 (defmethod post-process-collection-children :snippet
@@ -448,6 +464,7 @@
     :card       Card
     :dataset    Card
     :dashboard  Dashboard
+    :newmetric  Newmetric
     :pulse      Pulse
     :snippet    NativeQuerySnippet
     :timeline   Timeline))
@@ -468,7 +485,7 @@
   "All columns that need to be present for the union-all. Generated with the comment form below. Non-text columns that
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
-  [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
+  [:id :name :display_name :description :entity_id :display [:collection_preview :boolean] :dataset_query
    :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
@@ -490,9 +507,10 @@
                   :pulse      2
                   :dataset    3
                   :card       4
-                  :snippet    5
-                  :collection 6
-                  :timeline   7}]
+                  :newmetric  5
+                  :snippet    6
+                  :collection 7
+                  :timeline   8}]
     (conj select-clause [(get rankings model 100)
                          :model_ranking])))
 
@@ -585,7 +603,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet :timeline]
+  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet :timeline :newmetric]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
