@@ -1,5 +1,7 @@
 ---
 title: Application permissions
+redirect_from:
+  - /docs/latest/administration-guide/application-permissions
 ---
 
 # Application permissions
