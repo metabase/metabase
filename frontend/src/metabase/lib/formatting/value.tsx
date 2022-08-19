@@ -11,6 +11,7 @@ import {
 } from "metabase/lib/click-behavior";
 import {
   isBoolean,
+  isCategory,
   isCoordinate,
   isDate,
   isEmail,
@@ -203,6 +204,12 @@ export function formatValueRaw(
   } else if (typeof value === "object") {
     // no extra whitespace for table cells
     return JSON.stringify(value);
+  } else if (
+    typeof value === "number" &&
+    isCategory(column) &&
+    !options.compact
+  ) {
+    return String(formatNumber(value, options));
   } else {
     return String(value);
   }
