@@ -235,10 +235,12 @@
             [:= :archived (boolean archived?)]]})
 
 (defmethod collection-children-query :newmetric
-  [_model collection {:keys [archived? _pinned-state]}]
-  {:select [:id :name :display_name [(hx/literal "newmetric") :model] :description]
+  [_model collection {:keys [archived? pinned-state]}]
+  {:select [:id :name :display_name [(hx/literal "newmetric") :model] :description
+            :collection_preview :collection_position]
    :from   [Newmetric]
    :where  [:and
+            (pinned-state->clause pinned-state)
             [:= :collection_id (:id collection)]
             [:= :archived (boolean archived?)]]})
 
@@ -254,8 +256,7 @@
   (for [row rows]
     (dissoc row
             ;; todo: will need collection_position soon, probably collection preview as well
-            :display :collection_position :authority_level :moderated_status :icon :personal_owner_id
-            :collection_preview :dataset_query)))
+            :display :authority_level :moderated_status :icon :personal_owner_id :dataset_query)))
 
 (defmethod post-process-collection-children :snippet
   [_ rows]
