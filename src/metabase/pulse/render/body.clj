@@ -381,13 +381,25 @@
                (DecimalFormat. base))]
      (.format fmt value))))
 
-(defn format-month
-  "Format a date as Month, Year."
-  [s]
-  (try
-    (->> (u.date/parse s)
-         (u.date/format "MMMM, Y"))
-    (catch Exception _ s)))
+;; wo -> week-of-year
+;; [Q]Q -> quarter-of-year
+;; dddd -> day-of-week
+
+(defn- donut-legend-label-formatter
+  "Formatting function that respects given viz-settings."
+  [{style :date_style separator :date_separator abbreviate :date_abbreviate}]
+  (case style
+    "dddd" {"1" "Sunday" "2" "Monday" "3" "Tuesday" "4" "Wednesday" "5" "Thursday" "6" "Friday" "7" "Saturday"}
+    "[Q]Q" #(format "Q%s" (int %))
+    (let [adjusted-style (cond-> style
+                           separator (str/replace #"/" separator)
+                           abbreviate (str/replace #"MMMM" "MMM"))]
+      (prn style " " separator)
+      (fn [s]
+        (try
+          (->> (u.date/parse s)
+               (u.date/format adjusted-style))
+          (catch Exception _ s))))))
 
 (defn- donut-info
   "Process rows with a minimum slice threshold. Collapses any segments below the threshold given as a percentage (the
@@ -407,7 +419,7 @@
                                    (format-percentage (/ value total)))]))}))
 
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
-  [_ render-type _timezone-id :- (s/maybe s/Str) card dashcard {:keys [rows viz-settings] :as data}]
+  [_ render-type _timezone-id :- (s/maybe s/Str) card dashcard {:keys [rows cols viz-settings] :as data}]
   (let [viz-settings                (merge viz-settings (:visualization_settings dashcard))
         [x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (map (juxt (comp str x-axis-rowfn) y-axis-rowfn)
@@ -418,8 +430,10 @@
         legend-colors               (merge (zipmap (map first rows) (cycle colors))
                                            (update-keys (:pie.colors viz-settings) name))
         image-bundle                (image-bundle/make-image-bundle
-                                     render-type
-                                     (js-svg/categorical-donut rows legend-colors))]
+                                      render-type
+                                      (js-svg/categorical-donut rows legend-colors))
+        {label-format-settings :x}  (->js-viz (x-axis-rowfn cols) (y-axis-rowfn cols) viz-settings)
+        label-fn                    (donut-legend-label-formatter label-format-settings)]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -428,19 +442,20 @@
      [:div
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]
-      (into [:table {:style (style/style {:color "#4C5773" :width "50%" :padding-left "12px"})}]
+      (into [:table {:style (style/style {:color       "#4C5773"
+                                          :font-family "Lato, sans-serif"
+                                          :font-size   "24px"
+                                          :font-weight "bold"
+                                          :box-sizing  "border-box"})}]
             (for [label (map first rows)]
-              (let [font-size 24
-                    h (- font-size 4)]
-                [:tr {:style (style/style {:margin-right "12px"
-                                           :font-family  "Lato, sans-serif"
-                                           :font-size    (str font-size "px")})}
-                 [:td {:style (style/style {:color (legend-colors label)})}
-                  "•"]
-                 [:td {:style (style/style {:width "auto" :height (str h "px")})}
-                  (format-month label)]
-                 [:td {:style (style/style {:height (str h "px")})}
-                  (percentages label)]])))]}))
+              [:tr {:style (style/style {:margin-right "12px"})}
+               [:td {:style (style/style {:color         (legend-colors label)
+                                          :padding-right "10px"})}
+                [:span {:style (style/style {:font-size "2.875rem" :line-height "0"})} "•"]]
+               [:td {:style (style/style {:padding-right "20px"})}
+                (label-fn label)]
+               [:td #_{:style (style/style {:height (str h "px")})}
+                (percentages label)]]))]}))
 
 (s/defmethod render :progress :- common/RenderedPulseCard
   [_ render-type _timezone-id _card dashcard {:keys [cols rows viz-settings] :as _data}]
