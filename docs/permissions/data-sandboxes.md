@@ -1,7 +1,7 @@
 ---
 title: Data sandboxes
 redirect_from:
-  - /docs/latest/administration-guide/docs
+  - /docs/latest/enterprise-guide/data-sandboxes
 ---
 
 # Data sandboxes
