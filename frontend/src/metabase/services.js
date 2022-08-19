@@ -135,6 +135,10 @@ export const CardApi = {
   adHocRelated: POST("/api/card/related"),
 };
 
+export const NewMetricApi = {
+  query: POST("/api/newmetric/:id/query"),
+};
+
 export const DashboardApi = {
   list: GET("/api/dashboard"),
   // creates a new empty dashboard
