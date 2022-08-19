@@ -73,12 +73,12 @@ describe("sortDimensionOptions", () => {
 
     expect(sorted[0].dimension.field().base_type).toBe("type/Text");
     expect(
-      sorted[0].dimension.field().fingerprint.type["type/Text"][
+      sorted[0].dimension.field().fingerprint?.type?.["type/Text"]?.[
         "average-length"
       ],
     ).toBe(10);
     expect(
-      sorted[1].dimension.field().fingerprint.type["type/Text"][
+      sorted[1].dimension.field().fingerprint?.type?.["type/Text"]?.[
         "average-length"
       ],
     ).toBe(400);

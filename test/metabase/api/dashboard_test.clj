@@ -9,9 +9,20 @@
             [metabase.api.dashboard :as api.dashboard]
             [metabase.api.pivots :as api.pivots]
             [metabase.http-client :as client]
-            [metabase.models
-             :refer
-             [Card Collection Dashboard DashboardCard DashboardCardSeries Field FieldValues Pulse Revision Table User]]
+            [metabase.models :refer [Card
+                                     Collection
+                                     Dashboard
+                                     DashboardCard
+                                     DashboardCardSeries
+                                     DashboardEmitter
+                                     Emitter
+                                     Field
+                                     FieldValues
+                                     Pulse
+                                     QueryAction
+                                     Revision
+                                     Table
+                                     User]]
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-test :as dashboard-test]
             [metabase.models.field-values :as field-values]
@@ -240,6 +251,7 @@
                                                                       :display                "table"
                                                                       :entity_id              (:entity_id card)
                                                                       :visualization_settings {}
+                                                                      :is_write               false
                                                                       :result_metadata        nil})
                                       :series                 []}]})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
@@ -292,6 +304,7 @@
                                                                             :display                "table"
                                                                             :query_type             nil
                                                                             :visualization_settings {}
+                                                                            :is_write               false
                                                                             :result_metadata        nil})
                                             :series                 []}]})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
@@ -326,6 +339,22 @@
                                                                  :position         0}]]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
+
+(deftest fetch-dashboard-emitter-test
+  (testing "GET /api/dashboard/:id"
+    (testing "Fetch dashboard with an emitter"
+      (mt/with-temp* [Dashboard [dashboard {:name "Test Dashboard"}]
+                      Card [write-card {:is_write true :name "Test Write Card"}]
+                      Emitter [{emitter-id :id} {:action_id (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))}]]
+        (db/insert! DashboardEmitter {:emitter_id emitter-id
+                                      :dashboard_id (u/the-id dashboard)})
+        (testing "admin sees emitters"
+          (is (partial=
+               {:emitters [{:action {:type "query" :card {:name "Test Write Card"}}}]}
+               (dashboard-response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id dashboard)))))))
+        (testing "non-admin does not see emitters"
+          (is (nil?
+               (:emitters (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" (u/the-id dashboard))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
@@ -896,6 +925,18 @@
                   (update-mappings! 200)))
            (is (= new-mappings
                   (db/select-one-field :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
+
+(deftest disallow-adding-is-write-card-to-dashboard-test
+  (testing "PUT /api/dashboard/:id/cards"
+    (testing "Disallow adding a QueryAction is_write Card to a Dashboard (#22846)"
+      (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                      Card      [{card-id :id} {:is_write true}]]
+        (is (= "You cannot add an is_write Card to a Dashboard."
+               (mt/user-http-request :crowberto :post 400
+                                     (format "dashboard/%d/cards" dashboard-id)
+                                     {:cardId card-id
+                                      :row    0
+                                      :col    0})))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

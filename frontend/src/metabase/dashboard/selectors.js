@@ -208,3 +208,9 @@ export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
+
+// Writeback
+export const getFocusedEmitterId = state =>
+  state.dashboard.missingEmitterParameters?.emitterId;
+export const getEmitterParametersFormProps = state =>
+  state.dashboard.missingEmitterParameters?.props || {};

@@ -97,6 +97,8 @@
                                       {:namespaces ["metabase\\.driver.*"]}
                                       metabase.driver.sql-jdbc.sync.interface/syncable-schemas
                                       {:namespaces ["metabase\\.driver.*"]}
+                                      metabase.util/key-by
+                                      {:namespaces ["metabase(?:-enterprise)?.*"]}
                                       schema.core/either
                                       {:namespaces ["metabase.*"]}
                                       schema.core/both
@@ -235,6 +237,7 @@
                                         metabase.models.collection-permission-graph-revision            c-perm-revision
                                         metabase.models.dashboard-card                                  dashboard-card
                                         metabase.models.database                                        database
+                                        metabase.models.dependency                                      dependency
                                         metabase.models.field-values                                    field-values
                                         metabase.models.interface                                       mi
                                         metabase.models.moderation-review                               moderation-review
@@ -361,11 +364,15 @@
   honeysql.helpers/defhelper                                                      clj-kondo.lint-as/def-catch-all
   honeysql.util/defalias                                                          clojure.core/def
   metabase-enterprise.serialization.test-util/with-random-dump-dir                clojure.core/let
+  metabase.actions.test-util/with-card-emitter                                    clojure.core/let
+  metabase.actions.test-util/with-dashboard-emitter                               clojure.core/let
+  metabase.actions.test-util/with-action                                          clojure.core/let
   metabase.api.common/let-404                                                     clojure.core/let
   metabase.db.data-migrations/defmigration                                        clojure.core/def
   metabase.db.liquibase/with-liquibase                                            clojure.core/let
   metabase.driver.mongo.query-processor/mongo-let                                 clojure.core/let
   metabase.driver.mongo.util/with-mongo-connection                                clojure.core/let
+  metabase.driver.sql-jdbc.actions/with-jdbc-transaction                          clojure.core/let
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info           clojure.core/fn
   metabase.integrations.ldap/with-ldap-connection                                 clojure.core/fn

@@ -47,6 +47,7 @@ const CheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(function Checkbox(
     checkedColor = DEFAULT_CHECKED_COLOR,
     uncheckedColor = DEFAULT_UNCHECKED_COLOR,
     autoFocus,
+    onClick,
     onChange,
     onFocus,
     onBlur,
@@ -72,6 +73,7 @@ const CheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(function Checkbox(
           size={size}
           disabled={disabled}
           autoFocus={autoFocus}
+          onClick={onClick}
           onChange={isControlledCheckBoxInput ? onChange : undefined}
           onFocus={onFocus}
           onBlur={onBlur}

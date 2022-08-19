@@ -23,6 +23,7 @@
                                      DashboardCardSeries
                                      Database
                                      Dimension
+                                     Emitter
                                      Field
                                      FieldValues
                                      LoginHistory
@@ -96,6 +97,7 @@
    Card
    CardBookmark
    DashboardBookmark
+   Emitter
    CollectionBookmark
    BookmarkOrdering
    DashboardCard

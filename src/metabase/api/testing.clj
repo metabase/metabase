@@ -42,4 +42,12 @@
   (restore-snapshot! name)
   nil)
 
+(api/defendpoint POST "/echo"
+  [fail :as {:keys [body]}]
+  (if fail
+    {:status 400
+     :body {:error-code "oops"}}
+    {:status 200
+     :body body}))
+
 (api/define-routes)
