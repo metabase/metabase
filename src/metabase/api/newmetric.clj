@@ -44,8 +44,6 @@
   (validate-measure! measure)
   (db/insert! Newmetric (assoc body :creator_id api/*current-user-id*)))
 
-;; name display_name card_id measure dimensions archived creator_id created_at updated_at
-
 (api/defendpoint PUT "/:id"
   "Update a `Newmetric`."
   [id :as {{:keys [name display_name description card_id measure dimensions] :as metric-updates} :body}]
