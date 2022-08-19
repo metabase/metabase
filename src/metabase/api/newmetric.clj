@@ -40,7 +40,7 @@
    description  (s/maybe s/Str)}
   (validate-dimensions! dimensions)
   (validate-measure! measure)
-  (db/insert! Newmetric body))
+  (db/insert! Newmetric (assoc body :creator_id api/*current-user-id*)))
 
 ;; name display_name card_id measure dimensions archived creator_id created_at updated_at
 
