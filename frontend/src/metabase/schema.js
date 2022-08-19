@@ -50,6 +50,7 @@ export const SnippetSchema = new schema.Entity("snippets");
 export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
 export const TimelineSchema = new schema.Entity("timelines");
 export const TimelineEventSchema = new schema.Entity("timelineEvents");
+export const NewMetricSchema = new schema.Entity("newMetrics");
 
 DatabaseSchema.define({
   tables: [TableSchema],
