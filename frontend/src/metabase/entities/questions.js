@@ -12,6 +12,7 @@ import Collections, {
   normalizedCollection,
 } from "metabase/entities/collections";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import forms from "./questions/forms";
 import { updateIn } from "icepick";
@@ -69,6 +70,10 @@ const Questions = createEntity({
 
     setCollectionPreview: ({ id }, collection_preview, opts) =>
       Questions.actions.update({ id }, { collection_preview }, opts),
+  },
+
+  selectors: {
+    getObject: (state, { entityId }) => getMetadata(state).question(entityId),
   },
 
   objectSelectors: {

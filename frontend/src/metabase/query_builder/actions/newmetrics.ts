@@ -1,8 +1,9 @@
 import { t } from "ttag";
 import { push } from "react-router-redux";
+import { LocationDescriptorObject } from "history";
 
 import { Dispatch, GetState } from "metabase-types/store";
-import { Card } from "metabase-types/types/Card";
+import { SavedCard } from "metabase-types/types/Card";
 import {
   canBeUsedAsMetric,
   generateFakeMetricFromQuestion,
@@ -12,8 +13,12 @@ import Question from "metabase-lib/lib/Question";
 import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import { setErrorPage } from "metabase/redux/app";
+import NewMetrics from "metabase/entities/new-metrics";
+import Questions from "metabase/entities/questions";
+import { extractEntityId } from "metabase/lib/urls";
+import { Metric } from "metabase-types/api/newmetric";
 
-import { getQuestion, getMetric } from "../selectors";
+import { getQuestion } from "../selectors";
 import { runQuestionQuery } from "./querying";
 import { loadMetadataForCard } from "./core/metadata";
 
@@ -23,29 +28,52 @@ export const CREATE_METRIC = "metabase/qb/CREATE_METRIC";
 export const ENTER_QB_METRIC_MODE = "metabase/qb/ENTER_QB_METRIC_MODE";
 
 export const createMetricFromQuestion =
-  () => (dispatch: Dispatch, getState: GetState) => {
+  () => async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
     if (canBeUsedAsMetric(question)) {
-      // create a new metric
-      // navigate to /metric/:metric-id
-      // for now, navigating to same question but different path
-      dispatch(push(`/metric/${question.id()}`));
-      dispatch(
-        addUndo({
-          message: t`Created a metric`,
-        }),
-      );
+      const metric = generateFakeMetricFromQuestion(question);
+
+      if (metric) {
+        try {
+          const createAction = await dispatch(
+            NewMetrics.actions.create(metric),
+          );
+          const newMetric = NewMetrics.HACK_getObjectFromAction(createAction);
+          dispatch(push(`/metric/${newMetric.id}`));
+          dispatch(
+            addUndo({
+              message: t`Metric created`,
+            }),
+          );
+        } catch (err) {
+          dispatch(setErrorPage(err));
+        }
+      } else {
+        dispatch(setErrorPage("Failed to generate a metric"));
+      }
     }
   };
 
 export const initializeMetricMode =
-  (card: Card) => async (dispatch: Dispatch, getState: GetState) => {
+  (location: LocationDescriptorObject, params: { slug?: string }) =>
+  async (dispatch: Dispatch, getState: GetState) => {
     // this action currently does nothing. is it needed?
     dispatch({
       type: ENTER_QB_METRIC_MODE,
     });
 
-    await dispatch(initializeMetricCard(card));
+    try {
+      const metricId = extractEntityId(params.slug);
+
+      await dispatch(NewMetrics.actions.fetch({ id: metricId }));
+      const metric: Metric = NewMetrics.selectors.getObject(getState(), {
+        entityId: metricId,
+      });
+
+      await dispatch(initializeMetricCard(metric));
+    } catch (err) {
+      dispatch(setErrorPage(err));
+    }
   };
 
 // this all comes from the core initializeQB action
@@ -53,42 +81,47 @@ export const initializeMetricMode =
 // so will need to revisit to ensure there aren't other things that we
 // want to do that's card/qb related
 export const initializeMetricCard =
-  (card: Card) => async (dispatch: Dispatch, getState: GetState) => {
-    await dispatch(loadMetadataForCard(card));
-    const metadata = getMetadata(getState());
-    const baseQuestion = new Question(card, metadata);
+  (metric: Metric) => async (dispatch: Dispatch, getState: GetState) => {
+    const { card_id: cardId } = metric;
 
-    const fakeMetric = generateFakeMetricFromQuestion(baseQuestion);
-    if (!fakeMetric) {
-      dispatch(setErrorPage("Could not generate fake metric from question"));
-      return;
-    }
+    // fetch the metric's card
+    await dispatch(Questions.actions.fetch({ id: cardId }));
+    const baseQuestion: Question = Questions.selectors.getObject(getState(), {
+      entityId: cardId,
+    });
 
-    const metricQuestion = applyMetricToQuestion(baseQuestion, fakeMetric);
+    // fetch the card's metadata
+    await dispatch(loadMetadataForCard(baseQuestion.card()));
+
+    // using properties on the metric, make changes to the question's query
+    const metricQuestion = applyMetricToQuestion(baseQuestion, metric);
     if (!metricQuestion) {
-      dispatch(setErrorPage("Failed to apply fake metric to question"));
-      return;
+      throw new Error("Failed to apply fake metric to question");
+    }
+    if (!metricQuestion.canRun()) {
+      throw new Error("Metric question can't run");
     }
 
     const metricCard = metricQuestion
-      .setDefaultDisplay()
       // initializeQB does this to saved, structured cards, so we should, too?
       .lockDisplay()
       .card();
-    // setting an `originalCard` breaks things badly
+
+    // setting an `originalCard` breaks things badly right now
     // const originalCard = { ...metricCard };
 
     dispatch({
       type: INITIALIZE_QB,
       payload: {
-        metric: fakeMetric,
+        metric,
         card: metricCard,
         uiControls: {
           queryBuilderMode: "view",
         },
       },
     });
-    // no need for setTimeout because there shouldn't be any paremeter widgets
-    // might not always be the case though
-    dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
+
+    // Timeout to allow Parameters widget to set parameterValues
+    // Currently, there shouldn't be any parameters, but that might now always be the case
+    setTimeout(() => dispatch(runQuestionQuery({ shouldUpdateUrl: false })), 0);
   };
