@@ -51,4 +51,9 @@
            :order-by [[:%lower.collection.name :asc]]})
         (hydrate :collection))))
 
+(api/defendpoint GET "/:id"
+  "Fetch a specific App"
+  [id]
+  (hydrate (api/read-check App id) :collection))
+
 (api/define-routes)

@@ -111,3 +111,21 @@
                                             :collection collection-2})]
               (is (partial= [expected]
                             (mt/user-http-request :rasta :get 200 "app/?archived=true"))))))))))
+
+(deftest fetch-app-test
+  (let [app-data {:nav_items [{:options {:item "stuff"}}]
+                  :options {:frontend "stuff"}}]
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp* [Collection [{collection_id :id :as collection}]
+                      Dashboard [{dashboard_id :id}]
+                      App [{app-id :id} (assoc app-data :collection_id collection_id :dashboard_id dashboard_id)]]
+        (testing "that we can see app details"
+          (let [expected (merge app-data {:id app-id
+                                          :collection_id collection_id
+                                          :dashboard_id dashboard_id
+                                          :collection collection})]
+            (is (partial= expected
+                          (mt/user-http-request :crowberto :get 200 (str "app/" app-id))))))
+        (testing "that app detail properly checks permissions"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (str "app/" app-id)))))))))
