@@ -184,7 +184,7 @@
                                      :position                 2
                                      :database_position        2
                                      :database_required        false)
-                              (assoc (field-details (db/select-one Field :id :table_id (mt/id :users), :name "PASSWORD"))
+                              (assoc (field-details (db/select-one Field :table_id (mt/id :users), :name "PASSWORD"))
                                      :semantic_type     "type/Category"
                                      :table_id         (mt/id :users)
                                      :name             "PASSWORD"

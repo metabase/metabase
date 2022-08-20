@@ -51,8 +51,7 @@
 
   (testing "Test fallback to GenericTable"
     (is (= [:entity/GenericTable :entity/*]
-           (->> (-> (mt/id :users)
-                    (db/select-one Table :id)
+           (->> (-> (db/select-one Table :id (mt/id :users))
                     (assoc :entity_type nil)
                     (#'magic/->root))
                 (#'magic/matching-rules (rules/get-rules ["table"]))

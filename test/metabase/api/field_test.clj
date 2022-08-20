@@ -333,7 +333,7 @@
                                      {:values [[1 "$"] [2 "$$"] [3] [4]]})))))))
 
 (defn- dimension-for-field [field-id]
-  (-> (db/select-one Field :id :id field-id)
+  (-> (db/select-one Field :id field-id)
       (hydrate :dimensions)
       :dimensions))
 
