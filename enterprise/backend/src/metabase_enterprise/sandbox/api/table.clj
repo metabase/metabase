@@ -62,7 +62,7 @@
   {include_sensitive_fields    (s/maybe su/BooleanString)
    include_hidden_fields       (s/maybe su/BooleanString)
    include_editable_data_model (s/maybe su/BooleanString)}
-  (let [table            (api/check-404 (Table id))
+  (let [table            (api/check-404 (db/select-one Table :id id))
         segmented-perms? (only-segmented-perms? table)
         thunk            (fn []
                            (maybe-filter-fields

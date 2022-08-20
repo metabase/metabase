@@ -49,7 +49,7 @@
 
   And users with login-attributes {\"State\" \"CA\"}
 
-  ;; (field-id->gtap-attributes-for-current-user (Field 3))
+  ;; (field-id->gtap-attributes-for-current-user (db/select-one Field :id 3))
   ;; -> [1, {\"State\" \"CA\"}]"
   [{:keys [table_id] :as _field}]
   (when-let [gtap (table-id->gtap table_id)]

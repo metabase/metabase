@@ -11,7 +11,8 @@
    [metabase.models.setting :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [schema.core :as schema]))
+   [schema.core :as schema]
+   [toucan.db :as db]))
 
 (setting/defsetting experimental-enable-actions
   (i18n/deferred-tru "Whether to enable using the new experimental Actions features globally. (Actions must also be enabled for each Database.)")
@@ -147,7 +148,7 @@
                       {:status-code 400})))
     ;; Check that Actions are enabled for this specific Database.
     (let [{database-id :database}                         arg-map
-          {db-settings :settings, driver :engine, :as db} (api/check-404 (Database database-id))]
+          {db-settings :settings, driver :engine, :as db} (api/check-404 (db/select-one Database :id database-id))]
       ;; make sure the Driver supports Actions.
       (when-not (driver/database-supports? driver :actions db)
         (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."

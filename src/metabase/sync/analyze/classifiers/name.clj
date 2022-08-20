@@ -7,7 +7,8 @@
             [metabase.sync.interface :as i]
             [metabase.sync.util :as sync-util]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})
@@ -183,10 +184,10 @@
                                           (when (re-find pattern table-name)
                                             type))
                                         entity-types-patterns)
-                                  (case (-> table
-                                            :db_id
-                                            Database
-                                            :engine)
+                                  (case (->> table
+                                             :db_id
+                                             (db/select-one Database :id)
+                                             :engine)
                                     :googleanalytics :entity/GoogleAnalyticsTable
                                     :druid           :entity/EventTable
                                     nil)

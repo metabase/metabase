@@ -135,7 +135,7 @@
                       s/Keyword s/Any}
                      response))
         (when (integer? db-id)
-          (Database db-id)))
+          (db/select-one Database :id db-id)))
       (finally (db/delete! Database :name db-name)))))
 
 (deftest create-db-test
@@ -275,7 +275,7 @@
                                      :entity_type         "entity/GenericTable"
                                      :initial_sync_status "complete"
                                      :fields              [(merge
-                                                            (field-details (Field (mt/id :categories :id)))
+                                                            (field-details (db/select-one Field :id (mt/id :categories :id)))
                                                             {:table_id          (mt/id :categories)
                                                              :semantic_type     "type/PK"
                                                              :name              "ID"
@@ -288,7 +288,7 @@
                                                              :database_position 0
                                                              :database_required false})
                                                            (merge
-                                                            (field-details (Field (mt/id :categories :name)))
+                                                            (field-details (db/select-one Field :id (mt/id :categories :name)))
                                                             {:table_id          (mt/id :categories)
                                                              :semantic_type     "type/Name"
                                                              :name              "NAME"
@@ -418,7 +418,7 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> (into #{:features :native_permissions} (keys (Database (mt/id))))
+        (let [expected-keys (-> (into #{:features :native_permissions} (keys (db/select-one Database :id (mt/id))))
                                 (disj :details :settings))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))

@@ -49,7 +49,7 @@
   [owner-id dashboard dashcard card-or-id parameters]
   (try
     (let [card-id (u/the-id card-or-id)
-          card    (Card :id card-id)
+          card    (db/select-one Card :id card-id)
           result  (mw.session/with-current-user owner-id
                     (qp.dashboard/run-query-for-dashcard-async
                      :dashboard-id  (u/the-id dashboard)
@@ -100,7 +100,7 @@
 (s/defn defaulted-timezone :- s/Str
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
   [card :- CardInstance]
-  (or (some-> card database-id Database qp.timezone/results-timezone-id)
+  (or (some->> card database-id (db/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
 
 (defn- first-question-name [pulse]
@@ -293,7 +293,7 @@
   (let [email-recipients (filterv u/email? (map :email recipients))
         query-results    (filter :card results)
         timezone         (-> query-results first :card defaulted-timezone)
-        dashboard        (Dashboard :id dashboard-id)]
+        dashboard        (db/select-one Dashboard :id dashboard-id)]
     {:subject      (subject pulse)
      :recipients   email-recipients
      :message-type :attachments
@@ -305,7 +305,7 @@
    {{channel-id :channel} :details}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
                                         pulse-id (pr-str pulse-name) (count results))))
-  (let [dashboard (Dashboard :id dashboard-id)]
+  (let [dashboard (db/select-one Dashboard :id dashboard-id)]
     {:channel-id  channel-id
      :attachments (remove nil?
                           (flatten [(slack-dashboard-header pulse dashboard)
@@ -489,7 +489,7 @@
        (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
   [{:keys [dashboard_id], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
-  (let [dashboard (Dashboard :id dashboard_id)
+  (let [dashboard (db/select-one Dashboard :id dashboard_id)
         pulse     (-> pulse
                       pulse/map->PulseInstance
                       ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`

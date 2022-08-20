@@ -1416,7 +1416,7 @@
                    (mt/regex-email-bodies #"the question was archived by Crowberto Corv"))))
           (testing "Pulse"
             (is (= nil
-                   (Pulse pulse-id)))))))
+                   (db/select-one Pulse :id pulse-id)))))))
 
     (testing "I shouldn't be allowed to archive a Collection without proper perms"
       (mt/with-non-admin-groups-no-root-collection-perms

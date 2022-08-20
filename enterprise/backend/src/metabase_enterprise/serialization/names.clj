@@ -83,7 +83,7 @@
   (let [parents (some->> (str/split (:location collection) #"/")
                          rest
                          not-empty
-                         (map #(-> % Integer/parseInt Collection local-collection-name))
+                         (map #(local-collection-name (db/select-one Collection :id (Integer/parseInt %))))
                          (apply str))]
     (str root-collection-path parents (local-collection-name collection))))
 
@@ -194,11 +194,12 @@
     (assoc context :collection (db/select-one-id Collection
                                  :name      collection-name
                                  :namespace (:namespace model-attrs)
-                                 :location  (or (some-> context
-                                                        :collection
-                                                        Collection
-                                                        :location
-                                                        (str (:collection context) "/"))
+                                 :location  (or (letfn [(collection-location [id]
+                                                          (db/select-one-field :location Collection :id id))]
+                                                  (some-> context
+                                                          :collection
+                                                          collection-location
+                                                          (str (:collection context) "/")))
                                                 "/")))))
 
 (defmethod path->context* "dashboards"

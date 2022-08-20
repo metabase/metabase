@@ -7,7 +7,8 @@
             [metabase.sync :as sync]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (def ^:private ^:dynamic *execute-asynchronously* true)
 
@@ -29,11 +30,11 @@
                         (if *execute-asynchronously*
                           (future (thunk))
                           (thunk)))]
-    (api/let-404 [database (Database id)]
+    (api/let-404 [database (db/select-one Database :id id)]
       (cond
-        table_id   (when-let [table (Table :db_id id, :id (int table_id))]
+        table_id   (when-let [table (db/select-one Table :db_id id, :id (int table_id))]
                      (execute! #(table-sync-fn table)))
-        table_name (when-let [table (Table :db_id id, :name table_name)]
+        table_name (when-let [table (db/select-one Table :db_id id, :name table_name)]
                      (execute! #(table-sync-fn table)))
         :else      (execute! #(db-sync-fn database)))))
   {:success true})

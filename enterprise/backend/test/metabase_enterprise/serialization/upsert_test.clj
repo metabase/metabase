@@ -52,7 +52,7 @@
                 (let [[e1 e2]   @cards
                       [id1 id2] (upsert/maybe-upsert-many! {:mode mode} Card @cards)]
                   (is (every? (partial apply same?)
-                              [[(Card id1) e1] [(Card id2) e2]])))))]
+                              [[(db/select-one Card :id id1) e1] [(db/select-one Card :id id2) e2]])))))]
       (doseq [mode [:skip :update]]
         (test-mode mode)))))
 
@@ -65,9 +65,9 @@
       (testing "Card 1 ID"
         (is (= id1 id1-mutated)))
       (testing "Card 1"
-        (is (same? (Card id1-mutated) e1-mutated)))
+        (is (same? (db/select-one Card :id id1-mutated) e1-mutated)))
       (testing "Card 2"
-        (is (same? (Card id2) e2))))))
+        (is (same? (db/select-one Card :id id2) e2))))))
 
 (defn- dummy-entity [dummy-dashboard model entity instance-num]
   (cond

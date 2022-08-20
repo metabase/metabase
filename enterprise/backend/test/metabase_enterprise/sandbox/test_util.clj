@@ -14,6 +14,7 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [schema.core :as s]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 (defn do-with-user-attributes [test-user-name-or-user-id attributes-map thunk]
@@ -46,7 +47,7 @@
                                                      :table_id             (data/id table-kw)
                                                      :card_id              card-id
                                                      :attribute_remappings remappings}]
-           (perms/grant-permissions! group (perms/table-segmented-query-path (Table (data/id table-kw))))
+           (perms/grant-permissions! group (perms/table-segmented-query-path (db/select-one Table :id (data/id table-kw))))
            (do-with-gtap-defs group more f)))))))
 
 (def ^:private WithGTAPsArgs

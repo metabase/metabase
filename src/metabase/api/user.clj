@@ -422,7 +422,7 @@
   "Resend the user invite email for a given user."
   [id]
   (api/check-superuser)
-  (when-let [user (User :id id, :is_active true)]
+  (when-let [user (db/select-one User :id id, :is_active true)]
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]

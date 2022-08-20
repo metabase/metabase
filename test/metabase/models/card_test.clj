@@ -19,7 +19,7 @@
       (letfn [(add-card-to-dash! [dash]
                 (db/insert! DashboardCard :card_id card-id, :dashboard_id (u/the-id dash)))
               (get-dashboard-count []
-                (card/dashboard-count (Card card-id)))]
+                (card/dashboard-count (db/select-one Card :id card-id)))]
         (is (= 0
                (get-dashboard-count)))
         (testing "add to a Dashboard"

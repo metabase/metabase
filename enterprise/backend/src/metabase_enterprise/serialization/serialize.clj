@@ -160,9 +160,9 @@
 
 (defn- convert-click-behavior [{:keys [::mb.viz/link-type ::mb.viz/link-target-id] :as click}]
   (-> (if-let [new-target-id (case link-type
-                               ::mb.viz/card      (-> (Card link-target-id)
+                               ::mb.viz/card      (-> (db/select-one Card :id link-target-id)
                                                       fully-qualified-name)
-                               ::mb.viz/dashboard (-> (Dashboard link-target-id)
+                               ::mb.viz/dashboard (-> (db/select-one Dashboard :id link-target-id)
                                                       fully-qualified-name)
                                nil)]
         (assoc click ::mb.viz/link-target-id new-target-id)

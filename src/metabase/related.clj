@@ -213,7 +213,7 @@
 
 (defmethod related (type Card)
   [card]
-  (let [table             (Table (:table_id card))
+  (let [table             (db/select-one Table :id (:table_id card))
         similar-questions (similar-questions card)]
     {:table             table
      :metrics           (->> table
@@ -236,7 +236,7 @@
 
 (defmethod related (type Metric)
   [metric]
-  (let [table (Table (:table_id metric))]
+  (let [table (db/select-one Table :id (:table_id metric))]
     {:table    table
      :metrics  (->> table
                     metrics-for-table
@@ -249,7 +249,7 @@
 
 (defmethod related (type Segment)
   [segment]
-  (let [table (Table (:table_id segment))]
+  (let [table (db/select-one Table :id (:table_id segment))]
     {:table       table
      :metrics     (->> table
                        metrics-for-table
@@ -281,7 +281,7 @@
 
 (defmethod related (type Field)
   [field]
-  (let [table (Table (:table_id field))]
+  (let [table (db/select-one Table :id (:table_id field))]
     {:table    table
      :segments (->> table
                     segments-for-table

@@ -356,7 +356,10 @@
                                         ring.util.servlet                                               servlet
                                         saml20-clj.core                                                 saml
                                         toucan.db                                                       db
-                                        toucan.models                                                   models}}}
+                                        toucan.models                                                   models}}
+
+           :metabase/disallow-invoking-model         {:level :warning}
+           #_:metabase/disallow-class-or-type-on-model #_{:level :warning}}
 
  :lint-as
  {clojure.core.logic/defne                                                        clj-kondo.lint-as/def-catch-all
@@ -405,24 +408,120 @@
 
  :hooks
  {:analyze-call
-  {metabase.api.common/defendpoint                            hooks.metabase.api.common/defendpoint
-   metabase.api.common/defendpoint-async                      hooks.metabase.api.common/defendpoint
-   metabase.models.setting/defsetting                         hooks.metabase.models.setting/defsetting
-   metabase.models.setting.multi-setting/define-multi-setting hooks.metabase.models.setting/defsetting
-   metabase.test/$ids                                         hooks.metabase.test.data/$ids
-   metabase.test/dataset                                      hooks.metabase.test.data/dataset
-   metabase.test/mbql-query                                   hooks.metabase.test.data/mbql-query
-   metabase.test/query                                        hooks.metabase.test.data/mbql-query
-   metabase.test/run-mbql-query                               hooks.metabase.test.data/mbql-query
-   metabase.test/with-temp                                    hooks.toucan.util.test/with-temp
-   metabase.test/with-temp*                                   hooks.toucan.util.test/with-temp*
-   metabase-enterprise.serialization.test-util/with-temp-dpc  hooks.toucan.util.test/with-temp*
-   metabase.test/with-temporary-setting-values                hooks.metabase.test.util/with-temporary-setting-values
-   metabase.test.data/$ids                                    hooks.metabase.test.data/$ids
-   metabase.test.data/dataset                                 hooks.metabase.test.data/dataset
-   metabase.test.data/mbql-query                              hooks.metabase.test.data/mbql-query
-   metabase.test.data/run-mbql-query                          hooks.metabase.test.data/mbql-query
-   metabase.test.util/with-temporary-setting-values           hooks.metabase.test.util/with-temporary-setting-values}
+  {clojure.core/class                                                                     hooks.metabase.models.disallow-type-or-class/hook
+   clojure.core/type                                                                      hooks.metabase.models.disallow-type-or-class/hook
+   metabase-enterprise.serialization.test-util/with-temp-dpc                              hooks.toucan.util.test/with-temp*
+   metabase.api.common/defendpoint                                                        hooks.metabase.api.common/defendpoint
+   metabase.api.common/defendpoint-async                                                  hooks.metabase.api.common/defendpoint
+   metabase.models.action/Action                                                          hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.action/QueryAction                                                     hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.action/HTTPAction                                                      hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.activity/Activity                                                      hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.application-permissions-revision/ApplicationPermissionsRevision        hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.bookmark/BookmarkOrdering                                              hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.bookmark/CardBookmark                                                  hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.bookmark/CollectionBookmark                                            hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.bookmark/DashboardBookmark                                             hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.card/Card                                                              hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.collection-permission-graph-revision/CollectionPermissionGraphRevision hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.collection/Collection                                                  hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.dashboard-card-series/DashboardCardSeries                              hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.dashboard-card/DashboardCard                                           hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.dashboard/Dashboard                                                    hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.database/Database                                                      hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.dimension/Dimension                                                    hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.emitter/CardEmitter                                                    hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.emitter/DashboardEmitter                                               hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.emitter/Emitter                                                        hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.field-values/FieldValues                                               hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.field/Field                                                            hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.login-history/LoginHistory                                             hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.metric-important-field/MetricImportantField                            hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.metric/Metric                                                          hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.moderation-review/ModerationReview                                     hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.native-query-snippet/NativeQuerySnippet                                hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.permissions-group-membership/PermissionsGroupMembership                hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.permissions-group/PermissionsGroup                                     hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.permissions-revision/PermissionsRevision                               hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.permissions/Permissions                                                hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.persisted-info/PersistedInfo                                           hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.pulse-card/PulseCard                                                   hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.pulse-channel-recipient/PulseChannelRecipient                          hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.pulse-channel/PulseChannel                                             hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.pulse/Pulse                                                            hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.query-cache/QueryCache                                                 hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.query-execution/QueryExecution                                         hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.query/Query                                                            hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.revision/Revision                                                      hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.secret/Secret                                                          hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.segment/Segment                                                        hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.session/Session                                                        hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.setting.multi-setting/define-multi-setting                             hooks.metabase.models.setting/defsetting
+   metabase.models.setting/Setting                                                        hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.setting/defsetting                                                     hooks.metabase.models.setting/defsetting
+   metabase.models.table/Table                                                            hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.task-history/TaskHistory                                               hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.timeline-event/TimelineEvent                                           hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.timeline/Timeline                                                      hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.user/User                                                              hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.view-log/ViewLog                                                       hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Activity                                                               hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/ApplicationPermissionsRevision                                         hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/BookmarkOrdering                                                       hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Card                                                                   hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/CardBookmark                                                           hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Collection                                                             hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/CollectionBookmark                                                     hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/CollectionPermissionGraphRevision                                      hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Dashboard                                                              hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/DashboardBookmark                                                      hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/DashboardCard                                                          hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/DashboardCardSeries                                                    hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Database                                                               hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Dimension                                                              hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Field                                                                  hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/FieldValues                                                            hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/LoginHistory                                                           hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Metric                                                                 hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/MetricImportantField                                                   hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/ModerationReview                                                       hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/NativeQuerySnippet                                                     hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Permissions                                                            hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/PermissionsGroup                                                       hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/PermissionsGroupMembership                                             hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/PermissionsRevision                                                    hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/PersistedInfo                                                          hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Pulse                                                                  hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/PulseCard                                                              hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/PulseChannel                                                           hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/PulseChannelRecipient                                                  hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Query                                                                  hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/QueryCache                                                             hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/QueryExecution                                                         hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Revision                                                               hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Secret                                                                 hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Segment                                                                hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Session                                                                hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Setting                                                                hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Table                                                                  hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/TaskHistory                                                            hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Timeline                                                               hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/TimelineEvent                                                          hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/User                                                                   hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/ViewLog                                                                hooks.metabase.models.disallow-invoking-model/hook
+   metabase.test.data/$ids                                                                hooks.metabase.test.data/$ids
+   metabase.test.data/dataset                                                             hooks.metabase.test.data/dataset
+   metabase.test.data/mbql-query                                                          hooks.metabase.test.data/mbql-query
+   metabase.test.data/run-mbql-query                                                      hooks.metabase.test.data/mbql-query
+   metabase.test.util/with-temporary-setting-values                                       hooks.metabase.test.util/with-temporary-setting-values
+   metabase.test/$ids                                                                     hooks.metabase.test.data/$ids
+   metabase.test/dataset                                                                  hooks.metabase.test.data/dataset
+   metabase.test/mbql-query                                                               hooks.metabase.test.data/mbql-query
+   metabase.test/query                                                                    hooks.metabase.test.data/mbql-query
+   metabase.test/run-mbql-query                                                           hooks.metabase.test.data/mbql-query
+   metabase.test/with-temp                                                                hooks.toucan.util.test/with-temp
+   metabase.test/with-temp*                                                               hooks.toucan.util.test/with-temp*
+   metabase.test/with-temporary-setting-values                                            hooks.metabase.test.util/with-temporary-setting-values}
 
   :macroexpand
   {metabase.query-processor.streaming/streaming-response macros.metabase.query-processor.streaming/streaming-response

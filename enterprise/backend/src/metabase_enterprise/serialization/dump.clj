@@ -17,6 +17,7 @@
             [metabase.models.user :refer [User]]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [trs]]
+            [toucan.db :as db]
             [yaml.core :as yaml]
             [yaml.writer :as y.writer])
   (:import java.time.temporal.Temporal))
@@ -68,8 +69,8 @@
   "Combine all dimensions into a vector and dump it into YAML at in the directory for the
    corresponding schema starting at `path`."
   [path]
-  (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (Dimension))
-          :let [table (Table table-id)]]
+  (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (db/select Dimension))
+          :let [table (db/select-one Table :id table-id)]]
     (spit-yaml (if (:schema table)
                  (format "%s%s/schemas/%s/dimensions.yaml"
                          path

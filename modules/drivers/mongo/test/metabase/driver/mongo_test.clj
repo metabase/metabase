@@ -165,7 +165,7 @@
                        :base-type         :type/Integer
                        :pk?               true
                        :database-position 0}}}
-           (driver/describe-table :mongo (mt/db) (Table (mt/id :venues)))))))
+           (driver/describe-table :mongo (mt/db) (db/select-one Table :id (mt/id :venues)))))))
 
 (deftest nested-columns-test
   (mt/test-driver :mongo
@@ -219,9 +219,9 @@
                 [3 "The Apple Pan"]
                 [4 "Wurstküche"]
                 [5 "Brite Spot Family Restaurant"]]
-               (vec (take 5 (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                              [(Field (mt/id :venues :id))
-                               (Field (mt/id :venues :name))]
+               (vec (take 5 (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
+                              [(db/select-one Field :id (mt/id :venues :id))
+                               (db/select-one Field :id (mt/id :venues :name))]
                               (constantly conj))))))))))
 
 
@@ -332,7 +332,7 @@
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (empty?
-           (mbql.u/match-one (->> (magic/automagic-analysis (Field (mt/id :venues :price)) {})
+           (mbql.u/match-one (->> (magic/automagic-analysis (db/select-one Field :id (mt/id :venues :price)) {})
                                   :ordered_cards
                                   (mapcat (comp :breakout :query :dataset_query :card)))
              [:field _ (_ :guard :binning)]))))))

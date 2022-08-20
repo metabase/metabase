@@ -84,7 +84,7 @@
 (s/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
   [id :- su/IntGreaterThanZero]
-  (-> (DashboardCard id)
+  (-> (db/select-one DashboardCard :id id)
       (hydrate :series)))
 
 (defn dashcard->multi-cards
