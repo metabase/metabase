@@ -388,18 +388,21 @@
 (defn- donut-legend-label-formatter
   "Formatting function that respects given viz-settings."
   [{style :date_style separator :date_separator abbreviate :date_abbreviate}]
-  (case style
-    "dddd" {"1" "Sunday" "2" "Monday" "3" "Tuesday" "4" "Wednesday" "5" "Thursday" "6" "Friday" "7" "Saturday"}
-    "[Q]Q" #(format "Q%s" (int %))
-    (let [adjusted-style (cond-> style
-                           separator (str/replace #"/" separator)
-                           abbreviate (str/replace #"MMMM" "MMM"))]
-      (prn style " " separator)
-      (fn [s]
-        (try
-          (->> (u.date/parse s)
-               (u.date/format adjusted-style))
-          (catch Exception _ s))))))
+  (let [formatter
+        (case style
+          "dddd" {"1" "Sunday" "2" "Monday" "3" "Tuesday" "4" "Wednesday" "5" "Thursday" "6" "Friday" "7" "Saturday"}
+          "wo" #(format "%sth" (int (read-string %)))
+          "[Q]Q" #(format "Q%s" %)
+          (fn [s]
+            (let [adjusted-style (cond-> style
+                                   separator (str/replace #"/" separator)
+                                   abbreviate (str/replace #"MMMM" "MMM"))]
+              (->> (u.date/parse s)
+                   (u.date/format adjusted-style)))))]
+    (fn [s]
+      (try
+        (formatter s)
+        (catch Exception _ s)))))
 
 (defn- donut-info
   "Process rows with a minimum slice threshold. Collapses any segments below the threshold given as a percentage (the
@@ -417,6 +420,36 @@
                           [label (if (zero? total)
                                    (tru "N/A")
                                    (format-percentage (/ value total)))]))}))
+
+(defn- donut-legend
+  [legend-entries]
+  (let [table-fn
+        (fn [entries]
+          (into [:table {:style (style/style {:color       "#4C5773"
+                                              :font-family "Lato, sans-serif"
+                                              :font-size   "24px"
+                                              :font-weight "bold"
+                                              :box-sizing  "border-box"})}]
+                (for [{:keys [label percentage color]} entries]
+                  [:tr {:style (style/style {:margin-right "12px"})}
+                   [:td {:style (style/style {:color         color
+                                              :padding-right "7px"
+                                              :line-height   "0"})}
+                    [:span {:style (style/style {:font-size   "2.875rem"
+                                                 :line-height "0"
+                                                 :position    "relative"
+                                                 :top         "-4px"})} "•"]]
+                   [:td {:style (style/style {:padding-right "20px"})}
+                    label]
+                   [:td percentage]])))]
+    (if (< (count legend-entries) 8)
+      (table-fn legend-entries)
+      [:table (into [:tr]
+                    (map (fn [some-entries]
+                           [:td {:style (style/style {:padding-right  "20px"
+                                                      :vertical-align "top"})}
+                            (table-fn some-entries)])
+                         (split-at (/ (count legend-entries) 2) legend-entries)))])))
 
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card dashcard {:keys [rows cols viz-settings] :as data}]
@@ -442,20 +475,11 @@
      [:div
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]
-      (into [:table {:style (style/style {:color       "#4C5773"
-                                          :font-family "Lato, sans-serif"
-                                          :font-size   "24px"
-                                          :font-weight "bold"
-                                          :box-sizing  "border-box"})}]
-            (for [label (map first rows)]
-              [:tr {:style (style/style {:margin-right "12px"})}
-               [:td {:style (style/style {:color         (legend-colors label)
-                                          :padding-right "10px"})}
-                [:span {:style (style/style {:font-size "2.875rem" :line-height "0"})} "•"]]
-               [:td {:style (style/style {:padding-right "20px"})}
-                (label-fn label)]
-               [:td #_{:style (style/style {:height (str h "px")})}
-                (percentages label)]]))]}))
+      (donut-legend (mapv (fn [row]
+                            {:label (label-fn (first row))
+                             :percentage (percentages (first row))
+                             :color (legend-colors (first row))})
+                          rows))]}))
 
 (s/defmethod render :progress :- common/RenderedPulseCard
   [_ render-type _timezone-id _card dashcard {:keys [cols rows viz-settings] :as _data}]

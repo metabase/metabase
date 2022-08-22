@@ -619,9 +619,9 @@
     (testing "Includes percentages"
       (is (= [:div
               [:img]
-              [:div
-               [:div [:span "•"] [:span "Doohickey"] [:span "75%"]]
-               [:div [:span "•"] [:span "Widget"] [:span "25%"]]]]
+              [:table
+               [:tr [:td [:span "•"]] [:td "Doohickey"] [:td "75%"]]
+               [:tr [:td [:span "•"]] [:td "Widget"] [:td "25%"]]]]
              (prune (:content (render [["Doohickey" 75] ["Widget" 25]]))))))))
 
 (deftest render-progress
