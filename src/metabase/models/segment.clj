@@ -105,7 +105,7 @@
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 
-(s/defn retrieve-segments :- [SegmentInstance]
+(s/defn retrieve-segments :- [(mi/InstanceOf Segment)]
   "Fetch all `Segments` for a given `Table`. Optional second argument allows filtering by active state by providing
    one of 3 keyword values: `:active`, `:deleted`, `:all`. Default filtering is for `:active`."
   ([table-id :- su/IntGreaterThanZero]

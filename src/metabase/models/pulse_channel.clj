@@ -345,9 +345,12 @@
 
 
 ;; don't include `:emails`, we use that purely internally
-(add-encoder PulseChannelInstance (fn [pulse-channel json-generator]
-                                    (encode-map (m/dissoc-in pulse-channel [:details :emails])
-                                                json-generator)))
+(add-encoder
+ #_{:clj-kondo/ignore [:unresolved-symbol]}
+ PulseChannelInstance
+ (fn [pulse-channel json-generator]
+   (encode-map (m/dissoc-in pulse-channel [:details :emails])
+               json-generator)))
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 

@@ -312,7 +312,10 @@
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 
-(add-encoder SecretInstance (fn [secret json-generator]
-                              (encode-map
-                               (dissoc secret :value) ; never include the secret value in JSON
-                               json-generator)))
+(add-encoder
+ #_{:clj-kondo/ignore [:unresolved-symbol]}
+ SecretInstance
+ (fn [secret json-generator]
+   (encode-map
+    (dissoc secret :value)              ; never include the secret value in JSON
+    json-generator)))

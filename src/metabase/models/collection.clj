@@ -345,14 +345,14 @@
 ;;; |                          Nested Collections: Ancestors, Childrens, Child Collections                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:hydrate ancestors :- [CollectionInstance]
+(s/defn ^:private ^:hydrate ancestors :- [(mi/InstanceOf Collection)]
   "Fetch ancestors (parent, grandparent, etc.) of a `collection`. These are returned in order starting with the
   highest-level (e.g. most distant) ancestor."
   [{:keys [location]}]
   (when-let [ancestor-ids (seq (location-path->ids location))]
     (db/select [Collection :name :id] :id [:in ancestor-ids] {:order-by [:%lower.name]})))
 
-(s/defn effective-ancestors :- [(s/cond-pre RootCollection CollectionInstance)]
+(s/defn effective-ancestors :- [(s/cond-pre RootCollection (mi/InstanceOf Collection))]
   "Fetch the ancestors of a `collection`, filtering out any ones the current User isn't allowed to see. This is used
   in the UI to power the 'breadcrumb' path to the location of a given Collection. For example, suppose we have four
   Collections, nested like:
@@ -396,7 +396,7 @@
 
 (def ^:private Children
   (s/both
-   CollectionInstance
+   (mi/InstanceOf Collection)
    {:children #{(s/recursive #'Children)}
     s/Keyword s/Any}))
 
@@ -495,7 +495,7 @@
    :from   [[Collection :col]]
    :where  (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
 
-(s/defn effective-children :- #{CollectionInstance}
+(s/defn effective-children :- #{(mi/InstanceOf Collection)}
   "Get the descendant Collections of `collection` that should be presented to the current User as direct children of
   this Collection. See documentation for [[metabase.models.collection/effective-children-query]] for more details."
   {:hydrate :effective_children}
@@ -757,7 +757,7 @@
   would immediately become invisible to all save admins, because no Group would have perms for it. This is obviously a
   bad experience -- we do not want a User to move a Collection that they have read/write perms for (by definition) to
   somewhere else and lose all access for it."
-  [collection :- CollectionInstance, new-location :- LocationPath]
+  [collection :- (mi/InstanceOf Collection) new-location :- LocationPath]
   (copy-collection-permissions! (parent {:location new-location}) (cons collection (descendants collection))))
 
 (s/defn ^:private revoke-perms-when-moving-into-personal-collection!
@@ -766,7 +766,7 @@
   need to be deleted, so other users cannot access this newly-Personal Collection.
 
   This needs to be done recursively for all descendants as well."
-  [collection :- CollectionInstance]
+  [collection :- (mi/InstanceOf Collection)]
   (db/execute! {:delete-from Permissions
                 :where       [:in :object (for [collection (cons collection (descendants collection))
                                                 path-fn    [perms/collection-read-path
@@ -1047,14 +1047,14 @@
              :name collection-name
              :slug (u/slugify collection-name)))))
 
-(s/defn user->existing-personal-collection :- (s/maybe CollectionInstance)
+(s/defn user->existing-personal-collection :- (s/maybe (mi/InstanceOf Collection))
   "For a `user-or-id`, return their personal Collection, if it already exists.
   Use [[metabase.models.collection/user->personal-collection]] to fetch their personal Collection *and* create it if
   needed."
   [user-or-id]
   (db/select-one Collection :personal_owner_id (u/the-id user-or-id)))
 
-(s/defn user->personal-collection :- CollectionInstance
+(s/defn user->personal-collection :- (mi/InstanceOf Collection)
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
   [user-or-id]
   (or (user->existing-personal-collection user-or-id)
