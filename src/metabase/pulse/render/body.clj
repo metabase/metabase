@@ -388,7 +388,6 @@
 (defn- donut-legend-label-formatter
   "Formatting function that respects given viz-settings."
   [{style :date_style separator :date_separator abbreviate :date_abbreviate}]
-  (prn style)
   (let [formatter
         (case style
           "dddd" {"1" (tru "Sunday")
