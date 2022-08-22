@@ -267,6 +267,7 @@
 ;; Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
 ;; an API response!
 (add-encoder
+ #_{:clj-kondo/ignore [:unresolved-symbol]}
  DatabaseInstance
  (fn [db json-generator]
    (encode-map

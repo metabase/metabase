@@ -3,6 +3,7 @@
   (:require [cheshire.core :as json]
             [metabase.db :as mdb]
             [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.models.interface :as mi]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
@@ -100,4 +101,4 @@
        mbql.normalize/normalize
        (hash-map :dataset_query)
        (merge (query->database-and-table-ids query))
-       map->QueryInstance))
+       (mi/instance Query)))
