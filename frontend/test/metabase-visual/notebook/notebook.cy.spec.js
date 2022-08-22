@@ -112,10 +112,8 @@ describe("visual tests > notebook", () => {
     cy.signInAsAdmin();
     cy.viewport(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
 
-    _.range(10).forEach(index => {
-      const name = `Sample Database ${index + 1}`;
-      cy.addH2SampleDatabase({ name });
-    });
+    cy.addH2SampleDatabase({ name: `Sample Database 1` });
+    cy.addH2SampleDatabase({ name: `Sample Database 2` });
   });
 
   it("data picker", () => {
