@@ -86,18 +86,26 @@
   (doseq [{query :dataset_query} (qp.resolve-referenced/tags-referenced-cards outer-query)]
     (check-query-permissions* query)))
 
-(def ^:dynamic *internal-ui-query* false)
+(def ^:dynamic *internal-ui-query*
+  "Certain queries have passed the checks reqired and do not need to be checked in check-query-permissions*"
+  false)
 
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [outer-query :- su/Map]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
-    (if (or *card-id* *internal-ui-query*)
+    (cond
+      *card-id*
       (do
         (check-card-read-perms *card-id*)
         (when-not (has-data-perms? (required-perms outer-query))
           (check-block-permissions outer-query)))
+
+      *internal-ui-query*
+      true
+
+      :else
       (check-ad-hoc-query-perms outer-query))))
 
 (defn check-query-permissions
