@@ -242,8 +242,7 @@
                                                                       :display                "table"
                                                                       :entity_id              (:entity_id card)
                                                                       :visualization_settings {}
-                                                                      :result_metadata        nil
-                                                                      :is_write               false})
+                                                                      :result_metadata        nil})
                                       :series                 []}]})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
 
@@ -295,8 +294,7 @@
                                                                             :display                "table"
                                                                             :query_type             nil
                                                                             :visualization_settings {}
-                                                                            :result_metadata        nil
-                                                                            :is_write               false})
+                                                                            :result_metadata        nil})
                                             :series                 []}]})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
     (testing "fetch a dashboard from an official collection includes the collection type"
