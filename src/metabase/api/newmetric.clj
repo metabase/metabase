@@ -2,6 +2,7 @@
   (:require [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [metabase.api.common :as api]
+            [metabase.driver.common.parameters.dates :as params.dates]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
@@ -72,19 +73,31 @@
     dimensions))
 
 (defn- query-for-metric
-  [card metric choices]
-  (let [keyed-dimensions (into {} (:dimensions metric))
+  [card metric {:keys [time-range] :as choices}]
+  (let [keyed-dimensions  (into {} (:dimensions metric))
+        default-dimension (-> metric :dimensions first second)
         ;; todo: assert they are all there
-        dimensions (-> (or (vals (select-keys keyed-dimensions (:dimensions choices)))
-                           [(-> metric :dimensions first second)])
-                       (include-granularity choices))]
-    (log/debug (str (trs "Using dimensions: ") (pr-str dimensions)))
-    {:type :query
+        dimensions        (-> (or (vals (select-keys keyed-dimensions (:dimensions choices)))
+                                  [default-dimension])
+                              (include-granularity choices))
+        ;; what if they remove the main dimension? should we error?
+        query             (cond-> {:source-table (str "card__" (:id card))
+                                   :breakout    dimensions
+                                   ;; todo: filters?
+                                   :aggregation [(:measure metric)]}
+
+                            (and (:default-time-range metric) (not time-range))
+                            (assoc :filter (params.dates/date-string->filter
+                                             (:default-time-range metric)
+                                             default-dimension))
+
+                            time-range
+                            (assoc :filter (params.dates/date-string->filter time-range default-dimension)))]
+    (log/debug (trs "Using dimensions: {0}" (pr-str dimensions)))
+    (log/debug (trs "Using query: {0}" (pr-str query)))
+    {:type     :query
      :database (:database_id card)
-     :query {:source-table (str "card__" (:id card))
-             :breakout    dimensions
-             ;; todo: filters?
-             :aggregation [(:measure metric)]}}))
+     :query    query}))
 
 (api/defendpoint ^:streaming POST "/:id/query"
   "Run a query for a metric"

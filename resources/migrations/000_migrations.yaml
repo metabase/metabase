@@ -12634,7 +12634,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  remarks: Optional markdown description of the event
+                  remarks: Optional markdown description of the newmetric
                   name: description
                   type: varchar(255)
                   constraints:
@@ -12672,6 +12672,12 @@ databaseChangeLog:
                   type: varchar(255)
                   constraints:
                     nullable: false
+              - column:
+                  remarks: Optional default time range for the metric
+                  name: default_time_range
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
               - column:
                   remarks: Whether or not the newmetric has been archived
                   name: archived
