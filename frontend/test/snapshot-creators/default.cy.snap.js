@@ -13,7 +13,6 @@ const {
   STATIC_PRODUCTS_ID,
   STATIC_REVIEWS_ID,
   STATIC_PEOPLE_ID,
-  STATIC_ACCOUNTS_ID,
 } = SAMPLE_DB_TABLES;
 
 const {
@@ -31,7 +30,6 @@ describe("snapshots", () => {
       snapshot("blank");
       setup();
       updateSettings();
-      hideNewSampleTables();
       snapshot("setup");
       addUsersAndGroups();
       createCollections();
@@ -80,13 +78,6 @@ describe("snapshots", () => {
       response.body.details.db =
         "./resources/sample-database.db;USER=GUEST;PASSWORD=guest";
       cy.request("PUT", `/api/database/${SAMPLE_DB_ID}`, response.body);
-    });
-  }
-
-  function hideNewSampleTables() {
-    cy.request("PUT", "/api/table", {
-      ids: [STATIC_ACCOUNTS_ID],
-      visibility_type: "hidden",
     });
   }
 
