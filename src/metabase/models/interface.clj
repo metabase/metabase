@@ -29,7 +29,8 @@
   toucan-instance?
   instance-of?
   InstanceOf
-  model])
+  model
+  instance])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |

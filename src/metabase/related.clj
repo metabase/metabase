@@ -231,7 +231,7 @@
 
 (defmethod related Query
   [query]
-  ((get-method related Card) query))
+  (related (mi/instance Card query)))
 
 (defmethod related Metric
   [metric]
