@@ -10,6 +10,7 @@ export const ColumnItemRoot = styled.div`
   align-items: center;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
+  background: ${color("white")};
 
   ${props =>
     props.draggable &&
@@ -54,7 +55,6 @@ export const ColumnItemIcon = styled(Icon)`
   margin-left: 1rem;
   cursor: pointer;
   color: ${color("text-dark")};
-  fill-rule: evenodd;
 
   &:hover {
     color: ${color("text-medium")};
