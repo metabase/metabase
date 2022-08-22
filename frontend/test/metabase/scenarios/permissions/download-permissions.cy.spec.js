@@ -24,6 +24,7 @@ const {
   ACCOUNTS_ID,
   INVOICES_ID,
   ANALYTIC_EVENTS_ID,
+  FEEDBACK_ID,
 } = SAMPLE_DATABASE;
 
 const DATA_ACCESS_PERMISSION_INDEX = 0;
@@ -270,6 +271,7 @@ function setDownloadPermissionsForProductsTable(permission) {
               [ACCOUNTS_ID]: "full",
               [INVOICES_ID]: "full",
               [ANALYTIC_EVENTS_ID]: "full",
+              [FEEDBACK_ID]: "full",
             },
           },
         },

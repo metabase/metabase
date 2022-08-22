@@ -44,6 +44,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     assertPermissionTable([
       ["Accounts", "No self-service", "No"],
       ["Analytic Events", "No self-service", "No"],
+      ["Feedback", "No self-service", "No"],
       ["Invoices", "No self-service", "No"],
       ["Orders", "No self-service", "No"],
       ["People", "No self-service", "No"],
@@ -305,6 +306,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         assertPermissionTable([
           ["Accounts", "Unrestricted", "Yes"],
           ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
           ["Invoices", "Unrestricted", "Yes"],
           ["Orders", "Unrestricted", "Yes"],
           ["People", "Unrestricted", "Yes"],
@@ -326,6 +328,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         assertPermissionTable([
           ["Accounts", "No self-service", "No"],
           ["Analytic Events", "No self-service", "No"],
+          ["Feedback", "No self-service", "No"],
           ["Invoices", "No self-service", "No"],
           ["Orders", "No self-service", "No"],
           ["People", "No self-service", "No"],
@@ -347,6 +350,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         assertPermissionTable([
           ["Accounts", "No self-service", "No"],
           ["Analytic Events", "No self-service", "No"],
+          ["Feedback", "No self-service", "No"],
           ["Invoices", "No self-service", "No"],
           ["Orders", "Unrestricted", "No"],
           ["People", "No self-service", "No"],
@@ -378,6 +382,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         assertPermissionTable([
           ["Accounts", "Unrestricted", "Yes"],
           ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
           ["Invoices", "Unrestricted", "Yes"],
           ["Orders", "Unrestricted", "Yes"],
           ["People", "Unrestricted", "Yes"],
@@ -403,6 +408,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         assertPermissionTable([
           ["Accounts", "Unrestricted", "Yes"],
           ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
           ["Invoices", "Unrestricted", "Yes"],
           ["Orders", "Unrestricted", "Yes"],
           ["People", "Unrestricted", "Yes"],
