@@ -111,8 +111,6 @@ describe("visual tests > notebook", () => {
     restore();
     cy.signInAsAdmin();
     cy.viewport(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
-
-    cy.addH2SampleDatabase({ name: `Another Database` });
   });
 
   it("data picker", () => {
