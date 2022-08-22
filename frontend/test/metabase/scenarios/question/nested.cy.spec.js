@@ -185,7 +185,9 @@ describe("scenarios > question > nested", () => {
         };
 
         const nestedQuestionDetails = {
-          filter: [">", ["field", ORDERS.TOTAL, null], 50],
+          query: {
+            filter: [">", ["field", ORDERS.TOTAL, null], 50],
+          },
         };
 
         // Create new question which uses previously defined metric
@@ -559,13 +561,16 @@ function createNestedQuestion(
   createBaseQuestion(baseQuestionDetails).then(({ body: { id } }) => {
     loadBaseQuestionMetadata && visitQuestion(id);
 
+    const { query: nestedQuery, ...details } = nestedQuestionDetails;
+
     return cy.createQuestion(
       {
         name: "Nested Question",
         query: {
+          ...nestedQuery,
           "source-table": `card__${id}`,
         },
-        ...nestedQuestionDetails,
+        ...details,
       },
       {
         visitQuestion: visitNestedQuestion,
