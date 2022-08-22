@@ -118,7 +118,7 @@ describe("visual tests > notebook", () => {
     });
   });
 
-  it("data picker", () => {
+  it.skip("data picker", () => {
     startNewQuestion();
     cy.findByText("Sample Database");
     cy.percySnapshot();
