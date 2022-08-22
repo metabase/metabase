@@ -257,7 +257,7 @@ describe("scenarios > question > nested", () => {
 
     const baseQuestionDetails = {
       name: "14787",
-      query: ordersJoinProductsQuery,
+      query: { ...ordersJoinProductsQuery, limit: 5 },
     };
 
     createNestedQuestion({ baseQuestionDetails });
