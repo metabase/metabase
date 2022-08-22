@@ -10,6 +10,7 @@ type VariantProp = { variant?: "default" | "form-field" };
 export const Root = styled.div<{
   disabled?: boolean;
   noPadding?: boolean;
+  inline?: boolean;
 }>`
   ${props =>
     !props.noPadding &&
@@ -35,6 +36,19 @@ export const Root = styled.div<{
     css`
       pointer-events: none;
       opacity: 0.4;
+    `}
+  ${props =>
+    props.inline &&
+    css`
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+
+      ${Title} {
+        display: inline-flex;
+        margin-bottom: 0;
+      }
     `}
 
   input, .AdminSelect {

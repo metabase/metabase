@@ -84,8 +84,9 @@ export default class Table extends Component {
     ...columnSettings({ hidden: true }),
     "table.pivot": {
       section: t`Columns`,
-      title: t`Pivot the table`,
+      title: t`Pivot table`,
       widget: "toggle",
+      inline: true,
       getHidden: ([{ card, data }]) => data && data.cols.length !== 3,
       getDefault: ([{ card, data }]) =>
         data &&
@@ -163,7 +164,7 @@ export default class Table extends Component {
     //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
     "table.columns": {
       section: t`Columns`,
-      title: t`Visible columns`,
+      title: t`Columns`,
       widget: ChartSettingOrderedColumns,
       getHidden: (series, vizSettings) => vizSettings["table.pivot"],
       isValid: ([{ card, data }]) =>
