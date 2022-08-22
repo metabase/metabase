@@ -1463,7 +1463,7 @@
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
                                                                                            (:id dashboard)
                                                                                            (:category-name param-keys)))))))))
-    (testing "data permissions should not  perms for the Fields in question"
+    (testing "data perms should not affect perms for the Fields in question when users have collection access"
       (mt/with-temp-copy-of-db
         (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
