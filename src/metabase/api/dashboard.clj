@@ -607,23 +607,22 @@
                           :status-code 400})))
        ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
        ;; separate query for each Field (for parameters that are mapped to more than one Field)
-       (binding [qp.perms/*internal-ui-query* true]
-         (try
-           (let [results (map (if (seq query)
-                                #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                #(chain-filter/chain-filter % constraints :limit result-limit))
-                              field-ids)
-                 values (distinct (mapcat :values results))
-                 has_more_values (boolean (some true? (map :has_more_values results)))]
-             ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
-             {:values          (if (sequential? (first values))
-                                 (sort-by second values)
-                                 (sort values))
-              :has_more_values has_more_values})
-           (catch clojure.lang.ExceptionInfo e
-             (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-               (api/throw-403 e)
-               (throw e)))))))))
+       (try
+         (let [results (map (if (seq query)
+                              #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                              #(chain-filter/chain-filter % constraints :limit result-limit))
+                            field-ids)
+               values (distinct (mapcat :values results))
+               has_more_values (boolean (some true? (map :has_more_values results)))]
+           ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
+           {:values          (if (sequential? (first values))
+                               (sort-by second values)
+                               (sort values))
+            :has_more_values has_more_values})
+         (catch clojure.lang.ExceptionInfo e
+           (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+             (api/throw-403 e)
+             (throw e))))))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
@@ -633,7 +632,9 @@
     GET /api/dashboard/1/params/abc/values?def=100"
   [id param-key :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    (chain-filter dashboard param-key query-params)))
+    ;; If a user can read the dashboard, then they can lookup the chain-filter
+    (binding [qp.perms/*internal-ui-query* true]
+      (chain-filter dashboard param-key query-params))))
 
 (api/defendpoint GET "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
@@ -646,7 +647,9 @@
   Currently limited to first 1000 results."
   [id param-key query :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    (chain-filter dashboard param-key query-params query)))
+    ;; If a user can read the dashboard, then they can lookup the chain-filter
+    (binding [qp.perms/*internal-ui-query* true]
+      (chain-filter dashboard param-key query-params query))))
 
 (api/defendpoint GET "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in

@@ -26,7 +26,7 @@
   permissions matching an path or path using `LIKE`; see [[metabase.models.database/pre-delete]] for
   an example of the sort of efficient queries the prefix system facilitates.
 
-  The union of all permissions the current User's gets from all groups of which they are a member are automatically
+  The union of all permissions the current user gets from all groups of which they are a member are automatically
   bound to [[metabase.api.common/*current-user-permissions-set*]] by
   [[metabase.server.middleware.session/bind-current-user]] for every REST API request, and in other places when
   queries are ran in a non-API thread (e.g. for scheduled Dashboard Subscriptions).

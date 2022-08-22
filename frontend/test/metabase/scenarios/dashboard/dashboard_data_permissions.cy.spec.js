@@ -58,6 +58,16 @@ describe("support > permissions (metabase#8472)", () => {
     );
 
     cy.signIn("nodata");
+    filterDashboard();
+  });
+
+  it("should not allow a nocollection user to select the filter", () => {
+    cy.server();
+    cy.route("GET", "/api/dashboard/1/params/*/search/100 Main Street").as(
+      "search",
+    );
+
+    cy.signIn("nocollection");
     filterDashboard(false);
   });
 });

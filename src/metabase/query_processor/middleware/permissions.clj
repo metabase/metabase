@@ -87,7 +87,9 @@
     (check-query-permissions* query)))
 
 (def ^:dynamic *internal-ui-query*
-  "Certain queries have passed the checks reqired and do not need to be checked in check-query-permissions*"
+  "Certain queries have already passed permission checks and do not need to be checked
+  in [[check-query-permissions*]]. The motivating case is a query that finds
+  values to fill a dropdown in chained-filters."
   false)
 
 (s/defn ^:private check-query-permissions*
@@ -101,15 +103,10 @@
       (do
         (check-card-read-perms *card-id*) ;; check collection permissions
         (when-not (has-data-perms? (required-perms outer-query))
-          (or
-            (mi/can-read? *card-id*)
-            (check-block-permissions outer-query))
-          ;; TODO: do we need to check Segmented? (see: permission matrix in ns docs for metabase.models.permissions
-          ;; the case where: Data perms? no | Coll perms? yes | Block? no | Segmented? yes  should run in sandbox.
-          ))
+          (check-block-permissions outer-query)))
 
-      ;; *internal-ui-query*
-      ;; true
+      *internal-ui-query*
+      true
 
       :else
       (check-ad-hoc-query-perms outer-query))))
