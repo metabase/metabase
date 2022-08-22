@@ -415,11 +415,5 @@
 
 (defmethod serdes.base/load-find-local "Field"
   [path]
-  (let [db-name            (-> path first :id)
-        schema-name        (when (= 3 (count path))
-                             (-> path second :id))
-        [{table-name :id}
-         {field-name :id}] (take-last 2 path)
-        db-id              (db/select-one-field :id 'Database :name db-name)
-        table-id           (db/select-one-field :id 'Table :name table-name :db_id db-id :schema schema-name)]
-    (db/select-one-field :id Field :name field-name :table_id table-id)))
+  (let [table-id (serdes.base/load-find-local (pop path))]
+    (db/select-one-field :id Field :name (-> path last :id) :table_id table-id)))

@@ -7,9 +7,7 @@ import {
   openQuestionActions,
   questionInfoButton,
 } from "__support__/e2e/helpers";
-
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
-
 import {
   openColumnOptions,
   renameColumn,
@@ -17,10 +15,9 @@ import {
   mapColumnTo,
   setModelMetadata,
 } from "./helpers/e2e-models-metadata-helpers";
-
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE, REVIEWS } = SAMPLE_DATABASE;
+const { PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS } = SAMPLE_DATABASE;
 
 describe("scenarios > models metadata", () => {
   beforeEach(() => {
@@ -272,6 +269,27 @@ describe("scenarios > models metadata", () => {
           });
         });
       });
+    });
+
+    it("models metadata tab should show columns with details-only visibility (metabase#22521)", () => {
+      cy.request("PUT", `/api/field/${PRODUCTS.VENDOR}`, {
+        visibility_type: "details-only",
+      });
+
+      const questionDetails = {
+        name: "22521",
+        dataset: true,
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+      };
+
+      cy.createQuestion(questionDetails, { visitQuestion: true });
+      openQuestionActions();
+      cy.findByText("Vendor").should("not.exist");
+      cy.findByText("Edit metadata").click();
+      cy.wait(["@cardQuery", "@cardQuery"]);
+      cy.findByText("Vendor").should("be.visible");
     });
   });
 });

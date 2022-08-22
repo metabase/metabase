@@ -9,6 +9,7 @@
    "Database"
    "Dimension"
    "Field"
+   "FieldValues"
    "Metric"
    "NativeQuerySnippet"
    "Pulse"

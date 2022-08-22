@@ -20,7 +20,8 @@ describe("ChartSettingsSidebar", () => {
     );
     getByText("Table options");
     getByText("Conditional Formatting");
-    fireEvent.click(container.querySelector(".Icon-gear"));
+
+    fireEvent.click(container.querySelector(".Icon-ellipsis"));
     expect(queryByText("Table options")).toBe(null);
     expect(queryByText("Conditional Formatting")).toBe(null);
   });

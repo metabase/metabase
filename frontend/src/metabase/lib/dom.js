@@ -1,4 +1,5 @@
 import _ from "underscore";
+import querystring from "querystring";
 import { isCypressActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -295,6 +296,8 @@ export function open(
     openInSameWindow = url => clickLink(url, false),
     // custom function for opening in new window
     openInBlankWindow = url => clickLink(url, true),
+    // custom function for opening in same app instance
+    openInSameOrigin = openInSameWindow,
     ignoreSiteUrl = false,
     ...options
   } = {},
@@ -303,6 +306,8 @@ export function open(
 
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);
+  } else if (isSameOrigin(url)) {
+    openInSameOrigin(url, getLocation(url));
   } else {
     openInSameWindow(url);
   }
@@ -355,9 +360,19 @@ export function shouldOpenInBlankWindow(
 
 const getOrigin = url => {
   try {
-    return new URL(url).origin;
+    return new URL(url, window.location.origin).origin;
   } catch {
     return null;
+  }
+};
+
+const getLocation = url => {
+  try {
+    const { pathname, search, hash } = new URL(url, window.location.origin);
+    const query = querystring.parse(search.substring(1));
+    return { pathname, search, query, hash };
+  } catch {
+    return {};
   }
 };
 
