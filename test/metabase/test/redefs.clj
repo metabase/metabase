@@ -24,13 +24,20 @@
   (let [attributes-with-defaults (merge (tt/with-temp-defaults model)
                                         attributes)]
     (try
-      (let [temp-object        (let [object (db/insert! model attributes-with-defaults)]
+      (let [temp-object        (let [object (or (db/insert! model attributes-with-defaults)
+                                                ;; if the object didn't come back from insert see if it's possible to
+                                                ;; manually fetch it (work around Toucan 1 bugs where things with
+                                                ;; non-integer values don't come back from H2, e.g. models like Session)
+                                                (let [pk-key   (models/primary-key model)
+                                                      pk-value (get attributes-with-defaults pk-key)]
+                                                  (when pk-value
+                                                    (db/select-one model pk-key pk-value))))]
                                  (assert (record? object)
                                          (str (format "db/insert! for %s did not return a valid row. Got: %s."
                                                       (name model)
                                                       (pr-str object))
                                               \newline
-                                              "(Tip: db/insert! doesn't seem to work with H2 with tables with compound PKs.)"))
+                                              "(Tip: db/insert! doesn't seem to work with H2 with tables with compound PKs, or with non-integer IDs.)"))
                                  object)
             primary-key-column (models/primary-key model)
             primary-key-value  (get temp-object primary-key-column)]
