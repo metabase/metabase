@@ -38,7 +38,7 @@ const CypressBackend = {
         MB_ENABLE_TEST_ENDPOINTS: "true",
         MB_PREMIUM_EMBEDDING_TOKEN:
           (process.env["MB_EDITION"] === "ee" &&
-            process.env["ENTERPRISE_TOKEN"]) ||
+            process.env["MB_PREMIUM_EMBEDDING_TOKEN"]) ||
           undefined,
       };
 
