@@ -111,6 +111,7 @@ export const initializeMetricCard =
     }
 
     const metricCard = metricQuestion
+      .setDisplayName(metric.name)
       // eventually let user decide this?
       .setDisplay("line")
       // initializeQB does this to saved, structured cards, so we should, too?
