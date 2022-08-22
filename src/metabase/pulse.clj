@@ -10,6 +10,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
+            [metabase.models.interface :as mi]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
@@ -27,8 +28,7 @@
             [metabase.util.ui-logic :as ui-logic]
             [metabase.util.urls :as urls]
             [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.models.interface :as mi])
+            [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo
            metabase.models.card.CardInstance))
 

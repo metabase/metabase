@@ -3,11 +3,11 @@
   (:require [cheshire.core :as json]
             [metabase.db :as mdb]
             [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.models.interface :as mi]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
-            [toucan.models :as models]
-            [metabase.models.interface :as mi]))
+            [toucan.models :as models]))
 
 (models/defmodel Query :query)
 
