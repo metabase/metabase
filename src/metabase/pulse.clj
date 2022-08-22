@@ -27,7 +27,8 @@
             [metabase.util.ui-logic :as ui-logic]
             [metabase.util.urls :as urls]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.models.interface :as mi])
   (:import clojure.lang.ExceptionInfo
            metabase.models.card.CardInstance))
 
@@ -490,8 +491,7 @@
   [{:keys [dashboard_id], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
   (let [dashboard (db/select-one Dashboard :id dashboard_id)
-        pulse     (-> pulse
-                      pulse/map->PulseInstance
+        pulse     (-> (mi/instance Pulse pulse)
                       ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
                       ;; to fetch the Pulse.
                       pulse/hydrate-notification

@@ -61,11 +61,11 @@
          (log/warn (trs "Warning: Automagic analysis context is missing result metadata. Unable to resolve Fields by name.")))
        (when-let [field (m/find-first #(= (:name %) id-or-name)
                                       result-metadata)]
-         (-> field
-             (update :base_type keyword)
-             (update :semantic_type keyword)
-             field/map->FieldInstance
-             (classify/run-classifiers {}))))
+         (as-> field field
+           (update field :base_type keyword)
+           (update field :semantic_type keyword)
+           (mi/instance Field field)
+           (classify/run-classifiers field {}))))
      ;; otherwise this isn't returning something, and that's probably an error. Log it.
      (log/warn (str (trs "Cannot resolve Field {0} in automagic analysis context" field-id-or-name-or-clause)
                     \newline
@@ -758,12 +758,12 @@
                         (->> source
                              :result_metadata
                              (map (fn [field]
-                                    (-> field
-                                        (update :base_type keyword)
-                                        (update :semantic_type keyword)
-                                        field/map->FieldInstance
-                                        (classify/run-classifiers {})
-                                        (assoc :engine engine))))
+                                    (as-> field field
+                                      (update field :base_type keyword)
+                                      (update field :semantic_type keyword)
+                                      (mi/instance Field field)
+                                      (classify/run-classifiers field {})
+                                      (assoc field :engine engine))))
                              constantly))]
     (as-> {:source       (assoc source :fields (table->fields source))
            :root         root
@@ -1051,10 +1051,10 @@
                  (= :metric))
            (->> aggregation-clause second (db/select-one Metric :id))
            (let [table-id (table-id question)]
-             (metric/map->MetricInstance {:definition {:aggregation  [aggregation-clause]
-                                                       :source-table table-id}
-                                          :name       (metric->description root aggregation-clause)
-                                          :table_id   table-id}))))
+             (mi/instance Metric {:definition {:aggregation  [aggregation-clause]
+                                               :source-table table-id}
+                                  :name       (metric->description root aggregation-clause)
+                                  :table_id   table-id}))))
        (get-in question [:dataset_query :query :aggregation])))
 
 (s/defn ^:private collect-breakout-fields :- (s/maybe [(mi/InstanceOf Field)])

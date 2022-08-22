@@ -16,6 +16,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.models.params :as params]
             [metabase.query-processor :as qp]
             [metabase.query-processor.card :as qp.card]
@@ -41,7 +42,8 @@
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
   [card]
-  (card/map->CardInstance
+  (mi/instance
+   Card
    (u/select-nested-keys card [:id :name :description :display :visualization_settings
                                [:dataset_query :type [:native :template-tags]]])))
 

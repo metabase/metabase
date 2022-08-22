@@ -6,7 +6,8 @@
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
-            [toucan.models :as models]))
+            [toucan.models :as models]
+            [metabase.models.interface :as mi]))
 
 (models/defmodel Query :query)
 
@@ -100,4 +101,4 @@
        mbql.normalize/normalize
        (hash-map :dataset_query)
        (merge (query->database-and-table-ids query))
-       map->QueryInstance))
+       (mi/instance Query)))
