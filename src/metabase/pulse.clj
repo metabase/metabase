@@ -10,6 +10,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
+            [metabase.models.interface :as mi]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
@@ -490,8 +491,7 @@
   [{:keys [dashboard_id], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
   (let [dashboard (db/select-one Dashboard :id dashboard_id)
-        pulse     (-> pulse
-                      pulse/map->PulseInstance
+        pulse     (-> (mi/instance Pulse pulse)
                       ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
                       ;; to fetch the Pulse.
                       pulse/hydrate-notification

@@ -107,7 +107,7 @@
 
 ;;; ----------------------------------------------------- OTHER ------------------------------------------------------
 
-(s/defn retrieve-metrics :- [MetricInstance]
+(s/defn retrieve-metrics :- [(mi/InstanceOf Metric)]
   "Fetch all `Metrics` for a given `Table`. Optional second argument allows filtering by active state by providing one
   of 3 keyword values: `:active`, `:deleted`, `:all`. Default filtering is for `:active`."
   ([table-id :- su/IntGreaterThanZero]
