@@ -15,7 +15,7 @@ import {
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
 const ordersJoinProductsQuery = {
   "source-table": ORDERS_ID,
@@ -495,6 +495,59 @@ describe("scenarios > question > nested", () => {
 
       cy.button("Failed").should("not.exist");
       cy.findByText("Not now").click();
+    }
+  });
+
+  it("should create a nested question with post-aggregation filter (metabase#11561)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PEOPLE.ID, { "source-field": ORDERS.USER_ID }]],
+        },
+        type: "query",
+      },
+    });
+
+    cy.findByText("Filter").click();
+    cy.findByText("Summaries").click();
+    cy.findByTestId("operator-select").click();
+    popover().contains("Equal to").click();
+    cy.findByPlaceholderText("Enter a number").type("5");
+    cy.button("Apply Filters").click();
+    cy.wait("@dataset");
+
+    cy.findByText("Count is equal to 5");
+    cy.findByText("Showing 100 rows");
+
+    saveQuestion();
+
+    reloadQuestion();
+    cy.findByText("Showing 100 rows");
+
+    cy.icon("notebook").click();
+    cy.findAllByTestId("notebook-cell-item").contains(/Users? → ID/);
+
+    function saveQuestion() {
+      cy.intercept("POST", "/api/card").as("cardCreated");
+
+      cy.findByText("Save").click();
+
+      cy.get(".Modal").within(() => {
+        cy.findByLabelText("Name").type("Q").blur();
+        cy.button("Save").click();
+      });
+
+      cy.wait("@cardCreated");
+      cy.findByText("Not now").click();
+    }
+
+    function reloadQuestion() {
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+      cy.reload();
+      cy.wait("@cardQuery");
     }
   });
 });
