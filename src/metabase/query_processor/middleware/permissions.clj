@@ -96,18 +96,20 @@
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
     (cond
+
       *card-id*
       (do
         (check-card-read-perms *card-id*) ;; check collection permissions
         (when-not (has-data-perms? (required-perms outer-query))
-          (check-block-permissions outer-query)
+          (or
+            (mi/can-read? *card-id*)
+            (check-block-permissions outer-query))
           ;; TODO: do we need to check Segmented? (see: permission matrix in ns docs for metabase.models.permissions
           ;; the case where: Data perms? no | Coll perms? yes | Block? no | Segmented? yes  should run in sandbox.
-
           ))
 
-      *internal-ui-query*
-      true
+      ;; *internal-ui-query*
+      ;; true
 
       :else
       (check-ad-hoc-query-perms outer-query))))
