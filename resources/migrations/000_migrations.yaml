@@ -12622,6 +12622,13 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
                   name: collection_id
                   type: int
                   remarks: The associated collection
