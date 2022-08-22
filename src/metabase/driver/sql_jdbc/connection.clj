@@ -11,6 +11,7 @@
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.schema :as su]
             [metabase.util.ssh :as ssh]
             [schema.core :as s]
             [toucan.db :as db])
@@ -142,7 +143,7 @@
 (s/defn ^:private jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on `database`'s `:details` map, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated."
-  [{driver :engine, :keys [details], :as database} :- (s/maybe (mi/InstanceOf Database))]
+  [{driver :engine, :keys [details], :as database} :- (s/maybe su/Map)]
   (when (some? database)
     (hash (connection-details->spec driver details))))
 

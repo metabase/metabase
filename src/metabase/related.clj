@@ -63,7 +63,7 @@
   [field]
   [[:field-id (:id field)]])
 
-(defn similarity
+(defn- similarity
   "How similar are entities `a` and `b` based on a structural comparison of their
    definition (MBQL).
    For the purposes of finding related entites we are only interested in
