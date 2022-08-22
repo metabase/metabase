@@ -115,6 +115,10 @@
 
 (models/defmodel PulseChannel :pulse_channel)
 
+(doto PulseChannel
+  (derive ::mi/read-policy.always-allow)
+  (derive ::mi/write-policy.superuser))
+
 (defn ^:hydrate recipients
   "Return the `PulseChannelRecipients` associated with this `pulse-channel`."
   [{pulse-channel-id :id, {:keys [emails]} :details}]
@@ -191,12 +195,6 @@
     :pre-delete     pre-delete
     :pre-insert     validate-email-domains
     :pre-update     validate-email-domains})
-
-  mi/IObjectPermissions
-  (merge
-   mi/IObjectPermissionsDefaults
-   {:can-read?  (constantly true)
-    :can-write? mi/superuser?})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :pulse) :channel_type :details])})

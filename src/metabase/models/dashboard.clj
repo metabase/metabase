@@ -10,7 +10,6 @@
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.field-values :as field-values]
-            [metabase.models.interface :as mi]
             [metabase.models.params :as params]
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :as pulse :refer [Pulse]]
@@ -65,6 +64,9 @@
 (comment moderation/keep-me)
 
 (models/defmodel Dashboard :report_dashboard)
+
+(derive Dashboard ::perms/use-parent-collection-perms)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (defn- pre-delete [dashboard]
@@ -140,10 +142,6 @@
           :pre-update  pre-update
           :post-update post-update
           :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
-
-  ;; You can read/write a Dashboard if you can read/write its parent Collection
-  mi/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})

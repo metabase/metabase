@@ -19,11 +19,15 @@
 
 (models/defmodel DashboardCard :report_dashboardcard)
 
+(doto DashboardCard
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
 (declare series)
 
-(defn- perms-objects-set
-  "Return the set of permissions required to `read-or-write` this DashboardCard. If `:card` and `:series` are already
-  hydrated this method doesn't need to make any DB calls."
+;;; Return the set of permissions required to `read-or-write` this DashboardCard. If `:card` and `:series` are already
+;;; hydrated this method doesn't need to make any DB calls.
+(defmethod mi/perms-objects-set DashboardCard
   [dashcard read-or-write]
   (let [card   (or (:card dashcard)
                    (db/select-one [Card :dataset_query] :id (u/the-id (:card_id dashcard))))
@@ -48,11 +52,6 @@
                                     :visualization_settings :visualization-settings})
           :pre-insert  pre-insert
           :post-select #(set/rename-keys % {:sizex :sizeX, :sizey :sizeY})})
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:perms-objects-set perms-objects-set
-          :can-read?         (partial mi/current-user-has-full-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :card)
