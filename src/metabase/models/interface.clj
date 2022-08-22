@@ -16,6 +16,7 @@
             [potemkin :as p]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
+            [toucan.db :as db]
             [toucan.models :as models])
   (:import [java.io BufferedInputStream ByteArrayInputStream DataInputStream]
            java.sql.Blob
@@ -348,9 +349,9 @@
   (contains? (current-user-permissions-set) "/"))
 
 (defn- check-perms-with-fn
-  ([fn-symb read-or-write model object-id]
+  ([fn-symb read-or-write a-model object-id]
    (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (model object-id))))
+       (check-perms-with-fn fn-symb read-or-write (db/select-one a-model (models/primary-key a-model) object-id))))
 
   ([fn-symb read-or-write object]
    (and object
