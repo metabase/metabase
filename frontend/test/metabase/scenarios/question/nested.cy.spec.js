@@ -555,29 +555,32 @@ describe("scenarios > question > nested", () => {
 });
 
 function createNestedQuestion(
-  { baseQuestionDetails, nestedQuestionDetails },
+  { baseQuestionDetails, nestedQuestionDetails = {} },
   { loadBaseQuestionMetadata = false, visitNestedQuestion = true } = {},
 ) {
+  if (!baseQuestionDetails) {
+    throw new Error("Please provide the base question details");
+  }
+
   createBaseQuestion(baseQuestionDetails).then(({ body: { id } }) => {
     loadBaseQuestionMetadata && visitQuestion(id);
 
     const { query: nestedQuery, ...details } = nestedQuestionDetails;
 
-    return cy.createQuestion(
-      {
-        name: "Nested Question",
-        query: {
-          ...nestedQuery,
-          "source-table": `card__${id}`,
-        },
-        ...details,
+    const composite = {
+      name: "Nested Question",
+      query: {
+        ...nestedQuery,
+        "source-table": `card__${id}`,
       },
-      {
-        visitQuestion: visitNestedQuestion,
-        wrapId: true,
-        idAlias: "nestedQuestionId",
-      },
-    );
+      ...details,
+    };
+
+    return cy.createQuestion(composite, {
+      visitQuestion: visitNestedQuestion,
+      wrapId: true,
+      idAlias: "nestedQuestionId",
+    });
   });
 
   function createBaseQuestion(query) {
