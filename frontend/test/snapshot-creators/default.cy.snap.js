@@ -15,6 +15,7 @@ const {
   STATIC_PEOPLE_ID,
   STATIC_ACCOUNTS_ID,
   STATIC_INVOICES_ID,
+  STATIC_ANALYTIC_EVENTS_ID,
 } = SAMPLE_DB_TABLES;
 
 const {
@@ -212,6 +213,7 @@ describe("snapshots", () => {
     PEOPLE_ID,
     ACCOUNTS_ID,
     INVOICES_ID,
+    ANALYTIC_EVENTS_ID,
   }) {
     expect(ORDERS_ID).to.eq(STATIC_ORDERS_ID);
     expect(PEOPLE_ID).to.eq(STATIC_PEOPLE_ID);
@@ -219,6 +221,7 @@ describe("snapshots", () => {
     expect(PRODUCTS_ID).to.eq(STATIC_PRODUCTS_ID);
     expect(ACCOUNTS_ID).to.eq(STATIC_ACCOUNTS_ID);
     expect(INVOICES_ID).to.eq(STATIC_INVOICES_ID);
+    expect(ANALYTIC_EVENTS_ID).to.eq(STATIC_ANALYTIC_EVENTS_ID);
   }
 
   // TODO: It'd be nice to have one file per snapshot.

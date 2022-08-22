@@ -24,11 +24,12 @@ export const SAMPLE_DB_TABLES = {
   // old tables
   STATIC_PRODUCTS_ID: 1,
   STATIC_ORDERS_ID: 2,
-  STATIC_PEOPLE_ID: 3,
-  STATIC_REVIEWS_ID: 6,
+  STATIC_PEOPLE_ID: 4,
+  STATIC_REVIEWS_ID: 7,
   // new tables
-  STATIC_ACCOUNTS_ID: 5,
-  STATIC_INVOICES_ID: 4,
+  STATIC_ACCOUNTS_ID: 6,
+  STATIC_INVOICES_ID: 5,
+  STATIC_ANALYTIC_EVENTS_ID: 3,
 };
 
 // All users and admin groups are the defaults that come with Metabase.
