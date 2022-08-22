@@ -1463,7 +1463,7 @@
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
                                                                                            (:id dashboard)
                                                                                            (:category-name param-keys)))))))))
-    (testing "should check perms for the Fields in question"
+    (testing "data permissions should not  perms for the Fields in question"
       (mt/with-temp-copy-of-db
         (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
@@ -1471,8 +1471,15 @@
           ;; but 200 on calls that we could just use the cache.
           ;; It's not ideal and we definitely need to have a consistent behavior
           (with-redefs [field-values/field-should-have-field-values? (fn [_] false)]
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys)))))))))))
+            (is (= {:values          ["African" "American" "Artisan"]
+                    :has_more_values false}
+                   (chain-filter-test/take-n-values 3 (mt/user-http-request
+                                                        :rasta
+                                                        :get
+                                                        200
+                                                        (chain-filter-values-url
+                                                          (:id dashboard)
+                                                          (:category-name param-keys))))))))))))
 
 (deftest chain-filter-search-test
   (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
