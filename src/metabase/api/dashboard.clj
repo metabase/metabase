@@ -598,7 +598,9 @@
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys resolved-params)
                         :status-code     400})))
-     (binding [qp.perms/*internal-ui-query* (mi/can-read? 'Dashboard (:id dashboard))] ;; fix for (#24832)
+     (binding [qp.perms/*card-id*
+               ;; make sure that the proper card-id is bound (#24832)
+               (-> (get resolved-params param-key) :mappings first :card_id)]
        (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
              field-ids   (param-key->field-ids dashboard param-key)]
          (when (empty? field-ids)
