@@ -517,19 +517,19 @@
 (defn- flow-field-metadata
   "Merge information about fields from `source-metadata` into the returned `cols`."
   [source-metadata cols dataset?]
-  (let [index           (fn [col] (or (:id col) (:name col "")))
-        index->metadata (m/index-by index source-metadata)]
-    (for [{:keys [source] :as col} cols]
-      (if-let [source-metadata-for-field (-> col index index->metadata)]
+  (let [by-key (m/index-by (comp qp.util/field-ref->key :field_ref) source-metadata)]
+    (for [{:keys [field_ref source] :as col} cols]
+      ;; aggregation fields are not fromt he source-metadata and also the field_ref for
+      ;; them are not unique for a nested query. So do not merge them otherwise
+      ;; the metadata will be messed up.
+      ;; TODO: I think the best option here is to introduce a parent_field_ref so that
+      ;; we could merge preserve metadata such as ":sematic_type or :unit" from the source field.
+      (if-let [source-metadata-for-field (and (not= :aggregation source)
+                                              (get by-key (qp.util/field-ref->key field_ref)))]
         (merge-source-metadata-col source-metadata-for-field
                                    (merge col
                                           (when dataset?
-                                            (select-keys source-metadata-for-field qp.util/preserved-keys))
-                                          ;; the display_name of aggregation or breakout column are
-                                          ;; inferred from the source column display_name, so we want to make sure
-                                          ;; we don't override the display_name with the display_name of the dataset metadata
-                                          (when (and dataset? (#{:aggregation :breakout} source))
-                                            {:display_name (:display_name col)})))
+                                            (select-keys source-metadata-for-field qp.util/preserved-keys))))
         col))))
 
 (declare mbql-cols)
