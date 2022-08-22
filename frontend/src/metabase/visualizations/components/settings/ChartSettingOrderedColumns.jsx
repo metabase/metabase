@@ -8,7 +8,11 @@ import {
   SortableElement,
 } from "metabase/components/sortable";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { keyForColumn, findColumnForColumnSetting } from "metabase/lib/dataset";
+import {
+  keyForColumn,
+  findColumnForColumnSetting,
+  findRowForColumnSetting,
+} from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import ColumnItem from "./ColumnItem";
@@ -59,6 +63,7 @@ export default class ChartSettingOrderedColumns extends Component {
   };
 
   handleSortEnd = ({ oldIndex, newIndex }) => {
+    console.log(oldIndex, newIndex);
     const fields = [...this.props.value];
     fields.splice(newIndex, 0, fields.splice(oldIndex, 1)[0]);
     this.props.onChange(fields);
@@ -85,12 +90,17 @@ export default class ChartSettingOrderedColumns extends Component {
     onChange(columnSettings);
   };
 
-  getColumnName = columnSetting =>
-    getFriendlyName(
-      findColumnForColumnSetting(this.props.columns, columnSetting) || {
+  getColumnName = columnSetting => {
+    const columnOrRow = this.props.rowMode
+      ? findRowForColumnSetting(this.props.columns, columnSetting)
+      : findColumnForColumnSetting(this.props.columns, columnSetting);
+
+    return getFriendlyName(
+      columnOrRow || {
         display_name: "[Unknown]",
       },
     );
+  };
 
   render() {
     const {
@@ -98,6 +108,7 @@ export default class ChartSettingOrderedColumns extends Component {
       question,
       columns,
       allowAdditionalFieldOptions = true,
+      rowMode = false,
     } = this.props;
     const query = question && question.query();
 
@@ -117,13 +128,15 @@ export default class ChartSettingOrderedColumns extends Component {
     const [enabledColumns, disabledColumns] = _.partition(
       value
         .filter(columnSetting =>
-          findColumnForColumnSetting(columns, columnSetting),
+          rowMode
+            ? findRowForColumnSetting(columns, columnSetting)
+            : findColumnForColumnSetting(columns, columnSetting),
         )
         .map((columnSetting, index) => ({ ...columnSetting, index })),
       columnSetting => columnSetting.enabled,
     );
 
-    console.log(value, columns);
+    // console.log(value, columns);
 
     return (
       <div className="list">

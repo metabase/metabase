@@ -26,10 +26,13 @@ export default class FunnelNormal extends Component {
     const dimensionIndex = 0;
     const metricIndex = 1;
     const cols = series[0].data.cols;
+    //console.log(settings, series);
     const rows = settings["funnel.columns"]
       ? settings["funnel.columns"]
           .filter(fc => fc.enabled)
-          .map(fc => series.find(s => s.card.name === fc.name).data.rows[0])
+          .map(
+            fc => series.find(s => s.card.rowIndex === fc.rowId).data.rows[0],
+          )
       : series.map(s => s.data.rows[0]);
 
     const isNarrow = gridSize && gridSize.width < 7;

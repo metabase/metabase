@@ -114,16 +114,26 @@ export default class Funnel extends Component {
       section: t`Data`,
       title: t`Breakouts`,
       widget: ChartSettingOrderedColumns,
-      getDefault: props => {
-        console.log(props);
-        return props.map(p => ({
-          name: p.card.name,
+      isValid: series => {
+        //console.log('is valid', series);
+
+        return true;
+      },
+      getDefault: transformedSeries => {
+        // console.log(transformedSeries);
+        return transformedSeries.map(s => ({
+          name: s.card.name,
+          rowId: s.card.rowIndex,
           enabled: true,
         }));
       },
-      getProps: props => ({
-        columns: props.map(p => ({ ...p.card, display_name: p.card.name })),
+      getProps: transformedSeries => ({
+        columns: transformedSeries.map(s => ({
+          ...s.card,
+          display_name: s.card.name,
+        })),
         allowAdditionalFieldOptions: false,
+        rowMode: true,
       }),
     },
     ...metricSetting("funnel.metric", {
@@ -175,12 +185,13 @@ export default class Funnel extends Component {
       dimensionIndex >= 0 &&
       metricIndex >= 0
     ) {
-      return rows.map(row => ({
+      return rows.map((row, index) => ({
         card: {
           ...card,
           name: formatValue(row[dimensionIndex], {
             column: cols[dimensionIndex],
           }),
+          rowIndex: index,
           _transformed: true,
         },
         data: {
