@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import { connect } from "react-redux";
 
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 import TableSimple from "../components/TableSimple";
@@ -22,8 +21,6 @@ import {
   isAvatarURL,
 } from "metabase/lib/schema_metadata";
 
-import { getDatasetEditorTab } from "metabase/query_builder/selectors";
-
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 import ChartSettingsTableFormatting, {
   isFormattable,
@@ -37,11 +34,7 @@ import cx from "classnames";
 
 import { getIn } from "icepick";
 
-const mapStateToProps = state => ({
-  datasetEditorTab: "qb" in state && getDatasetEditorTab(state),
-});
-
-class Table extends Component {
+export default class Table extends Component {
   static uiName = t`Table`;
   static identifier = "table";
   static iconName = "table";
@@ -360,7 +353,7 @@ class Table extends Component {
       const columnIndexes = columnSettings
         .filter(
           columnSetting =>
-            columnSetting.enabled || this.props.datasetEditorTab === "metadata",
+            columnSetting.enabled || this.props.isShowingDetailsOnlyColumns,
         )
         .map(columnSetting =>
           findColumnIndexForColumnSetting(cols, columnSetting),
@@ -441,5 +434,3 @@ class Table extends Component {
     );
   }
 }
-
-export default connect(mapStateToProps)(Table);
