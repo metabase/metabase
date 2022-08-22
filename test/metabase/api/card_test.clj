@@ -2379,8 +2379,8 @@
                               (u/the-id parchived)))
               "Scheduled refresh of archived model"))))))
 
-(deftest model-validation
-  (with-temp-native-card-with-params [_ card]
+(deftest template-tags-model-validation
+  (with-temp-native-card-with-params [db card]
     (testing "You cannot create a card with variables as a model"
       (is (= "A model made from a native SQL question cannot have a variable or field filter."
              (mt/user-http-request :rasta :post 400 "card"
@@ -2389,6 +2389,19 @@
                                     {:dataset       true
                                      :query_type    "native"
                                      :dataset_query (:dataset_query card)})))))
+    (testing "You can create a card with a saved question CTE as a model"
+      (let [card-reference (str "#" (u/the-id card))]
+        (mt/user-http-request :rasta :post 200 "card"
+                              (merge
+                               (mt/with-temp-defaults Card)
+                               {:dataset_query {:database (u/the-id db)
+                                                :type     :native
+                                                :native   {:query         (format "SELECT * FROM {{%s}};" card-reference)
+                                                           :template-tags {card-reference {:card-id      (u/the-id card),
+                                                                                           :display-name card-reference,
+                                                                                           :id           (str (random-uuid))
+                                                                                           :name         card-reference,
+                                                                                           :type         :card}}}}}))))
     (testing  "You cannot update a model to have variables"
       (is (= "A model made from a native SQL question cannot have a variable or field filter."
              (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:dataset true}))))))

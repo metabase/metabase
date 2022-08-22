@@ -365,10 +365,13 @@ saved later when it is ready."
       (when timed-out?
         (schedule-metadata-saving result-metadata-chan <>)))))
 
-(defn- check-valid-card-info [{:keys [dataset dataset_query]}]
-  (when (and dataset
-             (not (every? #(contains? #{"card" "snippet"} %) (get-in dataset_query [:native :template-tags]))))
-    (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.") {:status-code 400}))))
+(defn- check-valid-card-info
+  "Checks that the card is valid before saving. Throws an exception if not."
+  [{:keys [dataset dataset_query]}]
+  (let [template-tag-types (->> (vals (get-in dataset_query [:native :template-tags]))
+                                (map (comp keyword :type)))]
+    (when (and dataset (some (complement #{:card :snippet}) template-tag-types))
+      (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.") {:status-code 400})))))
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
