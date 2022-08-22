@@ -116,7 +116,6 @@ export default class ChartSettingOrderedColumns extends Component {
 
     return (
       <div className="list">
-        <div>{t`Click and drag to change their order`}</div>
         {enabledColumns.length > 0 ? (
           <SortableColumnList
             columnSettings={enabledColumns}

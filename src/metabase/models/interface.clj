@@ -367,3 +367,24 @@
   permissions for the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is either `:read` or
   `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.models.permissions/set-has-partial-permissions-for-set?))
+
+;;;; redefs
+
+;;; swap out [[models/defmodel]] with a special magical version that avoids redefining stuff if the definition has not
+;;; changed at all. This is important to make the stuff in [[models.dispatch]] work properly, since we're dispatching
+;;; off of the model objects themselves e.g. [[metabase.models.user/User]] -- it is important that they do not change
+
+(defonce ^:private original-defmodel @(resolve `models/defmodel))
+
+(defmacro ^:private defmodel [model & args]
+  (let [varr           (ns-resolve *ns* model)
+        existing-hash  (some-> varr meta ::defmodel-hash)
+        has-same-hash? (= existing-hash (hash &form))]
+    (when has-same-hash?
+      (println model "has not changed, skipping redefinition"))
+    (when-not has-same-hash?
+      `(do
+         ~(apply original-defmodel &form &env model args)
+         (alter-meta! (var ~model) assoc ::defmodel-hash ~(hash &form))))))
+
+(alter-var-root #'models/defmodel (constantly @#'defmodel))
