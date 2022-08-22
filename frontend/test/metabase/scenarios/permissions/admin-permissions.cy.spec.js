@@ -395,7 +395,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         modal().within(() => {
           cy.findByText("Save permissions?");
           cy.contains(
-            "collection will be given access to 7 tables in Sample Database.",
+            "collection will be given access to 8 tables in Sample Database.",
           );
           cy.contains(
             "collection will now be able to write native queries for Sample Database.",
@@ -501,7 +501,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         modal().within(() => {
           cy.findByText("Save permissions?");
           cy.contains(
-            "readonly will be given access to 7 tables in Sample Database.",
+            "readonly will be given access to 8 tables in Sample Database.",
           );
           cy.contains(
             "readonly will now be able to write native queries for Sample Database.",
