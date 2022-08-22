@@ -519,11 +519,10 @@
   [source-metadata cols dataset?]
   (let [by-key (m/index-by (comp qp.util/field-ref->key :field_ref) source-metadata)]
     (for [{:keys [field_ref source] :as col} cols]
-      ;; aggregation fields are not fromt he source-metadata and also the field_ref for
-      ;; them are not unique for a nested query. So do not merge them otherwise
-      ;; the metadata will be messed up.
-      ;; TODO: I think the best option here is to introduce a parent_field_ref so that
-      ;; we could merge preserve metadata such as ":sematic_type or :unit" from the source field.
+     ;; aggregation fields are not from the source-metadata and their field_ref
+     ;; are not unique for a nested query. So do not merge them otherwise the metadata will be messed up.
+     ;; TODO: I think the best option here is to introduce a parent_field_ref so that
+     ;; we could merge preserve metadata such as “:sematic_type or :unit” from the source field.
       (if-let [source-metadata-for-field (and (not= :aggregation source)
                                               (get by-key (qp.util/field-ref->key field_ref)))]
         (merge-source-metadata-col source-metadata-for-field
