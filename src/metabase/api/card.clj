@@ -365,14 +365,6 @@ saved later when it is ready."
       (when timed-out?
         (schedule-metadata-saving result-metadata-chan <>)))))
 
-(defn- check-valid-card-info
-  "Checks that the card is valid before saving. Throws an exception if not."
-  [{:keys [dataset dataset_query]}]
-  (let [template-tag-types (->> (vals (get-in dataset_query [:native :template-tags]))
-                                (map (comp keyword :type)))]
-    (when (and dataset (some (complement #{:card :snippet}) template-tag-types))
-      (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.") {:status-code 400})))))
-
 (api/defendpoint POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
@@ -389,7 +381,6 @@ saved later when it is ready."
    result_metadata        (s/maybe qr/ResultsMetadata)
    cache_ttl              (s/maybe su/IntGreaterThanZero)
    is_write               (s/maybe s/Bool)}
-  (check-valid-card-info body)
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
@@ -631,7 +622,6 @@ saved later when it is ready."
    collection_preview     (s/maybe s/Bool)}
   (let [card-before-update (hydrate (api/write-check Card id)
                                     [:moderation_reviews :moderator_details])]
-    (check-valid-card-info (merge card-before-update card-updates))
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
                check-allowed-to-modify-query

@@ -200,6 +200,16 @@
   (when (not is-write?)
     (db/delete! action/QueryAction :card_id card-id)))
 
+(defn- assert-valid-model
+  "Check that the card is a valid model if being saved as one. Throw an exception if not."
+  [{:keys [dataset dataset_query]}]
+  (when dataset
+    (let [template-tag-types (->> (vals (get-in dataset_query [:native :template-tags]))
+                                  (map (comp keyword :type)))]
+      (when (some (complement #{:card :snippet}) template-tag-types)
+        (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
+                        {:status-code 400}))))))
+
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
@@ -210,6 +220,7 @@
      (check-for-circular-source-query-references card)
      (check-field-filter-fields-are-from-correct-database card)
      ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters
+     (assert-valid-model card)
      (params/assert-valid-parameters card)
      (params/assert-valid-parameter-mappings card)
      (collection/check-collection-namespace Card (:collection_id card)))))
@@ -237,38 +248,40 @@
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
-  (u/prog1 changes
-    ;; if the Card is archived, then remove it from any Dashboards
-    (when archived?
-      (db/delete! 'DashboardCard :card_id id))
-    ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
-    ;; On-Demand DB Fields
-    (when (get-in changes [:dataset_query :native])
-      (let [old-param-field-ids (params/card->template-tag-field-ids (db/select-one [Card :dataset_query] :id id))
-            new-param-field-ids (params/card->template-tag-field-ids changes)]
-        (when (and (seq new-param-field-ids)
-                   (not= old-param-field-ids new-param-field-ids))
-          (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
-            (log/info "Referenced Fields in Card params have changed. Was:" old-param-field-ids
-                      "Is Now:" new-param-field-ids
-                      "Newly Added:" newly-added-param-field-ids)
-            ;; Now update the FieldValues for the Fields referenced by this Card.
-            (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
-    ;; make sure this Card doesn't have circular source query references if we're updating the query
-    (when (:dataset_query changes)
-      (check-for-circular-source-query-references changes))
-    ;; Make sure any native query template tags match the DB in the query.
-    (check-field-filter-fields-are-from-correct-database changes)
-    ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
-    (collection/check-collection-namespace Card (:collection_id changes))
-    (params/assert-valid-parameters changes)
-    (params/assert-valid-parameter-mappings changes)
-    ;; additional checks (Enterprise Edition only)
-    (@pre-update-check-sandbox-constraints changes)
-    ;; create Action and QueryAction when is_write is set true
-    (create-actions-when-is-writable! changes)
-    ;; delete Action and QueryAction when is_write is set false
-    (delete-actions-when-not-writable! changes)))
+  (let [card (Card id)]
+    (u/prog1 changes
+      ;; if the Card is archived, then remove it from any Dashboards
+      (when archived?
+        (db/delete! 'DashboardCard :card_id id))
+      ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
+      ;; On-Demand DB Fields
+      (when (get-in changes [:dataset_query :native])
+        (let [old-param-field-ids (params/card->template-tag-field-ids (select-keys card [:dataset_query]))
+              new-param-field-ids (params/card->template-tag-field-ids changes)]
+          (when (and (seq new-param-field-ids)
+                     (not= old-param-field-ids new-param-field-ids))
+            (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
+              (log/info "Referenced Fields in Card params have changed. Was:" old-param-field-ids
+                        "Is Now:" new-param-field-ids
+                        "Newly Added:" newly-added-param-field-ids)
+              ;; Now update the FieldValues for the Fields referenced by this Card.
+              (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
+      ;; make sure this Card doesn't have circular source query references if we're updating the query
+      (when (:dataset_query changes)
+        (check-for-circular-source-query-references changes))
+      ;; Make sure any native query template tags match the DB in the query.
+      (check-field-filter-fields-are-from-correct-database changes)
+      ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
+      (collection/check-collection-namespace Card (:collection_id changes))
+      (params/assert-valid-parameters changes)
+      (params/assert-valid-parameter-mappings changes)
+      ;; additional checks (Enterprise Edition only)
+      (@pre-update-check-sandbox-constraints changes)
+      ;; create Action and QueryAction when is_write is set true
+      (create-actions-when-is-writable! changes)
+      ;; delete Action and QueryAction when is_write is set false
+      (delete-actions-when-not-writable! changes)
+      (assert-valid-model (merge card changes)))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
