@@ -7,9 +7,7 @@ import {
   openQuestionActions,
   questionInfoButton,
 } from "__support__/e2e/helpers";
-
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
-
 import {
   openColumnOptions,
   renameColumn,
@@ -17,7 +15,6 @@ import {
   mapColumnTo,
   setModelMetadata,
 } from "./helpers/e2e-models-metadata-helpers";
-
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PEOPLE, REVIEWS } = SAMPLE_DATABASE;
