@@ -69,7 +69,8 @@
    :cache_ttl           nil
    :average_query_time  nil
    :last_query_start    nil
-   :result_metadata     nil})
+   :result_metadata     nil
+   :is_write            false})
 
 ;; Used in dashboard tests
 (def card-defaults-no-hydrate

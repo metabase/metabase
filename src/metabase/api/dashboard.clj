@@ -598,17 +598,16 @@
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys resolved-params)
                         :status-code     400})))
-     (binding [qp.perms/*card-id*
-               ;; make sure that the proper card-id is bound (#24832)
-               (-> (get resolved-params param-key) :mappings first :card_id)]
-       (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
-             field-ids   (param-key->field-ids dashboard param-key)]
-         (when (empty? field-ids)
-           (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                           {:param       (get (:resolved-params dashboard) param-key)
-                            :status-code 400})))
-         ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
-         ;; separate query for each Field (for parameters that are mapped to more than one Field)
+
+     (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
+           field-ids   (param-key->field-ids dashboard param-key)]
+       (when (empty? field-ids)
+         (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
+                         {:param       (get (:resolved-params dashboard) param-key)
+                          :status-code 400})))
+       ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
+       ;; separate query for each Field (for parameters that are mapped to more than one Field)
+       (binding [qp.perms/*internal-ui-query* true]
          (try
            (let [results (map (if (seq query)
                                 #(chain-filter/chain-filter-search % constraints query :limit result-limit)
