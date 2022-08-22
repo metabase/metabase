@@ -77,7 +77,7 @@
     (cond-> revision
       model (update :object (partial models/do-post-select model)))))
 
-(u/strict-extend (class Revision)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Revision)
   models/IModel
   (merge models/IModelDefaults
          {:types       (constantly {:object :json})

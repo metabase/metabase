@@ -39,7 +39,7 @@
                   :visualization_settings {}}]
     (merge defaults dashcard)))
 
-(u/strict-extend (class DashboardCard)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class DashboardCard)
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true

@@ -63,7 +63,7 @@
       :read  (perms/table-read-path table)
       :write (perms/data-model-write-perms-path db-id schema table-id))})
 
-(u/strict-extend (class Table)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Table)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:table])

@@ -19,7 +19,7 @@
                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
              mi/json-out-with-keywordization))
 
-(u/strict-extend (class Action)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Action)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:type :keyword})
@@ -43,11 +43,11 @@
           :pre-delete pre-delete
           :pre-update pre-update}))
 
-(u/strict-extend (class QueryAction)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class QueryAction)
   models/IModel
   Action-subtype-IModel-impl)
 
-(u/strict-extend (class HTTPAction)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class HTTPAction)
   models/IModel
   (merge Action-subtype-IModel-impl
          {:types (constantly {:template ::json-with-nested-parameters})}))

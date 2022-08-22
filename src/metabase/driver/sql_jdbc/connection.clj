@@ -7,10 +7,12 @@
             [metabase.connection-pool :as connection-pool]
             [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
+            [metabase.models.interface :as mi]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.ssh :as ssh]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import com.mchange.v2.c3p0.DataSources
            javax.sql.DataSource))
@@ -137,11 +139,10 @@
   database-id->jdbc-spec-hash
   (atom {}))
 
-(defn- jdbc-spec-hash
+(s/defn ^:private jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on `database`'s `:details` map, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated."
-  [{driver :engine, :keys [details], :as database}]
-  {:pre [(or nil? (instance? (type Database) database))]}
+  [{driver :engine, :keys [details], :as database} :- (s/maybe (mi/InstanceOf Database))]
   (when (some? database)
     (hash (connection-details->spec driver details))))
 
@@ -194,7 +195,8 @@
     (u/id db-or-id-or-spec)
     (let [database-id (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
-          db          (or (and (instance? (type Database) db-or-id-or-spec) db-or-id-or-spec) ; passed in
+          db          (or (when (mi/instance-of? Database db-or-id-or-spec)
+                            db-or-id-or-spec) ; passed in
                           (db/select-one [Database :id :engine :details] :id database-id)     ; look up by ID
                           (throw (ex-info (tru "Database {0} does not exist." database-id)
                                    {:status-code 404

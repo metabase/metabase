@@ -122,7 +122,7 @@
     (= api/*current-user-id* (:creator_id notification))
     (mi/current-user-has-full-permissions? :write notification)))
 
-(u/strict-extend (class Pulse)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Pulse)
   models/IModel
   (merge
    models/IModelDefaults

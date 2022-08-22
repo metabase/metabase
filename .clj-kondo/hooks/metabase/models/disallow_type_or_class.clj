@@ -2,11 +2,13 @@
   (:require [clj-kondo.hooks-api :as hooks]))
 
 (def known-models
-  '#{Activity
+  '#{Action
+     Activity
      ApplicationPermissionsRevision
      BookmarkOrdering
      Card
      CardBookmark
+     CardEmitter
      Collection
      CollectionBookmark
      CollectionPermissionGraphRevision
@@ -14,10 +16,13 @@
      DashboardBookmark
      DashboardCard
      DashboardCardSeries
+     DashboardEmitter
      Database
      Dimension
+     Emitter
      Field
      FieldValues
+     HTTPAction
      LoginHistory
      Metric
      MetricImportantField
@@ -33,6 +38,7 @@
      PulseChannel
      PulseChannelRecipient
      Query
+     QueryAction
      QueryCache
      QueryExecution
      Revision

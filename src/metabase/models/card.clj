@@ -286,7 +286,7 @@
   :in mi/json-in
   :out result-metadata-out)
 
-(u/strict-extend (class Card)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Card)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:card])

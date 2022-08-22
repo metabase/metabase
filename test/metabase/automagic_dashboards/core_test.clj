@@ -9,6 +9,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Card Collection Database Field Metric Table]]
             [metabase.models.field :as field]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.query :as query :refer [Query]]
@@ -67,7 +68,8 @@
    ;; that size limiting works.
    (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show :all}))
      (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show :all}) card-count))
-   (when (or (nil? (#{(type Query) (type Card)} (type entity)))
+   (when (or (and (not (mi/instance-of? Query entity))
+                  (not (mi/instance-of? Card entity)))
              (#'magic/table-like? entity))
      (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show 1}))
        ;; 1 for the actual card returned + 1 for the visual display card = 2

@@ -60,7 +60,7 @@
   (u/prog1 task
     (snowplow/track-event! ::snowplow/new-task-history *current-user-id* (task->snowplow-event <>))))
 
-(u/strict-extend (class TaskHistory)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class TaskHistory)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:task_details :json})

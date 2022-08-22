@@ -129,7 +129,7 @@
   [dashboard]
   (update-dashboard-subscription-pulses! dashboard))
 
-(u/strict-extend (class Dashboard)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Dashboard)
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true
@@ -233,7 +233,7 @@
         (->> (filter identity)
              build-sentence))))
 
-(u/strict-extend (class Dashboard)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Dashboard)
   revision/IRevisioned
   (merge revision/IRevisionedDefaults
          {:serialize-instance  (fn [_ _ dashboard] (serialize-dashboard dashboard))

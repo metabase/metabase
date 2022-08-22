@@ -12,6 +12,7 @@
             [metabase.driver.sync :as driver.s]
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database]]
+            [metabase.models.interface :as mi]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
@@ -133,7 +134,7 @@
    (db-tables driver (.getMetaData conn) nil db-name-or-nil)))
 
 (defn- db-or-id-or-spec->database [db-or-id-or-spec]
-  (cond (instance? (class Database) db-or-id-or-spec)
+  (cond (mi/instance-of? Database db-or-id-or-spec)
         db-or-id-or-spec
 
         (int? db-or-id-or-spec)

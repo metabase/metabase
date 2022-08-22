@@ -58,14 +58,14 @@
 (api/defendpoint PUT "/:emitter-id"
   "Endpoint to update an emitter."
   [emitter-id :as {emitter :body}]
-  (api/check-404 (Emitter emitter-id))
+  (api/check-404 (db/select-one Emitter :id emitter-id))
   (db/update! Emitter emitter-id emitter)
   api/generic-204-no-content)
 
 (api/defendpoint DELETE "/:emitter-id"
   "Endpoint to delete an emitter."
   [emitter-id]
-  (api/check-404 (Emitter emitter-id))
+  (api/check-404 (db/select-one Emitter :id emitter-id))
   (db/delete! Emitter :id emitter-id)
   api/generic-204-no-content)
 

@@ -176,7 +176,7 @@
   :out (comp update-semantic-numeric-values mi/json-out-with-keywordization))
 
 
-(u/strict-extend (class Field)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Field)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:destination :field :origin :human_readable_field])

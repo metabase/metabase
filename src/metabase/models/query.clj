@@ -10,7 +10,7 @@
 
 (models/defmodel Query :query)
 
-(u/strict-extend (class Query)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Query)
   models/IModel
   (merge models/IModelDefaults
          {:types       (constantly {:query :json})

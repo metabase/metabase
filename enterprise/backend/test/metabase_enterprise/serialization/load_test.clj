@@ -9,6 +9,7 @@
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
                                      Dimension Field FieldValues Metric NativeQuerySnippet Pulse PulseCard PulseChannel
                                      Segment Table User]]
+            [metabase.models.interface :as mi]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.store :as qp.store]
@@ -107,10 +108,11 @@
           card-ids))
 
 (defmulti ^:private assert-loaded-entity
-  (fn [entity _fingerprint]
-    (type entity)))
+  {:arglists '([instance fingerprint])}
+  (fn [instance _fingerprint]
+    (mi/model instance)))
 
-(defmethod assert-loaded-entity (type Card)
+(defmethod assert-loaded-entity Card
   [{card-name :name :as card} {:keys [query-results collections]}]
   (testing (format "Card: %s" card-name)
     (query-res-match query-results card)
@@ -143,7 +145,7 @@
   (let [[_ ^String parent-id] (re-matches #".*/(\d+)/$" (:location collection))]
     (db/select-one-field :name Collection :id (Integer. parent-id))))
 
-(defmethod assert-loaded-entity (type Collection)
+(defmethod assert-loaded-entity Collection
   [collection _]
   (case (:name collection)
     "My Nested Collection"              (is (= "My Collection" (collection-parent-name collection)))
@@ -161,9 +163,9 @@
                                             "Should not have loaded different user's PC"))
   collection)
 
-(defmethod assert-loaded-entity (type NativeQuerySnippet)
+(defmethod assert-loaded-entity NativeQuerySnippet
   [snippet {:keys [entities]}]
-  (when-let [orig-snippet (first (filter (every-pred #(= (type NativeQuerySnippet) (type %))
+  (when-let [orig-snippet (first (filter (every-pred #(mi/instance-of? NativeQuerySnippet %)
                                                      #(= (:name snippet) (:name %))) (map last entities)))]
     (is (some? orig-snippet))
     (is (= (select-keys orig-snippet [:name :description :content])
@@ -193,7 +195,7 @@
       (is (contains? #{"price" "PRICE"} (:name f2)))
       (is (= {:dimension [:field (u/the-id f2) {:source-field (u/the-id f1)}]} dimension)))))
 
-(defmethod assert-loaded-entity (type Dashboard)
+(defmethod assert-loaded-entity Dashboard
   [dashboard _]
   (testing "The dashboard card series were loaded correctly"
     (when (= "My Dashboard" (:name dashboard))
@@ -250,7 +252,7 @@
           (is (= "Textbox Card" (get-in dashcard [:visualization_settings :text])))))))
   dashboard)
 
-(defmethod assert-loaded-entity (type Pulse)
+(defmethod assert-loaded-entity Pulse
   [pulse _]
   (is (some? pulse))
   (let [pulse-cards (db/select PulseCard :pulse_id (u/the-id pulse))]

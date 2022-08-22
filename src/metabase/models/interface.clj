@@ -7,11 +7,13 @@
             [metabase.db.connection :as mdb.connection]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.models.dispatch :as models.dispatch]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.cron :as u.cron]
             [metabase.util.encryption :as encryption]
             [metabase.util.i18n :refer [trs tru]]
+            [potemkin :as p]
             [potemkin.types :as p.types]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
@@ -19,6 +21,15 @@
   (:import [java.io BufferedInputStream ByteArrayInputStream DataInputStream]
            java.sql.Blob
            java.util.zip.GZIPInputStream))
+
+(comment models.dispatch/keep-me)
+
+(p/import-vars
+ [models.dispatch
+  toucan-instance?
+  instance-of?
+  InstanceOf
+  model])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |

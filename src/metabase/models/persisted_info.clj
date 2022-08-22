@@ -64,7 +64,7 @@
 
 (models/defmodel PersistedInfo :persisted_info)
 
-(u/strict-extend (class PersistedInfo)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PersistedInfo)
   models/IModel
   (merge models/IModelDefaults
          {:types (constantly {:definition ::definition})}))

@@ -153,7 +153,7 @@
                                        :else
                                        [])))))
 
-(u/strict-extend (class FieldValues)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class FieldValues)
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true})
