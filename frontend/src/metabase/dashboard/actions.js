@@ -59,6 +59,7 @@ import {
   getDashboardParameterValuesSearchCache,
   getLoadingDashCards,
   getDashboardParameterValuesCache,
+  getParameters,
 } from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -130,6 +131,7 @@ export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const SET_PARAMETER_INDEX = "metabase/dashboard/SET_PARAMETER_INDEX";
 export const SET_PARAMETER_DEFAULT_VALUE =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
+export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
 
 export const SHOW_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/SHOW_ADD_PARAMETER_POPOVER";
@@ -982,6 +984,8 @@ export const setParameterValue = createThunkAction(
   },
 );
 
+export const setParameterValues = createAction(SET_PARAMETER_VALUES);
+
 export const setOrUnsetParameterValues =
   parameterIdValuePairs => (dispatch, getState) => {
     const parameterValues = getParameterValues(getState());
@@ -990,6 +994,20 @@ export const setOrUnsetParameterValues =
         setParameterValue(id, value === parameterValues[id] ? null : value),
       )
       .forEach(dispatch);
+  };
+
+export const setParameterValuesFromQueryParams =
+  queryParams => (dispatch, getState) => {
+    const parameters = getParameters(getState());
+    const metadata = getMetadata(getState());
+    const parameterValues = getParameterValuesByIdFromQueryParams(
+      parameters,
+      queryParams,
+      metadata,
+      { forcefullyUnsetDefaultedParametersWithEmptyStringValue: true },
+    );
+
+    dispatch(setParameterValues(parameterValues));
   };
 
 export const CREATE_PUBLIC_LINK = "metabase/dashboard/CREATE_PUBLIC_LINK";
