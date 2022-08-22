@@ -56,7 +56,7 @@
   400 status code."
   [database-id]
   {:pre [(integer? database-id)]}
-  (let [{db-settings :settings, driver :engine, :as db} (Database database-id)]
+  (let [{db-settings :settings, driver :engine, :as db} (db/select-one Database :id database-id)]
     ;; make sure the Driver supports Actions.
     (when-not (driver/database-supports? driver :actions db)
       (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."

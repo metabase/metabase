@@ -313,7 +313,7 @@
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
   [field & [human-readable-values]]
-  (let [field-values                     (FieldValues :field_id (u/the-id field) :type :full)
+  (let [field-values                     (db/select-one FieldValues :field_id (u/the-id field) :type :full)
         {:keys [values has_more_values]} (distinct-values field)
         field-name                       (or (:name field) (:id field))]
     (cond
@@ -377,9 +377,9 @@
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (or (FieldValues :field_id field-id :type :full)
+    (or (db/select-one FieldValues :field_id field-id :type :full)
         (when (#{::fv-created ::fv-updated} (create-or-update-full-field-values! field human-readable-values))
-          (FieldValues :field_id field-id :type :full)))))
+          (db/select-one FieldValues :field_id field-id :type :full)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  On Demand                                                     |

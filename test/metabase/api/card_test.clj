@@ -783,7 +783,7 @@
 (deftest can-we-update-a-card-s-archived-status-
   (mt/with-temp Card [card]
     (with-cards-in-writeable-collection card
-      (let [archived?     (fn [] (:archived (Card (u/the-id card))))
+      (let [archived?     (fn [] (:archived (db/select-one Card :id (u/the-id card))))
             set-archived! (fn [archived]
                             (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived archived})
                             (archived?))]
@@ -1296,9 +1296,9 @@
                       (mt/regex-email-bodies (re-pattern expected-email)))
                    (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email)))))
             (if deleted?
-              (is (= nil (Pulse (u/the-id pulse)))
+              (is (= nil (db/select-one Pulse :id (u/the-id pulse)))
                   "Alert should have been deleted")
-              (is (not= nil (Pulse (u/the-id pulse)))
+              (is (not= nil (db/select-one Pulse :id (u/the-id pulse)))
                   "Alert should not have been deleted"))))))))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
@@ -1324,11 +1324,11 @@
                 :emails-1 (do
                             (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :area})
                             (mt/regex-email-bodies #"the question was edited by Rasta Toucan"))
-                :pulse-1  (boolean (Pulse (u/the-id pulse)))
+                :pulse-1  (boolean (db/select-one Pulse :id (u/the-id pulse)))
                 :emails-2 (do
                             (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :bar})
                             (mt/regex-email-bodies #"the question was edited by Rasta Toucan"))
-                :pulse-2  (boolean (Pulse (u/the-id pulse))))))))))
+                :pulse-2  (boolean (db/select-one Pulse :id (u/the-id pulse))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          DELETING A CARD (DEPRECATED)                                          |
@@ -1339,7 +1339,7 @@
   (is (nil? (mt/with-temp Card [card]
               (with-cards-in-writeable-collection card
                 (mt/user-http-request :rasta :delete 204 (str "card/" (u/the-id card)))
-                (Card (u/the-id card)))))))
+                (db/select-one Card :id (u/the-id card)))))))
 
 ;; deleting a card that doesn't exist should return a 404 (#1957)
 (deftest deleting-a-card-that-doesnt-exist-should-return-a-404---1957-
@@ -2213,7 +2213,7 @@
             ;; get around any `pre-update` restrictions or the like
             (db/execute! {:update Card, :set {:is_write true}, :where [:= :id card-id]}))
           (when before-fn
-            (before-fn (Card card-id)))
+            (before-fn (db/select-one Card :id card-id)))
           (let [result (mt/user-http-request user :put status-code (str "card/" card-id) {:is_write new-value})]
             (result-fn result))
           (let [fail?          (>= status-code 400)

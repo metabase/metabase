@@ -197,7 +197,7 @@
         (mt/user-http-request :rasta :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
-               (Session session-id)))
+               (db/select-one Session :id session-id)))
         (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
           (is (schema= {:id                 (s/eq login-history-id)
                         :timestamp          java.time.OffsetDateTime
@@ -207,7 +207,7 @@
                         :ip_address         su/NonBlankString
                         :active             (s/eq false)
                         s/Keyword           s/Any}
-                       (LoginHistory login-history-id))))))))
+                       (db/select-one LoginHistory :id login-history-id))))))))
 
 (deftest forgot-password-test
   (testing "POST /api/session/forgot_password"

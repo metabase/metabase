@@ -57,7 +57,7 @@
                (u/select-keys-when body
                  :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
                  :present [:description :caveats :points_of_interest :visibility_type])))
-  (let [updated-table        (Table id)
+  (let [updated-table        (db/select-one Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
@@ -304,7 +304,7 @@
   {include_sensitive_fields (s/maybe su/BooleanString)
    include_hidden_fields (s/maybe su/BooleanString)
    include_editable_data_model (s/maybe su/BooleanString)}
-  (fetch-query-metadata (Table id) {:include-sensitive-fields?    include_sensitive_fields
+  (fetch-query-metadata (db/select-one Table :id id) {:include-sensitive-fields?    include_sensitive_fields
                                     :include-hidden-fields?       include_hidden_fields
                                     :include-editable-data-model? include_editable_data_model}))
 
@@ -408,14 +408,14 @@
        :origin_id      (:id origin-field)
        :origin         (hydrate origin-field [:table :db])
        :destination_id (:fk_target_field_id origin-field)
-       :destination    (hydrate (Field (:fk_target_field_id origin-field)) :table)})))
+       :destination    (hydrate (db/select-one Field :id (:fk_target_field_id origin-field)) :table)})))
 
 
 (api/defendpoint POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [id]
-  (let [table (api/write-check (Table id))]
+  (let [table (api/write-check (db/select-one Table :id id))]
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -430,7 +430,7 @@
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
-  (api/write-check (Table id))
+  (api/write-check (db/select-one Table :id id))
   (when-let [field-ids (db/select-ids Field :table_id id)]
     (db/simple-delete! FieldValues :field_id [:in field-ids]))
   {:status :success})
@@ -438,12 +438,12 @@
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (-> id Table api/read-check related/related))
+  (-> (db/select-one Table :id id) api/read-check related/related))
 
 (api/defendpoint PUT "/:id/fields/order"
   "Reorder fields"
   [id :as {field_order :body}]
   {field_order [su/IntGreaterThanZero]}
-  (-> id Table api/write-check (table/custom-order-fields! field_order)))
+  (-> (db/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
 (api/define-routes)

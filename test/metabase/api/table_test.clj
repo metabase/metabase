@@ -111,7 +111,7 @@
             {:schema       "PUBLIC"
              :name         "VENUES"
              :display_name "Venues"
-             :pk_field     (table/pk-field-id (Table (mt/id :venues)))
+             :pk_field     (table/pk-field-id (db/select-one Table :id (mt/id :venues)))
              :id           (mt/id :venues)
              :db_id        (mt/id)})
            (mt/user-http-request :rasta :get 200 (format "table/%d" (mt/id :venues)))))
@@ -144,7 +144,7 @@
                :name         "USERS"
                :display_name "Users"
                :entity_type  "entity/UserTable"
-               :fields       [(assoc (field-details (Field (mt/id :users :id)))
+               :fields       [(assoc (field-details (db/select-one Field :id (mt/id :users :id)))
                                      :semantic_type     "type/PK"
                                      :table_id         (mt/id :users)
                                      :name             "ID"
@@ -155,7 +155,7 @@
                                      :visibility_type  "normal"
                                      :has_field_values "none"
                                      :database_required false)
-                              (assoc (field-details (Field (mt/id :users :name)))
+                              (assoc (field-details (db/select-one Field :id (mt/id :users :name)))
                                      :semantic_type             "type/Name"
                                      :table_id                 (mt/id :users)
                                      :name                     "NAME"
@@ -170,7 +170,7 @@
                                      :position                 1
                                      :database_position        1
                                      :database_required        false)
-                              (assoc (field-details (Field (mt/id :users :last_login)))
+                              (assoc (field-details (db/select-one Field :id (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
                                      :display_name             "Last Login"
@@ -184,7 +184,7 @@
                                      :position                 2
                                      :database_position        2
                                      :database_required        false)
-                              (assoc (field-details (Field :table_id (mt/id :users), :name "PASSWORD"))
+                              (assoc (field-details (db/select-one Field :table_id (mt/id :users), :name "PASSWORD"))
                                      :semantic_type     "type/Category"
                                      :table_id         (mt/id :users)
                                      :name             "PASSWORD"
@@ -211,7 +211,7 @@
                :name         "USERS"
                :display_name "Users"
                :entity_type  "entity/UserTable"
-               :fields       [(assoc (field-details (Field (mt/id :users :id)))
+               :fields       [(assoc (field-details (db/select-one Field :id (mt/id :users :id)))
                                      :table_id         (mt/id :users)
                                      :semantic_type     "type/PK"
                                      :name             "ID"
@@ -221,7 +221,7 @@
                                      :effective_type   "type/BigInteger"
                                      :has_field_values "none"
                                      :database_required false)
-                              (assoc (field-details (Field (mt/id :users :name)))
+                              (assoc (field-details (db/select-one Field :id (mt/id :users :name)))
                                      :table_id         (mt/id :users)
                                      :semantic_type     "type/Name"
                                      :name             "NAME"
@@ -233,7 +233,7 @@
                                      :position          1
                                      :database_position 1
                                      :database_required false)
-                              (assoc (field-details (Field (mt/id :users :last_login)))
+                              (assoc (field-details (db/select-one Field :id (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
                                      :display_name             "Last Login"
@@ -377,8 +377,8 @@
 (deftest get-fks-test
   (testing "GET /api/table/:id/fks"
     (testing "We expect a single FK from CHECKINS.USER_ID -> USERS.ID"
-      (let [checkins-user-field (Field (mt/id :checkins :user_id))
-            users-id-field      (Field (mt/id :users :id))]
+      (let [checkins-user-field (db/select-one Field :id (mt/id :checkins :user_id))
+            users-id-field      (db/select-one Field :id (mt/id :users :id))]
         (is (= [{:origin_id      (:id checkins-user-field)
                  :destination_id (:id users-id-field)
                  :relationship   "Mt1"
@@ -433,7 +433,7 @@
              :name         "CATEGORIES"
              :display_name "Categories"
              :fields       [(merge
-                             (field-details (Field (mt/id :categories :id)))
+                             (field-details (db/select-one Field :id (mt/id :categories :id)))
                              {:table_id          (mt/id :categories)
                               :semantic_type     "type/PK"
                               :name              "ID"
@@ -444,7 +444,7 @@
                               :has_field_values  "none"
                               :database_required false})
                             (merge
-                             (field-details (Field (mt/id :categories :name)))
+                             (field-details (db/select-one Field :id (mt/id :categories :name)))
                              {:table_id                 (mt/id :categories)
                               :semantic_type            "type/Name"
                               :name                     "NAME"
@@ -833,7 +833,7 @@
           (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues))
                                 {:request-options {:body (json/encode custom-field-order)}})
           (is (= custom-field-order
-                 (->> (table/fields (Table (mt/id :venues)))
+                 (->> (table/fields (db/select-one Table :id (mt/id :venues)))
                       (map u/the-id))))))
       (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                      {:field_order original-field-order})))))

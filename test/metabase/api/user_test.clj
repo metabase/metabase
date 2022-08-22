@@ -412,7 +412,7 @@
                                  :user_group_memberships (group-or-ids->user-group-memberships
                                                           [(perms-group/all-users) group-1 group-2])})
           (is (= #{"All Users" "Group 1" "Group 2"}
-                 (user-test/user-group-names (User :email email)))))))
+                 (user-test/user-group-names (db/select-one User :email email)))))))
 
     (testing (str "If you forget the All Users group it should fail, because you cannot have a User that's not in the "
                   "All Users group. The whole API call should fail and no user should be created, even though the "

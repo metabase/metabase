@@ -9,7 +9,7 @@
 
     (qp.store/field 10) ;; get Field 10
 
-   Of course, it would be entirely possible to call `(Field 10)` every time you needed information about that Field,
+   Of course, it would be entirely possible to call `(db/select-one Field :id 10)` every time you needed information about that Field,
   but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
   those Fields potentially dozens of times in a single query execution."
   (:require [metabase.models.database :refer [Database]]

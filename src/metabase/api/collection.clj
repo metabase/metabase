@@ -719,7 +719,7 @@
   Root Collection perms."
   [collection-id]
   (api/write-check (if collection-id
-                     (Collection collection-id)
+                     (db/select-one Collection :id collection-id)
                      collection/root-collection)))
 
 (api/defendpoint POST "/"
@@ -823,7 +823,7 @@
     ;; if we *did* end up archiving this Collection, we most post a few notifications
     (maybe-send-archived-notificaitons! collection-before-update collection-updates))
   ;; finally, return the updated object
-  (-> (Collection id)
+  (-> (db/select-one Collection :id id)
       (hydrate :parent_id)))
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------

@@ -947,7 +947,7 @@
     ;;           +-> F -> G            +-> G
     (with-collection-hierarchy [{:keys [a f], :as collections}]
       (collection/move-collection! f (collection/children-location collection/root-collection))
-      (collection/move-collection! a (collection/children-location (Collection (u/the-id f))))
+      (collection/move-collection! a (collection/children-location (db/select-one Collection :id (u/the-id f))))
       (is (= {"F" {"A" {"B" {}
                         "C" {"D" {"E" {}}}}
                    "G" {}}}

@@ -298,14 +298,14 @@
   "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a
   404 Exception."
   [field-id dashboard-id]
-  (let [param-field-ids (params/dashboard->param-field-ids (api/check-404 (Dashboard dashboard-id)))]
+  (let [param-field-ids (params/dashboard->param-field-ids (api/check-404 (db/select-one Dashboard :id dashboard-id)))]
     (api/check-404 (contains? param-field-ids field-id))))
 
 (defn card-and-field-id->values
   "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id`."
   [card-id field-id]
   (check-field-is-referenced-by-card field-id card-id)
-  (api.field/field->values (Field field-id)))
+  (api.field/field->values (db/select-one Field :id field-id)))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a public Card."
@@ -319,7 +319,7 @@
   in Dashboard with `dashboard-id`."
   [dashboard-id field-id]
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
-  (api.field/field->values (Field field-id)))
+  (api.field/field->values (db/select-one Field :id field-id)))
 
 (api/defendpoint GET "/dashboard/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard."
@@ -337,7 +337,7 @@
   [card-id field-id search-id value limit]
   (check-field-is-referenced-by-card field-id card-id)
   (check-search-field-is-allowed field-id search-id)
-  (api.field/search-values (Field field-id) (Field search-id) value limit))
+  (api.field/search-values (db/select-one Field :id field-id) (db/select-one Field :id search-id) value limit))
 
 (defn search-dashboard-fields
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Dashboards. See that functions
@@ -345,7 +345,7 @@
   [dashboard-id field-id search-id value limit]
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (check-search-field-is-allowed field-id search-id)
-  (api.field/search-values (Field field-id) (Field search-id) value limit))
+  (api.field/search-values (db/select-one Field :id field-id) (db/select-one Field :id search-id) value limit))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a public Card."
@@ -369,8 +369,8 @@
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
 (defn- field-remapped-values [field-id remapped-field-id, ^String value-str]
-  (let [field          (api/check-404 (Field field-id))
-        remapped-field (api/check-404 (Field remapped-field-id))]
+  (let [field          (api/check-404 (db/select-one Field :id field-id))
+        remapped-field (api/check-404 (db/select-one Field :id remapped-field-id))]
     (check-search-field-is-allowed field-id remapped-field-id)
     (api.field/remapped-value field remapped-field (api.field/parse-query-param-value-for-field field value-str))))
 

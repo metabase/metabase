@@ -209,7 +209,7 @@
   [{:keys [semantic_type fk_target_field_id]}]
   (when (and (isa? semantic_type :type/FK)
              fk_target_field_id)
-    (Field fk_target_field_id)))
+    (db/select-one Field :id fk_target_field_id)))
 
 (defn values
   "Return the `FieldValues` associated with this `field`."
@@ -343,7 +343,7 @@
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
-  (conj (vec (if-let [parent (Field parent-id)]
+  (conj (vec (if-let [parent (db/select-one Field :id parent-id)]
                (qualified-name-components parent)
                (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id table-id)]
                  (conj (when schema

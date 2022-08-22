@@ -12,8 +12,10 @@
             [metabase.driver.sync :as driver.s]
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database]]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
+
 
 (defmethod sql-jdbc.sync.interface/excluded-schemas :sql-jdbc [_] nil)
 
@@ -135,7 +137,7 @@
         db-or-id-or-spec
 
         (int? db-or-id-or-spec)
-        (Database db-or-id-or-spec)
+        (db/select-one Database :id db-or-id-or-spec)
 
         :else
         nil))

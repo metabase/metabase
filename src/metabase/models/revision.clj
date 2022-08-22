@@ -168,7 +168,7 @@
       ;; Do the reversion of the object
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change
-      (let [last-revision (Revision :model (:name entity), :model_id id, {:order-by [[:id :desc]]})
+      (let [last-revision (db/select-one Revision :model (:name entity), :model_id id, {:order-by [[:id :desc]]})
             new-revision  (db/insert! Revision
                             :model        (:name entity)
                             :model_id     id

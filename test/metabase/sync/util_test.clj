@@ -253,13 +253,13 @@
   (mt/dataset sample-dataset
    (testing "If `initial-sync-status` on a DB is `incomplete`, it is marked as `complete` when sync-metadata has finished"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
-            db (Database (:id (mt/db)))]
+            db (db/select-one Database :id (:id (mt/db)))]
         (sync/sync-database! db)
         (is (= "complete" (db/select-one-field :initial_sync_status Database :id (:id db))))))
 
    (testing "If `initial-sync-status` on a DB is `complete`, it remains `complete` when sync is run again"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "complete")
-            db (Database (:id (mt/db)))]
+            db (db/select-one Database :id (:id (mt/db)))]
         (sync/sync-database! db)
         (is (= "complete" (db/select-one-field :initial_sync_status Database :id (:id db))))))
 
@@ -267,23 +267,23 @@
             has finished"
       (let [table-id (db/select-one-field :id Table :db_id (:id (mt/db)))
             _        (db/update! Table table-id :initial_sync_status "incomplete")
-            _table   (Table table-id)]
+            _table   (db/select-one Table :id table-id)]
         (sync/sync-database! (mt/db))
         (is (= "complete" (db/select-one-field :initial_sync_status Table :id table-id)))))
 
    (testing "Database and table syncs are marked as complete even if the initial scan is :schema only"
       (let [_        (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
-            db       (Database (:id (mt/db)))
+            db       (db/select-one Database :id (:id (mt/db)))
             table-id (db/select-one-field :id Table :db_id (:id (mt/db)))
             _        (db/update! Table table-id :initial_sync_status "incomplete")
-            _table   (Table table-id)]
+            _table   (db/select-one Table :id table-id)]
         (sync/sync-database! db {:scan :schema})
         (is (= "complete" (db/select-one-field :initial_sync_status Database :id (:id db))))
         (is (= "complete" (db/select-one-field :initial_sync_status Table :id table-id)))))
 
    (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
-            db (Database (:id (mt/db)))]
+            db (db/select-one Database :id (:id (mt/db)))]
         (with-redefs [sync-metadata/sync-steps [(sync-util/create-sync-step
                                                  "fake-step"
                                                  (fn [_] (throw (java.net.ConnectException.))))]]
@@ -293,6 +293,6 @@
    (testing "If `initial-sync-status` is `aborted` for a database, it is set to `complete` the next time sync finishes
            without error"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "complete")
-            db (Database (:id (mt/db)))]
+            db (db/select-one Database :id (:id (mt/db)))]
         (sync/sync-database! db)
         (is (= "complete" (db/select-one-field :initial_sync_status Database :id (:id db))))))))

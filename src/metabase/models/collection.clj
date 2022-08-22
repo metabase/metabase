@@ -211,7 +211,7 @@
   top-level Collection."
   [collection :- CollectionWithLocationOrRoot]
   (if-let [new-parent-id (location-path->parent-id (:location collection))]
-    (Collection new-parent-id)
+    (db/select-one Collection :id new-parent-id)
     root-collection))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -806,7 +806,7 @@
     (apply = (map std-fn namespaces))))
 
 (defn- pre-update [{collection-name :name, id :id, color :color, :as collection-updates}]
-  (let [collection-before-updates (Collection id)]
+  (let [collection-before-updates (db/select-one Collection :id id)]
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (:personal_owner_id collection-before-updates)
@@ -883,7 +883,7 @@
                       (hydrate :parent_id)
                       :parent_id)]
    (if parent-id
-     (serdes.hash/identity-hash (Collection parent-id))
+     (serdes.hash/identity-hash (db/select-one Collection :id parent-id))
      "ROOT")))
 
 (u/strict-extend (class Collection)
@@ -926,16 +926,18 @@
   ;; Also transform :personal_owner_id from a database ID to the email string, if it's defined.
   ;; Use the :slug as the human-readable label.
   [_model-name _opts coll]
-  (let [parent       (some-> coll
-                             :id
-                             Collection
-                             (hydrate :parent_id)
-                             :parent_id
-                             Collection)
-        parent-id    (when parent
-                       (or (:entity_id parent) (serdes.hash/identity-hash parent)))
-        owner-email  (when (:personal_owner_id coll)
-                       (db/select-one-field :email 'User :id (:personal_owner_id coll)))]
+  (let [fetch-collection (fn [id]
+                           (db/select-one Collection :id id))
+        parent           (some-> coll
+                                 :id
+                                 fetch-collection
+                                 (hydrate :parent_id)
+                                 :parent_id
+                                 fetch-collection)
+        parent-id        (when parent
+                           (or (:entity_id parent) (serdes.hash/identity-hash parent)))
+        owner-email      (when (:personal_owner_id coll)
+                           (db/select-one-field :email 'User :id (:personal_owner_id coll)))]
     (-> (serdes.base/extract-one-basics "Collection" coll)
         (dissoc :location)
         (assoc :parent_id parent-id :personal_owner_id owner-email)
@@ -995,7 +997,7 @@
 
     ;; `object-before-update` is the object as it currently exists in the application DB
     ;; `object-updates` is a map of updated values for the object
-    (check-allowed-to-change-collection (Card 100) http-request-body)"
+    (check-allowed-to-change-collection (db/select-one Card :id 100) http-request-body)"
   [object-before-update object-updates]
   ;; if collection_id is set to change...
   (when (api/column-will-change? :collection_id object-before-update object-updates)

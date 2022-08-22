@@ -170,14 +170,14 @@
                              {:invalid-db-details-entry (select-keys details [path-kw])}))))
 
                  (id-kw details)
-                 (:value (Secret (id-kw details))))
+                 (:value (db/select-one Secret :id (id-kw details))))
         source (cond
                  ;; set the :source due to the -path suffix (see above))
                  (and (not= "uploaded" (options-kw details)) (path-kw details))
                  :file-path
 
                  (id-kw details)
-                 (:source (Secret (id-kw details))))]
+                 (:source (db/select-one Secret :id (id-kw details))))]
     (cond-> {:connection-property-name conn-prop-nm, :subprops [path-kw value-kw id-kw]}
       value
       (assoc :value value
@@ -189,7 +189,7 @@
   (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id} (get-sub-props secret-property)
         id (id-kw details)
         value (if id
-                (String. ^bytes (:value (Secret id)) "UTF-8")
+                (String. ^bytes (:value (db/select-one Secret :id id)) "UTF-8")
                 (value-kw details))]
     (case (options-kw details)
       "uploaded" (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
@@ -280,7 +280,7 @@
   (let [subprop (fn [prop-nm]
                   (keyword (str conn-prop-nm prop-nm)))
         secret* (cond (int? secret-or-id)
-                      (Secret secret-or-id)
+                      (db/select-one Secret :id secret-or-id)
 
                       (instance? (class Secret) secret-or-id)
                       secret-or-id

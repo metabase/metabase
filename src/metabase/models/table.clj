@@ -41,7 +41,7 @@
 
 (defn- pre-insert [table]
   (let [defaults {:display_name        (humanization/name->human-readable-name (:name table))
-                  :field_order         (driver/default-field-order (-> table :db_id Database :engine))
+                  :field_order         (driver/default-field-order (db/select-one-field :engine Database :id (:db_id table)))
                   :initial_sync_status "incomplete"}]
     (merge defaults table)))
 
@@ -222,7 +222,7 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (Database (:db_id table)))
+  (db/select-one Database :id (:db_id table)))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."

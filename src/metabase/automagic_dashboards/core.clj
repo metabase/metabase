@@ -54,7 +54,7 @@
     (or
      ;; Handle integer Field IDs.
      (when (integer? id-or-name)
-       (Field id-or-name))
+       (db/select-one Field :id id-or-name))
      ;; handle field string names. Only if we have result metadata. (Not sure why)
      (when (string? id-or-name)
        (when-not result-metadata
@@ -102,14 +102,14 @@
   (cond
     (mbql.u/ga-metric-or-segment? metric) (-> args first str (subs 3) str/capitalize)
     (adhoc-metric? metric)                (-> op qp.util/normalize-token op->name)
-    (saved-metric? metric)                (-> args first Metric :name)
+    (saved-metric? metric)                (->> args first (db/select-one Metric :id) :name)
     :else                                 (second args)))
 
 (defn metric-op
   "Return the name op of the metric"
   [[op & args :as metric]]
   (if (saved-metric? metric)
-    (-> args first Metric (get-in [:definition :aggregation 0 0]))
+    (get-in (db/select-one Metric :id (first args)) [:definition :aggregation 0 0])
     op))
 
 (defn- join-enumeration
@@ -174,7 +174,7 @@
 
 (defmethod ->root (type Segment)
   [segment]
-  (let [table (-> segment :table_id Table)]
+  (let [table (->> segment :table_id (db/select-one Table :id))]
     {:entity          segment
      :full-name       (tru "{0} in the {1} segment" (:display_name table) (:name segment))
      :short-name      (:display_name table)
@@ -187,7 +187,7 @@
 
 (defmethod ->root (type Metric)
   [metric]
-  (let [table (-> metric :table_id Table)]
+  (let [table (->> metric :table_id (db/select-one Table :id))]
     {:entity       metric
      :full-name    (if (:id metric)
                      (tru "{0} metric" (:name metric))
@@ -243,7 +243,7 @@
                              source-question
                              (assoc :entity_type :entity/GenericTable))
     (native-query? card) (-> card (assoc :entity_type :entity/GenericTable))
-    :else                (-> card table-id Table)))
+    :else                (->> card table-id (db/select-one Table :id))))
 
 (defmethod ->root (type Card)
   [card]
@@ -327,7 +327,7 @@
   (cond
     full-name full-name
     link      (format "%s → %s"
-                      (-> link Field :display_name (str/replace #"(?i)\sid$" ""))
+                      (-> (db/select-one Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
                       display_name)
     :else     display_name))
 
@@ -1049,7 +1049,7 @@
                  first
                  qp.util/normalize-token
                  (= :metric))
-           (-> aggregation-clause second Metric)
+           (->> aggregation-clause second (db/select-one Metric :id))
            (let [table-id (table-id question)]
              (metric/map->MetricInstance {:definition {:aggregation  [aggregation-clause]
                                                        :source-table table-id}

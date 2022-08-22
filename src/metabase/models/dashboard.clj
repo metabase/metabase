@@ -248,7 +248,7 @@
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
-  (let [dash (Dashboard (u/the-id dashboard-or-id))]
+  (let [dash (db/select-one Dashboard :id (u/the-id dashboard-or-id))]
     (params/dashboard->param-field-ids (hydrate dash [:ordered_cards :card]))))
 
 
@@ -312,7 +312,7 @@
   [card]
   (cond
     ;; If this is a pre-existing card, just return it
-    (and (integer? (:id card)) (Card (:id card)))
+    (and (integer? (:id card)) (db/select-one Card :id (:id card)))
     card
 
     ;; Don't save text cards
@@ -388,7 +388,7 @@
                                                                      {param-id ParamWithMapping})
   "Return map of Dashboard parameter key -> param with resolved `:mappings`.
 
-    (dashboard->resolved-params (Dashboard 62))
+    (dashboard->resolved-params (db/select-one Dashboard :id 62))
     ;; ->
     {\"ee876336\" {:name     \"Category Name\"
                    :slug     \"category_name\"
