@@ -441,14 +441,38 @@ describe("scenarios > question > nested", () => {
     });
   });
 
-  it("should be able to use integer filter on a nested query based on a saved native question (metabase#15808)", () => {
-    const baseQuestionDetails = {
+  it("should properly work with native questions (metabsae#15808, metabase#16938, metabase#18364)", () => {
+    const questionDetails = {
       name: "15808",
       native: { query: "select * from products limit 5" },
     };
 
-    createNestedQuestion({ baseQuestionDetails });
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
+    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+    cy.findByText("Explore results").click();
+    cy.wait("@dataset");
+
+    // should allow to browse object details when exploring native query results (metabase#16938)
+    cy.get(".Table-ID")
+      .as("primaryKeys")
+      .should("have.length", 5)
+      .first()
+      .click();
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("Swaniawski, Casper and Hilll");
+    });
+
+    // Close the modal (until we implement the "X" button in the modal itself)
+    cy.get("body").click("bottomRight");
+    cy.get(".Modal").should("not.exist");
+
+    // should be able to save a nested question (metabase#18364)
+    saveQuestion();
+
+    // should be able to use integer filter on a nested query based on a saved native question (metabase#15808)
     filter();
     filterField("RATING", {
       operator: "Equal to",
@@ -458,6 +482,20 @@ describe("scenarios > question > nested", () => {
 
     cy.findByText("Synergistic Granite Chair");
     cy.findByText("Rustic Paper Wallet").should("not.exist");
+
+    function saveQuestion() {
+      cy.intercept("POST", "/api/card").as("cardCreated");
+
+      cy.findByText("Save").click({ force: true });
+      cy.get(".Modal").button("Save").click();
+
+      cy.wait("@cardCreated").then(({ response: { body } }) => {
+        expect(body.error).not.to.exist;
+      });
+
+      cy.button("Failed").should("not.exist");
+      cy.findByText("Not now").click();
+    }
   });
 });
 
