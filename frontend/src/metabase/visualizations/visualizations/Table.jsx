@@ -351,7 +351,10 @@ export default class Table extends Component {
       const { cols, rows } = data;
       const columnSettings = settings["table.columns"];
       const columnIndexes = columnSettings
-        .filter(columnSetting => columnSetting.enabled)
+        .filter(
+          columnSetting =>
+            columnSetting.enabled || this.props.isShowingDetailsOnlyColumns,
+        )
         .map(columnSetting =>
           findColumnIndexForColumnSetting(cols, columnSetting),
         )
@@ -391,8 +394,7 @@ export default class Table extends Component {
     const [{ card }] = series;
     const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
     const isPivoted = Table.isPivoted(series, settings);
-    const columnSettings = settings["table.columns"] || [];
-    const areAllColumnsHidden = !columnSettings.some(f => f.enabled);
+    const areAllColumnsHidden = data.cols.length === 0;
     const TableComponent = isDashboard ? TableSimple : TableInteractive;
 
     if (!data) {
