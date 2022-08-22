@@ -339,7 +339,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         });
 
         assertPermissionTable([
-          ["Accounts", "Unrestricted", "No"],
+          ["Accounts", "No self-service", "No"],
           ["Orders", "Unrestricted", "No"],
           ["People", "No self-service", "No"],
           ["Products", "No self-service", "No"],
