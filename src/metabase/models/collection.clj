@@ -886,7 +886,7 @@
      (serdes.hash/identity-hash (db/select-one Collection :id parent-id))
      "ROOT")))
 
-(u/strict-extend (class Collection)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Collection)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:collection])

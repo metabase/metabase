@@ -133,7 +133,7 @@
   "Sequence of columns Group Managers can see when fetching a list of Users.."
   (into non-admin-or-self-visible-columns [:is_superuser :last_login]))
 
-(u/strict-extend (class User)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class User)
   models/IModel
   (merge models/IModelDefaults
          {:default-fields (constantly default-user-columns)

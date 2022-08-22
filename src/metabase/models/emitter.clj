@@ -25,13 +25,12 @@
   :in  (comp mi/json-in normalize-parameter-mappings)
   :out (comp (mi/catch-normalization-exceptions normalize-parameter-mappings) mi/json-out-with-keywordization))
 
-(u/strict-extend
-    (class Emitter)
-    models/IModel
-    (merge models/IModelDefaults
-           {:types          (constantly {:parameter_mappings ::parameter-mappings
-                                         :options            :json})
-            :properties     (constantly {:timestamped? true})}))
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Emitter)
+  models/IModel
+  (merge models/IModelDefaults
+         {:types          (constantly {:parameter_mappings ::parameter-mappings
+                                       :options            :json})
+          :properties     (constantly {:timestamped? true})}))
 
 (def ^:private Emitter-subtype-IModel-impl
   "[[models/IModel]] impl for `DashboardEmitter` and `CardEmitter`"
@@ -39,11 +38,11 @@
          ; This is ok as long as we're 1:1
          {:primary-key (constantly :emitter_id)}))
 
-(u/strict-extend (class DashboardEmitter)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class DashboardEmitter)
   models/IModel
   Emitter-subtype-IModel-impl)
 
-(u/strict-extend (class CardEmitter)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class CardEmitter)
   models/IModel
   Emitter-subtype-IModel-impl)
 
@@ -52,10 +51,10 @@
   {:batched-hydrate :emitters}
   [items]
   (if-let [[emitter-type join-column] (cond
-                                        (every? #(= (class Dashboard) (type %)) items)
+                                        (every? #(mi/instance-of? Dashboard %) items)
                                         [DashboardEmitter :dashboard_id]
 
-                                        (every? #(= (class Card) (type %)) items)
+                                        (every? #(mi/instance-of? Card %) items)
                                         [CardEmitter :card_id])]
     (let [qualified-join-column (keyword (str "typed_emitter." (name join-column)))
           emitters (->> {:select [qualified-join-column

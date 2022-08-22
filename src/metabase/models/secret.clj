@@ -21,7 +21,7 @@
 
 (models/defmodel Secret :secret)
 
-(u/strict-extend (class Secret)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Secret)
   models/IModel
   (merge models/IModelDefaults
          {;:hydration-keys (constantly [:database :db]) ; don't think there's any hydration going on since other models
@@ -282,7 +282,7 @@
         secret* (cond (int? secret-or-id)
                       (db/select-one Secret :id secret-or-id)
 
-                      (instance? (class Secret) secret-or-id)
+                      (mi/instance-of? Secret secret-or-id)
                       secret-or-id
 
                       :else ; default; app DB look up from the ID in db-details

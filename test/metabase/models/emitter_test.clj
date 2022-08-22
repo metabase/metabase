@@ -36,7 +36,7 @@
           (actions.test-util/with-dashboard-emitter [{dashboard-id :emitter-parent-id} context]
             (is (= #{{:id card-id :type "card" :name (str "Card " action-id)}
                      {:id dashboard-id :type "dashboard" :name (str "Dashboard " action-id)}}
-                   (set (:emitter-usages (hydrate (Action action-id) :action/emitter-usages)))))))))))
+                   (set (:emitter-usages (hydrate (db/select-one Action :id action-id) :action/emitter-usages)))))))))))
 
 (deftest card-emitter-usages-hydration-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)

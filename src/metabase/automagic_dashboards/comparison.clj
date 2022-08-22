@@ -1,10 +1,19 @@
 (ns metabase.automagic-dashboards.comparison
   (:require [medley.core :as m]
             [metabase.api.common :as api]
-            [metabase.automagic-dashboards.core :refer [->field ->related-entity ->root automagic-analysis capitalize-first cell-title encode-base64-json metric-name source-name]]
+            [metabase.automagic-dashboards.core :refer [->field
+                                                        ->related-entity
+                                                        ->root
+                                                        automagic-analysis
+                                                        capitalize-first
+                                                        cell-title
+                                                        encode-base64-json
+                                                        metric-name
+                                                        source-name]]
             [metabase.automagic-dashboards.filters :as filters]
             [metabase.automagic-dashboards.populate :as populate]
             [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.models.interface :as mi]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
@@ -196,7 +205,7 @@
                           :description ""})
                        (when (and ((some-fn :query-filter :cell-query) left)
                                   (not= (:source left) (:entity right)))
-                         [{:url         (if (->> left :source (instance? (type Table)))
+                         [{:url         (if (->> left :source (mi/instance-of? Table))
                                           (str (:url left) "/compare/table/"
                                                (-> left :source u/the-id))
                                           (str (:url left) "/compare/adhoc/"
@@ -237,8 +246,8 @@
                                                           (cell-title left))))
         right              (cond-> right
                              (part-vs-whole-comparison? left right)
-                             (assoc :comparison-name (condp instance? (:entity right)
-                                                       (type Table)
+                             (assoc :comparison-name (condp mi/instance-of? (:entity right)
+                                                       Table
                                                        (tru "All {0}" (:short-name right))
 
                                                        (tru "{0}, all {1}"

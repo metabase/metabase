@@ -359,7 +359,7 @@
                                         toucan.models                                                   models}}
 
            :metabase/disallow-invoking-model         {:level :warning}
-           #_:metabase/disallow-class-or-type-on-model #_{:level :warning}}
+           :metabase/disallow-class-or-type-on-model {:level :warning}}
 
  :lint-as
  {clojure.core.logic/defne                                                        clj-kondo.lint-as/def-catch-all
@@ -470,6 +470,7 @@
    metabase.models/BookmarkOrdering                                                       hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/Card                                                                   hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/CardBookmark                                                           hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/CardEmitter                                                            hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/Collection                                                             hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/CollectionBookmark                                                     hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/CollectionPermissionGraphRevision                                      hooks.metabase.models.disallow-invoking-model/hook
@@ -477,10 +478,13 @@
    metabase.models/DashboardBookmark                                                      hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/DashboardCard                                                          hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/DashboardCardSeries                                                    hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/DashboardEmitter                                                       hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/Database                                                               hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/Dimension                                                              hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/Emitter                                                                hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/Field                                                                  hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/FieldValues                                                            hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/HTTPAction                                                             hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/LoginHistory                                                           hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/Metric                                                                 hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/MetricImportantField                                                   hooks.metabase.models.disallow-invoking-model/hook
@@ -496,6 +500,7 @@
    metabase.models/PulseChannel                                                           hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/PulseChannelRecipient                                                  hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/Query                                                                  hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/QueryAction                                                            hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/QueryCache                                                             hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/QueryExecution                                                         hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/Revision                                                               hooks.metabase.models.disallow-invoking-model/hook
@@ -562,6 +567,6 @@
     :hooks.metabase.test.data/mbql-query-first-arg {:level :error}
 
     ;; FIXME
-    :unresolved-symbol    {:level :off}
-    :deprecated-var       {:level :off}
+    :unresolved-symbol {:level :off}
+    :deprecated-var    {:level :off}
     }}}}

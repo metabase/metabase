@@ -16,7 +16,7 @@
 
 (models/defmodel NativeQuerySnippet :native_query_snippet)
 
-(defmethod collection/allowed-namespaces (class NativeQuerySnippet)
+(defmethod collection/allowed-namespaces #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class NativeQuerySnippet)
   [_]
   #{:snippets})
 
@@ -32,7 +32,7 @@
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))
     (collection/check-collection-namespace NativeQuerySnippet (:collection_id updates))))
 
-(u/strict-extend (class NativeQuerySnippet)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class NativeQuerySnippet)
   models/IModel
   (merge
    models/IModelDefaults

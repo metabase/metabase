@@ -3,6 +3,7 @@
             [clj-ldap.client :as ldap]
             [metabase.integrations.ldap.default-implementation :as default-impl]
             [metabase.integrations.ldap.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.user :refer [User]]
             [metabase.plugins.classloader :as classloader]
@@ -210,7 +211,7 @@
   ([ldap-connection :- LDAPConnectionPool, username :- su/NonBlankString]
    (default-impl/find-user ldap-connection username (ldap-settings))))
 
-(s/defn fetch-or-create-user! :- (class User)
-  "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
+(s/defn fetch-or-create-user! :- (mi/InstanceOf User)
+  "Using the `user-info` (from [[find-user]]) get the corresponding Metabase user, creating it if necessary."
   [user-info :- i/UserInfo]
   (default-impl/fetch-or-create-user! user-info (ldap-settings)))

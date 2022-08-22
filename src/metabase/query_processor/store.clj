@@ -14,6 +14,7 @@
   those Fields potentially dozens of times in a single query execution."
   (:require [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :refer [Table]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -60,7 +61,7 @@
 
 (def ^:private DatabaseInstanceWithRequiredStoreKeys
   (s/both
-   (class Database)
+   (mi/InstanceOf Database)
    {:id       su/IntGreaterThanZero
     :engine   s/Keyword
     :name     su/NonBlankString
@@ -77,7 +78,7 @@
 
 (def ^:private TableInstanceWithRequiredStoreKeys
   (s/both
-   (class Table)
+   (mi/InstanceOf Table)
    {:schema (s/maybe s/Str)
     :name   su/NonBlankString
     s/Any   s/Any}))
@@ -105,7 +106,7 @@
 
 (def ^:private FieldInstanceWithRequiredStorekeys
   (s/both
-   (class Field)
+   (mi/InstanceOf Field)
    {:name                               su/NonBlankString
     :display_name                       su/NonBlankString
     :description                        (s/maybe s/Str)

@@ -180,7 +180,7 @@
               (throw (ex-info (tru "Wrong email address for User {0}." id)
                               {:status-code 403})))))))))
 
-(u/strict-extend (class PulseChannel)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PulseChannel)
   models/IModel
   (merge
    models/IModelDefaults
