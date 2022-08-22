@@ -388,9 +388,28 @@
 (defn- donut-legend-label-formatter
   "Formatting function that respects given viz-settings."
   [{style :date_style separator :date_separator abbreviate :date_abbreviate}]
+  (prn style)
   (let [formatter
         (case style
-          "dddd" {"1" "Sunday" "2" "Monday" "3" "Tuesday" "4" "Wednesday" "5" "Thursday" "6" "Friday" "7" "Saturday"}
+          "dddd" {"1" (tru "Sunday")
+                  "2" (tru "Monday")
+                  "3" (tru "Tuesday")
+                  "4" (tru "Wednesday")
+                  "5" (tru "Thursday")
+                  "6" (tru "Friday")
+                  "7" (tru "Saturday")}
+          "MMMM" {"1" (if abbreviate (tru "Jan") (tru "January"))
+                  "2" (if abbreviate (tru "Feb") (tru "February"))
+                  "3" (if abbreviate (tru "Mar") (tru "March"))
+                  "4" (if abbreviate (tru "Apr") (tru "April"))
+                  "5" (if abbreviate (tru "May") (tru "May"))
+                  "6" (if abbreviate (tru "Jun") (tru "June"))
+                  "7" (if abbreviate (tru "Jul") (tru "July"))
+                  "8" (if abbreviate (tru "Aug") (tru "August"))
+                  "9" (if abbreviate (tru "Sep") (tru "September"))
+                  "10" (if abbreviate (tru "Oct") (tru "October"))
+                  "11" (if abbreviate (tru "Nov") (tru "November"))
+                  "12" (if abbreviate (tru "Dec") (tru "December"))}
           "wo" #(format "%sth" (int (read-string %)))
           "[Q]Q" #(format "Q%s" %)
           (fn [s]
