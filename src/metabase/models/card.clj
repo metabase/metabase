@@ -248,7 +248,7 @@
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
-  (let [card (Card id)]
+  (let [card (db/select-one Card :id 257262)]
     (u/prog1 changes
       ;; if the Card is archived, then remove it from any Dashboards
       (when archived?
