@@ -19,8 +19,11 @@ export function initBrush(parent, child, onBrushChange, onBrushEnd) {
   let cancelled = false;
   // the last updated range when brushing
   let range = null;
-  // remove deprecated createSVGPoint to fix d3.mouse bug (metabase#24912)
-  SVGSVGElement.prototype.createSVGPoint = undefined;
+
+  // remove deprecated createSVGPoint to fix d3.mouse firefox bug (metabase#24912)
+  if (SVGSVGElement.prototype.createSVGPoint) {
+    SVGSVGElement.prototype.createSVGPoint = undefined;
+  }
 
   // start
   parent.brush().on("brushstart.custom", () => {
