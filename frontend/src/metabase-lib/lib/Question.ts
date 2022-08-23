@@ -1502,7 +1502,9 @@ export class MetricQuestion extends Question {
     const metric = this.metric();
     const { id } = metric;
     const results = await NewMetricApi.query(
-      { id, ignore_cache: ignoreCache, collection_preview: collectionPreview },
+      {
+        id /* ignore_cache: ignoreCache, collection_preview: collectionPreview */,
+      },
       { cancelled: cancelDeferred.promise },
     );
     return [results as Dataset];
