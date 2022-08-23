@@ -1273,7 +1273,6 @@ class QuestionInner {
       ...(creationType ? { creationType } : {}),
       dashboardId: this._card.dashboardId,
       dashcardId: this._card.dashcardId,
-      ...(this._metric ? { metric: this._metric } : {}),
     };
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
@@ -1509,5 +1508,3 @@ export class MetricQuestion extends Question {
     return [results as Dataset];
   }
 }
-
-// Object.setPrototypeOf(MetricQuestion.prototype, Question.prototype);

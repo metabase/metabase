@@ -320,19 +320,16 @@ export const getQuestion = createSelector(
     if (!metadata || !card) {
       return;
     }
-    let question;
+
     if (metric) {
-      question = new MetricQuestion({
+      return new MetricQuestion({
         card,
         metadata,
         metric,
       });
-
-      // should I run any of the below code? not sure
-      return question;
-    } else {
-      question = new Question(card, metadata, parameterValues);
     }
+
+    const question = new Question(card, metadata, parameterValues);
 
     if (queryBuilderMode === "dataset") {
       return question.lockDisplay();
@@ -447,7 +444,7 @@ export const getLastRunQuestion = createSelector(
         metric,
       });
     } else {
-      new Question(card, metadata, parameterValues);
+      return new Question(card, metadata, parameterValues);
     }
   },
 );

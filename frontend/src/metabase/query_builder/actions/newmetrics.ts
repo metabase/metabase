@@ -157,7 +157,7 @@ const runMetricQuery =
       });
 
       const results = await NewMetricApi.query(
-        { id: question.metric().id, ignore_cache: ignoreCache },
+        { id: question.metric().id },
         {
           cancelled: cancelQueryDeferred.promise,
         },
