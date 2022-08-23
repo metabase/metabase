@@ -33,21 +33,30 @@ const standardTableStyleReset = css`
 
   width: 100%;
 
-  font-size: 12px;
+  font-size: 14px;
   line-height: 12px;
   text-align: left;
+  thead tr:first-of-type {
+    background-color: #fff;
+  }
 `;
 
 export const Table = styled.table`
   ${standardTableStyleReset}
-
   tr {
     border-bottom: 1px solid ${alpha(color("border"), 0.3)};
+  }
+  tr:nth-child(even) {
+    background-color: #f2f2f2;
+  }
+
+  tr:hover {
+    background-color: #ceced0;
   }
 
   th,
   td {
-    height: 2.1875rem;
+    height: 3.1875rem;
     padding: 0 0.75rem;
     border-bottom: 1px solid ${alpha(color("border"), 0.3)};
   }
@@ -55,6 +64,10 @@ export const Table = styled.table`
   th:first-of-type,
   td:first-of-type {
     padding-left: 1.44em;
+  }
+  td img {
+    border-radius: 50%;
+    width: 30px;
   }
 `;
 
@@ -77,7 +90,8 @@ export const TableHeaderCellContent = styled.button<{
 
   margin-left: ${props => (props.isRightAligned ? "auto" : "unset")};
 
-  color: ${props => (props.isSorted ? color("brand") : color("text-medium"))};
+  color: ${props =>
+    props.isSorted ? color("text-medium") : color("text-dark")};
   font-weight: 700;
 
   cursor: pointer;
