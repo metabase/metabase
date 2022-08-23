@@ -382,13 +382,35 @@
 
 (deftest create-card-validation-test
   (testing "POST /api/card"
-   (is (= {:errors {:visualization_settings "value must be a map."}}
-          (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
+    (is (= {:errors {:visualization_settings "value must be a map."}}
+           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
 
-   (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                     "Each parameter must be a map with :id and :type keys")}}
-          (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
-                                                             :parameters             "abc"})))))
+    (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
+                                      "Each parameter must be a map with :id and :type keys")}}
+           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
+                                                              :parameters             "abc"})))
+    (with-temp-native-card-with-params [db card]
+      (testing "You cannot create a card with variables as a model"
+        (is (= "A model made from a native SQL question cannot have a variable or field filter."
+               (mt/user-http-request :rasta :post 400 "card"
+                                     (merge
+                                      (mt/with-temp-defaults Card)
+                                      {:dataset       true
+                                       :query_type    "native"
+                                       :dataset_query (:dataset_query card)})))))
+      (testing "You can create a card with a saved question CTE as a model"
+        (let [card-reference (str "#" (u/the-id card))]
+          (mt/user-http-request :rasta :post 200 "card"
+                                (merge
+                                 (mt/with-temp-defaults Card)
+                                 {:dataset_query {:database (u/the-id db)
+                                                  :type     :native
+                                                  :native   {:query         (format "SELECT * FROM {{%s}};" card-reference)
+                                                             :template-tags {card-reference {:card-id      (u/the-id card),
+                                                                                             :display-name card-reference,
+                                                                                             :id           (str (random-uuid))
+                                                                                             :name         card-reference,
+                                                                                             :type         :card}}}}})))))))
 
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
@@ -760,7 +782,7 @@
                (:emitters (mt/user-http-request :rasta :get 200 (format "card/%d" (u/the-id read-card)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                UPDATING A CARD                                                 |
+;;; |                                       UPDATING A CARD (PUT /api/card/:id)
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 
@@ -930,6 +952,13 @@
                             {:collection_position nil})
       (is (= 1
              (db/select-one-field :collection_position Card :id (u/the-id card)))))))
+
+(deftest update-card-validation-test
+  (testing "PUT /api/card"
+    (with-temp-native-card-with-params [db card]
+      (testing  "You cannot update a model to have variables"
+        (is (= "A model made from a native SQL question cannot have a variable or field filter."
+               (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:dataset true})))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
