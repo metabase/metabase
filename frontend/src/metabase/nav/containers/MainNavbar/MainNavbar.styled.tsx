@@ -135,6 +135,10 @@ export const BrowseLink = styled(SidebarLink)`
   padding-left: 14px;
 `;
 
+export const DataAppLink = styled(SidebarLink)`
+  padding-left: 14px;
+`;
+
 export const AddYourOwnDataLink = styled(SidebarLink)`
   background: ${color("brand")};
   border-radius: 8px;
