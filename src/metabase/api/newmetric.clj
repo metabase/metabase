@@ -37,10 +37,9 @@
                      :measure measure}))))
 
 (api/defendpoint POST "/"
-  [:as {{:keys [name display_name description card_id measure dimensions] :as body} :body}]
+  [:as {{:keys [name description card_id measure dimensions] :as body} :body}]
   {card_id      su/IntGreaterThanZero
    name         su/NonBlankString
-   display_name (s/maybe s/Str)
    description  (s/maybe s/Str)}
   (validate-dimensions! dimensions)
   (validate-measure! measure)
@@ -48,10 +47,9 @@
 
 (api/defendpoint PUT "/:id"
   "Update a `Newmetric`."
-  [id :as {{:keys [name display_name description card_id measure dimensions] :as metric-updates} :body}]
+  [id :as {{:keys [name description card_id measure dimensions] :as metric-updates} :body}]
   {card_id      su/IntGreaterThanZero
    name         su/NonBlankString
-   display_name (s/maybe s/Str)
    description  (s/maybe s/Str)}
   (validate-dimensions! dimensions)
   (validate-measure! measure)

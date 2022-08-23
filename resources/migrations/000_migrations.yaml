@@ -12628,12 +12628,6 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: display_name
-                  type: varchar(255)
-                  remarks: 'display name of the newmetric'
-                  constraints:
-                    nullable: false
-              - column:
                   remarks: Optional markdown description of the newmetric
                   name: description
                   type: varchar(255)

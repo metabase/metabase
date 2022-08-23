@@ -236,7 +236,7 @@
 
 (defmethod collection-children-query :newmetric
   [_model collection {:keys [archived? pinned-state]}]
-  {:select [:id :name :display_name [(hx/literal "newmetric") :model] :description
+  {:select [:id :name [(hx/literal "newmetric") :model] :description
             :collection_preview :collection_position]
    :from   [Newmetric]
    :where  [:and
@@ -486,7 +486,7 @@
   "All columns that need to be present for the union-all. Generated with the comment form below. Non-text columns that
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
-  [:id :name :display_name :description :entity_id :display [:collection_preview :boolean] :dataset_query
+  [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
    :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
