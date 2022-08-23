@@ -4235,8 +4235,8 @@ msgstr "Ngành, loại, mẫu, đánh giá,..."
 msgid "Account settings"
 msgstr "Cài đặt tài khoản"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
+#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:59
+#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:99
 msgid "Exit admin"
 msgstr "Thoát người quản lý"
 
@@ -4279,7 +4279,7 @@ msgstr "là nhãn hiệu của"
 msgid "and is built with care in San Francisco, CA"
 msgstr "và được xây dựng cẩn thận ở San Francisco, CA"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
+#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Quản trị viên Metabase"
 
@@ -13464,7 +13464,7 @@ msgstr "Không thể lên lịch tác vụ cho Cơ sở dữ liệu {0}"
 msgid "All elements must be distinct."
 msgstr "Tất cả các yếu tố phải khác biệt."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Chọn các cột bạn muốn bao gồm"
@@ -17890,12 +17890,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Xung đang được loại bỏ dần"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Bây giờ bạn có thể thiết lập {0} để thay thế. Chúng tôi sẽ xóa Pulses trong một bản phát hành trong tương lai và giúp bạn di chuyển bất kỳ phần nào mà bạn vẫn có."
@@ -17904,7 +17904,7 @@ msgstr "Bây giờ bạn có thể thiết lập {0} để thay thế. Chúng t�
 msgid "dashboard subscriptions"
 msgstr "đăng ký bảng điều khiển"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} biểu đồ trong đăng ký của bạn sẽ không giống như trong trang tổng quan của bạn. {1}"
 
@@ -18053,7 +18053,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Thiết lập cơ sở dữ liệu nguồn {0} và chạy di chuyển ..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:343
 msgid "Set up {0} target database and run migrations..."

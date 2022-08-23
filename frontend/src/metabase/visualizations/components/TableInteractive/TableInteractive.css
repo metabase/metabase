@@ -8,9 +8,9 @@
 }
 
 .TableInteractive-headerCellData .cellData {
-  font-weight: 900;
-  font-size: 10px;
-  border: 1px solid color-mod(var(--color-brand) alpha(-80%));
+  font-weight: normal;
+  font-size: 12px;
+  border: 1px solid color(var(--color-border) alpha(0%));
   padding: 0.25em 0.65em;
   border-radius: 6px;
   min-width: 35px;
@@ -18,7 +18,7 @@
 }
 
 .TableInteractive-headerCellData .cellData:hover {
-  border: 1px solid color-mod(var(--color-brand) alpha(-44%));
+  border: 1px solid color(var(--color-brand) alpha(-44%));
 }
 
 .TableInteractive-headerCellData .Icon-chevrondown,
@@ -43,6 +43,9 @@
 }
 
 .TableInteractive .TableInteractive-cellWrapper {
+  /* padding: 0 0.75em; */
+  padding-top: 12px;
+  padding-bottom: 12px;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -50,7 +53,7 @@
   border-top: 1px solid transparent;
   border-left: 1px solid transparent;
   border-right: 1px solid transparent;
-  border-bottom: 1px solid color-mod(var(--color-border) alpha(-70%));
+  border-bottom: 1px solid color(var(--color-border) alpha(0%));
 }
 
 .TableInteractive .TableInteractive-cellWrapper--active {
@@ -70,13 +73,14 @@
 
 /* cell overflow ellipsis */
 .TableInteractive .cellData {
-  margin: 0 0.75em;
+  margin: 0 12px;
   display: block;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow-x: hidden;
-  font-weight: 700;
-  font-size: 12.5px;
+  color: var(--color-text-dark);
+  font-weight: normal;
+  font-size: 12px;
 }
 
 /* pivot */
@@ -93,17 +97,24 @@
   .TableInteractive-header
   .TableInteractive-cellWrapper.tether-enabled
   .cellData {
-  background-color: color-mod(var(--color-brand));
+  background-color: color(var(--color-brand));
   color: white !important;
 }
 
+/*
+.TableInteractive .TableInteractive-cellWrapper.tether-enabled {
+  background-color: var(--color-brand);
+  color: white !important;
+}
+*/
+
 .TableInteractive-cellWrapper:hover {
-  background-color: color-mod(var(--color-brand) alpha(-90%));
+  background-color: color(var(--color-brand) alpha(-90%));
 }
 
 .Table-ID .cellData {
-  border: 1px solid color-mod(var(--color-brand) alpha(-86%));
-  background-color: color-mod(var(--color-brand) alpha(-92%));
+  border: 1px solid color(var(--color-brand) alpha(-86%));
+  background-color: color(var(--color-brand) alpha(-92%));
   padding: 0.25em 0.65em;
   border-radius: 99px;
   min-width: 35px;
@@ -126,7 +137,7 @@
   color: var(--color-brand);
 }
 
-.TableInteractive-cellWrapper--firstColumn.padLeft {
+.TableInteractive-cellWrapper--firstColumn {
   padding-left: 1.5em;
 }
 

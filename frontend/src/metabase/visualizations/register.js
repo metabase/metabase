@@ -6,6 +6,7 @@ import {
 import Scalar from "./visualizations/Scalar";
 import SmartScalar from "./visualizations/SmartScalar";
 import Progress from "./visualizations/Progress";
+import Image from "./visualizations/Image";
 import Table from "./visualizations/Table";
 import Text from "./visualizations/Text";
 import LineChart from "./visualizations/LineChart";
@@ -26,6 +27,7 @@ export default function () {
   registerVisualization(Scalar);
   registerVisualization(SmartScalar);
   registerVisualization(Progress);
+  registerVisualization(Image);
   registerVisualization(Gauge);
   registerVisualization(Table);
   registerVisualization(Text);

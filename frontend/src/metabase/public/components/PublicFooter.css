@@ -1,0 +1,122 @@
+/** footer */
+.home-footer-container {
+  background: #06061e;
+  color: white;
+  display: flex;
+  padding: 40px;
+  justify-content: center;
+  align-items: center;
+}
+
+.home-footer {
+  display: flex;
+  width: 1440px;
+  justify-content: center;
+}
+
+.home-footer-left {
+  display: flex;
+  flex-direction: column;
+  margin-right: 60px;
+  width: 50%;
+  margin-bottom: 20px;
+}
+
+.home-footer-left img {
+  width: 241px;
+  height: 36px;
+}
+
+.home-footer-left span {
+  color: var(--footprint-color-secondary-text2);
+  font-size: 14px;
+  padding: 15px 0 5px;
+  line-height: 20px;
+}
+
+.home-footer-left-email {
+  display: flex;
+  border-radius: 8px;
+  overflow: hidden;
+  width: 100%;
+  height: 48px;
+}
+
+.home-footer-left-email input {
+  height: 50px;
+  flex: 1;
+  font-size: 16px;
+  padding: 0 30px;
+  color: #3434b2;
+  outline: none;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+  border-color: white;
+}
+
+.home-footer-left-email div {
+  background: #3434b2;
+  color: white;
+  padding: 0 30px;
+  line-height: 48px;
+  font-size: 16px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.home-footer-right {
+  display: flex;
+  justify-content: space-between;
+  width: 60%;
+}
+
+.home-footer-right-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.home-footer-right-section span {
+  /* font-weight: 800; */
+  /* font-size: 18px; */
+  color: white;
+}
+
+.home-footer-right-section ul {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin-top: 20px;
+}
+
+.home-footer-right-section ul li {
+  margin-bottom: 10px;
+  cursor: pointer;
+  color: var(--footprint-color-secondary-text2);
+  /* font-size: 14px; */
+}
+
+.home-footer-right-section ul li:hover {
+  color: #3434b2;
+  text-decoration: underline;
+}
+
+@media screen and (--footprint-breakpoint-max-pad) {
+  .home-footer {
+    flex-direction: column;
+  }
+
+  .home-footer-container {
+    padding: 40px;
+  }
+
+  .home-footer-left,
+  .home-footer-right {
+    width: 100%;
+  }
+}
+
+@media screen and (--footprint-breakpoint-max-mobile) {
+  .home-footer-container {
+    display: none;
+  }
+}

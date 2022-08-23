@@ -4247,8 +4247,8 @@ msgstr "Kategori, jenis, model, peringkat, dll."
 msgid "Account settings"
 msgstr "Pengaturan akun"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
+#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:59
+#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:99
 msgid "Exit admin"
 msgstr "Keluar dari Admin."
 
@@ -4291,7 +4291,7 @@ msgstr "adalah merek dagang dari"
 msgid "and is built with care in San Francisco, CA"
 msgstr "dan dibangun dengan hati-hati di San Francisco, CA"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
+#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Metabase Admin."
 
@@ -13475,7 +13475,7 @@ msgstr "Gagal menjadwalkan tugas untuk basis data {0}"
 msgid "All elements must be distinct."
 msgstr "Semua elemen harus berbeda."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Pilih kolom yang ingin Anda sertakan"
@@ -17904,12 +17904,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulsa sedang dihapus"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Anda sekarang dapat menyiapkan {0} sebagai gantinya. Kami akan menghapus Pulsa di rilis mendatang, dan membantu Anda memigrasikan semua yang masih Anda miliki."
@@ -17918,7 +17918,7 @@ msgstr "Anda sekarang dapat menyiapkan {0} sebagai gantinya. Kami akan menghapus
 msgid "dashboard subscriptions"
 msgstr "Berlangganan Dasbor"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} grafik dalam langganan Anda tidak akan terlihat sama seperti di dasbor Anda. {1}"
 
@@ -18067,7 +18067,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Atur {0} basis data sumber dan jalankan migrasi ..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:343
 msgid "Set up {0} target database and run migrations..."

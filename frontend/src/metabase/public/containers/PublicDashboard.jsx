@@ -67,7 +67,6 @@ class PublicDashboard extends Component {
       location,
       params: { uuid, token },
     } = this.props;
-
     if (uuid) {
       setPublicDashboardEndpoints();
     } else if (token) {
@@ -101,7 +100,6 @@ class PublicDashboard extends Component {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
   }
-
   render() {
     const {
       dashboard,

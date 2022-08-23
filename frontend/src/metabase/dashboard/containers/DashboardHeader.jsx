@@ -201,7 +201,7 @@ class DashboardHeader extends Component {
     if (isEditing) {
       const addQuestionButtonHint = showAddQuestionSidebar
         ? t`Close sidebar`
-        : t`Add questions`;
+        : t`Add Chart`;
 
       buttons.push(
         <Tooltip tooltip={addQuestionButtonHint}>
@@ -210,7 +210,9 @@ class DashboardHeader extends Component {
             isActive={showAddQuestionSidebar}
             onClick={onToggleAddQuestionSidebar}
             data-metabase-event="Dashboard;Add Card Sidebar"
-          />
+          >
+            Add Chart
+          </DashboardHeaderButton>
         </Tooltip>,
       );
 

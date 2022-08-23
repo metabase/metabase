@@ -4020,7 +4020,7 @@ msgstr "Soma de ..."
 msgid "Sum of all the values of a column."
 msgstr "Soma de todos os valores de uma coluna."
 
-#. Acho que a agregação de "Medium of.... " está ficando errada, pois traduz em 
+#. Acho que a agregação de "Medium of.... " está ficando errada, pois traduz em
 #. "Média de... de" mas vou deixar a tradução assim por enquanto
 #: frontend/src/metabase/lib/schema_metadata.js:626
 msgid "Average of ..."
@@ -4264,8 +4264,8 @@ msgstr "Categoria, Tipo, Modelo, Classificação, etc."
 msgid "Account settings"
 msgstr "Configuração da conta"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
+#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:59
+#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:99
 msgid "Exit admin"
 msgstr "Sair do admin"
 
@@ -4308,7 +4308,7 @@ msgstr "é uma marca registrada da"
 msgid "and is built with care in San Francisco, CA"
 msgstr "e é construído com amor em São Francisco, CA"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
+#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Administrador do Metabase"
 
@@ -13526,7 +13526,7 @@ msgstr "Falha ao agendar tarefas para o Banco de Dados {0}"
 msgid "All elements must be distinct."
 msgstr "Todos os elementos devem ser distintos."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Selecione as colunas que quer incluir"
@@ -17961,12 +17961,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Os Pulsos estão sendo gradualmente eliminados"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Agora você pode instalar {0} em seu lugar. Nós descontinuaremos os Pulsos em um lançamento futuro, e o ajudaremos a migrar qualquer um que você ainda tenha."
@@ -17975,7 +17975,7 @@ msgstr "Agora você pode instalar {0} em seu lugar. Nós descontinuaremos os Pul
 msgid "dashboard subscriptions"
 msgstr "Inscrições do dashboard"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} os gráficos em sua assinatura não terão o mesmo aspecto que em seu painel de controle. {1}"
 
@@ -18124,7 +18124,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Configurar {0} banco de dados de origem e executar migrações..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:343
 msgid "Set up {0} target database and run migrations..."

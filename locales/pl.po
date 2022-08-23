@@ -4265,8 +4265,8 @@ msgstr "Kategoria, Typ, Model, Ocena itd."
 msgid "Account settings"
 msgstr "Ustawienia konta"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
+#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:59
+#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:99
 msgid "Exit admin"
 msgstr "Zamknij panel administracyjny"
 
@@ -4309,7 +4309,7 @@ msgstr "jest znakiem towarowym"
 msgid "and is built with care in San Francisco, CA"
 msgstr "i jest tworzony w San Francisco, CA"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
+#: frontend/src/metabase/nav/components/PublicNavbar/PublicNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Metabase Admin"
 
@@ -13547,7 +13547,7 @@ msgstr "Nie udało się zaplanować zadań dla bazy danych {0}"
 msgid "All elements must be distinct."
 msgstr "Wszystkie elementy muszą być unikalne."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Wybierz kolumny, które chcesz uwzględnić"
@@ -18002,12 +18002,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulsy są stopniowo wycofywane"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Możesz teraz ustawić {0} zamiast tego. W przyszłym wydaniu usuniemy pulsy i pomożemy ci migrować te, które jeszcze masz."
@@ -18016,7 +18016,7 @@ msgstr "Możesz teraz ustawić {0} zamiast tego. W przyszłym wydaniu usuniemy p
 msgid "dashboard subscriptions"
 msgstr "subskrypcje pulpitów"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} wykresy w subskrypcji nie będą wyglądać tak samo jak w Twoim pulpicie. {1}"
 
@@ -18165,7 +18165,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Ustaw źródłową bazę danych {0} i uruchomić migrację..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:343
 msgid "Set up {0} target database and run migrations..."

@@ -49,7 +49,7 @@ export const Table = styled.table`
   td {
     height: 2.1875rem;
     padding: 0 0.75rem;
-    border-bottom: 1px solid ${alpha(color("border"), 0.3)};
+    border-bottom: 2px solid ${alpha(color("border"), 0.3)};
   }
 
   th:first-of-type,
@@ -63,7 +63,7 @@ export const SortIcon = styled(Icon)`
 `;
 
 SortIcon.defaultProps = {
-  size: 8,
+  size: 10,
 };
 
 export const TableHeaderCellContent = styled.button<{
