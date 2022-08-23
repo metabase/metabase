@@ -7,7 +7,7 @@ import ParameterFieldWidgetValue from "metabase/parameters/components/widgets/Pa
 
 type FormattedParameterValueProps = {
   parameter: UiParameter;
-  value: unknown;
+  value: string | number | number[];
   placeholder?: string;
 };
 

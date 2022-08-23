@@ -133,7 +133,7 @@
 (defn- create-channel-then-select!
   [channel]
   (when-let [new-channel-id (pulse-channel/create-pulse-channel! channel)]
-    (-> (PulseChannel new-channel-id)
+    (-> (db/select-one PulseChannel :id new-channel-id)
         (hydrate :recipients)
         (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at)
@@ -144,7 +144,7 @@
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
   (pulse-channel/update-pulse-channel! channel)
-  (-> (PulseChannel id)
+  (-> (db/select-one PulseChannel :id id)
       (hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (update :entity_id boolean)
@@ -219,7 +219,7 @@
 (deftest update-pulse-channel!-test
   (mt/with-temp Pulse [{pulse-id :id}]
     (testing "simple starting case where we modify the schedule hour and add a recipient"
-      (mt/with-temp PulseChannel [{channel-id :id, :as channel} {:pulse_id pulse-id}]
+      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
                 :entity_id      true
                 :channel_type   :email
@@ -237,7 +237,7 @@
                  :recipients    [{:email "foo@bar.com"}]})))))
 
     (testing "monthly schedules require a schedule_frame and can optionally omit they schedule_day"
-      (mt/with-temp PulseChannel [{channel-id :id :as channel} {:pulse_id pulse-id}]
+      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
                 :entity_id      true
                 :channel_type  :email

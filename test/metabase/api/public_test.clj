@@ -16,6 +16,7 @@
                                      Dimension
                                      Field
                                      FieldValues]]
+            [metabase.models.interface :as mi]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -772,9 +773,9 @@
 
 (defn- field-values-url [card-or-dashboard field-or-id]
   (str "public/"
-       (condp instance? card-or-dashboard
-         (class Card)      "card"
-         (class Dashboard) "dashboard")
+       (condp mi/instance-of? card-or-dashboard
+         Card      "card"
+         Dashboard "dashboard")
        "/" (or (:public_uuid card-or-dashboard)
                (throw (Exception. (str "Missing public UUID: " card-or-dashboard))))
        "/field/" (u/the-id field-or-id)
@@ -885,9 +886,9 @@
 
 (defn- field-search-url [card-or-dashboard field-or-id search-field-or-id]
   (str "public/"
-       (condp instance? card-or-dashboard
-         (class Card)      "card"
-         (class Dashboard) "dashboard")
+       (condp mi/instance-of? card-or-dashboard
+         Card      "card"
+         Dashboard "dashboard")
        "/" (:public_uuid card-or-dashboard)
        "/field/" (u/the-id field-or-id)
        "/search/" (u/the-id search-field-or-id)))
@@ -951,9 +952,9 @@
 
 (defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
   (str "public/"
-       (condp instance? card-or-dashboard
-         (class Card)      "card"
-         (class Dashboard) "dashboard")
+       (condp mi/instance-of? card-or-dashboard
+         Card      "card"
+         Dashboard "dashboard")
        "/" (:public_uuid card-or-dashboard)
        "/field/" (u/the-id field-or-id)
        "/remapping/" (u/the-id remapped-field-or-id)))

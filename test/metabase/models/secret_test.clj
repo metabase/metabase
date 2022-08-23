@@ -4,7 +4,8 @@
             [metabase.models.secret :as secret :refer [Secret]]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [metabase.util.encryption-test :as encryption-test])
+            [metabase.util.encryption-test :as encryption-test]
+            [toucan.db :as db])
   (:import [java.io DataInputStream File]
            java.nio.charset.StandardCharsets))
 
@@ -30,7 +31,7 @@
          (is (= name (:name secret)))
          (is (= kind (:kind secret)))
          (is (mt/secret-value-equals? value (:value secret)))
-         (let [loaded (Secret id)]
+         (let [loaded (db/select-one Secret :id id)]
            (is (= name (:name loaded)))
            (is (= kind (:kind loaded)))
            (is (mt/secret-value-equals? value (:value loaded))))))))
@@ -114,7 +115,7 @@
                                                  :source "file-path"
                                                  :value  (.getAbsolutePath tmp-file)}]]]
         (testing (format " with a %s value" value-kind)
-          (mt/with-temp Secret [{:keys [id value] :as secret} (assoc secret-map :creator_id (mt/user->id :crowberto))]
+          (mt/with-temp Secret [{:keys [value] :as secret} (assoc secret-map :creator_id (mt/user->id :crowberto))]
             (let [val-file (secret/value->file! secret nil)]
               (is (value-matches? (or exp-val value)
                                   (let [result (byte-array (.length val-file))]

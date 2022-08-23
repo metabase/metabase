@@ -6,7 +6,7 @@
 
 (models/defmodel MetricImportantField :metric_important_field)
 
-(u/strict-extend (class MetricImportantField)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class MetricImportantField)
   models/IModel
   (merge models/IModelDefaults
          {:types (constantly {:definition :json})})

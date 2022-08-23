@@ -1,0 +1,58 @@
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
+import Button from "metabase/core/components/Button";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList";
+
+import { color } from "metabase/lib/colors";
+
+export const FilterButton = styled(Button)`
+  color: ${color("brand")};
+  margin: 0.5rem;
+`;
+
+export const ResponsiveParametersListRoot = styled.div`
+  width: 100%;
+`;
+
+interface ParametersListContainerProps {
+  isSmallScreen: boolean;
+  isShowingMobile: boolean;
+}
+
+export const ParametersListContainer = styled.div<ParametersListContainerProps>`
+  background-color: ${color("bg-light")};
+
+  ${({ isSmallScreen, isShowingMobile }) =>
+    isSmallScreen &&
+    css`
+      position: absolute;
+      top: 0;
+      left: 0;
+
+      width: 100%;
+      border-bottom: 1px solid ${color("border")};
+
+      overflow-y: auto;
+      bottom: ${isShowingMobile ? "0" : "100%"};
+      padding-bottom: ${isShowingMobile ? "0.5rem" : "0"};
+      opacity: ${isShowingMobile ? "1" : "0"};
+      transition: opacity 250ms;
+
+      ${StyledParametersList} {
+        position: relative;
+        top: ${isShowingMobile ? "0" : "15px"};
+        transition: top 250ms;
+      }
+    `}
+`;
+
+export const ParametersListHeader = styled.div`
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+export const StyledParametersList = styled(SyncedParametersList)`
+  margin: 0 1rem;
+`;

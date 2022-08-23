@@ -79,4 +79,4 @@ Once you think you have identified a problem, drill down to understand exactly w
 1. This typically happens with a question that uses multiple fields: for example, you're filtering on one timestamp and grouping by another. Check the time zones of each of the dates or times you are using in your question.
 2. You'll need to explicitly set the time zone for any value that lacks an explicit time zone. This will need to be done either in a SQL query or by transforming the data in your database to ensure both timestamps have time zones.
 
-[data-model]: ../users-guide/12-data-model-reference.html
+[data-model]: ../questions/native-editor/data-model-reference.md

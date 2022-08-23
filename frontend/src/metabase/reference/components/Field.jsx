@@ -43,15 +43,14 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         <div className={F.fieldType}>
           {isEditing ? (
             <Select
+              name={formField.semantic_type.name}
               placeholder={t`Select a field type`}
               value={
-                formField.semantic_type.value !== ""
+                formField.semantic_type.value !== undefined
                   ? formField.semantic_type.value
                   : field.semantic_type
               }
-              onChange={({ target: { value } }) =>
-                formField.semantic_type.onChange(value)
-              }
+              onChange={formField.semantic_type.onChange}
               options={MetabaseCore.field_semantic_types.concat({
                 id: null,
                 name: t`No field type`,
@@ -92,14 +91,13 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                 (isFK(field.semantic_type) &&
                   formField.semantic_type.value === undefined)) && (
                 <Select
+                  name={formField.fk_target_field_id.name}
                   placeholder={t`Select a target`}
                   value={
                     formField.fk_target_field_id.value ||
                     field.fk_target_field_id
                   }
-                  onChange={({ target: { value } }) =>
-                    formField.fk_target_field_id.onChange(value)
-                  }
+                  onChange={formField.fk_target_field_id.onChange}
                   options={Object.values(foreignKeys)}
                   optionValueFn={o => o.id}
                 />

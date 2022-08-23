@@ -39,14 +39,14 @@
         (hydrate :creator))))
 
 (s/defn ^:private hydrated-metric [id :- su/IntGreaterThanZero]
-  (-> (api/read-check (Metric id))
+  (-> (api/read-check (db/select-one Metric :id id))
       (hydrate :creator)))
 
 (defn- add-query-descriptions
   [metrics] {:pre [(coll? metrics)]}
   (when (some? metrics)
     (for [metric metrics]
-      (let [table (Table (:table_id metric))]
+      (let [table (db/select-one Table :id (:table_id metric))]
         (assoc metric
                :query_description
                (api.qd/generate-query-description table (:definition metric)))))))
@@ -162,7 +162,7 @@
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (-> id Metric api/read-check related/related))
+  (-> (db/select-one Metric :id id) api/read-check related/related))
 
 
 (api/define-routes)

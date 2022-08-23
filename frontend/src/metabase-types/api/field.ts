@@ -34,6 +34,8 @@ export interface FieldFingerprint {
 
 export interface Field {
   id: number;
+  dimensions?: FieldDimension;
+  display_name: string;
   table_id: number;
   name: string;
   base_type: string;
@@ -42,3 +44,7 @@ export interface Field {
 
   fingerprint: FieldFingerprint;
 }
+
+export type FieldDimension = {
+  name: string;
+};

@@ -50,7 +50,7 @@
     (nil? collection-id) (->> (map hydrate-root-collection))
     events? (timeline-event/include-events options)))
 
-(u/strict-extend (class Timeline)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Timeline)
   models/IModel
   (merge
    models/IModelDefaults

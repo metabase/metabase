@@ -24,6 +24,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.persisted-info :as persisted-info]
             [metabase.models.secret :as secret]
+            [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.table :refer [Table]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
@@ -332,7 +333,7 @@
   (let [include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
         exclude-uneditable-details?  (Boolean/parseBoolean exclude_uneditable_details)
         filter-by-data-access?       (not (or include-editable-data-model? exclude-uneditable-details?))
-        database                     (api/check-404 (Database id))]
+        database                     (api/check-404 (db/select-one Database :id id))]
     (cond-> database
       filter-by-data-access?       api/read-check
       exclude-uneditable-details?  api/write-check
@@ -358,7 +359,7 @@
 
 (defn- db-metadata [id include-hidden? include-editable-data-model?]
   (let [db (-> (if include-editable-data-model?
-                 (api/check-404 (Database id))
+                 (api/check-404 (db/select-one Database :id id))
                  (api/read-check Database id))
                (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
         db (if include-editable-data-model?
@@ -445,8 +446,31 @@
         fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
     (autocomplete-results tables fields limit)))
 
+(def ^:private autocomplete-matching-options
+  "Valid options for the autocomplete types. Can match on a substring (\"%input%\"), on a prefix (\"input%\"), or reject
+  autocompletions. Large instances with lots of fields might want to use prefix matching or turn off the feature if it
+  causes too many problems."
+  #{:substring :prefix :off})
+
+(defsetting native-query-autocomplete-match-style
+  (deferred-tru
+    (str "Matching style for native query editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
+         "Larger instances can have performance issues matching using substring, so can use prefix matching, "
+         " or turn autocompletions off."))
+  :visibility :public
+  :type       :keyword
+  :default    :substring
+  :setter     (fn [v]
+                (let [v (cond-> v (string? v) keyword)]
+                  (if (autocomplete-matching-options v)
+                    (setting/set-value-of-type! :keyword :native-query-autocomplete-match-style v)
+                    (throw (ex-info (tru "Invalid `native-query-autocomplete-match-style` option")
+                                    {:option v
+                                     :valid-options autocomplete-matching-options}))))))
+
 (api/defendpoint GET "/:id/autocomplete_suggestions"
-  "Return a list of autocomplete suggestions for a given `prefix`.
+  "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
+  `substring` will have priority if both are present.
 
   This is intened for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
   and `Fields` in this `Database`.
@@ -454,12 +478,12 @@
   Tables are returned in the format `[table_name \"Table\"]`;
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
-  [id prefix search]
+  [id prefix substring]
   (api/read-check Database id)
   (try
     (cond
-      search
-      (autocomplete-suggestions id (str "%" search "%"))
+      substring
+      (autocomplete-suggestions id (str "%" substring "%"))
       prefix
       (autocomplete-suggestions id (str prefix "%"))
       :else
@@ -495,7 +519,7 @@
   (let [[db-perm-check field-perm-check] (if (Boolean/parseBoolean include_editable_data_model)
                                            [check-db-data-model-perms mi/can-write?]
                                            [api/read-check mi/can-read?])]
-    (db-perm-check (Database id))
+    (db-perm-check (db/select-one Database :id id))
     (sort-by (comp str/lower-case :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
                                           (hydrate :table))))))
@@ -634,7 +658,7 @@
   []
   (api/check-superuser)
   (sample-data/add-sample-database!)
-  (Database :is_sample true))
+  (db/select-one Database :is_sample true))
 
 
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
@@ -659,7 +683,7 @@
   (api/check (public-settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
-  (api/let-404 [database (Database id)]
+  (api/let-404 [database (db/select-one Database :id id)]
     (api/write-check database)
     (if (-> database :options :persist-models-enabled)
       ;; todo: some other response if already persisted?
@@ -682,7 +706,7 @@
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [id]
   {:id su/IntGreaterThanZero}
-  (api/let-404 [database (Database id)]
+  (api/let-404 [database (db/select-one Database :id id)]
     (api/write-check database)
     (if (-> database :options :persist-models-enabled)
       (do (db/update! Database id :options
@@ -709,7 +733,7 @@
    cache_ttl          (s/maybe su/IntGreaterThanZero)
    settings           (s/maybe su/Map)}
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
-  (let [existing-database (api/write-check (Database id))
+  (let [existing-database (api/write-check (db/select-one Database :id id))
         details           (driver.u/db-details-client->server engine details)
         details           (upsert-sensitive-fields existing-database details)
         conn-error        (when (some? details)
@@ -764,7 +788,7 @@
         ;; unlike the other fields, folks might want to nil out cache_ttl
         (api/check-500 (db/update! Database id {:cache_ttl cache_ttl}))
 
-        (let [db (Database id)]
+        (let [db (db/select-one Database :id id)]
           (events/publish-event! :database-update db)
           ;; return the DB with the expanded schedules back in place
           (add-expanded-schedules db))))))
@@ -776,7 +800,7 @@
   "Delete a `Database`."
   [id]
   (api/check-superuser)
-  (api/let-404 [db (Database id)]
+  (api/let-404 [db (db/select-one Database :id id)]
     (db/delete! Database :id id)
     (events/publish-event! :database-delete db))
   api/generic-204-no-content)
@@ -803,7 +827,7 @@
   "Trigger a manual update of the schema metadata for this `Database`."
   [id]
   ;; just wrap this in a future so it happens async
-  (let [db (api/write-check (Database id))]
+  (let [db (api/write-check (db/select-one Database :id id))]
     (future
       (sync-metadata/sync-db-metadata! db)
       (analyze/analyze-db! db)))
@@ -814,7 +838,7 @@
   tables to be `complete` (see #20863)"
   [id]
   ;; manual full sync needs to be async, but this is a simple update of `Database`
-  (let [db     (api/write-check (Database id))
+  (let [db     (api/write-check (db/select-one Database :id id))
         tables (map api/write-check (:tables (first (add-tables [db]))))]
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
@@ -833,7 +857,7 @@
   "Trigger a manual scan of the field values for this `Database`."
   [id]
   ;; just wrap this is a future so it happens async
-  (let [db (api/write-check (Database id))]
+  (let [db (api/write-check (db/select-one Database :id id))]
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -861,7 +885,7 @@
 (api/defendpoint POST "/:id/discard_values"
   "Discards all saved field values for this `Database`."
   [id]
-  (delete-all-field-values-for-database! (api/write-check (Database id)))
+  (delete-all-field-values-for-database! (api/write-check (db/select-one Database :id id)))
   {:status :ok})
 
 

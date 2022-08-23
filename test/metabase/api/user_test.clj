@@ -255,7 +255,7 @@
       (mt/with-temp* [LoginHistory [_ {:user_id   (mt/user->id :rasta)
                                        :device_id (str (java.util.UUID/randomUUID))
                                        :timestamp #t "2021-03-18T19:52:41.808482Z"}]
-                      Card [card1 {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+                      Card [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -273,8 +273,8 @@
                    mt/boolean-ids-and-timestamps
                    (dissoc :is_qbnewb :last_login))))))
     (testing "check that `has_question_and_dashboard` is `true`."
-      (mt/with-temp* [Dashboard [dash1 {:name "dash1" :creator_id (mt/user->id :rasta)}]
-                      Card      [card1 {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+      (mt/with-temp* [Dashboard [_ {:name "dash1" :creator_id (mt/user->id :rasta)}]
+                      Card      [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -412,7 +412,7 @@
                                  :user_group_memberships (group-or-ids->user-group-memberships
                                                           [(perms-group/all-users) group-1 group-2])})
           (is (= #{"All Users" "Group 1" "Group 2"}
-                 (user-test/user-group-names (User :email email)))))))
+                 (user-test/user-group-names (db/select-one User :email email)))))))
 
     (testing (str "If you forget the All Users group it should fail, because you cannot have a User that's not in the "
                   "All Users group. The whole API call should fail and no user should be created, even though the "
@@ -500,7 +500,7 @@
                                            :last_name    "Era"
                                            :email        "cam.era@metabase.com"
                                            :is_superuser true}]
-                      Collection [coll]]
+                      Collection [_]]
         (letfn [(user [] (into {} (-> (db/select-one [User :id :first_name :last_name :is_superuser :email], :id user-id)
                                       (hydrate :personal_collection_id :personal_collection_name)
                                       (dissoc :id :personal_collection_id :common_name))))]
@@ -1007,7 +1007,7 @@
       (testing "shouldn't be allowed to set someone else's status"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403
-                                     (format "user/%d/modal/endpoint"
+                                     (format "user/%d/modal/%s"
                                              (mt/user->id :trashbird)
                                              endpoint))))))))
 

@@ -97,7 +97,7 @@ describe("createSessionMiddleware", () => {
       clock.tick(COOKIE_POOLING_TIMEOUT);
 
       expect(dispatchMock).toHaveBeenCalled();
-      expect(logout).toHaveBeenCalledWith("/question/1?query=5#hash", true);
+      expect(logout).toHaveBeenCalledWith("/question/1?query=5#hash");
     });
   });
 

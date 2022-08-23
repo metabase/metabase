@@ -355,11 +355,7 @@
                                     :id           %categories.name
                                     :display_name "Category → Name"
                                     :fk_field_id  %category_id
-                                    :options      {::qp.add-dimension-projections/new-field-dimension-id dimension-id}}]})
-                rows     [["20th Century Cafe"               2 "Café"]
-                          ["25°"                             2 "Burger"]
-                          ["33 Taps"                         2 "Bar"]
-                          ["800 Degrees Neapolitan Pizzeria" 2 "Pizza"]]]
+                                    :options      {::qp.add-dimension-projections/new-field-dimension-id dimension-id}}]})]
             (testing "metadata"
               (is (partial= {:cols [{:name "NAME", :display_name "Name"}
                                     {:name "CATEGORY_ID", :display_name "Category ID", :remapped_to "NAME_2"}
@@ -433,10 +429,7 @@
                                       :id           %users.name
                                       :display_name "Receiver → Name"
                                       :fk_field_id  %receiver_id
-                                      :options      {::qp.add-dimension-projections/new-field-dimension-id receiver-dimension-id}}]})
-                  rows     [[8 7 "Coo"             "Annie Albatross" "Brenda Blackbird"]
-                            [8 3 "Bip bip bip bip" "Annie Albatross" "Peter Pelican"]
-                            [3 2 "Coo"             "Peter Pelican"   "Lucky Pigeon"]]]
+                                      :options      {::qp.add-dimension-projections/new-field-dimension-id receiver-dimension-id}}]})]
               (testing "metadata"
                 (is (partial= {:cols [{:display_name "Sender ID", :name "SENDER_ID", :remapped_to "NAME"}
                                       {:display_name "Receiver ID", :name "RECEIVER_ID", :remapped_to "NAME_2"}

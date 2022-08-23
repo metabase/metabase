@@ -6,7 +6,7 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.test.automagic-dashboards :refer :all]
+            [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
             [metabase.test.domain-entities :as test.de]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.transforms :as transforms.test]

@@ -27,6 +27,7 @@ import ValidationError, {
 import { IconName } from "metabase-types/types";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
+import { getQuestionIdFromVirtualTableId } from "metabase/lib/saved-questions";
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
@@ -564,6 +565,10 @@ export default class Dimension {
     return this.withoutOptions("binning");
   }
 
+  withoutJoinAlias(): Dimension {
+    return this.withoutOptions("join-alias");
+  }
+
   /**
    * Return a copy of this Dimension with any temporal bucketing or binning options removed.
    */
@@ -796,7 +801,9 @@ export class FieldDimension extends Dimension {
     // we need to repeat the hydration again.
     // We should definitely move it out of there
     if (hydrate) {
-      field.table = this._metadata.table(field.table_id);
+      field.table =
+        this.query()?.table() ?? this._metadata.table(field.table_id);
+      field.table_id = field.table?.id;
 
       if (field.isFK()) {
         field.target = this._metadata.field(field.fk_target_field_id);
@@ -815,80 +822,128 @@ export class FieldDimension extends Dimension {
     return field;
   }
 
-  field(): Field {
+  _getIdentifierProp() {
+    return this.isIntegerFieldId() ? "id" : "name";
+  }
+
+  _getTrustedFieldCachedOnInstance() {
     if (
       this._fieldInstance &&
       this._fieldInstance._comesFromEndpoint === true
     ) {
       return this._fieldInstance;
     }
+  }
 
-    const question = this.query()?.question();
-    const lookupField = this.isIntegerFieldId() ? "id" : "name";
-    const fieldMetadata = question
-      ? _.findWhere(question.getResultMetadata(), {
-          [lookupField]: this.fieldIdOrName(),
-        })
-      : null;
+  _getFieldMetadataFromSavedDataset() {
+    const identifierProp = this._getIdentifierProp();
+    const questionAssociatedWithDimension = this.query()?.question();
+    if (
+      questionAssociatedWithDimension?.isSaved() &&
+      questionAssociatedWithDimension.isDataset()
+    ) {
+      const fieldMetadata = _.findWhere(
+        questionAssociatedWithDimension.getResultMetadata(),
+        {
+          [identifierProp]: this.fieldIdOrName(),
+        },
+      );
 
-    // Field result metadata can be overwritten for models,
-    // so we need to merge regular field object with the model overwrites
-    const shouldMergeFieldResultMetadata = question?.isDataset();
+      return fieldMetadata;
+    }
+  }
 
+  _getFieldMetadataFromNestedDataset() {
+    const identifierProp = this._getIdentifierProp();
+    const virtualTableCardId = getQuestionIdFromVirtualTableId(
+      this.query()?.sourceTableId?.(),
+    );
+    if (virtualTableCardId != null) {
+      const question = this._metadata?.question(virtualTableCardId);
+      const fieldMetadata = question?.isDataset()
+        ? _.findWhere(question.getResultMetadata(), {
+            [identifierProp]: this.fieldIdOrName(),
+          })
+        : undefined;
+
+      return fieldMetadata;
+    }
+  }
+
+  _getFieldMetadataFromQueryTable() {
+    const identifierProp = this._getIdentifierProp();
+    const table = this.query()?.table();
+    return _.findWhere(table?.fields, {
+      [identifierProp]: this.fieldIdOrName(),
+    });
+  }
+
+  _combineFieldWithExtraMetadata(field: Field | undefined, fieldMetadata) {
+    if (field) {
+      if (!fieldMetadata || field === fieldMetadata) {
+        return field;
+      }
+
+      const fieldObject = merge(
+        field instanceof Field ? field.getPlainObject() : field,
+        fieldMetadata instanceof Field
+          ? fieldMetadata.getPlainObject()
+          : fieldMetadata,
+      );
+      return this._createField(fieldObject, { hydrate: true });
+    }
+
+    if (fieldMetadata) {
+      if (fieldMetadata instanceof Field) {
+        return fieldMetadata;
+      }
+
+      return this._createField(fieldMetadata);
+    }
+  }
+
+  field(): Field {
+    // If a Field is cached on the FieldDimension instance, we can shortwire this method and
+    // return the cached Field.
+    const cachedField = this._getTrustedFieldCachedOnInstance();
+    if (cachedField) {
+      return cachedField;
+    }
+
+    let fieldMetadata;
+
+    // Models contain custom metadata for fields, but when these fields have integer ids,
+    // they are clobbered by the metadata from the real table that the card is based on,
+    // so we need to check the result_metadata of the nested card and merge it with the
+    // Field that exists in the Metadata object.
     if (this.isIntegerFieldId()) {
-      const field = this._metadata?.field(this.fieldIdOrName());
-
-      if (field) {
-        if (!fieldMetadata || !shouldMergeFieldResultMetadata) {
-          return field;
-        }
-        const fieldObject = merge(
-          field instanceof Field ? field.getPlainObject() : field,
-          fieldMetadata,
-        );
-        return this._createField(fieldObject, { hydrate: true });
-      }
-
-      if (fieldMetadata) {
-        return this._createField(fieldMetadata);
-      }
-
-      return this._createField({ id: this._fieldIdOrName });
+      fieldMetadata =
+        this._getFieldMetadataFromSavedDataset() ||
+        this._getFieldMetadataFromNestedDataset();
     }
 
-    // look for a "virtual" field on the query's table or question
-    // for example, fields from a question based on a nested question have fields
-    // that show up in a card's `result_metadata`
-    if (this.query()) {
-      const table = this.query().table();
+    // In scenarios where the Field id is not an integer, we need to grab the Field from the
+    // query's table, because the Field won't exist in the Metadata object (and string Field ids
+    // are not sufficiently unique to be stored properly in the Metadata object).
+    fieldMetadata = fieldMetadata || this._getFieldMetadataFromQueryTable();
 
-      if (table != null) {
-        const field = _.findWhere(table.fields, {
-          name: this.fieldIdOrName(),
-        });
+    // The `fieldMetadata` object may have metadata that overrides the regular field object
+    // (e.g. a custom field display name or description on a model)
+    const field = this._metadata?.field(this.fieldIdOrName());
+    const combinedField = this._combineFieldWithExtraMetadata(
+      field,
+      fieldMetadata,
+    );
 
-        if (field) {
-          if (!fieldMetadata || !shouldMergeFieldResultMetadata) {
-            return field;
-          }
-          const fieldObject = merge(
-            field instanceof Field ? field.getPlainObject() : field,
-            fieldMetadata,
-          );
-          return this._createField(fieldObject, { hydrate: true });
-        }
-      }
-
-      if (fieldMetadata) {
-        return this._createField(fieldMetadata);
-      }
+    if (combinedField) {
+      return combinedField;
     }
 
-    // despite being unable to find a field, we _might_ still have enough data to know a few things about it
-    // for example, if we have an mbql field reference, it might contain a `base-type`
+    // Despite being unable to find a field, we _might_ still have enough data to know a few things about it.
+    // For example, if we have an mbql field reference, it might contain a `base-type`
     return this._createField({
-      id: this.mbql(),
-      name: this._fieldIdOrName,
+      id: this.isIntegerFieldId() ? this.fieldIdOrName() : this.mbql(),
+      name: this.isStringFieldName() && this.fieldIdOrName(),
       // NOTE: this display_name will likely be incorrect
       // if a `FieldDimension` isn't associated with a query then we don't know which table it belongs to
       display_name: this._fieldIdOrName,
@@ -931,8 +986,10 @@ export class FieldDimension extends Dimension {
       { ...this._options, ...options },
       this._metadata,
       this._query,
-      this._fieldInstance && {
+      {
         _fieldInstance: this._fieldInstance,
+        _subDisplayName: this._subDisplayName,
+        _subTriggerDisplayName: this._subTriggerDisplayName,
       },
     );
   }
@@ -1090,9 +1147,14 @@ export class FieldDimension extends Dimension {
     if (this.fk()) {
       const fkDisplayName =
         this.fk() && stripId(this.fk().field().displayName());
-      displayName = `${fkDisplayName} ${FK_SYMBOL} ${displayName}`;
+      if (!displayName.startsWith(`${fkDisplayName} ${FK_SYMBOL}`)) {
+        displayName = `${fkDisplayName} ${FK_SYMBOL} ${displayName}`;
+      }
     } else if (this.joinAlias()) {
-      displayName = `${this.joinAlias()} ${FK_SYMBOL} ${displayName}`;
+      const joinAlias = this.joinAlias();
+      if (!displayName.startsWith(`${joinAlias} ${FK_SYMBOL}`)) {
+        displayName = `${joinAlias} ${FK_SYMBOL} ${displayName}`;
+      }
     }
 
     if (this.temporalUnit()) {

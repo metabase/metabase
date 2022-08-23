@@ -16,6 +16,7 @@
                                      PersistedInfo Pulse PulseCard PulseChannel Revision Segment Setting
                                      Table TaskHistory Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.setting :as setting]
@@ -278,7 +279,7 @@
   (add-watch
    model-var
    ::reload
-   (fn [_ reference _ _]
+   (fn [_key _reference _old-state _new-state]
      (println (format "%s changed, reloading with-temp-defaults" model-var))
      (set-with-temp-defaults!))))
 
@@ -678,13 +679,13 @@
   "Additional conditions that should be used to restrict which instances automatically get deleted by
   `with-model-cleanup`. Conditions should be a HoneySQL `:where` clause."
   {:arglists '([model])}
-  type)
+  mi/model)
 
 (defmethod with-model-cleanup-additional-conditions :default
   [_]
   nil)
 
-(defmethod with-model-cleanup-additional-conditions (type Collection)
+(defmethod with-model-cleanup-additional-conditions Collection
   [_]
   ;; NEVER delete personal collections for the test users.
   [:or

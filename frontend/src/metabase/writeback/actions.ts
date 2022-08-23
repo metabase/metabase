@@ -1,4 +1,5 @@
 import { ActionsApi } from "metabase/services";
+
 import Table from "metabase-lib/lib/metadata/Table";
 
 export type InsertRowPayload = {

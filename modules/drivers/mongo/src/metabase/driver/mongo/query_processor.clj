@@ -19,7 +19,10 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [monger.operators :refer :all]
+            [monger.operators :refer [$add $addToSet $and $avg $cond $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
+                                      $group $gt $gte $hour $limit $lt $lte $match $max $min $minute $mod $month
+                                      $multiply $ne $not $or $project $regex $size $skip $sort $strcasecmp $subtract
+                                      $sum $toLower]]
             [schema.core :as s])
   (:import org.bson.types.ObjectId))
 
@@ -102,7 +105,7 @@
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
 
-(defmethod ->lvalue (class Field)
+(defmethod ->lvalue Field
   [field]
   (field->name field \.))
 
@@ -118,7 +121,7 @@
   [[_ expression-name]]
   (->rvalue (mbql.u/expression-with-name (:query *query*) expression-name)))
 
-(defmethod ->rvalue (class Field)
+(defmethod ->rvalue Field
   [{coercion :coercion_strategy, :as field}]
   (let [field-name (str \$ (field->name field "."))]
     (cond
@@ -215,7 +218,7 @@
           ;; stringify it as yyyy-MM Subtracting (($dayOfYear(column) % 91) - 3) days will put you in correct month.
           ;; Trust me.
           :quarter
-          (mongo-let [parts {:$dateToParts {:date column}}]
+          (mongo-let [#_:clj-kondo/ignore parts {:$dateToParts {:date column}}]
             {:$dateFromParts {:year  :$$parts.year
                               :month {$subtract [:$$parts.month
                                                  {$mod [{$add [:$$parts.month 2]}
@@ -690,14 +693,6 @@
     [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}
      (when (not-empty post-ags)
        {:$addFields (into (ordered-map/ordered-map) post-ags)})]))
-
-(defn- ordered-map-assoc-in [m ks v]
-  (cond
-    (= (count ks) 1)
-    (assoc (ordered-map/ordered-map m) (first ks) v)
-
-    (pos? (count ks))
-    (update (ordered-map/ordered-map m) (first ks) ordered-map-assoc-in (rest ks) v)))
 
 (defn- projection-group-map [fields]
   (reduce

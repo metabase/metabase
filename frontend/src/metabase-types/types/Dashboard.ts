@@ -1,4 +1,9 @@
-import { SavedCard, CardId } from "./Card";
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
+import { CardId, SavedCard } from "./Card";
 import { VisualizationSettings } from "metabase-types/api/card";
 import { Parameter, ParameterMapping } from "./Parameter";
 

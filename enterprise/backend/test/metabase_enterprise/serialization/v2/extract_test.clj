@@ -3,7 +3,7 @@
             [clojure.test :refer :all]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field Metric
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field FieldValues Metric
                                      NativeQuerySnippet Pulse PulseCard Segment Table Timeline TimelineEvent User]]
             [metabase.models.serialization.base :as serdes.base]
             [schema.core :as s])
@@ -645,6 +645,49 @@
             (is (= #{[{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}]
                      [{:model "Database"   :id "My Database"}
+                      {:model "Table"      :id "Schemaless Table"}
+                      {:model "Field"      :id "Some Field"}]}
+                   (set (serdes.base/serdes-dependencies ser))))))))))
+
+(deftest field-values-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [Database   [{db-id        :id}        {:name "My Database"}]
+                       Table      [{no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}]
+                       Field      [{field-id     :id}        {:name "Some Field"
+                                                              :table_id no-schema-id
+                                                              :fingerprint {:global {:distinct-count 75 :nil% 0.0}
+                                                                            :type   {:type/Text {:percent-json   0.0
+                                                                                                 :percent-url    0.0
+                                                                                                 :percent-email  0.0
+                                                                                                 :percent-state  0.0
+                                                                                                 :average-length 8.333333333333334}}}}]
+                       FieldValues [{fv-id       :id
+                                     values      :values}
+                                    {:field_id              field-id
+                                     :hash_key              nil
+                                     :has_more_values       false
+                                     :type                  :full
+                                     :human_readable_values []
+                                     :values ["Artisan" "Asian" "BBQ" "Bakery" "Bar" "Brewery" "Burger" "Coffee Shop"
+                                              "Diner" "Indian" "Italian" "Japanese" "Mexican" "Middle Eastern" "Pizza"
+                                              "Seafood" "Steakhouse" "Tea Room" "Winery"]}]]
+      (testing "field values"
+        (let [ser (serdes.base/extract-one "FieldValues" {} (select-one "FieldValues" [:= :id fv-id]))]
+          (is (schema= {:serdes/meta                 (s/eq [{:model "Database" :id "My Database"}
+                                                            {:model "Table"    :id "Schemaless Table"}
+                                                            {:model "Field"    :id "Some Field"}
+                                                            {:model "FieldValues" :id "0"}]) ; Always 0.
+                        :created_at                  LocalDateTime
+                        (s/optional-key :updated_at) OffsetDateTime
+                        :values                      (s/eq (json/generate-string values))
+                        s/Keyword                    s/Any}
+                       ser))
+          (is (not (contains? ser :id)))
+          (is (not (contains? ser :field_id))
+              ":field_id is dropped; its implied by the path")
+
+          (testing "depend on the parent Field"
+            (is (= #{[{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))

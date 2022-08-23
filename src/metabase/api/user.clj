@@ -126,6 +126,9 @@
   [status query group_id include_deactivated]
   (cond-> {}
         true (hh/merge-where (status-clause status include_deactivated))
+        true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+                               (when (segmented-user?)
+                                 [:= :core_user.id api/*current-user-id*])))
         (some? query) (hh/merge-where (query-clause query))
         (some? group_id) (hh/merge-right-join :permissions_group_membership
                                               [:= :core_user.id :permissions_group_membership.user_id])
@@ -419,7 +422,7 @@
   "Resend the user invite email for a given user."
   [id]
   (api/check-superuser)
-  (when-let [user (User :id id, :is_active true)]
+  (when-let [user (db/select-one User :id id, :is_active true)]
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]

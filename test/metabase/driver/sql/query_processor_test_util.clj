@@ -166,7 +166,7 @@
                                 (driver.u/database->driver database-id))
                             query))
 
-  ([driver query]
+  ([_driver query]
    (qp/compile query)))
 
 (def ^{:arglists '([query] [driver query])} query->sql

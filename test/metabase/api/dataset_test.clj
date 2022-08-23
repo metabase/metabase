@@ -114,16 +114,10 @@
     (testing "\nEven if a query fails we still expect a 202 response from the API"
       ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
       ;; that it exists and contains the substring "Syntax error in SQL statement"
-      (let [check-error-message (fn [output]
-                                  (update output :error (fn [error-message]
-                                                          (some->>
-                                                           error-message
-                                                           (re-find #"Syntax error in SQL statement")
-                                                           boolean))))
-            query               {:database (mt/id)
-                                 :type     "native"
-                                 :native   {:query "foobar"}}
-            result              (mt/user-http-request :rasta :post 202 "dataset" query)]
+      (let [query  {:database (mt/id)
+                    :type     "native"
+                    :native   {:query "foobar"}}
+            result (mt/user-http-request :rasta :post 202 "dataset" query)]
         (testing "\nAPI Response"
           (is (schema= {:data        (s/eq {:rows []
                                             :cols []})

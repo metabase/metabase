@@ -23,7 +23,7 @@ describe("issue 16914", () => {
     cy.findByTestId("viz-settings-button").click();
     cy.findByTestId("sidebar-left")
       .contains(/hidden/i)
-      .siblings(".Icon-close")
+      .siblings(".Icon-eye_filled")
       .click();
     cy.button("Done").click();
 

@@ -12,9 +12,9 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
-(s/defn ^:private hydrated-native-query-snippet :- (s/maybe (class NativeQuerySnippet))
+(s/defn ^:private hydrated-native-query-snippet :- (s/maybe (mi/InstanceOf NativeQuerySnippet))
   [id :- su/IntGreaterThanZero]
-  (-> (api/read-check (NativeQuerySnippet id))
+  (-> (api/read-check (db/select-one NativeQuerySnippet :id id))
       (hydrate :creator)))
 
 (api/defendpoint GET "/"
@@ -56,7 +56,7 @@
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
   updated/hydrated NativeQuerySnippet"
   [id body]
-  (let [snippet     (NativeQuerySnippet id)
+  (let [snippet     (db/select-one NativeQuerySnippet :id id)
         body-fields (u/select-keys-when body
                       :present #{:description :collection_id}
                       :non-nil #{:archived :content :name})

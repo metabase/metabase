@@ -626,8 +626,8 @@
              :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :bar :- common/RenderedPulseCard
-  [_ render-type _timezone-id :- (s/maybe s/Str) card dashcard data]
-  (let [image-bundle (lab-image-bundle :bar render-type _timezone-id card dashcard data)]
+  [_chart-type render-type timezone-id :- (s/maybe s/Str) card dashcard data]
+  (let [image-bundle (lab-image-bundle :bar render-type timezone-id card dashcard data)]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -638,8 +638,8 @@
              :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :combo :- common/RenderedPulseCard
-  [_ render-type _timezone-id :- (s/maybe s/Str) card dashcard data]
-  (let [image-bundle (lab-image-bundle :combo render-type _timezone-id card dashcard data)]
+  [_chart-type render-type timezone-id :- (s/maybe s/Str) card dashcard data]
+  (let [image-bundle (lab-image-bundle :combo render-type timezone-id card dashcard data)]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -650,7 +650,7 @@
              :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
-  [_ _ timezone-id _card dashcard {:keys [cols rows viz-settings]}]
+  [_chart-type _render-type timezone-id _card dashcard {:keys [cols rows viz-settings]}]
   (let [viz-settings (merge viz-settings (:visualization_settings dashcard))
         value        (format-cell timezone-id (ffirst rows) (first cols) viz-settings)]
     {:attachments
@@ -662,7 +662,7 @@
      :render/text (str value)}))
 
 (s/defmethod render :smartscalar :- common/RenderedPulseCard
-  [_ _ timezone-id _card dashcard {:keys [cols insights viz-settings]}]
+  [_chart-type _render-type timezone-id _card dashcard {:keys [cols insights viz-settings]}]
   (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
                                  ;; computed and agg columns don't have an effective type
                                  (isa? (:base_type c) t)))
@@ -776,9 +776,9 @@
                          (:waterfall.show_total viz-settings))
         settings       (-> (->js-viz x-col y-col viz-settings)
                            (update :colors assoc
-                                   :waterfallTotal (or (:waterfall.total_color viz-settings) (nth colors 0))
-                                   :waterfallPositive (or (:waterfall.increase_color viz-settings) (nth colors 1))
-                                   :waterfallNegative (or (:waterfall.decrease_color viz-settings) (nth colors 2)))
+                                   :waterfallTotal (:waterfall.total_color viz-settings)
+                                   :waterfallPositive (:waterfall.increase_color viz-settings)
+                                   :waterfallNegative (:waterfall.decrease_color viz-settings))
                            (assoc :showTotal show-total))
         image-bundle   (image-bundle/make-image-bundle
                         render-type

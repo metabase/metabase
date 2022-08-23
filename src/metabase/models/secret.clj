@@ -21,7 +21,7 @@
 
 (models/defmodel Secret :secret)
 
-(u/strict-extend (class Secret)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Secret)
   models/IModel
   (merge models/IModelDefaults
          {;:hydration-keys (constantly [:database :db]) ; don't think there's any hydration going on since other models
@@ -170,14 +170,14 @@
                              {:invalid-db-details-entry (select-keys details [path-kw])}))))
 
                  (id-kw details)
-                 (:value (Secret (id-kw details))))
+                 (:value (db/select-one Secret :id (id-kw details))))
         source (cond
                  ;; set the :source due to the -path suffix (see above))
                  (and (not= "uploaded" (options-kw details)) (path-kw details))
                  :file-path
 
                  (id-kw details)
-                 (:source (Secret (id-kw details))))]
+                 (:source (db/select-one Secret :id (id-kw details))))]
     (cond-> {:connection-property-name conn-prop-nm, :subprops [path-kw value-kw id-kw]}
       value
       (assoc :value value
@@ -189,7 +189,7 @@
   (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id} (get-sub-props secret-property)
         id (id-kw details)
         value (if id
-                (String. ^bytes (:value (Secret id)) "UTF-8")
+                (String. ^bytes (:value (db/select-one Secret :id id)) "UTF-8")
                 (value-kw details))]
     (case (options-kw details)
       "uploaded" (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
@@ -280,9 +280,9 @@
   (let [subprop (fn [prop-nm]
                   (keyword (str conn-prop-nm prop-nm)))
         secret* (cond (int? secret-or-id)
-                      (Secret secret-or-id)
+                      (db/select-one Secret :id secret-or-id)
 
-                      (instance? (class Secret) secret-or-id)
+                      (mi/instance-of? Secret secret-or-id)
                       secret-or-id
 
                       :else ; default; app DB look up from the ID in db-details
@@ -312,7 +312,10 @@
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 
-(add-encoder SecretInstance (fn [secret json-generator]
-                              (encode-map
-                               (dissoc secret :value) ; never include the secret value in JSON
-                               json-generator)))
+(add-encoder
+ #_{:clj-kondo/ignore [:unresolved-symbol]}
+ SecretInstance
+ (fn [secret json-generator]
+   (encode-map
+    (dissoc secret :value)              ; never include the secret value in JSON
+    json-generator)))

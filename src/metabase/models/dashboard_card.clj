@@ -39,7 +39,7 @@
                   :visualization_settings {}}]
     (merge defaults dashcard)))
 
-(u/strict-extend (class DashboardCard)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class DashboardCard)
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true
@@ -84,7 +84,7 @@
 (s/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
   [id :- su/IntGreaterThanZero]
-  (-> (DashboardCard id)
+  (-> (db/select-one DashboardCard :id id)
       (hydrate :series)))
 
 (defn dashcard->multi-cards

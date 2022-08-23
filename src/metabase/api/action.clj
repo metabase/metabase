@@ -14,7 +14,8 @@
             [metabase.util.i18n :as i18n]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private JsonQuerySchema
   (su/with-api-error-message
@@ -55,7 +56,7 @@
   400 status code."
   [database-id]
   {:pre [(integer? database-id)]}
-  (let [{db-settings :settings, driver :engine, :as db} (Database database-id)]
+  (let [{db-settings :settings, driver :engine, :as db} (db/select-one Database :id database-id)]
     ;; make sure the Driver supports Actions.
     (when-not (driver/database-supports? driver :actions db)
       (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
@@ -71,11 +72,11 @@
 (api/defendpoint GET "/"
   "Returns cards that can be used for QueryActions"
   []
-  (action/select-actions))
+  (hydrate (action/select-actions) :action/emitter-usages))
 
 (api/defendpoint GET "/:action-id"
   [action-id]
-  (api/check-404 (first (action/select-actions :id action-id))))
+  (api/check-404 (first (hydrate (action/select-actions :id action-id) :action/emitter-usages))))
 
 (api/defendpoint DELETE "/:action-id"
   [action-id]
@@ -106,6 +107,6 @@
    response_handle (s/maybe JsonQuerySchema)
    error_handle (s/maybe JsonQuerySchema)}
   (db/update! HTTPAction id action)
-  (first (action/select-actions :id id)))
+  (first (hydrate (action/select-actions :id id) :action/emitter-usages)))
 
 (api/define-routes actions/+check-actions-enabled api/+check-superuser)

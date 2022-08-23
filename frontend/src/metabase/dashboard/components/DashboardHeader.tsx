@@ -16,9 +16,6 @@ import { Dashboard } from "metabase-types/api";
 import EditBar from "metabase/components/EditBar";
 import EditWarning from "metabase/components/EditWarning";
 import HeaderModal from "metabase/components/HeaderModal";
-
-import { useDataAppContext } from "metabase/writeback/containers/DataAppContext/DataAppContext";
-
 import {
   HeaderRoot,
   HeaderBadges,
@@ -74,9 +71,6 @@ const DashboardHeader = ({
   const [headerHeight, setHeaderHeight] = useState(0);
   const [showSubHeader, setShowSubHeader] = useState(true);
   const header = useRef<HTMLDivElement>(null);
-
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const { format: formatDataAppText } = useDataAppContext();
 
   const isModalOpened = headerModalMessage != null;
 
@@ -145,17 +139,11 @@ const DashboardHeader = ({
           <HeaderCaptionContainer>
             <HeaderCaption
               key={dashboard.name}
-              initialValue={
-                isEditingTitle
-                  ? dashboard.name
-                  : formatDataAppText(dashboard.name)
-              }
+              initialValue={dashboard.name}
               placeholder={t`Add title`}
               isDisabled={!dashboard.can_write}
               data-testid="dashboard-name-heading"
               onChange={handleUpdateCaption}
-              onFocus={() => setIsEditingTitle(true)}
-              onBlur={() => setIsEditingTitle(false)}
             />
           </HeaderCaptionContainer>
           <HeaderBadges>

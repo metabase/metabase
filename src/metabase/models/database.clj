@@ -189,7 +189,7 @@
       :read  (perms/data-perms-path db-id)
       :write (perms/db-details-write-perms-path db-id))})
 
-(u/strict-extend (class Database)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Database)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:database :db])
@@ -267,6 +267,7 @@
 ;; Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
 ;; an API response!
 (add-encoder
+ #_{:clj-kondo/ignore [:unresolved-symbol]}
  DatabaseInstance
  (fn [db json-generator]
    (encode-map

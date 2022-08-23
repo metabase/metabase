@@ -1,6 +1,6 @@
 import React from "react";
 import _ from "underscore";
-import { FormLegacyContext, LegacyContextTypes } from "./types";
+import { CustomFormLegacyContext, LegacyContextTypes } from "./types";
 
 type Props = {
   children: React.ReactNode;
@@ -11,7 +11,7 @@ function Form({
   handleSubmit,
   className,
   style,
-}: Props & FormLegacyContext) {
+}: Props & CustomFormLegacyContext) {
   return (
     <form onSubmit={handleSubmit} className={className} style={style}>
       {children}
@@ -19,9 +19,10 @@ function Form({
   );
 }
 
-const FormUsingLegacyContext = (props: Props, context: FormLegacyContext) => (
-  <Form {...props} {...context} />
-);
+const FormUsingLegacyContext = (
+  props: Props,
+  context: CustomFormLegacyContext,
+) => <Form {...props} {...context} />;
 
 FormUsingLegacyContext.contextTypes = _.pick(
   LegacyContextTypes,

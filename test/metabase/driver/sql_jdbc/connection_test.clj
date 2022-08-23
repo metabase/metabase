@@ -43,7 +43,7 @@
         (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
                                                     (original-destroy id destroyed-spec)
                                                     (reset! destroyed? true))]
-          (jdbc/with-db-connection [conn spec]
+          (jdbc/with-db-connection [_conn spec]
             (jdbc/execute! spec ["CREATE TABLE birds (name varchar)"])
             (jdbc/execute! spec ["INSERT INTO birds values ('rasta'),('lucky')"])
             (mt/with-temp Database [database {:engine :h2, :details connection-details}]
@@ -155,17 +155,18 @@
             ;; restore the original test DB details, no matter what just happened
             (db/update! Database (mt/id) :details (:details db)))))))
   (testing "postgres secrets are stable (#23034)"
-    (mt/with-temp* [Secret [secret {:name   "file based secret"
-                                    :kind   :perm-cert
-                                    :source nil
-                                    :value  (.getBytes "super secret")}]]
-      (let [db {:engine :postgres
-                :details {:ssl true
-                          :ssl-mode "verify-ca"
-                          :ssl-root-cert-options "uploaded"
+    (mt/with-temp* [Secret [secret {:name       "file based secret"
+                                    :kind       :perm-cert
+                                    :source     nil
+                                    :value      (.getBytes "super secret")
+                                    :creator_id (mt/user->id :crowberto)}]]
+      (let [db {:engine  :postgres
+                :details {:ssl                      true
+                          :ssl-mode                 "verify-ca"
+                          :ssl-root-cert-options    "uploaded"
                           :ssl-root-cert-creator-id (mt/user->id :crowberto)
-                          :ssl-root-cert-source nil
-                          :ssl-root-cert-id (:id secret)
+                          :ssl-root-cert-source     nil
+                          :ssl-root-cert-id         (:id secret)
                           :ssl-root-cert-created-at "2022-07-25T15:57:51.556-05:00"}}]
         (is (instance? java.io.File
                        (:sslrootcert (#'sql-jdbc.conn/connection-details->spec :postgres

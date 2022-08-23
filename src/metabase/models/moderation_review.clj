@@ -29,7 +29,7 @@
 
 (models/defmodel ModerationReview :moderation_review)
 
-(u/strict-extend (class ModerationReview)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ModerationReview)
   models/IModel
   (merge models/IModelDefaults
          {:properties (constantly {:timestamped? true})

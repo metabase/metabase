@@ -7,6 +7,7 @@ import Table from "metabase-lib/lib/metadata/Table";
 import Field from "metabase-lib/lib/metadata/Field";
 import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
+import Question from "metabase-lib/lib/Question";
 import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
 
 import _ from "underscore";
@@ -41,6 +42,7 @@ export const getNormalizedFields = createSelector(
 );
 export const getNormalizedMetrics = state => state.entities.metrics;
 export const getNormalizedSegments = state => state.entities.segments;
+export const getNormalizedQuestions = state => state.entities.questions;
 
 // TODO: these should be denomalized but non-cylical, and only to the same "depth" previous "tableMetadata" was, e.x.
 //
@@ -78,6 +80,8 @@ export const instantiateField = obj =>
   new Field({ ...obj, _comesFromEndpoint: true });
 export const instantiateSegment = obj => new Segment(obj);
 export const instantiateMetric = obj => new Metric(obj);
+export const instantiateQuestion = (obj, metadata) =>
+  new Question(obj, metadata);
 
 // fully connected graph of all databases, tables, fields, segments, and metrics
 // TODO: do this lazily using ES6 Proxies
@@ -89,8 +93,9 @@ export const getMetadata = createSelector(
     getNormalizedFields,
     getNormalizedSegments,
     getNormalizedMetrics,
+    getNormalizedQuestions,
   ],
-  (databases, schemas, tables, fields, segments, metrics) => {
+  (databases, schemas, tables, fields, segments, metrics, questions) => {
     const meta = new Metadata();
     meta.databases = copyObjects(meta, databases, instantiateDatabase);
     meta.schemas = copyObjects(meta, schemas, instantiateSchema);
@@ -98,6 +103,7 @@ export const getMetadata = createSelector(
     meta.fields = copyObjects(meta, fields, instantiateField);
     meta.segments = copyObjects(meta, segments, instantiateSegment);
     meta.metrics = copyObjects(meta, metrics, instantiateMetric);
+    meta.questions = copyObjects(meta, questions, instantiateQuestion);
 
     // database
     hydrate(meta.databases, "tables", database => {
@@ -195,7 +201,7 @@ export function copyObjects(metadata, objects, instantiate) {
   const copies = {};
   for (const object of Object.values(objects)) {
     if (object && object.id != null) {
-      copies[object.id] = instantiate(object);
+      copies[object.id] = instantiate(object, metadata);
       copies[object.id].metadata = metadata;
     } else {
       console.warn("Missing id:", object);

@@ -25,7 +25,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import { ResponsiveParametersList } from "./ResponsiveParametersList";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
 import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
@@ -53,6 +53,7 @@ class NativeQueryEditor extends Component {
     this.state = {
       initialHeight: calcInitialEditorHeight({ query, viewHeight }),
       isSelectedTextPopoverOpen: false,
+      mobileShowParameterList: false,
     };
 
     // Ace sometimes fires multiple "change" events in rapid succession
@@ -258,7 +259,11 @@ class NativeQueryEditor extends Component {
     this._lastAutoComplete = { timestamp: 0, prefix: null, results: null };
 
     aceLanguageTools.addCompleter({
-      getCompletions: async (editor, session, pos, prefix, callback) => {
+      getCompletions: async (_editor, _session, _pos, prefix, callback) => {
+        if (!this.props.autocompleteResultsFn) {
+          return callback(null, []);
+        }
+
         try {
           let { results, timestamp } = this._lastAutoComplete;
           const cacheHit =
@@ -267,7 +272,11 @@ class NativeQueryEditor extends Component {
           if (!cacheHit) {
             // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
             results = await this.props.autocompleteResultsFn(prefix);
-            this._lastAutoComplete = { timestamp: Date.now(), prefix, results };
+            this._lastAutoComplete = {
+              timestamp: Date.now(),
+              prefix,
+              results,
+            };
           }
 
           // transform results of the API call into what ACE expects
@@ -390,6 +399,12 @@ class NativeQueryEditor extends Component {
       .update(setDatasetQuery);
   };
 
+  handleFilterButtonClick = () => {
+    this.setState({
+      mobileShowParameterList: !this.state.mobileShowParameterList,
+    });
+  };
+
   render() {
     const {
       query,
@@ -430,13 +445,10 @@ class NativeQueryEditor extends Component {
               />
             </div>
             {hasParametersList && (
-              <SyncedParametersList
-                className="mt1 mx2"
+              <ResponsiveParametersList
                 parameters={parameters}
                 setParameterValue={setParameterValue}
                 setParameterIndex={this.setParameterIndex}
-                isEditing
-                commitImmediately
               />
             )}
             {query.hasWritePermission() && (

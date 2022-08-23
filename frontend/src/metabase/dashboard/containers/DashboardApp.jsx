@@ -55,6 +55,8 @@ import {
   canManageSubscriptions,
 } from "metabase/selectors/user";
 
+import { getEmbedOptions } from "metabase/selectors/embed";
+
 import * as dashboardActions from "../actions";
 import { parseHashOptions } from "metabase/lib/browser";
 import * as Urls from "metabase/lib/urls";
@@ -96,6 +98,7 @@ const mapStateToProps = (state, props) => {
     isLoadingComplete: getIsLoadingComplete(state),
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
+    embedOptions: getEmbedOptions(state),
 
     // Writeback
     focusedEmitterId: getFocusedEmitterId(state),
@@ -161,8 +164,6 @@ const DashboardApp = props => {
     setIsShowingToaster(false);
   }, []);
 
-  const isDataApp = dashboard?.name.endsWith(" App");
-
   return (
     <DataAppContext>
       <div className="shrink-below-content-size full-height">
@@ -170,7 +171,6 @@ const DashboardApp = props => {
           editingOnLoad={editingOnLoad}
           addCardOnLoad={addCardOnLoad}
           {...props}
-          isDataApp={isDataApp}
         />
         {/* For rendering modal urls */}
         {props.children}

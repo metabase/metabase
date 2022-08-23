@@ -3,7 +3,6 @@ import {
   setDefaultVisualization,
 } from "metabase/visualizations";
 
-import ActionsViz from "metabase/writeback/components/ActionsViz";
 import ActionButtonViz from "metabase/writeback/components/ActionButtonViz";
 
 import Scalar from "./visualizations/Scalar";
@@ -46,7 +45,6 @@ export default function () {
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
   registerVisualization(ListViz);
-  registerVisualization(ActionsViz);
   registerVisualization(ActionButtonViz);
   setDefaultVisualization(Table);
 }

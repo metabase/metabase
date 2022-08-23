@@ -41,7 +41,7 @@
 
 (defn- pre-insert [table]
   (let [defaults {:display_name        (humanization/name->human-readable-name (:name table))
-                  :field_order         (driver/default-field-order (-> table :db_id Database :engine))
+                  :field_order         (driver/default-field-order (db/select-one-field :engine Database :id (:db_id table)))
                   :initial_sync_status "incomplete"}]
     (merge defaults table)))
 
@@ -63,7 +63,7 @@
       :read  (perms/table-read-path table)
       :write (perms/data-model-write-perms-path db-id schema table-id))})
 
-(u/strict-extend (class Table)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Table)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:table])
@@ -222,7 +222,7 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (Database (:db_id table)))
+  (db/select-one Database :id (:db_id table)))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."

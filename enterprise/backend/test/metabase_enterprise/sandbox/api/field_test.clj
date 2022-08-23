@@ -125,7 +125,7 @@
                    {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
                     :query      (mt.tu/restricted-column-query (mt/id))}}
                   :attributes {:cat 50}}
-    (let [field (Field (mt/id :venues :name))]
+    (let [field (db/select-one Field :id (mt/id :venues :name))]
       ;; Make sure FieldValues are populated
       (field-values/get-or-create-full-field-values! field)
       ;; Warm up the cache

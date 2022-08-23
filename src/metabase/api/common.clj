@@ -438,11 +438,11 @@
   endpoint) is applied.
 
     ;; assuming we have a Collection 10, that is not currently archived...
-    (api/column-will-change? :archived (Collection 10) {:archived true}) ; -> true, because value will change
+    (api/column-will-change? :archived (db/select-one Collection :id 10) {:archived true}) ; -> true, because value will change
 
-    (api/column-will-change? :archived (Collection 10) {:archived false}) ; -> false, because value did not change
+    (api/column-will-change? :archived (db/select-one Collection :id 10) {:archived false}) ; -> false, because value did not change
 
-    (api/column-will-change? :archived (Collection 10) {}) ; -> false; value not specified in updates (request body)"
+    (api/column-will-change? :archived (db/select-one Collection :id 10) {}) ; -> false; value not specified in updates (request body)"
   [k :- schema/Keyword, object-before-updates :- su/Map, object-updates :- su/Map]
   (boolean
    (and (contains? object-updates k)

@@ -14,9 +14,13 @@ import {
   StandardFormFieldDefinition,
   CustomFormFieldDefinition,
   FormFieldDefinition,
-} from "metabase-types/forms";
+} from "metabase-types/forms/legacy";
 
-import { FormLegacyContext, LegacyContextTypes } from "./types";
+import {
+  CustomFormLegacyContext,
+  FormContainerLegacyContext,
+  LegacyContextTypes,
+} from "./types";
 
 function isCustomWidget(
   formField: FormFieldDefinition,
@@ -31,10 +35,9 @@ export interface CustomFormFieldProps extends BaseFieldDefinition {
   onChange?: (e: unknown) => void;
 }
 
-interface LegacyContextProps extends FormLegacyContext {
-  registerFormField?: (field: BaseFieldDefinition) => void;
-  unregisterFormField?: (field: BaseFieldDefinition) => void;
-}
+interface LegacyContextProps
+  extends CustomFormLegacyContext,
+    FormContainerLegacyContext {}
 
 function getFieldDefinition(props: CustomFormFieldProps): BaseFieldDefinition {
   return _.pick(
@@ -112,7 +115,7 @@ function RawCustomFormField({
 
 const CustomFormFieldLegacyContext = (
   props: CustomFormFieldProps & { forwardedRef?: any },
-  context: FormLegacyContext,
+  context: LegacyContextProps,
 ) => <RawCustomFormField {...props} {...context} />;
 
 CustomFormFieldLegacyContext.contextTypes = {

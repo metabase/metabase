@@ -30,7 +30,7 @@
                   (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
-(u/strict-extend (class Segment)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Segment)
   models/IModel
   (merge
    models/IModelDefaults
@@ -74,7 +74,7 @@
                                                                                 :after  (get-in segment2 [:definition])})))))
 
 
-(u/strict-extend (class Segment)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Segment)
   revision/IRevisioned
   (merge
    revision/IRevisionedDefaults
@@ -108,7 +108,7 @@
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 
-(s/defn retrieve-segments :- [SegmentInstance]
+(s/defn retrieve-segments :- [(mi/InstanceOf Segment)]
   "Fetch all `Segments` for a given `Table`. Optional second argument allows filtering by active state by providing
    one of 3 keyword values: `:active`, `:deleted`, `:all`. Default filtering is for `:active`."
   ([table-id :- su/IntGreaterThanZero]

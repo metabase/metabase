@@ -31,7 +31,7 @@
                   (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
     (mi/perms-objects-set table read-or-write)))
 
-(u/strict-extend (class Metric)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Metric)
   models/IModel
   (merge
    models/IModelDefaults
@@ -73,7 +73,7 @@
             (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in metric1 [:definition])
                                                                           :after  (get-in metric2 [:definition])})))))
 
-(u/strict-extend (class Metric)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Metric)
   revision/IRevisioned
   (merge revision/IRevisionedDefaults
          {:serialize-instance serialize-metric
@@ -107,7 +107,7 @@
 
 ;;; ----------------------------------------------------- OTHER ------------------------------------------------------
 
-(s/defn retrieve-metrics :- [MetricInstance]
+(s/defn retrieve-metrics :- [(mi/InstanceOf Metric)]
   "Fetch all `Metrics` for a given `Table`. Optional second argument allows filtering by active state by providing one
   of 3 keyword values: `:active`, `:deleted`, `:all`. Default filtering is for `:active`."
   ([table-id :- su/IntGreaterThanZero]

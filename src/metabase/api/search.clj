@@ -373,15 +373,15 @@
 
 (defmethod check-permissions-for-model :metric
   [{:keys [id]}]
-  (-> id Metric mi/can-read?))
+  (-> (db/select-one Metric :id id) mi/can-read?))
 
 (defmethod check-permissions-for-model :segment
   [{:keys [id]}]
-  (-> id Segment mi/can-read?))
+  (-> (db/select-one Segment :id id) mi/can-read?))
 
 (defmethod check-permissions-for-model :database
   [{:keys [id]}]
-  (-> id Database mi/can-read?))
+  (-> (db/select-one Database :id id) mi/can-read?))
 
 (defn- query-model-set
   "Queries all models with respect to query for one result, to see if we get a result or not"
@@ -447,7 +447,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ; This is basically a union type. defendpoint splits the string if it only gets one
-(def ^:private models-schema (s/conditional #(vector? %) [su/NonBlankString] :else su/NonBlankString))
+(def ^:private models-schema (s/conditional vector? [su/NonBlankString] :else su/NonBlankString))
 
 (s/defn ^:private search-context :- SearchContext
   [search-string :-   (s/maybe su/NonBlankString),

@@ -235,8 +235,7 @@
   actual instance, *not* the definition) of the Metabase object to return (e.g., a pass a `Table` to a
   `FieldDefintion`). For a `DatabaseDefinition`, pass the driver keyword."
   {:arglists '([db-or-table-or-field-def context])}
-  (fn [db-or-table-or-field-def _context]
-    (class db-or-table-or-field-def)))
+  (fn [db-or-table-or-field-def _context] (class db-or-table-or-field-def)))
 
 (defmethod metabase-instance FieldDefinition
   [this table]
@@ -376,7 +375,7 @@
     :source        :aggregation
     :field_ref     [:aggregation 0]})
 
-  ([driver aggregation-type {field-id :id, table-id :table_id}]
+  ([_driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
    (first (qp/query->expected-cols {:database (db/select-one-field :db_id Table :id table-id)
                                     :type     :query
@@ -418,9 +417,9 @@
 ;; TODO - not sure everything below belongs in this namespace
 
 (s/defn ^:private dataset-field-definition :- ValidFieldDefinition
-  [field-definition-map :- DatasetFieldDefinition]
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
   comsumption by various test-data-loading methods."
+  [field-definition-map :- DatasetFieldDefinition]
   ;; if definition uses a coercion strategy they need to provide the effective-type
   (map->FieldDefinition field-definition-map))
 

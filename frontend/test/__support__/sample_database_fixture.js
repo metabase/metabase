@@ -76,6 +76,7 @@ export function makeMetadata(metadata) {
     segments: {
       1: { name: "segment" },
     },
+    questions: {},
     ...metadata,
   };
   // convienence for filling in missing bits

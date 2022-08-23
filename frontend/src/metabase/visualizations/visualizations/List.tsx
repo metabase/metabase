@@ -17,6 +17,7 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { VisualizationSettings } from "metabase-types/api/card";
 import { Column } from "metabase-types/types/Dataset";
+import type { DatasetColumn } from "metabase-types/api/dataset";
 import { Series, VisualizationProps } from "metabase-types/types/Visualization";
 
 function ListViz(props: VisualizationProps) {
@@ -29,7 +30,8 @@ function ListViz(props: VisualizationProps) {
         return null;
       }
       return (
-        settings.column(column)["_column_title_full"] || formatColumn(column)
+        settings.column(column)["_column_title_full"] ||
+        formatColumn(column as DatasetColumn)
       );
     },
     [data, settings],
@@ -123,7 +125,7 @@ export default Object.assign(ListViz, {
       column_title: {
         title: t`Column title`,
         widget: "input",
-        getDefault: (column: Column) => formatColumn(column),
+        getDefault: (column: Column) => formatColumn(column as DatasetColumn),
       },
       click_behavior: {},
     };

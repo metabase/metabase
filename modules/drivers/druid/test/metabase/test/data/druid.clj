@@ -38,7 +38,7 @@
 
 (defmethod tx/create-db! :druid
   [_ dbdef & _]
-  (let [{:keys [database-name table-definitions], :as dbdef} (tx/get-dataset-definition dbdef)]
+  (let [{:keys [database-name], :as _dbdef} (tx/get-dataset-definition dbdef)]
     (assert (= database-name "checkins")
       "Druid tests currently only support the flattened test-data dataset.")
     (assert (contains? (already-loaded) "checkins")

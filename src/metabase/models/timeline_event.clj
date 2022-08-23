@@ -81,7 +81,7 @@
 
 ;;;; model
 
-(u/strict-extend (class TimelineEvent)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class TimelineEvent)
   models/IModel
   (merge
    models/IModelDefaults

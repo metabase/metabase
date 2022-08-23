@@ -134,7 +134,7 @@
                    :schedule_hour 4
                    :recipients    [{:email "foo@bar.com"}
                                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})
-           (-> (PulseChannel :pulse_id id)
+           (-> (db/select-one PulseChannel :pulse_id id)
                (hydrate :recipients)
                (dissoc :id :pulse_id :created_at :updated_at)
                (update :entity_id boolean)
@@ -290,14 +290,14 @@
     (testing "automatically archive a Pulse when the last user unsubscribes"
       (testing "one subscriber"
         (do-with-objects
-         (fn [{:keys [archived? user-id pulse-id]}]
+         (fn [{:keys [archived? user-id]}]
            (testing "make the User inactive"
              (is (db/update! User user-id :is_active false)))
            (testing "Pulse should be archived"
              (is (archived?))))))
       (testing "multiple subscribers"
         (do-with-objects
-         (fn [{:keys [archived? user-id pulse-id pulse-channel-id]}]
+         (fn [{:keys [archived? user-id pulse-channel-id]}]
            ;; create a second user + subscription so we can verify that we don't archive the Pulse if a User unsubscribes
            ;; but there is still another subscription.
            (mt/with-temp* [User                  [{user-2-id :id}]
@@ -336,7 +336,7 @@
       (testing "still sent to email addresses\n"
         (testing "emails on the same channel as deleted User\n"
           (do-with-objects
-           (fn [{:keys [archived? user-id pulse-id pulse-channel-id]}]
+           (fn [{:keys [archived? user-id pulse-channel-id]}]
              (db/update! PulseChannel pulse-channel-id :details {:emails ["foo@bar.com"]})
              (testing "make the User inactive"
                (is (db/update! User user-id :is_active false)))

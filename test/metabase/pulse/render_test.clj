@@ -75,7 +75,7 @@
                          Card                [card2 {:display :whatever}]
                          Dashboard           [dashboard]
                          DashboardCard       [dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}]
-                         DashboardCardSeries [dcs1 {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]]
+                         DashboardCardSeries [_   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]]
            (render/detect-pulse-chart-type card1
                                            dc1
                                            {:cols [{:base_type :type/Temporal}

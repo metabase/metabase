@@ -32,6 +32,7 @@ const propTypes = {
     left: PropTypes.string,
     bottom: PropTypes.string,
   }),
+  getColor: PropTypes.func,
 };
 
 const layout = {
@@ -64,6 +65,7 @@ const CategoricalBarChart = ({
   accessors = POSITIONAL_ACCESSORS,
   settings,
   labels,
+  getColor,
 }) => {
   const colors = settings?.colors;
   const isVertical = data.length > 10;
@@ -142,9 +144,9 @@ const CategoricalBarChart = ({
         labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
-        labelProps={getLabelProps(layout)}
+        labelProps={getLabelProps(layout, getColor)}
         tickFormat={value => formatNumber(value, settings?.y)}
-        tickLabelProps={() => getYTickLabelProps(layout)}
+        tickLabelProps={() => getYTickLabelProps(layout, getColor)}
       />
       <AxisBottom
         scale={xScale}
@@ -153,9 +155,9 @@ const CategoricalBarChart = ({
         numTicks={data.length}
         stroke={palette.textLight}
         tickStroke={palette.textLight}
-        labelProps={getLabelProps(layout)}
+        labelProps={getLabelProps(layout, getColor)}
         tickComponent={props => <Text {...getXTickProps(props)} />}
-        tickLabelProps={() => getXTickLabelProps(layout, isVertical)}
+        tickLabelProps={() => getXTickLabelProps(layout, isVertical, getColor)}
       />
     </svg>
   );

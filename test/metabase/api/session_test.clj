@@ -197,7 +197,7 @@
         (mt/user-http-request :rasta :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
-               (Session session-id)))
+               (db/select-one Session :id session-id)))
         (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
           (is (schema= {:id                 (s/eq login-history-id)
                         :timestamp          java.time.OffsetDateTime
@@ -207,7 +207,7 @@
                         :ip_address         su/NonBlankString
                         :active             (s/eq false)
                         s/Keyword           s/Any}
-                       (LoginHistory login-history-id))))))))
+                       (db/select-one LoginHistory :id login-history-id))))))))
 
 (deftest forgot-password-test
   (testing "POST /api/session/forgot_password"
@@ -249,14 +249,14 @@
 
 (deftest forgot-password-throttling-test
   (testing "Test that email based throttling kicks in after the login failure threshold (10) has been reached"
-    (letfn [(send-password-reset [& [expected-status & more]]
+    (letfn [(send-password-reset! [& [expected-status & _more]]
               (mt/client :post (or expected-status 204) "session/forgot_password" {:email "not-found@metabase.com"}))]
       (with-redefs [api.session/forgot-password-throttlers (cleaned-throttlers #'api.session/forgot-password-throttlers
                                                                                [:email :ip-address])]
-        (dotimes [n 10]
-          (send-password-reset))
+        (dotimes [_ 10]
+          (send-password-reset!))
         (let [error (fn []
-                      (-> (send-password-reset 400)
+                      (-> (send-password-reset! 400)
                           :errors
                           :email))]
           (is (= "Too many attempts! You must wait 15 seconds before trying again."
@@ -374,23 +374,25 @@
   (testing "POST /google_auth"
     (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
       (testing "Google auth works with an active account"
-        (mt/with-temp User [user {:email "test@metabase.com" :is_active true}]
-          (with-redefs [http/post (fn [url] {:status 200
-                                             :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                          "\"email_verified\":\"true\","
-                                                          "\"first_name\":\"test\","
-                                                          "\"last_name\":\"user\","
-                                                          "\"email\":\"test@metabase.com\"}")})]
+        (mt/with-temp User [_ {:email "test@metabase.com" :is_active true}]
+          (with-redefs [http/post (constantly
+                                   {:status 200
+                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                 "\"email_verified\":\"true\","
+                                                 "\"first_name\":\"test\","
+                                                 "\"last_name\":\"user\","
+                                                 "\"email\":\"test@metabase.com\"}")})]
             (is (schema= SessionResponse
                          (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
       (testing "Google auth throws exception for a disabled account"
-        (mt/with-temp User [user {:email "test@metabase.com" :is_active false}]
-          (with-redefs [http/post (fn [url] {:status 200
-                                             :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                          "\"email_verified\":\"true\","
-                                                          "\"first_name\":\"test\","
-                                                          "\"last_name\":\"user\","
-                                                          "\"email\":\"test@metabase.com\"}")})]
+        (mt/with-temp User [_ {:email "test@metabase.com" :is_active false}]
+          (with-redefs [http/post (constantly
+                                   {:status 200
+                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                 "\"email_verified\":\"true\","
+                                                 "\"first_name\":\"test\","
+                                                 "\"last_name\":\"user\","
+                                                 "\"email\":\"test@metabase.com\"}")})]
             (is (= {:errors {:account "Your account is disabled."}}
                    (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
 

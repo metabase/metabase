@@ -8,6 +8,8 @@ import {
   variableFilterForParameter,
 } from "./filters";
 
+import { tag_names } from "cljs/metabase.shared.parameters.parameters";
+
 function buildStructuredQuerySectionOptions(section) {
   return section.items.map(({ dimension }) => ({
     sectionName: section.name,
@@ -39,13 +41,28 @@ function buildVariableOption(variable) {
   };
 }
 
-export function getParameterMappingOptions(metadata, parameter = null, card) {
-  if (
-    card.display === "text" ||
-    card.display === "actions" ||
-    card.display === "action-button"
-  ) {
-    // text and action cards don't have parameters
+function buildTextTagOption(tagName) {
+  return {
+    name: tagName,
+    icon: "string",
+    isForeign: false,
+    target: ["text-tag", tagName],
+  };
+}
+
+export function getParameterMappingOptions(
+  metadata,
+  parameter = null,
+  card,
+  dashcard = null,
+) {
+  if (dashcard && card.display === "text") {
+    const tagNames = tag_names(dashcard.visualization_settings.text || "");
+    return tagNames ? tagNames.map(buildTextTagOption) : [];
+  }
+
+  if (card.display === "action-button") {
+    // action cards don't have parameters
     return [];
   }
 

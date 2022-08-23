@@ -89,6 +89,7 @@ class Dashboard extends Component {
     closeSidebar: PropTypes.func.isRequired,
     openAddQuestionSidebar: PropTypes.func.isRequired,
     showAddQuestionSidebar: PropTypes.bool.isRequired,
+    embedOptions: PropTypes.object,
   };
 
   static defaultProps = {
@@ -210,13 +211,12 @@ class Dashboard extends Component {
     const {
       addParameter,
       dashboard,
-      isDataApp,
       isEditing,
       isEditingParameter,
       isFullscreen,
       isNightMode,
       isSharing,
-      parameters: allParameters,
+      parameters,
       parameterValues,
       isNavbarOpen,
       showAddQuestionSidebar,
@@ -225,23 +225,13 @@ class Dashboard extends Component {
       setParameterIndex,
       setEditingParameter,
       isHeaderVisible,
+      embedOptions,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
-
-    const parameters = isDataApp
-      ? // Writeback hack for prototyping purposes
-        // We need ID parameters to configure custom destinations,
-        // but in the end we don't want to keep them visible to the user
-        // This lets us achieve the desired behavior
-        // when ID parameters are only visible in dashboard editing mode
-        allParameters.filter(parameter =>
-          isEditing ? parameter : parameter.type !== "id",
-        )
-      : allParameters;
 
     const parametersWidget = (
       <SyncedParametersList
@@ -315,6 +305,7 @@ class Dashboard extends Component {
                     ref={element => (this.parametersWidgetRef = element)}
                     isNavbarOpen={isNavbarOpen}
                     isSticky={isParametersWidgetSticky}
+                    topNav={embedOptions?.top_nav}
                   >
                     {parametersWidget}
                   </ParametersWidgetContainer>
@@ -328,7 +319,7 @@ class Dashboard extends Component {
                       {...this.props}
                       isNightMode={shouldRenderAsNightMode}
                       onEditingChange={this.setEditing}
-                      isDataApp={isDataApp}
+                      isDataApp={this.props.isDataApp}
                     />
                   ) : (
                     <DashboardEmptyState

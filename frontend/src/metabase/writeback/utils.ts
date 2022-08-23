@@ -1,24 +1,23 @@
 import { TYPE } from "metabase/lib/types";
-
-import {
-  getTemplateTagParameterTarget,
-  getTemplateTagType,
-} from "metabase/parameters/utils/cards";
+import { formatSourceForTarget } from "metabase/lib/click-behavior";
 
 import Database from "metabase-lib/lib/metadata/Database";
 import Field from "metabase-lib/lib/metadata/Field";
 
 import { Database as IDatabase } from "metabase-types/types/Database";
-import { TemplateTag } from "metabase-types/types/Query";
 import { DashCard } from "metabase-types/types/Dashboard";
-import {
-  Parameter,
-  ParameterId,
-  ParameterTarget,
-} from "metabase-types/types/Parameter";
+import { Parameter, ParameterId } from "metabase-types/types/Parameter";
 
-import { WritebackAction, HttpAction, RowAction } from "./types";
-import { ParameterWithTarget } from "metabase/parameters/types";
+import {
+  WritebackAction,
+  ParameterMappings,
+  ParametersMappedToValues,
+  ParametersSourceTargetMap,
+  ActionClickBehaviorData,
+  ActionClickExtraData,
+  ActionClickBehavior,
+  ActionParameterTuple,
+} from "./types";
 
 const DB_WRITEBACK_FEATURE = "actions";
 const DB_WRITEBACK_SETTING = "database-enable-actions";
@@ -46,7 +45,7 @@ const AUTOMATIC_DATE_TIME_FIELDS = [
   TYPE.UpdatedTimestamp,
 ];
 
-export const isAutomaticDateTimeField = (field: Field) => {
+const isAutomaticDateTimeField = (field: Field) => {
   return AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type);
 };
 
@@ -71,18 +70,6 @@ export const isEditableField = (field: Field) => {
   return true;
 };
 
-export const isQueryAction = (
-  action: WritebackAction,
-): action is WritebackAction & RowAction => {
-  return action.type === "query";
-};
-
-export const isHttpAction = (
-  action: WritebackAction,
-): action is WritebackAction & HttpAction => {
-  return action.type === "http";
-};
-
 export const isActionButtonDashCard = (dashCard: DashCard) =>
   dashCard.visualization_settings?.virtual_card?.display === "action-button";
 
@@ -92,19 +79,6 @@ export const getActionButtonEmitterId = (dashCard: DashCard) =>
 export const getActionButtonActionId = (dashCard: DashCard) =>
   dashCard.visualization_settings?.click_behavior?.action;
 
-export function getActionTemplateTagType(tag: TemplateTag) {
-  const { type } = tag;
-  if (type === "date") {
-    return "date/single";
-  } else if (type === "text") {
-    return "string/=";
-  } else if (type === "number") {
-    return "number/=";
-  } else {
-    return "string/=";
-  }
-}
-
 export function getActionParameterType(parameter: Parameter) {
   const { type } = parameter;
   if (type === "category") {
@@ -113,53 +87,101 @@ export function getActionParameterType(parameter: Parameter) {
   return type;
 }
 
-export const getQueryActionParameterMappings = (
-  action: WritebackAction & RowAction,
-) => {
-  const templateTags = Object.values(
-    action.card.dataset_query.native["template-tags"],
-  );
+function isParametersTuple(
+  listOrListOfTuples: ActionParameterTuple[] | Parameter[],
+): listOrListOfTuples is ActionParameterTuple[] {
+  const [sample] = listOrListOfTuples;
+  if (!sample) {
+    return false;
+  }
+  return Array.isArray(sample);
+}
 
-  const parameterMappings: Record<ParameterId, ParameterTarget> = {};
-
-  templateTags.forEach(tag => {
-    parameterMappings[tag.id] = getTemplateTagParameterTarget(tag);
+function getParametersFromTuples(
+  parameterTuples: ActionParameterTuple[] | Parameter[],
+): Parameter[] {
+  if (!isParametersTuple(parameterTuples)) {
+    return parameterTuples;
+  }
+  return parameterTuples.map(tuple => {
+    const [, parameter] = tuple;
+    return parameter;
   });
+}
 
-  return parameterMappings;
-};
-
-const getHttpActionParameterMappings = (
-  action: WritebackAction & HttpAction,
-) => {
-  const parameters = Object.values(action.template.parameters);
-  const parameterMappings: Record<ParameterId, ParameterTarget> = {};
+export const getActionEmitterParameterMappings = (action: WritebackAction) => {
+  const parameters = getParametersFromTuples(action.parameters);
+  const parameterMappings: ParameterMappings = {};
 
   parameters.forEach(parameter => {
     parameterMappings[parameter.id] = [
       "variable",
-      ["template-tag", parameter.name],
+      ["template-tag", parameter.slug],
     ];
   });
 
   return parameterMappings;
 };
 
-export const getActionEmitterParameterMappings = (action: WritebackAction) => {
-  return isQueryAction(action)
-    ? getQueryActionParameterMappings(action)
-    : getHttpActionParameterMappings(action);
-};
+export function getActionParameters(
+  parameterMapping: ParametersSourceTargetMap = {},
+  {
+    data,
+    extraData,
+    clickBehavior,
+  }: {
+    data: ActionClickBehaviorData;
+    extraData: ActionClickExtraData;
+    clickBehavior: ActionClickBehavior;
+  },
+) {
+  const action = extraData.actions[clickBehavior.action];
 
-export function getHttpActionTemplateTagParameter(
-  tag: TemplateTag,
-): ParameterWithTarget {
-  return {
-    id: tag.id,
-    type: tag["widget-type"] || getTemplateTagType(tag),
-    target: getTemplateTagParameterTarget(tag),
-    name: tag.name,
-    slug: tag.name,
-    default: tag.default,
-  };
+  const parameters = getParametersFromTuples(action.parameters);
+  const parameterValuesMap: ParametersMappedToValues = {};
+
+  Object.values(parameterMapping).forEach(({ id, source, target }) => {
+    const targetParameter = parameters.find(parameter => parameter.id === id);
+    if (targetParameter) {
+      const result = formatSourceForTarget(source, target, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+      // For some reason it's sometimes [1] and sometimes just 1
+      const value = Array.isArray(result) ? result[0] : result;
+
+      parameterValuesMap[id] = {
+        value,
+        type: getActionParameterType(targetParameter),
+      };
+    }
+  });
+
+  return parameterValuesMap;
+}
+
+export function getNotProvidedActionParameters(
+  action: WritebackAction,
+  parameterValuesMap: ParametersMappedToValues,
+) {
+  const parameters = getParametersFromTuples(action.parameters);
+  const mappedParameterIDs = Object.keys(parameterValuesMap);
+
+  const emptyParameterIDs: ParameterId[] = [];
+  mappedParameterIDs.forEach(parameterId => {
+    const { value } = parameterValuesMap[parameterId];
+    if (value === undefined) {
+      emptyParameterIDs.push(parameterId);
+    }
+  });
+
+  return parameters.filter(parameter => {
+    if ("default" in parameter) {
+      return false;
+    }
+    const isNotMapped = !mappedParameterIDs.includes(parameter.id);
+    const isMappedButNoValue = emptyParameterIDs.includes(parameter.id);
+    return isNotMapped || isMappedButNoValue;
+  });
 }

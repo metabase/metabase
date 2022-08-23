@@ -947,7 +947,7 @@
     ;;           +-> F -> G            +-> G
     (with-collection-hierarchy [{:keys [a f], :as collections}]
       (collection/move-collection! f (collection/children-location collection/root-collection))
-      (collection/move-collection! a (collection/children-location (Collection (u/the-id f))))
+      (collection/move-collection! a (collection/children-location (db/select-one Collection :id (u/the-id f))))
       (is (= {"F" {"A" {"B" {}
                         "C" {"D" {"E" {}}}}
                    "G" {}}}
@@ -1113,9 +1113,8 @@
   (testing (str "Make sure that when creating a new Collection at the Root Level, we copy the group permissions for "
                 "the Root Collection\n")
     (doseq [collection-namespace [nil "currency"]
-            :let                 [root-collection       (assoc collection/root-collection :namespace collection-namespace)
-                                  other-namespace      (if collection-namespace nil "currency")
-                                  other-root-collection (assoc collection/root-collection :namespace other-namespace)]]
+            :let                 [root-collection (assoc collection/root-collection :namespace collection-namespace)
+                                  other-namespace (if collection-namespace nil "currency")]]
       (testing (format "Collection namespace = %s\n" (pr-str collection-namespace))
         (mt/with-temp PermissionsGroup [group]
           (testing "no perms beforehand = no perms after"
@@ -1461,25 +1460,22 @@
 (deftest check-collection-namespace-test
   (testing "check-collection-namespace"
     (testing "Should succeed if namespace is allowed"
-      (mt/with-temp* [Card       [{card-id :id}]
-                      Collection [{collection-id :id}]]
+      (mt/with-temp Collection [{collection-id :id}]
         (is (= nil
                (collection/check-collection-namespace Card collection-id)))))
 
     (testing "Should throw exception if namespace is not allowed"
-      (mt/with-temp* [Card       [{card-id :id}]
-                      Collection [{collection-id :id} {:namespace "x"}]]
+      (mt/with-temp Collection [{collection-id :id} {:namespace "x"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Card can only go in Collections in the \"default\" namespace"
              (collection/check-collection-namespace Card collection-id)))))
 
     (testing "Should throw exception if Collection does not exist"
-      (mt/with-temp Card [{card-id :id}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Collection does not exist"
-             (collection/check-collection-namespace Card Integer/MAX_VALUE)))))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Collection does not exist"
+           (collection/check-collection-namespace Card Integer/MAX_VALUE))))))
 
 (deftest delete-collection-set-children-collection-id-to-null-test
   (testing "When deleting a Collection, should change collection_id of Children to nil instead of Cascading"

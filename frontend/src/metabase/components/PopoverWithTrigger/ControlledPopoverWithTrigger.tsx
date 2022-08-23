@@ -73,6 +73,7 @@ function ControlledPopoverWithTrigger({
     })
   ) : (
     <TriggerButton
+      type="button"
       disabled={disabled}
       className={cx(
         triggerClasses,

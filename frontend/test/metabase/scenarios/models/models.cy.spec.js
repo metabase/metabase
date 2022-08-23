@@ -16,6 +16,7 @@ import {
   closeQuestionActions,
 } from "__support__/e2e/helpers";
 
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import { questionInfoButton } from "../../../__support__/e2e/helpers/e2e-ui-elements-helpers";
 
@@ -245,7 +246,7 @@ describe("scenarios > models", () => {
     });
 
     it("allows to create a question based on a model", () => {
-      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
+      cy.intercept(`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as("schema");
       startNewQuestion();
 
       popover().within(() => {

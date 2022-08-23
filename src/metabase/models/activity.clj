@@ -52,7 +52,7 @@
                   :details   {}}]
     (merge defaults activity)))
 
-(u/strict-extend (class Activity)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Activity)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:details :json, :topic :keyword})

@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
-import Form from "metabase/containers/Form";
+import Form from "metabase/containers/FormikForm";
 import { SlackSettings } from "metabase-types/api";
 import { getSlackForm } from "../../forms";
 import { FormProps } from "./types";

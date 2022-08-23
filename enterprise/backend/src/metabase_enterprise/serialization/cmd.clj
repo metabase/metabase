@@ -146,16 +146,16 @@
                       [])
         databases   (if (contains? opts :only-db-ids)
                       (db/select Database :id [:in (:only-db-ids opts)] {:order-by [[:id :asc]]})
-                      (Database))
+                      (db/select Database))
         tables      (if (contains? opts :only-db-ids)
                       (db/select Table :db_id [:in (:only-db-ids opts)] {:order-by [[:id :asc]]})
-                      (Table))
+                      (db/select Table))
         fields      (if (contains? opts :only-db-ids)
                       (db/select Field :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
-                      (Field))
+                      (db/select Field))
         metrics     (if (contains? opts :only-db-ids)
                       (db/select Metric :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
-                      (Metric))
+                      (db/select Metric))
         collections (select-collections users state)]
     (dump/dump path
                databases

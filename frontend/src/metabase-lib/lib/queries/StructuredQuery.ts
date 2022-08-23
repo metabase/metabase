@@ -330,27 +330,31 @@ class StructuredQueryInner extends AtomicQuery {
     const sourceQuery = this.sourceQuery();
 
     if (sourceQuery) {
+      const fields = sourceQuery.columns().map(column => {
+        const id = [
+          "field",
+          column.name,
+          {
+            "base-type": column.base_type,
+          },
+        ];
+
+        return new Field({
+          ...column,
+          // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
+          id,
+          source: "fields",
+          // HACK: need to thread the query through to this fake Field
+          query: this,
+        });
+      });
+
       return new Table({
+        id: this.sourceTableId(),
         name: "",
         display_name: "",
         db: sourceQuery.database(),
-        fields: sourceQuery.columns().map(
-          column =>
-            new Field({
-              ...column,
-              // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
-              id: [
-                "field",
-                column.name,
-                {
-                  "base-type": column.base_type,
-                },
-              ],
-              source: "fields",
-              // HACK: need to thread the query through to this fake Field
-              query: this,
-            }),
-        ),
+        fields,
         segments: [],
         metrics: [],
       });
@@ -783,21 +787,25 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   /**
-   * @param includedBreakout The breakout to include even if it's already used
+   * @param includedBreakout The breakout to include in the options even if it's already used. If true, include all options.
    * @param fieldFilter An option @type {Field} predicate to filter out options
    * @returns @type {DimensionOptions} that can be used as breakouts, excluding used breakouts, unless @param {breakout} is provided.
    */
   breakoutOptions(includedBreakout?: any, fieldFilter = () => true) {
-    // the set of field ids being used by other breakouts
-    const usedFields = new Set(
+    // the collection of field dimensions
+    const breakoutDimensions =
       includedBreakout === true
         ? []
         : this.breakouts()
             .filter(breakout => !_.isEqual(breakout, includedBreakout))
-            .map(breakout => breakout.field().id),
-    );
-    return this.fieldOptions(
-      field => fieldFilter(field) && !usedFields.has(field.id),
+            .map(breakout => breakout.dimension());
+
+    return this.dimensionOptions(
+      dimension =>
+        fieldFilter(dimension.field()) &&
+        !breakoutDimensions.some(breakoutDimension =>
+          breakoutDimension.isSameBaseDimension(dimension),
+        ),
     );
   }
 

@@ -17,16 +17,6 @@ export const EDITOR_QUOTES = {
   identifierAlwaysQuoted: true,
 };
 
-// export const EDITOR_QUOTES = {
-//   characters: {
-//     "'": "literal",
-//     '"': "identifier",
-//   },
-//   literalQuoteDefault: "'",
-//   identifierQuoteDefault: '"',
-//   identifierAlwaysQuoted: false,
-// };
-
 export const EDITOR_FK_SYMBOLS = {
   // specifies which symbols can be used to delimit foreign/joined fields
   symbols: [".", " → "],

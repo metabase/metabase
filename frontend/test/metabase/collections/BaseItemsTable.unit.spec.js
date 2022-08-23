@@ -6,7 +6,7 @@ import moment from "moment-timezone";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
-} from "metabase/lib/formatting/date";
+} from "metabase/lib/formatting/datetime-utils";
 
 import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
 

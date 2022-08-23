@@ -64,7 +64,7 @@ function ListCellContent({
   const column = cols[columnIndex];
   const columnSettings = settings.column(column);
 
-  const cellData = useMemo(
+  const cellData: any = useMemo(
     () =>
       getCellData({
         value,

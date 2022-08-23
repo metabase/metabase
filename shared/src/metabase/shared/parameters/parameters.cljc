@@ -2,19 +2,19 @@
   "Util functions for dealing with parameters. Primarily used for substituting parameters into variables in Markdown
   dashboard cards."
   #?@
-      (:clj
-       [(:require [clojure.string :as str]
-                  [metabase.mbql.normalize :as mbql.normalize]
-                  [metabase.shared.util.i18n :refer [trs]]
-                  [metabase.util.date-2 :as u.date]
-                  [metabase.util.date-2.parse.builder :as b]
-                  [metabase.util.i18n.impl :as i18n.impl])
-        (:import java.time.format.DateTimeFormatter)]
-       :cljs
-       [(:require ["moment" :as moment]
-                  [clojure.string :as str]
-                  [metabase.mbql.normalize :as mbql.normalize]
-                  [metabase.shared.util.i18n :refer [trs]])]))
+   (:clj
+    [(:require [clojure.string :as str]
+               [metabase.mbql.normalize :as mbql.normalize]
+               [metabase.shared.util.i18n :refer [trs trsn]]
+               [metabase.util.date-2 :as u.date]
+               [metabase.util.date-2.parse.builder :as b]
+               [metabase.util.i18n.impl :as i18n.impl])
+     (:import java.time.format.DateTimeFormatter)]
+    :cljs
+    [(:require ["moment" :as moment]
+               [clojure.string :as str]
+               [metabase.mbql.normalize :as mbql.normalize]
+               [metabase.shared.util.i18n :refer [trs trsn]])]))
 
 ;; Without this comment, the namespace-checker linter incorrectly detects moment as unused
 #?(:cljs (comment moment/keep-me))
@@ -63,22 +63,39 @@
            (formatted-value :date/single end locale))
       "")))
 
+(defn- translated-interval
+  [interval n]
+  (case interval
+    "minutes"  (trsn "Minute" "Minutes" n)
+    "hours"    (trsn "Hour" "Hours" n)
+    "days"     (trsn "Day" "Days" n)
+    "weeks"    (trsn "Week" "Weeks" n)
+    "months"   (trsn "Month" "Months" n)
+    "quarters" (trsn "Quarter" "Quarters" n)
+    "years"    (trsn "Year" "Years" n)))
+
+(defn- format-relative-date
+  [prefix n interval]
+  (let [n        #?(:clj (Integer/valueOf ^String n) :cljs (js/parseInt n))
+        interval (translated-interval interval n)]
+    (case [prefix (= n 1)]
+      ["past" true]  (trs "Previous {0}" interval)
+      ["past" false] (trs "Previous {0} {1}" n interval)
+      ["next" true]  (trs "Next {0}" interval)
+      ["next" false] (trs "Next {0} {1}" n interval))))
+
 (defmethod formatted-value :date/relative
-  [_ value locale]
-  (case value
-    "today"      (trs "Today")
-    "yesterday"  (trs "Yesterday")
-    "past7days"  (trs "Past 7 Days")
-    "past30days" (trs "Past 30 Days")
-    "lastweek"   (trs "Last Week")
-    "lastmonth"  (trs "Last Month")
-    "lastyear"   (trs "Last Year")
-    "thisday"    (trs "Today")
-    "thisweek"   (trs "This Week")
-    "thismonth"  (trs "This Month")
-    "thisyear"   (trs "This Year")
-    ;; Always fallback to default formatting, just in case
-    (formatted-value :default locale locale)))
+  [_ value _]
+  (condp (fn [re value] (->> (re-find re value) next)) value
+    #"^today$"                             (trs "Today")
+    #"^thisday$"                           (trs "Today")
+    #"^thisweek$"                          (trs "This Week")
+    #"^thismonth$"                         (trs "This Month")
+    #"^thisquarter$"                       (trs "This Quarter")
+    #"^thisyear$"                          (trs "This Year")
+    #"^past1days$"                         (trs "Yesterday")
+    #"^next1days$"                         (trs "Tomorrow")
+    #"^(past|next)([0-9]+)([a-z]+)~?$" :>> (fn [matches] (apply format-relative-date matches))))
 
 (defmethod formatted-value :date/all-options
   [_ value locale]
@@ -86,9 +103,10 @@
   ;; the appropriate formatting, since it is not encoded in the parameter type.
   ;; TODO: this is a partial implementation that only handles simple dates
   (condp (fn [re value] (->> (re-find re value) second)) value
+    #"^(this[a-z]+)$"          :>> #(formatted-value :date/relative % locale)
     #"^~?([0-9-T:]+)~?$"       :>> #(formatted-value :date/single % locale)
     #"^([0-9-T:]+~[0-9-T:]+)$" :>> #(formatted-value :date/range % locale)
-    (str value)))
+    (formatted-value :date/relative value locale)))
 
 (defn formatted-list
   "Given a seq of parameter values, returns them as a single comma-separated string. Does not do additional formatting
@@ -96,7 +114,7 @@
   [values]
   (if (= (count values) 1)
     (str (first values))
-    (str (str/join ", " (butlast values)) (trs " and ") (last values))))
+    (trs "{0} and {1}" (str/join ", " (butlast values)) (last values))))
 
 (defmethod formatted-value :default
   [_ value _]
@@ -220,9 +238,9 @@
   "Normalize a single parameter by calling [[mbql.normalize/normalize-fragment]] on it, and converting all string keys
   to keywords."
   [parameter]
-  (->> (mbql.normalize/normalize-fragment [:parameters] [parameter])
-       first
-       (reduce-kv (fn [acc k v] (assoc acc (keyword k) v)) {})))
+  (-> (mbql.normalize/normalize-fragment [:parameters] [parameter])
+      first
+      (update-keys keyword)))
 
 (defn ^:export substitute_tags
   "Given the context of a text dashboard card, replace all template tags in the text with their corresponding values,
@@ -233,10 +251,7 @@
    (when text
      (let [tag->param #?(:clj tag->param
                          :cljs (js->clj tag->param))
-           tag->normalized-param (reduce-kv (fn [acc tag param]
-                                              (assoc acc tag (normalize-parameter param)))
-                                            {}
-                                            tag->param)]
+           tag->normalized-param (update-vals tag->param normalize-parameter)]
        ;; Most of the functions in this pipeline are relating to handling optional blocks in the text which use
        ;; the [[ ]] syntax.
        ;; For example, given an input "[[a {{b}}]] [[{{c}}]]", where `b` has no value and `c` = 3:
@@ -244,7 +259,7 @@
        ;;      ("[[a " {:tag "b" :source "{{b}}"} "]] [[" {:tag "c" :source "{{c}}"} "]]")
        ;; 2. `add-values-to-variables` =>
        ;;      ("[[a " {:tag "b" :source "{{b}}" :value nil} "]] [[" {:tag "c" :source "{{c}}" :value 3} "]]")
-       ;; 3. `join-consecutive-strings` => ("[[a {{b}}]] [[" {:tag "b" :source "{{c}}" :value 3} "]])
+       ;; 3. `join-consecutive-strings` => ("[[a {{b}}]] [[" {:tag "b" :source "{{c}}" :value 3} "]]")
        ;; 4. `strip-optional-blocks` => "3"
        (->> text
             split-on-tags

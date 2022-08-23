@@ -180,7 +180,7 @@
               (throw (ex-info (tru "Wrong email address for User {0}." id)
                               {:status-code 403})))))))))
 
-(u/strict-extend (class PulseChannel)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PulseChannel)
   models/IModel
   (merge
    models/IModelDefaults
@@ -347,9 +347,12 @@
 
 
 ;; don't include `:emails`, we use that purely internally
-(add-encoder PulseChannelInstance (fn [pulse-channel json-generator]
-                                    (encode-map (m/dissoc-in pulse-channel [:details :emails])
-                                                json-generator)))
+(add-encoder
+ #_{:clj-kondo/ignore [:unresolved-symbol]}
+ PulseChannelInstance
+ (fn [pulse-channel json-generator]
+   (encode-map (m/dissoc-in pulse-channel [:details :emails])
+               json-generator)))
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 

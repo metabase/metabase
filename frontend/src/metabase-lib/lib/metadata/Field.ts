@@ -248,6 +248,8 @@ class FieldInner extends Base {
     if (Array.isArray(this.id)) {
       // if ID is an array, it's a MBQL field reference, typically "field"
       return this.id;
+    } else if (this.field_ref) {
+      return this.field_ref;
     } else {
       return ["field", this.id, null];
     }
@@ -286,16 +288,6 @@ class FieldInner extends Base {
     return this.filterOperatorsLookup()[operatorName];
   }
 
-  // @deprecated: use filterOperators
-  get filter_operators() {
-    return this.filterOperators();
-  }
-
-  // @deprecated: use filterOperatorsLookup
-  get filter_operators_lookup() {
-    return this.filterOperatorsLookup();
-  }
-
   // AGGREGATIONS
   aggregationOperators() {
     return this.table
@@ -315,16 +307,6 @@ class FieldInner extends Base {
 
   aggregationOperator(short) {
     return this.aggregationOperatorsLookup()[short];
-  }
-
-  // @deprecated: use aggregationOperators
-  get aggregation_operators() {
-    return this.aggregationOperators();
-  }
-
-  // @deprecated: use aggregationOperatorsLookup
-  get aggregation_operators_lookup() {
-    return this.aggregationOperatorsLookup();
   }
 
   // BREAKOUTS
