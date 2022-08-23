@@ -1,3 +1,5 @@
+import { color } from "metabase/lib/colors";
+import { colors } from "metabase/lib/colors/palette";
 import React from "react";
 import { XYChart } from "../XYChart";
 import { ChartSettings, ChartStyle, Series } from "../XYChart/types";
@@ -8,13 +10,6 @@ import {
   getXValuesCount,
 } from "./utils/settings";
 
-const defaultColors = {
-  brand: "#509ee3",
-  brandLight: "#ddecfa",
-  textLight: "#b8bbc3",
-  textMedium: "#949aab",
-};
-
 interface LineAreaBarChartProps {
   series: Series[];
   settings: ChartSettings;
@@ -24,20 +19,20 @@ interface LineAreaBarChartProps {
 const LineAreaBarChart = ({
   series,
   settings,
-  colors,
+  colors: instanceColors,
 }: LineAreaBarChartProps) => {
-  const palette = { ...defaultColors, ...colors };
+  const palette = { ...colors, ...instanceColors };
 
   const chartStyle: ChartStyle = {
     fontFamily: "Lato, sans-serif",
     axes: {
-      color: palette.textLight,
+      color: color("text-light", palette),
       ticks: {
-        color: palette.textMedium,
+        color: color("text-medium", palette),
         fontSize: 11,
       },
       labels: {
-        color: palette.textMedium,
+        color: color("text-medium", palette),
         fontSize: 11,
         fontWeight: 700,
       },
@@ -46,7 +41,12 @@ const LineAreaBarChart = ({
       fontSize: 13,
       lineHeight: 16,
     },
-    goalColor: palette.textMedium,
+    value: {
+      color: color("text-dark", palette),
+      fontSize: 11,
+      fontWeight: 800,
+    },
+    goalColor: color("text-medium", palette),
   };
 
   const minTickSize = chartStyle.axes.ticks.fontSize * 1.5;

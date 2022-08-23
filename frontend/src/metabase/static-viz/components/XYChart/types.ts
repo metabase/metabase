@@ -48,6 +48,7 @@ export type ChartSettings = {
     value: number;
     label: string;
   };
+  show_values?: boolean;
   labels: {
     left?: string;
     bottom?: string;
@@ -84,6 +85,11 @@ export type ChartStyle = {
   legend: {
     fontSize: number;
     lineHeight: number;
+  };
+  value?: {
+    color: string;
+    fontSize: number;
+    fontWeight: number;
   };
   goalColor: string;
 };
