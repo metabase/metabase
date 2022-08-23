@@ -3,10 +3,6 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  SortableContainer,
-  SortableElement,
-} from "metabase/components/sortable";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import {
   keyForColumn,
@@ -17,35 +13,7 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import ColumnItem from "./ColumnItem";
 
-const SortableColumn = SortableElement(
-  ({ columnSetting, getColumnName, onEdit, onRemove }) => (
-    <ColumnItem
-      title={getColumnName(columnSetting)}
-      onEdit={onEdit ? () => onEdit(columnSetting) : null}
-      onRemove={onRemove ? () => onRemove(columnSetting) : null}
-      draggable
-    />
-  ),
-);
-
-const SortableColumnList = SortableContainer(
-  ({ columnSettings, getColumnName, onEdit, onRemove }) => {
-    return (
-      <div>
-        {columnSettings.map((columnSetting, index) => (
-          <SortableColumn
-            key={`item-${index}`}
-            index={columnSetting.index}
-            columnSetting={columnSetting}
-            getColumnName={getColumnName}
-            onEdit={onEdit}
-            onRemove={onRemove}
-          />
-        ))}
-      </div>
-    );
-  },
-);
+import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
 
 export default class ChartSettingOrderedColumns extends Component {
   handleEnable = columnSetting => {
@@ -103,21 +71,11 @@ export default class ChartSettingOrderedColumns extends Component {
   };
 
   render() {
-    const {
-      value,
-      question,
-      columns,
-      allowAdditionalFieldOptions = true,
-      rowMode = false,
-    } = this.props;
+    const { value, question, columns } = this.props;
     const query = question && question.query();
 
     let additionalFieldOptions = { count: 0 };
-    if (
-      columns &&
-      query instanceof StructuredQuery &&
-      allowAdditionalFieldOptions
-    ) {
+    if (columns && query instanceof StructuredQuery) {
       additionalFieldOptions = query.fieldsOptions(dimension => {
         return !_.find(columns, column =>
           dimension.isSameBaseDimension(column.field_ref),
@@ -128,22 +86,18 @@ export default class ChartSettingOrderedColumns extends Component {
     const [enabledColumns, disabledColumns] = _.partition(
       value
         .filter(columnSetting =>
-          rowMode
-            ? findRowForColumnSetting(columns, columnSetting)
-            : findColumnForColumnSetting(columns, columnSetting),
+          findColumnForColumnSetting(columns, columnSetting),
         )
         .map((columnSetting, index) => ({ ...columnSetting, index })),
       columnSetting => columnSetting.enabled,
     );
 
-    // console.log(value, columns);
-
     return (
       <div className="list">
         {enabledColumns.length > 0 ? (
-          <SortableColumnList
-            columnSettings={enabledColumns}
-            getColumnName={this.getColumnName}
+          <ChartSettingOrderedItems
+            items={enabledColumns}
+            getItemName={this.getColumnName}
             onEdit={this.handleEdit}
             onRemove={this.handleDisable}
             onSortEnd={this.handleSortEnd}

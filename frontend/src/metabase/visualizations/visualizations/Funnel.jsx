@@ -26,7 +26,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
-import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
+import { ChartSettingOrderedRows } from "metabase/visualizations/components/settings/ChartSettingOrderedRows";
 
 const propTypes = {
   headerIcon: PropTypes.shape(iconPropTypes),
@@ -110,30 +110,33 @@ export default class Funnel extends Component {
       useRawSeries: true,
       showColumnSetting: true,
     }),
-    "funnel.columns": {
+    "funnel.rows": {
       section: t`Data`,
-      title: t`Breakouts`,
-      widget: ChartSettingOrderedColumns,
-      isValid: series => {
-        //console.log('is valid', series);
+      widget: ChartSettingOrderedRows,
+      isValid: (series, settings) => {
+        const setting = settings["funnel.rows"];
 
-        return true;
+        if (!setting || !_.isArray(setting)) {
+          return false;
+        }
+
+        return setting.reduce((memo, value) => {
+          return memo || !!value.rowIndex;
+        }, false);
       },
+
       getDefault: transformedSeries => {
-        // console.log(transformedSeries);
         return transformedSeries.map(s => ({
           name: s.card.name,
-          rowId: s.card.rowIndex,
+          rowIndex: s.card.rowIndex,
           enabled: true,
         }));
       },
       getProps: transformedSeries => ({
-        columns: transformedSeries.map(s => ({
+        rows: transformedSeries.map(s => ({
           ...s.card,
           display_name: s.card.name,
         })),
-        allowAdditionalFieldOptions: false,
-        rowMode: true,
       }),
     },
     ...metricSetting("funnel.metric", {

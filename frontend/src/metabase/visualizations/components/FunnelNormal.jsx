@@ -27,11 +27,12 @@ export default class FunnelNormal extends Component {
     const metricIndex = 1;
     const cols = series[0].data.cols;
     //console.log(settings, series);
-    const rows = settings["funnel.columns"]
-      ? settings["funnel.columns"]
-          .filter(fc => fc.enabled)
+    const rows = settings["funnel.rows"]
+      ? settings["funnel.rows"]
+          .filter(fr => fr.enabled)
           .map(
-            fc => series.find(s => s.card.rowIndex === fc.rowId).data.rows[0],
+            fr =>
+              series.find(s => s.card.rowIndex === fr.rowIndex).data.rows[0],
           )
       : series.map(s => s.data.rows[0]);
 
