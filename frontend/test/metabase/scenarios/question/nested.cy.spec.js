@@ -185,7 +185,9 @@ describe("scenarios > question > nested", () => {
         };
 
         const nestedQuestionDetails = {
-          filter: [">", ["field", ORDERS.TOTAL, null], 50],
+          query: {
+            filter: [">", ["field", ORDERS.TOTAL, null], 50],
+          },
         };
 
         // Create new question which uses previously defined metric
@@ -255,7 +257,7 @@ describe("scenarios > question > nested", () => {
 
     const baseQuestionDetails = {
       name: "14787",
-      query: ordersJoinProductsQuery,
+      query: { ...ordersJoinProductsQuery, limit: 5 },
     };
 
     createNestedQuestion({ baseQuestionDetails });
@@ -553,26 +555,32 @@ describe("scenarios > question > nested", () => {
 });
 
 function createNestedQuestion(
-  { baseQuestionDetails, nestedQuestionDetails },
+  { baseQuestionDetails, nestedQuestionDetails = {} },
   { loadBaseQuestionMetadata = false, visitNestedQuestion = true } = {},
 ) {
+  if (!baseQuestionDetails) {
+    throw new Error("Please provide the base question details");
+  }
+
   createBaseQuestion(baseQuestionDetails).then(({ body: { id } }) => {
     loadBaseQuestionMetadata && visitQuestion(id);
 
-    return cy.createQuestion(
-      {
-        name: "Nested Question",
-        query: {
-          "source-table": `card__${id}`,
-        },
-        ...nestedQuestionDetails,
+    const { query: nestedQuery, ...details } = nestedQuestionDetails;
+
+    const composite = {
+      name: "Nested Question",
+      query: {
+        ...nestedQuery,
+        "source-table": `card__${id}`,
       },
-      {
-        visitQuestion: visitNestedQuestion,
-        wrapId: true,
-        idAlias: "nestedQuestionId",
-      },
-    );
+      ...details,
+    };
+
+    return cy.createQuestion(composite, {
+      visitQuestion: visitNestedQuestion,
+      wrapId: true,
+      idAlias: "nestedQuestionId",
+    });
   });
 
   function createBaseQuestion(query) {
