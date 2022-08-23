@@ -24,7 +24,9 @@
   [query]
   (or (qp.constraints/max-results-bare-rows)
       (mbql.u/query->max-rows-limit query)
-      qp.i/absolute-max-results))
+      (if (some? (get-in query [:info :card-id]))
+        qp.i/absolute-max-results-for-model-nested-queries
+        qp.i/absolute-max-results)))
 
 (defn add-default-limit
   "Pre-processing middleware. Add default `:limit` to MBQL queries without any aggregations."

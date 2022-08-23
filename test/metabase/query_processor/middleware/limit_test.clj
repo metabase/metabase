@@ -27,6 +27,19 @@
                        :query       {:aggregation [[:count]]}})
                mt/rows count)))))
 
+(deftest max-results-models-test
+  (testing "A query on a model should have a default limit of [[qp.i/absolute-max-results-for-model-nested-queries]]"
+    (let [query (assoc (mt/mbql-query venues)
+                       :info {:card-id 1234})]
+      (is (= qp.i/absolute-max-results-for-model-nested-queries
+             (-> (limit/add-default-limit query)
+                 :query :limit)))))
+  (testing "But otherwise, the query should have a limit of [[qp.i/absolute-max-results]]"
+    (let [query (mt/mbql-query venues)]
+      (is (= qp.i/absolute-max-results
+             (-> (limit/add-default-limit query)
+                 :query :limit))))))
+
 (deftest no-aggregation-test
   (testing "Apply a max-results-bare-rows limit specifically on no-aggregation query"
     (let [query  {:constraints {:max-results 46}

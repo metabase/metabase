@@ -3,7 +3,11 @@
 ;; TODO - Not 100% sure we really need this namespace since it's almost completely empty these days. Seems like the
 ;; things here could be moved elsewhere
 
-;; TODO - I think this could go in the `limit` namespace
+;; TODO - I think these could go in the `limit` namespace
+(def absolute-max-results-for-model-nested-queries
+  "This is a large number for when a limit is required, but we actually don't want one."
+  1000000000)
+
 (def absolute-max-results
   "Maximum number of rows the QP should ever return.
 
