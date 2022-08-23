@@ -1,6 +1,6 @@
 ---
 title: Referencing models and saved questions in SQL queries
-redirect-from:
+redirect_from:
   - /docs/latest/users-guide/referencing-saved-questions-in-queries
 ---
 

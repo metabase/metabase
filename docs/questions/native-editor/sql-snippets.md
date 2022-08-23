@@ -1,6 +1,6 @@
 ---
 title: SQL snippets
-redirect-from:
+redirect_from:
   - /docs/latest/users-guide/sql-snippets
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Data reference
-redirect-from:
+redirect_from:
   - /docs/v0.43/users-guide/12-data-model-reference
 ---
 
