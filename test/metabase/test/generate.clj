@@ -92,7 +92,6 @@
         (gen/return nil)))))
 
 (s/def ::name ::weird-str)
-(s/def ::display_name ::weird-str)
 (s/def ::description ::weird-str)
 
 ;; * card
@@ -151,7 +150,7 @@
 (s/def ::field (s/keys :req-un [::id ::name ::base_type ::database_type ::position ::description]))
 
 (s/def ::metric (s/keys :req-un [::id ::name ::definition ::description]))
-(s/def ::newmetric (s/keys :req-un [::id ::name ::display_name ::description ::measure ::dimensions ::granularities ::default_granularity]))
+(s/def ::newmetric (s/keys :req-un [::id ::name ::description ::measure ::dimensions ::granularities ::default_granularity]))
 (s/def ::segment (s/keys :req-un [::id ::name ::definition ::description]))
 (s/def ::table  (s/keys :req-un [::id ::active ::name ::description]))
 (s/def ::native-query-snippet (s/keys :req-un [::id ::name ::description ::content]))

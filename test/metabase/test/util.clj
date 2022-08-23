@@ -164,7 +164,6 @@
    Newmetric
    (fn [_] {:creator_id          (rasta-id)
             :name                (random-name)
-            :display_name        (random-name)
             :granularities       #{:year :quarter :month :week}
             :default_granularity :year})
 
