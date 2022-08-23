@@ -55,6 +55,7 @@ import {
   CardApi,
   maybeUsePivotEndpoint,
   MetabaseApi,
+  NewMetricApi,
 } from "metabase/services";
 import Questions from "metabase/entities/questions";
 import {
@@ -76,7 +77,13 @@ import {
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
 
-type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
+import { QuestionUpdateFn } from "metabase-lib/lib/Question";
+import { Metric } from "metabase-types/api/newmetric";
+import NewMetrics from "metabase/entities/new-metrics";
+
+export type QuestionUpdateFn = (
+  q: Question,
+) => Promise<void> | null | undefined;
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -1266,6 +1273,7 @@ class QuestionInner {
       ...(creationType ? { creationType } : {}),
       dashboardId: this._card.dashboardId,
       dashcardId: this._card.dashcardId,
+      ...(this._metric ? { metric: this._metric } : {}),
     };
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
@@ -1341,10 +1349,6 @@ export default class Question extends memoizeClass<QuestionInner>(
   "query",
   "mode",
 )(QuestionInner) {
-  /**
-   * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
-   * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
-   */
   static create({
     databaseId,
     tableId,
@@ -1382,3 +1386,128 @@ export default class Question extends memoizeClass<QuestionInner>(
     return new Question(card, metadata, parameterValues);
   }
 }
+
+// This, unfortunately, MUST be in the same file as Question because of the circular dependency
+// Represents a Question that is controlled by a metric.
+export class MetricQuestion extends Question {
+  _metric: Metric;
+
+  constructor({
+    card,
+    metadata,
+    metric,
+    update,
+  }: {
+    card: Card;
+    metadata: Metadata;
+    metric: Metric;
+    update?: QuestionUpdateFn | null | undefined;
+  }) {
+    super(card, metadata, undefined, update);
+    this._metric = metric;
+  }
+
+  metric() {
+    return this._metric;
+  }
+
+  metricId() {
+    return this._metric.id;
+  }
+
+  isSaved() {
+    return !!this.metricId();
+  }
+
+  setMetric(metric: Metric): MetricQuestion {
+    return new MetricQuestion({
+      card: this.card(),
+      metadata: this.metadata(),
+      metric,
+      update: this.update(),
+    });
+  }
+
+  setCard(card: Card): MetricQuestion {
+    return super.setCard(card) as MetricQuestion;
+  }
+
+  // equality is driven by the state of the `metric`, not the `card`
+  // because the `card` state is determined by the `metric`
+  isEqual(other: MetricQuestion, { compareResultsMetadata = true } = {}) {
+    if (!other || !(other instanceof MetricQuestion)) {
+      return false;
+    }
+    // const areQuestionsEqual = super.isEqual(other, { compareResultsMetadata });
+    // if (!areQuestionsEqual) {
+    //   return false;
+    // }
+    const metric = this.metric();
+    const otherMetric = other.metric();
+    // `metric` does not currently have result_metadata,
+    // but I am mimicking the Question interface here
+    const areMetricsEqual = compareResultsMetadata
+      ? _.isEqual(metric, otherMetric)
+      : _.isEqual(
+          _.omit(metric, "result_metadata"),
+          _.omit(otherMetric, "result_metadata"),
+        );
+    return areMetricsEqual;
+  }
+  isDirtyComparedTo(original: MetricQuestion): boolean {
+    return !this.isEqual(original);
+  }
+
+  isDirtyComparedToWithoutParameters(original: MetricQuestion): boolean {
+    return !this.isEqual(original);
+  }
+
+  // not used?
+  async apiCreate() {
+    return this;
+  }
+
+  // not used?
+  async apiUpdate() {
+    return this;
+  }
+
+  // it'd be nice to get rid of this
+  async reduxCreate(dispatch) {
+    const action = await dispatch(NewMetrics.actions.create(this.metric()));
+    return this.setMetric(NewMetrics.HACK_getObjectFromAction(action));
+  }
+
+  // it'd be nice to get rid of this
+  async reduxUpdate() {
+    const updatedMetric = await NewMetrics.api.update(this.metric());
+    return this.setMetric(updatedMetric);
+  }
+
+  // Should side effectful code like this actually live on metabase-lib classes?
+  // It'd be nice if metabase-lib was not concerned with this.
+  async apiGetResults({
+    cancelDeferred,
+    // should MetricQuestion use this?
+    // 1. either transition from MetricQuestion -> Question
+    // 2. or have this method trigger Question.apiGetResults directly
+    // isDirty = false,
+    ignoreCache = false,
+    collectionPreview = false,
+  }: {
+    cancelDeferred: any;
+    isDirty?: boolean | undefined;
+    ignoreCache?: boolean | undefined;
+    collectionPreview?: boolean | undefined;
+  }): Promise<[Dataset]> {
+    const metric = this.metric();
+    const { id } = metric;
+    const results = await NewMetricApi.query(
+      { id, ignore_cache: ignoreCache, collection_preview: collectionPreview },
+      { cancelled: cancelDeferred.promise },
+    );
+    return [results as Dataset];
+  }
+}
+
+// Object.setPrototypeOf(MetricQuestion.prototype, Question.prototype);

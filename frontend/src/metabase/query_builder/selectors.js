@@ -18,7 +18,7 @@ import { normalizeParameterValue } from "metabase/parameters/utils/parameter-val
 import { isPK } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
-import Question from "metabase-lib/lib/Question";
+import Question, { MetricQuestion } from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 
@@ -77,6 +77,8 @@ export const getIsLoadingComplete = state =>
 export const getCard = state => state.qb.card;
 export const getOriginalCard = state => state.qb.originalCard;
 export const getLastRunCard = state => state.qb.lastRunCard;
+
+export const getMetric = state => state.qb.metric;
 
 export const getParameterValues = state => state.qb.parameterValues;
 
@@ -294,17 +296,43 @@ export const getDatasetEditorTab = createSelector(
 );
 
 export const getOriginalQuestion = createSelector(
-  [getMetadata, getOriginalCard],
-  (metadata, card) => metadata && card && new Question(card, metadata),
-);
-
-export const getQuestion = createSelector(
-  [getMetadata, getCard, getParameterValues, getQueryBuilderMode],
-  (metadata, card, parameterValues, queryBuilderMode) => {
+  [getMetadata, getOriginalCard, getMetric],
+  (metadata, card, metric) => {
     if (!metadata || !card) {
       return;
     }
-    const question = new Question(card, metadata, parameterValues);
+
+    if (metric) {
+      return new MetricQuestion({
+        card,
+        metadata,
+        metric,
+      });
+    } else {
+      new Question(card, metadata);
+    }
+  },
+);
+
+export const getQuestion = createSelector(
+  [getMetadata, getCard, getParameterValues, getQueryBuilderMode, getMetric],
+  (metadata, card, parameterValues, queryBuilderMode, metric) => {
+    if (!metadata || !card) {
+      return;
+    }
+    let question;
+    if (metric) {
+      question = new MetricQuestion({
+        card,
+        metadata,
+        metric,
+      });
+
+      // should I run any of the below code? not sure
+      return question;
+    } else {
+      question = new Question(card, metadata, parameterValues);
+    }
 
     if (queryBuilderMode === "dataset") {
       return question.lockDisplay();
@@ -406,9 +434,22 @@ export const getIsResultDirty = createSelector(
 );
 
 export const getLastRunQuestion = createSelector(
-  [getMetadata, getLastRunCard, getParameterValues],
-  (metadata, card, parameterValues) =>
-    card && metadata && new Question(card, metadata, parameterValues),
+  [getMetadata, getLastRunCard, getParameterValues, getMetric],
+  (metadata, card, parameterValues, metric) => {
+    if (!card || !metadata) {
+      return;
+    }
+
+    if (metric) {
+      return new MetricQuestion({
+        card,
+        metadata,
+        metric,
+      });
+    } else {
+      new Question(card, metadata, parameterValues);
+    }
+  },
 );
 
 export const getZoomedObjectId = state => state.qb.zoomedRowObjectId;
