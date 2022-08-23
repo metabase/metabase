@@ -7,11 +7,13 @@ import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import * as Urls from "metabase/lib/urls";
 
+import DataApps from "metabase/entities/data-apps";
+
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 
 import { Collection, CollectionId } from "metabase-types/api";
 
-type ModalType = "new-dashboard" | "new-collection";
+type ModalType = "new-app" | "new-dashboard" | "new-collection";
 
 export interface NewItemMenuProps {
   className?: string;
@@ -98,6 +100,12 @@ const NewItemMenu = ({
         action: () => setModal("new-collection"),
         event: `${analyticsContext};New Collection Click;`,
       },
+      {
+        title: t`App`,
+        icon: "star",
+        action: () => setModal("new-app"),
+        event: `${analyticsContext};New App Click;`,
+      },
     );
 
     return items;
@@ -130,6 +138,12 @@ const NewItemMenu = ({
           ) : modal === "new-dashboard" ? (
             <CreateDashboardModal
               collectionId={collectionId}
+              onClose={handleModalClose}
+            />
+          ) : modal === "new-app" ? (
+            <DataApps.ModalForm
+              form={DataApps.forms.details}
+              onSaved={handleModalClose}
               onClose={handleModalClose}
             />
           ) : null}
