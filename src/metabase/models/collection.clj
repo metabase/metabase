@@ -39,6 +39,10 @@
 
 (models/defmodel Collection :collection)
 
+(doto Collection
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
 (def AuthorityLevel
   "Schema for valid collection authority levels"
   (s/maybe (s/enum "official")))
@@ -860,8 +864,8 @@
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 
-(defn perms-objects-set
-  "Return the required set of permissions to `read-or-write` `collection-or-id`."
+;;; Return the required set of permissions to `read-or-write` `collection-or-id`.
+(defmethod mi/perms-objects-set Collection
   [collection-or-id read-or-write]
   (let [collection (if (integer? collection-or-id)
                      (db/select-one [Collection :id :namespace] :id (collection-or-id))
@@ -897,11 +901,6 @@
           :post-insert    post-insert
           :pre-update     pre-update
           :pre-delete     pre-delete})
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)
-          :perms-objects-set perms-objects-set})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name :namespace parent-identity-hash])})

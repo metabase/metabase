@@ -41,16 +41,24 @@
     :pre-insert pre-insert
     :pre-update pre-update})
 
-  mi/IObjectPermissions
-  (merge
-   mi/IObjectPermissionsDefaults
-   {:can-read?   snippet.perms/can-read?
-    :can-write?  snippet.perms/can-write?
-    :can-create? snippet.perms/can-create?
-    :can-update? snippet.perms/can-update?})
-
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+
+(defmethod mi/can-read? NativeQuerySnippet
+  [& args]
+  (apply snippet.perms/can-read? args))
+
+(defmethod mi/can-write? NativeQuerySnippet
+  [& args]
+  (apply snippet.perms/can-write? args))
+
+(defmethod mi/can-create? NativeQuerySnippet
+  [& args]
+  (apply snippet.perms/can-create? args))
+
+(defmethod mi/can-update? NativeQuerySnippet
+  [& args]
+  (apply snippet.perms/can-update? args))
 
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
@@ -58,11 +66,11 @@
 (def NativeQuerySnippetName
   "Schema checking that snippet names do not include \"}\" or start with spaces."
   (su/with-api-error-message
-   (s/pred (every-pred
-            string?
-            (complement #(boolean (re-find #"^\s+" %)))
-            (complement #(boolean (re-find #"}" %)))))
-   (deferred-tru "snippet names cannot include '}' or start with spaces")))
+    (s/pred (every-pred
+             string?
+             (complement #(boolean (re-find #"^\s+" %)))
+             (complement #(boolean (re-find #"}" %)))))
+    (deferred-tru "snippet names cannot include '}' or start with spaces")))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

@@ -1,6 +1,5 @@
 (ns metabase.models.timeline
   (:require [metabase.models.collection :as collection]
-            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
@@ -13,6 +12,8 @@
             [toucan.models :as models]))
 
 (models/defmodel Timeline :timeline)
+
+(derive Timeline ::perms/use-parent-collection-perms)
 
 ;;;; schemas
 
@@ -56,9 +57,6 @@
    models/IModelDefaults
    {:properties (constantly {:timestamped? true
                              :entity_id    true})})
-
-  mi/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})

@@ -41,6 +41,8 @@
 
 (models/defmodel Pulse :pulse)
 
+(derive Pulse ::mi/read-policy.full-perms-for-perms-set)
+
 (defn- assert-valid-parameters [{:keys [parameters]}]
   (when (s/check (s/maybe [{:id su/NonBlankString, s/Keyword s/Any}]) parameters)
     (throw (ex-info (tru ":parameters must be a sequence of maps with String :id keys")
@@ -102,19 +104,19 @@
   [notification]
   (boolean (:dashboard_id notification)))
 
-(defn- perms-objects-set
-  "Permissions to read or write a *Pulse* or *Dashboard Subscription* are the same as those of its parent Collection.
-
-  Permissions to read or write an *Alert* are the same as those of its 'parent' *Card*. For all intents and purposes,
-  an Alert cannot be put into a Collection."
+;;; Permissions to read or write a *Pulse* or *Dashboard Subscription* are the same as those of its parent Collection.
+;;;
+;;; Permissions to read or write an *Alert* are the same as those of its 'parent' *Card*. For all intents and purposes,
+;;; an Alert cannot be put into a Collection.
+(defmethod mi/perms-objects-set Pulse
   [notification read-or-write]
   (if (is-alert? notification)
     (mi/perms-objects-set (alert->card notification) read-or-write)
     (perms/perms-objects-set-for-parent-collection notification read-or-write)))
 
-(defn- can-write?
-  "A user with read-only permissions for a dashboard should be able to create subscriptions, and update
-  subscriptions that they created, but not edit anyone else's subscriptions."
+;;; A user with read-only permissions for a dashboard should be able to create subscriptions, and update subscriptions
+;;; that they created, but not edit anyone else's subscriptions.
+(defmethod mi/can-write? Pulse
   [notification]
   (if (and (is-dashboard-subscription? notification)
            (mi/current-user-has-full-permissions? :read notification)
@@ -132,12 +134,6 @@
     :pre-insert     pre-insert
     :pre-update     pre-update
     :types          (constantly {:parameters :json})})
-  mi/IObjectPermissions
-  (merge
-   mi/IObjectPermissionsDefaults
-   {:can-read?         (partial mi/current-user-has-full-permissions? :read)
-    :can-write?        can-write?
-    :perms-objects-set perms-objects-set})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})

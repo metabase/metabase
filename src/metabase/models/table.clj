@@ -36,6 +36,10 @@
 
 (models/defmodel Table :metabase_table)
 
+(doto Table
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -48,7 +52,8 @@
 (defn- pre-delete [{:keys [db_id schema id]}]
   (db/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
 
-(defn- perms-objects-set [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
+(defmethod mi/perms-objects-set Table
+  [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
   ;; To read (e.g., fetch metadata) a Table you must have either self-service data permissions for the Table, or write
   ;; permissions for the Table (detailed below). `can-read?` checks the former, while `can-write?` checks the latter;
   ;; the permission-checking function to call when reading a Table depends on the context of the request. When reading
@@ -73,11 +78,6 @@
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-delete     pre-delete})
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)
-          :perms-objects-set perms-objects-set})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:schema :name (serdes.hash/hydrated-hash :db)])})

@@ -4,6 +4,7 @@
 (def known-models
   '#{Action
      Activity
+     App
      ApplicationPermissionsRevision
      BookmarkOrdering
      Card

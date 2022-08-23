@@ -22,6 +22,10 @@
 
 (models/defmodel Database :metabase_database)
 
+(doto Database
+  (derive ::mi/read-policy.partial-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
 (defn- schedule-tasks!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
@@ -184,7 +188,8 @@
       handle-secrets-changes
       (assoc :initial_sync_status "incomplete")))
 
-(defn- perms-objects-set [{db-id :id} read-or-write]
+(defmethod mi/perms-objects-set Database
+  [{db-id :id} read-or-write]
   #{(case read-or-write
       :read  (perms/data-perms-path db-id)
       :write (perms/db-details-write-perms-path db-id))})
@@ -206,11 +211,6 @@
           :pre-insert     pre-insert
           :pre-update     pre-update
           :pre-delete     pre-delete})
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:perms-objects-set perms-objects-set
-          :can-read?         (partial mi/current-user-has-partial-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name :engine])})

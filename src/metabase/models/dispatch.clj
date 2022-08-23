@@ -2,6 +2,7 @@
   "Helpers to assist in the transition to Toucan 2. Once we switch to Toucan 2 this stuff shouldn't be needed, but we
   can update this namespace instead of having to update code all over the place."
   (:require
+   [potemkin :as p]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.models :as models]))
@@ -33,19 +34,26 @@
             (instance-of? model x))
           (format "instance of a %s" (name model))))
 
-(defn model
-  "Given either a Toucan model or a Toucan instance, return the Toucan model. Otherwise return `nil`."
-  [x]
-  (cond
-    (models/model? x)
-    x
+(p/defprotocol+ Model
+  (model [this]
+    "Given either a Toucan model or a Toucan instance, return the Toucan model. Otherwise return `nil`."))
 
-    (toucan-instance? x)
-    (let [model-symb (symbol (name x))]
-      (db/resolve-model model-symb))
+(extend-protocol Model
+  Object
+  (model [this]
+    (cond
+      (models/model? this)
+      this
 
-    :else
-    nil))
+      (toucan-instance? this)
+      (let [model-symb (symbol (name this))]
+        (db/resolve-model model-symb))
+
+      :else
+      nil))
+
+  nil
+  (model [_this] nil))
 
 (defn instance
   "Create a new instance of Toucan `model` with a map `m`.

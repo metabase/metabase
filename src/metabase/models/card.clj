@@ -27,6 +27,9 @@
 
 (models/defmodel Card :report_card)
 
+;;; You can read/write a Card if you can read/write its parent Collection
+(derive Card ::perms/use-parent-collection-perms)
+
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -323,10 +326,6 @@
           :post-insert    post-insert
           :pre-delete     pre-delete
           :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
-
-  ;; You can read/write a Card if you can read/write its parent Collection
-  mi/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection
 
   revision/IRevisioned
   (assoc revision/IRevisionedDefaults

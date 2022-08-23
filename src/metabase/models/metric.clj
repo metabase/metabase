@@ -19,6 +19,11 @@
 
 (models/defmodel Metric :metric)
 
+(doto Metric
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.superuser)
+  (derive ::mi/create-policy.superuser))
+
 (defn- pre-update [{:keys [creator_id id], :as updates}]
   (u/prog1 updates
     ;; throw an Exception if someone tries to update creator_id
@@ -26,7 +31,8 @@
       (when (not= creator_id (db/select-one-field :creator_id Metric :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Metric.")))))))
 
-(defn- perms-objects-set [metric read-or-write]
+(defmethod mi/perms-objects-set Metric
+  [metric read-or-write]
   (let [table (or (:table metric)
                   (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
     (mi/perms-objects-set table read-or-write)))
@@ -39,15 +45,6 @@
     :properties (constantly {:timestamped? true
                              :entity_id    true})
     :pre-update pre-update})
-  mi/IObjectPermissions
-  (merge
-   mi/IObjectPermissionsDefaults
-   {:perms-objects-set perms-objects-set
-    :can-read?         (partial mi/current-user-has-full-permissions? :read)
-    ;; for the time being you need to be a superuser in order to create or update Metrics because the UI for doing so
-    ;; is only exposed in the admin panel
-    :can-write?        mi/superuser?
-    :can-create?       mi/superuser?})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
