@@ -22,6 +22,8 @@ const {
   PEOPLE_ID,
   REVIEWS_ID,
   ACCOUNTS_ID,
+  ANALYTIC_EVENTS_ID,
+  FEEDBACK_ID,
   INVOICES_ID,
 } = SAMPLE_DATABASE;
 
@@ -267,6 +269,8 @@ function setDownloadPermissionsForProductsTable(permission) {
               [PEOPLE_ID]: "full",
               [REVIEWS_ID]: "full",
               [ACCOUNTS_ID]: "full",
+              [ANALYTIC_EVENTS_ID]: "full",
+              [FEEDBACK_ID]: "full",
               [INVOICES_ID]: "full",
             },
           },

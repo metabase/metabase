@@ -43,6 +43,8 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
     assertPermissionTable([
       ["Accounts", "No self-service", "No"],
+      ["Analytic Events", "No self-service", "No"],
+      ["Feedback", "No self-service", "No"],
       ["Invoices", "No self-service", "No"],
       ["Orders", "No self-service", "No"],
       ["People", "No self-service", "No"],
@@ -303,6 +305,8 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
         assertPermissionTable([
           ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
           ["Invoices", "Unrestricted", "Yes"],
           ["Orders", "Unrestricted", "Yes"],
           ["People", "Unrestricted", "Yes"],
@@ -323,6 +327,8 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
         assertPermissionTable([
           ["Accounts", "No self-service", "No"],
+          ["Analytic Events", "No self-service", "No"],
+          ["Feedback", "No self-service", "No"],
           ["Invoices", "No self-service", "No"],
           ["Orders", "No self-service", "No"],
           ["People", "No self-service", "No"],
@@ -343,6 +349,8 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
         assertPermissionTable([
           ["Accounts", "No self-service", "No"],
+          ["Analytic Events", "No self-service", "No"],
+          ["Feedback", "No self-service", "No"],
           ["Invoices", "No self-service", "No"],
           ["Orders", "Unrestricted", "No"],
           ["People", "No self-service", "No"],
@@ -373,6 +381,8 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
         assertPermissionTable([
           ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
           ["Invoices", "Unrestricted", "Yes"],
           ["Orders", "Unrestricted", "Yes"],
           ["People", "Unrestricted", "Yes"],
@@ -385,7 +395,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         modal().within(() => {
           cy.findByText("Save permissions?");
           cy.contains(
-            "collection will be given access to 6 tables in Sample Database.",
+            "collection will be given access to 8 tables in Sample Database.",
           );
           cy.contains(
             "collection will now be able to write native queries for Sample Database.",
@@ -397,6 +407,8 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
         assertPermissionTable([
           ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
           ["Invoices", "Unrestricted", "Yes"],
           ["Orders", "Unrestricted", "Yes"],
           ["People", "Unrestricted", "Yes"],
@@ -489,7 +501,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         modal().within(() => {
           cy.findByText("Save permissions?");
           cy.contains(
-            "readonly will be given access to 6 tables in Sample Database.",
+            "readonly will be given access to 8 tables in Sample Database.",
           );
           cy.contains(
             "readonly will now be able to write native queries for Sample Database.",
