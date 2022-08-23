@@ -19,6 +19,7 @@ import {
   getOriginalQuestion,
   getQueryBuilderMode,
   getQuestion,
+  getMetric,
 } from "../selectors";
 import { getQueryBuilderModeFromLocation } from "../typed-utils";
 import {
@@ -136,6 +137,11 @@ export const updateUrl = createThunkAction(
     ) =>
     (dispatch, getState) => {
       let question;
+      const metric = getMetric(getState());
+      if (metric) {
+        return;
+      }
+
       if (!card) {
         card = getCard(getState());
         question = getQuestion(getState());

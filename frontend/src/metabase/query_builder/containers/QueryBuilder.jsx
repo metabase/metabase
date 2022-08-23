@@ -255,6 +255,7 @@ function QueryBuilder(props) {
   );
 
   const onClickBookmark = () => {
+    // note: move to redux action? so that we can alter behavior for metrics
     const {
       card: { id },
     } = props;
