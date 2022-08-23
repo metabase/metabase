@@ -104,17 +104,18 @@
                               (db/reducible-query {:select    [:collection_id :dataset]
                                                    :modifiers [:distinct]
                                                    :from      [:report_card]
-                                                   :where     [:= :archived false]}))]
-    (->> (db/select Collection
-                    {:where [:and
-                             (when exclude-archived
-                               [:= :archived false])
-                             [:= :namespace namespace]
-                             (collection/visible-collection-ids->honeysql-filter-clause
-                              :id
-                              (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-         (map collection/personal-collection-with-ui-details)
-         (collection/collections->tree coll-type-ids))))
+                                                   :where     [:= :archived false]}))
+        colls (db/select Collection
+                {:where [:and
+                         (when exclude-archived
+                           [:= :archived false])
+                         [:= :namespace namespace]
+                         (collection/visible-collection-ids->honeysql-filter-clause
+                          :id
+                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+        colls (map collection/personal-collection-with-ui-details colls)
+        colls (hydrate colls :app_id)]
+    (collection/collections->tree coll-type-ids colls)))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 

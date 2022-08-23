@@ -165,14 +165,18 @@
          (cond-> collection
            (:children collection) (update :children (partial collection-tree-transform xform))))))
 
-(defn- collection-tree-names-only
-  "Keep just the names of Collections in `collection-ids-to-keep` in the response returned by the Collection tree
-  endpoint."
-  [collection-ids-to-keep collections]
-  (collection-tree-transform (fn [collection]
-                               (when (contains? (set collection-ids-to-keep) (:id collection))
-                                 (select-keys collection [:name :children])))
-                             collections))
+(defn- collection-tree-view
+  "Keep just the fields specified by `fields-to-keep` of Collections in `collection-ids-to-keep` in the response
+  returned by the Collection tree endpoint. If `fields-to-keep` is not specified, only the names are kept."
+  ([collection-ids-to-keep collections]
+   (collection-tree-view collection-ids-to-keep [:name] collections))
+  ([collection-ids-to-keep fields-to-keep collections]
+   (let [selection (conj fields-to-keep :children)
+         ids-to-keep (set collection-ids-to-keep)]
+     (collection-tree-transform (fn [collection]
+                                  (when (contains? ids-to-keep (:id collection))
+                                    (select-keys collection selection)))
+                                collections))))
 
 (deftest collection-tree-test
   (testing "GET /api/collection/tree"
@@ -180,34 +184,41 @@
       (testing "sanity check"
         (is (some? personal-collection)))
       (with-collection-hierarchy [a b c d e f g]
-        (let [ids      (set (map :id (cons personal-collection [a b c d e f g])))
-              response (mt/user-http-request :rasta :get 200 "collection/tree")]
-          (testing "Make sure overall tree shape of the response is as is expected"
-            (is (= [{:name     "A"
-                     :children [{:name "B", :children []}
-                                {:name     "C"
-                                 :children [{:name     "D"
-                                             :children [{:name "E", :children []}]}
-                                            {:name     "F"
-                                             :children [{:name "G", :children []}]}]}]}
-                    {:name "Rasta Toucan's Personal Collection", :children []}]
-                   (collection-tree-names-only ids response))))
-          (testing "Make sure each Collection comes back with the expected keys"
-            (is (= {:description       nil
-                    :archived          false
-                    :entity_id         (:entity_id personal-collection)
-                    :slug              "rasta_toucan_s_personal_collection"
-                    :color             "#31698A"
-                    :name              "Rasta Toucan's Personal Collection"
-                    :personal_owner_id (mt/user->id :rasta)
-                    :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
-                    :location          "/"
-                    :namespace         nil
-                    :children          []
-                    :authority_level   nil}
-                   (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
-                            %)
-                         response))))))
+        (mt/with-temp* [App [{app-a-id :id} {:collection_id (:id a)}]
+                        App [{app-c-id :id} {:collection_id (:id c)}]
+                        App [{app-g-id :id} {:collection_id (:id g)}]]
+          (let [ids      (set (map :id (cons personal-collection [a b c d e f g])))
+                response (mt/user-http-request :rasta :get 200 "collection/tree")]
+            (testing "Make sure overall tree shape of the response is as is expected"
+              (is (= [{:name     "A"
+                       :app_id   app-a-id
+                       :children [{:name "B", :children []}
+                                  {:name     "C"
+                                   :app_id   app-c-id
+                                   :children [{:name     "D"
+                                               :children [{:name "E", :children []}]}
+                                              {:name     "F"
+                                               :children [{:name     "G"
+                                                           :app_id   app-g-id
+                                                           :children []}]}]}]}
+                      {:name "Rasta Toucan's Personal Collection", :children []}]
+                     (collection-tree-view ids [:name :app_id] response))))
+            (testing "Make sure each Collection comes back with the expected keys"
+              (is (= {:description       nil
+                      :archived          false
+                      :entity_id         (:entity_id personal-collection)
+                      :slug              "rasta_toucan_s_personal_collection"
+                      :color             "#31698A"
+                      :name              "Rasta Toucan's Personal Collection"
+                      :personal_owner_id (mt/user->id :rasta)
+                      :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
+                      :location          "/"
+                      :namespace         nil
+                      :children          []
+                      :authority_level   nil}
+                     (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
+                              %)
+                           response)))))))
       (testing "Excludes archived collections (#19603)"
         (mt/with-temp* [Collection [a {:name "A"}]
                         Collection [b {:name     "B archived"
@@ -219,7 +230,7 @@
                 response (mt/user-http-request :rasta :get 200
                                                "collection/tree?exclude-archived=true")]
             (is (= [{:name "A" :children []}]
-                   (collection-tree-names-only ids response)))))))
+                   (collection-tree-view ids response)))))))
 
     (testing "for personal collections, it should return name and slug in user's locale"
       (with-french-user-and-personal-collection user collection
@@ -252,7 +263,7 @@
           (perms/revoke-collection-permissions! (perms-group/all-users) parent-collection)
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) child-collection)
           (is (= [{:name "Child", :children []}]
-                 (collection-tree-names-only (map :id [parent-collection child-collection])
+                 (collection-tree-view (map :id [parent-collection child-collection])
                                              (mt/user-http-request :rasta :get 200 "collection/tree")))))))
 
     (testing "Namespace parameter"
@@ -261,17 +272,17 @@
         (let [ids [normal-id coins-id]]
           (testing "shouldn't show Collections of a different `:namespace` by default"
             (is (= [{:name "Normal Collection", :children []}]
-                   (collection-tree-names-only ids (mt/user-http-request :rasta :get 200 "collection/tree")))))
+                   (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree")))))
 
           (perms/grant-collection-read-permissions! (perms-group/all-users) coins-id)
           (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`"
             (testing "?namespace=currency"
               (is (= [{:name "Coin Collection", :children []}]
-                     (collection-tree-names-only ids (mt/user-http-request :rasta :get 200 "collection/tree?namespace=currency")))))
+                     (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree?namespace=currency")))))
 
             (testing "?namespace=stamps"
               (is (= []
-                     (collection-tree-names-only ids (mt/user-http-request :rasta :get 200 "collection/tree?namespace=stamps")))))))))
+                     (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree?namespace=stamps")))))))))
 
     (testing "Tree should elide Collections for which we have no permissions (#14280)"
       ;; Create hierarchy like
