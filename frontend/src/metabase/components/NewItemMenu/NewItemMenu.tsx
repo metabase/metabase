@@ -1,10 +1,14 @@
 import React, { ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import * as Urls from "metabase/lib/urls";
+
 import Modal from "metabase/components/Modal";
 import EntityMenu from "metabase/components/EntityMenu";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+
+import * as Urls from "metabase/lib/urls";
+
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
+
 import { Collection, CollectionId } from "metabase-types/api";
 
 type ModalType = "new-dashboard" | "new-collection";
