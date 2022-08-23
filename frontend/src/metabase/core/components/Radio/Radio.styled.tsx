@@ -66,7 +66,7 @@ export const RadioContainer = styled.div<RadioContainerProps>`
   &:hover {
     color: ${props =>
       !props.checked && !props.showButtons
-        ? getContrastSchemeColor(props.colorScheme)
+        ? getHoverColor(props.variant, props.colorScheme)
         : ""};
   }
 
@@ -145,4 +145,13 @@ const getSchemeColor = (colorScheme: RadioColorScheme): string => {
 const getContrastSchemeColor = (colorScheme: RadioColorScheme) => {
   const schemeColor = getSchemeColor(colorScheme);
   return isDark(schemeColor) ? tint(schemeColor, 0.5) : schemeColor;
+};
+
+const getHoverColor = (
+  variant: RadioVariant,
+  colorScheme: RadioColorScheme,
+) => {
+  return variant === "bubble"
+    ? getContrastSchemeColor(colorScheme)
+    : getSchemeColor(colorScheme);
 };
