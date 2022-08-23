@@ -1,6 +1,7 @@
 (ns metabase.api.newmetric
   (:require [clojure.tools.logging :as log]
             [clojure.walk :as walk]
+            [compojure.core :refer [GET POST PUT]]
             [metabase.api.common :as api]
             [metabase.driver.common.parameters.dates :as params.dates]
             [metabase.mbql.normalize :as mbql.normalize]
