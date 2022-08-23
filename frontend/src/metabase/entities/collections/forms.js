@@ -10,6 +10,8 @@ import {
   isPersonalCollectionChild,
 } from "metabase/collections/utils";
 
+import { DEFAULT_COLLECTION_COLOR_ALIAS } from "./constants";
+
 function createForm({ extraFields = [] } = {}) {
   return {
     fields: (
@@ -37,7 +39,7 @@ function createForm({ extraFields = [] } = {}) {
         name: "color",
         title: t`Color`,
         type: "hidden",
-        initial: () => color("brand"),
+        initial: () => color(DEFAULT_COLLECTION_COLOR_ALIAS),
         validate: color => !color && t`Color is required`,
       },
       {
