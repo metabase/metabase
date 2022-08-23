@@ -4,7 +4,7 @@
             [java-time :as t]
             [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
-                                     Dimension Field Metric NativeQuerySnippet PermissionsGroup
+                                     Dimension Field Metric NativeQuerySnippet Newmetric PermissionsGroup
                                      PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
                                      Segment Table Timeline TimelineEvent User]]
             [reifyhealth.specmonstah.core :as rs]
@@ -92,6 +92,7 @@
         (gen/return nil)))))
 
 (s/def ::name ::weird-str)
+(s/def ::display_name ::weird-str)
 (s/def ::description ::weird-str)
 
 ;; * card
@@ -110,7 +111,13 @@
 (s/def ::base_type #{:type/Text})
 
 ;; * metric
-(s/def ::definition #{ {} })
+(s/def ::definition #{ {}})
+
+;; * newmetric
+(s/def ::measure #{"[]"})
+(s/def ::dimensions #{"[]"})
+(s/def ::granularities #{"[]"})
+(s/def ::default_granularity #{""})
 
 ;; * table
 (s/def ::active boolean?)
@@ -144,6 +151,7 @@
 (s/def ::field (s/keys :req-un [::id ::name ::base_type ::database_type ::position ::description]))
 
 (s/def ::metric (s/keys :req-un [::id ::name ::definition ::description]))
+(s/def ::newmetric (s/keys :req-un [::id ::name ::display_name ::description ::measure ::dimensions ::granularities ::default_granularity]))
 (s/def ::segment (s/keys :req-un [::id ::name ::definition ::description]))
 (s/def ::table  (s/keys :req-un [::id ::active ::name ::description]))
 (s/def ::native-query-snippet (s/keys :req-un [::id ::name ::description ::content]))
@@ -231,6 +239,12 @@
                                   :insert!   {:model Metric}
                                   :relations {:creator_id [:core-user :id]
                                               :table_id   [:table :id]}}
+   :newmetric                    {:prefix    :newmetric
+                                  :spec      ::newmetric
+                                  :insert!   {:model Newmetric}
+                                  :relations {:creator_id    [:core-user :id]
+                                              :collection_id [:collection :id]
+                                              :card_id       [:card :id]}}
    :table                        {:prefix    :t
                                   :spec      ::table
                                   :insert!   {:model Table}

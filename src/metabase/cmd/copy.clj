@@ -31,6 +31,7 @@
                                      MetricImportantField
                                      ModerationReview
                                      NativeQuerySnippet
+                                     Newmetric
                                      Permissions
                                      PermissionsGroup
                                      PermissionsGroupMembership
@@ -87,6 +88,7 @@
    Segment
    Metric
    MetricImportantField
+   Newmetric
    ModerationReview
    Revision
    ViewLog

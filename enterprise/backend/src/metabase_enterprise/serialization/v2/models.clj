@@ -11,6 +11,7 @@
    "Field"
    "Metric"
    "NativeQuerySnippet"
+   "Newmetric"
    "Pulse"
    "PulseCard"
    "PulseChannel"

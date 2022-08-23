@@ -4,7 +4,8 @@
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field Metric
-                                     NativeQuerySnippet Pulse PulseCard Segment Table Timeline TimelineEvent User]]
+                                     NativeQuerySnippet Newmetric Pulse PulseCard Segment Table Timeline
+                                     TimelineEvent User]]
             [metabase.models.serialization.base :as serdes.base]
             [schema.core :as s])
   (:import [java.time LocalDateTime OffsetDateTime]))
@@ -487,6 +488,65 @@
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))
+
+(deftest newmetric-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [User       [{mark-id :id}            {:first_name "Mark"
+                                                             :last_name  "Knopfler"
+                                                             :email      "mark@direstrai.ts"}]
+                       User       [_                        {:first_name "David"
+                                                             :last_name  "Knopfler"
+                                                             :email      "david@direstrai.ts"}]
+                       Collection [{coll-id :id
+                                    coll-eid :entity_id}    {:name              "Mark's Collection"
+                                                             :personal_owner_id mark-id}]
+                       Collection [{coll2-eid :entity_id}   {:name "Some Collection"}]
+                       Database   [{db-id        :id}       {:name "My Database"}]
+                       Table      [{no-schema-id :id}       {:name "Schemaless Table" :db_id db-id}]
+                       Field      [{measure-field-id :id}   {:name "Field for measure" :table_id no-schema-id}]
+                       Field      [{dimension-field-id :id} {:name "Field for dimension" :table_id no-schema-id}]
+                       Card       [{card-id  :id
+                                    card-eid :entity_id}    {:creator_id  mark-id}]
+                       Newmetric  [{metric-id  :id
+                                    metric-eid :entity_id}  {:creator_id    mark-id
+                                                             :collection_id coll-id
+                                                             :card_id       card-id
+                                                             :measure       [:sum [:field measure-field-id nil]]
+                                                             :dimensions    ["created_at"
+                                                                             [:field dimension-field-id {:temporal-unit :year}]]}]]
+      (testing "vanilla user-created newmetric"
+        (let [ser (serdes.base/extract-one "Newmetric" {} (select-one "Newmetric" [:= :id metric-id]))]
+          (is (schema= {:serdes/meta   (s/eq [{:model "Newmetric" :id metric-eid}])
+                        :creator_id    (s/eq "mark@direstrai.ts")
+                        :collection_id (s/eq coll-eid)
+                        :measure       (s/eq ["sum" [:field ["My Database" nil "Schemaless Table" "Field for measure"] nil]],)
+                        :dimensions    (s/eq ["created_at" [:field ["My Database" nil "Schemaless Table" "Field for dimension"] {:temporal-unit :year}]])
+                        :created_at    OffsetDateTime
+                        :updated_at    OffsetDateTime
+                        s/Keyword      s/Any}
+                       ser))
+          (is (not (contains? ser :id)))
+
+          (testing "newmetric depend on their Card and Collection, and also anything referenced in the dimension and measure"
+            (is (= #{[{:model "Database" :id "My Database"}
+                      {:model "Table" :id "Schemaless Table"}
+                      {:model "Field" :id "Field for dimension"}]
+                     [{:model "Database" :id "My Database"}
+                      {:model "Table" :id "Schemaless Table"}
+                      {:model "Field" :id "Field for measure"}]
+                     [{:model "Card" :id card-eid}]
+                     [{:model "Collection" :id coll-eid}]}
+                   (set (serdes.base/serdes-dependencies ser)))))))
+
+      (testing "collection filtering based on :user option"
+        (testing "only unowned collections are returned with no user"
+          (is (= ["Some Collection"]
+                 (->> (serdes.base/extract-all "Collection" {})
+                      (into [])
+                      (map :name)))))
+        (testing "unowned collections and the personal one with a user"
+          (is (= #{coll-eid coll2-eid}
+                 (by-model "Collection" (serdes.base/extract-all "Collection" {:user mark-id})))))))))
 
 (deftest native-query-snippets-test
   (ts/with-empty-h2-app-db

@@ -12,7 +12,7 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
-                                     LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup PermissionsGroupMembership
+                                     LoginHistory Metric NativeQuerySnippet Newmetric Permissions PermissionsGroup PermissionsGroupMembership
                                      PersistedInfo Pulse PulseCard PulseChannel Revision Segment Setting
                                      Table TaskHistory Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
@@ -160,6 +160,13 @@
    (fn [_] {:creator_id (user-id :crowberto)
             :name       (random-name)
             :content    "1 = 1"})
+
+   Newmetric
+   (fn [_] {:creator_id          (rasta-id)
+            :name                (random-name)
+            :display_name        (random-name)
+            :granularities       #{:year :quarter :month :week}
+            :default_granularity :year})
 
    PersistedInfo
    (fn [_] {:question_slug (random-name)
