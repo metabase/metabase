@@ -250,8 +250,8 @@
   ;; does that happen in the `PUT` endpoint?
   (u/prog1 changes
     (let [;; Fetch old card data if necessary, and share the data between multiple checks.
-          old-card-info (when (or (true? (:dataset changes))
-                              (get-in changes [:dataset_query :native]))
+          old-card-info (when (or (:dataset changes)
+                                  (get-in changes [:dataset_query :native]))
                           (db/select-one [Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
       (when archived?
