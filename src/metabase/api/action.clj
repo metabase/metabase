@@ -29,14 +29,6 @@
     (s/enum "http")
     "Only http actions are supported at this time."))
 
-(def ^:private HTTPActionTemplate
-  {:method (s/enum "GET" "POST" "PUT" "DELETE" "PATCH")
-   :url s/Str
-   (s/optional-key :body) (s/maybe s/Str)
-   (s/optional-key :headers) (s/maybe s/Str)
-   (s/optional-key :parameters) (s/maybe [su/Map])
-   (s/optional-key :parameter_mappings) (s/maybe su/Map)})
-
 (api/defendpoint POST "/:action-namespace/:action-name"
   "Generic API endpoint for executing any sort of Action."
   [action-namespace action-name :as {:keys [body]}]
