@@ -85,12 +85,26 @@
 
 (api/defendpoint POST "/"
   "Create a new HTTP action."
-  [:as {{:keys [type name template response_handle error_handle] :as action} :body}]
+  [:as {{:keys [type name template response_handle error_handle]
+         {template-method :method
+          template-url :url
+          template-body :body
+          template-headers :headers
+          template-parameters :parameters
+          template-parameter_mappings :parameter_mappings} :template
+         :as action}
+        :body}]
   {type SupportedActionType
    name s/Str
-   template HTTPActionTemplate
    response_handle (s/maybe JsonQuerySchema)
-   error_handle (s/maybe JsonQuerySchema)}
+   error_handle (s/maybe JsonQuerySchema)
+   template (su/with-api-error-message su/Map "Must provide a template")
+   template-method (s/enum "GET" "POST" "PUT" "DELETE" "PATCH")
+   template-url s/Str
+   template-body (s/maybe s/Str)
+   template-headers (s/maybe s/Str)
+   template-parameters (s/maybe [su/Map])
+   template-parameter_mappings (s/maybe su/Map)}
   (let [action-id (action/insert! action)]
     (if action-id
       (first (action/select-actions :id action-id))
@@ -98,15 +112,34 @@
       ;; so we return the most recently updated http action.
       (last (action/select-actions :type "http")))))
 
+
+
 (api/defendpoint PUT "/:id"
-  [id :as {{:keys [type name template response_handle error_handle] :as action} :body}]
+  [id :as {{:keys [type name template response_handle error_handle]
+            {template-method :method
+             template-url :url
+             template-body :body
+             template-headers :headers
+             template-parameters :parameters
+             template-parameter_mappings :parameter_mappings} :template
+            :as action}
+           :body}]
   {id su/IntGreaterThanZero
    type SupportedActionType
    name (s/maybe s/Str)
-   template (s/maybe HTTPActionTemplate)
    response_handle (s/maybe JsonQuerySchema)
-   error_handle (s/maybe JsonQuerySchema)}
+   error_handle (s/maybe JsonQuerySchema)
+   template (su/with-api-error-message
+              (s/maybe {:url s/Any :method s/Any})
+              "Must provide a url and method to change a template.")
+   template-method (s/maybe (s/enum "GET" "POST" "PUT" "DELETE" "PATCH"))
+   template-url (s/maybe s/Str)
+   template-body (s/maybe s/Str)
+   template-headers (s/maybe s/Str)
+   template-parameters (s/maybe [su/Map])
+   template-parameter_mappings (s/maybe su/Map)}
   (db/update! HTTPAction id action)
   (first (hydrate (action/select-actions :id id) :action/emitter-usages)))
+
 
 (api/define-routes actions/+check-actions-enabled api/+check-superuser)

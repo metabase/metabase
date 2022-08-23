@@ -300,16 +300,22 @@
         (testing "Validate POST"
           (testing "Required fields"
             (is (partial= {:errors {:type "Only http actions are supported at this time."}}
-                          (mt/user-http-request :crowberto :post 400 "action" {:type "query"})))
+                          (mt/user-http-request :crowberto :post 400 "action"
+                                                (assoc initial-action :type "query"))))
             (is (partial= {:errors {:name "value must be a string."}}
-                          (mt/user-http-request :crowberto :post 400 "action" {:type "http"})))
-            (is (partial= {:errors {:template "Value does not match schema: (not (map? nil))"}}
-                          (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "test"}))))
+                          (mt/user-http-request :crowberto :post 400 "action"
+                                                (dissoc initial-action :name))))
+            (is (partial= {:errors {:template-url "value must be a string."}}
+                          (mt/user-http-request :crowberto :post 400 "action"
+                                                (dissoc initial-action :template)))))
           (testing "Template needs method and url"
-            (is (partial= {:errors {:template "Value does not match schema: {:method missing-required-key, :url missing-required-key}"}}
-                          (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "Test" :template {}}))))
+            (is (partial= {:errors {:template-url "value must be a string."}}
+                          (mt/user-http-request :crowberto :post 400 "action"
+                                                {:type "http"
+                                                 :name "Test"
+                                                 :template {}}))))
           (testing "Template parameters should be well formed"
-            (is (partial= {:errors {:template "Value does not match schema: {:parameters (not (sequential? {}))}"}}
+            (is (partial= {:errors {:template-parameters "value may be nil, or if non-nil, value must be an array. Each value must be a map."}}
                           (mt/user-http-request :crowberto :post 400 "action" {:type "http"
                                                                                :name "Test"
                                                                                :template {:url "https://example.com"
@@ -334,8 +340,9 @@
             (is (partial= {:errors {:type "Only http actions are supported at this time."}}
                           (mt/user-http-request :crowberto :put 400 action-path {:type "query"}))))
           (testing "Template needs method and url"
-            (is (partial= {:errors {:template "Value does not match schema: {:method missing-required-key, :url missing-required-key}"}}
-                          (mt/user-http-request :crowberto :put 400 action-path {:type "http" :template {}}))))
+            (is (partial= {:errors {:template "Must provide a url and method to change a template."}}
+                          (mt/user-http-request :crowberto :put 400 action-path
+                                                {:type "http" :template {}}))))
           (testing "Handles need to be valid jq"
             (is (partial= {:errors {:response_handle "value may be nil, or if non-nil, must be a valid json-query"}}
                           (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :response_handle "body"))))
