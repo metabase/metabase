@@ -9,7 +9,7 @@ import {
   generateFakeMetricFromQuestion,
   applyMetricToQuestion,
 } from "metabase-lib/lib/newmetrics/utils";
-import Question from "metabase-lib/lib/Question";
+import Question, { MetricQuestion } from "metabase-lib/lib/Question";
 import { addUndo } from "metabase/redux/undo";
 import { setErrorPage } from "metabase/redux/app";
 import NewMetrics from "metabase/entities/new-metrics";
@@ -134,15 +134,13 @@ export const initializeMetricCard =
 
     // Timeout to allow Parameters widget to set parameterValues
     // Currently, there shouldn't be any parameters, but that might now always be the case
-    setTimeout(() => dispatch(runMetricQuery({ id: metric.id })), 0);
+    setTimeout(() => dispatch(runMetricQuery()), 0);
   };
 
-// The `id` prop -- there might be scenarios where there is poor access to `id` but we want to run the QB's query again
-// perhaps fallback to looking at the metric in qb store
 const runMetricQuery =
-  ({ id }: { id: number }) =>
+  ({ ignoreCache = false }: { ignoreCache?: boolean } = {}) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    const card = getCard(getState());
+    const question = getQuestion(getState()) as MetricQuestion;
 
     dispatch(loadStartUIControls());
 
@@ -159,7 +157,7 @@ const runMetricQuery =
       });
 
       const results = await NewMetricApi.query(
-        { id },
+        { id: question.metric().id, ignore_cache: ignoreCache },
         {
           cancelled: cancelQueryDeferred.promise,
         },
@@ -177,7 +175,7 @@ const runMetricQuery =
       dispatch({
         type: QUERY_COMPLETED,
         payload: {
-          card,
+          card: question.card(),
           display: "line",
           result_metadata: resultsMetadata,
           // QB viz selectors expect this to be an array

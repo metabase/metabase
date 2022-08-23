@@ -1,5 +1,5 @@
 import { isProduction } from "metabase/env";
-import Question from "metabase-lib/lib/Question";
+import Question, { MetricQuestion } from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 import Field from "metabase-lib/lib/metadata/Field";
@@ -37,6 +37,7 @@ export function canBeUsedAsMetric(
 ): question is Question {
   return (
     !!question &&
+    !(question instanceof MetricQuestion) &&
     question.isStructured() &&
     !!findDateDimension(question) &&
     !!findNumberDimension(question)
@@ -86,7 +87,7 @@ export function generateFakeMetricFromQuestion(
 export function applyMetricToQuestion(
   question: Question,
   metric: Metric,
-): Question | null {
+): MetricQuestion | null {
   const query = question.query() as StructuredQuery;
   const { dimensions, measure } = metric;
   const [, dateFieldRef] = dimensions[0];
@@ -117,5 +118,10 @@ export function applyMetricToQuestion(
     ]);
   }
 
-  return metricQuery.question();
+  const transformedQuestion = metricQuery.question();
+  return new MetricQuestion({
+    metric,
+    card: transformedQuestion.card(),
+    metadata: transformedQuestion.metadata(),
+  });
 }

@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 export class RestfulRequest {
   // API endpoint that is used for the request
   endpoint = null;
