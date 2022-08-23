@@ -62,12 +62,14 @@
                                                           ::add/source-table  ::add/source
                                                           ::add/source-alias  "Cat__NAME"
                                                           ::add/desired-alias "Cat__NAME"
-                                                          ::add/position      0}]]
+                                                          ::add/position      0
+                                                          :nested/outer       true}]]
                  :order-by     [[:asc [:field %categories.name {:join-alias         "Cat"
                                                                 ::add/source-table  ::add/source
                                                                 ::add/source-alias  "Cat__NAME"
                                                                 ::add/desired-alias "Cat__NAME"
-                                                                ::add/position      0}]]]
+                                                                ::add/position      0
+                                                                :nested/outer       true}]]]
                  :limit        1})
               (add-alias-info
                (mt/mbql-query venues
@@ -405,7 +407,8 @@
                                                ::add/source-table  ::add/source
                                                ::add/source-alias  "COOL.double_price"
                                                ::add/desired-alias "COOL.COOL.double_price"
-                                               ::add/position      0}]]
+                                               ::add/position      0
+                                               :nested/outer       true}]]
                             {:aggregation [[:aggregation-options [:count] {:name               "COOL.count"
                                                                            ::add/position      1
                                                                            ::add/source-alias  "count"
@@ -550,7 +553,8 @@
                                             ::add/position      1
                                             ::add/source-alias  "CC"
                                             ::add/source-table  ::add/source
-                                            :base-type          :type/Float}]]
+                                            :base-type          :type/Float
+                                            :nested/outer       true}]]
                            :limit        1})
                         (-> (mt/mbql-query orders
                               {:source-query {:source-table $$orders

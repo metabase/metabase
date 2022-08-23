@@ -70,6 +70,9 @@
           [3 13]
           [4  6]]
    :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
+            (not native-source?)
+            (assoc-in [:options :nested/outer] true)
+
             native-source?
             (-> (assoc :field_ref [:field "PRICE" {:base-type :type/Integer}]
                        :effective_type :type/Integer)
@@ -135,8 +138,11 @@
                      [1 3 13]
                      [1 4 8]
                      [1 5 10]]
-              :cols [(qp.test/breakout-col (qp.test/fk-col :checkins :venue_id :venues :price))
-                     (qp.test/breakout-col (qp.test/col :checkins :user_id))
+              :cols [(-> (qp.test/fk-col :checkins :venue_id :venues :price)
+                         qp.test/breakout-col)
+                     (-> (qp.test/col :checkins :user_id)
+                         qp.test/breakout-col
+                         (assoc-in [:options :nested/outer] true))
                      (qp.test/aggregate-col :count)]}
              (qp.test/rows-and-cols
                (mt/format-rows-by [int int int]
@@ -209,7 +215,14 @@
                      (:status (qp/process-query {:type     :query
                                                  :database (mt/id)
                                                  :query    {:fields       [(mt/id :reviews :rating)]
-                                                            :source-table (str "card__" card-id)}})))))))))
+                                                            :source-table (str "card__" card-id)}})))))
+            (testing "with breakout and order-by"
+              (is (= :completed
+                     (:status (qp/process-query {:type     :query
+                                                 :database (mt/id)
+                                                 :query    {:source-table (str "card__" card-id)
+                                                            :aggregation [:count]
+                                                            :breakout [(mt/id :reviews :rating)]}})))))))))
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
       (mt/dataset sample-dataset
         (mt/with-temp-vals-in-db Field (mt/id :reviews :rating) {:coercion_strategy :Coercion/UNIXSeconds->DateTime
@@ -516,7 +529,8 @@
                (qp/process-query (query-with-source-card card)))))))
 
   (testing "make sure a breakout/aggregate query using a source query comes back with the correct columns metadata"
-    (is (= [(qp.test/breakout-col (qp.test/col :venues :price))
+    (is (= [(qp.test/breakout-col (-> (qp.test/col :venues :price)
+                                      (assoc-in [:options :nested/outer] true)))
             (qp.test/aggregate-col :count)]
            (mt/cols
              (mt/with-temp Card [card (venues-mbql-card-def)]
