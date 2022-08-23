@@ -12622,6 +12622,13 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
                   name: name
                   type: varchar(255)
                   remarks: 'name of the newmetric'
