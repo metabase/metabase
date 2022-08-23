@@ -4,7 +4,7 @@
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.api.collection :as api.collection]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard ModerationReview NativeQuerySnippet
+            [metabase.models :refer [App Card Collection Dashboard DashboardCard ModerationReview NativeQuerySnippet
                                      PermissionsGroup PermissionsGroupMembership Pulse PulseCard PulseChannel
                                      PulseChannelRecipient Revision Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
@@ -110,26 +110,28 @@
                                     (str/includes? collection-name "Personal Collection"))))
                       (map :name)))))))
 
-    (mt/with-temp* [Collection [_ {:name "Archived Collection", :archived true}]
-                    Collection [_ {:name "Regular Collection"}]]
+    (mt/with-temp* [Collection [{coll1-id :id} {:name "Archived Collection", :archived true}]
+                    Collection [{coll2-id :id} {:name "Regular Collection"}]
+                    App [{app1-id :id} {:collection_id coll1-id}]
+                    App [{app2-id :id} {:collection_id coll2-id}]]
       (letfn [(remove-other-collections [collections]
                 (filter (fn [{collection-name :name}]
                           (or (#{"Our analytics" "Archived Collection" "Regular Collection"} collection-name)
                               (str/includes? collection-name "Personal Collection")))
                         collections))]
         (testing "check that we don't see collections if they're archived"
-          (is (= ["Our analytics"
-                  "Rasta Toucan's Personal Collection"
-                  "Regular Collection"]
+          (is (= [["Our analytics" nil]
+                  ["Rasta Toucan's Personal Collection" nil]
+                  ["Regular Collection" app2-id]]
                  (->> (mt/user-http-request :rasta :get 200 "collection")
                       remove-other-collections
-                      (map :name)))))
+                      (map (juxt :name :app_id))))))
 
         (testing "Check that if we pass `?archived=true` we instead see archived Collections"
-          (is (= ["Archived Collection"]
+          (is (= [["Archived Collection" app1-id]]
                  (->> (mt/user-http-request :rasta :get 200 "collection" :archived :true)
                       remove-other-collections
-                      (map :name)))))))
+                      (map (juxt :name :app_id))))))))
 
     (testing "?namespace= parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
@@ -311,10 +313,12 @@
 (deftest fetch-collection-test
   (testing "GET /api/collection/:id"
     (testing "check that we can see collection details"
-      (mt/with-temp Collection [collection {:name "Coin Collection"}]
+      (mt/with-temp* [Collection [collection {:name "Coin Collection"}]
+                      App [{app-id :id} {:collection_id (:id collection)}]]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-        (is (= "Coin Collection"
-               (:name (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection))))))))
+        (is (= ["Coin Collection" app-id]
+               ((juxt :name :app_id)
+                (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection))))))))
 
     (testing "check that collections detail properly checks permissions"
       (mt/with-non-admin-groups-no-root-collection-perms

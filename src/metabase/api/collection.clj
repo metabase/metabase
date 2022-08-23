@@ -65,7 +65,7 @@
           (cond->> collections
             (mi/can-read? root)
             (cons root))))
-      (hydrate collections :can_write)
+      (hydrate collections :can_write :app_id)
       ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
       ;; and for personal collections we translate the name to user's locale
       (for [collection collections]
@@ -604,7 +604,7 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
-      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
+      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :app_id)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
