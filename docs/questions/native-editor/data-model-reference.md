@@ -1,5 +1,7 @@
 ---
 title: Data reference
+redirect-from:
+  - /docs/v0.43/users-guide/12-data-model-reference
 ---
 
 ## Data reference

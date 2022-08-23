@@ -1,5 +1,7 @@
 ---
 title: Running Metabase on Microsoft Azure
+redirect-from: 
+  - /docs/latest/operations-guide/running-metabase-on-azure
 ---
 
 # Running Metabase on Microsoft Azure

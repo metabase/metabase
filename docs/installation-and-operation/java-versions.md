@@ -1,5 +1,6 @@
 ---
 title: Java Versions
+redirect-from:
   - /docs/latest/operations-guide/java-versions
 ---
 
