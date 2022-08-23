@@ -24,6 +24,7 @@ interface BarSeriesProps {
   valueFormatter: (value: number) => string;
   valueProps: Partial<TextProps>;
   valueStep: number;
+  xAxisYPos: number;
 }
 
 export const BarSeries = ({
@@ -36,6 +37,7 @@ export const BarSeries = ({
   valueFormatter,
   valueProps,
   valueStep,
+  xAxisYPos,
 }: BarSeriesProps) => {
   const innerBarScaleDomain = series.map((_, index) => index);
 
@@ -87,18 +89,26 @@ export const BarSeries = ({
               const x = groupX + innerX;
               const width = innerBarScale.bandwidth();
 
-              const yZero = yScale(0) ?? 0;
               const yValue = yScale(getY(datum)) ?? 0;
-              const y = Math.min(yValue, yZero);
+              const isNegative = getY(datum) < 0;
+
+              const bottomTextYPos =
+                yValue + VALUES_MARGIN + (valueProps.fontSize as number);
+              const isOverflownXAxis = isNegative && bottomTextYPos > xAxisYPos;
+              const shouldFlipYPosition = isNegative && !isOverflownXAxis;
+              const y = shouldFlipYPosition
+                ? yValue + VALUES_MARGIN
+                : yValue - VALUES_MARGIN;
+
               return (
                 showValues &&
                 index % valueStep === 0 && (
                   <Text
                     x={x + width / 2}
-                    y={y - VALUES_MARGIN}
+                    y={y}
                     width={width}
                     textAnchor="middle"
-                    verticalAnchor="end"
+                    verticalAnchor={shouldFlipYPosition ? "start" : "end"}
                     {...valueProps}
                   >
                     {valueFormatter(getY(datum))}

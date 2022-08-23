@@ -202,6 +202,7 @@ export const XYChart = ({
             valueFormatter={valueFormatter}
             valueProps={valueProps}
             valueStep={barsValueStep}
+            xAxisYPos={yMin - margin.top}
           />
         )}
         <AreaSeries
