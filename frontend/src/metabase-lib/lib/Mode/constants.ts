@@ -7,6 +7,8 @@ export const MODE_TYPE_TIMESERIES = "timeseries";
 export const MODE_TYPE_GEO = "geo";
 export const MODE_TYPE_PIVOT = "pivot";
 
+export const MODE_TYPE_NEW_METRIC = "new-metric";
+
 export const MODES_TYPES = [
   MODE_TYPE_ACTION,
   MODE_TYPE_NATIVE,
@@ -16,4 +18,5 @@ export const MODES_TYPES = [
   MODE_TYPE_GEO,
   MODE_TYPE_PIVOT,
   MODE_TYPE_DEFAULT,
+  MODE_TYPE_NEW_METRIC,
 ] as const;

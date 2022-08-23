@@ -1,4 +1,4 @@
-import Question from "metabase-lib/lib/Question";
+import Question, { MetricQuestion } from "metabase-lib/lib/Question";
 import { getMode } from "metabase/modes/lib/modes";
 import {
   ClickAction,
@@ -15,7 +15,7 @@ export default class Mode {
     this._queryMode = queryMode;
   }
 
-  static forQuestion(question: Question): Mode | null {
+  static forQuestion(question: Question | MetricQuestion): Mode | null {
     // TODO Atte Keinänen 6/22/17: Move getMode here and refactor it after writing tests
     const queryMode = getMode(question);
     if (queryMode) {

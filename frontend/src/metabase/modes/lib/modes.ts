@@ -1,6 +1,7 @@
 import ActionMode from "../components/modes/ActionMode";
 import SegmentMode from "../components/modes/SegmentMode";
 import MetricMode from "../components/modes/MetricMode";
+import NewMetricMode from "../components/modes/NewMetricMode";
 import TimeseriesMode from "../components/modes/TimeseriesMode";
 import GeoMode from "../components/modes/GeoMode";
 import PivotMode from "../components/modes/PivotMode";
@@ -18,6 +19,7 @@ import {
   MODE_TYPE_TIMESERIES,
   MODE_TYPE_GEO,
   MODE_TYPE_PIVOT,
+  MODE_TYPE_NEW_METRIC,
 } from "metabase-lib/lib/Mode/constants";
 
 export function getMode(question: Question): QueryMode | any | null {
@@ -47,6 +49,9 @@ export function getMode(question: Question): QueryMode | any | null {
 
     case MODE_TYPE_PIVOT:
       return PivotMode;
+
+    case MODE_TYPE_NEW_METRIC:
+      return NewMetricMode;
 
     default:
       return DefaultMode;

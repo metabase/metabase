@@ -1,4 +1,4 @@
-import Question from "metabase-lib/lib/Question";
+import Question, { MetricQuestion } from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { ModeType } from "./types";
@@ -11,11 +11,16 @@ import {
   MODE_TYPE_GEO,
   MODE_TYPE_PIVOT,
   MODE_TYPE_DEFAULT,
+  MODE_TYPE_NEW_METRIC,
 } from "metabase-lib/lib/Mode/constants";
 
 export function getMode(question: Question): ModeType | null {
   if (!question) {
     return null;
+  }
+
+  if (question instanceof MetricQuestion) {
+    return MODE_TYPE_NEW_METRIC;
   }
 
   if (question.card().display === "action-button") {
