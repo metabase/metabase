@@ -248,15 +248,18 @@
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
-  (let [card (db/select-one Card :id id)]
-    (u/prog1 changes
+  (u/prog1 changes
+    (let [;; Fetch old card data if necessary, and share the data between multiple checks.
+          old-card-info (when (or (true? (:dataset changes))
+                              (get-in changes [:dataset_query :native]))
+                          (db/select-one [Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
       (when archived?
         (db/delete! 'DashboardCard :card_id id))
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (get-in changes [:dataset_query :native])
-        (let [old-param-field-ids (params/card->template-tag-field-ids (select-keys card [:dataset_query]))
+        (let [old-param-field-ids (params/card->template-tag-field-ids old-card-info)
               new-param-field-ids (params/card->template-tag-field-ids changes)]
           (when (and (seq new-param-field-ids)
                      (not= old-param-field-ids new-param-field-ids))
@@ -281,7 +284,7 @@
       (create-actions-when-is-writable! changes)
       ;; delete Action and QueryAction when is_write is set false
       (delete-actions-when-not-writable! changes)
-      (assert-valid-model (merge card changes)))))
+      (assert-valid-model (merge old-card-info changes)))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
