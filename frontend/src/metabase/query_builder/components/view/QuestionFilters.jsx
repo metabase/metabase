@@ -166,10 +166,12 @@ export function QuestionFilterWidget({ onOpenModal, className }) {
 }
 
 QuestionFilters.shouldRender = ({
+  metric,
   question,
   queryBuilderMode,
   isObjectDetail,
 }) =>
+  !metric &&
   queryBuilderMode === "view" &&
   question.isStructured() &&
   question.query().isEditable() &&
@@ -177,11 +179,13 @@ QuestionFilters.shouldRender = ({
   !isObjectDetail;
 
 QuestionFilterWidget.shouldRender = ({
+  metric,
   question,
   queryBuilderMode,
   isObjectDetail,
   isActionListVisible,
 }) =>
+  !metric &&
   queryBuilderMode === "view" &&
   question.isStructured() &&
   question.query().isEditable() &&

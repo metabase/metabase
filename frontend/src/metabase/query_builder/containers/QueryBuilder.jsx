@@ -39,6 +39,7 @@ import View from "../components/view/View";
 
 import {
   getCard,
+  getMetric,
   getDatabasesList,
   getOriginalCard,
   getLastRunCard,
@@ -117,6 +118,7 @@ const mapStateToProps = (state, props) => {
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
 
     card: getCard(state),
+    metric: getMetric(state),
     originalCard: getOriginalCard(state),
     databases: getDatabasesList(state),
     nativeDatabases: getNativeDatabases(state),

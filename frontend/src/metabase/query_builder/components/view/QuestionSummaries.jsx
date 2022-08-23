@@ -86,10 +86,12 @@ export function MobileQuestionSummarizeWidget({
 }
 
 QuestionSummaries.shouldRender = ({
+  metric,
   question,
   queryBuilderMode,
   isObjectDetail,
 }) =>
+  !metric &&
   queryBuilderMode === "view" &&
   question &&
   question.isStructured() &&
@@ -97,11 +99,13 @@ QuestionSummaries.shouldRender = ({
   !isObjectDetail;
 
 QuestionSummarizeWidget.shouldRender = ({
+  metric,
   question,
   queryBuilderMode,
   isObjectDetail,
   isActionListVisible,
 }) =>
+  !metric &&
   queryBuilderMode === "view" &&
   question &&
   question.isStructured() &&

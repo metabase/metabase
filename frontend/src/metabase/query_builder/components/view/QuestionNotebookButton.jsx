@@ -36,7 +36,12 @@ export default function QuestionNotebookButton({
   );
 }
 
-QuestionNotebookButton.shouldRender = ({ question, isActionListVisible }) =>
+QuestionNotebookButton.shouldRender = ({
+  metric,
+  question,
+  isActionListVisible,
+}) =>
+  !metric &&
   question.isStructured() &&
   question.query().isEditable() &&
   isActionListVisible;
