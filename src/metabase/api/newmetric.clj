@@ -62,9 +62,10 @@
   (api/read-check (Newmetric id)))
 
 (defn- include-granularity
-  [dimensions choices]
+  [dimensions chosen default]
   ;; hacky
-  (if-let [granularity (some-> choices :granularity keyword)]
+  (if-let [granularity (or (some-> chosen keyword)
+                           (some-> default keyword))]
     (walk/postwalk (fn [form]
                      (if (and (map? form) (:temporal-unit form))
                        (assoc form :temporal-unit granularity)
@@ -79,7 +80,8 @@
         ;; todo: assert they are all there
         dimensions        (-> (or (vals (select-keys keyed-dimensions (:dimensions choices)))
                                   [default-dimension])
-                              (include-granularity choices))
+                              (include-granularity (:granularity choices)
+                                                   (:default_granularity metric)))
         ;; what if they remove the main dimension? should we error?
         query             (cond-> {:source-table (str "card__" (:id card))
                                    :breakout    dimensions
@@ -99,20 +101,41 @@
      :database (:database_id card)
      :query    query}))
 
+(defn- assert-valid-choices!
+  "Check that the `choices` are valid for the `metric`."
+  [metric choices]
+  ;; want to assert that the dimensions in choices are fields in card
+  (when-let [dimensions (:dimensions choices)]
+    (let [keyed-dimensions (into {} (:dimensions metric))]
+      (when-let [unrecognized (seq (remove keyed-dimensions dimensions))]
+        (throw (ex-info (tru "Invalid dimension(s): {0}" unrecognized)
+                        {:unrecognized unrecognized
+                         :valid-dimensions (keys keyed-dimensions)})))))
+  (when-let [granularity (some-> choices :granularity keyword)]
+    (when-not (contains? (:granularities metric) granularity)
+      (throw (ex-info (tru "Disallowed granularity: {0}" granularity)
+                      {:choice granularity
+                       :granularities (:granularities metric)}))))
+  (when-let [time-range (:time-range choices)]
+    ;; throws if invalid with a fine error message
+    (params.dates/date-string->filter time-range
+                                      (-> metric :dimensions first second))))
+
 (api/defendpoint ^:streaming POST "/:id/query"
   "Run a query for a metric"
   [id :as {choices :body}]
   (let [metric     (api/read-check Newmetric id)
-        underlying (api/read-check Card (:card_id metric))
-        query      (query-for-metric underlying metric choices)
-        info       (cond-> {:executed-by api/*current-user-id*
-                            :context     :question
-                            :card-id     (:id underlying)}
-                     (:dataset underlying)
-                     (assoc :metadata/dataset-metadata (:result_metadata underlying)))]
-    (binding [qp.perms/*card-id* (:id underlying)]
-      ;; todo: metric event (events/publish-event! :metric-read ...)
-      (qp.streaming/streaming-response [context :api]
-        (qp/process-query-and-save-execution! query info context)))))
+        underlying (api/read-check Card (:card_id metric))]
+    (assert-valid-choices! metric choices)
+    (let [query (query-for-metric underlying metric choices)
+          info  (cond-> {:executed-by api/*current-user-id*
+                         :context     :question
+                         :card-id     (:id underlying)}
+                  (:dataset underlying)
+                  (assoc :metadata/dataset-metadata (:result_metadata underlying)))]
+      (binding [qp.perms/*card-id* (:id underlying)]
+        ;; todo: metric event (events/publish-event! :metric-read ...)
+        (qp.streaming/streaming-response [context :api]
+          (qp/process-query-and-save-execution! query info context))))))
 
 (api/define-routes)
