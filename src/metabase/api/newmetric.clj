@@ -121,9 +121,19 @@
     (params.dates/date-string->filter time-range
                                       (-> metric :dimensions first second))))
 
+(def Choices
+  "Schema for choices for metric query endpoint:
+  - granularity: one of the allowed granularities on the metric
+  - dimensions: a sequence of dimension names of the metric
+  - time-range: a date-string following the specifics of parameters.dates."
+  {(s/optional-key :granularity) s/Str
+   (s/optional-key :dimensions)  [s/Str]
+   (s/optional-key :time-range)  s/Str})
+
 (api/defendpoint ^:streaming POST "/:id/query"
   "Run a query for a metric"
   [id :as {choices :body}]
+  {choices Choices}
   (let [metric     (api/read-check Newmetric id)
         underlying (api/read-check Card (:card_id metric))]
     (assert-valid-choices! metric choices)
