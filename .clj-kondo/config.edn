@@ -417,6 +417,7 @@
    metabase.models.action/QueryAction                                                     hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.action/HTTPAction                                                      hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.activity/Activity                                                      hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.app/App                                                                hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.application-permissions-revision/ApplicationPermissionsRevision        hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.bookmark/BookmarkOrdering                                              hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.bookmark/CardBookmark                                                  hooks.metabase.models.disallow-invoking-model/hook
@@ -466,6 +467,7 @@
    metabase.models.user/User                                                              hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.view-log/ViewLog                                                       hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/Activity                                                               hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models/App                                                                    hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/ApplicationPermissionsRevision                                         hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/BookmarkOrdering                                                       hooks.metabase.models.disallow-invoking-model/hook
    metabase.models/Card                                                                   hooks.metabase.models.disallow-invoking-model/hook

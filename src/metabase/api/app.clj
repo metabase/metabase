@@ -34,7 +34,7 @@
    nav_items (s/maybe [(s/maybe su/Map)])}
   (api/write-check Collection (db/select-one-field :collection_id App :id app-id))
   (db/update! App app-id (select-keys body [:dashboard_id :options :nav_items]))
-  (hydrate-details (App app-id)))
+  (hydrate-details (db/select-one App :id app-id)))
 
 ;; TODO handle personal collections, see collection/personal-collection-with-ui-details
 (api/defendpoint GET "/"
