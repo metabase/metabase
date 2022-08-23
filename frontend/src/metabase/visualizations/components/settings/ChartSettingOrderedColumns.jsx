@@ -4,11 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import {
-  keyForColumn,
-  findColumnForColumnSetting,
-  findRowForColumnSetting,
-} from "metabase/lib/dataset";
+import { keyForColumn, findColumnForColumnSetting } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import ColumnItem from "./ColumnItem";
@@ -31,7 +27,6 @@ export default class ChartSettingOrderedColumns extends Component {
   };
 
   handleSortEnd = ({ oldIndex, newIndex }) => {
-    console.log(oldIndex, newIndex);
     const fields = [...this.props.value];
     fields.splice(newIndex, 0, fields.splice(oldIndex, 1)[0]);
     this.props.onChange(fields);
@@ -58,17 +53,12 @@ export default class ChartSettingOrderedColumns extends Component {
     onChange(columnSettings);
   };
 
-  getColumnName = columnSetting => {
-    const columnOrRow = this.props.rowMode
-      ? findRowForColumnSetting(this.props.columns, columnSetting)
-      : findColumnForColumnSetting(this.props.columns, columnSetting);
-
-    return getFriendlyName(
-      columnOrRow || {
+  getColumnName = columnSetting =>
+    getFriendlyName(
+      findColumnForColumnSetting(this.props.columns, columnSetting) || {
         display_name: "[Unknown]",
       },
     );
-  };
 
   render() {
     const { value, question, columns } = this.props;

@@ -82,11 +82,6 @@ export function findColumnForColumnSetting(columns, columnSetting) {
   }
 }
 
-export function findRowForColumnSetting(rows, rowSetting) {
-  console.log("dataset", rows, rowSetting);
-  return rows.find(r => r.rowIndex === rowSetting.rowId);
-}
-
 export function normalizeFieldRef(fieldRef) {
   const dimension = Dimension.parseMBQL(fieldRef);
   return dimension && dimension.mbql();

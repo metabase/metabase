@@ -26,7 +26,6 @@ export default class FunnelNormal extends Component {
     const dimensionIndex = 0;
     const metricIndex = 1;
     const cols = series[0].data.cols;
-    //console.log(settings, series);
     const rows = settings["funnel.rows"]
       ? settings["funnel.rows"]
           .filter(fr => fr.enabled)
