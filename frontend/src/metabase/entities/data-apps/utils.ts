@@ -1,5 +1,9 @@
-import { DataApp } from "metabase-types/api";
+import { Collection, DataApp } from "metabase-types/api";
 
-export function getDataAppIcon(app: DataApp) {
+export function getDataAppIcon(app?: DataApp) {
   return { name: "star" };
+}
+
+export function isDataAppCollection(collection: Collection) {
+  return typeof collection.app_id === "number";
 }
