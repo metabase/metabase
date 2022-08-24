@@ -28,14 +28,10 @@ describe("visual tests > dashboard", () => {
     cy.findByText("How these transactions are distributed");
   });
 
-  describe("layout", () => {
-    it("view mode", () => {
-      cy.createPercySnapshot();
-    });
+  it("layout", () => {
+    cy.createPercySnapshot("view mode");
 
-    it("editing mode", () => {
-      cy.icon("pencil").click();
-      cy.createPercySnapshot();
-    });
+    cy.icon("pencil").click();
+    cy.createPercySnapshot("edit mode");
   });
 });
