@@ -29,7 +29,7 @@ import {
 import { Card, SavedCard } from "metabase-types/types/Card";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
-import { redirectToNewQuestionFlow, updateUrl } from "../navigation";
+import { updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
 
 import { resetQB } from "./core";
@@ -200,17 +200,6 @@ async function handleQBInit(
   const uiControls: UIControls = getQueryBuilderModeFromLocation(location);
   const { options, serializedCard } = parseHash(location.hash);
   const hasCard = cardId || serializedCard;
-
-  if (
-    !hasCard &&
-    !options.db &&
-    !options.table &&
-    !options.segment &&
-    !options.metric
-  ) {
-    dispatch(redirectToNewQuestionFlow());
-    return;
-  }
 
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
