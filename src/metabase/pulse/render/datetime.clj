@@ -14,30 +14,91 @@
 (defn- reformat-temporal-str [timezone-id s new-format-string]
   (t/format new-format-string (u.date/parse s timezone-id)))
 
+(defn- day-of-week
+  [s abbreviate]
+  (get-in
+    {"1" {:full (tru "Sunday") :abbreviated (tru "Sun")}
+     "2" {:full (tru "Monday") :abbreviated (tru "Mon")}
+     "3" {:full (tru "Tuesday") :abbreviated (tru "Tue")}
+     "4" {:full (tru "Wednesday") :abbreviated (tru "Wed")}
+     "5" {:full (tru "Thursday") :abbreviated (tru "Thu")}
+     "6" {:full (tru "Friday") :abbreviated (tru "Fri")}
+     "7" {:full (tru "Saturday") :abbreviated (tru "Sat")}}
+    (if abbreviate
+      [s :abbreviated]
+      [s :full])))
+
+(defn- month-of-year
+  [s abbreviate]
+  (get-in
+    {"1"  {:full (tru "January") :abbreviated (tru "Jan")}
+     "2"  {:full (tru "February") :abbreviated (tru "Feb")}
+     "3"  {:full (tru "March") :abbreviated (tru "Mar")}
+     "4"  {:full (tru "April") :abbreviated (tru "Apr")}
+     "5"  {:full (tru "May") :abbreviated (tru "May")}
+     "6"  {:full (tru "June") :abbreviated (tru "Jun")}
+     "7"  {:full (tru "July") :abbreviated (tru "Jul")}
+     "8"  {:full (tru "August") :abbreviated (tru "Aug")}
+     "9"  {:full (tru "September") :abbreviated (tru "Sep")}
+     "10" {:full (tru "October") :abbreviated (tru "Oct")}
+     "11" {:full (tru "November") :abbreviated (tru "Nov")}
+     "12" {:full (tru "December") :abbreviated (tru "Dec")}}
+    (if abbreviate
+      [s :abbreviated]
+      [s :full])))
+
+(defn- x-of-y
+  "Format an integer as x-th of y, for example, 2nd week of year."
+  [int-str]
+  (let [n (int (read-string int-str))]
+    (case (mod n 10)
+      1 (tru "{0}st" n)
+      2 (tru "{0}nd" n)
+      3 (tru "{0}rd" n)
+      (tru "{0}th" n))))
+
+(defn- hour-of-day
+  [s time-style]
+  (let [n (int (read-string s))
+        ts (u.date/parse "2022-01-01-00:00:00")]
+    (u.date/format time-style (t/plus ts (t/hours n)))))
+
 (defn format-temporal-str
   "Reformat a temporal literal string `s` (i.e., an ISO-8601 string) with a human-friendly format based on the
   column `:unit`."
-  [timezone-id s col]
-  (cond (str/blank? s) ""
+  ([timezone-id s col] (format-temporal-str timezone-id s col {}))
+  ([timezone-id s col col-viz-settings]
+   (let [{date-style :date_style
+          separator  :date_separator
+          abbreviate :date_abbreviate
+          time-style :time_style} col-viz-settings]
+     (cond (str/blank? s) ""
 
-        (isa? (or (:effective_type col) (:base_type col)) :type/Time)
-        (t/format DateTimeFormatter/ISO_LOCAL_TIME (u.date/parse s timezone-id))
+           (isa? (or (:effective_type col) (:base_type col)) :type/Time)
+           (t/format DateTimeFormatter/ISO_LOCAL_TIME (u.date/parse s timezone-id))
 
-        :else
-        (case (:unit col)
-          ;; these types have special formatting
-          :hour    (reformat-temporal-str timezone-id s "h a - MMM yyyy")
-          :week    (str "Week " (reformat-temporal-str timezone-id s "w - YYYY"))
-          :month   (reformat-temporal-str timezone-id s "MMMM yyyy")
-          :quarter (reformat-temporal-str timezone-id s "QQQ - yyyy")
+           :else
+           (case (:unit col)
+             ;; these types have special formatting
+             (:minute :hour)  (reformat-temporal-str timezone-id s (str date-style ", " (str/replace time-style #"A" "a")))
+             :day             (reformat-temporal-str timezone-id s date-style)
+             :week            (str (tru "Week ") (reformat-temporal-str timezone-id s "w - YYYY"))
+             :month           (reformat-temporal-str timezone-id s date-style)
+             :quarter         (reformat-temporal-str timezone-id s "QQQ - yyyy")
 
-          ;; no special formatting here : return as ISO-8601
-          ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
-          (:year :hour-of-day :day-of-week :week-of-year :month-of-year)
-          s
+             :year            (reformat-temporal-str timezone-id s "YYYY")
+             :day-of-week     (day-of-week s abbreviate) ;; s is just a number as a string here
+             :month-of-year   (month-of-year s abbreviate)
+             :week-of-year    (x-of-y s)
+             :quarter-of-year (format "Q%s" s)
+             :hour-of-day     (hour-of-day s (or (str/replace time-style #"A" "a") "h a"))
 
-          ;; for everything else return in this format
-          (reformat-temporal-str timezone-id s "MMM d, yyyy"))))
+             ;; no special formatting here : return as ISO-8601
+             (:minute-of-hour :day-of-month :day-of-year) (x-of-y s)
+             ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
+
+             ;; for everything else return in this format
+             (reformat-temporal-str timezone-id s "MMM d, yyyy"))))))
 
 (def ^:private RenderableInterval
   {:interval-start     Temporal

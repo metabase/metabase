@@ -248,15 +248,20 @@
                :quarter "YYYY - [Q]Q"}
    "MMMM D, YYYY" {:month "MMMM, YYYY"}
    "D MMMM, YYYY" {:month "MMMM, YYYY"}
-   "dddd, MMMM D, YYYY" {:week "MMMM D, YYYY"
+   "dddd, MMMM D, YYYY" {:day "EEEE, MMMM d, YYYY"
+                         :week "MMMM D, YYYY"
                          :month "MMMM, YYYY"}})
 
 (defn- update-date-style
-  [date-style unit]
+  [date-style unit {::mb.viz/keys [date-abbreviate date-separator]}]
   (let [unit (or unit :default)]
-    (or (get-in override-date-styles [date-style unit])
-        (get-in default-date-styles [unit])
-        date-style)))
+    (cond-> (or (get-in override-date-styles [date-style unit])
+                (get-in default-date-styles [unit])
+                date-style)
+      (not= date-separator "/") (str/replace #"/" date-separator)
+      date-abbreviate (-> (str/replace #"MMMM" "MMM")
+                          (str/replace #"EEEE" "E"))
+      true (str/replace #"D" "d"))))
 
 (defn- backfill-currency
   [{:keys [number_style currency] :as settings}]
@@ -273,7 +278,7 @@
   [col-settings col]
   (-> (m/map-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)) col-settings)
       (backfill-currency)
-      (u/update-if-exists :date_style update-date-style (:unit col))))
+      (u/update-if-exists :date_style update-date-style (:unit col) col-settings)))
 
 (defn- ->js-viz
   "Include viz settings for js.
@@ -381,47 +386,6 @@
                (DecimalFormat. base))]
      (.format fmt value))))
 
-;; wo -> week-of-year
-;; [Q]Q -> quarter-of-year
-;; dddd -> day-of-week
-
-(defn- donut-legend-label-formatter
-  "Formatting function that respects given viz-settings."
-  [{style :date_style separator :date_separator abbreviate :date_abbreviate}]
-  (let [formatter
-        (case style
-          "dddd" {"1" (tru "Sunday")
-                  "2" (tru "Monday")
-                  "3" (tru "Tuesday")
-                  "4" (tru "Wednesday")
-                  "5" (tru "Thursday")
-                  "6" (tru "Friday")
-                  "7" (tru "Saturday")}
-          "MMMM" {"1" (if abbreviate (tru "Jan") (tru "January"))
-                  "2" (if abbreviate (tru "Feb") (tru "February"))
-                  "3" (if abbreviate (tru "Mar") (tru "March"))
-                  "4" (if abbreviate (tru "Apr") (tru "April"))
-                  "5" (if abbreviate (tru "May") (tru "May"))
-                  "6" (if abbreviate (tru "Jun") (tru "June"))
-                  "7" (if abbreviate (tru "Jul") (tru "July"))
-                  "8" (if abbreviate (tru "Aug") (tru "August"))
-                  "9" (if abbreviate (tru "Sep") (tru "September"))
-                  "10" (if abbreviate (tru "Oct") (tru "October"))
-                  "11" (if abbreviate (tru "Nov") (tru "November"))
-                  "12" (if abbreviate (tru "Dec") (tru "December"))}
-          "wo" #(format "%sth" (int (read-string %)))
-          "[Q]Q" #(format "Q%s" %)
-          (fn [s]
-            (let [adjusted-style (cond-> style
-                                   separator (str/replace #"/" separator)
-                                   abbreviate (str/replace #"MMMM" "MMM"))]
-              (->> (u.date/parse s)
-                   (u.date/format adjusted-style)))))]
-    (fn [s]
-      (try
-        (formatter s)
-        (catch Exception _ s)))))
-
 (defn- donut-info
   "Process rows with a minimum slice threshold. Collapses any segments below the threshold given as a percentage (the
   value 25 for 25%) into a single category as \"Other\". "
@@ -441,23 +405,23 @@
 
 (defn- donut-legend
   [legend-entries]
-  (let [table-fn
-        (fn [entries]
-          (into [:table {:style (style/style {:color       "#4C5773"
-                                              :font-family "Lato, sans-serif"
-                                              :font-size   "24px"
-                                              :font-weight "bold"
-                                              :box-sizing  "border-box"})}]
-                (for [{:keys [label percentage color]} entries]
-                  [:tr {:style (style/style {:margin-right "12px"})}
-                   [:td {:style (style/style {:color         color
-                                              :padding-right "7px"
-                                              :line-height   "0"})}
-                    [:span {:style (style/style {:font-size   "2.875rem"
-                                                 :line-height "0"
-                                                 :position    "relative"
-                                                 :top         "-4px"})} "•"]]
-                   [:td {:style (style/style {:padding-right "20px"})}
+  (letfn [(table-fn [entries]
+            (into [:table {:style (style/style {:color       "#4C5773"
+                                                :font-family "Lato, sans-serif"
+                                                :font-size   "24px"
+                                                :font-weight "bold"
+                                                :box-sizing  "border-box"
+                                                :white-space "nowrap"})}]
+                  (for [{:keys [label percentage color]} entries]
+                    [:tr {:style (style/style {:margin-right "12px"})}
+                     [:td {:style (style/style {:color         color
+                                                :padding-right "7px"
+                                                :line-height   "0"})}
+                      [:span {:style (style/style {:font-size   "2.875rem"
+                                                   :line-height "0"
+                                                   :position    "relative"
+                                                   :top         "-4px"})} "•"]]
+                     [:td {:style (style/style {:padding-right "30px"})}
                     label]
                    [:td percentage]])))]
     (if (< (count legend-entries) 8)
@@ -470,7 +434,7 @@
                          (split-at (/ (count legend-entries) 2) legend-entries)))])))
 
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
-  [_ render-type _timezone-id :- (s/maybe s/Str) card dashcard {:keys [rows cols viz-settings] :as data}]
+  [_ render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [rows cols viz-settings] :as data}]
   (let [viz-settings                (merge viz-settings (:visualization_settings dashcard))
         [x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (map (juxt (comp str x-axis-rowfn) y-axis-rowfn)
@@ -483,8 +447,7 @@
         image-bundle                (image-bundle/make-image-bundle
                                       render-type
                                       (js-svg/categorical-donut rows legend-colors))
-        {label-format-settings :x}  (->js-viz (x-axis-rowfn cols) (y-axis-rowfn cols) viz-settings)
-        label-fn                    (donut-legend-label-formatter label-format-settings)]
+        {label-viz-settings :x}     (->js-viz (x-axis-rowfn cols) (y-axis-rowfn cols) viz-settings)]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -493,11 +456,18 @@
      [:div
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]
-      (donut-legend (mapv (fn [row]
-                            {:label (label-fn (first row))
-                             :percentage (percentages (first row))
-                             :color (legend-colors (first row))})
-                          rows))]}))
+      (donut-legend
+        (mapv (fn [row]
+                {:percentage (percentages (first row))
+                 :color      (legend-colors (first row))
+                 :label      (if (= (first row) "Other")
+                               "Other"
+                               (datetime/format-temporal-str
+                                 timezone-id
+                                 (first row)
+                                 (x-axis-rowfn cols)
+                                 label-viz-settings))})
+              rows))]}))
 
 (s/defmethod render :progress :- common/RenderedPulseCard
   [_ render-type _timezone-id _card dashcard {:keys [cols rows viz-settings] :as _data}]
