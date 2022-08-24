@@ -12626,7 +12626,7 @@ databaseChangeLog:
                   name: entity_id
                   type: char(21)
                   constraints:
-                    nullable: true
+                    nullable: false
                     unique: true
               - column:
                   name: name

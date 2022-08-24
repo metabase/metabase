@@ -491,29 +491,34 @@
 
 (deftest newmetric-test
   (ts/with-empty-h2-app-db
-    (ts/with-temp-dpc [User       [{mark-id :id}            {:first_name "Mark"
-                                                             :last_name  "Knopfler"
-                                                             :email      "mark@direstrai.ts"}]
-                       User       [_                        {:first_name "David"
-                                                             :last_name  "Knopfler"
-                                                             :email      "david@direstrai.ts"}]
+    (ts/with-temp-dpc [User       [{mark-id :id}                   {:first_name "Mark"
+                                                                    :last_name  "Knopfler"
+                                                                    :email      "mark@direstrai.ts"}]
                        Collection [{coll-id :id
-                                    coll-eid :entity_id}    {:name              "Mark's Collection"
-                                                             :personal_owner_id mark-id}]
-                       Collection [{coll2-eid :entity_id}   {:name "Some Collection"}]
-                       Database   [{db-id        :id}       {:name "My Database"}]
-                       Table      [{no-schema-id :id}       {:name "Schemaless Table" :db_id db-id}]
-                       Field      [{measure-field-id :id}   {:name "Field for measure" :table_id no-schema-id}]
-                       Field      [{dimension-field-id :id} {:name "Field for dimension" :table_id no-schema-id}]
+                                    coll-eid :entity_id}           {:name              "Mark's Collection"
+                                                                    :personal_owner_id mark-id}]
+                       Collection [{unowned-coll-id :id}           {:name "Unowned collections"}]
+
+
+                       Database   [{db-id        :id}              {:name "My Database"}]
+                       Table      [{no-schema-id :id}              {:name "Schemaless Table" :db_id db-id}]
+                       Field      [{measure-field-id :id}          {:name "Field for measure" :table_id no-schema-id}]
+                       Field      [{dimension-field-id :id}        {:name "Field for dimension" :table_id no-schema-id}]
                        Card       [{card-id  :id
-                                    card-eid :entity_id}    {:creator_id  mark-id}]
+                                    card-eid :entity_id}           {:creator_id  mark-id}]
+                       Newmetric  [{unwoned-metric-eid :entity_id} {:creator_id    mark-id
+                                                                    :collection_id unowned-coll-id
+                                                                    :card_id       card-id
+                                                                    :measure       [:sum [:field measure-field-id nil]]
+                                                                    :dimensions    ["created_at"
+                                                                                    [:field dimension-field-id {:temporal-unit :year}]]}]
                        Newmetric  [{metric-id  :id
-                                    metric-eid :entity_id}  {:creator_id    mark-id
-                                                             :collection_id coll-id
-                                                             :card_id       card-id
-                                                             :measure       [:sum [:field measure-field-id nil]]
-                                                             :dimensions    ["created_at"
-                                                                             [:field dimension-field-id {:temporal-unit :year}]]}]]
+                                    metric-eid :entity_id}         {:creator_id    mark-id
+                                                                    :collection_id coll-id
+                                                                    :card_id       card-id
+                                                                    :measure       [:sum [:field measure-field-id nil]]
+                                                                    :dimensions    ["created_at"
+                                                                                    [:field dimension-field-id {:temporal-unit :year}]]}]]
       (testing "vanilla user-created newmetric"
         (let [ser (serdes.base/extract-one "Newmetric" {} (select-one "Newmetric" [:= :id metric-id]))]
           (is (schema= {:serdes/meta   (s/eq [{:model "Newmetric" :id metric-eid}])
@@ -538,15 +543,14 @@
                      [{:model "Collection" :id coll-eid}]}
                    (set (serdes.base/serdes-dependencies ser)))))))
 
-      (testing "collection filtering based on :user option"
-        (testing "only unowned collections are returned with no user"
-          (is (= ["Some Collection"]
-                 (->> (serdes.base/extract-all "Collection" {})
-                      (into [])
-                      (map :name)))))
-        (testing "unowned collections and the personal one with a user"
-          (is (= #{coll-eid coll2-eid}
-                 (by-model "Collection" (serdes.base/extract-all "Collection" {:user mark-id})))))))))
+      (testing "newmetric filtering based on :user option"
+        (testing "only unowned newmetric are returned with no user"
+          (is (= #{unwoned-metric-eid}
+                 (by-model "Newmetric" (serdes.base/extract-all "Newmetric" {})))))
+
+        (testing "unowned newmetric and the personal one with a user"
+          (is (= #{metric-eid unwoned-metric-eid}
+                 (by-model "Newmetric" (serdes.base/extract-all "Newmetric" {:user mark-id})))))))))
 
 (deftest native-query-snippets-test
   (ts/with-empty-h2-app-db
@@ -694,8 +698,8 @@
                         :definition                  (s/eq {:source-table ["My Database" nil "Schemaless Table"]
                                                             :aggregation [[:count]]
                                                             :filter ["<" [:field ["My Database" nil
-                                                                                 "Schemaless Table" "Some Field"]
-                                                                         nil] 18]})
+                                                                                  "Schemaless Table" "Some Field"]
+                                                                          nil] 18]})
                         (s/optional-key :updated_at) LocalDateTime
                         s/Keyword                    s/Any}
                        ser))
