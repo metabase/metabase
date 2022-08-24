@@ -79,21 +79,24 @@
            :else
            (case (:unit col)
              ;; these types have special formatting
-             (:minute :hour)  (reformat-temporal-str timezone-id s (str date-style ", " (str/replace time-style #"A" "a")))
-             :day             (reformat-temporal-str timezone-id s (or date-style "EEEE, MMMM d, YYYY"))
-             :week            (str (tru "Week ") (reformat-temporal-str timezone-id s "w - YYYY"))
-             :month           (reformat-temporal-str timezone-id s (or date-style "MMMM, yyyy"))
-             :quarter         (reformat-temporal-str timezone-id s "QQQ - yyyy")
+             :minute  (reformat-temporal-str timezone-id s
+                                             (str (or date-style "MMMM, yyyy") ", "
+                                                  (str/replace (or time-style "h:mm a") #"A" "a")))
+             :hour    (reformat-temporal-str timezone-id s
+                                             (str (or date-style "MMMM, yyyy") ", "
+                                                  (str/replace (or time-style "h a") #"A" "a")))
+             :day     (reformat-temporal-str timezone-id s (or date-style "EEEE, MMMM d, YYYY"))
+             :week    (str (tru "Week ") (reformat-temporal-str timezone-id s "w - YYYY"))
+             :month   (reformat-temporal-str timezone-id s (or date-style "MMMM, yyyy"))
+             :quarter (reformat-temporal-str timezone-id s "QQQ - yyyy")
+             :year    (reformat-temporal-str timezone-id s "YYYY")
 
-             :year            (reformat-temporal-str timezone-id s "YYYY")
              :day-of-week     (day-of-week s abbreviate) ;; s is just a number as a string here
              :month-of-year   (month-of-year s abbreviate)
-             :week-of-year    (x-of-y s)
              :quarter-of-year (format "Q%s" s)
-             :hour-of-day     (hour-of-day s (or (str/replace time-style #"A" "a") "h a"))
+             :hour-of-day     (hour-of-day s (str/replace (or time-style "h a") #"A" "a"))
 
-             ;; no special formatting here : return as ISO-8601
-             (:minute-of-hour :day-of-month :day-of-year) (x-of-y s)
+             (:week-of-year :minute-of-hour :day-of-month :day-of-year) (x-of-y s)
              ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
 
              ;; for everything else return in this format
