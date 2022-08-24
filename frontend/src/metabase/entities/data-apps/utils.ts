@@ -1,4 +1,4 @@
-import { Collection, DataApp } from "metabase-types/api";
+import type { Collection, DataApp } from "metabase-types/api";
 
 export function getDataAppIcon(app?: DataApp) {
   return { name: "star" };
