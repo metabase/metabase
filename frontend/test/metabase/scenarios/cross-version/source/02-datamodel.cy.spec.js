@@ -7,6 +7,8 @@ const { ORDERS, ORDERS_ID, REVIEWS, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
 const sampleDBDataModelPage = `/admin/datamodel/database/${SAMPLE_DB_ID}`;
 
 it("should configure data model settings", () => {
+  cy.signInAsAdmin();
+
   cy.visit("/admin/datamodel");
   cy.location("pathname").should("eq", sampleDBDataModelPage);
 
