@@ -11,9 +11,9 @@ import {
   getIsSearchVisible,
   RouterProps,
 } from "metabase/selectors/app";
+import { getUser } from "metabase/selectors/user";
 import { State } from "metabase-types/store";
 import AppBar from "../../components/AppBar";
-import { getUser } from "metabase/selectors/user";
 
 const mapStateToProps = (state: State, props: RouterProps) => ({
   currentUser: getUser(state),
