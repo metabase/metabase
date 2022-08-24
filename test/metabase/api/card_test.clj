@@ -187,7 +187,16 @@
                       :rasta :post 202 (format "card/%d/query" card-id)
                       {:parameters [{:type   :number
                                      :target [:variable [:template-tag :category]]
-                                     :value  2}]})))))))
+                                     :value  2}]})))))
+    (testing "should not allow cards with is_write true"
+      (mt/with-temp*
+        [Database   [db    {:details (:details (mt/db)), :engine :h2}]
+         Card       [card  {:is_write true
+                            :dataset_query
+                            {:database (u/the-id db)
+                             :type     :native
+                             :native   {:query "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = 1;"}}}]]
+        (mt/user-http-request :rasta :post 405 (str  "card/" (:id card) "/query") {})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -382,13 +391,35 @@
 
 (deftest create-card-validation-test
   (testing "POST /api/card"
-   (is (= {:errors {:visualization_settings "value must be a map."}}
-          (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
+    (is (= {:errors {:visualization_settings "value must be a map."}}
+           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
 
-   (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                     "Each parameter must be a map with :id and :type keys")}}
-          (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
-                                                             :parameters             "abc"})))))
+    (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
+                                      "Each parameter must be a map with :id and :type keys")}}
+           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
+                                                              :parameters             "abc"})))
+    (with-temp-native-card-with-params [db card]
+      (testing "You cannot create a card with variables as a model"
+        (is (= "A model made from a native SQL question cannot have a variable or field filter."
+               (mt/user-http-request :rasta :post 400 "card"
+                                     (merge
+                                      (mt/with-temp-defaults Card)
+                                      {:dataset       true
+                                       :query_type    "native"
+                                       :dataset_query (:dataset_query card)})))))
+      (testing "You can create a card with a saved question CTE as a model"
+        (let [card-reference (str "#" (u/the-id card))]
+          (mt/user-http-request :rasta :post 200 "card"
+                                (merge
+                                 (mt/with-temp-defaults Card)
+                                 {:dataset_query {:database (u/the-id db)
+                                                  :type     :native
+                                                  :native   {:query         (format "SELECT * FROM {{%s}};" card-reference)
+                                                             :template-tags {card-reference {:card-id      (u/the-id card),
+                                                                                             :display-name card-reference,
+                                                                                             :id           (str (random-uuid))
+                                                                                             :name         card-reference,
+                                                                                             :type         :card}}}}})))))))
 
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
@@ -760,7 +791,7 @@
                (:emitters (mt/user-http-request :rasta :get 200 (format "card/%d" (u/the-id read-card)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                UPDATING A CARD                                                 |
+;;; |                                       UPDATING A CARD (PUT /api/card/:id)
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 
@@ -930,6 +961,13 @@
                             {:collection_position nil})
       (is (= 1
              (db/select-one-field :collection_position Card :id (u/the-id card)))))))
+
+(deftest update-card-validation-test
+  (testing "PUT /api/card"
+    (with-temp-native-card-with-params [db card]
+      (testing  "You cannot update a model to have variables"
+        (is (= "A model made from a native SQL question cannot have a variable or field filter."
+               (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:dataset true})))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1540,10 +1578,10 @@
     (with-cards-in-readable-collection card
       (let [orig qp.card/run-query-for-card-async]
         (with-redefs [qp.card/run-query-for-card-async (fn [card-id export-format & options]
-                                                          (apply orig card-id export-format
-                                                                 :run (fn [{:keys [constraints]} _]
-                                                                        {:constraints constraints})
-                                                                 options))]
+                                                         (apply orig card-id export-format
+                                                                :run (fn [{:keys [constraints]} _]
+                                                                       {:constraints constraints})
+                                                                options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
             (is (= {:constraints nil}
                    (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
@@ -1557,7 +1595,17 @@
             (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanitiy "
                           "check to make sure the `with-redefs` in the test above actually works)")
               (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
-                     (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
+                     (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card)))))))))))
+  (testing "is_write cards cannot be exported"
+    (mt/with-temp*
+      [Database   [db    {:details (:details (mt/db)), :engine :h2}]
+       Card       [card  {:is_write true
+                          :dataset_query
+                          {:database (u/the-id db)
+                           :type     :native
+                           :native   {:query "delete from users;"}}}]]
+      (is (= "Write queries are only executable via the Actions API."
+             (:message (mt/user-http-request :rasta :post 405 (format "card/%d/query/csv" (u/the-id card)))))))))
 
 (defn- test-download-response-headers
   [url]
@@ -2040,6 +2088,17 @@
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
+
+(deftest pivot-card-with-writeable-card
+  (mt/with-temp*
+    [Database   [db    {:details (:details (mt/db)), :engine :h2}]
+     Card       [card  {:is_write true
+                        :dataset_query
+                        {:database (u/the-id db)
+                         :type     :native
+                         :native   {:query "delete from users;"}}}]]
+    (is (= "Write queries are only executable via the Actions API."
+           (:message (mt/user-http-request :rasta :post 405 (format "card/pivot/%d/query" (u/the-id card))))))))
 
 (deftest dataset-card
   (testing "Setting a question to a dataset makes it viz type table"

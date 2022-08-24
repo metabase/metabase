@@ -67,6 +67,10 @@
 
 (models/defmodel Field :metabase_field)
 
+(doto Field
+  (derive ::mi/read-policy.partial-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
 (defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
   (fn [k]
     (when-let [k (keyword k)]
@@ -148,11 +152,10 @@
        (perms-objects-set* db-id schema table-id read-or-write)))
    :ttl/threshold 5000))
 
-(defn- perms-objects-set
-  "Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
-   same as permissions to access its parent Table."
+;;; Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
+;;; same as permissions to access its parent Table.
+(defmethod mi/perms-objects-set Field
   [{table-id :table_id, {db-id :db_id, schema :schema} :table} read-or-write]
-  {:arglists '([field read-or-write])}
   (if db-id
     ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
     (perms-objects-set* db-id schema table-id read-or-write)
@@ -176,7 +179,7 @@
   :out (comp update-semantic-numeric-values mi/json-out-with-keywordization))
 
 
-(u/strict-extend (class Field)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Field)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
@@ -191,12 +194,6 @@
                                        :nfc_path          :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert})
-
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:perms-objects-set perms-objects-set
-          :can-read?         (partial mi/current-user-has-partial-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})

@@ -18,6 +18,11 @@
 
 (models/defmodel Segment :segment)
 
+(doto Segment
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.superuser)
+  (derive ::mi/create-policy.superuser))
+
 (defn- pre-update [{:keys [creator_id id], :as updates}]
   (u/prog1 updates
     ;; throw an Exception if someone tries to update creator_id
@@ -25,12 +30,13 @@
       (when (not= creator_id (db/select-one-field :creator_id Segment :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment.")))))))
 
-(defn- perms-objects-set [segment read-or-write]
+(defmethod mi/perms-objects-set Segment
+  [segment read-or-write]
   (let [table (or (:table segment)
                   (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
-(u/strict-extend (class Segment)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Segment)
   models/IModel
   (merge
    models/IModelDefaults
@@ -39,15 +45,6 @@
                                  :entity_id    true})
     :hydration-keys (constantly [:segment])
     :pre-update     pre-update})
-  mi/IObjectPermissions
-  (merge
-   mi/IObjectPermissionsDefaults
-   {:perms-objects-set perms-objects-set
-    :can-read?         (partial mi/current-user-has-full-permissions? :read)
-    ;; for the time being you need to be a superuser in order to create or update Segments because the UI for
-    ;; doing so is only exposed in the admin panel
-    :can-write?        mi/superuser?
-    :can-create?       mi/superuser?})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
@@ -74,7 +71,7 @@
                                                                                 :after  (get-in segment2 [:definition])})))))
 
 
-(u/strict-extend (class Segment)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Segment)
   revision/IRevisioned
   (merge
    revision/IRevisionedDefaults
@@ -108,7 +105,7 @@
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 
-(s/defn retrieve-segments :- [SegmentInstance]
+(s/defn retrieve-segments :- [(mi/InstanceOf Segment)]
   "Fetch all `Segments` for a given `Table`. Optional second argument allows filtering by active state by providing
    one of 3 keyword values: `:active`, `:deleted`, `:all`. Default filtering is for `:active`."
   ([table-id :- su/IntGreaterThanZero]

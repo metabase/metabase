@@ -12606,9 +12606,83 @@ databaseChangeLog:
             tableName: emitter_action
 
   - changeSet:
+      id: v45.00-022
+      author: snoe
+      comment: Added 0.45.0 - add app container
+      changes:
+        - createTable:
+            tableName: app
+            remarks: Defines top level concerns for App
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The associated collection
+                  constraints:
+                    nullable: false
+                    referencedTableName: collection
+                    referencedColumnNames: id
+                    foreignKeyName: fk_app_ref_collection_id
+                    deleteCascade: true
+                    unique: true
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The homepage of the app
+              - column:
+                  remarks: JSON for the navigation items of the app
+                  name: nav_items
+                  type: ${text.type}
+              - column:
+                  remarks: JSON for frontend related additions, such as styling
+                  name: options
+                  type: ${text.type}
+              - column:
+                  remarks: The timestamp of when the app was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the app was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v45.00-023
+      author: snoe
+      comment: Added 0.45.0 - add app container
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: app
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_app_ref_dashboard_id
+            onDelete: SET NULL
+
+  - changeSet:
       id: v45.00-026
       author: snoe
-      comment: Added 0.45.0 - tie actions to dashcards
+      comment: Added 0.45.0 - apps tie actions to dashcards
       changes:
         - addColumn:
             columns:
@@ -12622,7 +12696,7 @@ databaseChangeLog:
   - changeSet:
       id: v45.00-027
       author: snoe
-      comment: Added 0.45.0 - writeback add fk for action_id to report_dashboardcard
+      comment: Added 0.45.0 - apps add fk for action_id to report_dashboardcard
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_dashboardcard

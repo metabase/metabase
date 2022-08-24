@@ -5,6 +5,7 @@
             [clojure.tools.logging :as log]
             [metabase.models.database :refer [Database]]
             [metabase.models.humanization :as humanization]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.table :as table :refer [Table]]
@@ -98,7 +99,7 @@
   [database :- i/DatabaseInstance, new-tables :- #{i/DatabaseMetadataTable}]
   (log/info (trs "Found new tables:")
             (for [table new-tables]
-              (sync-util/name-for-logging (table/map->TableInstance table))))
+              (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [{schema :schema, table-name :name, :as table} new-tables]
     (if-let [existing-id (db/select-one-id Table
                            :db_id  (u/the-id database)
@@ -124,7 +125,7 @@
   [database :- i/DatabaseInstance, old-tables :- #{i/DatabaseMetadataTable}]
   (log/info (trs "Marking tables as inactive:")
             (for [table old-tables]
-              (sync-util/name-for-logging (table/map->TableInstance table))))
+              (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [{schema :schema, table-name :name, :as _table} old-tables]
     (db/update-where! Table {:db_id  (u/the-id database)
                              :schema schema
@@ -138,7 +139,7 @@
   [database :- i/DatabaseInstance, changed-tables :- #{i/DatabaseMetadataTable}]
   (log/info (trs "Updating description for tables:")
             (for [table changed-tables]
-              (sync-util/name-for-logging (table/map->TableInstance table))))
+              (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [{schema :schema, table-name :name, description :description} changed-tables]
     (when-not (str/blank? description)
       (db/update-where! Table {:db_id       (u/the-id database)

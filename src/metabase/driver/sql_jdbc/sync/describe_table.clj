@@ -64,7 +64,7 @@
         honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
     (sql.qp/format-honeysql driver honeysql)))
 
-(defn- fallback-fields-metadata-from-select-query
+(defn fallback-fields-metadata-from-select-query
   "In some rare cases `:column_name` is blank (eg. SQLite's views with group by) fallback to sniffing the type from a
   SELECT * query."
   [driver ^Connection conn table-schema table-name]
@@ -109,9 +109,8 @@
              (when-not (str/blank? remarks)
                {:field-comment remarks})))))))
 
-(defn- fields-metadata
-  "Returns reducible metadata for the Fields in a `table`."
-  [driver ^Connection conn {schema :schema, table-name :name} & [^String db-name-or-nil]]
+(defn ^:private fields-metadata
+  [driver ^Connection conn {schema :schema, table-name :name} ^String db-name-or-nil]
   {:pre [(instance? Connection conn) (string? table-name)]}
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
@@ -143,26 +142,37 @@
          init
          [jdbc-metadata fallback-metadata])))))
 
-(defn describe-table-fields
+(defn describe-table-fields-xf
+  "Returns a transducer for computing metatdata about the fields in `table`."
+  [driver table]
+  (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
+                 (let [semantic-type (calculated-semantic-type driver column-name database-type)]
+                   (merge
+                    (u/select-non-nil-keys col [:name :database-type :field-comment :database-required])
+                    {:base-type         (database-type->base-type-or-warn driver database-type)
+                     :database-position i}
+                    (when semantic-type
+                      {:semantic-type semantic-type})
+                    (when (and
+                           (isa? semantic-type :type/SerializedJSON)
+                           (driver/database-supports?
+                            driver
+                            :nested-field-columns
+                            (table/database table)))
+                      {:visibility-type :details-only}))))))
+
+(defmulti describe-table-fields
   "Returns a set of column metadata for `table` using JDBC Connection `conn`."
-  [driver conn table & [db-name-or-nil]]
+  {:added    "0.45.0"
+   :arglists '([driver ^Connection conn table ^String db-name-or-nil])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod describe-table-fields :sql-jdbc
+  [driver conn table db-name-or-nil]
   (into
    #{}
-   (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
-                  (let [semantic-type (calculated-semantic-type driver column-name database-type)]
-                    (merge
-                      (u/select-non-nil-keys col [:name :database-type :field-comment :database-required])
-                      {:base-type         (database-type->base-type-or-warn driver database-type)
-                       :database-position i}
-                      (when semantic-type
-                        {:semantic-type semantic-type})
-                      (when (and
-                              (isa? semantic-type :type/SerializedJSON)
-                              (driver/database-supports?
-                                driver
-                                :nested-field-columns
-                                (table/database table)))
-                        {:visibility-type :details-only})))))
+   (describe-table-fields-xf driver table)
    (fields-metadata driver conn table db-name-or-nil)))
 
 (defn add-table-pks
@@ -180,7 +190,7 @@
 (defn- describe-table* [driver ^Connection conn table]
   {:pre [(instance? Connection conn)]}
   (->> (assoc (select-keys table [:name :schema])
-              :fields (describe-table-fields driver conn table))
+              :fields (describe-table-fields driver conn table nil))
        ;; find PKs and mark them
        (add-table-pks (.getMetaData conn))))
 
@@ -367,7 +377,7 @@
   (with-open [conn (jdbc/get-connection spec)]
     (let [table-identifier-info [(:schema table) (:name table)]
 
-          table-fields          (describe-table-fields driver conn table)
+          table-fields          (describe-table-fields driver conn table nil)
           json-fields           (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)]
       (if (nil? (seq json-fields))
         #{}

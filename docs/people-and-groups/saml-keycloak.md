@@ -1,5 +1,7 @@
 ---
 title: Setting up SAML with Keycloak
+redirect_from:
+  - /docs/latest/enterprise-guide/saml-keycloak
 ---
 
 # Setting up SAML with Keycloak

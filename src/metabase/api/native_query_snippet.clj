@@ -12,7 +12,7 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
-(s/defn ^:private hydrated-native-query-snippet :- (s/maybe (class NativeQuerySnippet))
+(s/defn ^:private hydrated-native-query-snippet :- (s/maybe (mi/InstanceOf NativeQuerySnippet))
   [id :- su/IntGreaterThanZero]
   (-> (api/read-check (db/select-one NativeQuerySnippet :id id))
       (hydrate :creator)))

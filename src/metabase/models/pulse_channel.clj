@@ -115,6 +115,10 @@
 
 (models/defmodel PulseChannel :pulse_channel)
 
+(doto PulseChannel
+  (derive ::mi/read-policy.always-allow)
+  (derive ::mi/write-policy.superuser))
+
 (defn ^:hydrate recipients
   "Return the `PulseChannelRecipients` associated with this `pulse-channel`."
   [{pulse-channel-id :id, {:keys [emails]} :details}]
@@ -180,7 +184,7 @@
               (throw (ex-info (tru "Wrong email address for User {0}." id)
                               {:status-code 403})))))))))
 
-(u/strict-extend (class PulseChannel)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PulseChannel)
   models/IModel
   (merge
    models/IModelDefaults
@@ -191,12 +195,6 @@
     :pre-delete     pre-delete
     :pre-insert     validate-email-domains
     :pre-update     validate-email-domains})
-
-  mi/IObjectPermissions
-  (merge
-   mi/IObjectPermissionsDefaults
-   {:can-read?  (constantly true)
-    :can-write? mi/superuser?})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :pulse) :channel_type :details])})
@@ -347,9 +345,12 @@
 
 
 ;; don't include `:emails`, we use that purely internally
-(add-encoder PulseChannelInstance (fn [pulse-channel json-generator]
-                                    (encode-map (m/dissoc-in pulse-channel [:details :emails])
-                                                json-generator)))
+(add-encoder
+ #_{:clj-kondo/ignore [:unresolved-symbol]}
+ PulseChannelInstance
+ (fn [pulse-channel json-generator]
+   (encode-map (m/dissoc-in pulse-channel [:details :emails])
+               json-generator)))
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 

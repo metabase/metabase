@@ -374,7 +374,7 @@
   Since this has better compile-time error-checking, prefer `strict-extend` to regular `extend` in all situations, and
   to `extend-protocol`/ `extend-type` going forward."
   ;; TODO - maybe implement strict-extend-protocol and strict-extend-type ?
-  {:style/indent 1}
+  {:style/indent :defn}
   [atype protocol method-map & more]
   (check-protocol-impl-method-map protocol method-map)
   (extend atype protocol method-map)
@@ -382,7 +382,7 @@
     (apply strict-extend atype more)))
 
 (defn remove-diacritical-marks
-  "Return a version of S with diacritical marks removed."
+  "Return a version of `s` with diacritical marks removed."
   ^String [^String s]
   (when (seq s)
     (str/replace

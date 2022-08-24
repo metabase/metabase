@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Bookmark, Collection, User } from "metabase-types/api";
+import { Bookmark, Collection, DataApp, User } from "metabase-types/api";
 
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
@@ -12,6 +12,7 @@ import {
   getCollectionIcon,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
+import { getDataAppIcon } from "metabase/entities/data-apps";
 import { isSmallScreen } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
 
@@ -24,6 +25,7 @@ import {
   CollectionMenuList,
   CollectionsMoreIcon,
   CollectionsMoreIconContainer,
+  DataAppLink,
   HomePageLink,
   SidebarContentRoot,
   SidebarHeading,
@@ -44,6 +46,7 @@ type Props = {
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   collections: CollectionTreeItem[];
+  dataApps: DataApp[];
   selectedItems: SelectedItem[];
   handleCloseNavbar: () => void;
   handleLogout: () => void;
@@ -67,6 +70,7 @@ function MainNavbarView({
   currentUser,
   bookmarks,
   collections,
+  dataApps,
   hasOwnDatabase,
   selectedItems,
   hasDataAccess,
@@ -78,6 +82,7 @@ function MainNavbarView({
     card: cardItem,
     collection: collectionItem,
     dashboard: dashboardItem,
+    "data-app": dataAppItem,
     "non-entity": nonEntityItem,
   } = _.indexBy(selectedItems, item => item.type);
 
@@ -107,7 +112,9 @@ function MainNavbarView({
           <SidebarSection>
             <BookmarkList
               bookmarks={bookmarks}
-              selectedItem={cardItem ?? dashboardItem ?? collectionItem}
+              selectedItem={
+                cardItem ?? dashboardItem ?? dataAppItem ?? collectionItem
+              }
               onSelect={onItemSelect}
               reorderBookmarks={reorderBookmarks}
             />
@@ -127,6 +134,27 @@ function MainNavbarView({
             role="tree"
           />
         </SidebarSection>
+
+        {dataApps.length > 0 && (
+          <SidebarSection>
+            <SidebarHeadingWrapper>
+              <SidebarHeading>{t`Apps`}</SidebarHeading>
+            </SidebarHeadingWrapper>
+            <ul>
+              {dataApps.map(app => (
+                <DataAppLink
+                  key={`app-${app.id}`}
+                  icon={getDataAppIcon(app)}
+                  url={Urls.dataApp(app)}
+                  isSelected={dataAppItem?.id === app.id}
+                >
+                  {app.collection.name}
+                </DataAppLink>
+              ))}
+            </ul>
+          </SidebarSection>
+        )}
+
         <ul>
           {hasDataAccess && (
             <SidebarSection>

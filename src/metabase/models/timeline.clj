@@ -1,6 +1,5 @@
 (ns metabase.models.timeline
   (:require [metabase.models.collection :as collection]
-            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
@@ -13,6 +12,8 @@
             [toucan.models :as models]))
 
 (models/defmodel Timeline :timeline)
+
+(derive Timeline ::perms/use-parent-collection-perms)
 
 ;;;; schemas
 
@@ -50,15 +51,12 @@
     (nil? collection-id) (->> (map hydrate-root-collection))
     events? (timeline-event/include-events options)))
 
-(u/strict-extend (class Timeline)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Timeline)
   models/IModel
   (merge
    models/IModelDefaults
    {:properties (constantly {:timestamped? true
                              :entity_id    true})})
-
-  mi/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})

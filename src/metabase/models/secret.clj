@@ -21,19 +21,19 @@
 
 (models/defmodel Secret :secret)
 
-(u/strict-extend (class Secret)
+(doto Secret
+  (derive ::mi/read-policy.superuser)
+  (derive ::mi/write-policy.superuser))
+
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Secret)
   models/IModel
   (merge models/IModelDefaults
-         {;:hydration-keys (constantly [:database :db]) ; don't think there's any hydration going on since other models
-                                                        ; won't have a direct secret-id column
+         { ;:hydration-keys (constantly [:database :db]) ; don't think there's any hydration going on since other models
+                                        ; won't have a direct secret-id column
           :types          (constantly {:value  :secret-value
                                        :kind   :keyword
                                        :source :keyword})
-          :properties     (constantly {:timestamped? true})})
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:can-read?         mi/superuser?
-          :can-write?        mi/superuser?}))
+          :properties     (constantly {:timestamped? true})}))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -282,7 +282,7 @@
         secret* (cond (int? secret-or-id)
                       (db/select-one Secret :id secret-or-id)
 
-                      (instance? (class Secret) secret-or-id)
+                      (mi/instance-of? Secret secret-or-id)
                       secret-or-id
 
                       :else ; default; app DB look up from the ID in db-details
@@ -312,7 +312,10 @@
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 
-(add-encoder SecretInstance (fn [secret json-generator]
-                              (encode-map
-                               (dissoc secret :value) ; never include the secret value in JSON
-                               json-generator)))
+(add-encoder
+ #_{:clj-kondo/ignore [:unresolved-symbol]}
+ SecretInstance
+ (fn [secret json-generator]
+   (encode-map
+    (dissoc secret :value)              ; never include the secret value in JSON
+    json-generator)))

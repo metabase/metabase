@@ -2,6 +2,7 @@
   "Public API for sending Pulses."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.api.common :as api]
             [metabase.config :as config]
             [metabase.email :as email]
             [metabase.email.messages :as messages]
@@ -10,6 +11,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
+            [metabase.models.interface :as mi]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
@@ -50,6 +52,7 @@
   (try
     (let [card-id (u/the-id card-or-id)
           card    (db/select-one Card :id card-id)
+          _       (api/check-is-readonly card)
           result  (mw.session/with-current-user owner-id
                     (qp.dashboard/run-query-for-dashcard-async
                      :dashboard-id  (u/the-id dashboard)
@@ -490,8 +493,7 @@
   [{:keys [dashboard_id], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
   (let [dashboard (db/select-one Dashboard :id dashboard_id)
-        pulse     (-> pulse
-                      pulse/map->PulseInstance
+        pulse     (-> (mi/instance Pulse pulse)
                       ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
                       ;; to fetch the Pulse.
                       pulse/hydrate-notification
