@@ -1,6 +1,7 @@
 (ns metabase.api.bookmark-test
   "Tests for /api/bookmark endpoints."
   (:require [clojure.test :refer :all]
+            [metabase.models.app :refer [App]]
             [metabase.models.bookmark :refer [BookmarkOrdering CardBookmark
                                               CollectionBookmark
                                               DashboardBookmark]]
@@ -16,7 +17,8 @@
   (testing "POST /api/bookmark/:model/:model-id"
     (mt/with-temp* [Collection [collection {:name "Test Collection"}]
                     Card       [card {:name "Test Card" :display "area"}]
-                    Dashboard  [dashboard {:name "Test Dashboard"}]]
+                    Dashboard  [dashboard {:name "Test Dashboard"}]
+                    App        [app {:collection_id (:id collection), :dashboard_id (:id dashboard)}]]
       (testing "check that we can bookmark a Collection"
         (is (= (u/the-id collection)
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/collection/" (u/the-id collection)))
@@ -26,7 +28,7 @@
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/card/" (u/the-id card)))
                     :card_id))))
       (let [card-result (->> (mt/user-http-request :rasta :get 200 "bookmark")
-                             (filter #(= (:type % ) "card"))
+                             (filter #(= (:type %) "card"))
                              first)]
         (testing "check a card bookmark has `:display` key"
           (is (contains? card-result :display)))
@@ -37,10 +39,12 @@
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/dashboard/" (u/the-id dashboard)))
                     :dashboard_id))))
       (testing "check that we can retreive the user's bookmarks"
-        (is (= #{"card" "collection" "dashboard"}
-               (->> (mt/user-http-request :rasta :get 200 "bookmark")
-                    (map :type)
-                    set))))
+        (let [result (mt/user-http-request :rasta :get 200 "bookmark")]
+          (is (= #{"card" "collection" "dashboard"}
+                 (into #{} (map :type) result)))
+          (testing "that app_id is hydrated on app collections"
+            (is (partial= [{:app_id (:id app)}]
+                          (filter #(= (:type %) "collection") result))))))
       (testing "check that we can delete bookmarks"
         (mt/user-http-request :rasta :delete 204 (str "bookmark/card/" (u/the-id card)))
         (is (= #{"collection" "dashboard"}
