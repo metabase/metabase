@@ -23,12 +23,18 @@ export function getMaxAutoSizeLines(viewHeight: number) {
   return Math.ceil(getLinesForHeight(pixelHeight));
 }
 
-type GetVisibleLinesCountParams = { query?: NativeQuery; viewHeight: number };
+type GetVisibleLinesCountParams = {
+  query?: NativeQuery;
+  viewHeight: number | "full";
+};
 
 function getVisibleLinesCount({
   query,
   viewHeight,
-}: GetVisibleLinesCountParams) {
+}: {
+  query?: NativeQuery;
+  viewHeight: number;
+}) {
   const maxAutoSizeLines = getMaxAutoSizeLines(viewHeight);
   const queryLineCount = query?.lineCount() || maxAutoSizeLines;
   return Math.max(Math.min(queryLineCount, maxAutoSizeLines), MIN_HEIGHT_LINES);
