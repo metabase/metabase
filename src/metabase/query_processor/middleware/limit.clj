@@ -7,10 +7,14 @@
 
 ;;;; Pre-processing
 
-(defn disable-max-results? [query]
+(defn disable-max-results?
+  "Returns the value of the disable-max-results? option in this query."
+  [query]
   (get-in query [:middleware :disable-max-results?] false))
 
-(defn disable-max-results [query]
+(defn disable-max-results
+  "Sets the value of the disable-max-results? option in this query."
+  [query]
   (assoc-in query [:middleware :disable-max-results?] true))
 
 (defn- add-limit [max-rows {query-type :type, {original-limit :limit}, :query, :as query}]
