@@ -1283,6 +1283,11 @@ class QuestionInner {
     return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
+  /*
+   * Defines endpoint for Dataset (Model) updates,
+   * (not a save in db)
+   * inserts parameters, metadata, and a promise if cancelled
+   */
   buildDatasetRequest(parameters, cancelDeferred) {
     return query => {
       const endpoint = maybeUsePivotEndpoint(
