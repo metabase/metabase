@@ -1081,7 +1081,6 @@ class QuestionInner {
     ignoreCache = false,
     collectionPreview = false,
   } = {}): Promise<[Dataset]> {
-    // TODO Atte Keinänen 7/5/17: Should we clean this query with Query.cleanQuery(query) before executing it?
     const canUseCardApiEndpoint = !isDirty && this.isSaved();
     const parameters = this.parameters()
       // include only parameters that have a value applied
@@ -1119,21 +1118,10 @@ class QuestionInner {
         }),
       ];
     } else {
-      const getDatasetQueryResult = datasetQuery => {
-        const datasetQueryWithParameters = { ...datasetQuery, parameters };
-        return maybeUsePivotEndpoint(
-          MetabaseApi.dataset,
-          this.card(),
-          this.metadata(),
-        )(
-          datasetQueryWithParameters,
-          cancelDeferred
-            ? {
-                cancelled: cancelDeferred.promise,
-              }
-            : {},
-        );
-      };
+      const getDatasetQueryResult = this.buildDatasetRequest(
+        parameters,
+        cancelDeferred,
+      );
 
       const datasetQueries = this.atomicQueries().map(query =>
         query.datasetQuery(),
@@ -1185,7 +1173,6 @@ class QuestionInner {
     return question;
   }
 
-  // TODO: Fix incorrect Flow signature
   parameters(): ParameterObject[] {
     return getCardUiParameters(
       this.card(),
@@ -1194,7 +1181,7 @@ class QuestionInner {
     );
   }
 
-  // predicate function that dermines if the question is "dirty" compared to the given question
+  // predicate function that determines if the question is "dirty" compared to the given question
   isDirtyComparedTo(originalQuestion: Question) {
     if (!this.isSaved() && this.canRun() && originalQuestion == null) {
       // if it's new, then it's dirty if it is runnable
@@ -1293,6 +1280,29 @@ class QuestionInner {
       .setParameterValues(undefined);
 
     return hasQueryBeenAltered ? question.markDirty() : question;
+  }
+
+  buildDatasetRequest(parameters, cancelDeferred) {
+    return datasetQuery => {
+      const datasetQueryWithParameters = {
+        ...datasetQuery,
+        parameters,
+        metadata: this._card.result_metadata,
+      };
+
+      return maybeUsePivotEndpoint(
+        MetabaseApi.dataset,
+        this.card(),
+        this.metadata(),
+      )(
+        datasetQueryWithParameters,
+        cancelDeferred
+          ? {
+              cancelled: cancelDeferred.promise,
+            }
+          : {},
+      );
+    };
   }
 
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
