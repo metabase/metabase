@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { LocationDescriptor } from "history";
 import _ from "underscore";
 
 import { IconProps } from "metabase/components/Icon";
@@ -45,7 +44,7 @@ import * as Urls from "metabase/lib/urls";
 
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 
-import { SelectedItem } from "./types";
+import { MainNavbarProps, SelectedItem } from "./types";
 import MainNavbarView from "./MainNavbarView";
 import {
   LoadingContainer,
@@ -81,8 +80,7 @@ interface CollectionTreeItem extends Collection {
   children: CollectionTreeItem[];
 }
 
-type Props = {
-  isOpen: boolean;
+interface Props extends MainNavbarProps {
   isAdmin: boolean;
   currentUser: User;
   bookmarks: Bookmark[];
@@ -94,18 +92,9 @@ type Props = {
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   allFetched: boolean;
-  location: {
-    pathname: string;
-  };
-  params: {
-    slug?: string;
-  };
-  openNavbar: () => void;
-  closeNavbar: () => void;
   logout: () => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
   onReorderBookmarks: (bookmarks: Bookmark[]) => void;
-};
+}
 
 function MainNavbarContainer({
   bookmarks,
