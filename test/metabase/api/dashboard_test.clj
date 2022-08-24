@@ -5,6 +5,7 @@
             [clojure.test :refer :all]
             [clojure.walk :as walk]
             [medley.core :as m]
+            [metabase.actions.test-util :as actions.test-util]
             [metabase.api.card-test :as api.card-test]
             [metabase.api.dashboard :as api.dashboard]
             [metabase.api.pivots :as api.pivots]
@@ -1813,3 +1814,102 @@
               (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
               (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
               (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
+
+(deftest dashcard-action-create-update-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (actions.test-util/with-actions-test-data-and-actions-enabled
+      (actions.test-util/with-action [{:keys [action-id]} {}]
+        (testing "Creating dashcard with action"
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]]
+            (is (partial= {:action_id action-id}
+                          (mt/user-http-request :crowberto :post 200 (format "dashboard/%s/cards" dashboard-id)
+                                                {:sizeX 1 :sizeY 1 :row 1 :col 1 :action_id action-id})))
+            (is (partial= {:ordered_cards [{:action_id action-id}]}
+                          (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))
+        (testing "Updating dashcard action"
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [dashcard {:dashboard_id dashboard-id}]]
+            (is (partial= {:status "ok"}
+                          (mt/user-http-request :crowberto :put 200 (format "dashboard/%s/cards" dashboard-id)
+                                                {:cards [(assoc dashcard :action_id action-id)]})))
+            (is (partial= {:ordered_cards [{:action_id action-id}]}
+                          (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))))))
+
+(deftest dashcard-query-action-execution-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (actions.test-util/with-actions-test-data-and-actions-enabled
+      (actions.test-util/with-action [{:keys [action-id]} {}]
+        (testing "Creating dashcard with action"
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :action_id action-id
+                                                            :parameter_mappings [{:parameter_id "my_id"
+                                                                                  :target [:variable [:template-tag "id"]]}]}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/action/%s/execute"
+                                       dashboard-id
+                                       dashcard-id
+                                       action-id)]
+              (is (partial= {:rows-affected 1}
+                            (mt/user-http-request :crowberto :post 200 execute-path
+                                                  {:parameters [{:id "my_id" :type "id" :value 1}]})))
+              (is (= [1 "Bird Shop"]
+                     (mt/first-row
+                       (mt/run-mbql-query categories {:filter [:= $id 1]}))))
+              (testing "Should affect 0 rows if id is out of range"
+                (is (= {:rows-affected 0}
+                       (mt/user-http-request :crowberto :post 200 execute-path
+                                             {:parameters [{:id "my_id" :type  :number/= :value Integer/MAX_VALUE}]}))))
+              (testing "Should 404 if bad dashcard-id"
+                (is (= "Not found."
+                       (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/dashcard/%s/action/%s/execute"
+                                                                          dashboard-id
+                                                                          Integer/MAX_VALUE
+                                                                          action-id)
+                                             {}))))
+              (testing "Missing parameter should fail gracefully"
+                (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": You'll need to pick a value for 'ID' before this query can run."}
+                              (mt/user-http-request :crowberto :post 500 execute-path
+                                                    {:parameters []}))))
+              (testing "Sending an invalid number should fail gracefully"
+
+                (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": Unparseable number: \"BAD\""}
+                              (mt/user-http-request :crowberto :post 500 execute-path
+                                                    {:parameters [{:id "my_id" :type :number/= :value "BAD"}]})))))))))))
+
+(deftest dashcard-http-action-execution-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (actions.test-util/with-actions-test-data-and-actions-enabled
+      (actions.test-util/with-action [{:keys [action-id]} {:type :http}]
+        (testing "Creating dashcard with action"
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :action_id action-id
+                                                            :parameter_mappings [{:parameter_id "my_id"
+                                                                                  :target [:template-tag "id"]}
+                                                                                 {:parameter_id "my_fail"
+                                                                                  :target [:template-tag "fail"]}]}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/action/%s/execute"
+                                       dashboard-id
+                                       dashcard-id
+                                       action-id)]
+              (testing "Should be able to execute an emitter"
+                (is (= {:the_parameter 1}
+                       (mt/user-http-request :crowberto :post 200 execute-path
+                                             {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
+              (testing "Should handle errors"
+                (is (= {:remote-status 400}
+                       (mt/user-http-request :crowberto :post 400 execute-path
+                                             {:parameters [{:id "my_id" :type :number/= :value 1}
+                                                           {:id "my_fail" :type :text :value "true"}]}))))
+              (testing "Extra parameter should fail gracefully"
+                (is (partial= {:message "No parameter mapping found for parameter \"extra\". Found: #{\"my_id\" \"my_fail\"}"}
+                              (mt/user-http-request :crowberto :post 400 execute-path
+                                                    {:parameters [{:id "extra" :type :number/= :value 1}]}))))
+              (testing "Missing parameter should fail gracefully"
+                (is (partial= {:message "Problem building request: Cannot call the service: missing required parameters: #{\"id\"}"}
+                              (mt/user-http-request :crowberto :post 500 execute-path
+                                                    {:parameters []}))))
+              (testing "Sending an invalid number should fail gracefully"
+                (is (str/starts-with? (:message (mt/user-http-request :crowberto :post 500 execute-path
+                                                                      {:parameters [{:id "my_id" :type :number/= :value "BAD"}]}))
+                                      "Problem building request:"))))))))))

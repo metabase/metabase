@@ -5,6 +5,8 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
+            [metabase.actions :as actions]
+            [metabase.actions.execution :as actions.execution]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
@@ -12,6 +14,7 @@
             [metabase.automagic-dashboards.populate :as populate]
             [metabase.events :as events]
             [metabase.mbql.util :as mbql.u]
+            [metabase.models.action :as action]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
@@ -30,6 +33,7 @@
             [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.util :as qp.util]
+            [metabase.query-processor.writeback :as qp.writeback]
             [metabase.related :as related]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -684,8 +688,7 @@
       (into {} (for [field-id filtered-field-ids]
                  [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))])))))
 
-
-;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
+;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 
 (def ParameterWithID
   "Schema for a parameter map with an string `:id`."
@@ -693,6 +696,15 @@
     {:id       su/NonBlankString
      s/Keyword s/Any}
     "value must be a parameter map with an 'id' key"))
+
+
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/action/:action-id/execute"
+  "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it."
+  [dashboard-id dashcard-id action-id :as {{:keys [parameters], :as _body} :body}]
+  {parameters (s/maybe [ParameterWithID])}
+  (actions.execution/execute-dashcard! action-id dashboard-id dashcard-id parameters))
+
+;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."

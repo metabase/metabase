@@ -12605,6 +12605,33 @@ databaseChangeLog:
         - dropTable:
             tableName: emitter_action
 
+  - changeSet:
+      id: v45.00-026
+      author: snoe
+      comment: Added 0.45.0 - tie actions to dashcards
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+            tableName: report_dashboardcard
+
+  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
+  - changeSet:
+      id: v45.00-027
+      author: snoe
+      comment: Added 0.45.0 - writeback add fk for action_id to report_dashboardcard
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            baseColumnNames: action_id
+            referencedTableName: action
+            referencedColumnNames: id
+            constraintName: fk_report_dashboardcard_ref_action_id
+            onDelete: CASCADE
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -140,12 +140,13 @@
 (s/defn update-dashboard-card!
   "Update an existing DashboardCard` including all DashboardCardSeries.
    Returns the updated DashboardCard or throws an Exception."
-  [{:keys [id parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
+  [{:keys [id action_id parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
   (let [{:keys [sizeX sizeY row col series]} (merge {:series []} dashboard-card)]
     (db/transaction
      ;; update the dashcard itself (positional attributes)
      (when (and sizeX sizeY row col)
        (db/update-non-nil-keys! DashboardCard id
+                                :action_id              action_id
                                 :sizeX                  sizeX
                                 :sizeY                  sizeY
                                 :row                    row
@@ -179,7 +180,7 @@
   "Create a new DashboardCard by inserting it into the database along with all associated pieces of data such as
    DashboardCardSeries. Returns the newly created DashboardCard or throws an Exception."
   [dashboard-card :- NewDashboardCard]
-  (let [{:keys [dashboard_id card_id parameter_mappings visualization_settings sizeX sizeY row col series]
+  (let [{:keys [dashboard_id card_id action_id parameter_mappings visualization_settings sizeX sizeY row col series]
          :or   {sizeX 2, sizeY 2, series []}} dashboard-card]
     ;; make sure the Card isn't a writeback QueryAction. It doesn't make sense to add these to a Dashboard since we're
     ;; not supposed to be executing them for results
@@ -190,6 +191,7 @@
      (let [dashboard-card (db/insert! DashboardCard
                                       :dashboard_id           dashboard_id
                                       :card_id                card_id
+                                      :action_id              action_id
                                       :sizeX                  sizeX
                                       :sizeY                  sizeY
                                       :row                    (or row 0)
