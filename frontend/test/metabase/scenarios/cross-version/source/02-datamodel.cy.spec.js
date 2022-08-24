@@ -1,4 +1,3 @@
-import { popover } from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -107,3 +106,7 @@ it("should configure data model settings", () => {
   cy.visit("/admin/datamodel/metrics");
   cy.findByText(metric.name);
 });
+
+function popover() {
+  return cy.get(".Popover-Container--open");
+}
