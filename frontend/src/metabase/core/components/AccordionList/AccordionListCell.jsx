@@ -52,7 +52,7 @@ export const AccordionListCell = ({
         </div>
       );
     } else {
-      const icon = renderSectionIcon(section, sectionIndex);
+      const icon = renderSectionIcon(section);
       const extra = renderSectionExtra(section, sectionIndex);
       const name = section.name;
       content = (
@@ -112,9 +112,9 @@ export const AccordionListCell = ({
   } else if (type === "item") {
     const isSelected = itemIsSelected(item, itemIndex);
     const isClickable = itemIsClickable(item, itemIndex);
-    const icon = renderItemIcon(item, itemIndex, isSelected);
-    const name = renderItemName(item, itemIndex, isSelected);
-    const description = renderItemDescription(item, itemIndex, isSelected);
+    const icon = renderItemIcon(item);
+    const name = renderItemName(item);
+    const description = renderItemDescription(item);
     content = (
       <ListCellItem
         data-testid={itemTestId}
