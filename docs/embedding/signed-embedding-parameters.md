@@ -1,0 +1,108 @@
+---
+title: Parameters for signed embeds
+---
+
+# Parameters for signed embeds
+
+Parameters are pieces of information that are passed between Metabase and your website via the [embedding URL](./signed-embedding#adding-the-embedding-url-to-your-website). You can use parameters to specify how Metabase items should look and behave inside the iframe on your website.
+
+Parameters are added to the end of your embedding URL:
+
+```
+your_embedding_url?parameter_name=value
+```
+
+## Adding a filter widget to a signed embed
+
+You can add [filter widgets](/glossary/filter_widget) to embedded dashboards or SQL questions.
+
+1. Go to your dashboard or SQL question. Make sure you've set up a [dashboard filter](../dashboards/filters) or [SQL variable](/questions/native-editor/sql-parameters).
+2. Click on the **sharing icon** > **Embed this item in an application**.
+3. Under **Parameters**, you'll find the names of your dashboard filters or SQL variables.
+4. Select **Editable** for each parameter that should get a filter widget on your embed.
+
+**Editable** parameters are responsible for passing filter values from the embedded filter widget (displayed on the iframe) through to the filters on your original dashboard or SQL question (in your Metabase).
+
+## Populating an embedded filter widget with a default value
+
+If you want to set a default value for your [embedded filter widget](#adding-a-filter-widget-to-a-signed-embed), you can pass that value to the corresponding parameter name in your embedding URL. Note that:
+
+- Parameter _names_ are lowercase.
+- Parameter _values_ are case-sensitive (they must match your data).
+- Spaces should be replaced by underscores.
+
+For example, if your embedded dashboard has a filter called "Breakfast", and you want to set the default value to "Scrambled eggs":
+
+```
+your_embedding_url?breakfast=Scrambled_eggs
+```
+
+To specify default values for more than one filter, separate them with ampersands (&):
+
+```
+your_embedding_url?breakfast=Scrambled_eggs&lunch=Grilled_cheese
+```
+
+If the original dashboard's filter widget accepts multiple values (i.e., it's a [dropdown filter](../dashboards/filters#choosing-between-a-dropdown-or-autocomplete-for-your-filter), not a text box filter), you can set multiple default values:
+
+```
+your_embedding_url?breakfast=Scrambled_eggs&breakfast=Bacon
+```
+
+## Pre-filtering data in a signed embed
+
+If you want to display filtered data from an embedded dashboard or SQL question, and _prevent_ people from viewing or changing that filter:
+
+1. Go to your dashboard or SQL question. Make sure you've set up a [dashboard filter](../dashboards/filters) or [SQL variable](/questions/native-editor/sql-parameters).
+2. Click on the **sharing icon** > **Embed this item in an application**.
+3. Under **Parameters**, you'll find the names of your dashboard filters or SQL variables.
+4. Select **Locked** for each parameter that should pre-filter your data, without displaying a filter widget on the embed.
+5. Add values for the filter under **Preview locked parameters**.
+
+**Locked** parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as as filter widgets on your embed.
+
+Note that you can only add filter values that match the filter type on the _original_ dashboard or SQL question. For example, if you have a text box filter on your original dashboard or SQL question, you'll only be able to add a single filter value to your locked parameter. If you want to provide multiple filter values to the parameter, you'll need to change the original filter to a [dropdown filter](../dashboards/filters#choosing-between-a-dropdown-or-autocomplete-for-your-filter) first.
+
+## Hiding filter widgets from a signed embed
+
+If you have a lot of **Editable** parameters (resulting in a lot of filter widgets), you can hide them from your signed embed by adding `hide_parameters` to your embedding URL. 
+
+For example, if you want to hide a filter called "Breakfast" from your embedded dashboard:
+
+```
+your_embedding_url#hide_parameters=breakfast
+```
+
+You can hide multiple filter widgets by separating the parameter names with commas:
+
+```
+your_embedding_url#hide_parameters=breakfast,lunch
+```
+
+You can also simultaneously assign a parameter a default value _and_ hide its filter widget:
+
+```
+your_embedding_url?breakfast=scrambled_eggs#hide_parameters=breakfast
+```
+
+## Customizing the appearance of a signed embed
+
+You can change the appearance of an embedded item by adding parameters that match the [appearance settings](./signed-embedding#customizing-the-appearance-of-signed-embeds).
+
+| Parameter name | Possible values          |
+| -------------- | ------------------------ |
+| bordered       | true, false              |
+| titled         | true, false              |
+| theme          | null, transparent, night |
+
+For example, the following embedding URL will display an embedded item in dark mode, with its original title, and without a border:
+
+```
+your_embedding_url#theme=night&titled=true&bordered=false
+```
+
+## Further reading
+
+- [Signed embedding documentation](./signed-embedding).
+- [Strategies for delivering customer-facing analytics](/learn/embedding/embedding-overview).
+- [Publishing data visualizations to the web](/learn/embedding/embedding-charts-and-dashboards).
