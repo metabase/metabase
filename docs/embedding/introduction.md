@@ -27,7 +27,7 @@ You'll need to put an iframe on your website to act as a window to your Metabase
 | Display charts and dashboards                                            | ✅                                                       | ✅                           | ✅                               |
 | Pass parameters to filters                                               | ❌                                                       | ✅                           | ✅                               |
 | Remember user attributes for [sandboxing](../permissions/data-sandboxes) | ❌                                                       | ❌                           | ✅                               |
-| Self-serve via [query builder](/glossary/query_builder)                  | ❌                                                       | ❌                           | ✅                               | = |
+| Self-serve via [query builder](/glossary/query_builder)                  | ❌                                                       | ❌                           | ✅                               |
 
 ## Further reading
 
