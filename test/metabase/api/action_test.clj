@@ -303,13 +303,13 @@
                           (mt/user-http-request :crowberto :post 400 "action" {:type "query"})))
             (is (partial= {:errors {:name "value must be a string."}}
                           (mt/user-http-request :crowberto :post 400 "action" {:type "http"})))
-            (is (partial= {:errors {:template "Value does not match schema: (not (map? nil))"}}
+            (is (partial= {:errors {:template "value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
                           (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "test"}))))
           (testing "Template needs method and url"
-            (is (partial= {:errors {:template "Value does not match schema: {:method missing-required-key, :url missing-required-key}"}}
+            (is (partial= {:errors {:template "value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
                           (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "Test" :template {}}))))
           (testing "Template parameters should be well formed"
-            (is (partial= {:errors {:template "Value does not match schema: {:parameters (not (sequential? {}))}"}}
+            (is (partial= {:errors {:template "value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
                           (mt/user-http-request :crowberto :post 400 "action" {:type "http"
                                                                                :name "Test"
                                                                                :template {:url "https://example.com"
@@ -334,7 +334,7 @@
             (is (partial= {:errors {:type "Only http actions are supported at this time."}}
                           (mt/user-http-request :crowberto :put 400 action-path {:type "query"}))))
           (testing "Template needs method and url"
-            (is (partial= {:errors {:template "Value does not match schema: {:method missing-required-key, :url missing-required-key}"}}
+            (is (partial= {:errors {:template "value may be nil, or if non-nil, value must be a map with schema: (\n  body (optional) : value may be nil, or if non-nil, value must be a string.\n  headers (optional) : value may be nil, or if non-nil, value must be a string.\n  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.\n  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.\n  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.\n  url : value must be a string.\n)"}}
                           (mt/user-http-request :crowberto :put 400 action-path {:type "http" :template {}}))))
           (testing "Handles need to be valid jq"
             (is (partial= {:errors {:response_handle "value may be nil, or if non-nil, must be a valid json-query"}}
