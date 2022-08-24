@@ -1,10 +1,8 @@
 import React, { useCallback, useEffect, useMemo } from "react";
-import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
 
 import { IconProps } from "metabase/components/Icon";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import Question from "metabase-lib/lib/Question";
 import {
@@ -41,7 +39,7 @@ import * as Urls from "metabase/lib/urls";
 
 import { MainNavbarProps, SelectedItem } from "./types";
 import MainNavbarView from "./MainNavbarView";
-import { LoadingContainer, LoadingTitle } from "./MainNavbar.styled";
+import NavbarLoadingView from "./NavbarLoadingView";
 
 function mapStateToProps(state: State) {
   return {
@@ -218,12 +216,7 @@ function MainNavbarContainer({
   );
 
   if (!allFetched) {
-    return (
-      <LoadingContainer>
-        <LoadingSpinner />
-        <LoadingTitle>{t`Loading…`}</LoadingTitle>
-      </LoadingContainer>
-    );
+    return <NavbarLoadingView />;
   }
 
   return (
