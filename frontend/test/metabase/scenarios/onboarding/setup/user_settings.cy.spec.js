@@ -1,14 +1,16 @@
 // Migrated from frontend/test/metabase/user/UserSettings.integ.spec.js
-import { restore, popover } from "__support__/e2e/helpers";
+import { restore, popover, getFullName } from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
-const { first_name, last_name, email, password } = USERS.normal;
+const { normal } = USERS;
+
+const { first_name, last_name, email, password } = normal;
 
 const requestsCount = alias =>
   cy.state("requests").filter(a => a.alias === alias);
 
 describe("user > settings", () => {
-  const fullName = `${first_name} ${last_name}`;
+  const fullName = getFullName(normal);
 
   beforeEach(() => {
     restore();
