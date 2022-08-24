@@ -20,7 +20,7 @@ it("should configure data model settings", () => {
   cy.findByDisplayValue("Product ID").parent().find(".Icon-gear").click();
   cy.findByText("Use original value").click();
   cy.findByText("Use foreign key").click();
-  popover().contains("Title").click();
+  cy.get(".List-item-title").contains("Title").click();
   cy.wait("@updateProductId");
 
   cy.visit(sampleDBDataModelPage);
@@ -63,7 +63,7 @@ it("should configure data model settings", () => {
 
   cy.intercept("PUT", `/api/field/${PRODUCTS.PRICE}`).as("updatePriceField");
   cy.findByDisplayValue("Price").parent().contains("No semantic type").click();
-  popover().contains("Price").click();
+  cy.get(".List-item-title").contains("Price").click();
   cy.wait("@updatePriceField");
   cy.findByText("US Dollar").click();
   cy.findByText("Euro").click();
@@ -106,7 +106,3 @@ it("should configure data model settings", () => {
   cy.visit("/admin/datamodel/metrics");
   cy.findByText(metric.name);
 });
-
-function popover() {
-  return cy.get(".Popover-Container--open");
-}
