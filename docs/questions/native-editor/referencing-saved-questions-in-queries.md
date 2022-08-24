@@ -1,5 +1,7 @@
 ---
 title: Referencing models and saved questions in SQL queries
+redirect_from:
+  - /docs/latest/users-guide/referencing-saved-questions-in-queries
 ---
 
 ## Referencing models and saved questions in SQL queries
