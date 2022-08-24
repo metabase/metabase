@@ -1,9 +1,15 @@
 import React from "react";
+
+import { isDataAppCollection } from "metabase/entities/data-apps";
+
 import { Collection } from "metabase-types/api";
+
 import CollectionCaption from "./CollectionCaption";
 import CollectionBookmark from "./CollectionBookmark";
 import CollectionMenu from "./CollectionMenu";
 import CollectionTimeline from "./CollectionTimeline";
+import LaunchDataAppButton from "./LaunchDataAppButton";
+
 import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 
 export interface CollectionHeaderProps {
@@ -32,6 +38,9 @@ const CollectionHeader = ({
         onUpdateCollection={onUpdateCollection}
       />
       <HeaderActions data-testid="collection-menu">
+        {isDataAppCollection(collection) && (
+          <LaunchDataAppButton collection={collection} />
+        )}
         <CollectionTimeline collection={collection} />
         <CollectionBookmark
           collection={collection}
