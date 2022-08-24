@@ -180,6 +180,12 @@ export const CollectionsApi = {
   updateGraph: PUT("/api/collection/graph"),
 };
 
+export const DataAppsApi = {
+  list: GET("/api/app"),
+  create: POST("/api/app"),
+  update: PUT("/api/app"),
+};
+
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
 
 export const PublicApi = {

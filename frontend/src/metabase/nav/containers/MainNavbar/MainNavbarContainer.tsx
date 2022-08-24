@@ -10,9 +10,16 @@ import Modal from "metabase/components/Modal";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import Question from "metabase-lib/lib/Question";
-import { Bookmark, Collection, Dashboard, User } from "metabase-types/api";
+import {
+  Bookmark,
+  Collection,
+  Dashboard,
+  DataApp,
+  User,
+} from "metabase-types/api";
 import { State } from "metabase-types/store";
 
+import DataApps from "metabase/entities/data-apps";
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import Collections, {
   buildCollectionTree,
@@ -81,6 +88,7 @@ type Props = {
   bookmarks: Bookmark[];
   collections: Collection[];
   rootCollection: Collection;
+  dataApps: DataApp[];
   question?: Question;
   dashboard?: Dashboard;
   hasDataAccess: boolean;
@@ -107,6 +115,7 @@ function MainNavbarContainer({
   hasOwnDatabase,
   collections = [],
   rootCollection,
+  dataApps = [],
   question,
   dashboard,
   hasDataAccess,
@@ -146,6 +155,7 @@ function MainNavbarContainer({
     const isUsersCollectionPath = pathname.startsWith("/collection/users");
     const isQuestionPath = pathname.startsWith("/question");
     const isModelPath = pathname.startsWith("/model");
+    const isDataAppPath = pathname.startsWith("/a/");
     const isDashboardPath = pathname.startsWith("/dashboard");
 
     if (isCollectionPath) {
@@ -153,6 +163,14 @@ function MainNavbarContainer({
         {
           id: isUsersCollectionPath ? "users" : Urls.extractCollectionId(slug),
           type: "collection",
+        },
+      ];
+    }
+    if (isDataAppPath) {
+      return [
+        {
+          id: Urls.extractEntityId(slug),
+          type: "data-app",
         },
       ];
     }
@@ -184,6 +202,8 @@ function MainNavbarContainer({
   }, [location, params, question, dashboard]);
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
+    const dataAppCollectionIDs = dataApps.map(dataApp => dataApp.collection_id);
+
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
       collections,
@@ -192,9 +212,14 @@ function MainNavbarContainer({
     const nonPersonalOrArchivedCollections = collections.filter(
       nonPersonalOrArchivedCollection,
     );
+    const nonAppsCollections = nonPersonalOrArchivedCollections.filter(
+      collection =>
+        typeof collection.id === "number" &&
+        !dataAppCollectionIDs.includes(collection.id),
+    );
 
     preparedCollections.push(...userPersonalCollections);
-    preparedCollections.push(...nonPersonalOrArchivedCollections);
+    preparedCollections.push(...nonAppsCollections);
 
     const tree = buildCollectionTree(preparedCollections);
 
@@ -208,7 +233,7 @@ function MainNavbarContainer({
     } else {
       return tree;
     }
-  }, [rootCollection, collections, currentUser]);
+  }, [rootCollection, collections, currentUser, dataApps]);
 
   const reorderBookmarks = useCallback(
     ({ newIndex, oldIndex }) => {
@@ -256,6 +281,7 @@ function MainNavbarContainer({
               isOpen={isOpen}
               currentUser={currentUser}
               collections={collectionTree}
+              dataApps={dataApps}
               hasOwnDatabase={hasOwnDatabase}
               selectedItems={selectedItems}
               hasDataAccess={hasDataAccess}
@@ -288,6 +314,9 @@ export default _.compose(
   }),
   Collections.loadList({
     query: () => ({ tree: true, "exclude-archived": true }),
+    loadingAndErrorWrapper: false,
+  }),
+  DataApps.loadList({
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),

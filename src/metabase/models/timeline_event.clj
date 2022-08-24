@@ -14,6 +14,10 @@
 
 (models/defmodel TimelineEvent :timeline_event)
 
+(doto TimelineEvent
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
 ;;;; schemas
 
 (def Sources
@@ -23,7 +27,7 @@
 
 ;;;; permissions
 
-(defn- perms-objects-set
+(defmethod mi/perms-objects-set TimelineEvent
   [event read-or-write]
   (let [timeline (or (:timeline event)
                      (db/select-one 'Timeline :id (:timeline_id event)))]
@@ -81,19 +85,12 @@
 
 ;;;; model
 
-(u/strict-extend (class TimelineEvent)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class TimelineEvent)
   models/IModel
   (merge
    models/IModelDefaults
    ;; todo: add hydration keys??
    {:properties (constantly {:timestamped? true})})
-
-  mi/IObjectPermissions
-  (merge
-   mi/IObjectPermissionsDefaults
-   {:perms-objects-set perms-objects-set
-    :can-read?         (partial mi/current-user-has-full-permissions? :read)
-    :can-write?        (partial mi/current-user-has-full-permissions? :write)})
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name :timestamp (serdes.hash/hydrated-hash :timeline)])})

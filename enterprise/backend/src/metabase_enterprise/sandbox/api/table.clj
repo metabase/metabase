@@ -16,7 +16,7 @@
             [toucan.db :as db]
             [toucan.models :as models]))
 
-(s/defn ^:private find-gtap-question :- (s/maybe (type Card))
+(s/defn ^:private find-gtap-question :- (s/maybe (mi/InstanceOf Card))
   "Find the associated GTAP question (if there is one) for the given `table-or-table-id` and
   `user-or-user-id`. Returns nil if no question was found."
   [table-or-table-id user-or-user-id]
@@ -33,7 +33,7 @@
 (s/defn only-segmented-perms? :- s/Bool
   "Returns true if the user has only segemented and not full table permissions. If the user has full table permissions
   we wouldn't want to apply this segment filtering."
-  [table :- (type Table)]
+  [table :- (mi/InstanceOf Table)]
   (and
    (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
           (perms/table-query-path table)))
@@ -62,7 +62,7 @@
   {include_sensitive_fields    (s/maybe su/BooleanString)
    include_hidden_fields       (s/maybe su/BooleanString)
    include_editable_data_model (s/maybe su/BooleanString)}
-  (let [table            (api/check-404 (Table id))
+  (let [table            (api/check-404 (db/select-one Table :id id))
         segmented-perms? (only-segmented-perms? table)
         thunk            (fn []
                            (maybe-filter-fields

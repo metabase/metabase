@@ -38,14 +38,14 @@
         (hydrate :creator))))
 
 (s/defn ^:private hydrated-segment [id :- su/IntGreaterThanZero]
-  (-> (api/read-check (Segment id))
+  (-> (api/read-check (db/select-one Segment :id id))
       (hydrate :creator)))
 
 (defn- add-query-descriptions
   [segments] {:pre [(coll? segments)]}
   (when (some? segments)
     (for [segment segments]
-      (let [table (Table (:table_id segment))]
+      (let [table (db/select-one Table :id (:table_id segment))]
         (assoc segment
                :query_description
                (api.qd/generate-query-description table (:definition segment)))))))
@@ -130,6 +130,6 @@
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (-> id Segment api/read-check related/related))
+  (-> (db/select-one Segment :id id) api/read-check related/related))
 
 (api/define-routes)

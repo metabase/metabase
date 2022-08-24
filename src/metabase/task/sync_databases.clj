@@ -10,6 +10,7 @@
             [clojurewerkz.quartzite.triggers :as triggers]
             [java-time :as t]
             [metabase.models.database :as database :refer [Database]]
+            [metabase.models.interface :as mi]
             [metabase.sync.analyze :as analyze]
             [metabase.sync.field-values :as field-values]
             [metabase.sync.schedules :as sync.schedules]
@@ -64,9 +65,9 @@
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
     (log/info (trs "Starting sync task for Database {0}." database-id))
-    (when-let [database (or (Database database-id)
+    (when-let [database (or (db/select-one Database :id database-id)
                             (do
-                              (unschedule-tasks-for-db! (database/map->DatabaseInstance {:id database-id}))
+                              (unschedule-tasks-for-db! (mi/instance Database {:id database-id}))
                               (log/warn (trs "Cannot sync Database {0}: Database does not exist." database-id))))]
       (sync-metadata/sync-db-metadata! database)
       ;; only run analysis if this is a "full sync" database
@@ -85,9 +86,9 @@
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
     (log/info (trs "Update Field values task triggered for Database {0}." database-id))
-    (when-let [database (or (Database database-id)
+    (when-let [database (or (db/select-one Database :id database-id)
                             (do
-                              (unschedule-tasks-for-db! (database/map->DatabaseInstance {:id database-id}))
+                              (unschedule-tasks-for-db! (mi/instance Database {:id database-id}))
                               (log/warn "Cannot update Field values for Database {0}: Database does not exist." database-id)))]
       (if (:is_full_sync database)
         (field-values/update-field-values! database)

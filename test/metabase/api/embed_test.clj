@@ -14,6 +14,7 @@
             [metabase.api.public-test :as public-test]
             [metabase.http-client :as client]
             [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+            [metabase.models.interface :as mi]
             [metabase.models.params.chain-filter-test :as chain-filer-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -62,8 +63,8 @@
     (fn [~binding]
       ~@body)))
 
-(defn do-with-temp-dashcard [{:keys [dash card dashcard]} f]
-  (with-temp-card [card card]
+(defn do-with-temp-dashcard [{:keys [dash card dashcard card-fn]} f]
+  (with-temp-card [card (if (ifn? card-fn) (card-fn card) card)]
     (mt/with-temp* [Dashboard     [dashboard (merge
                                               (when-not (:parameters dash)
                                                 {:parameters [{:id      "_VENUE_ID_"
@@ -577,9 +578,9 @@
 (defn- field-values-url [card-or-dashboard field-or-id]
   (str
    "embed/"
-   (condp instance? card-or-dashboard
-     (class Card)      (str "card/"      (card-token card-or-dashboard))
-     (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
+   (condp mi/instance-of? card-or-dashboard
+     Card      (str "card/"      (card-token card-or-dashboard))
+     Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
    "/field/"
    (u/the-id field-or-id)
    "/values"))
@@ -690,9 +691,9 @@
 
 (defn- field-search-url [card-or-dashboard field-or-id search-field-or-id]
   (str "embed/"
-       (condp instance? card-or-dashboard
-         (class Card)      (str "card/"      (card-token card-or-dashboard))
-         (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
+       (condp mi/instance-of? card-or-dashboard
+         Card      (str "card/"      (card-token card-or-dashboard))
+         Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
        "/field/" (u/the-id field-or-id)
        "/search/" (u/the-id search-field-or-id)))
 
@@ -733,9 +734,9 @@
 
 (defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
   (str "embed/"
-       (condp instance? card-or-dashboard
-         (class Card)      (str "card/"      (card-token card-or-dashboard))
-         (class Dashboard) (str "dashboard/" (dash-token card-or-dashboard)))
+       (condp mi/instance-of? card-or-dashboard
+         Card      (str "card/"      (card-token card-or-dashboard))
+         Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
        "/field/" (u/the-id field-or-id)
        "/remapping/" (u/the-id remapped-field-or-id)))
 

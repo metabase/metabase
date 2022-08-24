@@ -207,7 +207,7 @@
 (s/defn ^:private resolve-dashboard-parameters :- [api.dashboard/ParameterWithID]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
   that can be passed to various functions in the `metabase.api.dashboard` namespace such as
-  `metabase.api.dashboard/run-query-for-dashcard-async`."
+  [[metabase.api.dashboard/run-query-for-dashcard-async]]."
   [dashboard-id :- su/IntGreaterThanZero
    slug->value  :- {s/Any s/Any}]
   (let [parameters (db/select-one-field :parameters Dashboard :id dashboard-id)
@@ -563,7 +563,7 @@
       (let [merged-id-params (chain-filter-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
           (binding [api/*current-user-permissions-set* (atom #{"/"})]
-            (api.dashboard/chain-filter (Dashboard dashboard-id) searched-param-id merged-id-params prefix))
+            (api.dashboard/chain-filter (db/select-one Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
           (catch Throwable e
             (throw (ex-info (.getMessage e)
                             {:merged-id-params merged-id-params}

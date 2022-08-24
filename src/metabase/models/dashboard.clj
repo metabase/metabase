@@ -10,7 +10,6 @@
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.field-values :as field-values]
-            [metabase.models.interface :as mi]
             [metabase.models.params :as params]
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :as pulse :refer [Pulse]]
@@ -65,6 +64,9 @@
 (comment moderation/keep-me)
 
 (models/defmodel Dashboard :report_dashboard)
+
+(derive Dashboard ::perms/use-parent-collection-perms)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (defn- pre-delete [dashboard]
@@ -129,7 +131,7 @@
   [dashboard]
   (update-dashboard-subscription-pulses! dashboard))
 
-(u/strict-extend (class Dashboard)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Dashboard)
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true
@@ -140,10 +142,6 @@
           :pre-update  pre-update
           :post-update post-update
           :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
-
-  ;; You can read/write a Dashboard if you can read/write its parent Collection
-  mi/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection
 
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
@@ -233,7 +231,7 @@
         (->> (filter identity)
              build-sentence))))
 
-(u/strict-extend (class Dashboard)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Dashboard)
   revision/IRevisioned
   (merge revision/IRevisionedDefaults
          {:serialize-instance  (fn [_ _ dashboard] (serialize-dashboard dashboard))
@@ -248,7 +246,7 @@
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
-  (let [dash (Dashboard (u/the-id dashboard-or-id))]
+  (let [dash (db/select-one Dashboard :id (u/the-id dashboard-or-id))]
     (params/dashboard->param-field-ids (hydrate dash [:ordered_cards :card]))))
 
 
@@ -312,7 +310,7 @@
   [card]
   (cond
     ;; If this is a pre-existing card, just return it
-    (and (integer? (:id card)) (Card (:id card)))
+    (and (integer? (:id card)) (db/select-one Card :id (:id card)))
     card
 
     ;; Don't save text cards
@@ -388,7 +386,7 @@
                                                                      {param-id ParamWithMapping})
   "Return map of Dashboard parameter key -> param with resolved `:mappings`.
 
-    (dashboard->resolved-params (Dashboard 62))
+    (dashboard->resolved-params (db/select-one Dashboard :id 62))
     ;; ->
     {\"ee876336\" {:name     \"Category Name\"
                    :slug     \"category_name\"

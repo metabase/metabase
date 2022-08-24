@@ -1,14 +1,18 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import Icon from "metabase/components/Icon";
-
-import cx from "classnames";
+import {
+  ColumnItemIcon,
+  ColumnItemSpan,
+  ColumnItemContent,
+  ColumnItemContainer,
+  ColumnItemRoot,
+  ColumnItemDragHandle,
+} from "./ColumnItem.styled";
 
 const ActionIcon = ({ icon, onClick }) => (
-  <Icon
+  <ColumnItemIcon
     name={icon}
-    className="cursor-pointer text-light text-medium-hover ml1"
     onClick={e => {
       e.stopPropagation();
       onClick();
@@ -17,22 +21,17 @@ const ActionIcon = ({ icon, onClick }) => (
 );
 
 const ColumnItem = ({ title, onAdd, onRemove, onClick, onEdit, draggable }) => (
-  <div
-    className={cx("my1 bordered rounded overflow-hidden bg-white", {
-      "cursor-grab shadowed": draggable,
-      "cursor-pointer": onClick,
-    })}
-    onClick={onClick}
-  >
-    <div className="p1 border-bottom relative">
-      <div className="px1 flex align-center relative">
-        <span className="h4 flex-auto text-dark text-wrap">{title}</span>
-        {onEdit && <ActionIcon icon="gear" onClick={onEdit} />}
+  <ColumnItemRoot draggable={draggable} onClick={onClick}>
+    <ColumnItemContainer>
+      {draggable && <ColumnItemDragHandle name="grabber2" />}
+      <ColumnItemContent>
+        <ColumnItemSpan>{title}</ColumnItemSpan>
+        {onEdit && <ActionIcon icon="ellipsis" onClick={onEdit} />}
         {onAdd && <ActionIcon icon="add" onClick={onAdd} />}
-        {onRemove && <ActionIcon icon="close" onClick={onRemove} />}
-      </div>
-    </div>
-  </div>
+        {onRemove && <ActionIcon icon="eye_filled" onClick={onRemove} />}
+      </ColumnItemContent>
+    </ColumnItemContainer>
+  </ColumnItemRoot>
 );
 
 export default ColumnItem;

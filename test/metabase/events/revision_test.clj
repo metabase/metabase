@@ -274,7 +274,7 @@
                                             :definition {:a "b"}}]]
       (revision/process-revision-event! {:topic :segment-create
                                          :item  segment})
-      (let [revision (-> (Revision :model "Segment", :model_id (:id segment))
+      (let [revision (-> (db/select-one Revision :model "Segment", :model_id (:id segment))
                          (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
         (is (= {:model        "Segment"
                 :user_id      (mt/user->id :rasta)

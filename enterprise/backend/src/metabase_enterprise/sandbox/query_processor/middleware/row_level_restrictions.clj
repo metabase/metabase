@@ -262,7 +262,7 @@
   (if card-id
     (qp.store/cached card-id
       (query-perms/perms-set (db/select-one-field :dataset_query Card :id card-id), :throw-exceptions? true))
-    #{(perms/table-query-path (Table table-id))}))
+    #{(perms/table-query-path (db/select-one Table :id table-id))}))
 
 (defn- gtaps->perms-set [gtaps]
   (set (mapcat gtap->perms-set gtaps)))

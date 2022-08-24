@@ -72,7 +72,7 @@
   (let [typ (first filt)]
     (condp = typ
       :field   {:field (field-clause->display-name filt)}
-      :segment {:segment (let [segment (Segment (second filt))]
+      :segment {:segment (let [segment (db/select-one Segment :id (second filt))]
                            (if segment
                              (:name segment)
                              (deferred-tru "[Unknown Segment]")))}
