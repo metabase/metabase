@@ -4,10 +4,10 @@ import { DataApp } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
 
-function dataAppInternal(app: DataApp) {
+function dataAppInternalPath(app: DataApp) {
   return appendSlug(`/a/${app.id}`, slugg(app.collection.name));
 }
 
 export function dataApp(app: DataApp) {
-  return dataAppInternal(app);
+  return dataAppInternalPath(app);
 }
