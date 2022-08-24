@@ -1,29 +1,21 @@
 ---
-title: Dashboards overview
+title: Embedding overview
 ---
 
 # Embedding overview
 
-## [Introduction to embedding](./introduction.md)
+## [Introduction](./introduction)
 
-How to embed charts and dashboards in applications and websites.
+What is embedding, and how does it work?
 
-## [Public links](./public-links.md)
+## [Signed embedding](./signed-embedding)
 
-Sharing questions using public links.
+Display interactive charts and dashboards in your website while securing the underlying data.
 
-## [Full-app embedding](./full-app-embedding.md)
+## [Full-app embedding](./full-app-embedding)
 
-How to embed the graphical query builder and more in your application.
+Put all of Metabase (including the [query builder](/glossary/query_builder)) in your app to give people secure self-serve access to data.
 
-## [Customize embeds](./customize-embeds.md)
+## [Appearance](../configuring-metabase/appearance)
 
-Introduction to customizing embedded charts and dashboards.
-
-## [Whitelabeling](./whitelabeling.md)
-
-How to customize the look and feel of embedded charts and dashboards to match your application's branding.
-
-## [Fonts](./fonts.md)
-
-How to customize the fonts in your charts and dashboards.
+White label Metabase to match your company logo, colors, and other branding.
