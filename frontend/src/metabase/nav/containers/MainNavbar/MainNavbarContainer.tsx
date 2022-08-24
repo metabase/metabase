@@ -1,11 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { IconProps } from "metabase/components/Icon";
-import Modal from "metabase/components/Modal";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import Question from "metabase-lib/lib/Question";
@@ -25,7 +23,6 @@ import Collections, {
   getCollectionIcon,
   ROOT_COLLECTION,
 } from "metabase/entities/collections";
-import { closeNavbar, openNavbar } from "metabase/redux/app";
 import { logout } from "metabase/auth/actions";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import {
@@ -42,18 +39,9 @@ import {
 } from "metabase/collections/utils";
 import * as Urls from "metabase/lib/urls";
 
-import CollectionCreate from "metabase/collections/containers/CollectionCreate";
-
 import { MainNavbarProps, SelectedItem } from "./types";
 import MainNavbarView from "./MainNavbarView";
-import {
-  LoadingContainer,
-  LoadingTitle,
-  NavRoot,
-  Sidebar,
-} from "./MainNavbar.styled";
-
-type NavbarModal = "MODAL_NEW_COLLECTION" | null;
+import { LoadingContainer, LoadingTitle } from "./MainNavbar.styled";
 
 function mapStateToProps(state: State) {
   return {
@@ -68,10 +56,7 @@ function mapStateToProps(state: State) {
 }
 
 const mapDispatchToProps = {
-  openNavbar,
-  closeNavbar,
   logout,
-  onChangeLocation: push,
   onReorderBookmarks: Bookmarks.actions.reorder,
 };
 
@@ -94,6 +79,7 @@ interface Props extends MainNavbarProps {
   allFetched: boolean;
   logout: () => void;
   onReorderBookmarks: (bookmarks: Bookmark[]) => void;
+  onCreateNewCollection: () => void;
 }
 
 function MainNavbarContainer({
@@ -116,10 +102,9 @@ function MainNavbarContainer({
   logout,
   onChangeLocation,
   onReorderBookmarks,
+  onCreateNewCollection,
   ...props
 }: Props) {
-  const [modal, setModal] = useState<NavbarModal>(null);
-
   useEffect(() => {
     function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
       if (e.key === "." && (e.ctrlKey || e.metaKey)) {
@@ -232,58 +217,32 @@ function MainNavbarContainer({
     [bookmarks, onReorderBookmarks],
   );
 
-  const onCreateNewCollection = useCallback(() => {
-    setModal("MODAL_NEW_COLLECTION");
-  }, []);
-
-  const closeModal = useCallback(() => setModal(null), []);
-
-  const renderModalContent = useCallback(() => {
-    if (modal === "MODAL_NEW_COLLECTION") {
-      return (
-        <CollectionCreate
-          onClose={closeModal}
-          onSaved={(collection: Collection) => {
-            closeModal();
-            onChangeLocation(Urls.collection(collection));
-          }}
-        />
-      );
-    }
-    return null;
-  }, [modal, closeModal, onChangeLocation]);
+  if (!allFetched) {
+    return (
+      <LoadingContainer>
+        <LoadingSpinner />
+        <LoadingTitle>{t`Loading…`}</LoadingTitle>
+      </LoadingContainer>
+    );
+  }
 
   return (
-    <>
-      <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
-        <NavRoot isOpen={isOpen}>
-          {allFetched ? (
-            <MainNavbarView
-              {...props}
-              bookmarks={bookmarks}
-              isAdmin={isAdmin}
-              isOpen={isOpen}
-              currentUser={currentUser}
-              collections={collectionTree}
-              dataApps={dataApps}
-              hasOwnDatabase={hasOwnDatabase}
-              selectedItems={selectedItems}
-              hasDataAccess={hasDataAccess}
-              reorderBookmarks={reorderBookmarks}
-              handleCreateNewCollection={onCreateNewCollection}
-              handleCloseNavbar={closeNavbar}
-              handleLogout={logout}
-            />
-          ) : (
-            <LoadingContainer>
-              <LoadingSpinner />
-              <LoadingTitle>{t`Loading…`}</LoadingTitle>
-            </LoadingContainer>
-          )}
-        </NavRoot>
-      </Sidebar>
-      {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
-    </>
+    <MainNavbarView
+      {...props}
+      bookmarks={bookmarks}
+      isAdmin={isAdmin}
+      isOpen={isOpen}
+      currentUser={currentUser}
+      collections={collectionTree}
+      dataApps={dataApps}
+      hasOwnDatabase={hasOwnDatabase}
+      selectedItems={selectedItems}
+      hasDataAccess={hasDataAccess}
+      reorderBookmarks={reorderBookmarks}
+      handleCreateNewCollection={onCreateNewCollection}
+      handleCloseNavbar={closeNavbar}
+      handleLogout={logout}
+    />
   );
 }
 
