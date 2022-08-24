@@ -17,7 +17,7 @@ describe("Bookmarks in a collection page", () => {
       getSectionTitle(/Bookmarks/);
     });
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });
 

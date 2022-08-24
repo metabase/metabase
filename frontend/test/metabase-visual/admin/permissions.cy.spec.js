@@ -15,7 +15,7 @@ describe("visual tests > admin > permissions", () => {
     it("database focused view", () => {
       cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
       cy.findByPlaceholderText("Search for a group");
-      cy.percySnapshot();
+      cy.createPercySnapshot();
     });
 
     it("database focused view > table", () => {
@@ -24,13 +24,13 @@ describe("visual tests > admin > permissions", () => {
       );
       cy.findByPlaceholderText("Search for a group");
       cy.findByPlaceholderText("Search for a table");
-      cy.percySnapshot();
+      cy.createPercySnapshot();
     });
 
     it("group focused view", () => {
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
       cy.findByPlaceholderText("Search for a database");
-      cy.percySnapshot();
+      cy.createPercySnapshot();
     });
 
     it("group focused view > database", () => {
@@ -38,7 +38,7 @@ describe("visual tests > admin > permissions", () => {
         `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
       );
       cy.findByPlaceholderText("Search for a table");
-      cy.percySnapshot();
+      cy.createPercySnapshot();
     });
   });
 
@@ -46,14 +46,14 @@ describe("visual tests > admin > permissions", () => {
     it("editor", () => {
       cy.visit("/admin/permissions/collections/11");
       cy.findByPlaceholderText("Search for a group");
-      cy.percySnapshot();
+      cy.createPercySnapshot();
     });
 
     // This revealed the infinite loop which resulted in metabase#21026
     it.skip("modal", () => {
       cy.visit("/collection/root/permissions");
       cy.findByText("Group name");
-      cy.percySnapshot();
+      cy.createPercySnapshot();
     });
   });
 });

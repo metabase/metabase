@@ -45,6 +45,6 @@ describe("visual tests > visualizations > waterfall", () => {
     });
 
     ensureDcChartVisibility();
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });
