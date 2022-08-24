@@ -16,7 +16,6 @@
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.types :as types]
             [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.ui-logic :as ui-logic]
             [schema.core :as s])

@@ -17,7 +17,7 @@
            (format-temporal-string-pair :day "2020-07-15T18:04:00Z" nil)))
     (is (= ["Today" "Previous day"]
            (format-temporal-string-pair :day now nil)))
-    (is (= ["Jul 18, 2020" "Jul 20, 2020"]
+    (is (= ["Saturday, July 18, 2020" "Monday, July 20, 2020"]
            (format-temporal-string-pair :day "2020-07-18T18:04:00Z" "2020-07-20T18:04:00Z")))
     (is (= ["Last week" "Previous week"]
            (format-temporal-string-pair :week "2020-07-09T18:04:00Z" nil)))
@@ -29,7 +29,7 @@
            (format-temporal-string-pair :month "2020-07-16T18:04:00Z" nil)))
     (is (= ["This month" "Previous month"]
            (format-temporal-string-pair :month now nil)))
-    (is (= ["July 2021" "July 2022"]
+    (is (= ["July, 2021" "July, 2022"]
            (format-temporal-string-pair :month "2021-07-16T18:04:00Z" "2022-07-16T18:04:00Z")))
     (is (= ["Last quarter" "Previous quarter"]
            (format-temporal-string-pair :quarter "2020-05-16T18:04:00Z" nil)))
@@ -41,9 +41,8 @@
            (format-temporal-string-pair :year "2019-07-16T18:04:00Z" nil)))
     (is (= ["This year" "Previous year"]
            (format-temporal-string-pair :year now nil)))
-    (testing "No special formatting for year? :shrug:"
-      (is (= ["2018-07-16T18:04:00Z" "2021-07-16T18:04:00Z"]
-             (format-temporal-string-pair :year "2018-07-16T18:04:00Z" "2021-07-16T18:04:00Z"))))))
+    (is (= ["2018" "2021"]
+           (format-temporal-string-pair :year "2018-07-16T18:04:00Z" "2021-07-16T18:04:00Z")))))
 
 (deftest format-temporal-str-test
   (testing "Null values do not blow up"

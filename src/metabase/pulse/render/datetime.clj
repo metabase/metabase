@@ -80,9 +80,9 @@
            (case (:unit col)
              ;; these types have special formatting
              (:minute :hour)  (reformat-temporal-str timezone-id s (str date-style ", " (str/replace time-style #"A" "a")))
-             :day             (reformat-temporal-str timezone-id s date-style)
+             :day             (reformat-temporal-str timezone-id s (or date-style "EEEE, MMMM d, YYYY"))
              :week            (str (tru "Week ") (reformat-temporal-str timezone-id s "w - YYYY"))
-             :month           (reformat-temporal-str timezone-id s date-style)
+             :month           (reformat-temporal-str timezone-id s (or date-style "MMMM, yyyy"))
              :quarter         (reformat-temporal-str timezone-id s "QQQ - yyyy")
 
              :year            (reformat-temporal-str timezone-id s "YYYY")
