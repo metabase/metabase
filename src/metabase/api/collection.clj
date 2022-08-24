@@ -723,7 +723,7 @@
                      (db/select-one Collection :id collection-id)
                      collection/root-collection)))
 
-(defn create-collection
+(defn create-collection!
   "Create a new collection."
   [{:keys [name color description parent_id namespace authority_level]}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
@@ -750,7 +750,7 @@
    parent_id       (s/maybe su/IntGreaterThanZero)
    namespace       (s/maybe su/NonBlankString)
    authority_level collection/AuthorityLevel}
-  (create-collection body))
+  (create-collection! body))
 
 ;; TODO - I'm not 100% sure it makes sense that moving a Collection requires a special call to `move-collection!`,
 ;; while archiving is handled automatically as part of the `pre-update` logic when you change a Collection's

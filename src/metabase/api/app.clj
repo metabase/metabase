@@ -27,13 +27,14 @@
    parent_id       (s/maybe su/IntGreaterThanZero)
    namespace       (s/maybe su/NonBlankString)
    authority_level collection/AuthorityLevel}
-  (let [coll-params (select-keys collection [:name :color :description :parent_id :namespace :authority_level])
-        collection-instance (api.collection/create-collection coll-params)
-        app-params (-> body
-                       (select-keys [:dashboard_id :options :nav_items])
-                       (assoc :collection_id (:id collection-instance)))
-        app (db/insert! App app-params)]
-    (hydrate-details app)))
+  (db/transaction
+   (let [coll-params (select-keys collection [:name :color :description :parent_id :namespace :authority_level])
+         collection-instance (api.collection/create-collection! coll-params)
+         app-params (-> body
+                        (select-keys [:dashboard_id :options :nav_items])
+                        (assoc :collection_id (:id collection-instance)))
+         app (db/insert! App app-params)]
+     (hydrate-details app))))
 
 (api/defendpoint PUT "/:app-id"
   "Endpoint to change an app"
