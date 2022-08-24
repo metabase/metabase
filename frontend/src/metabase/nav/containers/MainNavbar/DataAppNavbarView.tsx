@@ -1,10 +1,11 @@
 import React, { useMemo } from "react";
+import _ from "underscore";
 
 import * as Urls from "metabase/lib/urls";
 
 import { DataApp } from "metabase-types/api";
 
-import { MainNavbarProps } from "./types";
+import { MainNavbarProps, SelectedItem } from "./types";
 import {
   SidebarContentRoot,
   SidebarHeading,
@@ -16,12 +17,18 @@ import {
 interface Props extends MainNavbarProps {
   dataApp: DataApp;
   items: any[];
+  selectedItems: SelectedItem[];
 }
 
-function DataAppNavbarView({ dataApp, items }: Props) {
+function DataAppNavbarView({ dataApp, items, selectedItems }: Props) {
   const appPages = useMemo(
     () => items.filter(item => item.model === "dashboard"),
     [items],
+  );
+
+  const { "data-app-page": dataAppPage } = _.indexBy(
+    selectedItems,
+    item => item.type,
   );
 
   return (
@@ -34,7 +41,7 @@ function DataAppNavbarView({ dataApp, items }: Props) {
           <DataAppLink
             key={page.id}
             url={Urls.dataAppPage(dataApp, page)}
-            isSelected={false}
+            isSelected={dataAppPage?.id === page.id}
           >
             {page.name}
           </DataAppLink>

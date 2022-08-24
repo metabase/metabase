@@ -50,6 +50,8 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
+const DATA_APP_PAGE_URL_PATTERN = /\/a\/(\d+)\/page\/(\d+)/;
+
 function MainNavbar({
   isOpen,
   location,
@@ -72,6 +74,8 @@ function MainNavbar({
     const isQuestionPath = pathname.startsWith("/question");
     const isModelPath = pathname.startsWith("/model");
     const isDataAppPath = pathname.startsWith("/a/");
+    const isDataAppPagePath =
+      DATA_APP_PAGE_URL_PATTERN.test(pathname) && typeof params.pageId;
     const isDashboardPath = pathname.startsWith("/dashboard");
 
     if (isCollectionPath) {
@@ -79,6 +83,14 @@ function MainNavbar({
         {
           id: isUsersCollectionPath ? "users" : Urls.extractCollectionId(slug),
           type: "collection",
+        },
+      ];
+    }
+    if (isDataAppPagePath) {
+      return [
+        {
+          id: parseInt(params.pageId as string),
+          type: "data-app-page",
         },
       ];
     }
