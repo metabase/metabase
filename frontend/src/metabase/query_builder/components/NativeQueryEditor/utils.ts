@@ -12,6 +12,7 @@ function getLinesForHeight(height: number) {
 }
 
 const FRACTION_OF_TOTAL_VIEW_HEIGHT = 0.4;
+const FULL_HEIGHT = 500;
 
 // This determines the max height that the editor *automatically* takes.
 // - On load, long queries will be capped at this length
@@ -33,7 +34,14 @@ function getVisibleLinesCount({
   return Math.max(Math.min(queryLineCount, maxAutoSizeLines), MIN_HEIGHT_LINES);
 }
 
-export function calcInitialEditorHeight(params: GetVisibleLinesCountParams) {
-  const lines = getVisibleLinesCount(params);
+export function calcInitialEditorHeight({
+  query,
+  viewHeight,
+}: GetVisibleLinesCountParams) {
+  if (viewHeight === "full") {
+    // override for action editor
+    return FULL_HEIGHT;
+  }
+  const lines = getVisibleLinesCount({ query, viewHeight });
   return getEditorLineHeight(lines);
 }
