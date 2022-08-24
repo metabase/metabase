@@ -3,8 +3,11 @@ import {
   popover,
   visitQuestion,
   openQuestionActions,
+  getFullName,
 } from "__support__/e2e/helpers";
-import { USER_GROUPS } from "__support__/e2e/cypress_data";
+import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
+
+const { nocollection } = USERS;
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
@@ -29,7 +32,9 @@ describe("issue 22726", () => {
 
     openQuestionActions();
     popover().findByText("Duplicate").click();
-    cy.findByTextEnsureVisible("No Collection Tableton's Personal Collection");
+    cy.findByTextEnsureVisible(
+      `${getFullName(nocollection)}'s Personal Collection`,
+    );
 
     cy.button("Duplicate").click();
     cy.wait("@createCard");

@@ -4,12 +4,13 @@ import {
   visitQuestion,
   openQuestionActions,
   questionInfoButton,
+  getFullName,
 } from "__support__/e2e/helpers";
 
 import { USERS } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
-const adminFullName = `${admin.first_name} ${admin.last_name}`;
+const adminFullName = getFullName(admin);
 
 describeEE("scenarios > saved question moderation", () => {
   describe("as an admin", () => {
@@ -128,7 +129,7 @@ describeEE("scenarios > saved question moderation", () => {
       cy.icon("verified");
 
       questionInfoButton().click();
-      cy.findAllByText("Bobby Tables verified this");
+      cy.findAllByText(`${adminFullName} verified this`);
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
       cy.findByText("Orders, Count").icon("verified");
