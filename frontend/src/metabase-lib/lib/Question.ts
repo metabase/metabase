@@ -1126,6 +1126,7 @@ class QuestionInner {
       const datasetQueries = this.atomicQueries().map(query =>
         query.datasetQuery(),
       );
+
       return Promise.all(datasetQueries.map(getDatasetQueryResult));
     }
   }
@@ -1283,25 +1284,26 @@ class QuestionInner {
   }
 
   buildDatasetRequest(parameters, cancelDeferred) {
-    return datasetQuery => {
-      const datasetQueryWithParameters = {
-        ...datasetQuery,
+    return query => {
+      const endpoint = maybeUsePivotEndpoint(
+        MetabaseApi.dataset,
+        this.card(),
+        this.metadata(),
+      );
+
+      const queryWithParameters = {
+        ...query,
         parameters,
         metadata: this._card.result_metadata,
       };
 
-      return maybeUsePivotEndpoint(
-        MetabaseApi.dataset,
-        this.card(),
-        this.metadata(),
-      )(
-        datasetQueryWithParameters,
-        cancelDeferred
-          ? {
-              cancelled: cancelDeferred.promise,
-            }
-          : {},
-      );
+      const ifCancelled = cancelDeferred
+        ? {
+            cancelled: cancelDeferred.promise,
+          }
+        : {};
+
+      return endpoint(queryWithParameters, ifCancelled);
     };
   }
 
