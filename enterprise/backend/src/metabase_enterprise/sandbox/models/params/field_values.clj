@@ -61,8 +61,8 @@
        (if (= :native (get-in gtap [:card :query_type]))
          ;; For sandbox that uses native query, we can't narrow down to the exact attribute
          ;; that affect the current table. So we just hash the whole login-attributes of users.
-         ;; This makes hashing a bit less efficient but it ensures when user get a new hash
-         ;; if they change
+         ;; This makes hashing a bit less efficient but it ensures that user get a new hash
+         ;; if they change login attributes
          login-attributes
          (into {} (for [[k v] attribute_remappings
                         ;; get attribute that map to fields of the same table
