@@ -238,7 +238,7 @@ function CollectionContent({
                   if (isEmpty && !loadingUnpinnedItems) {
                     return (
                       <CollectionEmptyContent>
-                        <CollectionEmptyState collectionId={collectionId} />
+                        <CollectionEmptyState />
                       </CollectionEmptyContent>
                     );
                   }
