@@ -330,7 +330,12 @@
   [query]
   (or (when-let [table-id->gtap (when *current-user-id*
                                   (query->table-id->gtap query))]
-        (gtapped-query query table-id->gtap))
+        (let [gtapped-query (gtapped-query query table-id->gtap)]
+          (if (not= query gtapped-query)
+            ;; Applying GTAPs to the query may have introduced references to tables that are also sandboxed,
+            ;; so we need to recursively appby the middleware until new queries are not returned.
+            (apply-sandboxing gtapped-query)
+            gtapped-query)))
       query))
 
 
