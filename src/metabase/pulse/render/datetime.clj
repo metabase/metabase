@@ -69,7 +69,6 @@
   ([timezone-id s col] (format-temporal-str timezone-id s col {}))
   ([timezone-id s col col-viz-settings]
    (let [{date-style :date_style
-          separator  :date_separator
           abbreviate :date_abbreviate
           time-style :time_style} col-viz-settings]
      (cond (str/blank? s) ""
