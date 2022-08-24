@@ -5,14 +5,31 @@
             [metabase.api.common :as api]
             [metabase.test :as mt]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [clojure.string :as str]))
 
 (deftest ^:parallel generate-api-error-message-test
   (testing "check that the API error message generation is working as intended"
     (is (= (str "value may be nil, or if non-nil, value must satisfy one of the following requirements: "
                 "1) value must be a boolean. "
                 "2) value must be a valid boolean string ('true' or 'false').")
-           (str (su/api-error-message (s/maybe (s/cond-pre s/Bool su/BooleanString))))))))
+           (str (su/api-error-message (s/maybe (s/cond-pre s/Bool su/BooleanString))))))
+    (is (= (str/join "\n"
+                     ["value must be a map with schema: ("
+                      "  a : value must be a map with schema: ("
+                      "    b : value must be a map with schema: ("
+                      "      c : value must be a map with schema: ("
+                      "        d : value must be a map with schema: ("
+                      "          optional-key (optional) : value must be an integer."
+                      "          key : value may be nil, or if non-nil, value must be a boolean."
+                      "        )"
+                      "      )"
+                      "    )"
+                      "  )"
+                      ")"])
+           (str (su/api-error-message
+                 {:a {:b {:c {:d {:key                           (s/maybe s/Bool)
+                                  (s/optional-key :optional-key) s/Int}}}}}))))))
 
 (api/defendpoint POST "/:id/dimension"
   "Sets the dimension for the given object with ID."
