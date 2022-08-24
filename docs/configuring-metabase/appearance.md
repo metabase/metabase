@@ -1,15 +1,17 @@
 ---
-title: White labeling Metabase
+title: Appearance
 redirect_from:
   - /docs/latest/administration-guide/whitelabeling
   - /docs/latest/enterprise-guide/whitelabeling
+  - /docs/latest/enterprise-guide/customize-embeds
+  - /docs/latest/embedding/whitelabeling
+  - /docs/latest/embedding/fonts
+  - /docs/latest/embedding/customize-embeds
 ---
 
-# White labeling Metabase
+# Appearance
 
-{% include plans-blockquote.html feature="White labeling" %}
-
-White labeling lets you customize Metabase's appearance so that it matches your company’s branding.
+{% include plans-blockquote.html feature="Appearance" %}
 
 ## Changing Metabase's appearance
 
@@ -21,7 +23,7 @@ You can change every place in the app that says “Metabase” to something like
 
 ## Font
 
-This is the primary font used in charts and throughout the Metabase application (your "instance font"). See [Fonts](./fonts.md).
+This is the primary font used in charts and throughout the Metabase application (your "instance font"). See [Fonts](./fonts.html).
 
 ## Color palette
 
@@ -75,4 +77,5 @@ Show the Metabase lighthouse image on the home and login pages.
 
 ## Further reading
 
-- [Brand your Metabase](https://www.metabase.com/blog/white-label/index.html).
+- [Customer-facing analytics](/learn/embedding/).
+- [Embedding documentation](../embedding/start).

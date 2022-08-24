@@ -2,6 +2,7 @@
 title: Fonts
 redirect_from:
   - /docs/latest/enterprise-guide/fonts
+  - /docs/latest/embedding/fonts
 ---
 
 # Fonts
@@ -9,11 +10,6 @@ redirect_from:
 {% include plans-blockquote.html feature="Customizable font" %}
 
 On paid plans, you can customize the font Metabase uses (the default is [Lato](https://fonts.google.com/specimen/Lato)). You can choose from a curated set of Google Fonts that accommodate the regular, bold, and heavy font weights that Metabase relies on for its various UI elements.
-
-You can set fonts for:
-
-- [Your entire Metabase](./whitelabeling.md)
-- [Individual embedded charts and dashboards](./customize-embeds.md#setting-fonts-for-embedded-items)
 
 ## Included fonts
 
@@ -126,11 +122,10 @@ To support multiple character sets, for example both Latin and Cyrillic, you'll 
 
 ## Customizing the font for individual embedded items
 
-In addition to the [included fonts](#included-fonts), if you set a custom font for your Metabase, that font will be selectable as the "Use instance font" in menus. See [Customize embeds](./customize-embeds.md).
+In addition to the [included fonts](#included-fonts), if you set a custom font for your Metabase, that font will be selectable from "Use instance font" in [signed embeds](../embedding/signed-embedding).
 
 ## Further reading
 
-- [White labeling Metabase](./whitelabeling.md)
-
-
-
+- [Appearance documentation](./appearance)
+- [Customer-facing analytics](/learn/embedding)
+- [Embedding documentation](../embedding/start)
