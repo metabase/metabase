@@ -4,14 +4,7 @@ import _ from "underscore";
 
 import { IconProps } from "metabase/components/Icon";
 
-import Question from "metabase-lib/lib/Question";
-import {
-  Bookmark,
-  Collection,
-  Dashboard,
-  DataApp,
-  User,
-} from "metabase-types/api";
+import { Bookmark, Collection, DataApp, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import DataApps, { isDataAppCollection } from "metabase/entities/data-apps";
@@ -27,15 +20,11 @@ import {
   getHasDataAccess,
   getHasOwnDatabase,
 } from "metabase/new_query/selectors";
-import { getQuestion } from "metabase/query_builder/selectors";
-import { getDashboard } from "metabase/dashboard/selectors";
 
 import {
-  coerceCollectionId,
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
-import * as Urls from "metabase/lib/urls";
 
 import { MainNavbarProps, SelectedItem } from "./types";
 import MainNavbarView from "./MainNavbarView";
@@ -48,8 +37,6 @@ function mapStateToProps(state: State) {
     hasDataAccess: getHasDataAccess(state),
     hasOwnDatabase: getHasOwnDatabase(state),
     bookmarks: getOrderedBookmarks(state),
-    question: getQuestion(state),
-    dashboard: getDashboard(state),
   };
 }
 
@@ -66,12 +53,11 @@ interface CollectionTreeItem extends Collection {
 interface Props extends MainNavbarProps {
   isAdmin: boolean;
   currentUser: User;
+  selectedItems: SelectedItem[];
   bookmarks: Bookmark[];
   collections: Collection[];
   rootCollection: Collection;
   dataApps: DataApp[];
-  question?: Question;
-  dashboard?: Dashboard;
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   allFetched: boolean;
@@ -83,14 +69,13 @@ interface Props extends MainNavbarProps {
 function MainNavbarContainer({
   bookmarks,
   isAdmin,
+  selectedItems,
   isOpen,
   currentUser,
   hasOwnDatabase,
   collections = [],
   rootCollection,
   dataApps = [],
-  question,
-  dashboard,
   hasDataAccess,
   allFetched,
   location,
@@ -119,59 +104,6 @@ function MainNavbarContainer({
       window.removeEventListener("keydown", handleSidebarKeyboardShortcut);
     };
   }, [isOpen, openNavbar, closeNavbar]);
-
-  const selectedItems = useMemo<SelectedItem[]>(() => {
-    const { pathname } = location;
-    const { slug } = params;
-    const isCollectionPath = pathname.startsWith("/collection");
-    const isUsersCollectionPath = pathname.startsWith("/collection/users");
-    const isQuestionPath = pathname.startsWith("/question");
-    const isModelPath = pathname.startsWith("/model");
-    const isDataAppPath = pathname.startsWith("/a/");
-    const isDashboardPath = pathname.startsWith("/dashboard");
-
-    if (isCollectionPath) {
-      return [
-        {
-          id: isUsersCollectionPath ? "users" : Urls.extractCollectionId(slug),
-          type: "collection",
-        },
-      ];
-    }
-    if (isDataAppPath) {
-      return [
-        {
-          id: Urls.extractEntityId(slug),
-          type: "data-app",
-        },
-      ];
-    }
-    if (isDashboardPath && dashboard) {
-      return [
-        {
-          id: dashboard.id,
-          type: "dashboard",
-        },
-        {
-          id: coerceCollectionId(dashboard.collection_id),
-          type: "collection",
-        },
-      ];
-    }
-    if ((isQuestionPath || isModelPath) && question) {
-      return [
-        {
-          id: question.id(),
-          type: "card",
-        },
-        {
-          id: coerceCollectionId(question.collectionId()),
-          type: "collection",
-        },
-      ];
-    }
-    return [{ url: pathname, type: "non-entity" }];
-  }, [location, params, question, dashboard]);
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
