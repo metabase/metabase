@@ -19,7 +19,7 @@ import {
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
-import DataApps from "metabase/entities/data-apps";
+import DataApps, { isDataAppCollection } from "metabase/entities/data-apps";
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import Collections, {
   buildCollectionTree,
@@ -202,24 +202,19 @@ function MainNavbarContainer({
   }, [location, params, question, dashboard]);
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
-    const dataAppCollectionIDs = dataApps.map(dataApp => dataApp.collection_id);
-
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
       collections,
       currentUser.id,
     );
-    const nonPersonalOrArchivedCollections = collections.filter(
-      nonPersonalOrArchivedCollection,
-    );
-    const nonAppsCollections = nonPersonalOrArchivedCollections.filter(
+    const displayableCollections = collections.filter(
       collection =>
-        typeof collection.id === "number" &&
-        !dataAppCollectionIDs.includes(collection.id),
+        nonPersonalOrArchivedCollection(collection) &&
+        !isDataAppCollection(collection),
     );
 
     preparedCollections.push(...userPersonalCollections);
-    preparedCollections.push(...nonAppsCollections);
+    preparedCollections.push(...displayableCollections);
 
     const tree = buildCollectionTree(preparedCollections);
 
@@ -233,7 +228,7 @@ function MainNavbarContainer({
     } else {
       return tree;
     }
-  }, [rootCollection, collections, currentUser, dataApps]);
+  }, [rootCollection, collections, currentUser]);
 
   const reorderBookmarks = useCallback(
     ({ newIndex, oldIndex }) => {
