@@ -155,12 +155,12 @@ function MainNavbarView({
           </SidebarSection>
         )}
 
-        <ul>
-          {hasDataAccess && (
-            <SidebarSection>
-              <SidebarHeadingWrapper>
-                <SidebarHeading>{t`Data`}</SidebarHeading>
-              </SidebarHeadingWrapper>
+        {hasDataAccess && (
+          <SidebarSection>
+            <SidebarHeadingWrapper>
+              <SidebarHeading>{t`Data`}</SidebarHeading>
+            </SidebarHeadingWrapper>
+            <ul>
               <BrowseLink
                 icon="database"
                 url={BROWSE_URL}
@@ -183,9 +183,9 @@ function MainNavbarView({
                   {t`Add your own data`}
                 </AddYourOwnDataLink>
               )}
-            </SidebarSection>
-          )}
-        </ul>
+            </ul>
+          </SidebarSection>
+        )}
       </div>
     </SidebarContentRoot>
   );
