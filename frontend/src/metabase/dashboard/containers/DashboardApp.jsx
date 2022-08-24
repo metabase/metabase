@@ -67,10 +67,19 @@ import DataAppContext from "metabase/writeback/containers/DataAppContext";
 
 import ActionParametersInputModal from "./ActionParametersInputModal";
 
+function getDashboardId({ dashboardId, location, params }) {
+  if (dashboardId) {
+    return dashboardId;
+  }
+  const isDataAppUrl = location.pathname.startsWith("/a/");
+  return isDataAppUrl
+    ? parseInt(params.pageId)
+    : Urls.extractEntityId(location.pathname);
+}
+
 const mapStateToProps = (state, props) => {
   return {
-    dashboardId: props.dashboardId || Urls.extractEntityId(props.params.slug),
-
+    dashboardId: getDashboardId(props),
     canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
     isNavbarOpen: getIsNavbarOpen(state),
