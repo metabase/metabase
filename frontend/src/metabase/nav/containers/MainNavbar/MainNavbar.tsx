@@ -12,6 +12,7 @@ import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import { Collection } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
+import DataAppNavbarContainer from "./DataAppNavbarContainer";
 import MainNavbarContainer from "./MainNavbarContainer";
 
 import {
@@ -29,8 +30,16 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-function MainNavbar({ isOpen, onChangeLocation, ...props }: MainNavbarProps) {
+function MainNavbar({
+  isOpen,
+  location,
+  onChangeLocation,
+  ...props
+}: MainNavbarProps) {
   const [modal, setModal] = useState<NavbarModal>(null);
+
+  const isDataAppUrl = location.pathname.startsWith("/a/");
+  const isDataAppPreview = location.pathname.startsWith("/a/preview/");
 
   const onCreateNewCollection = useCallback(() => {
     setModal("MODAL_NEW_COLLECTION");
@@ -57,12 +66,22 @@ function MainNavbar({ isOpen, onChangeLocation, ...props }: MainNavbarProps) {
     <>
       <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
         <NavRoot isOpen={isOpen}>
-          <MainNavbarContainer
-            isOpen={isOpen}
-            onCreateNewCollection={onCreateNewCollection}
-            onChangeLocation={onChangeLocation}
-            {...props}
-          />
+          {isDataAppUrl && !isDataAppPreview ? (
+            <DataAppNavbarContainer
+              isOpen={isOpen}
+              location={location}
+              onChangeLocation={onChangeLocation}
+              {...props}
+            />
+          ) : (
+            <MainNavbarContainer
+              isOpen={isOpen}
+              location={location}
+              onCreateNewCollection={onCreateNewCollection}
+              onChangeLocation={onChangeLocation}
+              {...props}
+            />
+          )}
         </NavRoot>
       </Sidebar>
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
