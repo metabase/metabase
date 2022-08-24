@@ -145,7 +145,7 @@ function MainNavbarView({
                 <DataAppLink
                   key={`app-${app.id}`}
                   icon={getDataAppIcon(app)}
-                  url={Urls.dataApp(app)}
+                  url={Urls.dataAppPreview(app)}
                   isSelected={dataAppItem?.id === app.id}
                 >
                   {app.collection.name}
