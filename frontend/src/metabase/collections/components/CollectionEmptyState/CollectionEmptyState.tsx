@@ -3,6 +3,7 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import NewItemMenu from "metabase/containers/NewItemMenu";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
+import { CollectionId } from "metabase-types/api";
 import {
   EmptyStateDescription,
   EmptyStateIconBackground,
@@ -11,7 +12,13 @@ import {
   EmptyStateTitle,
 } from "./CollectionEmptyState.styled";
 
-const CollectionEmptyState = (): JSX.Element => {
+export interface CollectionEmptyStateProps {
+  collectionId?: CollectionId;
+}
+
+const CollectionEmptyState = ({
+  collectionId,
+}: CollectionEmptyStateProps): JSX.Element => {
   return (
     <EmptyStateRoot data-testid="collection-empty-state">
       <CollectionEmptyIcon />
@@ -19,6 +26,7 @@ const CollectionEmptyState = (): JSX.Element => {
       <EmptyStateDescription>{t`Use collections to organize and group dashboards and questions for your team or yourself`}</EmptyStateDescription>
       <NewItemMenu
         trigger={<Button icon="add">{t`Create a new…`}</Button>}
+        collectionId={collectionId}
         analyticsContext={ANALYTICS_CONTEXT}
       />
     </EmptyStateRoot>

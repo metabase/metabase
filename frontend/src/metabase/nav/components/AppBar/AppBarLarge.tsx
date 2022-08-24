@@ -1,5 +1,5 @@
 import React from "react";
-import { User } from "metabase-types/api";
+import { CollectionId, User } from "metabase-types/api";
 import AppBarLogo from "./AppBarLogo";
 import NewItemButton from "../NewItemButton";
 import ProfileLink from "../ProfileLink";
@@ -16,6 +16,7 @@ import {
 
 export interface AppBarLargeProps {
   currentUser: User;
+  collectionId?: CollectionId;
   isNavBarOpen?: boolean;
   isNavBarVisible?: boolean;
   isSearchVisible?: boolean;
@@ -29,6 +30,7 @@ export interface AppBarLargeProps {
 
 const AppBarLarge = ({
   currentUser,
+  collectionId,
   isNavBarOpen,
   isNavBarVisible,
   isSearchVisible,
@@ -60,7 +62,7 @@ const AppBarLarge = ({
       {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
         <AppBarRightContainer>
           {isSearchVisible && <SearchBar />}
-          {isNewButtonVisible && <NewItemButton />}
+          {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {isProfileLinkVisible && (
             <AppBarProfileLinkContainer>
               <ProfileLink user={currentUser} onLogout={onLogout} />

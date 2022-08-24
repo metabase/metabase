@@ -1,8 +1,6 @@
+import { ReactNode } from "react";
 import { connect } from "react-redux";
-import { withRouter } from "react-router";
 import { push } from "react-router-redux";
-import _ from "underscore";
-import Collections from "metabase/entities/collections";
 import { closeNavbar } from "metabase/redux/app";
 import NewItemMenu from "metabase/components/NewItemMenu";
 import {
@@ -12,8 +10,26 @@ import {
 } from "metabase/nav/selectors";
 import { State } from "metabase-types/store";
 
-const mapStateToProps = (state: State, props: unknown) => ({
-  collectionId: Collections.selectors.getInitialCollectionId(state, props),
+interface MenuOwnProps {
+  className?: string;
+  trigger?: ReactNode;
+  triggerIcon?: string;
+  triggerTooltip?: string;
+  analyticsContext?: string;
+}
+
+interface MenuStateProps {
+  hasDataAccess: boolean;
+  hasNativeWrite: boolean;
+  hasDatabaseWithJsonEngine: boolean;
+}
+
+interface MenuDispatchProps {
+  onChangeLocation: (location: string) => void;
+  onCloseNavbar: () => void;
+}
+
+const mapStateToProps = (state: State): MenuStateProps => ({
   hasDataAccess: getHasDataAccess(state),
   hasNativeWrite: getHasNativeWrite(state),
   hasDatabaseWithJsonEngine: getHasDatabaseWithJsonEngine(state),
@@ -24,7 +40,7 @@ const mapDispatchToProps = {
   onCloseNavbar: closeNavbar,
 };
 
-export default _.compose(
-  withRouter,
-  connect(mapStateToProps, mapDispatchToProps),
+export default connect<MenuStateProps, MenuDispatchProps, MenuOwnProps, State>(
+  mapStateToProps,
+  mapDispatchToProps,
 )(NewItemMenu);

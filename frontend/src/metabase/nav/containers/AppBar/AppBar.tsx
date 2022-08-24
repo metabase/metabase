@@ -4,7 +4,6 @@ import _ from "underscore";
 import { logout } from "metabase/auth/actions";
 import { closeNavbar, getIsNavbarOpen, toggleNavbar } from "metabase/redux/app";
 import {
-  getCollectionId,
   getIsCollectionPathVisible,
   getIsNewButtonVisible,
   getIsProfileLinkVisible,
@@ -18,7 +17,6 @@ import { getUser } from "metabase/selectors/user";
 
 const mapStateToProps = (state: State, props: RouterProps) => ({
   currentUser: getUser(state),
-  collectionId: getCollectionId(state),
   isNavBarOpen: getIsNavbarOpen(state),
   isSearchVisible: getIsSearchVisible(state),
   isNewButtonVisible: getIsNewButtonVisible(state),
