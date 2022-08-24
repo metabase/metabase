@@ -58,7 +58,8 @@ const ViewFooter = ({
   }
 
   const hasDataPermission = question.query().isEditable();
-  const hideChartSettings = result.error && !hasDataPermission;
+  const hideChartSettings =
+    (result.error && !hasDataPermission) || question.isMetric();
 
   return (
     <ViewFooterRoot
@@ -163,7 +164,7 @@ const ViewFooter = ({
               }
             />
           ),
-          QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
+          QuestionTimelineWidget.shouldRender({ question, isTimeseries }) && (
             <QuestionTimelineWidget
               key="timelines"
               className="mx1 hide sm-show"

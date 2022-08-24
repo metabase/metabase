@@ -300,6 +300,10 @@ class QuestionInner {
     return this.setCard(assoc(this.card(), "cache_ttl", cache));
   }
 
+  isMetric() {
+    return false;
+  }
+
   /**
    * returns whether this question is a model
    * @returns boolean
@@ -1418,6 +1422,22 @@ export class MetricQuestion extends Question {
     return !!this.metricId();
   }
 
+  isMetric() {
+    return true;
+  }
+
+  isDataset() {
+    return false;
+  }
+
+  isPersisted() {
+    return false;
+  }
+
+  isAction() {
+    return false;
+  }
+
   setMetric(metric: Metric): MetricQuestion {
     return new MetricQuestion({
       card: this.card(),
@@ -1453,6 +1473,7 @@ export class MetricQuestion extends Question {
         );
     return areMetricsEqual;
   }
+
   isDirtyComparedTo(original: MetricQuestion): boolean {
     return !this.isEqual(original);
   }

@@ -98,6 +98,7 @@ const QuestionActions = ({
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
   const isNative = question.isNative();
+  const isMetric = question.isMetric();
 
   const canBeMetric = useMemo(() => canBeUsedAsMetric(question), [question]);
 
@@ -106,7 +107,8 @@ const QuestionActions = ({
     canWrite &&
     isSaved &&
     isDataset &&
-    checkDatabaseCanPersistDatasets(question.query().database());
+    checkDatabaseCanPersistDatasets(question.query().database()) &&
+    !isMetric;
 
   const handleEditQuery = useCallback(() => {
     setQueryBuilderMode("dataset", {
@@ -162,7 +164,7 @@ const QuestionActions = ({
     });
   }
 
-  if (!isDataset) {
+  if (!isDataset && !isMetric) {
     extraButtons.push({
       title: t`Add to dashboard`,
       icon: "dashboard",
@@ -177,8 +179,10 @@ const QuestionActions = ({
       icon: "move",
       action: () => onOpenModal(MODAL_TYPES.MOVE),
       testId: MOVE_TESTID,
+      disabled: isMetric,
     });
-    if (!isDataset && !isAction) {
+
+    if (!isDataset && !isAction && !isMetric) {
       extraButtons.push({
         title: t`Turn into a model`,
         icon: "model",
@@ -186,6 +190,7 @@ const QuestionActions = ({
         testId: TURN_INTO_DATASET_TESTID,
       });
     }
+
     if (isDataset) {
       extraButtons.push({
         title: t`Turn back to saved question`,
@@ -203,14 +208,16 @@ const QuestionActions = ({
       });
     }
 
-    extraButtons.push({
-      title: t`Make a metric from this`,
-      icon: "star",
-      disabled: !canBeMetric,
-      action: () => {
-        createMetricFromQuestion();
-      },
-    });
+    if (!isMetric) {
+      extraButtons.push({
+        title: t`Make a metric from this`,
+        icon: "star",
+        disabled: !canBeMetric,
+        action: () => {
+          createMetricFromQuestion();
+        },
+      });
+    }
   }
 
   if (!question.query().readOnly()) {
@@ -219,6 +226,7 @@ const QuestionActions = ({
       icon: "segment",
       action: () => onOpenModal(MODAL_TYPES.CLONE),
       testId: CLONE_TESTID,
+      disabled: isMetric,
     });
   }
 
@@ -228,31 +236,36 @@ const QuestionActions = ({
       icon: "view_archive",
       action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
       testId: ARCHIVE_TESTID,
+      disabled: isMetric,
     });
   }
 
   return (
     <>
       <QuestionActionsDivider />
-      <Tooltip tooltip={bookmarkTooltip}>
-        <BookmarkToggle
-          onCreateBookmark={handleBookmark}
-          onDeleteBookmark={handleBookmark}
-          isBookmarked={isBookmarked}
-        />
-      </Tooltip>
-      <Tooltip tooltip={t`More info`}>
-        <ViewHeaderIconButtonContainer>
-          <Button
-            onlyIcon
-            icon="info"
-            iconSize={HEADER_ICON_SIZE}
-            onClick={onInfoClick}
-            color={infoButtonColor}
-            data-testId="qb-header-info-button"
+      {!isMetric && (
+        <Tooltip tooltip={bookmarkTooltip}>
+          <BookmarkToggle
+            onCreateBookmark={handleBookmark}
+            onDeleteBookmark={handleBookmark}
+            isBookmarked={isBookmarked}
           />
-        </ViewHeaderIconButtonContainer>
-      </Tooltip>
+        </Tooltip>
+      )}
+      {!isMetric && (
+        <Tooltip tooltip={t`More info`}>
+          <ViewHeaderIconButtonContainer>
+            <Button
+              onlyIcon
+              icon="info"
+              iconSize={HEADER_ICON_SIZE}
+              onClick={onInfoClick}
+              color={infoButtonColor}
+              data-testId="qb-header-info-button"
+            />
+          </ViewHeaderIconButtonContainer>
+        </Tooltip>
+      )}
       <EntityMenu
         items={extraButtons}
         triggerIcon="ellipsis"

@@ -88,7 +88,7 @@ class QuestionEmbedWidget extends Component {
     isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing"),
     isEmbeddingEnabled = MetabaseSettings.get("enable-embedding"),
   }) {
-    if (question.isDataset()) {
+    if (question.isDataset() || question.isMetric()) {
       return false;
     }
 

@@ -375,6 +375,7 @@ function ViewTitleHeaderRightSide(props) {
     onOpenQuestionInfo,
     onModelPersistenceChange,
   } = props;
+  const isMetric = question.isMetric();
   const isShowingNotebook = queryBuilderMode === "notebook";
   const query = question.query();
   const isReadOnlyQuery = query.readOnly();
@@ -391,6 +392,7 @@ function ViewTitleHeaderRightSide(props) {
   const isNewQuery = !query.hasData();
   const hasSaveButton =
     !isDataset &&
+    !isMetric &&
     !!isDirty &&
     (isNewQuery || canEditQuery) &&
     isActionListVisible;

@@ -1,6 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import { TimelineIcon } from "./QuestionTimelineWidget.styled";
+import Question from "metabase-lib/lib/Question";
 
 export interface QuestionTimelineWidgetProps {
   className?: string;
@@ -26,13 +27,15 @@ const QuestionTimelineWidget = ({
 };
 
 export interface QuestionTimelineWidgetOpts {
+  question: Question;
   isTimeseries?: boolean;
 }
 
 QuestionTimelineWidget.shouldRender = ({
+  question,
   isTimeseries,
 }: QuestionTimelineWidgetOpts) => {
-  return isTimeseries;
+  return !question.isMetric() && isTimeseries;
 };
 
 export default QuestionTimelineWidget;

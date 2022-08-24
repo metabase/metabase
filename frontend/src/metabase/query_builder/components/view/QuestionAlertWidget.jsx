@@ -72,4 +72,4 @@ export default class QuestionAlertWidget extends React.Component {
 }
 
 QuestionAlertWidget.shouldRender = ({ question, visualizationSettings }) =>
-  question.alertType(visualizationSettings) !== null;
+  !question.isMetric() && question.alertType(visualizationSettings) !== null;
