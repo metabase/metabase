@@ -7,8 +7,8 @@ import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 
 import { darken, lighten } from "metabase/lib/colors";
-import "metabase/visualizations/components/TableInteractive/TableInteractive.css";
 import { getScrollBarSize } from "metabase/lib/dom";
+import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
@@ -27,7 +27,11 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
-import { RowToggleIconRoot } from "./PivotTable.styled";
+import {
+  PivotTableCell,
+  PivotTableTopLeftCellsContainer,
+  RowToggleIconRoot,
+} from "./PivotTable.styled";
 
 const getBgLightColor = (hasCustomColors, isNightMode) => {
   if (isNightMode) {
@@ -71,7 +75,7 @@ const partitions = [
 
 // cell width and height for normal body cells
 const CELL_WIDTH = 100;
-const CELL_HEIGHT = 25;
+const CELL_HEIGHT = 30;
 // the left header has a wider cell width and some additional spacing on the left to align with the title
 const LEFT_HEADER_LEFT_SPACING = 24;
 const LEFT_HEADER_CELL_WIDTH = 145;
@@ -140,7 +144,7 @@ class PivotTable extends Component {
       },
     },
     [COLUMN_SPLIT_SETTING]: {
-      section: null,
+      section: t`Columns`,
       widget: "fieldsPartition",
       persistDefault: true,
       getHidden: ([{ data }]) =>
@@ -191,6 +195,16 @@ class PivotTable extends Component {
 
         return addMissingCardBreakouts(setting, card);
       },
+    },
+    "table.column_formatting": {
+      section: t`Conditional Formatting`,
+      widget: ChartSettingsTableFormatting,
+      default: [],
+      getProps: series => ({
+        cols: series[0].data.cols.filter(isFormattablePivotColumn),
+      }),
+      getHidden: ([{ data }]) =>
+        !data?.cols.some(col => isFormattablePivotColumn(col)),
     },
   };
 
@@ -300,49 +314,32 @@ class PivotTable extends Component {
     } = pivoted;
 
     const leftHeaderCellRenderer = ({ index, key, style }) => {
-      const {
-        value,
-        isSubtotal,
-        isGrandTotal,
-        hasChildren,
-        hasSubtotal,
-        depth,
-        path,
-        clicked,
-      } = leftHeaderItems[index];
+      const { value, isSubtotal, hasSubtotal, depth, path, clicked } =
+        leftHeaderItems[index];
       return (
-        <div
-          key={key}
+        <Cell
           style={{
             ...style,
-            backgroundColor: getBgLightColor(hasCustomColors, isNightMode),
+            ...(depth === 0 ? { paddingLeft: LEFT_HEADER_LEFT_SPACING } : {}),
           }}
-          className={cx("overflow-hidden", {
-            "border-right border-medium": !hasChildren,
-          })}
-        >
-          <Cell
-            style={depth === 0 ? { paddingLeft: LEFT_HEADER_LEFT_SPACING } : {}}
-            value={value}
-            isSubtotal={isSubtotal}
-            isGrandTotal={isGrandTotal}
-            hasCustomColors={hasCustomColors}
-            onClick={this.getCellClickHander(clicked)}
-            isNightMode={isNightMode}
-            icon={
-              (isSubtotal || hasSubtotal) && (
-                <RowToggleIcon
-                  value={path}
-                  settings={settings}
-                  updateSettings={onUpdateVisualizationSettings}
-                  hideUnlessCollapsed={isSubtotal}
-                  rowIndex={rowIndex} // used to get a list of "other" paths when open one item in a collapsed column
-                  isNightMode={isNightMode}
-                />
-              )
-            }
-          />
-        </div>
+          value={value}
+          isEmphasized={isSubtotal}
+          isBold={isSubtotal}
+          onClick={this.getCellClickHander(clicked)}
+          icon={
+            (isSubtotal || hasSubtotal) && (
+              <RowToggleIcon
+                value={path}
+                settings={settings}
+                updateSettings={onUpdateVisualizationSettings}
+                hideUnlessCollapsed={isSubtotal}
+                rowIndex={rowIndex} // used to get a list of "other" paths when open one item in a collapsed column
+                isNightMode={isNightMode}
+              />
+            )
+          }
+        />
+        // </div>
       );
     };
     const leftHeaderCellSizeAndPositionGetter = ({ index }) => {
@@ -366,23 +363,13 @@ class PivotTable extends Component {
     const topHeaderCellRenderer = ({ index, key, style }) => {
       const { value, hasChildren, clicked } = topHeaderItems[index];
       return (
-        <div
+        <Cell
           key={key}
           style={style}
-          className={cx("px1 flex align-center cursor-pointer", {
-            "border-bottom border-medium": !hasChildren,
-          })}
+          value={value}
+          isEmphasized={hasChildren}
           onClick={this.getCellClickHander(clicked)}
-        >
-          <div
-            className={cx("flex flex-full full-height align-center", {
-              "border-bottom": hasChildren,
-            })}
-            style={{ width: "100%" }}
-          >
-            <Ellipsified>{value}</Ellipsified>
-          </div>
-        </div>
+        />
       );
     };
     const topHeaderCellSizeAndPositionGetter = ({ index }) => {
@@ -405,16 +392,15 @@ class PivotTable extends Component {
     const bodyRenderer = ({ key, style, rowIndex, columnIndex }) => (
       <div key={key} style={style} className="flex">
         {getRowSection(columnIndex, rowIndex).map(
-          ({ value, isSubtotal, isGrandTotal, clicked }, index) => (
+          ({ value, isSubtotal, clicked, backgroundColor }, index) => (
             <Cell
               key={index}
               value={value}
-              isSubtotal={isSubtotal}
-              isGrandTotal={isGrandTotal}
-              hasCustomColors={hasCustomColors}
-              isNightMode={isNightMode}
+              isEmphasized={isSubtotal}
+              isBold={isSubtotal}
               isBody
               onClick={this.getCellClickHander(clicked)}
+              backgroundColor={backgroundColor}
             />
           ),
         )}
@@ -428,28 +414,22 @@ class PivotTable extends Component {
             <div className="full-height flex flex-column">
               <div className="flex" style={{ height: topHeaderHeight }}>
                 {/* top left corner - displays left header columns */}
-                <div
-                  className={cx("flex align-end", {
-                    "border-right border-bottom border-medium": leftHeaderWidth,
-                  })}
+                <PivotTableTopLeftCellsContainer
                   style={{
-                    backgroundColor: getBgLightColor(
-                      hasCustomColors,
-                      isNightMode,
-                    ),
-                    // add left spacing unless the header width is 0
-                    paddingLeft: leftHeaderWidth && LEFT_HEADER_LEFT_SPACING,
                     width: leftHeaderWidth,
-                    height: topHeaderHeight,
                   }}
                 >
                   {rowIndexes.map((rowIndex, index) => (
                     <Cell
+                      isEmphasized
                       key={rowIndex}
                       value={this.getColumnTitle(rowIndex)}
-                      style={{ width: LEFT_HEADER_CELL_WIDTH }}
-                      hasCustomColors={hasCustomColors}
-                      isNightMode={isNightMode}
+                      style={{
+                        width: LEFT_HEADER_CELL_WIDTH,
+                        ...(index === 0
+                          ? { paddingLeft: LEFT_HEADER_LEFT_SPACING }
+                          : {}),
+                      }}
                       icon={
                         // you can only collapse before the last column
                         index < rowIndexes.length - 1 &&
@@ -465,11 +445,11 @@ class PivotTable extends Component {
                       }
                     />
                   ))}
-                </div>
+                </PivotTableTopLeftCellsContainer>
                 {/* top header */}
                 <Collection
                   ref={e => (this.topHeaderRef = e)}
-                  className="scroll-hide-all text-medium"
+                  className="scroll-hide-all"
                   width={width - leftHeaderWidth}
                   height={topHeaderHeight}
                   cellCount={topHeaderItems.length}
@@ -626,43 +606,33 @@ function RowToggleIcon({
 
 function Cell({
   value,
-  isSubtotal,
-  isGrandTotal,
+  isBold,
+  isEmphasized,
   onClick,
   style,
   isBody = false,
-  className,
   icon,
-  hasCustomColors,
-  isNightMode,
+  backgroundColor,
 }) {
   return (
-    <div
+    <PivotTableCell
+      isBold={isBold}
+      isEmphasized={isEmphasized}
       style={{
-        lineHeight: `${CELL_HEIGHT}px`,
-        ...(isGrandTotal ? { borderTop: "1px solid white" } : {}),
         ...style,
-        ...(isSubtotal
+        ...(backgroundColor
           ? {
-              backgroundColor: getBgDarkColor(hasCustomColors, isNightMode),
+              backgroundColor,
             }
           : {}),
       }}
-      className={cx(
-        "shrink-below-content-size flex-full flex-basis-none TableInteractive-cellWrapper",
-        className,
-        {
-          "text-bold": isSubtotal,
-          "cursor-pointer": onClick,
-        },
-      )}
       onClick={onClick}
     >
       <div className={cx("px1 flex align-center", { "justify-end": isBody })}>
         <Ellipsified>{value}</Ellipsified>
         {icon && <div className="pl1">{icon}</div>}
       </div>
-    </div>
+    </PivotTableCell>
   );
 }
 
@@ -717,4 +687,8 @@ function isColumnValid(col) {
     col.source === "breakout" ||
     isPivotGroupColumn(col)
   );
+}
+
+function isFormattablePivotColumn(column) {
+  return column.source === "aggregation";
 }
