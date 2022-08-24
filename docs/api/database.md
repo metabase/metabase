@@ -106,7 +106,8 @@ Get a single Database with `id`. Optionally pass `?include=tables` or `?include=
 
 ## `GET /api/database/:id/autocomplete_suggestions`
 
-Return a list of autocomplete suggestions for a given `prefix`.
+Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
+  `substring` will have priority if both are present.
 
   This is intened for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
   and `Fields` in this `Database`.
@@ -121,7 +122,7 @@ Return a list of autocomplete suggestions for a given `prefix`.
 
 *  **`prefix`** 
 
-*  **`search`**
+*  **`substring`**
 
 ## `GET /api/database/:id/fields`
 
