@@ -12,7 +12,10 @@ import {
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 
-import { seriesSetting } from "metabase/visualizations/lib/settings/series";
+import {
+  seriesSetting,
+  keyForSingleSeries,
+} from "metabase/visualizations/lib/settings/series";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
@@ -21,6 +24,8 @@ import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 
 import _ from "underscore";
 import { getMaxMetricsSupported } from "metabase/visualizations";
+
+import { ChartSettingOrderedRows } from "metabase/visualizations/components/settings/ChartSettingOrderedRows";
 
 // NOTE: currently we don't consider any date extracts to be histgrams
 const HISTOGRAM_DATE_EXTRACTS = new Set([
@@ -132,6 +137,28 @@ export const GRAPH_DATA_SETTINGS = {
     writeDependencies: ["graph.metrics"],
     dashboard: false,
     useRawSeries: true,
+  },
+  "graph.test": {
+    section: t`Data`,
+    widget: ChartSettingOrderedRows,
+    getDefault: series => {
+      const keys = series.map(s => keyForSingleSeries(s));
+      return keys.map((key, index) => ({
+        name: key,
+        rowIndex: index,
+        enabled: true,
+      }));
+    },
+    getProps: series => {
+      const keys = series.map(s => keyForSingleSeries(s));
+      return {
+        rows: keys.map((key, index) => ({
+          name: key,
+          rowIndex: index,
+          enabled: true,
+        })),
+      };
+    },
   },
   "graph.metrics": {
     section: t`Data`,

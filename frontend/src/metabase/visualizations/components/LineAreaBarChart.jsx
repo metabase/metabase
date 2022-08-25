@@ -263,10 +263,10 @@ export default class LineAreaBarChart extends Component {
     return settings;
   }
 
-  getLegendSettings() {
+  getLegendSettings(series) {
     const {
       card,
-      series,
+      //series,
       settings,
       showTitle,
       actionButtons,
@@ -361,7 +361,14 @@ export default class LineAreaBarChart extends Component {
       onHoverChange,
       onAddSeries,
       onRemoveSeries,
+      settings,
     } = this.props;
+
+    const orderedSeries = settings["graph.test"]
+      ? settings["graph.test"]
+          .filter(s => s.enabled)
+          .map(s => series[s.rowIndex])
+      : series;
 
     const {
       title,
@@ -372,7 +379,9 @@ export default class LineAreaBarChart extends Component {
       hasLegend,
       hasBreakout,
       canSelectTitle,
-    } = this.getLegendSettings();
+    } = this.getLegendSettings(orderedSeries);
+
+    console.log(this.props);
 
     return (
       <LineAreaBarChartRoot
@@ -407,7 +416,7 @@ export default class LineAreaBarChart extends Component {
         >
           <CardRenderer
             {...this.props}
-            series={series}
+            series={orderedSeries}
             settings={this.getSettings()}
             className="renderer flex-full"
             maxSeries={MAX_SERIES}
