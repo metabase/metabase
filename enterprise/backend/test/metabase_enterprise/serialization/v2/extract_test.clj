@@ -881,11 +881,11 @@
 
                        Database   [{db-id      :id}           {:name "My Database"}]
                        Table      [{no-schema-id :id}         {:name "Schemaless Table" :db_id db-id}]
-                       Field      [{field-id     :id}         {:name "Some Field" :table_id no-schema-id}]
+                       Field      [_                          {:name "Some Field" :table_id no-schema-id}]
                        Table      [{schema-id    :id}         {:name        "Schema'd Table"
                                                                :db_id       db-id
                                                                :schema      "PUBLIC"}]
-                       Field      [{field2-id    :id}         {:name "Other Field" :table_id schema-id}]
+                       Field      [_                          {:name "Other Field" :table_id schema-id}]
 
                        ;; One dashboard and three cards in each of the three collections:
                        ;; Two cards contained in the dashboard and one freestanding.
@@ -905,8 +905,7 @@
                                                                :table_id      schema-id
                                                                :collection_id coll1-id
                                                                :creator_id    mark-id}]
-                       Card       [{c1-3-id  :id
-                                    c1-3-eid :entity_id}      {:name          "Question 1-3"
+                       Card       [{c1-3-eid :entity_id}      {:name          "Question 1-3"
                                                                :database_id   db-id
                                                                :table_id      schema-id
                                                                :collection_id coll1-id
@@ -934,8 +933,7 @@
                                                                :table_id      schema-id
                                                                :collection_id coll2-id
                                                                :creator_id    mark-id}]
-                       Card       [{c2-3-id  :id
-                                    c2-3-eid :entity_id}      {:name          "Question 2-3"
+                       Card       [{c2-3-eid :entity_id}      {:name          "Question 2-3"
                                                                :database_id   db-id
                                                                :table_id      schema-id
                                                                :collection_id coll2-id
@@ -963,8 +961,7 @@
                                                                :table_id      schema-id
                                                                :collection_id coll3-id
                                                                :creator_id    mark-id}]
-                       Card       [{c3-3-id  :id
-                                    c3-3-eid :entity_id}      {:name          "Question 3-3"
+                       Card       [{c3-3-eid :entity_id}      {:name          "Question 3-3"
                                                                :database_id   db-id
                                                                :table_id      schema-id
                                                                :collection_id coll3-id

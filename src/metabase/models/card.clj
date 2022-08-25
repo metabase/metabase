@@ -388,5 +388,5 @@
   (let [card (db/select-one Card :id id)
         source-table (some-> card :dataset_query :query :source-table)]
     (when (and (string? source-table)
-               (.startsWith source-table "card__"))
-      #{["Card" (Integer/parseInt (.substring source-table 6))]})))
+               (.startsWith ^String source-table "card__"))
+      #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})))
