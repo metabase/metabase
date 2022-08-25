@@ -12,6 +12,10 @@
            java.time.temporal.Temporal))
 
 (defn temporal-string?
+  "Returns `true` if the string `s` is parseable as a datetime.
+
+  `(temporal-string? \"asdf\")` -> false
+  `(temporal-string? \"2020-02-02\")` -> true"
   [s]
   (boolean
     (try
