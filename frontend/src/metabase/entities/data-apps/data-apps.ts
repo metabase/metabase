@@ -2,7 +2,7 @@ import { color } from "metabase/lib/colors";
 import { createEntity } from "metabase/lib/entities";
 
 import { DataAppSchema } from "metabase/schema";
-import { CollectionsApi, DataAppsApi } from "metabase/services";
+import { DataAppsApi } from "metabase/services";
 
 import { Collection, DataApp } from "metabase-types/api";
 
@@ -36,15 +36,13 @@ const DataApps = createEntity({
       description,
       ...dataAppProps
     }: CreateDataAppParams) => {
-      const collection = await CollectionsApi.create({
-        name,
-        description: description || null,
-        parent_id: null, // apps should always live in root collection
-        color: color(DEFAULT_COLLECTION_COLOR_ALIAS),
-      });
       return DataAppsApi.create({
         ...dataAppProps,
-        collection_id: collection.id,
+        collection: {
+          name,
+          description: description || null,
+          color: color(DEFAULT_COLLECTION_COLOR_ALIAS),
+        },
       });
     },
   },
