@@ -1,14 +1,14 @@
 (ns metabase.api.app
-  (:require
-    [compojure.core :refer [POST PUT]]
-    [metabase.api.collection :as api.collection]
-    [metabase.api.common :as api]
-    [metabase.models :refer [App Collection]]
-    [metabase.models.collection :as collection]
-    [metabase.util.schema :as su]
-    [schema.core :as s]
-    [toucan.db :as db]
-    [toucan.hydrate :refer [hydrate]]))
+  (:require [compojure.core :refer [POST PUT]]
+            [metabase.actions :as actions]
+            [metabase.api.collection :as api.collection]
+            [metabase.api.common :as api]
+            [metabase.models :refer [App Collection]]
+            [metabase.models.collection :as collection]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (defn- hydrate-details [apps]
   (hydrate apps [:collection :can_write]))
@@ -69,4 +69,4 @@
   [id]
   (hydrate-details (api/read-check App id)))
 
-(api/define-routes)
+(api/define-routes actions/+check-actions-enabled api/+check-superuser)
