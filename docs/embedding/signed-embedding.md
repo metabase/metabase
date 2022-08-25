@@ -4,9 +4,9 @@ title: Signed embedding
 
 # Signed embedding
 
-In general, embedding works by displaying a Metabase URL inside an iframe on your website. A **signed embed** is an iframe that's secured with a signed JSON Web Token (JWT). The signed JWT prevents website visitors from poking around in your Metabase through the iframe.
+In general, embedding works by displaying a Metabase URL inside an iframe on your website. A **signed embed** is an iframe that's secured with a signed JSON Web Token (JWT). The signed JWT will prevent website visitors from poking around in your Metabase through the iframe. 
 
-A signed JWT _does not create a user session_ (server-side session), so signed embeds can't be used with [data sandboxes](../permissions/data-sandboxes).
+However, signed JWTs _won't create user sessions_ (server-side sessions), so signed embeds can't be combined with [data sandboxes](../permissions/data-sandboxes).
 
 ## How signed embedding works
 
