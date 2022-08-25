@@ -216,9 +216,9 @@
             (is (seq metadata))
             (is (= [[1 1  14 37.65  2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
                     [2 1 123 110.93  6.1 117.03 nil  "2018-05-15T08:04:04.58Z" 3 "Mediocre Wooden Bench"]]
-                   (remappings-with-metadata metadata)))))
+                   (remappings-with-metadata metadata)))))))))
         ;; doesn't currently work with any other metadata.
-        ))))
+
 
 (deftest remappings-with-implicit-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
@@ -320,3 +320,37 @@
                             [2 123 "Mediocre Wooden Bench"  "Mediocre Wooden Bench"]
                             [3 105 "Fantastic Wool Shirt"   "Fantastic Wool Shirt"]]
                            (mt/rows (qp/process-query q3))))))))))))))
+
+(defmacro with-card-with-query
+  "Like [[mt/with-temp]] for card but run the query to get the result_metadata and create a card with it.
+  Bind the created card to `card-binding`."
+  {:style/indent 2}
+  [query [card-binding & [card-option]] & body]
+  `(mt/with-temp ~Card [card# (merge {:dataset_query   ~query
+                                      :result_metadata (get-in (qp/process-query ~query)
+                                                               [:data :results_metadata :columns])}
+                                     ~card-option)]
+     ((fn [~card-binding]
+        ~@body) card#)))
+
+(deftest nested-questions-with-custom-remapping-test
+  (testing "question with source is a question with a custom remapping column should work (#23449)"
+    (mt/with-column-remappings [venues.price {4 "$$$$" 3 "$$$" 2 "$$" 1 "$"}]
+      (with-card-with-query (mt/mbql-query venues {:limit 3}) [card {}]
+        (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 "$$$"]
+                [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "$$"]
+                [3 "The Apple Pan" 11 34.0406 -118.428 2 "$$"]]
+             (-> (mt/mbql-query nil {:source-table (format "card__%d" (:id card))
+                                     :limit        3})
+                 qp/process-query
+                 mt/rows))))
+
+      (testing "it works for if the source query is a model too"
+       (with-card-with-query (mt/mbql-query venues {:limit 3}) [card {:dataset true}]
+         (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 "$$$"]
+                 [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "$$"]
+                 [3 "The Apple Pan" 11 34.0406 -118.428 2 "$$"]]
+              (-> (mt/mbql-query nil {:source-table (format "card__%d" (:id card))
+                                      :limit 3})
+                  qp/process-query
+                  mt/rows))))))))
