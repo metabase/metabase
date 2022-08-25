@@ -12698,6 +12698,7 @@ databaseChangeLog:
   - changeSet:
       id: v45.00-026
       author: snoe
+      comment: Added 0.45.0 - apps add action_id to report_dashboardcard
       changes:
         - addColumn:
             columns:
