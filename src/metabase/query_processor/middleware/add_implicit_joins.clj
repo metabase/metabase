@@ -238,9 +238,5 @@
         (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
                         {:driver driver/*driver*
                          :type   qp.error-type/unsupported-feature})))
-      (def pre-query query)
-      (def post-query (update query :query resolve-implicit-joins))
-      (comment
-        (clojure.data/diff pre-query post-query))
-      post-query)
+      (update query :query resolve-implicit-joins))
     query))
