@@ -2,6 +2,7 @@
   (:require
     [clojure.tools.logging :as log]
     [medley.core :as m]
+    [metabase.actions :as actions]
     [metabase.actions.http-action :as http-action]
     [metabase.api.common :as api]
     [metabase.models :refer [Dashboard DashboardCard]]
@@ -29,14 +30,15 @@
 
   We need to convert these to a list like
 
-    [{:target [:variable [:template-tag \"id\"]]
+    [{:id \"my_id\"
+      :type \"id\"
+      :target [:variable [:template-tag \"id\"]]
       :value  \"12\"}]
 
   before passing to the QP code."
   [parameters parameter-mappings]
-  (let [params-by-id (m/index-by :id parameters)
-        mappings-by-id (m/index-by :parameter_id parameter-mappings)]
-    (mapv (fn [[param-id param-value-info]]
+  (let [mappings-by-id (m/index-by :parameter_id parameter-mappings)]
+    (mapv (fn [{param-id :id :as parameter}]
             (let [target (or (get-in mappings-by-id [param-id :target])
                              (throw (ex-info (tru "No parameter mapping found for parameter {0}. Found: {1}"
                                                   (pr-str param-id)
@@ -45,10 +47,8 @@
                                               :type        qp.error-type/invalid-parameter
                                               :parameters  parameters
                                               :mappings    parameter-mappings})))]
-              (merge {:id     param-id
-                      :target target}
-                     param-value-info)))
-          params-by-id)))
+              (assoc parameter :target target)))
+          parameters)))
 
 (defn- execute-query-action!
   "Execute a `QueryAction` with parameters as passed in from an
@@ -66,7 +66,7 @@
                     {:status-code 400, :action action})))
   (log/tracef "Executing action\n\n%s" (u/pprint-to-str action))
   (try
-    (let [query      (assoc (:dataset_query card) :parameters parameters)]
+    (let [query (assoc (:dataset_query card) :parameters parameters)]
       (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
       (qp.writeback/execute-write-query! query))
     (catch Throwable e
@@ -86,6 +86,8 @@
   "Execute the given action in the dashboard/dashcard context with the given incoming-parameters.
    See [[map-parameters]] for a description of their expected shapes."
   [action-id dashboard-id dashcard-id incoming-parameters]
+  (actions/check-actions-enabled)
+  (api/check-superuser)
   (api/read-check Dashboard dashboard-id)
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id

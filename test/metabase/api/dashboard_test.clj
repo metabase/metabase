@@ -64,9 +64,10 @@
 (defn- user-details [user]
   (select-keys user [:common_name :date_joined :email :first_name :id :is_qbnewb :is_superuser :last_login :last_name]))
 
-(defn- dashcard-response [{:keys [card created_at updated_at] :as dashcard}]
+(defn- dashcard-response [{:keys [action_id card created_at updated_at] :as dashcard}]
   (-> (into {} dashcard)
       (dissoc :id :dashboard_id :card_id)
+      (cond-> (nil? action_id) (dissoc :action_id))
       (assoc :created_at (boolean created_at)
              :updated_at (boolean updated_at)
              :card       (-> (into {} card)
@@ -783,7 +784,7 @@
                                                                     :hash "abc"
                                                                     :target "foo"}]
                                           :visualization_settings {}})
-                   (dissoc :id :dashboard_id :card_id :entity_id)
+                   (dissoc :id :dashboard_id :action_id :card_id :entity_id)
                    (update :created_at boolean)
                    (update :updated_at boolean))))
         (is (= [{:sizeX                  2
@@ -1873,7 +1874,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (actions.test-util/with-action [{:keys [action-id]} {}]
-        (testing "Creating dashcard with action"
+        (testing "Executing dashcard with action"
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
                                                             :action_id action-id
@@ -1914,7 +1915,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (actions.test-util/with-action [{:keys [action-id]} {:type :http}]
-        (testing "Creating dashcard with action"
+        (testing "Executing dashcard with action"
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
                                                             :action_id action-id
@@ -1947,3 +1948,26 @@
                 (is (str/starts-with? (:message (mt/user-http-request :crowberto :post 500 execute-path
                                                                       {:parameters [{:id "my_id" :type :number/= :value "BAD"}]}))
                                       "Problem building request:"))))))))))
+
+(deftest dashcard-action-execution-auth-test
+  (actions.test-util/with-actions-test-data
+    (actions.test-util/with-action [{:keys [action-id]} {}]
+      (testing "Executing dashcard with action"
+        (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                          :action_id action-id
+                                                          :parameter_mappings [{:parameter_id "my_id"
+                                                                                :target [:variable [:template-tag "id"]]}]}]]
+          (let [execute-path (format "dashboard/%s/dashcard/%s/action/%s/execute"
+                                     dashboard-id
+                                     dashcard-id
+                                     action-id)]
+            (testing "Without actions enabled"
+              (is (= "Actions are not enabled."
+                     (mt/user-http-request :crowberto :post 400 execute-path
+                                           {:parameters [{:id "my_id" :type :number/= :value 1}]}))))
+            (testing "Without admin"
+              (actions.test-util/with-actions-enabled
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :post 403 execute-path
+                                             {:parameters [{:id "my_id" :type :number/= :value 1}]})))))))))))

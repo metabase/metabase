@@ -130,6 +130,7 @@
 
 (def ^:private DashboardCardUpdates
   {:id                                      su/IntGreaterThanZero
+   (s/optional-key :action_id)              (s/maybe su/IntGreaterThanZero)
    (s/optional-key :parameter_mappings)     (s/maybe [su/Map])
    (s/optional-key :visualization_settings) (s/maybe su/Map)
    ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
@@ -169,6 +170,7 @@
 (def ^:private NewDashboardCard
   {:dashboard_id                            su/IntGreaterThanZero
    (s/optional-key :card_id)                (s/maybe su/IntGreaterThanZero)
+   (s/optional-key :action_id)              (s/maybe su/IntGreaterThanZero)
    ;; TODO - use ParamMapping. Breaks too many tests right now tho
    (s/optional-key :parameter_mappings)     (s/maybe [#_ParamMapping su/Map])
    (s/optional-key :visualization_settings) (s/maybe su/Map)
