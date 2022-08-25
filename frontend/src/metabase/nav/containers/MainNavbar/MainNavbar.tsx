@@ -82,9 +82,6 @@ function MainNavbar({
     };
   }, [isOpen, openNavbar, closeNavbar]);
 
-  const isDataAppUrl = location.pathname.startsWith("/a/");
-  const isDataAppPreview = location.pathname.startsWith("/a/preview/");
-
   const selectedItems = useMemo<SelectedItem[]>(() => {
     const { pathname } = location;
     const { slug } = params;
@@ -92,10 +89,8 @@ function MainNavbar({
     const isUsersCollectionPath = pathname.startsWith("/collection/users");
     const isQuestionPath = pathname.startsWith("/question");
     const isModelPath = pathname.startsWith("/model");
-    const isDataAppPath =
-      pathname.startsWith("/a/") || pathname.startsWith("/apps/");
-    const isDataAppPagePath =
-      DATA_APP_PAGE_URL_PATTERN.test(pathname) && typeof params.pageId;
+    const isDataAppPath = Urls.isDataAppPath(pathname);
+    const isDataAppPagePath = Urls.isDataAppPagePath(pathname);
     const isDashboardPath = pathname.startsWith("/dashboard");
 
     if (isCollectionPath) {
@@ -174,7 +169,7 @@ function MainNavbar({
     <>
       <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
         <NavRoot isOpen={isOpen}>
-          {isDataAppUrl && !isDataAppPreview ? (
+          {Urls.isLaunchedDataAppPath(location.pathname) ? (
             <DataAppNavbarContainer
               isOpen={isOpen}
               location={location}

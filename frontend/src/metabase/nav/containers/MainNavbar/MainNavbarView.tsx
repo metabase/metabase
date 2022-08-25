@@ -143,7 +143,7 @@ function MainNavbarView({
                 <PaddedSidebarLink
                   key={`app-${app.id}`}
                   icon={getDataAppIcon(app)}
-                  url={Urls.dataAppPreview(app)}
+                  url={Urls.dataApp(app, { mode: "preview" })}
                   isSelected={dataAppItem?.id === app.id}
                 >
                   {app.collection.name}

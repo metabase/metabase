@@ -71,8 +71,7 @@ function getDashboardId({ dashboardId, location, params }) {
   if (dashboardId) {
     return dashboardId;
   }
-  const isDataAppUrl = location.pathname.startsWith("/a/");
-  return isDataAppUrl
+  return Urls.isDataAppPagePath(location.pathname)
     ? parseInt(params.pageId)
     : Urls.extractEntityId(params.slug);
 }

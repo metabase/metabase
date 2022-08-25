@@ -48,7 +48,7 @@ function DataAppNavbarView({
   );
 
   const handleExitApp = useCallback(() => {
-    onChangeLocation(Urls.dataAppPreview(dataApp));
+    onChangeLocation(Urls.dataApp(dataApp, { mode: "preview" }));
   }, [dataApp, onChangeLocation]);
 
   const { "data-app-page": dataAppPage } = _.indexBy(
