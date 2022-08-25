@@ -114,15 +114,19 @@ export default class Funnel extends Component {
       section: t`Data`,
       widget: ChartSettingOrderedRows,
       isValid: (series, settings) => {
-        const setting = settings["funnel.rows"];
+        const funnelRows = settings["funnel.rows"];
 
-        if (!setting || !_.isArray(setting)) {
+        if (!funnelRows || !_.isArray(funnelRows)) {
+          return false;
+        }
+        if (!funnelRows.every(setting => setting.rowIndex !== undefined)) {
           return false;
         }
 
-        return setting.reduce((memo, value) => {
-          return memo || !!value.rowIndex;
-        }, false);
+        return (
+          funnelRows.every(setting => series[setting.rowIndex]) &&
+          funnelRows.length === series.length
+        );
       },
 
       getDefault: transformedSeries => {
@@ -133,10 +137,7 @@ export default class Funnel extends Component {
         }));
       },
       getProps: transformedSeries => ({
-        rows: transformedSeries.map(s => ({
-          ...s.card,
-          display_name: s.card.name,
-        })),
+        rows: transformedSeries.map(s => s.card),
       }),
     },
     ...metricSetting("funnel.metric", {

@@ -1,3 +1,4 @@
+import { updateIn } from "icepick";
 import React from "react";
 import { t } from "ttag";
 
@@ -10,7 +11,7 @@ import {
 
 interface Row {
   rowIndex: number;
-  display_name: string;
+  name: string;
   enabled: boolean;
 }
 
@@ -23,13 +24,18 @@ interface ChartSettingOrderedRowsProps {
 export const ChartSettingOrderedRows = ({
   onChange,
   rows,
-  value,
+  value: orderedRows,
 }: ChartSettingOrderedRowsProps) => {
-  const handleDisable = (row: any) => {
-    const rowsCopy = [...value];
-    const index = rowsCopy.findIndex((r: Row) => r.rowIndex === row.rowIndex);
-    rowsCopy[index] = { ...rowsCopy[index], enabled: !row.enabled };
-    onChange(rowsCopy);
+  const handleDisable = (row: Row) => {
+    const index = orderedRows.findIndex(
+      (r: Row) => r.rowIndex === row.rowIndex,
+    );
+    onChange(
+      updateIn(orderedRows, [index], row => ({
+        ...row,
+        enabled: !row.enabled,
+      })),
+    );
   };
 
   const handleSortEnd = ({
@@ -39,23 +45,22 @@ export const ChartSettingOrderedRows = ({
     oldIndex: number;
     newIndex: number;
   }) => {
-    const rowsCopy = [...value];
+    const rowsCopy = [...orderedRows];
     rowsCopy.splice(newIndex, 0, rowsCopy.splice(oldIndex, 1)[0]);
     onChange(rowsCopy);
   };
 
   const getRowTitle = (row: Row) => {
     return (
-      rows.find((r: Row) => r.rowIndex === row.rowIndex)?.display_name ||
-      "Unknown"
+      rows.find((r: Row) => r.rowIndex === row.rowIndex)?.name || "Unknown"
     );
   };
 
   return (
     <ChartSettingOrderedRowsRoot>
-      {value.length > 0 ? (
+      {orderedRows.length > 0 ? (
         <ChartSettingOrderedItems
-          items={value}
+          items={orderedRows}
           getItemName={getRowTitle}
           onRemove={handleDisable}
           onEnable={handleDisable}

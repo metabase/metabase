@@ -7,29 +7,35 @@ import {
 
 import ColumnItem from "./ColumnItem";
 
-interface SortableColumnFunctions {
-  onRemove?: (item: any) => void;
-  onEdit?: (item: any) => void;
-  onClick?: (item: any) => void;
-  onAdd?: (item: any) => void;
-  onEnable?: (item: any) => void;
-  getItemName: (item: any) => string;
+interface SortableItem {
+  enabled: boolean;
 }
 
-interface SortableColumnProps extends SortableColumnFunctions {
-  item: any;
+interface SortableColumnFunctions<T> {
+  onRemove?: (item: T) => void;
+  onEdit?: (item: T) => void;
+  onClick?: (item: T) => void;
+  onAdd?: (item: T) => void;
+  onEnable?: (item: T) => void;
+  getItemName: (item: T) => string;
 }
 
-const SortableColumn = SortableElement(
-  ({
-    item,
-    getItemName,
-    onEdit,
-    onRemove,
-    onClick,
-    onAdd,
-    onEnable,
-  }: SortableColumnProps) => (
+interface SortableColumnProps<T> extends SortableColumnFunctions<T> {
+  item: T;
+}
+
+const SortableColumn = SortableElement(function SortableColumn<
+  T extends SortableItem,
+>({
+  item,
+  getItemName,
+  onEdit,
+  onRemove,
+  onClick,
+  onAdd,
+  onEnable,
+}: SortableColumnProps<T>) {
+  return (
     <ColumnItem
       title={getItemName(item)}
       onEdit={onEdit ? () => onEdit(item) : null}
@@ -39,42 +45,44 @@ const SortableColumn = SortableElement(
       onEnable={onEnable && !item.enabled ? () => onEnable(item) : null}
       draggable
     />
-  ),
-);
+  );
+});
 
-interface SortableColumnListProps extends SortableColumnFunctions {
-  items: [];
+interface SortableColumnListProps<T extends SortableItem>
+  extends SortableColumnFunctions<T> {
+  items: T[];
 }
 
-const SortableColumnList = SortableContainer(
-  ({
-    items,
-    getItemName,
-    onEdit,
-    onRemove,
-    onEnable,
-    onAdd,
-  }: SortableColumnListProps) => {
-    return (
-      <div>
-        {items.map((item: any, index: number) => (
-          <SortableColumn
-            key={`item-${index}`}
-            index={index}
-            item={item}
-            getItemName={getItemName}
-            onEdit={onEdit}
-            onRemove={onRemove}
-            onEnable={onEnable}
-            onAdd={onAdd}
-          />
-        ))}
-      </div>
-    );
-  },
-);
+const SortableColumnList = SortableContainer(function SortableColumnList<
+  T extends SortableItem,
+>({
+  items,
+  getItemName,
+  onEdit,
+  onRemove,
+  onEnable,
+  onAdd,
+}: SortableColumnListProps<T>) {
+  return (
+    <div>
+      {items.map((item, index: number) => (
+        <SortableColumn<T>
+          key={`item-${index}`}
+          index={index}
+          item={item}
+          getItemName={getItemName}
+          onEdit={onEdit}
+          onRemove={onRemove}
+          onEnable={onEnable}
+          onAdd={onAdd}
+        />
+      ))}
+    </div>
+  );
+});
 
-interface ChartSettingOrderedItemsProps extends SortableColumnFunctions {
+interface ChartSettingOrderedItemsProps<T>
+  extends SortableColumnFunctions<SortableItem> {
   onSortEnd: ({
     oldIndex,
     newIndex,
@@ -82,11 +90,11 @@ interface ChartSettingOrderedItemsProps extends SortableColumnFunctions {
     oldIndex: number;
     newIndex: number;
   }) => void;
-  items: any[];
+  items: T[];
   distance: number;
 }
 
-export const ChartSettingOrderedItems = ({
+export function ChartSettingOrderedItems<T extends SortableItem>({
   onRemove,
   onSortEnd,
   onEdit,
@@ -95,10 +103,10 @@ export const ChartSettingOrderedItems = ({
   onClick,
   getItemName,
   items,
-}: ChartSettingOrderedItemsProps) => {
+}: ChartSettingOrderedItemsProps<T>) {
   return (
     <SortableColumnList
-      helperClass=""
+      helperClass="dragging"
       items={items}
       getItemName={getItemName}
       onEdit={onEdit}
@@ -110,4 +118,4 @@ export const ChartSettingOrderedItems = ({
       distance={5}
     />
   );
-};
+}
