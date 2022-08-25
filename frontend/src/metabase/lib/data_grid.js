@@ -310,7 +310,7 @@ function createRowSectionGetter({
             ...o,
             clicked: { data, dimensions },
             backgroundColor: colorGetter(
-              o.value,
+              values[index],
               o.rowIndex,
               valueColumns[index].name,
             ),

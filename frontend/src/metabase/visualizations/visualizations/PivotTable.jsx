@@ -202,6 +202,7 @@ class PivotTable extends Component {
       widget: ChartSettingsTableFormatting,
       default: [],
       getProps: series => ({
+        canHighlightRow: false,
         cols: series[0].data.cols.filter(isFormattablePivotColumn),
       }),
       getHidden: ([{ data }]) =>
