@@ -8,7 +8,7 @@ import Search from "metabase/entities/search";
 import { DataApp } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
-import { MainNavbarProps, MainNavbarOwnProps } from "./types";
+import { MainNavbarProps, MainNavbarOwnProps, SelectedItem } from "./types";
 import NavbarLoadingView from "./NavbarLoadingView";
 import DataAppNavbarView from "./DataAppNavbarView";
 
@@ -18,6 +18,7 @@ const LIMIT = 100;
 interface Props extends MainNavbarProps {
   dataApp: DataApp;
   loading: boolean;
+  selectedItems: SelectedItem[];
 }
 
 type SearchRenderProps = {
