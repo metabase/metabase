@@ -65,6 +65,9 @@ export default class FunnelNormal extends Component {
 
     let remaining = rows[0][metricIndex];
 
+    console.log(cols, metricIndex);
+    console.log(rows);
+
     rows.map((row, rowIndex) => {
       remaining -= infos[rowIndex].value - row[metricIndex];
 
@@ -138,7 +141,7 @@ export default class FunnelNormal extends Component {
               {formatMetric(rows[0][metricIndex])}
             </div>
             <div className={styles.Subtitle}>
-              {getFriendlyName(cols[dimensionIndex])}
+              {getFriendlyName(cols[metricIndex])}
             </div>
           </div>
           {/* This part of code in used only to share height between .Start and .Graph columns. */}
