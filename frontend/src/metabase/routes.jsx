@@ -225,29 +225,30 @@ export const getRoutes = store => (
           {getCollectionTimelineRoutes()}
         </Route>
 
-        <Route path="a">
-          <Route path="preview/:slug">
-            <IndexRoute component={DataAppLanding} />
-            <ModalRoute path="move" modal={MoveCollectionModal} />
-            <ModalRoute path="archive" modal={ArchiveCollectionModal} />
-            <ModalRoute path="new_collection" modal={CollectionCreate} />
-            <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
-            <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
-            {getCollectionTimelineRoutes()}
-          </Route>
-
-          <Route path=":slug">
-            <IndexRoute component={DataAppLanding} />
-            <Route path="page/:pageId" component={DashboardApp}>
-              <ModalRoute path="move" modal={DashboardMoveModal} />
-              <ModalRoute path="copy" modal={DashboardCopyModal} />
-              <ModalRoute path="archive" modal={ArchiveDashboardModal} />
-            </Route>
-          </Route>
+        <Route path="apps/:slug">
+          <IndexRoute component={DataAppLanding} />
+          <ModalRoute path="move" modal={MoveCollectionModal} />
+          <ModalRoute path="archive" modal={ArchiveCollectionModal} />
+          <ModalRoute path="new_collection" modal={CollectionCreate} />
+          <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
+          <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+          {getCollectionTimelineRoutes()}
         </Route>
 
-        <Route path="a/preview/:slug" component={DataAppLanding}>
+        <Route path="a/:slug">
           <IndexRoute component={DataAppLanding} />
+          <ModalRoute path="move" modal={MoveCollectionModal} />
+          <ModalRoute path="archive" modal={ArchiveCollectionModal} />
+          <ModalRoute path="new_collection" modal={CollectionCreate} />
+          <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
+          <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+          {getCollectionTimelineRoutes()}
+
+          <Route path="page/:pageId" component={DashboardApp}>
+            <ModalRoute path="move" modal={DashboardMoveModal} />
+            <ModalRoute path="copy" modal={DashboardCopyModal} />
+            <ModalRoute path="archive" modal={ArchiveDashboardModal} />
+          </Route>
         </Route>
 
         <Route path="activity" component={ActivityApp} />

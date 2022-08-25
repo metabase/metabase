@@ -9,7 +9,7 @@ function dataAppInternalPath(app: DataApp) {
 }
 
 export function dataAppPreview(app: DataApp) {
-  return appendSlug(`/a/preview/${app.id}`, slugg(app.collection.name));
+  return appendSlug(`/apps/${app.id}`, slugg(app.collection.name));
 }
 
 export function dataApp(app: DataApp) {

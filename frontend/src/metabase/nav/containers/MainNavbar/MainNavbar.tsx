@@ -92,7 +92,8 @@ function MainNavbar({
     const isUsersCollectionPath = pathname.startsWith("/collection/users");
     const isQuestionPath = pathname.startsWith("/question");
     const isModelPath = pathname.startsWith("/model");
-    const isDataAppPath = pathname.startsWith("/a/");
+    const isDataAppPath =
+      pathname.startsWith("/a/") || pathname.startsWith("/apps/");
     const isDataAppPagePath =
       DATA_APP_PAGE_URL_PATTERN.test(pathname) && typeof params.pageId;
     const isDashboardPath = pathname.startsWith("/dashboard");
