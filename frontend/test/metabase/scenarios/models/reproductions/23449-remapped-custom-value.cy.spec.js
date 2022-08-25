@@ -5,7 +5,7 @@ const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = { query: { "source-table": REVIEWS_ID, limit: 2 } };
 
-describe.skip("issue 23449", () => {
+describe("issue 23449", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
