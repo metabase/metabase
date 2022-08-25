@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
@@ -151,4 +152,8 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
       color: ${color("brand-light")} !important;
     }
   }
+`;
+
+export const ExitDataAppButton = styled(Button)`
+  margin-left: ${space(2)};
 `;
