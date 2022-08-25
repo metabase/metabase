@@ -87,13 +87,15 @@ your_embedding_url?breakfast=scrambled_eggs#hide_parameters=breakfast
 
 ## Customizing the appearance of a signed embed
 
-You can change the appearance of an embedded item by adding parameters that match the [appearance settings](./signed-embedding#customizing-the-appearance-of-signed-embeds).
+You can change the appearance of an embedded item by adding parameters with the following values:
 
 | Parameter name | Possible values          |
 | -------------- | ------------------------ |
 | bordered       | true, false              |
 | titled         | true, false              |
 | theme          | null, transparent, night |
+
+Preview the changes from your question or dashboard's [embedded appearance settings](./signed-embedding#customizing-the-appearance-of-signed-embeds).
 
 For example, the following embedding URL will display an embedded item in dark mode, with its original title, and without a border:
 

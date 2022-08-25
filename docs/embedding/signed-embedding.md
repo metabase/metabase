@@ -94,10 +94,8 @@ You can change how an embedded question or dashboard looks in an iframe (which w
 - Title: Display your question or dashboard's title in the iframe.
 - Theme: Change the background and text colors---light (default), transparent (no background), or night (dark mode).
 
-Adjust embedded appearance settings from your question or dashboard's:
-
-- Embedding settings (**sharing icon** > **Embed this item in an application**).
-- Embedding URL [parameters](./signed-embedding-parameters#customizing-the-appearance-of-a-signed-embed).
+1. Optional: Preview the appearance changes from your question or dashboard's embedding settings (**sharing icon** > **Embed this item in an application**). This will update the code snippet for your server (**Code** > top block).
+2. Change the [parameters](./signed-embedding-parameters#customizing-the-appearance-of-a-signed-embed) in your server code.
 
 For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Appearance](../configuring-metabase/appearance).
 
