@@ -50,8 +50,6 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-const DATA_APP_PAGE_URL_PATTERN = /\/a\/(\d+)\/page\/(\d+)/;
-
 function MainNavbar({
   isOpen,
   location,
