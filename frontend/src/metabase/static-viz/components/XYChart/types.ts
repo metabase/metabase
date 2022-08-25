@@ -94,4 +94,6 @@ export type ChartStyle = {
   goalColor: string;
 };
 
-export type XYAccessor = (datum: SeriesDatum) => number;
+export type XYAccessor<
+  T extends SeriesDatum | StackedDatum = SeriesDatum | StackedDatum,
+> = (datum: T extends SeriesDatum ? SeriesDatum : StackedDatum) => number;

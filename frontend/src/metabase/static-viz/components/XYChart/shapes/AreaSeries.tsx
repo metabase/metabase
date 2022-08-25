@@ -9,9 +9,6 @@ import type {
   Series,
   SeriesDatum,
 } from "metabase/static-viz/components/XYChart/types";
-import { Text, TextProps } from "@visx/text";
-
-const VALUES_MARGIN = 6;
 
 interface AreaSeriesProps {
   series: Series[];
@@ -19,10 +16,6 @@ interface AreaSeriesProps {
   yScaleRight: PositionScale | null;
   xAccessor: (datum: SeriesDatum) => number;
   areStacked?: boolean;
-  showValues: boolean;
-  valueFormatter: (value: number) => string;
-  valueProps: Partial<TextProps>;
-  valueStep: number;
 }
 
 export const AreaSeries = ({
@@ -31,10 +24,6 @@ export const AreaSeries = ({
   yScaleRight,
   xAccessor,
   areStacked,
-  showValues,
-  valueFormatter,
-  valueProps,
-  valueStep,
 }: AreaSeriesProps) => {
   if (areStacked) {
     return (
@@ -44,10 +33,6 @@ export const AreaSeries = ({
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         yScale={yScaleLeft!}
         xAccessor={xAccessor}
-        showValues={showValues}
-        valueFormatter={valueFormatter}
-        valueProps={valueProps}
-        valueStep={valueStep}
       />
     );
   }
@@ -74,33 +59,6 @@ export const AreaSeries = ({
           />
         );
       })}
-      {/* Render all data point values last so they stay on top of the chart elements making them more legible */}
-      {showValues &&
-        series.map(s => {
-          const yScale = s.yAxisPosition === "left" ? yScaleLeft : yScaleRight;
-
-          if (!yScale) {
-            return null;
-          }
-
-          const yAccessor = (d: SeriesDatum) => yScale(getY(d)) ?? 0;
-          return s.data.map((datum, index) => {
-            return (
-              index % valueStep === 0 && (
-                <Text
-                  key={index}
-                  x={xAccessor(datum)}
-                  y={yAccessor(datum) - VALUES_MARGIN}
-                  textAnchor="middle"
-                  verticalAnchor="end"
-                  {...valueProps}
-                >
-                  {valueFormatter(getY(datum))}
-                </Text>
-              )
-            );
-          });
-        })}
     </Group>
   );
 };

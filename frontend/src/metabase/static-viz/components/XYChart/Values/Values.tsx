@@ -6,6 +6,7 @@ import type { TextProps } from "@visx/text";
 import type {
   HydratedSeries,
   SeriesDatum,
+  StackedDatum,
   VisualizationType,
   XYAccessor,
 } from "../types";
@@ -22,14 +23,15 @@ interface ValuesProps {
   yScaleLeft: PositionScale | null;
   yScaleRight: PositionScale | null;
   innerWidth: number;
+  areStacked: boolean;
 }
 
 interface XScale {
-  lineAccessor: XYAccessor;
+  lineAccessor: XYAccessor<SeriesDatum>;
 }
 
 interface Value {
-  datum: SeriesDatum;
+  datum: SeriesDatum | StackedDatum;
   flipped?: boolean;
   hidden?: boolean;
 }
@@ -42,11 +44,12 @@ export default function Values({
   yScaleLeft,
   yScaleRight,
   innerWidth,
+  areStacked,
 }: ValuesProps) {
   return (
     <>
       {series.map(serie => {
-        const { values } = getValues(serie);
+        const { values } = getValues(serie, areStacked);
         const valueStep = getValueStep(
           [serie],
           formatter,
@@ -84,18 +87,6 @@ export default function Values({
     </>
   );
 
-  function getValues(s: HydratedSeries) {
-    const values = getSeriesTransformer(s.type)(
-      s.data.map(datum => {
-        return {
-          datum,
-        };
-      }),
-    );
-
-    return { values };
-  }
-
   function getCompact(s: HydratedSeries) {
     // Use the same logic as in https://github.com/metabase/metabase/blob/1276595f073883853fed219ac185d0293ced01b8/frontend/src/metabase/visualizations/lib/chart_values.js#L178-L179
     const getAvgLength = (compact: boolean) => {
@@ -107,6 +98,27 @@ export default function Values({
     const compact = getAvgLength(true) < getAvgLength(false) - 3;
     return compact;
   }
+}
+
+function getValues(serie: HydratedSeries, areStacked: boolean) {
+  const data = getData(serie, areStacked);
+  const values = getSeriesTransformer(serie.type)(
+    data.map(datum => {
+      return {
+        datum,
+      };
+    }),
+  );
+
+  return { values };
+}
+
+function getData(serie: HydratedSeries, areStacked: boolean) {
+  if (serie.type === "area" && areStacked) {
+    return serie.stackedData as StackedDatum[];
+  }
+
+  return serie.data;
 }
 
 function getXyAccessors(
