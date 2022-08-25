@@ -37,7 +37,7 @@ const standardTableStyleReset = css`
   line-height: 12px;
   text-align: left;
   thead tr:first-of-type {
-    background-color: #fff;
+    background-color: ${color("white")};
   }
 `;
 
@@ -47,11 +47,11 @@ export const Table = styled.table`
     border-bottom: 1px solid ${alpha(color("border"), 0.3)};
   }
   tr:nth-child(even) {
-    background-color: #f2f2f2;
+    background-color: ${color("bg-light")};
   }
 
   tr:hover {
-    background-color: #ceced0;
+    background-color: ${color("bg-medium")};
   }
 
   th,
