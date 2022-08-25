@@ -1,5 +1,8 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import cx from "classnames";
+import d3 from "d3";
+import _ from "underscore";
 import styles from "./PieChart.css";
 import { t } from "ttag";
 import ChartTooltip from "../components/ChartTooltip";
@@ -24,10 +27,7 @@ import { formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 
-import cx from "classnames";
-
-import d3 from "d3";
-import _ from "underscore";
+import { Label } from "./PieChart.styled";
 
 const MAX_PIE_SIZE = 550;
 
@@ -122,6 +122,12 @@ export default class PieChart extends Component {
       title: t`Show percentages in legend`,
       widget: "toggle",
       default: true,
+    },
+    "pie.show_data_labels": {
+      section: t`Display`,
+      title: t`Show data labels`,
+      widget: "toggle",
+      default: false,
     },
     "pie.slice_threshold": {
       section: t`Display`,
@@ -434,6 +440,8 @@ export default class PieChart extends Component {
     const getSliceIsClickable = index =>
       isClickable && slices[index] !== otherSlice;
 
+    const shouldRenderLabels = settings["pie.show_data_labels"];
+
     return (
       <ChartWithLegend
         className={className}
@@ -469,39 +477,57 @@ export default class PieChart extends Component {
               style={{ maxWidth: MAX_PIE_SIZE, maxHeight: MAX_PIE_SIZE }}
             >
               <g ref={this.chartGroup} transform="translate(50,50)">
-                {pie(slices).map((slice, index) => (
-                  <path
-                    data-testid="slice"
-                    key={index}
-                    d={arc(slice)}
-                    fill={slices[index].color}
-                    opacity={
-                      hovered &&
-                      hovered.index != null &&
-                      hovered.index !== index
-                        ? 0.3
-                        : 1
-                    }
-                    onMouseMove={e =>
-                      onHoverChange && onHoverChange(hoverForIndex(index, e))
-                    }
-                    onMouseLeave={() => onHoverChange && onHoverChange(null)}
-                    className={cx({
-                      "cursor-pointer": getSliceIsClickable(index),
-                    })}
-                    onClick={
-                      // We use a ternary here because using
-                      // `condition && function` yields a console warning.
-                      getSliceIsClickable(index)
-                        ? e =>
-                            onVisualizationClick({
-                              ...getSliceClickObject(index),
-                              event: event.nativeEvent,
-                            })
-                        : undefined
-                    }
-                  />
-                ))}
+                {pie(slices).map((slice, index) => {
+                  const sliceData = slices[index];
+                  const label = formatPercent(sliceData.percentage);
+
+                  return (
+                    <>
+                      <path
+                        data-testid="slice"
+                        key={index}
+                        d={arc(slice)}
+                        fill={slices[index].color}
+                        opacity={
+                          hovered &&
+                          hovered.index != null &&
+                          hovered.index !== index
+                            ? 0.3
+                            : 1
+                        }
+                        onMouseMove={e =>
+                          onHoverChange &&
+                          onHoverChange(hoverForIndex(index, e))
+                        }
+                        onMouseLeave={() =>
+                          onHoverChange && onHoverChange(null)
+                        }
+                        className={cx({
+                          "cursor-pointer": getSliceIsClickable(index),
+                        })}
+                        onClick={
+                          // We use a ternary here because using
+                          // `condition && function` yields a console warning.
+                          getSliceIsClickable(index)
+                            ? e =>
+                                onVisualizationClick({
+                                  ...getSliceClickObject(index),
+                                  event: event.nativeEvent,
+                                })
+                            : undefined
+                        }
+                      />
+                      {shouldRenderLabels && (
+                        <Label
+                          dy={1}
+                          transform={`translate(${arc.centroid(slice)})`}
+                        >
+                          {label}
+                        </Label>
+                      )}
+                    </>
+                  );
+                })}
               </g>
             </svg>
           </div>
