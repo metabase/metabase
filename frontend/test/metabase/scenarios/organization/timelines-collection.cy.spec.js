@@ -5,7 +5,12 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   restore,
+  getFullName,
 } from "__support__/e2e/helpers";
+
+import { USERS } from "__support__/e2e/cypress_data";
+
+const { admin } = USERS;
 
 describe("scenarios > organization > timelines > collection", () => {
   beforeEach(() => {
@@ -379,7 +384,9 @@ describe("scenarios > organization > timelines > collection", () => {
       });
 
       cy.findByText("Our analytics events").should("be.visible");
-      cy.findByText("Bobby Tables's Personal Collection").should("be.visible");
+      cy.findByText(`${getFullName(admin)}'s Personal Collection`).should(
+        "be.visible",
+      );
     });
 
     it("should archive a timeline and undo", () => {
