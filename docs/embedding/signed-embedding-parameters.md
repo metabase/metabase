@@ -51,7 +51,7 @@ your_embedding_url?breakfast=Scrambled_eggs&breakfast=Bacon
 
 ## Pre-filtering data in a signed embed
 
-If you want to display filtered data from an embedded dashboard or SQL question, and _prevent_ people from viewing or changing that filter:
+If you want to display filtered data in an embedded dashboard or SQL question, and _prevent_ people from viewing or changing that filter:
 
 1. Go to your dashboard or SQL question. Make sure you've set up a [dashboard filter](../dashboards/filters) or [SQL variable](/questions/native-editor/sql-parameters).
 2. Click on the **sharing icon** > **Embed this item in an application**.
