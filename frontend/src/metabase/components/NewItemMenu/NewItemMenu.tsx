@@ -60,7 +60,6 @@ const NewItemMenu = ({
         link: Urls.newQuestion({
           mode: "notebook",
           creationType: "custom_question",
-          collectionId,
         }),
         event: `${analyticsContext};New Question Click;`,
         onClose: onCloseNavbar,
@@ -74,7 +73,6 @@ const NewItemMenu = ({
         link: Urls.newQuestion({
           type: "native",
           creationType: "native_question",
-          collectionId,
         }),
         event: `${analyticsContext};New SQL Query Click;`,
         onClose: onCloseNavbar,
@@ -98,7 +96,6 @@ const NewItemMenu = ({
 
     return items;
   }, [
-    collectionId,
     hasDataAccess,
     hasNativeWrite,
     hasDatabaseWithJsonEngine,
