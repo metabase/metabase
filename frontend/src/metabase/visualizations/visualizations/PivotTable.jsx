@@ -30,6 +30,7 @@ import { PLUGIN_SELECTORS } from "metabase/plugins";
 import {
   PivotTableCell,
   PivotTableTopLeftCellsContainer,
+  HeaderCellsCollection,
   RowToggleIconRoot,
 } from "./PivotTable.styled";
 
@@ -316,12 +317,15 @@ class PivotTable extends Component {
     const leftHeaderCellRenderer = ({ index, key, style }) => {
       const { value, isSubtotal, hasSubtotal, depth, path, clicked } =
         leftHeaderItems[index];
+
       return (
         <Cell
+          key={key}
           style={{
             ...style,
             ...(depth === 0 ? { paddingLeft: LEFT_HEADER_LEFT_SPACING } : {}),
           }}
+          isNightMode={isNightMode}
           value={value}
           isEmphasized={isSubtotal}
           isBold={isSubtotal}
@@ -361,13 +365,19 @@ class PivotTable extends Component {
     const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
 
     const topHeaderCellRenderer = ({ index, key, style }) => {
-      const { value, hasChildren, clicked } = topHeaderItems[index];
+      const { value, hasChildren, clicked, isSubtotal, maxDepthBelow } =
+        topHeaderItems[index];
       return (
         <Cell
           key={key}
-          style={style}
+          style={{
+            ...style,
+          }}
           value={value}
+          isNightMode={isNightMode}
+          isBorderedHeader={maxDepthBelow === 0}
           isEmphasized={hasChildren}
+          isBold={isSubtotal}
           onClick={this.getCellClickHander(clicked)}
         />
       );
@@ -394,6 +404,7 @@ class PivotTable extends Component {
         {getRowSection(columnIndex, rowIndex).map(
           ({ value, isSubtotal, clicked, backgroundColor }, index) => (
             <Cell
+              isNightMode={isNightMode}
               key={index}
               value={value}
               isEmphasized={isSubtotal}
@@ -415,19 +426,27 @@ class PivotTable extends Component {
               <div className="flex" style={{ height: topHeaderHeight }}>
                 {/* top left corner - displays left header columns */}
                 <PivotTableTopLeftCellsContainer
+                  isNightMode={isNightMode}
                   style={{
                     width: leftHeaderWidth,
                   }}
                 >
                   {rowIndexes.map((rowIndex, index) => (
                     <Cell
-                      isEmphasized
                       key={rowIndex}
+                      isEmphasized
+                      isBold
+                      isBorderedHeader
+                      hasTopBorder={topHeaderRows > 1}
+                      isNightMode={isNightMode}
                       value={this.getColumnTitle(rowIndex)}
                       style={{
                         width: LEFT_HEADER_CELL_WIDTH,
                         ...(index === 0
                           ? { paddingLeft: LEFT_HEADER_LEFT_SPACING }
+                          : {}),
+                        ...(index === rowIndexes.length - 1
+                          ? { borderRight: "none" }
                           : {}),
                       }}
                       icon={
@@ -447,9 +466,10 @@ class PivotTable extends Component {
                   ))}
                 </PivotTableTopLeftCellsContainer>
                 {/* top header */}
-                <Collection
+                <HeaderCellsCollection
                   ref={e => (this.topHeaderRef = e)}
                   className="scroll-hide-all"
+                  isNightMode={isNightMode}
                   width={width - leftHeaderWidth}
                   height={topHeaderHeight}
                   cellCount={topHeaderItems.length}
@@ -606,18 +626,24 @@ function RowToggleIcon({
 
 function Cell({
   value,
-  isBold,
-  isEmphasized,
-  onClick,
   style,
-  isBody = false,
   icon,
   backgroundColor,
+  isBody = false,
+  isBold,
+  isEmphasized,
+  isNightMode,
+  isBorderedHeader,
+  hasTopBorder,
+  onClick,
 }) {
   return (
     <PivotTableCell
+      isNightMode={isNightMode}
       isBold={isBold}
       isEmphasized={isEmphasized}
+      isBorderedHeader={isBorderedHeader}
+      hasTopBorder={hasTopBorder}
       style={{
         ...style,
         ...(backgroundColor
