@@ -404,19 +404,25 @@
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
-(defn- autocomplete-tables [db-id search-string limit]
+(defn- match-search-string [match-type search-string]
+  (str/lower-case
+   (case match-type
+     :prefix (str search-string "%")
+     :substring (str "%" search-string "%"))))
+
+(defn- autocomplete-tables [db-id search-string limit match-type]
   (db/select [Table :id :db_id :schema :name]
     {:where    [:and [:= :db_id db-id]
                      [:= :active true]
-                     [:like :%lower.name (str/lower-case search-string)]
+                     [:like :%lower.name (match-search-string match-type (str/lower-case search-string))]
                      [:= :visibility_type nil]]
      :order-by [[:%lower.name :asc]]
      :limit    limit}))
 
-(defn- autocomplete-fields [db-id search-string limit]
+(defn- autocomplete-fields [db-id search-string limit match-type]
   (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
     :metabase_field.active          true
-    :%lower.metabase_field.name     [:like (str/lower-case search-string)]
+    :%lower.metabase_field.name     [:like (match-search-string match-type (str/lower-case search-string))]
     :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
     :table.db_id                    db-id
     {:order-by  [[:%lower.metabase_field.name :asc]
@@ -424,33 +430,90 @@
      :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
      :limit     limit}))
 
-(defn- autocomplete-results [tables fields limit]
-  (let [tbl-count   (count tables)
-        fld-count   (count fields)
-        take-tables (min tbl-count (- limit (/ fld-count 2)))
-        take-fields (- limit take-tables)]
-    (concat (for [{table-name :name} (take take-tables tables)]
-              [table-name "Table"])
-            (for [{:keys [table_name base_type semantic_type name]} (take take-fields fields)]
-              [name (str table_name
-                         " "
-                         base_type
-                         (when semantic_type
-                           (str " " semantic_type)))]))))
+;; TODO: include saved questions in this
+;; TODO: make more efficient by taking in the set of models / saved questions referenced by the query in the editor
+(defn- autocomplete-model-columns [db-id search-string limit match-type]
+  (->> (db/select [Card :name :result_metadata]
+         :%lower.result_metadata         [:like (match-search-string :substring search-string)]
+         :database_id                    db-id
+         {:limit limit})
+       (mapcat (fn [{:keys [result_metadata name]}]
+                 (map (fn [metadata]
+                        (merge metadata
+                               {:card_name name}))
+                      result_metadata)))
+       (filter (fn [metadata]
+                 (re-find (re-pattern (case match-type
+                                        :prefix    (str "(?i)^" search-string)
+                                        :substring (str "(?i)" search-string))) (:name metadata))))))
 
-(defn- autocomplete-suggestions
-  "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
-  [db-id match-string]
-  (let [limit  50
-        tables (filter mi/can-read? (autocomplete-tables db-id match-string limit))
-        fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
-    (autocomplete-results tables fields limit)))
+(defn- autocomplete-fields [db-id search-string limit match-type]
+  (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
+    :metabase_field.active          true
+    :%lower.metabase_field.name     [:like (match-search-string match-type search-string)]
+    :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
+    :table.db_id                    db-id
+    {:order-by  [[:%lower.metabase_field.name :asc]
+                 [:%lower.table.name :asc]]
+     :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
+     :limit     limit}))
+
+(defmulti format-autocomplete-result
+  "Format an autocomplete result for the client."
+  {:arglists '([result-data])}
+  (fn [[result-type _]]
+    result-type))
+
+(defmethod format-autocomplete-result :table
+  [[_ {:keys [name]}]]
+  [name "Table"])
+
+(defmethod format-autocomplete-result :field
+  [[_ {:keys [table_name base_type semantic_type name]}]]
+  [name (str table_name
+             " "
+             base_type
+             (when semantic_type
+               (str " " semantic_type)))])
+
+(defmethod format-autocomplete-result :model-column
+  [[_ {:keys [card_name base_type semantic_type name]}]]
+  [name (str card_name
+             " "
+             base_type
+             (when semantic_type
+               (str " " semantic_type)))])
+
+(defn- autocomplete-results [tables fields model-columns limit]
+  (let [taken-tables        (take 5 tables)
+        taken-fields        (take 5 fields)
+        taken-model-columns (take 5 model-columns)]
+    (->> (concat (map #(vector :table %) taken-tables)
+                 (map #(vector :field %) taken-fields)
+                 (map #(vector :model-column %) taken-model-columns))
+         (take limit)
+         (map format-autocomplete-result))))
+
+;; TODO: Do I need this?
+(defn readable-model-columns-only
+  "Checks if each field for the model column is readable and returns only readable fields"
+  [model-columns]
+  model-columns)
 
 (def ^:private autocomplete-matching-options
   "Valid options for the autocomplete types. Can match on a substring (\"%input%\"), on a prefix (\"input%\"), or reject
   autocompletions. Large instances with lots of fields might want to use prefix matching or turn off the feature if it
   causes too many problems."
   #{:substring :prefix :off})
+
+(s/defn ^:private autocomplete-suggestions
+  "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
+  [db-id match-string match-type :- (apply s/enum autocomplete-matching-options)]
+  (let [limit         50
+        tables        (filter mi/can-read? (autocomplete-tables db-id match-string limit match-type))
+        fields        (readable-fields-only (autocomplete-fields db-id match-string limit match-type))
+        model-columns (readable-model-columns-only (autocomplete-model-columns db-id match-string limit match-type))]
+    (autocomplete-results tables fields model-columns limit)))
 
 (defsetting native-query-autocomplete-match-style
   (deferred-tru
@@ -483,11 +546,11 @@
   (try
     (cond
       substring
-      (autocomplete-suggestions id (str "%" substring "%"))
+      (autocomplete-suggestions id substring :substring)
       prefix
-      (autocomplete-suggestions id (str prefix "%"))
+      (autocomplete-suggestions id prefix :prefix)
       :else
-      (ex-info "must include prefix or search" {}))
+      (throw (ex-info "must include prefix or substring" {})))
     (catch Throwable t
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 
