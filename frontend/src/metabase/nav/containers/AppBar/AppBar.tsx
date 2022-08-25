@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import _ from "underscore";
+import Collections from "metabase/entities/collections";
 import { logout } from "metabase/auth/actions";
 import { closeNavbar, getIsNavbarOpen, toggleNavbar } from "metabase/redux/app";
 import {
@@ -17,6 +18,7 @@ import AppBar from "../../components/AppBar";
 
 const mapStateToProps = (state: State, props: RouterProps) => ({
   currentUser: getUser(state),
+  collectionId: Collections.selectors.getInitialCollectionId(state, props),
   isNavBarOpen: getIsNavbarOpen(state),
   isSearchVisible: getIsSearchVisible(state),
   isNewButtonVisible: getIsNewButtonVisible(state),
