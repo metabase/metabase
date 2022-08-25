@@ -1,20 +1,17 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-
-import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 
-import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import { coerceCollectionId } from "metabase/collections/utils";
 
 import { getQuestion } from "metabase/query_builder/selectors";
 import { getDashboard } from "metabase/dashboard/selectors";
 
 import Question from "metabase-lib/lib/Question";
-import { Collection, Dashboard } from "metabase-types/api";
+import { Dashboard } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import DataAppNavbarContainer from "./DataAppNavbarContainer";
@@ -27,8 +24,6 @@ import {
   SelectedItem,
 } from "./types";
 import { NavRoot, Sidebar } from "./MainNavbar.styled";
-
-type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 
 interface StateProps {
   question?: Question;
@@ -61,8 +56,6 @@ function MainNavbar({
   onChangeLocation,
   ...props
 }: Props) {
-  const [modal, setModal] = useState<NavbarModal>(null);
-
   useEffect(() => {
     function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
       if (e.key === "." && (e.ctrlKey || e.metaKey)) {
@@ -142,59 +135,34 @@ function MainNavbar({
     return [{ url: pathname, type: "non-entity" }];
   }, [location, params, question, dashboard]);
 
-  const onCreateNewCollection = useCallback(() => {
-    setModal("MODAL_NEW_COLLECTION");
-  }, []);
-
-  const closeModal = useCallback(() => setModal(null), []);
-
-  const renderModalContent = useCallback(() => {
-    if (modal === "MODAL_NEW_COLLECTION") {
-      return (
-        <CollectionCreate
-          onClose={closeModal}
-          onSaved={(collection: Collection) => {
-            closeModal();
-            onChangeLocation(Urls.collection(collection));
-          }}
-        />
-      );
-    }
-    return null;
-  }, [modal, closeModal, onChangeLocation]);
-
   return (
-    <>
-      <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
-        <NavRoot isOpen={isOpen}>
-          {Urls.isLaunchedDataAppPath(location.pathname) ? (
-            <DataAppNavbarContainer
-              isOpen={isOpen}
-              location={location}
-              params={params}
-              selectedItems={selectedItems}
-              openNavbar={openNavbar}
-              closeNavbar={closeNavbar}
-              onChangeLocation={onChangeLocation}
-              {...props}
-            />
-          ) : (
-            <MainNavbarContainer
-              isOpen={isOpen}
-              location={location}
-              params={params}
-              selectedItems={selectedItems}
-              onCreateNewCollection={onCreateNewCollection}
-              openNavbar={openNavbar}
-              closeNavbar={closeNavbar}
-              onChangeLocation={onChangeLocation}
-              {...props}
-            />
-          )}
-        </NavRoot>
-      </Sidebar>
-      {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
-    </>
+    <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
+      <NavRoot isOpen={isOpen}>
+        {Urls.isLaunchedDataAppPath(location.pathname) ? (
+          <DataAppNavbarContainer
+            isOpen={isOpen}
+            location={location}
+            params={params}
+            selectedItems={selectedItems}
+            openNavbar={openNavbar}
+            closeNavbar={closeNavbar}
+            onChangeLocation={onChangeLocation}
+            {...props}
+          />
+        ) : (
+          <MainNavbarContainer
+            isOpen={isOpen}
+            location={location}
+            params={params}
+            selectedItems={selectedItems}
+            openNavbar={openNavbar}
+            closeNavbar={closeNavbar}
+            onChangeLocation={onChangeLocation}
+            {...props}
+          />
+        )}
+      </NavRoot>
+    </Sidebar>
   );
 }
 

@@ -1,8 +1,11 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
 import { IconProps } from "metabase/components/Icon";
+import Modal from "metabase/components/Modal";
+
+import * as Urls from "metabase/lib/urls";
 
 import { Bookmark, Collection, DataApp, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
@@ -21,6 +24,7 @@ import {
   getHasOwnDatabase,
 } from "metabase/new_query/selectors";
 
+import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import {
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
@@ -29,6 +33,8 @@ import {
 import { MainNavbarProps, SelectedItem } from "./types";
 import MainNavbarView from "./MainNavbarView";
 import NavbarLoadingView from "./NavbarLoadingView";
+
+type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 
 function mapStateToProps(state: State) {
   return {
@@ -63,7 +69,6 @@ interface Props extends MainNavbarProps {
   allFetched: boolean;
   logout: () => void;
   onReorderBookmarks: (bookmarks: Bookmark[]) => void;
-  onCreateNewCollection: () => void;
 }
 
 function MainNavbarContainer({
@@ -85,9 +90,10 @@ function MainNavbarContainer({
   logout,
   onChangeLocation,
   onReorderBookmarks,
-  onCreateNewCollection,
   ...props
 }: Props) {
+  const [modal, setModal] = useState<NavbarModal>(null);
+
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
@@ -130,27 +136,52 @@ function MainNavbarContainer({
     [bookmarks, onReorderBookmarks],
   );
 
+  const onCreateNewCollection = useCallback(() => {
+    setModal("MODAL_NEW_COLLECTION");
+  }, []);
+
+  const closeModal = useCallback(() => setModal(null), []);
+
+  const renderModalContent = useCallback(() => {
+    if (modal === "MODAL_NEW_COLLECTION") {
+      return (
+        <CollectionCreate
+          onClose={closeModal}
+          onSaved={(collection: Collection) => {
+            closeModal();
+            onChangeLocation(Urls.collection(collection));
+          }}
+        />
+      );
+    }
+    return null;
+  }, [modal, closeModal, onChangeLocation]);
+
   if (!allFetched) {
     return <NavbarLoadingView />;
   }
 
   return (
-    <MainNavbarView
-      {...props}
-      bookmarks={bookmarks}
-      isAdmin={isAdmin}
-      isOpen={isOpen}
-      currentUser={currentUser}
-      collections={collectionTree}
-      dataApps={dataApps}
-      hasOwnDatabase={hasOwnDatabase}
-      selectedItems={selectedItems}
-      hasDataAccess={hasDataAccess}
-      reorderBookmarks={reorderBookmarks}
-      handleCreateNewCollection={onCreateNewCollection}
-      handleCloseNavbar={closeNavbar}
-      handleLogout={logout}
-    />
+    <>
+      <MainNavbarView
+        {...props}
+        bookmarks={bookmarks}
+        isAdmin={isAdmin}
+        isOpen={isOpen}
+        currentUser={currentUser}
+        collections={collectionTree}
+        dataApps={dataApps}
+        hasOwnDatabase={hasOwnDatabase}
+        selectedItems={selectedItems}
+        hasDataAccess={hasDataAccess}
+        reorderBookmarks={reorderBookmarks}
+        handleCreateNewCollection={onCreateNewCollection}
+        handleCloseNavbar={closeNavbar}
+        handleLogout={logout}
+      />
+
+      {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
+    </>
   );
 }
 
