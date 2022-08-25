@@ -141,6 +141,7 @@
    :embedding_params        nil
    :enable_embedding        false
    :entity_id               true
+   :is_app_page             false
    :made_public_by_id       nil
    :parameters              []
    :points_of_interest      nil
@@ -166,11 +167,13 @@
                      :created_at     true
                      :collection_id  true
                      :cache_ttl      1234
+                     :is_app_page    true
                      :last-edit-info {:timestamp true :id true :first_name "Rasta"
                                       :last_name "Toucan" :email "rasta@metabase.com"}})
                    (-> (mt/user-http-request :rasta :post 200 "dashboard" {:name          test-dashboard-name
                                                                            :parameters    [{:id "abc123", :name "test", :type "date"}]
                                                                            :cache_ttl     1234
+                                                                           :is_app_page   true
                                                                            :collection_id (u/the-id collection)})
                        dashboard-response)))
             (finally
@@ -376,6 +379,7 @@
                                             :description    "Some awesome description"
                                             :creator_id     (mt/user->id :rasta)
                                             :cache_ttl      1234
+                                            :is_app_page    true
                                             :last-edit-info {:timestamp true     :id    true :first_name "Rasta"
                                                              :last_name "Toucan" :email "rasta@metabase.com"}
                                             :collection_id true})
@@ -384,6 +388,7 @@
                                         {:name        "My Cool Dashboard"
                                          :description "Some awesome description"
                                          :cache_ttl   1234
+                                         :is_app_page true
                                          ;; these things should fail to update
                                          :creator_id  (mt/user->id :trashbird)})))))
 
@@ -391,6 +396,7 @@
           (is (= (merge dashboard-defaults {:name          "My Cool Dashboard"
                                             :description   "Some awesome description"
                                             :cache_ttl     1234
+                                            :is_app_page   true
                                             :creator_id    (mt/user->id :rasta)
                                             :collection_id true})
                  (dashboard-response (db/select-one Dashboard :id dashboard-id)))))))))
@@ -664,7 +670,8 @@
     (testing "A plain copy with nothing special"
       (mt/with-temp Dashboard [dashboard {:name        "Test Dashboard"
                                           :description "A description"
-                                          :creator_id  (mt/user->id :rasta)}]
+                                          :creator_id  (mt/user->id :rasta)
+                                          :is_app_page true}]
         (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (:id dashboard)))]
           (try
             (is (= (merge
@@ -672,6 +679,7 @@
                      {:name          "Test Dashboard"
                       :description   "A description"
                       :creator_id    (mt/user->id :rasta)
+                      :is_app_page   true
                       :collection_id false})
                    (dashboard-response response)))
             (is (some? (:entity_id response)))
