@@ -446,6 +446,22 @@ describe("scenarios > collection defaults", () => {
         cy.findByText("First collection");
       });
     });
+
+    it("should create new collections within the current collection", () => {
+      getCollectionIdFromSlug("third_collection", collection_id => {
+        visitCollection(collection_id);
+        cy.findByText("New").click();
+
+        popover().within(() => {
+          cy.findByText("Collection").click();
+        });
+
+        modal().within(() => {
+          cy.findByText("Collection it's saved in").should("be.visible");
+          cy.findByText("Third collection").should("be.visible");
+        });
+      });
+    });
   });
 });
 
