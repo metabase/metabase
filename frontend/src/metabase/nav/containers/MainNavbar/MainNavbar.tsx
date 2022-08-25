@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
@@ -58,10 +58,29 @@ function MainNavbar({
   params,
   question,
   dashboard,
+  openNavbar,
+  closeNavbar,
   onChangeLocation,
   ...props
 }: Props) {
   const [modal, setModal] = useState<NavbarModal>(null);
+
+  useEffect(() => {
+    function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
+      if (e.key === "." && (e.ctrlKey || e.metaKey)) {
+        if (isOpen) {
+          closeNavbar();
+        } else {
+          openNavbar();
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleSidebarKeyboardShortcut);
+    return () => {
+      window.removeEventListener("keydown", handleSidebarKeyboardShortcut);
+    };
+  }, [isOpen, openNavbar, closeNavbar]);
 
   const isDataAppUrl = location.pathname.startsWith("/a/");
   const isDataAppPreview = location.pathname.startsWith("/a/preview/");
@@ -160,6 +179,8 @@ function MainNavbar({
               location={location}
               params={params}
               selectedItems={selectedItems}
+              openNavbar={openNavbar}
+              closeNavbar={closeNavbar}
               onChangeLocation={onChangeLocation}
               {...props}
             />
@@ -170,6 +191,8 @@ function MainNavbar({
               params={params}
               selectedItems={selectedItems}
               onCreateNewCollection={onCreateNewCollection}
+              openNavbar={openNavbar}
+              closeNavbar={closeNavbar}
               onChangeLocation={onChangeLocation}
               {...props}
             />

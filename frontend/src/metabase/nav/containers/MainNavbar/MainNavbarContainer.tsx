@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
@@ -88,23 +88,6 @@ function MainNavbarContainer({
   onCreateNewCollection,
   ...props
 }: Props) {
-  useEffect(() => {
-    function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
-      if (e.key === "." && (e.ctrlKey || e.metaKey)) {
-        if (isOpen) {
-          closeNavbar();
-        } else {
-          openNavbar();
-        }
-      }
-    }
-
-    window.addEventListener("keydown", handleSidebarKeyboardShortcut);
-    return () => {
-      window.removeEventListener("keydown", handleSidebarKeyboardShortcut);
-    };
-  }, [isOpen, openNavbar, closeNavbar]);
-
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
