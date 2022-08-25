@@ -48,6 +48,7 @@ const LaunchDataAppButton = ({
   const path = Urls.dataApp(dataApp);
   return (
     <Button
+      icon="rocket"
       onClick={() => onChangeLocation(path)}
       small
     >{t`Launch app`}</Button>
