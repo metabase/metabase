@@ -11,7 +11,7 @@ import {
 } from "metabase/lib/expressions/format";
 import { isCompatibleAggregationOperatorForField } from "metabase/lib/schema_metadata";
 import _ from "underscore";
-import { chain, updateIn } from "icepick";
+import { chain, updateIn, merge } from "icepick";
 import { t } from "ttag";
 import { memoizeClass } from "metabase-lib/lib/utils";
 import {
@@ -51,6 +51,10 @@ import Table from "../metadata/Table";
 import Field from "../metadata/Field";
 import { TYPE } from "metabase/lib/types";
 import { fieldRefForColumn } from "metabase/lib/dataset";
+import {
+  isVirtualCardId,
+  getQuestionIdFromVirtualTableId,
+} from "metabase/lib/saved-questions/saved-questions";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
 type FieldFilter = (filter: Field) => boolean;
@@ -327,6 +331,8 @@ class StructuredQueryInner extends AtomicQuery {
    * @returns the table object, if a table is selected and loaded.
    */
   table(): Table {
+    const question = this.question();
+    const isDataset = question?.isDataset() ?? false;
     const sourceQuery = this.sourceQuery();
 
     if (sourceQuery) {
@@ -341,11 +347,10 @@ class StructuredQueryInner extends AtomicQuery {
 
         return new Field({
           ...column,
-          // TODO FIXME -- Do NOT use field-literal unless you're referring to a native query
           id,
           source: "fields",
-          // HACK: need to thread the query through to this fake Field
-          query: this,
+          query: sourceQuery,
+          metadata: this.metadata(),
         });
       });
 
@@ -357,10 +362,64 @@ class StructuredQueryInner extends AtomicQuery {
         fields,
         segments: [],
         metrics: [],
+        metadata: this.metadata(),
       });
     }
 
-    return this.metadata().table(this.sourceTableId());
+    const sourceTableId = this.sourceTableId();
+    if (isVirtualCardId(sourceTableId)) {
+      const virtualTableId = getQuestionIdFromVirtualTableId(sourceTableId);
+      const sourceQuestion = this.metadata().question(virtualTableId);
+      if (sourceQuestion) {
+        const sourceQuestionResultMetadata =
+          sourceQuestion?.getResultMetadata() ?? [];
+        const fields = sourceQuestionResultMetadata.map(fieldMetadata => {
+          return new Field({
+            ...fieldMetadata,
+            source: "fields",
+            query: sourceQuestion.query(),
+            metadata: this.metadata(),
+          });
+        });
+
+        return new Table({
+          id: sourceTableId,
+          name: sourceQuestion.displayName(),
+          display_name: sourceQuestion.displayName(),
+          db: sourceQuestion.database(),
+          fields,
+          segments: [],
+          metrics: [],
+          metadata: this.metadata(),
+        });
+      }
+    }
+
+    if (isDataset) {
+      const table = this.metadata().table(this.sourceTableId());
+      const tableFields = table?.fields ?? [];
+      const sourceQuestionResultMetadata = question.getResultMetadata() ?? [];
+
+      const mergedFields = tableFields.map(field => {
+        const questionSpecificFieldMetadata = sourceQuestionResultMetadata.find(
+          metadata => metadata.id === field.id || metadata.name === field.name,
+        );
+        return new Field(merge(field, questionSpecificFieldMetadata));
+      });
+
+      return new Table({
+        id: this.sourceTableId(),
+        name: question.displayName(),
+        display_name: question.displayName(),
+        db: question.database(),
+        fields: mergedFields,
+        segments: [],
+        metrics: [],
+      });
+    }
+
+    const table = this.metadata().table(sourceTableId);
+    return table;
   }
 
   /**

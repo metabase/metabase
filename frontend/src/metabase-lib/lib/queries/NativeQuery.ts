@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
+import Field from "metabase-lib/lib/metadata/Field";
 import { countLines } from "metabase/lib/string";
 import { humanize } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
@@ -192,6 +193,29 @@ export default class NativeQuery extends AtomicQuery {
   table(): Table | null | undefined {
     const database = this.database();
     const collection = this.collection();
+    const question = this.question();
+    const isDataset = question?.isDataset();
+
+    if (isDataset) {
+      const fields = question.getResultMetadata().map(metadata => {
+        return new Field({
+          ...metadata,
+          metadata: this.metadata(),
+          query: this,
+        });
+      });
+
+      return new Table({
+        id: `card__${question.id()}`,
+        name: question.displayName(),
+        display_name: question.displayName(),
+        db: question.database(),
+        fields,
+        segments: [],
+        metrics: [],
+        metadata: this.metadata(),
+      });
+    }
 
     if (!database || !collection) {
       return null;

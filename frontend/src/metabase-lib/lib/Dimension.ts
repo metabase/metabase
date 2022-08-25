@@ -910,43 +910,32 @@ export class FieldDimension extends Dimension {
       return cachedField;
     }
 
-    let fieldMetadata;
+    const identifierProp = this._getIdentifierProp();
+    const fieldIdentifier = this.fieldIdOrName();
 
-    // Models contain custom metadata for fields, but when these fields have integer ids,
-    // they are clobbered by the metadata from the real table that the card is based on,
-    // so we need to check the result_metadata of the nested card and merge it with the
-    // Field that exists in the Metadata object.
-    if (this.isIntegerFieldId()) {
-      fieldMetadata =
-        this._getFieldMetadataFromSavedDataset() ||
-        this._getFieldMetadataFromNestedDataset();
+    if (this._query) {
+      const tableField = _.findWhere(this._query.table()?.fields, {
+        [identifierProp]: fieldIdentifier,
+      });
+      if (tableField) {
+        return tableField;
+      }
     }
 
-    // In scenarios where the Field id is not an integer, we need to grab the Field from the
-    // query's table, because the Field won't exist in the Metadata object (and string Field ids
-    // are not sufficiently unique to be stored properly in the Metadata object).
-    fieldMetadata = fieldMetadata || this._getFieldMetadataFromQueryTable();
-
-    // The `fieldMetadata` object may have metadata that overrides the regular field object
-    // (e.g. a custom field display name or description on a model)
-    const field = this._metadata?.field(this.fieldIdOrName());
-    const combinedField = this._combineFieldWithExtraMetadata(
-      field,
-      fieldMetadata,
-    );
-
-    if (combinedField) {
-      return combinedField;
+    const field = this._metadata?.field(fieldIdentifier);
+    if (field) {
+      return field;
     }
 
     // Despite being unable to find a field, we _might_ still have enough data to know a few things about it.
     // For example, if we have an mbql field reference, it might contain a `base-type`
+    // This primarily serves as a way to guarantee that this function returns a Field.
     return this._createField({
       id: this.isIntegerFieldId() ? this.fieldIdOrName() : this.mbql(),
       name: this.isStringFieldName() && this.fieldIdOrName(),
       // NOTE: this display_name will likely be incorrect
       // if a `FieldDimension` isn't associated with a query then we don't know which table it belongs to
-      display_name: this._fieldIdOrName,
+      display_name: this.fieldIdOrName(),
       base_type: this.getOption("base-type"),
     });
   }
