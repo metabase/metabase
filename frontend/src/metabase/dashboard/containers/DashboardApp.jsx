@@ -74,7 +74,7 @@ function getDashboardId({ dashboardId, location, params }) {
   const isDataAppUrl = location.pathname.startsWith("/a/");
   return isDataAppUrl
     ? parseInt(params.pageId)
-    : Urls.extractEntityId(location.pathname);
+    : Urls.extractEntityId(params.slug);
 }
 
 const mapStateToProps = (state, props) => {
