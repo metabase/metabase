@@ -17,7 +17,7 @@ const FLIPPED_VALUES_MARGIN = VALUES_MARGIN + 8;
 
 interface ValuesProps {
   series: HydratedSeries[];
-  formatter: (value: number, compact?: boolean) => string;
+  formatter: (value: number, compact: boolean) => string;
   valueProps: Partial<TextProps>;
   xScale: XScale;
   yScaleLeft: PositionScale | null;
@@ -50,13 +50,13 @@ export default function Values({
     <>
       {series.map(serie => {
         const { values } = getValues(serie, areStacked);
+        const compact = getCompact(serie);
         const valueStep = getValueStep(
           [serie],
-          formatter,
+          value => formatter(value, compact),
           valueProps,
           innerWidth,
         );
-        const compact = getCompact(serie);
 
         const yScale = (
           serie.yAxisPosition === "left" ? yScaleLeft : yScaleRight
@@ -70,16 +70,30 @@ export default function Values({
           );
           return (
             index % valueStep === 0 && (
-              <Text
-                key={index}
-                x={xAccessor(value.datum)}
-                y={yAccessor(value.datum)}
-                textAnchor="middle"
-                verticalAnchor="end"
-                {...valueProps}
-              >
-                {formatter(getY(value.datum), compact)}
-              </Text>
+              <>
+                <Text
+                  key={index}
+                  x={xAccessor(value.datum)}
+                  y={yAccessor(value.datum)}
+                  textAnchor="middle"
+                  verticalAnchor="end"
+                  {...valueProps}
+                >
+                  {formatter(getY(value.datum), compact)}
+                </Text>
+                <Text
+                  key={index}
+                  x={xAccessor(value.datum)}
+                  y={yAccessor(value.datum)}
+                  textAnchor="middle"
+                  verticalAnchor="end"
+                  {...valueProps}
+                  stroke={undefined}
+                  strokeWidth={undefined}
+                >
+                  {formatter(getY(value.datum), compact)}
+                </Text>
+              </>
             )
           );
         });

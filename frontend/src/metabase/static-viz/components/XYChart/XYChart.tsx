@@ -135,8 +135,10 @@ export const XYChart = ({
     fontSize: style.value?.fontSize,
     fontFamily: style.fontFamily,
     fontWeight: style.value?.fontWeight,
-    fill: style.value?.color,
     letterSpacing: 0.5,
+    fill: style.value?.color,
+    stroke: style.value?.stroke,
+    strokeWidth: style.value?.strokeWidth,
   };
 
   const areXTicksRotated = settings.x.tick_display === "rotate-45";
@@ -191,7 +193,7 @@ export const XYChart = ({
         {settings.show_values && (
           <Values
             series={series}
-            formatter={(value: number): string =>
+            formatter={(value: number, compact: boolean): string =>
               formatNumber(
                 value,
                 maybeAssoc(settings.y.format, "compact", compact),

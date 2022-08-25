@@ -90,6 +90,8 @@ export type ChartStyle = {
     color: string;
     fontSize: number;
     fontWeight: number;
+    stroke: string;
+    strokeWidth: number;
   };
   goalColor: string;
 };
