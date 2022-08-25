@@ -1,14 +1,17 @@
-import React from "react";
+import React, { ReactElement } from "react";
 
 import {
   SortableContainer,
   SortableElement,
 } from "metabase/components/sortable";
 
+import type { SortableElementProps } from "react-sortable-hoc";
+
 import ColumnItem from "./ColumnItem";
 
 interface SortableItem {
   enabled: boolean;
+  [key: string]: any;
 }
 
 interface SortableColumnFunctions<T> {
@@ -46,7 +49,9 @@ const SortableColumn = SortableElement(function SortableColumn<
       draggable
     />
   );
-});
+}) as unknown as <T extends SortableItem>(
+  props: SortableColumnProps<T> & SortableElementProps,
+) => ReactElement;
 
 interface SortableColumnListProps<T extends SortableItem>
   extends SortableColumnFunctions<T> {
@@ -66,7 +71,7 @@ const SortableColumnList = SortableContainer(function SortableColumnList<
   return (
     <div>
       {items.map((item, index: number) => (
-        <SortableColumn<T>
+        <SortableColumn
           key={`item-${index}`}
           index={index}
           item={item}
