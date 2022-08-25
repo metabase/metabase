@@ -68,13 +68,14 @@
 
 (api/defendpoint POST "/"
   "Create a new Dashboard."
-  [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
+  [:as {{:keys [name description parameters cache_ttl collection_id collection_position is_app_page], :as _dashboard} :body}]
   {name                su/NonBlankString
    parameters          (s/maybe [su/Parameter])
    description         (s/maybe s/Str)
    cache_ttl           (s/maybe su/IntGreaterThanZero)
    collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)}
+   collection_position (s/maybe su/IntGreaterThanZero)
+   is_app_page         (s/maybe s/Bool)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [dashboard-data {:name                name
@@ -83,7 +84,8 @@
                         :creator_id          api/*current-user-id*
                         :cache_ttl           cache_ttl
                         :collection_id       collection_id
-                        :collection_position collection_position}
+                        :collection_position collection_position
+                        :is_app_page         (boolean is_app_page)}
         dash           (db/transaction
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
                         ;; position, check that and fix up if needed
@@ -229,7 +231,8 @@
                         :parameters          (or (:parameters existing-dashboard) [])
                         :creator_id          api/*current-user-id*
                         :collection_id       collection_id
-                        :collection_position collection_position}
+                        :collection_position collection_position
+                        :is_app_page         (:is_app_page existing-dashboard)}
         dashboard      (db/transaction
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
@@ -268,7 +271,7 @@
   permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
   superuser."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id collection_position cache_ttl]
+                   embedding_params position archived collection_id collection_position cache_ttl is_app_page]
             :as dash-updates} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
@@ -282,7 +285,8 @@
    archived                (s/maybe s/Bool)
    collection_id           (s/maybe su/IntGreaterThanZero)
    collection_position     (s/maybe su/IntGreaterThanZero)
-   cache_ttl               (s/maybe su/IntGreaterThanZero)}
+   cache_ttl               (s/maybe su/IntGreaterThanZero)
+   is_app_page             (s/maybe s/Bool)}
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
@@ -300,7 +304,7 @@
          (u/select-keys-when dash-updates
            :present #{:description :position :collection_id :collection_position :cache_ttl}
            :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                      :embedding_params :archived})))))
+                      :embedding_params :archived :is_app_page})))))
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (db/select-one Dashboard :id id)]
     (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))

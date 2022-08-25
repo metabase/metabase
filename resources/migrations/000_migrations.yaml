@@ -12680,9 +12680,24 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
+      id: v45.00-025
+      author: metamben
+      comment: Added 0.45.0 - mark app pages
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: is_app_page
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: Indicates that this dashboard serves as a page of an app
+                  constraints:
+                    nullable: false
+            tableName: report_dashboard
+
+  - changeSet:
       id: v45.00-026
       author: snoe
-      comment: Added 0.45.0 - apps tie actions to dashcards
       changes:
         - addColumn:
             columns:
