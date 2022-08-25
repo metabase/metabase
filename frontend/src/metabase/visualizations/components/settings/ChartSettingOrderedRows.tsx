@@ -10,9 +10,9 @@ import {
 } from "./ChartSettingOrderedRows.styled";
 
 interface Row {
+  enabled: boolean;
   rowIndex: number;
   name: string;
-  enabled: boolean;
 }
 
 interface ChartSettingOrderedRowsProps {
@@ -27,9 +27,7 @@ export const ChartSettingOrderedRows = ({
   value: orderedRows,
 }: ChartSettingOrderedRowsProps) => {
   const handleDisable = (row: Row) => {
-    const index = orderedRows.findIndex(
-      (r: Row) => r.rowIndex === row.rowIndex,
-    );
+    const index = orderedRows.findIndex(r => r.rowIndex === row.rowIndex);
     onChange(
       updateIn(orderedRows, [index], row => ({
         ...row,
@@ -51,9 +49,7 @@ export const ChartSettingOrderedRows = ({
   };
 
   const getRowTitle = (row: Row) => {
-    return (
-      rows.find((r: Row) => r.rowIndex === row.rowIndex)?.name || "Unknown"
-    );
+    return rows.find(r => r.rowIndex === row.rowIndex)?.name || "Unknown";
   };
 
   return (

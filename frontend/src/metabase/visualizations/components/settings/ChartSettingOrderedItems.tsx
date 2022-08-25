@@ -11,7 +11,6 @@ import ColumnItem from "./ColumnItem";
 
 interface SortableItem {
   enabled: boolean;
-  [key: string]: any;
 }
 
 interface SortableColumnFunctions<T> {
@@ -86,8 +85,8 @@ const SortableColumnList = SortableContainer(function SortableColumnList<
   );
 });
 
-interface ChartSettingOrderedItemsProps<T>
-  extends SortableColumnFunctions<SortableItem> {
+interface ChartSettingOrderedItemsProps<T extends SortableItem>
+  extends SortableColumnFunctions<T> {
   onSortEnd: ({
     oldIndex,
     newIndex,
