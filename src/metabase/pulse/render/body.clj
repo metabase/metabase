@@ -234,7 +234,7 @@
    :quarter "[Q]Q - YYYY"
    :minute-of-hour "m"
    :day-of-week "dddd"
-   :day-of-month "D"
+   :day-of-month "d"
    :day-of-year "DDD"
    :week-of-year "wo"
    :month-of-year "MMMM"
@@ -248,7 +248,7 @@
    "MMMM D, YYYY" {:month "MMMM, YYYY"}
    "D MMMM, YYYY" {:month "MMMM, YYYY"}
    "dddd, MMMM D, YYYY" {:day "EEEE, MMMM d, YYYY"
-                         :week "MMMM D, YYYY"
+                         :week "MMMM d, YYYY"
                          :month "MMMM, YYYY"}})
 
 (defn- update-date-style
@@ -259,8 +259,7 @@
                 date-style)
       (not= date-separator "/") (str/replace #"/" date-separator)
       date-abbreviate (-> (str/replace #"MMMM" "MMM")
-                          (str/replace #"EEEE" "E"))
-      true (str/replace #"D" "d"))))
+                          (str/replace #"EEEE" "E")))))
 
 (defn- backfill-currency
   [{:keys [number_style currency] :as settings}]
