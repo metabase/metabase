@@ -3,7 +3,7 @@
   (:require [clojure.test :refer :all]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.timeline :refer [Timeline]]
-            [metabase.models.timeline-event :as te :refer [TimelineEvent]]
+            [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
             [metabase.test :as mt]
             [metabase.util :as u]))
 
@@ -12,18 +12,18 @@
 
 (deftest hydrate-events-test
   (testing "hydrate-events function hydrates all timelines events"
-    (mt/with-temp* [Collection [collection {:name "Rasta's Collection"}]
+    (mt/with-temp* [Collection [_collection {:name "Rasta's Collection"}]
                     Timeline [tl-a {:name "tl-a"}]
                     Timeline [tl-b {:name "tl-b"}]
-                    TimelineEvent [e-a {:timeline_id (u/the-id tl-a) :name "un-1"}]
-                    TimelineEvent [e-a {:timeline_id (u/the-id tl-a) :name "archived-1"
-                                        :archived true}]
-                    TimelineEvent [e-a {:timeline_id (u/the-id tl-b) :name "un-2"}]
-                    TimelineEvent [e-a {:timeline_id (u/the-id tl-b) :name "archived-2"
-                                        :archived true}]]
+                    TimelineEvent [_ {:timeline_id (u/the-id tl-a) :name "un-1"}]
+                    TimelineEvent [_ {:timeline_id (u/the-id tl-a) :name "archived-1"
+                                      :archived true}]
+                    TimelineEvent [_ {:timeline_id (u/the-id tl-b) :name "un-2"}]
+                    TimelineEvent [_ {:timeline_id (u/the-id tl-b) :name "archived-2"
+                                      :archived true}]]
       (testing "only unarchived events by default"
         (is (= #{"un-1" "un-2"}
-               (names (te/include-events [tl-a tl-b] {})))))
+               (names (timeline-event/include-events [tl-a tl-b] {})))))
       (testing "all events when specified"
         (is (= #{"un-1" "un-2" "archived-1" "archived-2"}
-               (names (te/include-events [tl-a tl-b] {:events/all? true}))))))))
+               (names (timeline-event/include-events [tl-a tl-b] {:events/all? true}))))))))

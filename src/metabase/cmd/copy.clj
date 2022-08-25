@@ -6,15 +6,51 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.format :as hformat]
-            [metabase.db.connection :as mdb.conn]
+            [metabase.db.connection :as mdb.connection]
             [metabase.db.data-migrations :refer [DataMigrations]]
             [metabase.db.setup :as mdb.setup]
-            [metabase.models :refer [Activity Card CardBookmark Collection CollectionBookmark CollectionPermissionGraphRevision Dashboard DashboardBookmark
-                                     DashboardCard DashboardCardSeries Database Dependency Dimension Field
-                                     FieldValues LoginHistory Metric MetricImportantField ModerationReview NativeQuerySnippet
-                                     Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision Pulse PulseCard
-                                     PulseChannel PulseChannelRecipient Revision Secret Segment Session Setting Table
-                                     Timeline TimelineEvent User ViewLog]]
+            [metabase.models :refer [Activity
+                                     App
+                                     ApplicationPermissionsRevision
+                                     BookmarkOrdering
+                                     Card
+                                     CardBookmark
+                                     Collection
+                                     CollectionBookmark
+                                     CollectionPermissionGraphRevision
+                                     Dashboard
+                                     DashboardBookmark
+                                     DashboardCard
+                                     DashboardCardSeries
+                                     Database
+                                     Dimension
+                                     Emitter
+                                     Field
+                                     FieldValues
+                                     LoginHistory
+                                     Metric
+                                     MetricImportantField
+                                     ModerationReview
+                                     NativeQuerySnippet
+                                     Permissions
+                                     PermissionsGroup
+                                     PermissionsGroupMembership
+                                     PermissionsRevision
+                                     PersistedInfo
+                                     Pulse
+                                     PulseCard
+                                     PulseChannel
+                                     PulseChannelRecipient
+                                     Revision
+                                     Secret
+                                     Segment
+                                     Session
+                                     Setting
+                                     Table
+                                     Timeline
+                                     TimelineEvent
+                                     User
+                                     ViewLog]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
@@ -46,7 +82,6 @@
   [Database
    User
    Setting
-   Dependency
    Table
    Field
    FieldValues
@@ -63,10 +98,13 @@
    Card
    CardBookmark
    DashboardBookmark
+   Emitter
    CollectionBookmark
+   BookmarkOrdering
    DashboardCard
    DashboardCardSeries
    Activity
+   App
    Pulse
    PulseCard
    PulseChannel
@@ -75,6 +113,8 @@
    PermissionsGroupMembership
    Permissions
    PermissionsRevision
+   PersistedInfo
+   ApplicationPermissionsRevision
    Dimension
    NativeQuerySnippet
    LoginHistory
@@ -94,7 +134,7 @@
   ;;
   ;; 2) Need to wrap the column names in quotes because Postgres automatically lowercases unquoted identifiers
   (let [source-keys (keys (first objs))
-        quote-style (mdb.conn/quoting-style target-db-type)
+        quote-style (mdb.connection/quoting-style target-db-type)
         quote-fn    (get @#'hformat/quote-fns quote-style)
         _           (assert (fn? quote-fn) (str "No function for quote style: " quote-style))
         dest-keys   (for [k source-keys]

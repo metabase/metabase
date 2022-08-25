@@ -4,7 +4,9 @@ import {
   restore,
   setupSMTP,
   sidebar,
-} from "__support__/e2e/cypress";
+  visitDashboard,
+  clickSend,
+} from "__support__/e2e/helpers";
 
 import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -21,14 +23,13 @@ describeEE("issue 18669", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: card }) => {
         cy.editDashboardCard(card, getFilterMapping(card));
-        cy.visit(`/dashboard/${card.dashboard_id}`);
+        visitDashboard(card.dashboard_id);
       },
     );
   });
 
   it("should send a test email with non-default parameters (metabase#18669)", () => {
-    cy.icon("share").click();
-    cy.findByText("Dashboard subscriptions").click();
+    cy.icon("subscription").click();
     cy.findByText("Email it").click();
 
     cy.findByPlaceholderText("Enter user names or email addresses")
@@ -45,8 +46,7 @@ describeEE("issue 18669", () => {
       cy.button("Update filter").click();
     });
 
-    cy.button("Send email now").click();
-    cy.findByText("Email sent", { timeout: 10000 });
+    clickSend();
   });
 });
 

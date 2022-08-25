@@ -17,7 +17,7 @@ const propTypes = {
 
 const LABEL = t`Add a metric`;
 
-export const AddAggregationButton = ({ query, shouldShowLabel }) => {
+export const AddAggregationButton = ({ query, shouldShowLabel = false }) => {
   return (
     <PopoverWithTrigger
       triggerElement={

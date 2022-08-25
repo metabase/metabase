@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
 ["admin", "normal"].forEach(user => {
@@ -16,10 +16,12 @@ import { USERS } from "__support__/e2e/cypress_data";
 
       cy.findByPlaceholderText("Search…").type("pers");
       cy.findByTestId("loading-spinner").should("not.exist");
-      cy.findAllByText(/personal collection$/i).should(
-        "have.length",
-        personalCollectionsLength,
-      );
+      cy.findByTestId("search-results-list").within(() => {
+        cy.findAllByText(/personal collection$/i).should(
+          "have.length",
+          personalCollectionsLength,
+        );
+      });
     });
   });
 });

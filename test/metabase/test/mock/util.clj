@@ -24,6 +24,7 @@
    :fk_target_field_id false
    :updated_at         true
    :active             true
+   :nfc_path           nil
    :parent_id          false
    :semantic_type      nil
    :id                 true
@@ -37,6 +38,7 @@
   {:schedule_frame nil
    :schedule_hour  nil
    :schedule_day   nil
+   :entity_id      true
    :enabled        true})
 
 (def venue-fingerprints

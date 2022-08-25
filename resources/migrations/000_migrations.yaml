@@ -1,16 +1,4 @@
 databaseChangeLog:
-  # The quoting strategy decides when things like column names should be quoted. This is in place to deal with
-  # Liquibase not knowing about all of the new reserved words in MySQL 8+. Using a column name that is a reserved word
-  # causes a failure. Quoting all objects breaks H2 support though as it will quote table names but not quote that
-  # same table name in a foreign key reference which will cause a failure when trying to initially setup the database.
-  - property:
-      name: quote_strategy
-      value: QUOTE_ALL_OBJECTS
-      dbms: mysql,mariadb
-  - property:
-      name: quote_strategy
-      value: LEGACY
-      dbms: postgresql,h2
   - property:
       name: timestamp_type
       value: timestamp with time zone
@@ -19,6 +7,14 @@ databaseChangeLog:
       name: timestamp_type
       value: timestamp(6)
       dbms: mysql,mariadb
+  - property:
+      name: blob.type
+      value: blob
+      dbms: mysql,h2,mariadb
+  - property:
+      name: blob.type
+      value: bytea
+      dbms: postgresql
   # In MySQL, use LONGTEXT instead of TEXT (#7006)
   - property:
       name: text.type
@@ -28,11 +24,22 @@ databaseChangeLog:
       name: text.type
       value: longtext
       dbms: mysql,mariadb
+  # databasechangelog is uppercase in MySQL and H2 but lower-case in Postgres for reasons
+  - property:
+      name: databasechangelog.name
+      value: DATABASECHANGELOG
+      dbms: h2,mysql,mariadb
+  - property:
+      name: databasechangelog.name
+      value: databasechangelog
+      dbms: postgresql
+
+  - objectQuotingStrategy: QUOTE_ALL_OBJECTS
 
   - changeSet:
       id: '1'
       author: agilliland
-      objectQuotingStrategy: ${quote_strategy}
+      validCheckSum: ANY
       changes:
       - createTable:
           columns:
@@ -154,7 +161,8 @@ databaseChangeLog:
                 foreignKeyName: fk_userorgperm_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: user_id
               type: int
           - column:
@@ -163,7 +171,8 @@ databaseChangeLog:
                 foreignKeyName: fk_userorgperm_ref_organization_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_organization(id)
+                referencedTableName: core_organization
+                referencedColumnNames: id
               name: organization_id
               type: int
           tableName: core_userorgperm
@@ -210,7 +219,8 @@ databaseChangeLog:
                 foreignKeyName: fk_permissionviolation_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: user_id
               type: int
           tableName: core_permissionsviolation
@@ -254,7 +264,8 @@ databaseChangeLog:
                 foreignKeyName: fk_database_ref_organization_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_organization(id)
+                referencedTableName: core_organization
+                referencedColumnNames: id
               name: organization_id
               type: int
           - column:
@@ -319,7 +330,8 @@ databaseChangeLog:
                 foreignKeyName: fk_table_ref_database_id
                 initiallyDeferred: false
                 nullable: false
-                references: metabase_database(id)
+                referencedTableName: metabase_database
+                referencedColumnNames: id
               name: db_id
               type: int
           tableName: metabase_table
@@ -385,7 +397,8 @@ databaseChangeLog:
                 foreignKeyName: fk_field_ref_table_id
                 initiallyDeferred: false
                 nullable: false
-                references: metabase_table(id)
+                referencedTableName: metabase_table
+                referencedColumnNames: id
               name: table_id
               type: int
           - column:
@@ -430,7 +443,8 @@ databaseChangeLog:
                 foreignKeyName: fk_foreignkey_dest_ref_field_id
                 initiallyDeferred: false
                 nullable: false
-                references: metabase_field(id)
+                referencedTableName: metabase_field
+                referencedColumnNames: id
               name: destination_id
               type: int
           - column:
@@ -439,7 +453,8 @@ databaseChangeLog:
                 foreignKeyName: fk_foreignkey_origin_ref_field_id
                 initiallyDeferred: false
                 nullable: false
-                references: metabase_field(id)
+                referencedTableName: metabase_field
+                referencedColumnNames: id
               name: origin_id
               type: int
           tableName: metabase_foreignkey
@@ -486,7 +501,8 @@ databaseChangeLog:
                 foreignKeyName: fk_fieldvalues_ref_field_id
                 initiallyDeferred: false
                 nullable: false
-                references: metabase_field(id)
+                referencedTableName: metabase_field
+                referencedColumnNames: id
               name: field_id
               type: int
           tableName: metabase_fieldvalues
@@ -526,7 +542,8 @@ databaseChangeLog:
                 foreignKeyName: fk_tablesegment_ref_table_id
                 initiallyDeferred: false
                 nullable: false
-                references: metabase_table(id)
+                referencedTableName: metabase_table
+                referencedColumnNames: id
               name: table_id
               type: int
           - column:
@@ -591,7 +608,8 @@ databaseChangeLog:
                 foreignKeyName: fk_query_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: creator_id
               type: int
           - column:
@@ -600,7 +618,8 @@ databaseChangeLog:
                 foreignKeyName: fk_query_ref_database_id
                 initiallyDeferred: false
                 nullable: false
-                references: metabase_database(id)
+                referencedTableName: metabase_database
+                referencedColumnNames: id
               name: database_id
               type: int
           tableName: query_query
@@ -690,7 +709,8 @@ databaseChangeLog:
                 foreignKeyName: fk_queryexecution_ref_query_id
                 initiallyDeferred: false
                 nullable: true
-                references: query_query(id)
+                referencedTableName: query_query
+                referencedColumnNames: id
               name: query_id
               type: int
           - column:
@@ -704,7 +724,8 @@ databaseChangeLog:
                 foreignKeyName: fk_queryexecution_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: executor_id
               type: int
           tableName: query_queryexecution
@@ -773,7 +794,8 @@ databaseChangeLog:
                 foreignKeyName: fk_card_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: creator_id
               type: int
           - column:
@@ -782,7 +804,8 @@ databaseChangeLog:
                 foreignKeyName: fk_card_ref_organization_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_organization(id)
+                referencedTableName: core_organization
+                referencedColumnNames: id
               name: organization_id
               type: int
           tableName: report_card
@@ -823,7 +846,8 @@ databaseChangeLog:
                 foreignKeyName: fk_cardfavorite_ref_card_id
                 initiallyDeferred: false
                 nullable: false
-                references: report_card(id)
+                referencedTableName: report_card
+                referencedColumnNames: id
               name: card_id
               type: int
           - column:
@@ -832,7 +856,8 @@ databaseChangeLog:
                 foreignKeyName: fk_cardfavorite_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: owner_id
               type: int
           tableName: report_cardfavorite
@@ -890,7 +915,8 @@ databaseChangeLog:
                 foreignKeyName: fk_dashboard_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: creator_id
               type: int
           - column:
@@ -899,7 +925,8 @@ databaseChangeLog:
                 foreignKeyName: fk_dashboard_ref_organization_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_organization(id)
+                referencedTableName: core_organization
+                referencedColumnNames: id
               name: organization_id
               type: int
           tableName: report_dashboard
@@ -956,7 +983,8 @@ databaseChangeLog:
                 foreignKeyName: fk_dashboardcard_ref_card_id
                 initiallyDeferred: false
                 nullable: false
-                references: report_card(id)
+                referencedTableName: report_card
+                referencedColumnNames: id
               name: card_id
               type: int
           - column:
@@ -965,7 +993,8 @@ databaseChangeLog:
                 foreignKeyName: fk_dashboardcard_ref_dashboard_id
                 initiallyDeferred: false
                 nullable: false
-                references: report_dashboard(id)
+                referencedTableName: report_dashboard
+                referencedColumnNames: id
               name: dashboard_id
               type: int
           tableName: report_dashboardcard
@@ -996,7 +1025,8 @@ databaseChangeLog:
                 foreignKeyName: fk_dashboardsubscription_ref_dashboard_id
                 initiallyDeferred: false
                 nullable: false
-                references: report_dashboard(id)
+                referencedTableName: report_dashboard
+                referencedColumnNames: id
               name: dashboard_id
               type: int
           - column:
@@ -1005,7 +1035,8 @@ databaseChangeLog:
                 foreignKeyName: fk_dashboardsubscription_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: user_id
               type: int
           tableName: report_dashboardsubscription
@@ -1081,7 +1112,8 @@ databaseChangeLog:
                 foreignKeyName: fk_emailreport_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: creator_id
               type: int
           - column:
@@ -1090,7 +1122,8 @@ databaseChangeLog:
                 foreignKeyName: fk_emailreport_ref_organization_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_organization(id)
+                referencedTableName: core_organization
+                referencedColumnNames: id
               name: organization_id
               type: int
           - column:
@@ -1126,7 +1159,8 @@ databaseChangeLog:
                 foreignKeyName: fk_emailreport_recipients_ref_emailreport_id
                 initiallyDeferred: false
                 nullable: false
-                references: report_emailreport(id)
+                referencedTableName: report_emailreport
+                referencedColumnNames: id
               name: emailreport_id
               type: int
           - column:
@@ -1135,7 +1169,8 @@ databaseChangeLog:
                 foreignKeyName: fk_emailreport_recipients_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: user_id
               type: int
           tableName: report_emailreport_recipients
@@ -1201,7 +1236,8 @@ databaseChangeLog:
                 foreignKeyName: fk_emailreportexecutions_ref_organization_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_organization(id)
+                referencedTableName: core_organization
+                referencedColumnNames: id
               name: organization_id
               type: int
           - column:
@@ -1210,7 +1246,8 @@ databaseChangeLog:
                 foreignKeyName: fk_emailreportexecutions_ref_report_id
                 initiallyDeferred: false
                 nullable: true
-                references: report_emailreport(id)
+                referencedTableName: report_emailreport
+                referencedColumnNames: id
               name: report_id
               type: int
           tableName: report_emailreportexecutions
@@ -1289,7 +1326,8 @@ databaseChangeLog:
                 foreignKeyName: fk_annotation_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: author_id
               type: int
           - column:
@@ -1298,7 +1336,8 @@ databaseChangeLog:
                 foreignKeyName: fk_annotation_ref_organization_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_organization(id)
+                referencedTableName: core_organization
+                referencedColumnNames: id
               name: organization_id
               type: int
           tableName: annotation_annotation
@@ -1334,6 +1373,7 @@ databaseChangeLog:
   - changeSet:
       id: '2'
       author: agilliland
+      validCheckSum: ANY
       changes:
       - createTable:
           columns:
@@ -1349,7 +1389,8 @@ databaseChangeLog:
                 foreignKeyName: fk_session_ref_user_id
                 initiallyDeferred: false
                 nullable: false
-                references: core_user(id)
+                referencedTableName: core_user
+                referencedColumnNames: id
               name: user_id
               type: int
           - column:
@@ -1440,6 +1481,7 @@ databaseChangeLog:
   - changeSet:
       id: '7'
       author: cammsaul
+      validCheckSum: ANY
       changes:
       - addColumn:
           columns:
@@ -1447,7 +1489,8 @@ databaseChangeLog:
               constraints:
                 foreignKeyName: fk_field_parent_ref_field_id
                 nullable: true
-                references: metabase_field(id)
+                referencedTableName: metabase_field
+                referencedColumnNames: id
               name: parent_id
               type: int
           tableName: metabase_field
@@ -1480,15 +1523,7 @@ databaseChangeLog:
   - changeSet:
       id: 10
       author: cammsaul
-      validCheckSum:
-        - 7:3b90e2fe0ac8e617a1f30ef95d39319b
-        - 7:97fec69516d0dfe424ea7365f51bb87e
-        - 8:2e03a495932b4a9aebb9d58a6ad87ca9
-        - 8:431360d062cb82d8b27960b3a0abb98c
-        - 8:5297214d1788d964675d8c6336ac9b6d
-        - 8:532075ff1717d4a16bb9f27c606db46b
-        - 8:96e54d9100db3f9cdcc00eaeccc200a3
-        - 8:9f03a236be31f54e8e5c894fe5fc7f00
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: revision
@@ -1515,7 +1550,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_revision_ref_user_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1526,7 +1562,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: object
-                  type: varchar
+                  type: ${text.type}
                   constraints:
                     nullable: false
               - column:
@@ -1562,9 +1598,7 @@ databaseChangeLog:
   - changeSet:
       id: 12
       author: agilliland
-      validCheckSum:
-        - 8:bedbea570e5dfc694b4cf5a8f6a4f445
-        - 8:e862a199cba5b4ce0cba713110f66cfb
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: report_card
@@ -1574,7 +1608,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: true
-                    references: metabase_database(id)
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
                     foreignKeyName: fk_report_card_ref_database_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1586,7 +1621,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: true
-                    references: metabase_table(id)
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
                     foreignKeyName: fk_report_card_ref_table_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1601,9 +1637,7 @@ databaseChangeLog:
   - changeSet:
       id: 13
       author: agilliland
-      validCheckSum:
-        - 7:f27286894439bef33ff93761f9b32bc4
-        - 7:1bc8ccc9b1803cda5651f144029be40c
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: activity
@@ -1630,7 +1664,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: true
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_activity_ref_user_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1661,7 +1696,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: details
-                  type: varchar
+                  type: ${text.type}
                   constraints:
                     nullable: false
         - createIndex:
@@ -1695,6 +1730,7 @@ databaseChangeLog:
   - changeSet:
       id: 14
       author: agilliland
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: view_log
@@ -1711,7 +1747,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: true
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_view_log_ref_user_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1750,7 +1787,6 @@ databaseChangeLog:
   - changeSet:
       id: 15
       author: agilliland
-      objectQuotingStrategy: ${quote_strategy}
       changes:
         - addColumn:
             tableName: revision
@@ -1792,9 +1828,7 @@ databaseChangeLog:
   - changeSet:
       id: 18
       author: camsaul
-      validCheckSum:
-        - 7:07d501a6e52c14691f7f895d137e565f
-        - 7:329d897d44ba9893fdafc9ce7e876d73
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: data_migrations
@@ -1829,6 +1863,7 @@ databaseChangeLog:
   - changeSet:
       id: 20
       author: agilliland
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: pulse
@@ -1845,7 +1880,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_pulse_ref_creator_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1890,7 +1926,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: pulse(id)
+                    referencedTableName: pulse
+                    referencedColumnNames: id
                     foreignKeyName: fk_pulse_card_ref_pulse_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1899,7 +1936,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: report_card(id)
+                    referencedTableName: report_card
+                    referencedColumnNames: id
                     foreignKeyName: fk_pulse_card_ref_card_id
                     deferrable: false
                     initiallyDeferred: false
@@ -1935,7 +1973,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: pulse(id)
+                    referencedTableName: pulse
+                    referencedColumnNames: id
                     foreignKeyName: fk_pulse_channel_ref_pulse_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2001,7 +2040,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: pulse_channel(id)
+                    referencedTableName: pulse_channel
+                    referencedColumnNames: id
                     foreignKeyName: fk_pulse_channel_recipient_ref_pulse_channel_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2010,7 +2050,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_pulse_channel_recipient_ref_user_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2022,6 +2063,7 @@ databaseChangeLog:
   - changeSet:
       id: 21
       author: agilliland
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: segment
@@ -2038,7 +2080,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: metabase_table(id)
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
                     foreignKeyName: fk_segment_ref_table_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2047,7 +2090,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_segment_ref_creator_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2114,7 +2158,6 @@ databaseChangeLog:
   - changeSet:
       id: 23
       author: agilliland
-      objectQuotingStrategy: ${quote_strategy}
       changes:
         - modifyDataType:
             tableName: metabase_table
@@ -2191,6 +2234,7 @@ databaseChangeLog:
   - changeSet:
       id: 25
       author: agilliland
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: metric
@@ -2207,7 +2251,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: metabase_table(id)
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
                     foreignKeyName: fk_metric_ref_table_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2216,7 +2261,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_metric_ref_creator_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2286,6 +2332,7 @@ databaseChangeLog:
   - changeSet:
       id: 27
       author: agilliland
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: dashboardcard_series
@@ -2302,7 +2349,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: report_dashboardcard(id)
+                    referencedTableName: report_dashboardcard
+                    referencedColumnNames: id
                     foreignKeyName: fk_dashboardcard_series_ref_dashboardcard_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2311,7 +2359,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: report_card(id)
+                    referencedTableName: report_card
+                    referencedColumnNames: id
                     foreignKeyName: fk_dashboardcard_series_ref_card_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2399,6 +2448,7 @@ databaseChangeLog:
   - changeSet:
       id: 32
       author: camsaul
+      validCheckSum: ANY
       changes:
         ######################################## label table ########################################
         - createTable:
@@ -2447,7 +2497,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: report_card(id)
+                    referencedTableName: report_card
+                    referencedColumnNames: id
                     foreignKeyName: fk_card_label_ref_card_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2456,7 +2507,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: label(id)
+                    referencedTableName: label
+                    referencedColumnNames: id
                     foreignKeyName: fk_card_label_ref_label_id
                     deferrable: false
                     initiallyDeferred: false
@@ -2489,6 +2541,7 @@ databaseChangeLog:
   - changeSet:
       id: 32
       author: agilliland
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: raw_table
@@ -2505,7 +2558,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: metabase_database(id)
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
                     foreignKeyName: fk_rawtable_ref_database
                     deferrable: false
                     initiallyDeferred: false
@@ -2564,7 +2618,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: raw_table(id)
+                    referencedTableName: raw_table
+                    referencedColumnNames: id
                     foreignKeyName: fk_rawcolumn_tableid_ref_rawtable
                     deferrable: false
                     initiallyDeferred: false
@@ -2593,7 +2648,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: true
-                    references: raw_column(id)
+                    referencedTableName: raw_column
+                    referencedColumnNames: id
                     foreignKeyName: fk_rawcolumn_fktarget_ref_rawcolumn
                     deferrable: false
                     initiallyDeferred: false
@@ -2748,6 +2804,7 @@ databaseChangeLog:
   - changeSet:
       id: 38
       author: camsaul
+      validCheckSum: ANY
       changes:
         ######################################## Add "points_of_interest" metadata column to various models ########################################
         - addColumn:
@@ -2910,14 +2967,16 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: metric(id)
+                    referencedTableName: metric
+                    referencedColumnNames: id
                     foreignKeyName: fk_metric_important_field_metric_id
               - column:
                   name: field_id
                   type: int
                   constraints:
                     nullable: false
-                    references: metabase_field(id)
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
                     foreignKeyName: fk_metric_important_field_metabase_field_id
         - addUniqueConstraint:
             tableName: metric_important_field
@@ -2951,9 +3010,7 @@ databaseChangeLog:
   - changeSet:
       id: 40
       author: camsaul
-      validCheckSum:
-        - 8:231d66cf27fc4b4bc066172b435439b5
-        - 8:ee7f50a264d6cf8d891bd01241eebd2c
+      validCheckSum: ANY
       changes:
         ############################################################ add PermissionsGroup table ############################################################
         - createTable:
@@ -2996,14 +3053,16 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_permissions_group_membership_user_id
               - column:
                   name: group_id
                   type: int
                   constraints:
                     nullable: false
-                    references: permissions_group(id)
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
                     foreignKeyName: fk_permissions_group_group_id
         - addUniqueConstraint:
             tableName: permissions_group_membership
@@ -3053,7 +3112,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: permissions_group(id)
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
                     foreignKeyName: fk_permissions_group_id
         - createIndex:
             tableName: permissions
@@ -3170,9 +3230,7 @@ databaseChangeLog:
   - changeSet:
       id: 43
       author: camsaul
-      validCheckSum:
-        - 7:b20750a949504e93efced32877a4488f
-        - 7:dbc18c8ca697fc335869f0ed0eb5f4cb
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: permissions_revision
@@ -3203,7 +3261,8 @@ databaseChangeLog:
                   remarks: 'The ID of the admin who made this set of changes.'
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_permissions_revision_user_id
               - column:
                   name: created_at
@@ -3246,7 +3305,6 @@ databaseChangeLog:
   - changeSet:
       id: 46
       author: camsaul
-      objectQuotingStrategy: ${quote_strategy}
       changes:
         - addNotNullConstraint:
             tableName: report_dashboardcard
@@ -3269,6 +3327,7 @@ databaseChangeLog:
   - changeSet:
       id: 47
       author: camsaul
+      validCheckSum: ANY
       changes:
         ######################################## collection table ########################################
         - createTable:
@@ -3327,7 +3386,8 @@ databaseChangeLog:
                   type: int
                   remarks: 'Optional ID of Collection this Card belongs to.'
                   constraints:
-                    references: collection(id)
+                    referencedTableName: collection
+                    referencedColumnNames: id
                     foreignKeyName: fk_card_collection_id
         - createIndex:
             tableName: report_card
@@ -3338,6 +3398,7 @@ databaseChangeLog:
   - changeSet:
       id: 48
       author: camsaul
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: collection_revision
@@ -3368,7 +3429,8 @@ databaseChangeLog:
                   remarks: 'The ID of the admin who made this set of changes.'
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_collection_revision_user_id
               - column:
                   name: created_at
@@ -3383,9 +3445,7 @@ databaseChangeLog:
   - changeSet:
       id: 49
       author: camsaul
-      validCheckSum:
-        - 8:56dcab086b21de1df002561efeac8bb6
-        - 8:4508e7d5f6d4da3c4a2de3bf5e3c5851
+      validCheckSum: ANY
       changes:
         ######################################## Card public_uuid & indices ########################################
         - addColumn:
@@ -3405,7 +3465,8 @@ databaseChangeLog:
                   type: int
                   remarks: 'The ID of the User who first publically shared this Card.'
                   constraints:
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_card_made_public_by_id
         - createIndex:
             tableName: report_card
@@ -3431,7 +3492,8 @@ databaseChangeLog:
                   type: int
                   remarks: 'The ID of the User who first publically shared this Dashboard.'
                   constraints:
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_dashboard_made_public_by_id
         - createIndex:
             tableName: report_dashboard
@@ -3447,9 +3509,7 @@ databaseChangeLog:
   - changeSet:
       id: 50
       author: camsaul
-      validCheckSum:
-        - 8:388da4c48984aad647709514e4ba9204
-        - 8:98a6ab6428ea7a589507464e34ade58a
+      validCheckSum: ANY
       changes:
         ######################################## new Card columns ########################################
         - addColumn:
@@ -3490,9 +3550,7 @@ databaseChangeLog:
   - changeSet:
       id: 51
       author: camsaul
-      validCheckSum:
-        - 8:8491a72bd30aac2565c97daf8b84e515
-        - 8:676d3f95358dcd572ccce47c950e8ed9
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: query_execution
@@ -3580,14 +3638,6 @@ databaseChangeLog:
                   name: hash
               - column:
                   name: started_at
-  - property:
-        name: blob.type
-        value: blob
-        dbms: mysql,h2,mariadb
-  - property:
-      name: blob.type
-      value: bytea
-      dbms: postgresql
   - changeSet:
       id: 52
       author: camsaul
@@ -3652,9 +3702,7 @@ databaseChangeLog:
   - changeSet:
       id: 54
       author: tlrobinson
-      validCheckSum:
-        - 7:695b12a78e897c62c21d41bfb04ab44b
-        - 7:0857800db71a4757e7202aad4eaed48d
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: pulse
@@ -3669,9 +3717,7 @@ databaseChangeLog:
   - changeSet:
       id: 55
       author: camsaul
-      validCheckSum:
-        - 8:87c4becde5fe208ba2c356128df86fba
-        - 8:11bbd199bfa57b908ea3b1a470197de9
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: report_dashboard
@@ -3707,7 +3753,8 @@ databaseChangeLog:
                   remarks: 'ID of the User who favorited the Dashboard.'
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_dashboard_favorite_user_id
                     deleteCascade: true
               - column:
@@ -3716,7 +3763,8 @@ databaseChangeLog:
                   remarks: 'ID of the Dashboard favorited by the User.'
                   constraints:
                     nullable: false
-                    references: report_dashboard(id)
+                    referencedTableName: report_dashboard
+                    referencedColumnNames: id
                     foreignKeyName: fk_dashboard_favorite_dashboard_id
                     deleteCascade: true
         - addUniqueConstraint:
@@ -3764,6 +3812,7 @@ databaseChangeLog:
   - changeSet:
       id: 58
       author: senior
+      validCheckSum: ANY
       comment: 'Added 0.25.0'
       changes:
         - createTable:
@@ -3786,7 +3835,8 @@ databaseChangeLog:
                     foreignKeyName: fk_dimension_ref_field_id
                     initiallyDeferred: false
                     nullable: false
-                    references: metabase_field(id)
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
                     deleteCascade: true
               - column:
                   name: name
@@ -3809,7 +3859,8 @@ databaseChangeLog:
                     foreignKeyName: fk_dimension_displayfk_ref_field_id
                     initiallyDeferred: false
                     nullable: true
-                    references: metabase_field(id)
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
                     deleteCascade: true
               - column:
                   name: created_at
@@ -3848,9 +3899,7 @@ databaseChangeLog:
   - changeSet:
       id: 60
       author: camsaul
-      validCheckSum:
-        - 8:4f997b2cd3309882e900493892381f38
-        - 8:2141162a1c99a5dd95e5a67c5595e6d7
+      validCheckSum: ANY
       comment: 'Added 0.26.0'
       changes:
         - addColumn:
@@ -3931,9 +3980,7 @@ databaseChangeLog:
       id: 66
       author: senior
       comment: 'Added 0.26.0'
-      validCheckSum:
-        - 7:e494c2c90fe5c377526da7a6e5ad63a2
-        - 7:76d06b44a544105c2a613603b8bdf25f
+      validCheckSum: ANY
       changes:
         - sql:
             sql: drop table if exists computation_job_result cascade
@@ -3943,6 +3990,7 @@ databaseChangeLog:
   - changeSet:
       id: 67
       author: attekei
+      validCheckSum: ANY
       comment: 'Added 0.27.0'
       changes:
         - createTable:
@@ -3961,7 +4009,8 @@ databaseChangeLog:
                     deferrable: false
                     foreignKeyName: fk_computation_job_ref_user_id
                     initiallyDeferred: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                   name: creator_id
                   type: int
               - column:
@@ -4001,7 +4050,8 @@ databaseChangeLog:
                     foreignKeyName: fk_computation_result_ref_job_id
                     initiallyDeferred: false
                     nullable: false
-                    references: computation_job(id)
+                    referencedTableName: computation_job
+                    referencedColumnNames: id
                   name: job_id
                   type: int
               - column:
@@ -4028,9 +4078,7 @@ databaseChangeLog:
       id: 68
       author: sbelak
       comment: 'Added 0.27.0'
-      validCheckSum:
-        - 8:ca201aeb20c1719a46c6bcc3fc95c81d
-        - 8:b4ac06d133dfbdc6567d992c7e18c6ec
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: computation_job
@@ -4047,9 +4095,7 @@ databaseChangeLog:
   - changeSet:
       id: 69
       author: senior
-      validCheckSum:
-        - 8:97b7768436b9e8d695bae984020d754c
-        - 8:eadbe00e97eb53df4b3df60462f593f6
+      validCheckSum: ANY
       comment: 'Added 0.27.0'
       remarks: 'Add columns to the pulse table for alerts'
       changes:
@@ -4112,9 +4158,7 @@ databaseChangeLog:
   - changeSet:
       id: 72
       author: senior
-      validCheckSum:
-        - 8:ed16046dfa04c139f48e9068eb4faee4
-        - 8:4dc6debdf779ab9273cf2158a84bb154
+      validCheckSum: ANY
       comment: 'Added 0.28.0'
       changes:
         - addColumn:
@@ -4202,6 +4246,7 @@ databaseChangeLog:
   - changeSet:
       id: 78
       author: camsaul
+      validCheckSum: ANY
       comment: 'Added 0.30.0'
       changes:
         - createTable:
@@ -4221,7 +4266,8 @@ databaseChangeLog:
                   remarks: 'ID of the Permissions Group this policy affects.'
                   constraints:
                     nullable: false
-                    references: permissions_group(id)
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
                     foreignKeyName: fk_gtap_group_id
                     deleteCascade: true
               - column:
@@ -4230,7 +4276,8 @@ databaseChangeLog:
                   remarks: 'ID of the Table that should get automatically replaced as query source for the Permissions Group.'
                   constraints:
                     nullable: false
-                    references: metabase_table(id)
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
                     foreignKeyName: fk_gtap_table_id
                     deleteCascade: true
               - column:
@@ -4239,7 +4286,8 @@ databaseChangeLog:
                   remarks: 'ID of the Card (Question) to be used to replace the Table.'
                   constraints:
                     nullable: false
-                    references: report_card(id)
+                    referencedTableName: report_card
+                    referencedColumnNames: id
                     foreignKeyName: fk_gtap_card_id
               - column:
                   name: attribute_remappings
@@ -4267,6 +4315,7 @@ databaseChangeLog:
   - changeSet:
       id: 79
       author: camsaul
+      validCheckSum: ANY
       comment: 'Added 0.30.0'
       changes:
         - addColumn:
@@ -4277,7 +4326,8 @@ databaseChangeLog:
                   type: int
                   remarks: 'Optional ID of Collection this Dashboard belongs to.'
                   constraints:
-                    references: collection(id)
+                    referencedTableName: collection
+                    referencedColumnNames: id
                     foreignKeyName: fk_dashboard_collection_id
               # TODO - if someone deletes a collection, what should happen to the Dashboards that are in it? Should they
               # get deleted as well? Or should collection_id be cleared, effectively putting them in the so-called
@@ -4296,7 +4346,8 @@ databaseChangeLog:
                   type: int
                   remarks: 'Options ID of Collection this Pulse belongs to.'
                   constraints:
-                    references: collection(id)
+                    referencedTableName: collection
+                    referencedColumnNames: id
                     foreignKeyName: fk_pulse_collection_id
         - createIndex:
             tableName: pulse
@@ -4420,6 +4471,7 @@ databaseChangeLog:
   - changeSet:
       id: 85
       author: camsaul
+      validCheckSum: ANY
       comment: 'Added 0.30.0'
       changes:
         - addColumn:
@@ -4430,7 +4482,8 @@ databaseChangeLog:
                   type: int
                   remarks: 'If set, this Collection is a personal Collection, for exclusive use of the User with this ID.'
                   constraints:
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_collection_personal_owner_id
                     unique: true
                     uniqueConstraintName: unique_collection_personal_owner_id
@@ -4521,390 +4574,583 @@ databaseChangeLog:
 # The Quartz Task Scheduler can use a DB to 'cluster' tasks and make sure they are only ran by a single instance where
 # using a multi-instance Metabase setup.
 
+# Quartz identifiers are upper-case in MySQL and H2 but lower-case in PostgreSQL for reasons... so we'll have to
+# define properties for EVERYTHING and use the correct identifiers
+
+  - property: {name: quartz.blob_data.name,                         dbms: "postgresql",       value: blob_data}
+  - property: {name: quartz.blob_data.name,                         dbms: "mysql,mariadb,h2", value: BLOB_DATA}
+  - property: {name: quartz.bool_prop_1.name,                       dbms: "postgresql",       value: bool_prop_1}
+  - property: {name: quartz.bool_prop_1.name,                       dbms: "mysql,mariadb,h2", value: BOOL_PROP_1}
+  - property: {name: quartz.bool_prop_2.name,                       dbms: "postgresql",       value: bool_prop_2}
+  - property: {name: quartz.bool_prop_2.name,                       dbms: "mysql,mariadb,h2", value: BOOL_PROP_2}
+  - property: {name: quartz.calendar.name,                          dbms: "postgresql",       value: calendar}
+  - property: {name: quartz.calendar.name,                          dbms: "mysql,mariadb,h2", value: CALENDAR}
+  - property: {name: quartz.calendar_name.name,                     dbms: "postgresql",       value: calendar_name}
+  - property: {name: quartz.calendar_name.name,                     dbms: "mysql,mariadb,h2", value: CALENDAR_NAME}
+  - property: {name: quartz.checkin_interval.name,                  dbms: "postgresql",       value: checkin_interval}
+  - property: {name: quartz.checkin_interval.name,                  dbms: "mysql,mariadb,h2", value: CHECKIN_INTERVAL}
+  - property: {name: quartz.cron_expression.name,                   dbms: "postgresql",       value: cron_expression}
+  - property: {name: quartz.cron_expression.name,                   dbms: "mysql,mariadb,h2", value: CRON_EXPRESSION}
+  - property: {name: quartz.dec_prop_1.name,                        dbms: "postgresql",       value: dec_prop_1}
+  - property: {name: quartz.dec_prop_1.name,                        dbms: "mysql,mariadb,h2", value: DEC_PROP_1}
+  - property: {name: quartz.dec_prop_2.name,                        dbms: "postgresql",       value: dec_prop_2}
+  - property: {name: quartz.dec_prop_2.name,                        dbms: "mysql,mariadb,h2", value: DEC_PROP_2}
+  - property: {name: quartz.description.name,                       dbms: "postgresql",       value: description}
+  - property: {name: quartz.description.name,                       dbms: "mysql,mariadb,h2", value: DESCRIPTION}
+  - property: {name: quartz.end_time.name,                          dbms: "postgresql",       value: end_time}
+  - property: {name: quartz.end_time.name,                          dbms: "mysql,mariadb,h2", value: END_TIME}
+  - property: {name: quartz.entry_id.name,                          dbms: "postgresql",       value: entry_id}
+  - property: {name: quartz.entry_id.name,                          dbms: "mysql,mariadb,h2", value: ENTRY_ID}
+  - property: {name: quartz.fired_time.name,                        dbms: "postgresql",       value: fired_time}
+  - property: {name: quartz.fired_time.name,                        dbms: "mysql,mariadb,h2", value: FIRED_TIME}
+  - property: {name: quartz.fk_qrtz_blob_triggers_triggers.name,    dbms: "postgresql",       value: fk_qrtz_blob_triggers_triggers}
+  - property: {name: quartz.fk_qrtz_blob_triggers_triggers.name,    dbms: "mysql,mariadb,h2", value: FK_QRTZ_BLOB_TRIGGERS_TRIGGERS}
+  - property: {name: quartz.fk_qrtz_cron_triggers_triggers.name,    dbms: "postgresql",       value: fk_qrtz_cron_triggers_triggers}
+  - property: {name: quartz.fk_qrtz_cron_triggers_triggers.name,    dbms: "mysql,mariadb,h2", value: FK_QRTZ_CRON_TRIGGERS_TRIGGERS}
+  - property: {name: quartz.fk_qrtz_simple_triggers_triggers.name,  dbms: "postgresql",       value: fk_qrtz_simple_triggers_triggers}
+  - property: {name: quartz.fk_qrtz_simple_triggers_triggers.name,  dbms: "mysql,mariadb,h2", value: FK_QRTZ_SIMPLE_TRIGGERS_TRIGGERS}
+  - property: {name: quartz.fk_qrtz_simprop_triggers_triggers.name, dbms: "postgresql",       value: fk_qrtz_simprop_triggers_triggers}
+  - property: {name: quartz.fk_qrtz_simprop_triggers_triggers.name, dbms: "mysql,mariadb,h2", value: FK_QRTZ_SIMPROP_TRIGGERS_TRIGGERS}
+  - property: {name: quartz.fk_qrtz_triggers_job_details.name,      dbms: "postgresql",       value: fk_qrtz_triggers_job_details}
+  - property: {name: quartz.fk_qrtz_triggers_job_details.name,      dbms: "mysql,mariadb,h2", value: FK_QRTZ_TRIGGERS_JOB_DETAILS}
+  - property: {name: quartz.idx_qrtz_ft_inst_job_req_rcvry.name,    dbms: "postgresql",       value: idx_qrtz_ft_inst_job_req_rcvry}
+  - property: {name: quartz.idx_qrtz_ft_inst_job_req_rcvry.name,    dbms: "mysql,mariadb,h2", value: IDX_QRTZ_FT_INST_JOB_REQ_RCVRY}
+  - property: {name: quartz.idx_qrtz_ft_jg.name,                    dbms: "postgresql",       value: idx_qrtz_ft_jg}
+  - property: {name: quartz.idx_qrtz_ft_jg.name,                    dbms: "mysql,mariadb,h2", value: IDX_QRTZ_FT_JG}
+  - property: {name: quartz.idx_qrtz_ft_j_g.name,                   dbms: "postgresql",       value: idx_qrtz_ft_j_g}
+  - property: {name: quartz.idx_qrtz_ft_j_g.name,                   dbms: "mysql,mariadb,h2", value: IDX_QRTZ_FT_J_G}
+  - property: {name: quartz.idx_qrtz_ft_tg.name,                    dbms: "postgresql",       value: idx_qrtz_ft_tg}
+  - property: {name: quartz.idx_qrtz_ft_tg.name,                    dbms: "mysql,mariadb,h2", value: IDX_QRTZ_FT_TG}
+  - property: {name: quartz.idx_qrtz_ft_trig_inst_name.name,        dbms: "postgresql",       value: idx_qrtz_ft_trig_inst_name}
+  - property: {name: quartz.idx_qrtz_ft_trig_inst_name.name,        dbms: "mysql,mariadb,h2", value: IDX_QRTZ_FT_TRIG_INST_NAME}
+  - property: {name: quartz.idx_qrtz_ft_t_g.name,                   dbms: "postgresql",       value: idx_qrtz_ft_t_g}
+  - property: {name: quartz.idx_qrtz_ft_t_g.name,                   dbms: "mysql,mariadb,h2", value: IDX_QRTZ_FT_T_G}
+  - property: {name: quartz.idx_qrtz_j_grp.name,                    dbms: "postgresql",       value: idx_qrtz_j_grp}
+  - property: {name: quartz.idx_qrtz_j_grp.name,                    dbms: "mysql,mariadb,h2", value: IDX_QRTZ_J_GRP}
+  - property: {name: quartz.idx_qrtz_j_req_recovery.name,           dbms: "postgresql",       value: idx_qrtz_j_req_recovery}
+  - property: {name: quartz.idx_qrtz_j_req_recovery.name,           dbms: "mysql,mariadb,h2", value: IDX_QRTZ_J_REQ_RECOVERY}
+  - property: {name: quartz.idx_qrtz_t_c.name,                      dbms: "postgresql",       value: idx_qrtz_t_c}
+  - property: {name: quartz.idx_qrtz_t_c.name,                      dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_C}
+  - property: {name: quartz.idx_qrtz_t_g.name,                      dbms: "postgresql",       value: idx_qrtz_t_g}
+  - property: {name: quartz.idx_qrtz_t_g.name,                      dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_G}
+  - property: {name: quartz.idx_qrtz_t_j.name,                      dbms: "postgresql",       value: idx_qrtz_t_j}
+  - property: {name: quartz.idx_qrtz_t_j.name,                      dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_J}
+  - property: {name: quartz.idx_qrtz_t_jg.name,                     dbms: "postgresql",       value: idx_qrtz_t_jg}
+  - property: {name: quartz.idx_qrtz_t_jg.name,                     dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_JG}
+  - property: {name: quartz.idx_qrtz_t_next_fire_time.name,         dbms: "postgresql",       value: idx_qrtz_t_next_fire_time}
+  - property: {name: quartz.idx_qrtz_t_next_fire_time.name,         dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_NEXT_FIRE_TIME}
+  - property: {name: quartz.idx_qrtz_t_nft_misfire.name,            dbms: "postgresql",       value: idx_qrtz_t_nft_misfire}
+  - property: {name: quartz.idx_qrtz_t_nft_misfire.name,            dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_NFT_MISFIRE}
+  - property: {name: quartz.idx_qrtz_t_nft_st.name,                 dbms: "postgresql",       value: idx_qrtz_t_nft_st}
+  - property: {name: quartz.idx_qrtz_t_nft_st.name,                 dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_NFT_ST}
+  - property: {name: quartz.idx_qrtz_t_nft_st_misfire.name,         dbms: "postgresql",       value: idx_qrtz_t_nft_st_misfire}
+  - property: {name: quartz.idx_qrtz_t_nft_st_misfire.name,         dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_NFT_ST_MISFIRE}
+  - property: {name: quartz.idx_qrtz_t_nft_st_misfire_grp.name,     dbms: "postgresql",       value: idx_qrtz_t_nft_st_misfire_grp}
+  - property: {name: quartz.idx_qrtz_t_nft_st_misfire_grp.name,     dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_NFT_ST_MISFIRE_GRP}
+  - property: {name: quartz.idx_qrtz_t_n_g_state.name,              dbms: "postgresql",       value: idx_qrtz_t_n_g_state}
+  - property: {name: quartz.idx_qrtz_t_n_g_state.name,              dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_N_G_STATE}
+  - property: {name: quartz.idx_qrtz_t_n_state.name,                dbms: "postgresql",       value: idx_qrtz_t_n_state}
+  - property: {name: quartz.idx_qrtz_t_n_state.name,                dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_N_STATE}
+  - property: {name: quartz.idx_qrtz_t_state.name,                  dbms: "postgresql",       value: idx_qrtz_t_state}
+  - property: {name: quartz.idx_qrtz_t_state.name,                  dbms: "mysql,mariadb,h2", value: IDX_QRTZ_T_STATE}
+  - property: {name: quartz.instance_name.name,                     dbms: "postgresql",       value: instance_name}
+  - property: {name: quartz.instance_name.name,                     dbms: "mysql,mariadb,h2", value: INSTANCE_NAME}
+  - property: {name: quartz.int_prop_1.name,                        dbms: "postgresql",       value: int_prop_1}
+  - property: {name: quartz.int_prop_1.name,                        dbms: "mysql,mariadb,h2", value: INT_PROP_1}
+  - property: {name: quartz.int_prop_2.name,                        dbms: "postgresql",       value: int_prop_2}
+  - property: {name: quartz.int_prop_2.name,                        dbms: "mysql,mariadb,h2", value: INT_PROP_2}
+  - property: {name: quartz.is_durable.name,                        dbms: "postgresql",       value: is_durable}
+  - property: {name: quartz.is_durable.name,                        dbms: "mysql,mariadb,h2", value: IS_DURABLE}
+  - property: {name: quartz.is_nonconcurrent.name,                  dbms: "postgresql",       value: is_nonconcurrent}
+  - property: {name: quartz.is_nonconcurrent.name,                  dbms: "mysql,mariadb,h2", value: IS_NONCONCURRENT}
+  - property: {name: quartz.is_update_data.name,                    dbms: "postgresql",       value: is_update_data}
+  - property: {name: quartz.is_update_data.name,                    dbms: "mysql,mariadb,h2", value: IS_UPDATE_DATA}
+  - property: {name: quartz.job_class_name.name,                    dbms: "postgresql",       value: job_class_name}
+  - property: {name: quartz.job_class_name.name,                    dbms: "mysql,mariadb,h2", value: JOB_CLASS_NAME}
+  - property: {name: quartz.job_data.name,                          dbms: "postgresql",       value: job_data}
+  - property: {name: quartz.job_data.name,                          dbms: "mysql,mariadb,h2", value: JOB_DATA}
+  - property: {name: quartz.job_group.name,                         dbms: "postgresql",       value: job_group}
+  - property: {name: quartz.job_group.name,                         dbms: "mysql,mariadb,h2", value: JOB_GROUP}
+  - property: {name: quartz.job_name.name,                          dbms: "postgresql",       value: job_name}
+  - property: {name: quartz.job_name.name,                          dbms: "mysql,mariadb,h2", value: JOB_NAME}
+  - property: {name: quartz.last_checkin_time.name,                 dbms: "postgresql",       value: last_checkin_time}
+  - property: {name: quartz.last_checkin_time.name,                 dbms: "mysql,mariadb,h2", value: LAST_CHECKIN_TIME}
+  - property: {name: quartz.lock_name.name,                         dbms: "postgresql",       value: lock_name}
+  - property: {name: quartz.lock_name.name,                         dbms: "mysql,mariadb,h2", value: LOCK_NAME}
+  - property: {name: quartz.long_prop_1.name,                       dbms: "postgresql",       value: long_prop_1}
+  - property: {name: quartz.long_prop_1.name,                       dbms: "mysql,mariadb,h2", value: LONG_PROP_1}
+  - property: {name: quartz.long_prop_2.name,                       dbms: "postgresql",       value: long_prop_2}
+  - property: {name: quartz.long_prop_2.name,                       dbms: "mysql,mariadb,h2", value: LONG_PROP_2}
+  - property: {name: quartz.misfire_instr.name,                     dbms: "postgresql",       value: misfire_instr}
+  - property: {name: quartz.misfire_instr.name,                     dbms: "mysql,mariadb,h2", value: MISFIRE_INSTR}
+  - property: {name: quartz.next_fire_time.name,                    dbms: "postgresql",       value: next_fire_time}
+  - property: {name: quartz.next_fire_time.name,                    dbms: "mysql,mariadb,h2", value: NEXT_FIRE_TIME}
+  - property: {name: quartz.pk_qrtz_blob_triggers.name,             dbms: "postgresql",       value: pk_qrtz_blob_triggers}
+  - property: {name: quartz.pk_qrtz_blob_triggers.name,             dbms: "mysql,mariadb,h2", value: PK_QRTZ_BLOB_TRIGGERS}
+  - property: {name: quartz.pk_qrtz_calendars.name,                 dbms: "postgresql",       value: pk_qrtz_calendars}
+  - property: {name: quartz.pk_qrtz_calendars.name,                 dbms: "mysql,mariadb,h2", value: PK_QRTZ_CALENDARS}
+  - property: {name: quartz.pk_qrtz_cron_triggers.name,             dbms: "postgresql",       value: pk_qrtz_cron_triggers}
+  - property: {name: quartz.pk_qrtz_cron_triggers.name,             dbms: "mysql,mariadb,h2", value: PK_QRTZ_CRON_TRIGGERS}
+  - property: {name: quartz.pk_qrtz_fired_triggers.name,            dbms: "postgresql",       value: pk_qrtz_fired_triggers}
+  - property: {name: quartz.pk_qrtz_fired_triggers.name,            dbms: "mysql,mariadb,h2", value: PK_QRTZ_FIRED_TRIGGERS}
+  - property: {name: quartz.pk_qrtz_job_details.name,               dbms: "postgresql",       value: pk_qrtz_job_details}
+  - property: {name: quartz.pk_qrtz_job_details.name,               dbms: "mysql,mariadb,h2", value: PK_QRTZ_JOB_DETAILS}
+  - property: {name: quartz.pk_qrtz_locks.name,                     dbms: "postgresql",       value: pk_qrtz_locks}
+  - property: {name: quartz.pk_qrtz_locks.name,                     dbms: "mysql,mariadb,h2", value: PK_QRTZ_LOCKS}
+  - property: {name: quartz.pk_qrtz_scheduler_state.name,           dbms: "postgresql",       value: pk_qrtz_scheduler_state}
+  - property: {name: quartz.pk_qrtz_scheduler_state.name,           dbms: "mysql,mariadb,h2", value: PK_QRTZ_SCHEDULER_STATE}
+  - property: {name: quartz.pk_qrtz_simple_triggers.name,           dbms: "postgresql",       value: pk_qrtz_simple_triggers}
+  - property: {name: quartz.pk_qrtz_simple_triggers.name,           dbms: "mysql,mariadb,h2", value: PK_QRTZ_SIMPLE_TRIGGERS}
+  - property: {name: quartz.pk_qrtz_simprop_triggers.name,          dbms: "postgresql",       value: pk_qrtz_simprop_triggers}
+  - property: {name: quartz.pk_qrtz_simprop_triggers.name,          dbms: "mysql,mariadb,h2", value: PK_QRTZ_SIMPROP_TRIGGERS}
+  - property: {name: quartz.pk_qrtz_triggers.name,                  dbms: "postgresql",       value: pk_qrtz_triggers}
+  - property: {name: quartz.pk_qrtz_triggers.name,                  dbms: "mysql,mariadb,h2", value: PK_QRTZ_TRIGGERS}
+  - property: {name: quartz.pk_sched_name.name,                     dbms: "postgresql",       value: pk_sched_name}
+  - property: {name: quartz.pk_sched_name.name,                     dbms: "mysql,mariadb,h2", value: PK_SCHED_NAME}
+  - property: {name: quartz.prev_fire_time.name,                    dbms: "postgresql",       value: prev_fire_time}
+  - property: {name: quartz.prev_fire_time.name,                    dbms: "mysql,mariadb,h2", value: PREV_FIRE_TIME}
+  - property: {name: quartz.priority.name,                          dbms: "postgresql",       value: priority}
+  - property: {name: quartz.priority.name,                          dbms: "mysql,mariadb,h2", value: PRIORITY}
+  - property: {name: quartz.qrtz_blob_triggers.name,                dbms: "postgresql",       value: qrtz_blob_triggers}
+  - property: {name: quartz.qrtz_blob_triggers.name,                dbms: "mysql,mariadb,h2", value: QRTZ_BLOB_TRIGGERS}
+  - property: {name: quartz.qrtz_calendars.name,                    dbms: "postgresql",       value: qrtz_calendars}
+  - property: {name: quartz.qrtz_calendars.name,                    dbms: "mysql,mariadb,h2", value: QRTZ_CALENDARS}
+  - property: {name: quartz.qrtz_cron_triggers.name,                dbms: "postgresql",       value: qrtz_cron_triggers}
+  - property: {name: quartz.qrtz_cron_triggers.name,                dbms: "mysql,mariadb,h2", value: QRTZ_CRON_TRIGGERS}
+  - property: {name: quartz.qrtz_fired_triggers.name,               dbms: "postgresql",       value: qrtz_fired_triggers}
+  - property: {name: quartz.qrtz_fired_triggers.name,               dbms: "mysql,mariadb,h2", value: QRTZ_FIRED_TRIGGERS}
+  - property: {name: quartz.qrtz_job_details.name,                  dbms: "postgresql",       value: qrtz_job_details}
+  - property: {name: quartz.qrtz_job_details.name,                  dbms: "mysql,mariadb,h2", value: QRTZ_JOB_DETAILS}
+  - property: {name: quartz.qrtz_locks.name,                        dbms: "postgresql",       value: qrtz_locks}
+  - property: {name: quartz.qrtz_locks.name,                        dbms: "mysql,mariadb,h2", value: QRTZ_LOCKS}
+  - property: {name: quartz.qrtz_paused_trigger_grps.name,          dbms: "postgresql",       value: qrtz_paused_trigger_grps}
+  - property: {name: quartz.qrtz_paused_trigger_grps.name,          dbms: "mysql,mariadb,h2", value: QRTZ_PAUSED_TRIGGER_GRPS}
+  - property: {name: quartz.qrtz_scheduler_state.name,              dbms: "postgresql",       value: qrtz_scheduler_state}
+  - property: {name: quartz.qrtz_scheduler_state.name,              dbms: "mysql,mariadb,h2", value: QRTZ_SCHEDULER_STATE}
+  - property: {name: quartz.qrtz_simple_triggers.name,              dbms: "postgresql",       value: qrtz_simple_triggers}
+  - property: {name: quartz.qrtz_simple_triggers.name,              dbms: "mysql,mariadb,h2", value: QRTZ_SIMPLE_TRIGGERS}
+  - property: {name: quartz.qrtz_simprop_triggers.name,             dbms: "postgresql",       value: qrtz_simprop_triggers}
+  - property: {name: quartz.qrtz_simprop_triggers.name,             dbms: "mysql,mariadb,h2", value: QRTZ_SIMPROP_TRIGGERS}
+  - property: {name: quartz.qrtz_triggers.name,                     dbms: "postgresql",       value: qrtz_triggers}
+  - property: {name: quartz.qrtz_triggers.name,                     dbms: "mysql,mariadb,h2", value: QRTZ_TRIGGERS}
+  - property: {name: quartz.repeat_count.name,                      dbms: "postgresql",       value: repeat_count}
+  - property: {name: quartz.repeat_count.name,                      dbms: "mysql,mariadb,h2", value: REPEAT_COUNT}
+  - property: {name: quartz.repeat_interval.name,                   dbms: "postgresql",       value: repeat_interval}
+  - property: {name: quartz.repeat_interval.name,                   dbms: "mysql,mariadb,h2", value: REPEAT_INTERVAL}
+  - property: {name: quartz.requests_recovery.name,                 dbms: "postgresql",       value: requests_recovery}
+  - property: {name: quartz.requests_recovery.name,                 dbms: "mysql,mariadb,h2", value: REQUESTS_RECOVERY}
+  - property: {name: quartz.sched_name.name,                        dbms: "postgresql",       value: sched_name}
+  - property: {name: quartz.sched_name.name,                        dbms: "mysql,mariadb,h2", value: SCHED_NAME}
+  - property: {name: quartz.sched_time.name,                        dbms: "postgresql",       value: sched_time}
+  - property: {name: quartz.sched_time.name,                        dbms: "mysql,mariadb,h2", value: SCHED_TIME}
+  - property: {name: quartz.start_time.name,                        dbms: "postgresql",       value: start_time}
+  - property: {name: quartz.start_time.name,                        dbms: "mysql,mariadb,h2", value: START_TIME}
+  - property: {name: quartz.state.name,                             dbms: "postgresql",       value: state}
+  - property: {name: quartz.state.name,                             dbms: "mysql,mariadb,h2", value: STATE}
+  - property: {name: quartz.str_prop_1.name,                        dbms: "postgresql",       value: str_prop_1}
+  - property: {name: quartz.str_prop_1.name,                        dbms: "mysql,mariadb,h2", value: STR_PROP_1}
+  - property: {name: quartz.str_prop_2.name,                        dbms: "postgresql",       value: str_prop_2}
+  - property: {name: quartz.str_prop_2.name,                        dbms: "mysql,mariadb,h2", value: STR_PROP_2}
+  - property: {name: quartz.str_prop_3.name,                        dbms: "postgresql",       value: str_prop_3}
+  - property: {name: quartz.str_prop_3.name,                        dbms: "mysql,mariadb,h2", value: STR_PROP_3}
+  - property: {name: quartz.times_triggered.name,                   dbms: "postgresql",       value: times_triggered}
+  - property: {name: quartz.times_triggered.name,                   dbms: "mysql,mariadb,h2", value: TIMES_TRIGGERED}
+  - property: {name: quartz.time_zone_id.name,                      dbms: "postgresql",       value: time_zone_id}
+  - property: {name: quartz.time_zone_id.name,                      dbms: "mysql,mariadb,h2", value: TIME_ZONE_ID}
+  - property: {name: quartz.trigger_group.name,                     dbms: "postgresql",       value: trigger_group}
+  - property: {name: quartz.trigger_group.name,                     dbms: "mysql,mariadb,h2", value: TRIGGER_GROUP}
+  - property: {name: quartz.trigger_name.name,                      dbms: "postgresql",       value: trigger_name}
+  - property: {name: quartz.trigger_name.name,                      dbms: "mysql,mariadb,h2", value: TRIGGER_NAME}
+  - property: {name: quartz.trigger_state.name,                     dbms: "postgresql",       value: trigger_state}
+  - property: {name: quartz.trigger_state.name,                     dbms: "mysql,mariadb,h2", value: TRIGGER_STATE}
+  - property: {name: quartz.trigger_type.name,                      dbms: "postgresql",       value: trigger_type}
+  - property: {name: quartz.trigger_type.name,                      dbms: "mysql,mariadb,h2", value: TRIGGER_TYPE}
+
   - changeSet:
       id: 89
       author: camsaul
-      comment: 'Added 0.30.0'
+      comment: Added 0.30.0
+      validCheckSum: ANY
       changes:
         - createTable:
-            tableName: QRTZ_JOB_DETAILS
-            remarks: 'Used for Quartz scheduler.'
+            tableName: ${quartz.qrtz_job_details.name}
+            remarks: Used for Quartz scheduler.
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
                   type: varchar(120)
                   constraints:
                     nullable: false
               - column:
-                  name: JOB_NAME
+                  name: ${quartz.job_name.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: JOB_GROUP
+                  name: ${quartz.job_group.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: DESCRIPTION
+                  name: ${quartz.description.name}
                   type: varchar(250)
               - column:
-                  name: JOB_CLASS_NAME
+                  name: ${quartz.job_class_name.name}
                   type: varchar(250)
                   constraints:
                     nullable: false
               - column:
-                  name: IS_DURABLE
+                  name: ${quartz.is_durable.name}
                   type: bool
                   constraints:
                     nullable: false
               - column:
-                  name: IS_NONCONCURRENT
+                  name: ${quartz.is_nonconcurrent.name}
                   type: bool
                   constraints:
                     nullable: false
               - column:
-                  name: IS_UPDATE_DATA
+                  name: ${quartz.is_update_data.name}
                   type: bool
                   constraints:
                     nullable: false
               - column:
-                  name: REQUESTS_RECOVERY
+                  name: ${quartz.requests_recovery.name}
                   type: bool
                   constraints:
                     nullable: false
               - column:
-                  name: JOB_DATA
+                  name: ${quartz.job_data.name}
                   type: ${blob.type}
         - addPrimaryKey:
-            tableName: QRTZ_JOB_DETAILS
-            columnNames: SCHED_NAME, JOB_NAME, JOB_GROUP
-            constraintName: PK_QRTZ_JOB_DETAILS
+            tableName: ${quartz.qrtz_job_details.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.job_name.name}, ${quartz.job_group.name}
+            constraintName: ${quartz.pk_qrtz_job_details.name}
         - createTable:
-            tableName: QRTZ_TRIGGERS
-            remarks: 'Used for Quartz scheduler.'
+            tableName: ${quartz.qrtz_triggers.name}
+            remarks: Used for Quartz scheduler.
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
                   type: varchar(120)
                   constraints:
                     nullable: false
               - column:
-                  name: TRIGGER_NAME
+                  name: ${quartz.trigger_name.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: TRIGGER_GROUP
+                  name: ${quartz.trigger_group.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: JOB_NAME
+                  name: ${quartz.job_name.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: JOB_GROUP
+                  name: ${quartz.job_group.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: DESCRIPTION
+                  name: ${quartz.description.name}
                   type: varchar(250)
               - column:
-                  name: NEXT_FIRE_TIME
+                  name: ${quartz.next_fire_time.name}
                   type: bigint
               - column:
-                  name: PREV_FIRE_TIME
+                  name: ${quartz.prev_fire_time.name}
                   type: bigint
               - column:
-                  name: PRIORITY
+                  name: ${quartz.priority.name}
                   type: integer
               - column:
-                  name: TRIGGER_STATE
+                  name: ${quartz.trigger_state.name}
                   type: varchar(16)
                   constraints:
                     nullable: false
               - column:
-                  name: TRIGGER_TYPE
+                  name: ${quartz.trigger_type.name}
                   type: varchar(8)
                   constraints:
                     nullable: false
               - column:
-                  name: START_TIME
+                  name: ${quartz.start_time.name}
                   type: bigint
                   constraints:
                     nullable: false
               - column:
-                  name: END_TIME
+                  name: ${quartz.end_time.name}
                   type: bigint
               - column:
-                  name: CALENDAR_NAME
+                  name: ${quartz.calendar_name.name}
                   type: varchar(200)
               - column:
-                  name: MISFIRE_INSTR
+                  name: ${quartz.misfire_instr.name}
                   type: smallint
               - column:
-                  name: JOB_DATA
+                  name: ${quartz.job_data.name}
                   type: ${blob.type}
         - addPrimaryKey:
-            tableName: QRTZ_TRIGGERS
-            columnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
-            constraintName: PK_QRTZ_TRIGGERS
+            tableName: ${quartz.qrtz_triggers.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
+            constraintName: ${quartz.pk_qrtz_triggers.name}
         - addForeignKeyConstraint:
-            baseTableName: QRTZ_TRIGGERS
-            baseColumnNames: SCHED_NAME, JOB_NAME, JOB_GROUP
-            referencedTableName: QRTZ_JOB_DETAILS
-            referencedColumnNames: SCHED_NAME, JOB_NAME, JOB_GROUP
-            constraintName: FK_QRTZ_TRIGGERS_JOB_DETAILS
+            baseTableName: ${quartz.qrtz_triggers.name}
+            baseColumnNames: ${quartz.sched_name.name}, ${quartz.job_name.name}, ${quartz.job_group.name}
+            referencedTableName: ${quartz.qrtz_job_details.name}
+            referencedColumnNames: ${quartz.sched_name.name}, ${quartz.job_name.name}, ${quartz.job_group.name}
+            constraintName: ${quartz.fk_qrtz_triggers_job_details.name}
         - createTable:
-            tableName: QRTZ_SIMPLE_TRIGGERS
-            remarks: 'Used for Quartz scheduler.'
+            tableName: ${quartz.qrtz_simple_triggers.name}
+            remarks: Used for Quartz scheduler.
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
                   type: varchar(120)
                   constraints:
                     nullable: false
               - column:
-                  name: TRIGGER_NAME
+                  name: ${quartz.trigger_name.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: TRIGGER_GROUP
+                  name: ${quartz.trigger_group.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: REPEAT_COUNT
+                  name: ${quartz.repeat_count.name}
                   type: bigint
                   constraints:
                     nullable: false
               - column:
-                  name: REPEAT_INTERVAL
+                  name: ${quartz.repeat_interval.name}
                   type: bigint
                   constraints:
                     nullable: false
               - column:
-                  name: TIMES_TRIGGERED
+                  name: ${quartz.times_triggered.name}
                   type: bigint
                   constraints:
                     nullable: false
         - addPrimaryKey:
-            tableName: QRTZ_SIMPLE_TRIGGERS
-            columnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
-            constraintName: PK_QRTZ_SIMPLE_TRIGGERS
+            tableName: ${quartz.qrtz_simple_triggers.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
+            constraintName: ${quartz.pk_qrtz_simple_triggers.name}
         - addForeignKeyConstraint:
-            baseTableName: QRTZ_SIMPLE_TRIGGERS
-            baseColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
-            referencedTableName: QRTZ_TRIGGERS
-            referencedColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
-            constraintName: FK_QRTZ_SIMPLE_TRIGGERS_TRIGGERS
+            baseTableName: ${quartz.qrtz_simple_triggers.name}
+            baseColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
+            referencedTableName: ${quartz.qrtz_triggers.name}
+            referencedColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
+            constraintName: ${quartz.fk_qrtz_simple_triggers_triggers.name}
         - createTable:
-            tableName: QRTZ_CRON_TRIGGERS
-            remarks: 'Used for Quartz scheduler.'
+            tableName: ${quartz.qrtz_cron_triggers.name}
+            remarks: Used for Quartz scheduler.
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
                   type: varchar(120)
                   constraints:
                     nullable: false
               - column:
-                  name: TRIGGER_NAME
+                  name: ${quartz.trigger_name.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: TRIGGER_GROUP
+                  name: ${quartz.trigger_group.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: CRON_EXPRESSION
+                  name: ${quartz.cron_expression.name}
                   type: varchar(120)
                   constraints:
                     nullable: false
               - column:
-                  name: TIME_ZONE_ID
+                  name: ${quartz.time_zone_id.name}
                   type: varchar(80)
         - addPrimaryKey:
-            tableName: QRTZ_CRON_TRIGGERS
-            columnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
-            constraintName: PK_QRTZ_CRON_TRIGGERS
+            tableName: ${quartz.qrtz_cron_triggers.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
+            constraintName: ${quartz.pk_qrtz_cron_triggers.name}
         - addForeignKeyConstraint:
-            baseTableName: QRTZ_CRON_TRIGGERS
-            baseColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
-            referencedTableName: QRTZ_TRIGGERS
-            referencedColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
-            constraintName: FK_QRTZ_CRON_TRIGGERS_TRIGGERS
+            baseTableName: ${quartz.qrtz_cron_triggers.name}
+            baseColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
+            referencedTableName: ${quartz.qrtz_triggers.name}
+            referencedColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
+            constraintName: ${quartz.fk_qrtz_cron_triggers_triggers.name}
         - createTable:
-            tableName: QRTZ_SIMPROP_TRIGGERS
-            remarks: 'Used for Quartz scheduler.'
+            tableName: ${quartz.qrtz_simprop_triggers.name}
+            remarks: Used for Quartz scheduler.
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
                   type: varchar(120)
                   constraints:
                     nullable: false
               - column:
-                  name: TRIGGER_NAME
+                  name: ${quartz.trigger_name.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: TRIGGER_GROUP
+                  name: ${quartz.trigger_group.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: STR_PROP_1
+                  name: ${quartz.str_prop_1.name}
                   type: varchar(512)
               - column:
-                  name: STR_PROP_2
+                  name: ${quartz.str_prop_2.name}
                   type: varchar(512)
               - column:
-                  name: STR_PROP_3
+                  name: ${quartz.str_prop_3.name}
                   type: varchar(512)
               - column:
-                  name: INT_PROP_1
+                  name: ${quartz.int_prop_1.name}
                   type: int
               - column:
-                  name: INT_PROP_2
+                  name: ${quartz.int_prop_2.name}
                   type: int
               - column:
-                  name: LONG_PROP_1
+                  name: ${quartz.long_prop_1.name}
                   type: bigint
               - column:
-                  name: LONG_PROP_2
+                  name: ${quartz.long_prop_2.name}
                   type: bigint
               - column:
-                  name: DEC_PROP_1
+                  name: ${quartz.dec_prop_1.name}
                   type: numeric(13,4)
               - column:
-                  name: DEC_PROP_2
+                  name: ${quartz.dec_prop_2.name}
                   type: numeric(13,4)
               - column:
-                  name: BOOL_PROP_1
+                  name: ${quartz.bool_prop_1.name}
                   type: bool
               - column:
-                  name: BOOL_PROP_2
+                  name: ${quartz.bool_prop_2.name}
                   type: bool
         - addPrimaryKey:
-            tableName: QRTZ_SIMPROP_TRIGGERS
-            columnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
-            constraintName: PK_QRTZ_SIMPROP_TRIGGERS
+            tableName: ${quartz.qrtz_simprop_triggers.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
+            constraintName: ${quartz.pk_qrtz_simprop_triggers.name}
         - addForeignKeyConstraint:
-            baseTableName: QRTZ_SIMPROP_TRIGGERS
-            baseColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
-            referencedTableName: QRTZ_TRIGGERS
-            referencedColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
-            constraintName: FK_QRTZ_SIMPROP_TRIGGERS_TRIGGERS
+            baseTableName: ${quartz.qrtz_simprop_triggers.name}
+            baseColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
+            referencedTableName: ${quartz.qrtz_triggers.name}
+            referencedColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
+            constraintName: ${quartz.fk_qrtz_simprop_triggers_triggers.name}
         - createTable:
-            tableName: QRTZ_BLOB_TRIGGERS
-            remarks: 'Used for Quartz scheduler.'
+            tableName: ${quartz.qrtz_blob_triggers.name}
+            remarks: Used for Quartz scheduler.
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
                   type: varchar(120)
                   constraints:
                     nullable: false
               - column:
-                  name: TRIGGER_NAME
+                  name: ${quartz.trigger_name.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: TRIGGER_GROUP
+                  name: ${quartz.trigger_group.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: BLOB_DATA
+                  name: ${quartz.blob_data.name}
                   type: ${blob.type}
         - addPrimaryKey:
-            tableName: QRTZ_BLOB_TRIGGERS
-            columnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
-            constraintName: PK_QRTZ_BLOB_TRIGGERS
+            tableName: ${quartz.qrtz_blob_triggers.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
+            constraintName: ${quartz.pk_qrtz_blob_triggers.name}
         - addForeignKeyConstraint:
-            baseTableName: QRTZ_BLOB_TRIGGERS
-            baseColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
-            referencedTableName: QRTZ_TRIGGERS
-            referencedColumnNames: SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP
-            constraintName: FK_QRTZ_BLOB_TRIGGERS_TRIGGERS
+            baseTableName: ${quartz.qrtz_blob_triggers.name}
+            baseColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
+            referencedTableName: ${quartz.qrtz_triggers.name}
+            referencedColumnNames: ${quartz.sched_name.name}, ${quartz.trigger_name.name}, ${quartz.trigger_group.name}
+            constraintName: ${quartz.fk_qrtz_blob_triggers_triggers.name}
         - createTable:
-            tableName: QRTZ_CALENDARS
-            remarks: 'Used for Quartz scheduler.'
+            tableName: ${quartz.qrtz_calendars.name}
+            remarks: Used for Quartz scheduler.
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
                   type: varchar(120)
                   constraints:
                     nullable: false
               - column:
-                  name: CALENDAR_NAME
+                  name: ${quartz.calendar_name.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: CALENDAR
+                  name: ${quartz.calendar.name}
                   type: ${blob.type}
                   constraints:
                     nullable: false
         - addPrimaryKey:
-            tableName: QRTZ_CALENDARS
-            columnNames: SCHED_NAME, CALENDAR_NAME
-            constraintName: PK_QRTZ_CALENDARS
+            tableName: ${quartz.qrtz_calendars.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.calendar_name.name}
+            constraintName: ${quartz.pk_qrtz_calendars.name}
         - createTable:
-            tableName: QRTZ_PAUSED_TRIGGER_GRPS
-            remarks: 'Used for Quartz scheduler.'
+            tableName: ${quartz.qrtz_paused_trigger_grps.name}
+            remarks: Used for Quartz scheduler.
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
                   type: varchar(120)
                   constraints:
                     nullable: false
               - column:
-                  name: TRIGGER_GROUP
+                  name: ${quartz.trigger_group.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
         - addPrimaryKey:
-            tableName: QRTZ_PAUSED_TRIGGER_GRPS
-            columnNames: SCHED_NAME, TRIGGER_GROUP
-            constraintName: PK_SCHED_NAME
+            tableName: ${quartz.qrtz_paused_trigger_grps.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.trigger_group.name}
+            constraintName: ${quartz.pk_sched_name.name}
         - createTable:
-            tableName: QRTZ_FIRED_TRIGGERS
-            remarks: 'Used for Quartz scheduler.'
+            tableName: ${quartz.qrtz_fired_triggers.name}
+            remarks: Used for Quartz scheduler.
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
                   type: varchar(120)
                   constraints:
                     nullable: false
               - column:
-                  name: ENTRY_ID
+                  name: ${quartz.entry_id.name}
                   type: varchar(95)
                   constraints:
                     nullable: false
               - column:
-                  name: TRIGGER_NAME
+                  name: ${quartz.trigger_name.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: TRIGGER_GROUP
+                  name: ${quartz.trigger_group.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: INSTANCE_NAME
+                  name: ${quartz.instance_name.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: FIRED_TIME
+                  name: ${quartz.fired_time.name}
                   type: bigint
                   constraints:
                     nullable: false
@@ -4912,268 +5158,268 @@ databaseChangeLog:
 # nullable since at the time of this migration we're still using 2.1.7; including it gives us an easy upgrade path in
 # the future.
               - column:
-                  name: SCHED_TIME
+                  name: ${quartz.sched_time.name}
                   type: bigint
               - column:
-                  name: PRIORITY
+                  name: ${quartz.priority.name}
                   type: integer
                   constraints:
                     nullable: false
               - column:
-                  name: STATE
+                  name: ${quartz.state.name}
                   type: varchar(16)
                   constraints:
                     nullable: false
               - column:
-                  name: JOB_NAME
+                  name: ${quartz.job_name.name}
                   type: varchar(200)
               - column:
-                  name: JOB_GROUP
+                  name: ${quartz.job_group.name}
                   type: varchar(200)
               - column:
-                  name: IS_NONCONCURRENT
+                  name: ${quartz.is_nonconcurrent.name}
                   type: bool
               - column:
-                  name: REQUESTS_RECOVERY
+                  name: ${quartz.requests_recovery.name}
                   type: bool
         - addPrimaryKey:
-            tableName: QRTZ_FIRED_TRIGGERS
-            columnNames: SCHED_NAME, ENTRY_ID
-            constraintName: PK_QRTZ_FIRED_TRIGGERS
+            tableName: ${quartz.qrtz_fired_triggers.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.entry_id.name}
+            constraintName: ${quartz.pk_qrtz_fired_triggers.name}
         - createTable:
-            tableName: QRTZ_SCHEDULER_STATE
-            remarks: 'Used for Quartz scheduler.'
+            tableName: ${quartz.qrtz_scheduler_state.name}
+            remarks: Used for Quartz scheduler.
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
                   type: varchar(120)
                   constraints:
                     nullable: false
               - column:
-                  name: INSTANCE_NAME
+                  name: ${quartz.instance_name.name}
                   type: varchar(200)
                   constraints:
                     nullable: false
               - column:
-                  name: LAST_CHECKIN_TIME
+                  name: ${quartz.last_checkin_time.name}
                   type: bigint
                   constraints:
                     nullable: false
               - column:
-                  name: CHECKIN_INTERVAL
+                  name: ${quartz.checkin_interval.name}
                   type: bigint
                   constraints:
                     nullable: false
         - addPrimaryKey:
-            tableName: QRTZ_SCHEDULER_STATE
-            columnNames: SCHED_NAME, INSTANCE_NAME
-            constraintName: PK_QRTZ_SCHEDULER_STATE
+            tableName: ${quartz.qrtz_scheduler_state.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.instance_name.name}
+            constraintName: ${quartz.pk_qrtz_scheduler_state.name}
         - createTable:
-            tableName: QRTZ_LOCKS
-            remarks: 'Used for Quartz scheduler.'
+            tableName: ${quartz.qrtz_locks.name}
+            remarks: Used for Quartz scheduler.
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
                   type: varchar(120)
                   constraints:
                     nullable: false
               - column:
-                  name: LOCK_NAME
+                  name: ${quartz.lock_name.name}
                   type: varchar(40)
                   constraints:
                     nullable: false
         - addPrimaryKey:
-            tableName: QRTZ_LOCKS
-            columnNames: SCHED_NAME, LOCK_NAME
-            constraintName: PK_QRTZ_LOCKS
+            tableName: ${quartz.qrtz_locks.name}
+            columnNames: ${quartz.sched_name.name}, ${quartz.lock_name.name}
+            constraintName: ${quartz.pk_qrtz_locks.name}
         - createIndex:
-            indexName: IDX_QRTZ_J_REQ_RECOVERY
-            tableName: QRTZ_JOB_DETAILS
+            indexName: ${quartz.idx_qrtz_j_req_recovery.name}
+            tableName: ${quartz.qrtz_job_details.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: REQUESTS_RECOVERY
+                  name: ${quartz.requests_recovery.name}
         - createIndex:
-            indexName: IDX_QRTZ_J_GRP
-            tableName: QRTZ_JOB_DETAILS
+            indexName: ${quartz.idx_qrtz_j_grp.name}
+            tableName: ${quartz.qrtz_job_details.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: JOB_GROUP
+                  name: ${quartz.job_group.name}
         - createIndex:
-            indexName: IDX_QRTZ_T_J
-            tableName: QRTZ_TRIGGERS
+            indexName: ${quartz.idx_qrtz_t_j.name}
+            tableName: ${quartz.qrtz_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: JOB_NAME
+                  name: ${quartz.job_name.name}
               - column:
-                  name: JOB_GROUP
+                  name: ${quartz.job_group.name}
         - createIndex:
-            indexName: IDX_QRTZ_T_JG
-            tableName: QRTZ_TRIGGERS
+            indexName: ${quartz.idx_qrtz_t_jg.name}
+            tableName: ${quartz.qrtz_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: JOB_GROUP
+                  name: ${quartz.job_group.name}
         - createIndex:
-            indexName: IDX_QRTZ_T_C
-            tableName: QRTZ_TRIGGERS
+            indexName: ${quartz.idx_qrtz_t_c.name}
+            tableName: ${quartz.qrtz_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: CALENDAR_NAME
+                  name: ${quartz.calendar_name.name}
         - createIndex:
-            indexName: IDX_QRTZ_T_G
-            tableName: QRTZ_TRIGGERS
+            indexName: ${quartz.idx_qrtz_t_g.name}
+            tableName: ${quartz.qrtz_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: TRIGGER_GROUP
+                  name: ${quartz.trigger_group.name}
         - createIndex:
-            indexName: IDX_QRTZ_T_STATE
-            tableName: QRTZ_TRIGGERS
+            indexName: ${quartz.idx_qrtz_t_state.name}
+            tableName: ${quartz.qrtz_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: TRIGGER_STATE
+                  name: ${quartz.trigger_state.name}
         - createIndex:
-            indexName: IDX_QRTZ_T_N_STATE
-            tableName: QRTZ_TRIGGERS
+            indexName: ${quartz.idx_qrtz_t_n_state.name}
+            tableName: ${quartz.qrtz_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: TRIGGER_NAME
+                  name: ${quartz.trigger_name.name}
               - column:
-                  name: TRIGGER_GROUP
+                  name: ${quartz.trigger_group.name}
               - column:
-                  name: TRIGGER_STATE
+                  name: ${quartz.trigger_state.name}
         - createIndex:
-            indexName: IDX_QRTZ_T_N_G_STATE
-            tableName: QRTZ_TRIGGERS
+            indexName: ${quartz.idx_qrtz_t_n_g_state.name}
+            tableName: ${quartz.qrtz_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: TRIGGER_GROUP
+                  name: ${quartz.trigger_group.name}
               - column:
-                  name: TRIGGER_STATE
+                  name: ${quartz.trigger_state.name}
         - createIndex:
-            indexName: IDX_QRTZ_T_NEXT_FIRE_TIME
-            tableName: QRTZ_TRIGGERS
+            indexName: ${quartz.idx_qrtz_t_next_fire_time.name}
+            tableName: ${quartz.qrtz_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: NEXT_FIRE_TIME
+                  name: ${quartz.next_fire_time.name}
         - createIndex:
-            indexName: IDX_QRTZ_T_NFT_ST
-            tableName: QRTZ_TRIGGERS
+            indexName: ${quartz.idx_qrtz_t_nft_st.name}
+            tableName: ${quartz.qrtz_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: TRIGGER_STATE
+                  name: ${quartz.trigger_state.name}
               - column:
-                  name: NEXT_FIRE_TIME
+                  name: ${quartz.next_fire_time.name}
         - createIndex:
-            indexName: IDX_QRTZ_T_NFT_MISFIRE
-            tableName: QRTZ_TRIGGERS
+            indexName: ${quartz.idx_qrtz_t_nft_misfire.name}
+            tableName: ${quartz.qrtz_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: MISFIRE_INSTR
+                  name: ${quartz.misfire_instr.name}
               - column:
-                  name: NEXT_FIRE_TIME
+                  name: ${quartz.next_fire_time.name}
         - createIndex:
-            indexName: IDX_QRTZ_T_NFT_ST_MISFIRE
-            tableName: QRTZ_TRIGGERS
+            indexName: ${quartz.idx_qrtz_t_nft_st_misfire.name}
+            tableName: ${quartz.qrtz_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: MISFIRE_INSTR
+                  name: ${quartz.misfire_instr.name}
               - column:
-                  name: NEXT_FIRE_TIME
+                  name: ${quartz.next_fire_time.name}
               - column:
-                  name: TRIGGER_STATE
+                  name: ${quartz.trigger_state.name}
         - createIndex:
-            indexName: IDX_QRTZ_T_NFT_ST_MISFIRE_GRP
-            tableName: QRTZ_TRIGGERS
+            indexName: ${quartz.idx_qrtz_t_nft_st_misfire_grp.name}
+            tableName: ${quartz.qrtz_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: MISFIRE_INSTR
+                  name: ${quartz.misfire_instr.name}
               - column:
-                  name: NEXT_FIRE_TIME
+                  name: ${quartz.next_fire_time.name}
               - column:
-                  name: TRIGGER_GROUP
+                  name: ${quartz.trigger_group.name}
               - column:
-                  name: TRIGGER_STATE
+                  name: ${quartz.trigger_state.name}
         - createIndex:
-            indexName: IDX_QRTZ_FT_TRIG_INST_NAME
-            tableName: QRTZ_FIRED_TRIGGERS
+            indexName: ${quartz.idx_qrtz_ft_trig_inst_name.name}
+            tableName: ${quartz.qrtz_fired_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: INSTANCE_NAME
+                  name: ${quartz.instance_name.name}
         - createIndex:
-            indexName: IDX_QRTZ_FT_INST_JOB_REQ_RCVRY
-            tableName: QRTZ_FIRED_TRIGGERS
+            indexName: ${quartz.idx_qrtz_ft_inst_job_req_rcvry.name}
+            tableName: ${quartz.qrtz_fired_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: INSTANCE_NAME
+                  name: ${quartz.instance_name.name}
               - column:
-                  name: REQUESTS_RECOVERY
+                  name: ${quartz.requests_recovery.name}
         - createIndex:
-            indexName: IDX_QRTZ_FT_J_G
-            tableName: QRTZ_FIRED_TRIGGERS
+            indexName: ${quartz.idx_qrtz_ft_j_g.name}
+            tableName: ${quartz.qrtz_fired_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: JOB_NAME
+                  name: ${quartz.job_name.name}
               - column:
-                  name: JOB_GROUP
+                  name: ${quartz.job_group.name}
         - createIndex:
-            indexName: IDX_QRTZ_FT_JG
-            tableName: QRTZ_FIRED_TRIGGERS
+            indexName: ${quartz.idx_qrtz_ft_jg.name}
+            tableName: ${quartz.qrtz_fired_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: JOB_GROUP
+                  name: ${quartz.job_group.name}
         - createIndex:
-            indexName: IDX_QRTZ_FT_T_G
-            tableName: QRTZ_FIRED_TRIGGERS
+            indexName: ${quartz.idx_qrtz_ft_t_g.name}
+            tableName: ${quartz.qrtz_fired_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: TRIGGER_NAME
+                  name: ${quartz.trigger_name.name}
               - column:
-                  name: TRIGGER_GROUP
+                  name: ${quartz.trigger_group.name}
         - createIndex:
-            indexName: IDX_QRTZ_FT_TG
-            tableName: QRTZ_FIRED_TRIGGERS
+            indexName: ${quartz.idx_qrtz_ft_tg.name}
+            tableName: ${quartz.qrtz_fired_triggers.name}
             columns:
               - column:
-                  name: SCHED_NAME
+                  name: ${quartz.sched_name.name}
               - column:
-                  name: TRIGGER_GROUP
+                  name: ${quartz.trigger_group.name}
 
   - changeSet:
       id: 90
@@ -5213,10 +5459,7 @@ databaseChangeLog:
       id: 92
       author: camsaul
       comment: 'Added 0.31.0'
-      validCheckSum:
-        - 8:a875945f36824a0667c740888c00c37f
-        - 8:83ded48e18fe8f70d6ec09add042124d
-        - 8:1e5bc2d66778316ea640a561862c23b4
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: query_execution
@@ -5312,6 +5555,7 @@ databaseChangeLog:
       id: 95
       author: senior
       comment: 'Added 0.31.0'
+      validCheckSum: ANY
       # Don't add the constraint if there are already duplicates in the database change log! Migrations will fail!
       # See #8909
       preConditions:
@@ -5326,7 +5570,7 @@ databaseChangeLog:
         - addUniqueConstraint:
             columnNames: id, author, filename
             constraintName: idx_databasechangelog_id_author_filename
-            tableName: DATABASECHANGELOG
+            tableName: ${databasechangelog.name}
 #
 # ADD Field.settings COLUMN
 #
@@ -5448,19 +5692,29 @@ databaseChangeLog:
       id: 100
       author: camsaul
       comment: 'Added 0.32.0'
-      preConditions:
-        - onFail: MARK_RAN
-        - onUpdateSQL: RUN
-        - tableExists:
-            tableName: databasechangelog
+      validCheckSum: ANY
       changes:
+        # databasechangelog is upper-case in MySQL and MariaDB (and H2 for that matter, but H2 will upper-case the
+        # unquoted identifier)
         - sql:
+            dbms: postgresql,h2
             sql: >-
               UPDATE metric
               SET archived = NOT archived
               WHERE EXISTS (
                 SELECT *
                 FROM databasechangelog dbcl
+                WHERE dbcl.id = '84'
+                  AND metric.updated_at < dbcl.dateexecuted
+              )
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metric
+              SET archived = NOT archived
+              WHERE EXISTS (
+                SELECT *
+                FROM `DATABASECHANGELOG` dbcl
                 WHERE dbcl.id = '84'
                   AND metric.updated_at < dbcl.dateexecuted
               )
@@ -6450,9 +6704,7 @@ databaseChangeLog:
       id: 165
       author: sb
       comment: 'Added field_order to Table and database_position to Field'
-      validCheckSum:
-        - 8:474a357368a665d5e0701b9eb5f313f9
-        - 8:8848644da9dd9e40924ae71ac4c7c370
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: metabase_field
@@ -6508,6 +6760,7 @@ databaseChangeLog:
   - changeSet:
       id: 167
       author: walterl, camsaul
+      validCheckSum: ANY
       comment: 'Added 0.36.0'
       changes:
         # If an older version of this Table was created locally (during dev) drop it, we have an updated definition
@@ -6545,7 +6798,8 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     foreignKeyName: fk_snippet_creator_id
                     # This primarily affects tests because under normal
                     # circumstances we don't delete Users, we just archive them
@@ -6600,7 +6854,6 @@ databaseChangeLog:
       id: 169
       author: camsaul
       comment: Added 0.36.0
-      objectQuotingStrategy: ${quote_strategy}
       changes:
         - dropColumn:
             tableName: metabase_table
@@ -6624,6 +6877,7 @@ databaseChangeLog:
   - changeSet:
       id: 171
       author: camsaul
+      validCheckSum: ANY
       comment: Added 0.36.0
       changes:
         - addColumn:
@@ -6635,7 +6889,8 @@ databaseChangeLog:
                   remarks: 'ID of the Snippet Folder (Collection) this Snippet is in, if any'
                   constraints:
                     nullable: true
-                    references: collection(id)
+                    referencedTableName: collection
+                    referencedColumnNames: id
                     foreignKeyName: fk_snippet_collection_id
                     deleteCascade: true
         - createIndex:
@@ -7754,12 +8009,17 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - and:
             - dbms:
-                type: postgresql,mysql,mariadb
+                type: postgresql
+      # This has maybe never succeeded in creating the index because (at least with the current DB versions)
+      # the syntax was wrong on all requested databases (postgresql, mysql and mariadb). Since this change is
+      # not critical it's OK to ignore it.
+      validCheckSum: 8:9da2f706a7cd42b5101601e0106fa929
       changes:
         - createIndex:
             columns:
              - column:
                  name: lower(email)
+                 computed: true
                  type: varchar(254)
             tableName: core_user
             indexName: idx_lower_email
@@ -7807,6 +8067,7 @@ databaseChangeLog:
       comment: Added 0.37.0 # for H2 convert column to VARCHAR_IGNORECASE
       failOnError: false
       preConditions:
+         - onFail: MARK_RAN
          - or:
              - dbms:
                    type: h2
@@ -7847,9 +8108,7 @@ databaseChangeLog:
       id: 275
       author: dpsutton
       comment: 'Added 0.38.0 refingerprint to Database'
-      validCheckSum:
-        - 8:b976d49f4eb84664649119f5f63465dd
-        - 8:447d9e294f59dd1058940defec7e0f40
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: metabase_database
@@ -7864,9 +8123,7 @@ databaseChangeLog:
       id: 276
       author: robroland
       comment: Added 0.38.0 - Dashboard subscriptions
-      validCheckSum:
-        - 8:dfe9b8333b600c739306caa85d95ad55
-        - 8:59dd1fb0732c7a9b78bce896c0cff3c0
+      validCheckSum: ANY
       changes:
         - addColumn:
             tableName: pulse_card
@@ -7877,7 +8134,8 @@ databaseChangeLog:
                 remarks: 'If this Pulse is a Dashboard subscription, the ID of the DashboardCard that corresponds to this PulseCard.'
                 constraints:
                   nullable: true
-                  references: report_dashboardcard(id)
+                  referencedTableName: report_dashboardcard
+                  referencedColumnNames: id
                   foreignKeyName: fk_pulse_card_ref_pulse_card_id
                   deferrable: false
                   initiallyDeferred: false
@@ -8029,9 +8287,7 @@ databaseChangeLog:
       id: 287
       author: dpsutton
       comment: Added 0.39 - Semantic type system - migrate ISO8601 strings
-      validCheckSum:
-        - 8:ed47b08ec425a34cf66bd1e96c7b2446
-        - 8:0679eedae767a8648383aac2f923e413
+      validCheckSum: ANY
       changes:
         - sql:
             sql: >-
@@ -8057,11 +8313,7 @@ databaseChangeLog:
       id: 288
       author: dpsutton
       comment: Added 0.39 - Semantic type system - migrate unix timestamps
-      validCheckSum:
-        - 8:4fa37c8edede4a10c39bf5aca13bd1b5
-        - 8:96af0fae84744857640d029cf4cd4bb6
-        - 8:8a8b10ff335892c18394a6e00676a446
-        - 8:943c6dd0c9339729fefcee9207227849
+      validCheckSum: ANY
       changes:
         - sql:
               sql: >-
@@ -8084,9 +8336,7 @@ databaseChangeLog:
       id: 289
       author: dpsutton
       comment: Added 0.39 - Semantic type system - migrate unix timestamps (corrects typo- seconds was migrated correctly, not millis and micros)
-      validCheckSum:
-        - 8:c5398e06bc1bd497f9b56d3e8497b88a
-        - 8:9f7f2e9bbf3236f204c644dc8ea7abef
+      validCheckSum: ANY
       changes:
         - sql:
               sql: >-
@@ -8112,6 +8362,7 @@ databaseChangeLog:
   - changeSet:
       id: 291
       author: camsaul
+      validCheckSum: ANY
       comment: Added 0.39.0
       changes:
         - createTable:
@@ -8138,7 +8389,8 @@ databaseChangeLog:
                   remarks: "ID of the User that logged in."
                   constraints:
                     foreignKeyName: fk_login_history_user_id
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                     nullable: false
                     deleteCascade: true
               # FK constraint is created later, because we can't create it inline with ON DELETE SET NULL
@@ -8510,11 +8762,7 @@ databaseChangeLog:
       id: 313
       author: jeff303
       comment: Added 0.42.0 - Secret domain object.
-      validCheckSum:
-        - 8:d60aa66f5909d37393ee711dea6996c7 # original checksum under #17649
-        - 8:98f3ccbb3e8efc46f5766fcd51f39d0e # changed creator_id to nullable in #19398
-        - 8:ccfed82cd5d09891c7a380b428e5fbc5 # no idea where these two values come from :(
-        - 8:b4864fb1516837c753bf3a607a8ed655
+      validCheckSum: ANY
       changes:
         - createTable:
             tableName: secret
@@ -8542,7 +8790,8 @@ databaseChangeLog:
                     foreignKeyName: fk_secret_ref_user_id
                     initiallyDeferred: false
                     nullable: true
-                    references: core_user(id)
+                    referencedTableName: core_user
+                    referencedColumnNames: id
                   name: creator_id
                   remarks: User ID who created this secret instance
                   type: int
@@ -10969,6 +11218,1466 @@ databaseChangeLog:
               - column:
                   name: collection_id
             indexName: idx_collection_bookmark_collection_id
+
+  - changeSet:
+      id: v43.00-042
+      author: noahmoss
+      comment: >-
+        Added 0.43.0. Grant download permissions for existing Databases to 'All Users' permissions group
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (object, group_id)
+              SELECT db.object, all_users.id AS group_id
+              FROM (
+                SELECT concat('/download/db/', id, '/') AS object
+                FROM metabase_database
+              ) db
+              LEFT JOIN (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users
+                ON true
+              LEFT JOIN permissions p
+                     ON p.group_id = all_users.id
+                    AND db.object = p.object
+              WHERE p.object IS NULL;
+
+  - changeSet:
+      id: v43.00-043
+      author: howonlee
+      comment: Added 0.43.0 - Nested field columns in fields
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Nested field column paths, flattened
+                name: nfc_path
+                type: varchar(254)
+                constraints:
+                  nullable: true
+            tableName: metabase_field
+
+  - changeSet:
+      id: v43.00-044
+      author: noahmoss
+      comment: Added 0.43.0 - Removes MetaBot permissions group
+      changes:
+        - sql:
+            sql: DELETE FROM permissions_group WHERE name = 'MetaBot'
+
+  - changeSet:
+      id: v43.00-046
+      author: qnkhuat
+      comment: Added 0.43.0 - create General Permission Revision table
+      changes:
+        - createTable:
+            tableName: general_permissions_revision
+            remarks: 'Used to keep track of changes made to general permissions.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: before
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the permission graph before the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: after
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the changes in permission graph.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'The ID of the admin who made this set of changes.'
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_general_permissions_revision_user_id
+              - column:
+                  name: created_at
+                  type: datetime
+                  remarks: 'The timestamp of when these changes were made.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: remark
+                  type: ${text.type}
+                  remarks: 'Optional remarks explaining why these changes were made.'
+
+  - changeSet:
+      id: v43.00-047
+      author: qnkhuat
+      comment: Added 0.43.0. Grant the 'All Users' Group permissions to create/edit subscriptions and alerts
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT
+                all_users_group.id AS group_id,
+                '/general/subscription/' AS object
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users_group
+              LEFT JOIN permissions p
+                ON all_users_group.id = p.group_id
+                AND p.object = '/general/subscription/'
+              WHERE p.object IS NULL;
+
+  - changeSet:
+      id: v43.00-049
+      author: dpsutton
+      comment: Added 0.43.0 - Unify datatype with query_execution.started_at so comparable (see 168).
+      changes:
+        - modifyDataType:
+            tableName: view_log
+            columnName: timestamp
+            newDataType: ${timestamp_type}
+
+  - changeSet:
+        id: v43.00-050
+        author: qnkhuat
+        comment: Added 0.43.0. Add permissions_group_membership.is_group_manager
+        changes:
+          - addColumn:
+              columns:
+              - column:
+                  remarks: Boolean flag to indicate whether user is a group's manager.
+                  name: is_group_manager
+                  type: boolean
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+              tableName: permissions_group_membership
+
+  - changeSet:
+      id: v43.00-051
+      author: adam-james
+      comment: Added 0.43.0 - default boolean on timelines to indicate default timeline for a collection
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Boolean value indicating if the timeline is the default one for the containing Collection
+                name: default
+                type: boolean
+                defaultValue: false
+                constraints:
+                  nullable: false
+            tableName: timeline
+
+  - changeSet:
+      id: v43.00-052
+      author: snoe
+      comment: Added 0.43.0 - bookmark ordering
+      changes:
+        - createTable:
+            tableName: bookmark_ordering
+            remarks: Table holding ordering information for various bookmark tables
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who ordered bookmarks'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_bookmark_ordering_user_id
+                    deleteCascade: true
+              - column:
+                  name: type
+                  type: varchar(255)
+                  remarks: 'type of the Bookmark'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: item_id
+                  type: int
+                  remarks: 'id of the item being bookmarked (Card, Collection, Dashboard, ...) no FK, so may no longer exist'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ordering
+                  type: int
+                  remarks: 'order of bookmark for user'
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v43.00-053
+      author: snoe
+      comment: Added 0.43.0 - bookmark ordering
+      changes:
+        - addUniqueConstraint:
+            tableName: bookmark_ordering
+            columnNames: user_id, type, item_id
+            constraintName: unique_bookmark_user_id_type_item_id
+  - changeSet:
+      id: v43.00-054
+      author: snoe
+      comment: Added 0.43.0 - bookmark ordering
+      changes:
+        - addUniqueConstraint:
+            tableName: bookmark_ordering
+            columnNames: user_id, ordering
+            constraintName: unique_bookmark_user_id_ordering
+  - changeSet:
+      id: v43.00-055
+      author: snoe
+      comment: Added 0.43.0 - bookmark ordering
+      changes:
+        - createIndex:
+            tableName: bookmark_ordering
+            columns:
+              - column:
+                  name: user_id
+            indexName: idx_bookmark_ordering_user_id
+
+  - changeSet:
+      id: v43.00-056
+      author: qnkhuat
+      comment: >-
+        Added 0.43.0 - Rename general permission revision table
+        It's safe to rename this table without breaking downgrades compatibility because this table was also added in 0.43.0.
+      changes:
+        - renameTable:
+            oldTableName: general_permissions_revision
+            newTableName: application_permissions_revision
+
+  - changeSet:
+      id: v43.00-057
+      author: qnkhuat
+      comment: Added 0.43.0 - Rename general_permissions_revision_id_seq
+      failOnError: false # mysql and h2 don't have this sequence
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql
+      changes:
+        - sql:
+            - sql: ALTER SEQUENCE general_permissions_revision_id_seq RENAME TO application_permissions_revision_id_seq;
+
+  - changeSet:
+      id: v43.00-058
+      author: qnkhuat
+      comment: Added 0.43.0 - Rename general permissios to application permissions
+      changes:
+        - sql:
+            sql: >-
+              UPDATE permissions
+              SET object = REPLACE(object, '/general/', '/application/')
+              WHERE object LIKE '/general/%';
+
+  - changeSet:
+      id: v43.00-059
+      author: adam-james
+      comment: Added 0.43.0 - disallow nil timeline icons
+      changes:
+        - addNotNullConstraint:
+            columnDataType: varchar(128)
+            tableName: timeline
+            columnName: icon
+            defaultNullValue: "star"
+  - changeSet:
+      id: v43.00-060
+      author: adam-james
+      comment: Added 0.43.0 - disallow nil timeline event icons
+      changes:
+        - addNotNullConstraint:
+            columnDataType: varchar(128)
+            tableName: timeline_event
+            columnName: icon
+            defaultNullValue: "star"
+
+  - changeSet:
+      id: v43.00-062
+      author: snoe
+      comment: Added 0.43.0 - Unify datatype with revision.timestamp for timezone info (see 17829).
+      changes:
+        - modifyDataType:
+            tableName: revision
+            columnName: timestamp
+            newDataType: ${timestamp_type}
+
+  - changeSet:
+      id: v44.00-000
+      author: dpsutton
+      comment: Added 0.44.0 - Persisted Info for models
+      changes:
+        - createTable:
+            tableName: persisted_info
+            remarks: Table holding information about persisted models
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: 'ID of the database associated to the persisted card'
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_persisted_info_database_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: 'ID of the Card model persisted'
+                  constraints:
+                    nullable: false
+                    unique: true
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_persisted_info_card_id
+                    deleteCascade: true
+              - column:
+                  remarks: Slug of the card which will form the persisted table name
+                  name: question_slug
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Name of the table persisted
+                  name: table_name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: JSON object that captures the state of the table when we persisted
+                  name: definition
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Hash of the query persisted
+                  name: query_hash
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Indicating whether the persisted table is active and can be swapped
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Persisted table state (creating, persisted, refreshing, deleted)
+                  name: state
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the most recent refresh was started
+                  name: refresh_begin
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the most recent refresh ended
+                  name: refresh_end
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: The timestamp of when the most recent state changed
+                  name: state_change_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Error message from persisting if applicable
+                  name: error
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: The timestamp of when the model was first persisted
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: The person who persisted a model
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_persisted_info_ref_creator_id
+                    deferrable: false
+                    initiallyDeferred: false
+  - changeSet:
+      id: v44.00-001
+      author: snoe
+      comment: Added 0.44.0 - Remove not null constraint from persisted_info.creator_id
+      changes:
+        - dropNotNullConstraint:
+            tableName: persisted_info
+            columnName: creator_id
+            columnDataType: int
+
+  # v44.00-002 through -011 add entity_id columns to several internal entities.
+  # These are fixed-width string fields populated with a random 21-character
+  # NanoID value, and used by the serialization system to de-duplicate entities
+  # in a portable way. See the serialization design doc in the design repo.
+  - changeSet:
+      id: v44.00-002
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: metric
+  - changeSet:
+      id: v44.00-003
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: segment
+  - changeSet:
+      id: v44.00-004
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: collection
+  - changeSet:
+      id: v44.00-005
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_dashboard
+  - changeSet:
+      id: v44.00-006
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: dimension
+  - changeSet:
+      id: v44.00-007
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse
+  - changeSet:
+      id: v44.00-008
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_card
+  - changeSet:
+      id: v44.00-009
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: native_query_snippet
+  - changeSet:
+      id: v44.00-010
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: timeline
+  - changeSet:
+      id: v44.00-011
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_dashboardcard
+
+# Migrations v44.00-012 thru v44.00-022 have been moved to v45.00-001 thru v45.00-011
+
+  - changeSet:
+      id: v44.00-023
+      author: qnkhuat
+      comment: Added 0.44.0 - Add parameters to report_card
+      validCheckSum: ANY
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: parameters
+                  type: ${text.type}
+                  remarks: List of parameter associated to a card
+                  constraints:
+                    nullable: true
+  - changeSet:
+      id: v44.00-025
+      author: qnkhuat
+      comment: Added 0.44.0 - Add parameter_mappings to report_card
+      validCheckSum: ANY
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: parameter_mappings
+                  type: ${text.type}
+                  remarks: List of parameter associated to a card
+                  constraints:
+                    nullable: true
+  - changeSet:
+      id: v44.00-027
+      author: adam-james
+      comment: Added 0.44.0. Drop NOT NULL constraint for core_user.first_name
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: first_name
+            columnDataType: varchar(254)
+  - changeSet:
+      id: v44.00-028
+      author: adam-james
+      comment: Added 0.44.0. Drop NOT NULL constraint for core_user.last_name
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: last_name
+            columnDataType: varchar(254)
+  - changeSet:
+      id: v44.00-029
+      author: qnkhuat
+      comment: Added 0.44.0 - Add has_more_values to metabase_fieldvalues
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: has_more_values
+                  type: boolean
+                  remarks: true if the stored values list is a subset of all possible values
+                  defaultValueBoolean: false
+
+  - changeSet:
+      id: v44.00-030
+      author: snoe
+      comment: Added 0.44.0 - Add database_required to metabase_field
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_required
+                  type: boolean
+                  remarks: Indicates this field is required by the database for new records. Usually not null and without a default.
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+# Migrations v44.00-031 and v44.00-032 were moved to v45.00-012 and v45.00-013 respectively
+
+  - changeSet:
+      id: v44.00-033
+      author: qnkhuat
+      comment: >-
+        Added 0.43.0. Grant the 'All Users' Permissions Group readwrite perms for the Root Snippets Collection.
+      preConditions:
+        - onFail: MARK_RAN
+          # HACK: only run this on new instances (#21940)
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT count(*) AS user_count FROM core_user
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT
+                all_users_group.id AS group_id,
+                '/collection/namespace/snippets/root/' AS object
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users_group
+              LEFT JOIN permissions p
+                      ON all_users_group.id = p.group_id
+                    AND p.object = '/collection/namespace/snippets/root/'
+              WHERE p.object IS NULL;
+
+  - changeSet:
+      id: v44.00-035
+      author: qnkhuat
+      comment: Added 0.44.0. Add type to fieldvalues
+      validCheckSum: ANY
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: type
+                  type: varchar(32)
+                  defaultValue: 'full'
+                  remarks: Type of FieldValues
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v44.00-037
+      author: qnkhuat
+      comment: Added 0.44.0. Add type to fieldvalues
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: hash_key
+                  type: ${text.type}
+                  remarks: Hash key for a cached fieldvalues
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v44.00-038
+      author: metamben
+      comment: Added 0.44.0 - Add collection_preview to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: collection_preview
+                  type: boolean
+                  remarks: Indicating whether the card should be visualized in the collection preview
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v44.00-039
+      author: qnkhuat
+      comment: Added 0.44.0 - Add template_tags to native_query_snippet
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: template_tags
+                  type: ${text.type}
+                  remarks: Template tags for a snippet
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v44.00-041
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to PulseCard, PulseChannel
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse_card
+
+  - changeSet:
+      id: v44.00-042
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to PulseCard, PulseChannel
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse_channel
+
+  - changeSet:
+      id: v44.00-044
+      author: qnkhuat
+      comment: Added 0.44.0 - drop native_query_snippet.template_tags added in v44.00-039
+      changes:
+        - dropColumn:
+            tableName: native_query_snippet
+            columnName: template_tags
+
+##
+## Metabase 45
+##
+
+  - changeSet:
+      id: v45.00-001
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-012 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-012';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-012';
+      changes:
+        - createTable:
+            tableName: action
+            remarks: An action is something you can do, such as run a readwrite query
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the action was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the action was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Type of action
+                  name: type
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v45.00-002
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-013 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-013';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-013';
+      changes:
+        - createTable:
+            tableName: query_action
+            remarks: A readwrite query type of action
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+                  constraints:
+                    nullable: false
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The related card
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_action_ref_card_id
+                    deleteCascade: true
+
+  - changeSet:
+      id: v45.00-003
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-014 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-014';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-014';
+      changes:
+        - addPrimaryKey:
+            tableName: query_action
+            columnNames: action_id, card_id
+            constraintName: pk_query_action
+
+  - changeSet:
+      id: v45.00-004
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-015 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-015';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-015';
+      changes:
+        - createTable:
+            tableName: emitter
+            remarks: An Emitter reperents the fact an Action can act upon the given object
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the emitter was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the emitter was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: JSON for vis settings and other things frontend related
+                  name: options
+                  type: ${text.type}
+              - column:
+                  remarks: JSON that has a mapping of columns to parameters in the query
+                  name: parameter_mappings
+                  type: ${text.type}
+
+  - changeSet:
+      id: v45.00-005
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-016 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-016';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-016';
+      changes:
+        - createTable:
+            tableName: emitter_action
+            remarks: Join table for emitter and actions
+            columns:
+              - column:
+                  name: emitter_id
+                  type: int
+                  remarks: The related emitter
+                  constraints:
+                    nullable: false
+                    referencedTableName: emitter
+                    referencedColumnNames: id
+                    foreignKeyName: fk_emitter_action_ref_emitter_id
+                    deleteCascade: true
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+                  constraints:
+                    nullable: false
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_emitter_action_ref_action_id
+                    deleteCascade: true
+
+  - changeSet:
+      id: v45.00-006
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-017 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-017';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-017';
+      changes:
+        - addPrimaryKey:
+            tableName: emitter_action
+            columnNames: emitter_id, action_id
+            constraintName: pk_emitter_action
+
+  - changeSet:
+      id: v45.00-007
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-018 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-018';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-018';
+      changes:
+        - createTable:
+            tableName: dashboard_emitter
+            remarks: Emitter for this dashboard
+            columns:
+              - column:
+                  name: emitter_id
+                  type: int
+                  remarks: The related emitter
+                  constraints:
+                    nullable: false
+                    referencedTableName: emitter
+                    referencedColumnNames: id
+                    foreignKeyName: fk_dashboard_emitter_ref_emitter_id
+                    deleteCascade: true
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The related dashboard
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_dashboard
+                    referencedColumnNames: id
+                    foreignKeyName: fk_dashboard_emitter_ref_dashboard_id
+                    deleteCascade: true
+
+  - changeSet:
+      id: v45.00-008
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-019 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-019';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-019';
+      changes:
+        - addPrimaryKey:
+            tableName: dashboard_emitter
+            columnNames: dashboard_id, emitter_id
+            constraintName: pk_dashboard_emitter
+
+  - changeSet:
+      id: v45.00-009
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-020 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-020';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-020';
+      changes:
+        - createTable:
+            tableName: card_emitter
+            remarks: Emitter for this card
+            columns:
+              - column:
+                  name: emitter_id
+                  type: int
+                  remarks: The related emitter
+                  constraints:
+                    nullable: false
+                    referencedTableName: emitter
+                    referencedColumnNames: id
+                    foreignKeyName: fk_card_emitter_ref_emitter_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The related card
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_card_emitter_ref_card_id
+                    deleteCascade: true
+  - changeSet:
+      id: v45.00-010
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-021 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-021';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-021';
+      changes:
+        - addPrimaryKey:
+            tableName: card_emitter
+            columnNames: card_id, emitter_id
+            constraintName: pk_card_emitter
+
+  - changeSet:
+      id: v45.00-011
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-022 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-022';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-022';
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: is_write
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: Indicates that this query will perform writes to a db
+                  constraints:
+                    nullable: false
+            tableName: report_card
+
+  - changeSet:
+      id: v45.00-012
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-031 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-031';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-031';
+      changes:
+        - createTable:
+            tableName: http_action
+            remarks: An http api call type of action
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+                  constraints:
+                    nullable: false
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_http_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: The name of this action
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: An optional description for this action
+              - column:
+                  name: template
+                  type: ${text.type}
+                  remarks: A template that defines method,url,body,headers required to make an api call
+                  constraints:
+                    nullable: false
+              - column:
+                  name: response_handle
+                  type: ${text.type}
+                  remarks: A program to take an api response and transform to an appropriate response for emitters
+              - column:
+                  name: error_handle
+                  type: ${text.type}
+                  remarks: A program to take an api response to determine if an error occurred
+
+  - changeSet:
+      id: v45.00-013
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-032 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-032';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-032';
+      changes:
+        - addPrimaryKey:
+            tableName: http_action
+            columnNames: action_id
+            constraintName: pk_http_action
+
+  - changeSet:
+      id: v45.00-014
+      author: snoe
+      comment: Added 0.45.0 - writeback add action_id to emitter
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+            tableName: emitter
+
+  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
+  - changeSet:
+      id: v45.00-015
+      author: snoe
+      comment: Added 0.45.0 - writeback add fk for action_id to emitter
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: emitter
+            baseColumnNames: action_id
+            referencedTableName: action
+            referencedColumnNames: id
+            constraintName: fk_emitter_ref_action_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v45.00-016
+      author: snoe
+      comment: Added 0.45.0 - writeback Move foreign keys from emitter_action and dashboard_emitter
+      changes:
+        - sql:
+              sql: >-
+                update emitter set
+                action_id = (select action_id from emitter_action where emitter_id = id);
+
+  - changeSet:
+      id: v45.00-017
+      author: snoe
+      comment: Added 0.45.0 - writeback remove any emitters that were orphaned to be safe.
+      changes:
+        - sql:
+              sql: delete from emitter where action_id is null;
+
+  - changeSet:
+      id: v45.00-018
+      author: snoe
+      comment: Added 0.45.0 - writeback Make emitter action_id not nullable
+      changes:
+        - addNotNullConstraint:
+            columnDataType: int
+            tableName: emitter
+            columnName: action_id
+
+  - changeSet:
+      id: v45.00-019
+      author: snoe
+      comment: Added 0.45.0 - writeback drop emitter_action
+      changes:
+        - dropTable:
+            tableName: emitter_action
+
+  - changeSet:
+      id: v45.00-022
+      author: snoe
+      comment: Added 0.45.0 - add app container
+      changes:
+        - createTable:
+            tableName: app
+            remarks: Defines top level concerns for App
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The associated collection
+                  constraints:
+                    nullable: false
+                    referencedTableName: collection
+                    referencedColumnNames: id
+                    foreignKeyName: fk_app_ref_collection_id
+                    deleteCascade: true
+                    unique: true
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The homepage of the app
+              - column:
+                  remarks: JSON for the navigation items of the app
+                  name: nav_items
+                  type: ${text.type}
+              - column:
+                  remarks: JSON for frontend related additions, such as styling
+                  name: options
+                  type: ${text.type}
+              - column:
+                  remarks: The timestamp of when the app was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the app was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v45.00-023
+      author: snoe
+      comment: Added 0.45.0 - add app container
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: app
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_app_ref_dashboard_id
+            onDelete: SET NULL
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

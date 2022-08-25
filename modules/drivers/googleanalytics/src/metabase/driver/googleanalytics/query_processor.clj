@@ -8,7 +8,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -22,7 +22,7 @@
 (defmethod ->rvalue Object [this] this)
 
 (defmethod ->rvalue :field
-  [[_ id-or-name options]]
+  [[_ id-or-name _options]]
   (if (integer? id-or-name)
     (:name (qp.store/field id-or-name))
     id-or-name))
@@ -245,7 +245,7 @@
           nil)))))
 
 (defmethod ->date-range :relative-datetime
-  [unit comparison-type [_ n relative-datetime-unit :as clause]]
+  [unit comparison-type [_ n relative-datetime-unit]]
   (or (when (= relative-datetime-unit :day)
         (day-date-range comparison-type n))
       (let [now (qp.timezone/now :googleanalytics nil :use-report-timezone-id-if-unsupported? true)
@@ -413,7 +413,7 @@
 
 (defn mbql->native
   "Transpile MBQL query into parameters required for a Google Analytics request."
-  [{inner-query :query, :as raw}]
+  [{inner-query :query}]
   {:query (into
            ;; set to false to match behavior of other drivers
            {:include-empty-rows false}

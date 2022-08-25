@@ -1,32 +1,5 @@
 import { t } from "ttag";
-
-export type Item = {
-  name: string;
-  description: string | null;
-  collection_position?: number | null;
-  id: number;
-  getIcon: () => { name: string };
-  getUrl: () => string;
-  setArchived: (isArchived: boolean) => void;
-  setPinned: (isPinned: boolean) => void;
-  copy?: boolean;
-  setCollection?: boolean;
-  model: string;
-};
-
-type CollectionId = "root" | number;
-
-export type Collection = {
-  id: CollectionId;
-  can_write: boolean;
-  name: string;
-  archived: boolean;
-  personal_owner_id?: number | unknown;
-  children?: Collection[];
-  originalName?: string;
-  effective_ancestors?: Collection[];
-  location?: string;
-};
+import { Collection, CollectionItem } from "metabase-types/api";
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,
@@ -59,29 +32,6 @@ export function currentUserPersonalCollections(
     .map(preparePersonalCollection);
 }
 
-export function getParentPath(
-  collections: Collection[],
-  targetId: CollectionId,
-): CollectionId[] | null {
-  if (collections.length === 0) {
-    return null; // not found!
-  }
-
-  for (const collection of collections) {
-    if (collection.id === targetId) {
-      return [collection.id]; // we found it!
-    }
-    if (collection.children) {
-      const path = getParentPath(collection.children, targetId);
-      if (path !== null) {
-        // we found it under this collection
-        return [collection.id, ...path];
-      }
-    }
-  }
-  return null; // didn't find it under any collection
-}
-
 function getNonRootParentId(collection: Collection) {
   if (Array.isArray(collection.effective_ancestors)) {
     // eslint-disable-next-line no-unused-vars
@@ -109,8 +59,30 @@ export function isRootCollection(collection: Collection): boolean {
   return collection.id === "root";
 }
 
-export function isItemPinned(item: Item) {
+export function isItemPinned(item: CollectionItem) {
   return item.collection_position != null;
+}
+
+export function isItemQuestion(item: CollectionItem) {
+  return item.model === "card";
+}
+
+export function isPreviewShown(item: CollectionItem) {
+  return isPreviewEnabled(item) && isFullyParametrized(item);
+}
+
+export function isPreviewEnabled(item: CollectionItem) {
+  return item.collection_preview ?? true;
+}
+
+export function isFullyParametrized(item: CollectionItem) {
+  return item.fully_parametrized ?? true;
+}
+
+export function coerceCollectionId(
+  collectionId: number | null | undefined,
+): string | number {
+  return collectionId == null ? "root" : collectionId;
 }
 
 // API requires items in "root" collection be persisted with a "null" collection ID

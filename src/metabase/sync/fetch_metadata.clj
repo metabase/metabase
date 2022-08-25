@@ -3,6 +3,7 @@
   tables, schemas, and fields, and their types. For example, with SQL databases, these functions use the JDBC
   DatabaseMetaData to get this information."
   (:require [metabase.driver :as driver]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.util :as driver.u]
             [metabase.sync.interface :as i]
             [schema.core :as s]))
@@ -23,3 +24,10 @@
   (let [driver (driver.u/database->driver database)]
     (when (driver/supports? driver :foreign-keys)
       (driver/describe-table-fks driver database table))))
+
+(s/defn nfc-metadata :- (s/maybe #{i/TableMetadataField})
+  "Get information about the nested field column fields within `table`."
+  [database :- i/DatabaseInstance, table :- i/TableInstance]
+  (let [driver (driver.u/database->driver database)]
+    (when (driver/database-supports? driver :nested-field-columns database)
+      (sql-jdbc.sync/describe-nested-field-columns driver database table))))

@@ -10,8 +10,6 @@ import {
   FormMessage,
   FormTitle,
   InfoBody,
-  InfoIcon,
-  InfoIconContainer,
   InfoMessage,
   InfoTitle,
 } from "./ResetPassword.styled";
@@ -23,6 +21,8 @@ export interface ResetPasswordProps {
   onResetPassword: (token: string, password: string) => void;
   onValidatePassword: (password: string) => void;
   onValidatePasswordToken: (token: string) => void;
+  onShowToast: (toast: { message: string }) => void;
+  onRedirect: (url: string) => void;
 }
 
 const ResetPassword = ({
@@ -30,6 +30,8 @@ const ResetPassword = ({
   onResetPassword,
   onValidatePassword,
   onValidatePasswordToken,
+  onShowToast,
+  onRedirect,
 }: ResetPasswordProps): JSX.Element | null => {
   const [view, setView] = useState<ViewType>("none");
 
@@ -57,9 +59,10 @@ const ResetPassword = ({
   const handlePasswordSubmit = useCallback(
     async ({ password }: ResetPasswordData) => {
       await onResetPassword(token, password);
-      setView("success");
+      onRedirect("/");
+      onShowToast({ message: t`You've updated your password.` });
     },
-    [token, onResetPassword],
+    [onResetPassword, token, onRedirect, onShowToast],
   );
 
   useEffect(() => {
@@ -74,7 +77,6 @@ const ResetPassword = ({
           onSubmit={handlePasswordSubmit}
         />
       )}
-      {view === "success" && <ResetPasswordSuccess />}
       {view === "expired" && <ResetPasswordExpired />}
     </AuthLayout>
   );
@@ -107,22 +109,6 @@ const ResetPasswordForm = ({
         onSubmit={onSubmit}
       />
     </div>
-  );
-};
-
-const ResetPasswordSuccess = (): JSX.Element => {
-  return (
-    <InfoBody>
-      <InfoIconContainer>
-        <InfoIcon name="check" />
-      </InfoIconContainer>
-      <InfoTitle>{t`All done!`}</InfoTitle>
-      <InfoMessage>{t`You've updated your password.`}</InfoMessage>
-      <Link
-        className="Button Button--primary"
-        to={"/"}
-      >{t`Sign in with your new password`}</Link>
-    </InfoBody>
   );
 };
 

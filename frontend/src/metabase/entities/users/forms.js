@@ -3,34 +3,39 @@ import _ from "underscore";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
-import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_USER_FORM_FIELDS,
+  PLUGIN_IS_PASSWORD_USER,
+} from "metabase/plugins";
 import validate from "metabase/lib/validate";
 import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
 
-const NAME_FIELDS = [
+const getNameFields = () => [
   {
     name: "first_name",
     title: t`First name`,
     placeholder: "Johnny",
     autoFocus: true,
-    validate: validate.required().maxLength(100),
+    validate: validate.maxLength(100),
+    normalize: firstName => firstName || null,
   },
   {
     name: "last_name",
     title: t`Last name`,
     placeholder: "Appleseed",
-    validate: validate.required().maxLength(100),
+    validate: validate.maxLength(100),
+    normalize: lastName => lastName || null,
   },
 ];
 
-const EMAIL_FIELD = {
+const getEmailField = () => ({
   name: "email",
   title: t`Email`,
-  placeholder: "youlooknicetoday@email.com",
+  placeholder: "nicetoseeyou@email.com",
   validate: validate.required().email(),
-};
+});
 
-const LOCALE_FIELD = {
+const getLocaleField = () => ({
   name: "locale",
   title: t`Language`,
   type: "select",
@@ -41,9 +46,9 @@ const LOCALE_FIELD = {
       ([code, name]) => name,
     ),
   ].map(([code, name]) => ({ name, value: code })),
-};
+});
 
-const PASSWORD_FORM_FIELDS = [
+const getPasswordFields = () => [
   {
     name: "password",
     title: t`Create a password`,
@@ -69,40 +74,49 @@ const PASSWORD_FORM_FIELDS = [
 export default {
   admin: {
     fields: [
-      ...NAME_FIELDS,
-      EMAIL_FIELD,
+      ...getNameFields(),
+      getEmailField(),
       {
-        name: "group_ids",
+        name: "user_group_memberships",
         title: t`Groups`,
         type: FormGroupsWidget,
       },
       ...PLUGIN_ADMIN_USER_FORM_FIELDS,
     ],
   },
-  user: {
-    fields: [...NAME_FIELDS, EMAIL_FIELD, LOCALE_FIELD],
-    disablePristineSubmit: true,
+  user: user => {
+    const isSsoUser = !PLUGIN_IS_PASSWORD_USER.every(predicate =>
+      predicate(user),
+    );
+    const fields = isSsoUser
+      ? [getLocaleField()]
+      : [...getNameFields(), getEmailField(), getLocaleField()];
+
+    return {
+      fields,
+      disablePristineSubmit: true,
+    };
   },
-  setup: {
+  setup: () => ({
     fields: [
-      ...NAME_FIELDS,
-      EMAIL_FIELD,
+      ...getNameFields(),
+      getEmailField(),
       {
         name: "site_name",
         title: t`Company or team name`,
         placeholder: t`Department of Awesome`,
         validate: validate.required(),
       },
-      ...PASSWORD_FORM_FIELDS,
+      ...getPasswordFields(),
     ],
-  },
+  }),
   setup_invite: user => ({
     fields: [
-      ...NAME_FIELDS,
+      ...getNameFields(),
       {
         name: "email",
         title: t`Email`,
-        placeholder: "youlooknicetoday@email.com",
+        placeholder: "nicetoseeyou@email.com",
         validate: email => {
           if (!email) {
             return t`required`;
@@ -116,7 +130,7 @@ export default {
     ],
   }),
   login: () => {
-    const ldap = MetabaseSettings.ldapEnabled();
+    const ldap = MetabaseSettings.isLdapConfigured();
     const cookies = MetabaseSettings.get("session-cookies");
 
     return {
@@ -125,7 +139,7 @@ export default {
           name: "username",
           type: ldap ? "input" : "email",
           title: ldap ? t`Username or email address` : t`Email address`,
-          placeholder: t`youlooknicetoday@email.com`,
+          placeholder: "nicetoseeyou@email.com",
           validate: ldap ? validate.required() : validate.required().email(),
           autoFocus: true,
         },
@@ -143,6 +157,7 @@ export default {
           initial: true,
           hidden: cookies,
           horizontal: true,
+          align: "left",
         },
       ],
     };
@@ -156,7 +171,7 @@ export default {
         placeholder: t`Shhh...`,
         validate: validate.required(),
       },
-      ...PASSWORD_FORM_FIELDS,
+      ...getPasswordFields(),
     ],
   },
   password_forgot: {
@@ -170,13 +185,13 @@ export default {
     ],
   },
   password_reset: {
-    fields: [...PASSWORD_FORM_FIELDS],
+    fields: [...getPasswordFields()],
   },
   newsletter: {
     fields: [
       {
         name: "email",
-        placeholder: "youlooknicetoday@email.com",
+        placeholder: "nicetoseeyou@email.com",
         autoFocus: true,
         validate: validate.required().email(),
       },

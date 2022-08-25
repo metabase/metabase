@@ -8,6 +8,7 @@ import DatabaseHelp from "../../containers/DatabaseHelp";
 import PreferencesStep from "../../containers/PreferencesStep";
 import CompletedStep from "../../containers/CompletedStep";
 import SetupHelp from "../SetupHelp";
+import MigrationHelp from "metabase/setup/containers/CloudMigrationHelp";
 
 export interface SettingsPageProps {
   step: number;
@@ -35,6 +36,7 @@ const SettingsPage = ({
         <DatabaseHelp {...props} />
         <PreferencesStep {...props} />
         <CompletedStep {...props} />
+        <MigrationHelp {...props} />
         <SetupHelp {...props} />
       </PageBody>
     </div>

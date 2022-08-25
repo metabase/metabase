@@ -15,10 +15,6 @@ export const CATEGORICAL_BAR_CHART_DEFAULT_OPTIONS = {
     ["Roderick Herman", 50],
     ["Ruth Dougherty", 75],
   ],
-  accessors: {
-    x: (row: any[]) => row[0],
-    y: (row: any[]) => row[1],
-  },
   labels: {
     left: "Tasks",
     bottom: "People",

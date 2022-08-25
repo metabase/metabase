@@ -1,12 +1,19 @@
-import { restore } from "__support__/e2e/helpers/e2e-setup-helpers";
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import {
+  restore,
   modal,
   popover,
-} from "__support__/e2e/helpers/e2e-ui-elements-helpers";
-import { describeEE } from "__support__/e2e/cypress";
+  describeEE,
+  getFullName,
+} from "__support__/e2e/helpers";
+
+import { USERS } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
+const { admin, nodata } = USERS;
+
+const adminFullName = getFullName(admin);
+const ADMIN_ID = 1;
 
 const getQuestionDetails = () => ({
   name: "Test Question",
@@ -71,6 +78,8 @@ describeEE("audit > auditing > subscriptions", () => {
         cy.createQuestionAndDashboard({
           questionDetails: getQuestionDetails(),
         }).then(({ body: { card_id, dashboard_id } }) => {
+          cy.wrap(dashboard_id).as("dashboardId");
+
           cy.createPulse(
             getSubscriptionsDetails({ card_id, dashboard_id, user_id }),
           );
@@ -85,7 +94,7 @@ describeEE("audit > auditing > subscriptions", () => {
         cy.findByText("Test Dashboard"); // Dashboard name
         cy.findByText("Our analytics"); // Collection
         cy.findByText("Every hour"); // Frequency
-        cy.findByText("Bobby Tables"); // Author
+        cy.findByText(adminFullName); // Author
         cy.findByText("Email"); // Type
       });
     });
@@ -93,14 +102,16 @@ describeEE("audit > auditing > subscriptions", () => {
     it("opens a dashboard audit page when question title clicked", () => {
       cy.get("tbody").within(() => {
         cy.findByText("Test Dashboard").click();
-        cy.url().should("include", "/admin/audit/dashboard/2/activity");
+        cy.get("@dashboardId").then(id => {
+          cy.url().should("include", `/admin/audit/dashboard/${id}/activity`);
+        });
       });
     });
 
     it("opens a user audit page when question title clicked", () => {
       cy.get("tbody").within(() => {
-        cy.findByText("Bobby Tables").click();
-        cy.url().should("include", "/admin/audit/member/1/activity");
+        cy.findByText(adminFullName).click();
+        cy.url().should("include", `/admin/audit/member/${ADMIN_ID}/activity`);
       });
     });
 
@@ -131,7 +142,7 @@ describeEE("audit > auditing > subscriptions", () => {
         cy.findByText("Test Question"); // Question name
         cy.findByText("Our analytics"); // Collection
         cy.findByText("Every hour"); // Frequency
-        cy.findByText("Bobby Tables"); // Author
+        cy.findByText(adminFullName); // Author
         cy.findByText("Email"); // Type
       });
     });
@@ -145,8 +156,8 @@ describeEE("audit > auditing > subscriptions", () => {
 
     it("opens a user audit page when question title clicked", () => {
       cy.get("tbody").within(() => {
-        cy.findByText("Bobby Tables").click();
-        cy.url().should("include", "/admin/audit/member/1/activity");
+        cy.findByText(adminFullName).click();
+        cy.url().should("include", `/admin/audit/member/${ADMIN_ID}/activity`);
       });
     });
 
@@ -177,24 +188,19 @@ function testRemovingAuditItem() {
 }
 
 function testEditingRecipients({ editModalHeader }) {
-  cy.get("tbody > tr > td")
-    .eq(1)
-    .as("recipients")
-    .click();
+  cy.get("tbody > tr > td").eq(1).as("recipients").click();
 
   modal().within(() => {
     cy.findByText(editModalHeader);
-    cy.findByText("Bobby Tables");
+    cy.findByText(adminFullName);
 
-    cy.icon("close")
-      .eq(1)
-      .click(); // Remove Bobby Tables
+    cy.icon("close").eq(1).click(); // Remove admin user
 
     cy.get("input").click();
   });
 
   popover().within(() => {
-    cy.findByText("No Data Tableton").click(); // Add No Data Tableton user
+    cy.findByText(getFullName(nodata)).click(); // Add No Data user
   });
 
   modal().within(() => {

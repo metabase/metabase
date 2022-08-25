@@ -9,7 +9,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase.driver.impl :as impl]
+            [metabase.driver.impl :as driver.impl]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -88,13 +88,13 @@
 ;;; |                             Driver Registration / Hierarchy / Multimethod Dispatch                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(p/import-vars [impl hierarchy register! initialized?])
+(p/import-vars [driver.impl hierarchy register! initialized?])
 
 (add-watch
  #'hierarchy
  nil
  (fn [_ _ _ _]
-   (when (not= hierarchy impl/hierarchy)
+   (when (not= hierarchy driver.impl/hierarchy)
      ;; this is a dev-facing error so no need to i18n it.
      (throw (Exception. (str "Don't alter #'metabase.driver/hierarchy directly, since it is imported from "
                              "metabase.driver.impl. Alter #'metabase.driver.impl/hierarchy instead if you need to "
@@ -107,7 +107,7 @@
   Note that an available driver is not necessarily initialized yet; for example lazy-loaded drivers are *registered*
   when Metabase starts up (meaning this will return `true` for them) and only initialized when first needed."
   [driver]
-  ((every-pred impl/registered? impl/concrete?) driver))
+  ((every-pred driver.impl/registered? driver.impl/concrete?) driver))
 
 (defn the-driver
   "Like [[clojure.core/the-ns]]. Converts argument to a keyword, then loads and registers the driver if not already done,
@@ -132,16 +132,16 @@
   {:pre [((some-fn keyword? string?) driver)]}
   (classloader/the-classloader)
   (let [driver (keyword driver)]
-    (impl/load-driver-namespace-if-needed! driver)
+    (driver.impl/load-driver-namespace-if-needed! driver)
     driver))
 
 (defn add-parent!
   "Add a new parent to `driver`."
   [driver new-parent]
   (when-not *compile-files*
-    (impl/load-driver-namespace-if-needed! driver)
-    (impl/load-driver-namespace-if-needed! new-parent)
-    (alter-var-root #'impl/hierarchy derive driver new-parent)))
+    (driver.impl/load-driver-namespace-if-needed! driver)
+    (driver.impl/load-driver-namespace-if-needed! new-parent)
+    (alter-var-root #'driver.impl/hierarchy derive driver new-parent)))
 
 (defn- dispatch-on-uninitialized-driver
   "Dispatch function to use for driver multimethods. Dispatches on first arg, a driver keyword; loads that driver's
@@ -158,7 +158,7 @@
   "Like [[the-driver]], but also initializes the driver if not already initialized."
   [driver]
   (let [driver (the-driver driver)]
-    (impl/initialize-if-needed! driver initialize!)
+    (driver.impl/initialize-if-needed! driver initialize!)
     driver))
 
 (defn dispatch-on-initialized-driver
@@ -233,11 +233,22 @@
 (defmethod display-name :default [driver]
   (str/capitalize (name driver)))
 
+(defmulti contact-info
+  "The contact information for the driver"
+  {:added "0.43.0" :arglists '([driver])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod contact-info :default
+  [_]
+  nil)
+
 (defmulti can-connect?
   "Check whether we can connect to a `Database` with `details-map` and perform a simple query. For example, a SQL
   database might try running a query like `SELECT 1;`. This function should return truthy if a connection to the DB
   can be made successfully, otherwise it should return falsey or throw an appropriate Exception. Exceptions if a
-  connection cannot be made."
+  connection cannot be made. Throw an `ex-info` containing a truthy `::can-connect-message?` in `ex-data`
+  in order to suppress logging expected driver validation messages during setup."
   {:arglists '([driver details])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -352,6 +363,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+;; TODO -- I think we should rename this to `features` since `driver/driver-features` is a bit redundant.
 (def driver-features
   "Set of all features a driver can support."
   #{
@@ -395,6 +407,11 @@
     ;; subselects in SQL queries.
     :nested-queries
 
+    ;; Does the driver support persisting models
+    :persist-models
+    ;; Is persisting enabled?
+    :persist-models-enabled
+
     ;; Does the driver support binning as specified by the `binning-strategy` clause?
     :binning
 
@@ -417,7 +434,14 @@
     :advanced-math-expressions
 
     ;; Does the driver support percentile calculations (including median)
-    :percentile-aggregations})
+    :percentile-aggregations
+
+    ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
+    :actions
+
+    ;; Does the driver support custom writeback actions using `is_write` Saved Questions. Drivers that support this must
+    ;; implement [[execute-write-query!]]
+    :actions/custom})
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
@@ -425,7 +449,8 @@
 
     (supports? :postgres :set-timezone) ; -> true
 
-  deprecated — [[database-supports?]] is intended to replace this method. However, it driver authors should continue _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
+  DEPRECATED — [[database-supports?]] is intended to replace this method. However, it driver authors should continue
+  _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
   {:arglists '([driver feature]), :deprecated "0.41.0"}
   (fn [driver feature]
     (when-not (driver-features feature)
@@ -491,13 +516,14 @@
 
 (defmethod escape-alias ::driver
   [_driver alias-name]
-  (impl/truncate-alias alias-name))
+  (driver.impl/truncate-alias alias-name))
 
 (defmulti humanize-connection-error-message
   "Return a humanized (user-facing) version of an connection error message.
-  Generic error messages are provided in [[metabase.driver.common/connection-error-messages]]; return one of these
-  whenever possible.
-  Error messages can be strings, or localized strings, as returned by [[metabase.util.i18n/trs]] and
+  Generic error messages provided in [[metabase.driver.util/connection-error-messages]]; should be returned
+  as keywords whenever possible. This provides for both unified error messages and categories which let us point
+  users to the erroneous input fields.
+  Error messages can also be strings, or localized strings, as returned by [[metabase.util.i18n/trs]] and
   `metabase.util.i18n/tru`."
   {:arglists '([this message])}
   dispatch-on-initialized-driver
@@ -643,8 +669,9 @@
 
 (defmethod default-field-order ::driver [_] :database)
 
+;; TODO -- this can vary based on session variables or connection options
 (defmulti db-start-of-week
-  "Return start of week for given database"
+  "Return the day that is considered to be the start of week by `driver`. Should return a keyword such as `:sunday`."
   {:added "0.37.0" :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -652,7 +679,11 @@
 (defmulti incorporate-ssh-tunnel-details
   "A multimethod for driver-specific behavior required to incorporate details for an opened SSH tunnel into the DB
   details. In most cases, this will simply involve updating the :host and :port (to point to the tunnel entry point,
-  instead of the backing database server), but some drivers may have more specific behavior."
+  instead of the backing database server), but some drivers may have more specific behavior.
+
+  WARNING! Implementations of this method may create new SSH tunnels, which need to be cleaned up. DO NOT USE THIS
+  METHOD DIRECTLY UNLESS YOU ARE GOING TO BE CLEANING UP ANY CREATED TUNNELS! Instead, you probably want to
+  use [[metabase.util.ssh/with-ssh-tunnel]]. See #24445 for more information."
   {:added "0.39.0" :arglists '([driver db-details])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
@@ -687,3 +718,10 @@
 (defmethod superseded-by :default
   [_]
   nil)
+
+(defmulti execute-write-query!
+  "Execute a writeback query (from an `is_write` Card) e.g. one powering a custom
+  `QueryAction` (see [[metabase.models.action]]). Drivers that support `:actions/custom` must implement this method."
+  {:added "0.44.0", :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)

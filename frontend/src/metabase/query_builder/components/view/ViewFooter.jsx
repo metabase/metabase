@@ -13,19 +13,11 @@ import ButtonBar from "metabase/components/ButtonBar";
 import ViewButton from "./ViewButton";
 
 import QuestionAlertWidget from "./QuestionAlertWidget";
+import QuestionTimelineWidget from "./QuestionTimelineWidget";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget, {
   QuestionEmbedWidgetTrigger,
 } from "metabase/query_builder/containers/QuestionEmbedWidget";
-
-import {
-  QuestionFilterWidget,
-  MobileQuestionFilterWidget,
-} from "./QuestionFilters";
-import {
-  QuestionSummarizeWidget,
-  MobileQuestionSummarizeWidget,
-} from "./QuestionSummaries";
 
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionLastUpdated from "./QuestionLastUpdated";
@@ -53,23 +45,20 @@ const ViewFooter = ({
   questionAlerts,
   visualizationSettings,
   isAdmin,
-  isPreviewing,
+  canManageSubscriptions,
   isResultDirty,
   isVisualized,
-  queryBuilderMode,
-
-  isShowingFilterSidebar,
-  onAddFilter,
-  onCloseFilter,
-  isShowingSummarySidebar,
-  onEditSummary,
-  onCloseSummary,
+  isTimeseries,
+  isShowingTimelineSidebar,
+  onOpenTimelines,
+  onCloseTimelines,
 }) => {
-  if (!result || isObjectDetail) {
+  if (!result) {
     return null;
   }
 
   const hasDataPermission = question.query().isEditable();
+  const hideChartSettings = result.error && !hasDataPermission;
 
   return (
     <ViewFooterRoot
@@ -79,30 +68,7 @@ const ViewFooter = ({
       <ButtonBar
         className="flex-full"
         left={[
-          QuestionFilterWidget.shouldRender({ question, queryBuilderMode }) && (
-            <MobileQuestionFilterWidget
-              className="sm-hide"
-              mr={1}
-              p={2}
-              isShowingFilterSidebar={isShowingFilterSidebar}
-              onAddFilter={onAddFilter}
-              onCloseFilter={onCloseFilter}
-            />
-          ),
-          QuestionSummarizeWidget.shouldRender({
-            question,
-            queryBuilderMode,
-          }) && (
-            <MobileQuestionSummarizeWidget
-              className="sm-hide"
-              mr={1}
-              p={2}
-              isShowingSummarySidebar={isShowingSummarySidebar}
-              onEditSummary={onEditSummary}
-              onCloseSummary={onCloseSummary}
-            />
-          ),
-          hasDataPermission && (
+          !hideChartSettings && (
             <VizTypeButton
               key="viz-type"
               question={question}
@@ -113,7 +79,7 @@ const ViewFooter = ({
               }
             />
           ),
-          hasDataPermission && (
+          !hideChartSettings && (
             <VizSettingsButton
               key="viz-settings"
               ml={1}
@@ -141,16 +107,19 @@ const ViewFooter = ({
           )
         }
         right={[
-          QuestionRowCount.shouldRender({ question, result, isObjectDetail }) &&
-            !isPreviewing && (
-              <QuestionRowCount
-                key="row_count"
-                className="mx1"
-                question={question}
-                isResultDirty={isResultDirty}
-                result={result}
-              />
-            ),
+          QuestionRowCount.shouldRender({
+            question,
+            result,
+            isObjectDetail,
+          }) && (
+            <QuestionRowCount
+              key="row_count"
+              className="mx1"
+              question={question}
+              isResultDirty={isResultDirty}
+              result={result}
+            />
+          ),
           QuestionLastUpdated.shouldRender({ result }) && (
             <QuestionLastUpdated
               key="last-updated"
@@ -174,6 +143,7 @@ const ViewFooter = ({
             <QuestionAlertWidget
               key="alerts"
               className="mx1 hide sm-show"
+              canManageSubscriptions={canManageSubscriptions}
               question={question}
               questionAlerts={questionAlerts}
               onCreateAlert={() =>
@@ -185,11 +155,21 @@ const ViewFooter = ({
           ),
           QuestionEmbedWidget.shouldRender({ question, isAdmin }) && (
             <QuestionEmbedWidgetTrigger
+              key="embeds"
               onClick={() =>
                 question.isSaved()
                   ? onOpenModal("embed")
                   : onOpenModal("save-question-before-embed")
               }
+            />
+          ),
+          QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
+            <QuestionTimelineWidget
+              key="timelines"
+              className="mx1 hide sm-show"
+              isShowingTimelineSidebar={isShowingTimelineSidebar}
+              onOpenTimelines={onOpenTimelines}
+              onCloseTimelines={onCloseTimelines}
             />
           ),
         ]}

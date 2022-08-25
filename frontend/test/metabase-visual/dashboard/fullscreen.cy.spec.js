@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -45,22 +45,28 @@ describe("visual tests > dashboard > fullscreen", () => {
           ],
         });
 
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
       },
     );
   });
 
   it("renders in day mode and night mode", () => {
-    cy.icon("expand").click();
+    cy.get("main header").within(() => {
+      cy.icon("ellipsis").click();
+    });
+
+    cy.findAllByText("Enter fullscreen").click();
 
     cy.icon("moon");
 
-    cy.percySnapshot("day");
+    cy.createPercySnapshot("day");
 
     cy.icon("moon").click();
 
     cy.icon("sun");
 
-    cy.percySnapshot("night");
+    cy.createPercySnapshot("night");
+
+    cy.icon("contract").click();
   });
 });

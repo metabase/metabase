@@ -23,7 +23,7 @@ describe("ChartSettingOrderedColumns", () => {
       ],
     });
     screen.getByRole("img", { name: /add/i });
-    screen.getByRole("img", { name: /close/i });
+    screen.getByRole("img", { name: /eye_filled/i });
   });
 
   it("should add a column", () => {
@@ -57,7 +57,7 @@ describe("ChartSettingOrderedColumns", () => {
       ],
       onChange,
     });
-    const CLOSE = screen.getByRole("img", { name: /close/i });
+    const CLOSE = screen.getByRole("img", { name: /eye_filled/i });
 
     fireEvent.click(CLOSE);
     expect(onChange.mock.calls).toEqual([

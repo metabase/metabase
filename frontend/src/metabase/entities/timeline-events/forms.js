@@ -1,9 +1,8 @@
 import { t } from "ttag";
-import { hasTimePart, parseTimestamp } from "metabase/lib/time";
-import { getTimelineIcons } from "metabase/lib/timeline";
+import { getTimelineIcons, getTimelineName } from "metabase/lib/timelines";
 import validate from "metabase/lib/validate";
 
-const createForm = () => {
+const createForm = ({ timelines }) => {
   return [
     {
       name: "name",
@@ -16,7 +15,7 @@ const createForm = () => {
       name: "timestamp",
       title: t`Date`,
       type: "date",
-      hasTime: true,
+      hasTimeField: "time_matters",
       validate: validate.required(),
     },
     {
@@ -24,14 +23,29 @@ const createForm = () => {
       title: t`Description`,
       type: "text",
       validate: validate.maxLength(255),
+      infoLabel: t`Markdown supported`,
+      infoLabelTooltip: t`Add links and formatting via markdown`,
     },
     {
       name: "icon",
       title: t`Icon`,
       type: "select",
-      initial: "star",
       options: getTimelineIcons(),
       validate: validate.required(),
+    },
+    {
+      name: "timeline_id",
+      title: t`Timeline`,
+      type: timelines.length > 1 ? "select" : "hidden",
+      options: timelines.map(t => ({ name: getTimelineName(t), value: t.id })),
+    },
+    {
+      name: "source",
+      type: "hidden",
+    },
+    {
+      name: "question_id",
+      type: "hidden",
     },
     {
       name: "timezone",
@@ -40,27 +54,12 @@ const createForm = () => {
     {
       name: "time_matters",
       type: "hidden",
-      initial: false,
-    },
-    {
-      name: "timeline_id",
-      type: "hidden",
     },
   ];
 };
 
-const normalizeForm = timeline => {
-  const timestamp = parseTimestamp(timeline.timestamp);
-
-  return {
-    ...timeline,
-    time_matters: hasTimePart(timestamp),
-  };
-};
-
 export default {
-  collection: {
-    fields: createForm,
-    normalize: normalizeForm,
-  },
+  details: ({ timelines = [] } = {}) => ({
+    fields: createForm({ timelines }),
+  }),
 };

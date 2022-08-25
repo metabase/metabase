@@ -11,7 +11,7 @@ import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "../../utils/urls";
-import { DataRouteParams, GroupRouteParams } from "../types";
+import { DataRouteParams, GroupRouteParams } from "../../types";
 
 export const getDatabasesEditorBreadcrumbs = (
   params: GroupRouteParams,

@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
 
-import { useAsyncFunction } from "metabase/hooks/use-async-function";
+import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Field from "metabase-lib/lib/metadata/Field";
 import Fields from "metabase/entities/fields";
 import { formatNumber } from "metabase/lib/formatting";
@@ -15,6 +15,7 @@ import {
   Fade,
   FadeAndSlide,
   Container,
+  Li,
 } from "./CategoryFingerprint.styled";
 
 const propTypes = {
@@ -22,6 +23,7 @@ const propTypes = {
   field: PropTypes.instanceOf(Field).isRequired,
   fieldValues: PropTypes.array.isRequired,
   fetchFieldValues: PropTypes.func.isRequired,
+  showAllFieldValues: PropTypes.bool,
 };
 
 const FIELD_VALUES_SHOW_LIMIT = 35;
@@ -48,22 +50,18 @@ export function CategoryFingerprint({
   field,
   fieldValues = [],
   fetchFieldValues,
+  showAllFieldValues,
 }) {
   const fieldId = field.id;
   const listsFieldValues = field.has_field_values === "list";
   const isMissingFieldValues = fieldValues.length === 0;
   const shouldFetchFieldValues = listsFieldValues && isMissingFieldValues;
 
-  const shortenedValuesStr = fieldValues
-    .slice(0, FIELD_VALUES_SHOW_LIMIT)
-    .map(value => (Array.isArray(value) ? value[0] : value))
-    .join(", ");
-
   const distinctCount = field.fingerprint?.global?.["distinct-count"];
   const formattedDistinctCount = formatNumber(distinctCount);
 
   const [isLoading, setIsLoading] = useState(shouldFetchFieldValues);
-  const safeFetchFieldValues = useAsyncFunction(fetchFieldValues);
+  const safeFetchFieldValues = useSafeAsyncFunction(fetchFieldValues);
   useEffect(() => {
     if (shouldFetchFieldValues) {
       setIsLoading(true);
@@ -74,7 +72,7 @@ export function CategoryFingerprint({
   }, [fieldId, shouldFetchFieldValues, safeFetchFieldValues]);
 
   const showDistinctCount = isLoading || distinctCount != null;
-  const showFieldValuesBlock = isLoading || shortenedValuesStr.length > 0;
+  const showFieldValuesBlock = isLoading || fieldValues.length > 0;
   const showComponent = showDistinctCount || showFieldValuesBlock;
 
   return showComponent ? (
@@ -94,18 +92,55 @@ export function CategoryFingerprint({
           >{t`Getting distinct values...`}</Fade>
         </RelativeContainer>
       )}
-      {showFieldValuesBlock && (
-        <RelativeContainer height={isLoading ? "1.8em" : "1.5em"}>
-          <Fade visible={isLoading}>
-            <LoadingSpinner />
-          </Fade>
-          <FadeAndSlide visible={!isLoading}>
-            <NoWrap>{shortenedValuesStr}</NoWrap>
-          </FadeAndSlide>
-        </RelativeContainer>
-      )}
+      {showFieldValuesBlock &&
+        (showAllFieldValues ? (
+          <ExtendedFieldValuesList fieldValues={fieldValues} />
+        ) : (
+          <ShortenedFieldValuesList
+            isLoading={isLoading}
+            fieldValues={fieldValues}
+          />
+        ))}
     </Container>
   ) : null;
+}
+
+ExtendedFieldValuesList.propTypes = {
+  fieldValues: PropTypes.array.isRequired,
+};
+
+function ExtendedFieldValuesList({ fieldValues }) {
+  return (
+    <ul>
+      {fieldValues.map((fieldValue, i) => {
+        const value = Array.isArray(fieldValue) ? fieldValue[0] : fieldValue;
+        return <Li key={i}>{value}</Li>;
+      })}
+    </ul>
+  );
+}
+
+ShortenedFieldValuesList.propTypes = {
+  isLoading: PropTypes.bool.isRequired,
+  fieldValues: PropTypes.array.isRequired,
+};
+
+function ShortenedFieldValuesList({ isLoading, fieldValues }) {
+  const shortenedValuesStr = fieldValues
+    .slice(0, FIELD_VALUES_SHOW_LIMIT)
+    .map(value => (Array.isArray(value) ? value[0] : value))
+    .join(", ");
+
+  return (
+    <RelativeContainer height={isLoading ? "1.8em" : "1.5em"}>
+      <Fade visible={isLoading}>
+        <LoadingSpinner />
+      </Fade>
+      <FadeAndSlide visible={!isLoading}>
+        <NoWrap>{shortenedValuesStr}</NoWrap>
+      </FadeAndSlide>
+    </RelativeContainer>
+  );
 }
 
 CategoryFingerprint.propTypes = propTypes;

@@ -6,12 +6,13 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [medley.core :as m]
+            [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.add-implicit-joins :as joins]
+            [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
             [metabase.test-runner.init :as test-runner.init]
             [metabase.test.data :as data]
             [metabase.test.data.env :as tx.env]
@@ -69,6 +70,7 @@
   {:description     nil
    :visibility_type :normal
    :settings        nil
+   :nfc_path        nil
    :parent_id       nil
    :source          :fields})
 
@@ -152,7 +154,7 @@
     (field-literal-col :venues :price)
     (field-literal-col (aggregate-col :count))"
   {:arglists '([col] [table-kw field-kw])}
-  ([{field-name :name, base-type :base_type, unit :unit, :as col}]
+  ([{field-name :name, base-type :base_type, :as col}]
    (-> col
        (assoc :field_ref [:field field-name {:base-type base-type}]
               :source    :fields)
@@ -170,7 +172,7 @@
     (field-literal-col-keep-extra-cols :venues :price)
     (field-literal-col-keep-extra-cols (aggregate-col :count))"
   {:arglists '([col] [table-kw field-kw])}
-  ([{field-name :name, base-type :base_type, unit :unit, :as col}]
+  ([{field-name :name, base-type :base_type, :as col}]
    (assoc col
           :field_ref [:field field-name {:base-type base-type}]
           :source    :fields))
@@ -189,13 +191,13 @@
                :fk_field_id  (:id source-col)
                :source_alias (driver/escape-alias
                               driver/*driver*
-                              (#'joins/join-alias (db/select-one-field :name Table :id (data/id dest-table-kw))
-                                                  (:name source-col)))))))
+                              (#'qp.add-implicit-joins/join-alias (db/select-one-field :name Table :id (data/id dest-table-kw))
+                                                                  (:name source-col)))))))
 
 (declare cols)
 
 (def ^:private ^{:arglists '([db-id table-id field-id])} native-query-col*
-  (memoize
+  (mdb.connection/memoize-for-application-db
    (fn [db-id table-id field-id]
      (first
       (cols
@@ -461,8 +463,8 @@
   [driver-or-drivers & body]
   `(do-with-bigquery-fks ~driver-or-drivers (fn [] ~@body)))
 
-(deftest query->preprocessed-caching-test
-  (testing "`query->preprocessed` should work the same even if query has cached results (#18579)"
+(deftest preprocess-caching-test
+  (testing "`preprocess` should work the same even if query has cached results (#18579)"
     ;; make a copy of the `test-data` DB so there will be no cache entries from previous test runs possibly affecting
     ;; this test.
     (data/with-temp-copy-of-db
@@ -474,8 +476,8 @@
                                  (let [results (qp/process-query query)]
                                    {:cached?  (boolean (:cached results))
                                     :num-rows (count (rows results))}))
-              expected-results (qp/query->preprocessed query)]
-          (testing "Check query->preprocessed before caching to make sure results make sense"
+              expected-results (qp/preprocess query)]
+          (testing "Check preprocess before caching to make sure results make sense"
             (is (schema= {:database (s/eq (data/id))
                           s/Keyword s/Any}
                          expected-results)))
@@ -491,6 +493,6 @@
               (is (= {:cached?  true
                       :num-rows 5}
                      (run-query))))
-            (testing "query->preprocessed should return same results even when query was cached."
+            (testing "preprocess should return same results even when query was cached."
               (is (= expected-results
-                     (qp/query->preprocessed query))))))))))
+                     (qp/preprocess query))))))))))

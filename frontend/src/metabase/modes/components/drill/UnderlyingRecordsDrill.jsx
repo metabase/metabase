@@ -1,8 +1,5 @@
-/* eslint-disable react/prop-types */
 import { ngettext, msgid } from "ttag";
 import { inflect } from "metabase/lib/formatting";
-
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import { AggregationDimension } from "metabase-lib/lib/Dimension";
 
@@ -12,7 +9,7 @@ export default ({ question, clicked }) => {
   question = question.topLevelQuestion();
 
   const query = question.query();
-  if (!(query instanceof StructuredQuery)) {
+  if (!question.isStructured() || !query.isEditable()) {
     return [];
   }
 
@@ -56,10 +53,7 @@ export default ({ question, clicked }) => {
       question: () => {
         const q = question.drillUnderlyingRecords(dimensions);
         if (extraFilter) {
-          return q
-            .query()
-            .filter(extraFilter)
-            .question();
+          return q.query().filter(extraFilter).question();
         } else {
           return q;
         }

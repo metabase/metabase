@@ -2,8 +2,10 @@ import {
   restore,
   openOrdersTable,
   popover,
+  sidebar,
   summarize,
-} from "__support__/e2e/cypress";
+  visitDashboard,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -20,7 +22,10 @@ describe("scenarios > question > null", () => {
       name: "13571",
       query: {
         "source-table": ORDERS_ID,
-        fields: [["field", ORDERS.DISCOUNT, null]],
+        fields: [
+          ["field", ORDERS.ID, null],
+          ["field", ORDERS.DISCOUNT, null],
+        ],
         filter: ["=", ["field", ORDERS.ID, null], 1],
       },
     });
@@ -30,6 +35,7 @@ describe("scenarios > question > null", () => {
     cy.findByText("13571").click();
 
     cy.log("'No Results since at least v0.34.3");
+    cy.get("#detail-shortcut").click();
     cy.findByText("Discount");
     cy.findByText("Empty");
   });
@@ -153,7 +159,7 @@ describe("scenarios > question > null", () => {
             });
           });
 
-          cy.visit(`/dashboard/${DASHBOARD_ID}`);
+          visitDashboard(DASHBOARD_ID);
           cy.log("P0 regression in v0.37.1!");
           cy.findByTestId("loading-spinner").should("not.exist");
           cy.findByText("13801_Q1");
@@ -176,9 +182,7 @@ describe("scenarios > question > null", () => {
       // Open the context menu that lets us apply filter using this column directly
       .click({ force: true });
 
-    popover()
-      .contains("=")
-      .click();
+    popover().contains("=").click();
 
     cy.findByText("39.72");
     // This row ([id] 3) had the `discount` column value and should be filtered out now
@@ -190,8 +194,11 @@ describe("scenarios > question > null", () => {
       openOrdersTable();
 
       summarize();
-      // remove pre-selected "Count"
-      cy.icon("close").click();
+      sidebar().within(() => {
+        // remove pre-selected "Count"
+        cy.icon("close").click();
+      });
+      cy.findByText("Add a metric").click();
       // dropdown immediately opens with the new set of metrics to choose from
       popover().within(() => {
         cy.findByText("Cumulative sum of ...").click();

@@ -12,7 +12,8 @@ export const getAuthProviders = createSelector(
   [getSettings],
   (): AuthProvider[] =>
     PLUGIN_AUTH_PROVIDERS.reduce(
-      (providers, getProviders) => getProviders(providers),
+      (providers: any, getProviders: (providers: any) => any) =>
+        getProviders(providers),
       [],
     ),
 );

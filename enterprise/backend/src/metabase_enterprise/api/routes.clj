@@ -5,6 +5,7 @@
   These routes should generally live under prefixes like `/api/ee/<feature>/` -- see the
   `enterprise/backend/README.md` for more details."
   (:require [compojure.core :as compojure]
+            [metabase-enterprise.advanced-permissions.api.routes :as advanced-permissions]
             [metabase-enterprise.api.routes.common :as ee.api.common]
             [metabase-enterprise.audit-app.api.routes :as audit-app]
             [metabase-enterprise.content-management.api.routes :as content-management]
@@ -14,7 +15,7 @@
   ;; The following routes are NAUGHTY and do not follow the naming convention (i.e., they do not start with
   ;; `/ee/<feature>/`).
   ;;
-  ;; TODO -- Please fix them!
+  ;; TODO -- Please fix them! See #22687
   content-management/routes
   sandbox/routes
   ;; The following routes are NICE and do follow the `/ee/<feature>/` naming convention. Please add new routes here
@@ -23,4 +24,7 @@
    "/ee" []
    (compojure/context
     "/audit-app" []
-    (ee.api.common/+require-premium-feature :audit-app audit-app/routes))))
+    (ee.api.common/+require-premium-feature :audit-app audit-app/routes))
+   (compojure/context
+    "/advanced-permissions" []
+    (ee.api.common/+require-premium-feature :advanced-permissions advanced-permissions/routes))))

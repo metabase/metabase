@@ -1,15 +1,11 @@
-import {
-  restore,
-  visualize,
-  openNotebookEditor,
-} from "__support__/e2e/cypress";
+import { restore, visualize, startNewQuestion } from "__support__/e2e/helpers";
 
 describe("issue 4482", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    openNotebookEditor();
+    startNewQuestion();
     cy.contains("Sample Database").click();
     cy.contains("Products").click();
   });

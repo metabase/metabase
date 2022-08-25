@@ -7,7 +7,7 @@
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
+            [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
@@ -18,7 +18,7 @@
            [java.time LocalDate OffsetDateTime ZonedDateTime]))
 
 (driver/register! :hive-like
-  :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set}
+  :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
   :abstract? true)
 
 (defmethod driver/escape-alias :hive-like
@@ -146,8 +146,10 @@
   (hsql/call :percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
 
 (defmethod sql.qp/add-interval-honeysql-form :hive-like
-  [_ hsql-form amount unit]
-  (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit)))))
+  [driver hsql-form amount unit]
+  (if (= unit :quarter)
+    (recur driver hsql-form (* amount 3) :month)
+    (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit))))))
 
 (def ^:dynamic *param-splice-style*
   "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.

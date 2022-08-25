@@ -1,24 +1,39 @@
 /* eslint-disable react/prop-types */
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
-import { MetabaseApi } from "metabase/services";
+import Timelines from "metabase/entities/timelines";
+
+import { closeNavbar, getIsNavbarOpen } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import {
+  getUser,
+  getUserIsAdmin,
+  canManageSubscriptions,
+} from "metabase/selectors/user";
 
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 import { usePrevious } from "metabase/hooks/use-previous";
+import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
+import { useWebNotification } from "metabase/hooks/use-web-notification";
 
-import fitViewport from "metabase/hoc/FitViewPort";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
+import favicon from "metabase/hoc/Favicon";
 
 import View from "../components/view/View";
 
@@ -56,32 +71,37 @@ import {
   getQuestionAlerts,
   getVisualizationSettings,
   getIsNativeEditorOpen,
-  getIsPreviewing,
-  getIsPreviewable,
   getIsVisualized,
   getIsLiveResizable,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getIsBookmarked,
+  getVisibleTimelineIds,
+  getVisibleTimelineEvents,
+  getSelectedTimelineEventIds,
+  getFilteredTimelines,
+  getTimeseriesXDomain,
+  getIsAnySidebarOpen,
+  getDocumentTitle,
+  getPageFavicon,
+  getIsTimeseries,
+  getIsLoadingComplete,
+  getIsHeaderVisible,
+  getIsActionListVisible,
+  getIsAdditionalInfoVisible,
+  getAutocompleteResultsFn,
 } from "../selectors";
 import * as actions from "../actions";
 
-function autocompleteResults(card, prefix) {
-  const databaseId = card && card.dataset_query && card.dataset_query.database;
-  if (!databaseId) {
-    return [];
-  }
-
-  const apiCall = MetabaseApi.db_autocomplete_suggestions({
-    dbId: databaseId,
-    prefix: prefix,
-  });
-  return apiCall;
-}
+const timelineProps = {
+  query: { include: "events" },
+  loadingAndErrorWrapper: false,
+};
 
 const mapStateToProps = (state, props) => {
   return {
     user: getUser(state, props),
+    canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
     fromUrl: props.location.query.from,
 
@@ -106,24 +126,32 @@ const mapStateToProps = (state, props) => {
     query: getQuery(state),
     metadata: getMetadata(state),
 
+    timelines: getFilteredTimelines(state),
+    timelineEvents: getVisibleTimelineEvents(state),
+    visibleTimelineIds: getVisibleTimelineIds(state),
+    selectedTimelineEventIds: getSelectedTimelineEventIds(state),
+    xDomain: getTimeseriesXDomain(state),
+
     result: getFirstQueryResult(state),
     results: getQueryResults(state),
     rawSeries: getRawSeries(state),
 
     uiControls: getUiControls(state),
-    // includes isShowingDataReference, isEditing, isRunning, etc
-    // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
     ...state.qb.uiControls,
+    isAnySidebarOpen: getIsAnySidebarOpen(state),
 
     isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
     isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),
-    isPreviewing: getIsPreviewing(state),
-    isPreviewable: getIsPreviewable(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
+    isNavBarOpen: getIsNavbarOpen(state),
     isVisualized: getIsVisualized(state),
     isLiveResizable: getIsLiveResizable(state),
+    isTimeseries: getIsTimeseries(state),
+    isHeaderVisible: getIsHeaderVisible(state),
+    isActionListVisible: getIsActionListVisible(state),
+    isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
     databaseFields: getDatabaseFields(state),
@@ -135,7 +163,8 @@ const mapStateToProps = (state, props) => {
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
 
-    autocompleteResultsFn: prefix => autocompleteResults(state.qb.card, prefix),
+    autocompleteResultsFn: getAutocompleteResultsFn(state),
+
     instanceSettings: getSettings(state),
 
     initialCollectionId: Collections.selectors.getInitialCollectionId(
@@ -147,24 +176,31 @@ const mapStateToProps = (state, props) => {
     nativeEditorSelectedText: getNativeEditorSelectedText(state),
     modalSnippet: getModalSnippet(state),
     snippetCollectionId: getSnippetCollectionId(state),
+    documentTitle: getDocumentTitle(state),
+    pageFavicon: getPageFavicon(state),
+    isLoadingComplete: getIsLoadingComplete(state),
+    loadingMessage: PLUGIN_SELECTORS.getLoadingMessage(state),
   };
 };
 
 const mapDispatchToProps = {
   ...actions,
+  closeNavbar,
   onChangeLocation: push,
-  createBookmark: id => Bookmark.actions.create({ id }),
-  deleteBookmark: id => Bookmark.actions.delete({ id }),
+  createBookmark: id => Bookmark.actions.create({ id, type: "card" }),
+  deleteBookmark: id => Bookmark.actions.delete({ id, type: "card" }),
 };
 
 function QueryBuilder(props) {
   const {
-    isBookmarked,
     question,
     location,
     params,
     fromUrl,
     uiControls,
+    isNativeEditorOpen,
+    isAnySidebarOpen,
+    closeNavbar,
     initializeQB,
     apiCreateQuestion,
     apiUpdateQuestion,
@@ -174,26 +210,38 @@ function QueryBuilder(props) {
     onChangeLocation,
     setUIControls,
     cancelQuery,
+    isBookmarked,
     createBookmark,
     deleteBookmark,
+    allLoaded,
+    showTimelinesForCollection,
+    card,
+    isLoadingComplete,
   } = props;
 
   const forceUpdate = useForceUpdate();
-  const forceUpdateDebounced = useMemo(() => _.debounce(forceUpdate, 400), [
-    forceUpdate,
-  ]);
+  const forceUpdateDebounced = useMemo(
+    () => _.debounce(forceUpdate, 400),
+    [forceUpdate],
+  );
   const timeout = useRef(null);
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
+  const wasShowingAnySidebar = usePrevious(isAnySidebarOpen);
+  const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
+  const hasQuestion = question != null;
+  const collectionId = question?.collectionId();
 
-  const openModal = useCallback(modal => setUIControls({ modal }), [
-    setUIControls,
-  ]);
+  const openModal = useCallback(
+    (modal, modalContext) => setUIControls({ modal, modalContext }),
+    [setUIControls],
+  );
 
-  const closeModal = useCallback(() => setUIControls({ modal: null }), [
-    setUIControls,
-  ]);
+  const closeModal = useCallback(
+    () => setUIControls({ modal: null, modalContext: null }),
+    [setUIControls],
+  );
 
   const setRecentlySaved = useCallback(
     recentlySaved => {
@@ -264,6 +312,27 @@ function QueryBuilder(props) {
   });
 
   useEffect(() => {
+    if (
+      (isAnySidebarOpen && !wasShowingAnySidebar) ||
+      (isNativeEditorOpen && !wasNativeEditorOpen)
+    ) {
+      closeNavbar();
+    }
+  }, [
+    isAnySidebarOpen,
+    wasShowingAnySidebar,
+    isNativeEditorOpen,
+    wasNativeEditorOpen,
+    closeNavbar,
+  ]);
+
+  useEffect(() => {
+    if (allLoaded && hasQuestion) {
+      showTimelinesForCollection(collectionId);
+    }
+  }, [allLoaded, hasQuestion, collectionId, showTimelinesForCollection]);
+
+  useEffect(() => {
     const { isShowingDataReference, isShowingTemplateTagsEditor } = uiControls;
     const {
       isShowingDataReference: wasShowingDataReference,
@@ -292,6 +361,49 @@ function QueryBuilder(props) {
     }
   });
 
+  const [isShowingToaster, setIsShowingToaster] = useState(false);
+
+  const { isRunning } = uiControls;
+
+  const onTimeout = useCallback(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      setIsShowingToaster(true);
+    }
+  }, []);
+
+  useLoadingTimer(isRunning, {
+    timer: 15000,
+    onTimeout,
+  });
+
+  const [requestPermission, showNotification] = useWebNotification();
+
+  useEffect(() => {
+    if (isLoadingComplete) {
+      setIsShowingToaster(false);
+
+      if (
+        "Notification" in window &&
+        Notification.permission === "granted" &&
+        document.hidden
+      ) {
+        showNotification(
+          t`All Set! Your question is ready.`,
+          t`${card.name} is loaded.`,
+        );
+      }
+    }
+  }, [isLoadingComplete, showNotification, card?.name]);
+
+  const onConfirmToast = useCallback(async () => {
+    await requestPermission();
+    setIsShowingToaster(false);
+  }, [requestPermission]);
+
+  const onDismissToast = useCallback(() => {
+    setIsShowingToaster(false);
+  }, []);
+
   return (
     <View
       {...props}
@@ -304,14 +416,21 @@ function QueryBuilder(props) {
       onCreate={handleCreate}
       handleResize={forceUpdateDebounced}
       toggleBookmark={onClickBookmark}
+      onDismissToast={onDismissToast}
+      onConfirmToast={onConfirmToast}
+      isShowingToaster={isShowingToaster}
     />
   );
 }
 
 export default _.compose(
   Bookmark.loadList(),
+  Timelines.loadList(timelineProps),
   connect(mapStateToProps, mapDispatchToProps),
-  title(({ card }) => card?.name ?? t`Question`),
+  favicon(({ pageFavicon }) => pageFavicon),
+  title(({ card, documentTitle }) => ({
+    title: documentTitle || card?.name || t`Question`,
+    titleIndex: 1,
+  })),
   titleWithLoadingTime("queryStartTime"),
-  fitViewport,
 )(QueryBuilder);

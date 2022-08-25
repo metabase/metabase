@@ -3,7 +3,7 @@ const INBOX_INTERVAL = 100;
 
 /**
  * Make sure you have webmail Docker image running locally:
- * `docker run -p 80:80 -p 25:25 maildev/maildev`
+ * `docker run -p 80:80 -p 25:25 maildev/maildev:1.1.0`
  *
  * or
  *
@@ -20,6 +20,8 @@ export const setupSMTP = () => {
     "email-smtp-password": "admin",
     "email-smtp-security": "none",
     "email-from-address": "mailer@metabase.test",
+    "email-from-name": "Metabase",
+    "email-reply-to": ["reply-to@metabase.test"],
   });
 
   // We must always clear Webmail's inbox before each test
@@ -58,9 +60,13 @@ export const openEmailPage = emailSubject => {
   });
 };
 
+export const clickSend = () => {
+  cy.button("Send email now").click();
+  cy.button("Email sent", 30000);
+};
+
 export const sendSubscriptionsEmail = recipient => {
-  cy.icon("share").click();
-  cy.findByText("Dashboard subscriptions").click();
+  cy.icon("subscription").click();
 
   cy.findByText("Email it").click();
   cy.findByPlaceholderText("Enter user names or email addresses")
@@ -68,6 +74,5 @@ export const sendSubscriptionsEmail = recipient => {
     .type(`${recipient}{enter}`)
     .blur();
 
-  cy.button("Send email now").click();
-  cy.button("Email sent", 30000);
+  clickSend();
 };

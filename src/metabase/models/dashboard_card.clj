@@ -4,9 +4,13 @@
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -15,18 +19,22 @@
 
 (models/defmodel DashboardCard :report_dashboardcard)
 
+(doto DashboardCard
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
 (declare series)
 
-(defn- perms-objects-set
-  "Return the set of permissions required to `read-or-write` this DashboardCard. If `:card` and `:series` are already
-  hydrated this method doesn't need to make any DB calls."
+;;; Return the set of permissions required to `read-or-write` this DashboardCard. If `:card` and `:series` are already
+;;; hydrated this method doesn't need to make any DB calls.
+(defmethod mi/perms-objects-set DashboardCard
   [dashcard read-or-write]
   (let [card   (or (:card dashcard)
                    (db/select-one [Card :dataset_query] :id (u/the-id (:card_id dashcard))))
         series (or (:series dashcard)
                    (series dashcard))]
-    (apply set/union (i/perms-objects-set card read-or-write) (for [series-card series]
-                                                                (i/perms-objects-set series-card read-or-write)))))
+    (apply set/union (mi/perms-objects-set card read-or-write) (for [series-card series]
+                                                                 (mi/perms-objects-set series-card read-or-write)))))
 
 (defn- pre-insert [dashcard]
   (let [defaults {:sizeX                  2
@@ -35,19 +43,22 @@
                   :visualization_settings {}}]
     (merge defaults dashcard)))
 
-(u/strict-extend (class DashboardCard)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class DashboardCard)
   models/IModel
   (merge models/IModelDefaults
-         {:properties  (constantly {:timestamped? true})
+         {:properties  (constantly {:timestamped? true
+                                    :entity_id    true})
           :types       (constantly {:parameter_mappings     :parameters-list
                                     :visualization_settings :visualization-settings})
           :pre-insert  pre-insert
           :post-select #(set/rename-keys % {:sizex :sizeX, :sizey :sizeY})})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:perms-objects-set perms-objects-set
-          :can-read?         (partial i/current-user-has-full-permissions? :read)
-          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :card)
+                                      (comp serdes.hash/identity-hash
+                                            #(db/select-one 'Dashboard :id %)
+                                            :dashboard_id)
+                                      :visualization_settings])})
 
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
@@ -57,7 +68,6 @@
   [{:keys [dashboard_id]}]
   {:pre [(integer? dashboard_id)]}
   (db/select-one 'Dashboard, :id dashboard_id))
-
 
 (defn ^:hydrate series
   "Return the `Cards` associated as additional series on this DashboardCard."
@@ -73,7 +83,7 @@
 (s/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
   [id :- su/IntGreaterThanZero]
-  (-> (DashboardCard id)
+  (-> (db/select-one DashboardCard :id id)
       (hydrate :series)))
 
 (defn dashcard->multi-cards
@@ -170,6 +180,11 @@
   [dashboard-card :- NewDashboardCard]
   (let [{:keys [dashboard_id card_id parameter_mappings visualization_settings sizeX sizeY row col series]
          :or   {sizeX 2, sizeY 2, series []}} dashboard-card]
+    ;; make sure the Card isn't a writeback QueryAction. It doesn't make sense to add these to a Dashboard since we're
+    ;; not supposed to be executing them for results
+    (when (db/select-one-field :is_write Card :id card_id)
+      (throw (ex-info (tru "You cannot add an is_write Card to a Dashboard.")
+                      {:status-code 400})))
     (db/transaction
      (let [dashboard-card (db/insert! DashboardCard
                                       :dashboard_id           dashboard_id
@@ -195,3 +210,44 @@
       (db/delete! PulseCard :dashboard_card_id (:id dashboard-card))
       (db/delete! DashboardCard :id (:id dashboard-card)))
     (events/publish-event! :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))
+
+;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
+(defmethod serdes.base/extract-query "DashboardCard" [_ {:keys [user]}]
+  ;; TODO This join over the subset of collections this user can see is shared by a few things - factor it out?
+  (serdes.base/raw-reducible-query
+    "DashboardCard"
+    {:select     [:dc.*]
+     :from       [[:report_dashboardcard :dc]]
+     :left-join  [[:report_dashboard :dash] [:= :dash.id :dc.dashboard_id]
+                  [:collection :coll]       [:= :coll.id :dash.collection_id]]
+     :where      (if user
+                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
+                   [:is :coll.personal_owner_id nil])}))
+
+(defmethod serdes.base/serdes-dependencies "DashboardCard"
+  [{:keys [card_id dashboard_id parameter_mappings visualization_settings]}]
+  (->> (mapcat serdes.util/mbql-deps parameter_mappings)
+       (concat (serdes.util/visualization-settings-deps visualization_settings))
+       (concat #{[{:model "Dashboard" :id dashboard_id}]
+                 [{:model "Card"      :id card_id}]})
+       set))
+
+(defmethod serdes.base/serdes-generate-path "DashboardCard" [_ dashcard]
+  [(serdes.base/infer-self-path "Dashboard" (db/select-one 'Dashboard :id (:dashboard_id dashcard)))
+   (serdes.base/infer-self-path "DashboardCard" dashcard)])
+
+(defmethod serdes.base/extract-one "DashboardCard"
+  [_model-name _opts dashcard]
+  (-> (serdes.base/extract-one-basics "DashboardCard" dashcard)
+      (update :card_id                serdes.util/export-fk 'Card)
+      (update :dashboard_id           serdes.util/export-fk 'Dashboard)
+      (update :parameter_mappings     serdes.util/export-parameter-mappings)
+      (update :visualization_settings serdes.util/export-visualization-settings)))
+
+(defmethod serdes.base/load-xform "DashboardCard"
+  [dashcard]
+  (-> (serdes.base/load-xform-basics dashcard)
+      (update :card_id                serdes.util/import-fk 'Card)
+      (update :dashboard_id           serdes.util/import-fk 'Dashboard)
+      (update :parameter_mappings     serdes.util/import-parameter-mappings)
+      (update :visualization_settings serdes.util/import-visualization-settings)))

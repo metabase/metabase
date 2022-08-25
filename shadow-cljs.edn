@@ -6,13 +6,12 @@
  ;; TODO -- share deps with deps.edn -- see https://shadow-cljs.github.io/docs/UsersGuide.html#deps-edn
  :dependencies
  [[org.clojure/core.match "1.0.0"]
-  [medley "1.3.0"]
+  [medley "1.4.0"]
   [net.cgrand/macrovich "0.2.1"]
   [prismatic/schema "1.2.0"]
 
   ;; new stuff
-  [lambdaisland/glogi "1.0.106"]]
-
+  [com.lambdaisland/glogi "1.1.144"]]
  :nrepl
  {:middleware
   [cider.nrepl/cider-middleware
@@ -25,7 +24,8 @@
    :output-dir "frontend/src/cljs/"
    :entries    [metabase.mbql.js
                 metabase.types
-                metabase.shared.util.currency]}
+                metabase.shared.util.currency
+                metabase.shared.parameters.parameters]}
 
   :test
   {:target    :node-test

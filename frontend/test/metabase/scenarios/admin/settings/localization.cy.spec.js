@@ -1,4 +1,8 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestionAdhoc,
+  visitQuestion,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -104,15 +108,11 @@ describe("scenarios > admin > localization", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".TableInteractive-header")
-      .next()
-      .as("resultTable");
+    cy.get(".TableInteractive-header").next().as("resultTable");
 
     cy.get("@resultTable").within(() => {
       // The third cell in the first row (CREATED_AT_DAY)
-      cy.get(".cellData")
-        .eq(2)
-        .should("not.contain", "Sunday");
+      cy.get(".cellData").eq(2).should("not.contain", "Sunday");
     });
   });
 
@@ -155,7 +155,8 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("€10.00");
   });
 
-  it("should use date and time styling settings in the date filter widget (metabase#9151, metabase#12472)", () => {
+  it("should use fix up clj unit testsdate and time styling settings in the date filter widget (metabase#9151, metabase#12472)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("PUT", "/api/setting/custom-formatting").as(
       "updateFormatting",
     );
@@ -166,42 +167,42 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("January 7, 2018").click();
     cy.findByText("2018/1/7").click();
     cy.wait("@updateFormatting");
+    cy.findAllByTestId("select-button-content").should("contain", "2018/1/7");
 
     // update the time style setting to 24 hour
     cy.findByText("17:24 (24-hour clock)").click();
     cy.wait("@updateFormatting");
+    cy.findByDisplayValue("HH:mm").should("be.checked");
 
-    cy.visit("/question/1");
-    cy.findByTestId("loading-spinner").should("not.exist");
+    visitQuestion(1);
 
     // create a date filter and set it to the 'On' view to see a specific date
-    cy.findByText("Created At").click();
+    cy.findByTextEnsureVisible("Created At").click();
     cy.findByText("Filter by this column").click();
-    cy.findByText("Previous").click();
+    cy.findByText("Specific dates...").click();
     cy.findByText("On").click();
+
+    // ensure the date picker is ready
+    cy.findByTextEnsureVisible("Add a time");
+    cy.findByTextEnsureVisible("Add filter");
 
     // update the date input in the widget
     const date = new Date();
-    const dateString = `${date.getFullYear()}/${date.getMonth() +
-      1}/${date.getDate()}`;
-    cy.findByDisplayValue(dateString)
-      .clear()
-      .type("2018/5/15")
-      .blur();
+    const dateString = `${date.getFullYear()}/${
+      date.getMonth() + 1
+    }/${date.getDate()}`;
+    cy.findByDisplayValue(dateString).clear().type("2018/5/15").blur();
 
     // add a time to the date
     const TIME_SELECTOR_DEFAULT_HOUR = 12;
     const TIME_SELECTOR_DEFAULT_MINUTE = 30;
     cy.findByText("Add a time").click();
-    cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_HOUR}`)
-      .clear()
-      .type("19");
-    cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_MINUTE}`)
-      .clear()
-      .type("56");
+    cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_HOUR}`).clear().type("19");
+    cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_MINUTE}`).clear().type("56");
 
     // apply the date filter
-    cy.findByText("Update filter").click();
+    cy.button("Add filter").click();
+    cy.wait("@dataset");
 
     cy.findByTestId("loading-spinner").should("not.exist");
 

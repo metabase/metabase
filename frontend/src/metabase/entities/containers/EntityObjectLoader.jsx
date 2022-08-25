@@ -29,30 +29,7 @@ const getMemoizedEntityQuery = createMemoizedSelector(
   entityQuery => entityQuery,
 );
 
-@entityType()
-@connect(
-  (
-    state,
-    { entityDef, entityId, entityQuery, selectorName = "getObject", ...props },
-  ) => {
-    if (typeof entityId === "function") {
-      entityId = entityId(state, props);
-    }
-    if (typeof entityQuery === "function") {
-      entityQuery = entityQuery(state, props);
-    }
-
-    return {
-      entityId,
-      entityQuery: getMemoizedEntityQuery(state, entityQuery),
-      object: entityDef.selectors[selectorName](state, { entityId }),
-      fetched: entityDef.selectors.getFetched(state, { entityId }),
-      loading: entityDef.selectors.getLoading(state, { entityId }),
-      error: entityDef.selectors.getError(state, { entityId }),
-    };
-  },
-)
-export default class EntityObjectLoader extends React.Component {
+class EntityObjectLoaderInner extends React.Component {
   static defaultProps = {
     loadingAndErrorWrapper: true,
     LoadingAndErrorWrapper: LoadingAndErrorWrapper,
@@ -102,14 +79,8 @@ export default class EntityObjectLoader extends React.Component {
     }
   }
   renderChildren = () => {
-    let {
-      children,
-      entityDef,
-      entityAlias,
-      wrapped,
-      object,
-      ...props
-    } = this.props; // eslint-disable-line no-unused-vars
+    let { children, entityDef, entityAlias, wrapped, object, ...props } =
+      this.props; // eslint-disable-line no-unused-vars
 
     if (wrapped) {
       object = this._getWrappedObject(this.props);
@@ -162,11 +133,47 @@ export default class EntityObjectLoader extends React.Component {
   };
 }
 
-export const entityObjectLoader = eolProps =>
+const EntityObjectLoader = _.compose(
+  entityType(),
+  connect(
+    (
+      state,
+      {
+        entityDef,
+        entityId,
+        entityQuery,
+        selectorName = "getObject",
+        ...props
+      },
+    ) => {
+      if (typeof entityId === "function") {
+        entityId = entityId(state, props);
+      }
+      if (typeof entityQuery === "function") {
+        entityQuery = entityQuery(state, props);
+      }
+
+      return {
+        entityId,
+        entityQuery: getMemoizedEntityQuery(state, entityQuery),
+        object: entityDef.selectors[selectorName](state, { entityId }),
+        fetched: entityDef.selectors.getFetched(state, { entityId }),
+        loading: entityDef.selectors.getLoading(state, { entityId }),
+        error: entityDef.selectors.getError(state, { entityId }),
+      };
+    },
+  ),
+)(EntityObjectLoaderInner);
+
+export default EntityObjectLoader;
+
+export const entityObjectLoader =
+  eolProps =>
   // eslint-disable-line react/display-name
   ComposedComponent =>
-    // eslint-disable-next-line react/display-name
-    props => (
+  // eslint-disable-next-line react/display-name
+  props =>
+    (
       <EntityObjectLoader {...props} {...eolProps}>
         {childProps => (
           <ComposedComponent

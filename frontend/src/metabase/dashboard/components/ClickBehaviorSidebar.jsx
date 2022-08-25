@@ -5,7 +5,7 @@ import { getIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
-import { color, darken } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import Button from "metabase/core/components/Button";
@@ -15,6 +15,7 @@ import ModalContent from "metabase/components/ModalContent";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
+import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import Questions from "metabase/entities/questions";
@@ -33,11 +34,13 @@ import {
 } from "metabase/lib/click-behavior";
 import { getIconForField } from "metabase/lib/schema_metadata";
 import { keyForColumn } from "metabase/lib/dataset";
+import { CloseIconContainer, SidebarItem } from "./ClickBehaviorSidebar.styled";
 
 const clickBehaviorOptions = [
   { value: "menu", icon: "popover" },
   { value: "link", icon: "link" },
   { value: "crossfilter", icon: "filter" },
+  { value: "action", icon: "play" },
 ];
 
 function getClickBehaviorOptionName(value, dashcard) {
@@ -46,11 +49,16 @@ function getClickBehaviorOptionName(value, dashcard) {
       ? t`Open the Metabase actions menu`
       : t`Do nothing`;
   }
-  return value === "link"
-    ? t`Go to a custom destination`
-    : value === "crossfilter"
-    ? t`Update a dashboard filter`
-    : "Unknown";
+  if (value === "link") {
+    return t`Go to a custom destination`;
+  }
+  if (value === "crossfilter") {
+    return t`Update a dashboard filter`;
+  }
+  if (value === "action") {
+    return t`Perform action`;
+  }
+  return t`Unknown`;
 }
 
 const Heading = ({ children }) => (
@@ -325,12 +333,8 @@ class ClickBehaviorSidebar extends React.Component {
   };
 
   render() {
-    const {
-      dashboard,
-      dashcard,
-      parameters,
-      hideClickBehaviorSidebar,
-    } = this.props;
+    const { dashboard, dashcard, parameters, hideClickBehaviorSidebar } =
+      this.props;
     const { selectedColumn } = this.state;
 
     const clickBehavior = this.getClickBehavior() || { type: "menu" };
@@ -474,15 +478,9 @@ class ClickBehaviorSidebar extends React.Component {
                     <h4>
                       {getClickBehaviorOptionName(clickBehavior.type, dashcard)}
                     </h4>
-                    <span
-                      className="ml-auto bg-brand-dark-hover border-left"
-                      style={{
-                        padding: 16,
-                        borderLeftColor: darken(color("brand"), 0.2),
-                      }}
-                    >
+                    <CloseIconContainer>
                       <Icon name="close" size={12} />
-                    </span>
+                    </CloseIconContainer>
                   </div>
                 </SidebarItemWrapper>
               </SidebarContentBordered>
@@ -499,6 +497,13 @@ class ClickBehaviorSidebar extends React.Component {
                   clickBehavior={clickBehavior}
                   dashboard={dashboard}
                   dashcard={dashcard}
+                  updateSettings={this.updateSettings}
+                />
+              ) : clickBehavior.type === "action" ? (
+                <ActionOptions
+                  clickBehavior={clickBehavior}
+                  dashcard={dashcard}
+                  parameters={parameters}
                   updateSettings={this.updateSettings}
                 />
               ) : null}
@@ -538,6 +543,82 @@ function TypeSelector({
         </div>
       ))}
     </div>
+  );
+}
+
+const ActionOption = ({ name, description, isSelected, onClick }) => {
+  return (
+    <SidebarItemWrapper
+      onClick={onClick}
+      style={{
+        ...SidebarItemStyle,
+        backgroundColor: isSelected ? color("brand") : "transparent",
+        color: isSelected ? color("white") : "inherit",
+        alignItems: description ? "flex-start" : "center",
+        marginTop: "2px",
+      }}
+    >
+      <SidebarIconWrapper>
+        <Icon
+          name="bolt"
+          color={isSelected ? color("text-white") : color("brand")}
+        />
+      </SidebarIconWrapper>
+      <div>
+        <h4>{name}</h4>
+        {description && (
+          <span
+            className={isSelected ? "text-white" : "text-medium"}
+            style={{ width: "95%", marginTop: "2px" }}
+          >
+            {description}
+          </span>
+        )}
+      </div>
+    </SidebarItemWrapper>
+  );
+};
+
+function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
+  return (
+    <SidebarContent>
+      <Heading className="text-medium">{t`Pick an action`}</Heading>
+      <Actions.ListLoader>
+        {({ actions }) => {
+          const selectedAction = actions.find(
+            action => action.id === clickBehavior.action,
+          );
+          return (
+            <>
+              {actions.map(action => (
+                <ActionOption
+                  key={action.id}
+                  name={action.name}
+                  description={action.description}
+                  isSelected={clickBehavior.action === action.id}
+                  onClick={() =>
+                    updateSettings({
+                      type: clickBehavior.type,
+                      action: action.id,
+                      emitter_id: clickBehavior.emitter_id,
+                    })
+                  }
+                />
+              ))}
+              {selectedAction && (
+                <ClickMappings
+                  isAction
+                  object={selectedAction}
+                  dashcard={dashcard}
+                  clickBehavior={clickBehavior}
+                  updateSettings={updateSettings}
+                />
+              )}
+            </>
+          );
+        }}
+      </Actions.ListLoader>
+    </SidebarContent>
   );
 }
 
@@ -605,24 +686,16 @@ function LinkOptions({ clickBehavior, updateSettings, dashcard, parameters }) {
                       ? clickBehavior.linkTemplate
                       : t`URL`}
                   </h4>
-                  <span
-                    className="ml-auto bg-brand-dark-hover border-left"
-                    style={{
-                      borderLeftColor: darken(color("brand"), 0.2),
-                      padding: 17,
-                    }}
+                  <CloseIconContainer
+                    onClick={() =>
+                      updateSettings({
+                        type: clickBehavior.type,
+                        linkType: null,
+                      })
+                    }
                   >
-                    <Icon
-                      name="close"
-                      size={12}
-                      onClick={() =>
-                        updateSettings({
-                          type: clickBehavior.type,
-                          linkType: null,
-                        })
-                      }
-                    />
-                  </span>
+                    <Icon name="close" size={12} />
+                  </CloseIconContainer>
                 </div>
               </SidebarItemWrapper>
             }
@@ -715,8 +788,7 @@ function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
                 color: color("white"),
               }}
             >
-              <div
-                className="flex align-center bg-brand-dark-hover full"
+              <SidebarItem
                 style={{
                   paddingLeft: SidebarItemStyle.paddingLeft,
                   paddingRight: SidebarItemStyle.paddingRight,
@@ -739,13 +811,8 @@ function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
                   )}
                   <Icon name="chevrondown" size={12} className="ml-auto" />
                 </div>
-              </div>
-              <span
-                className="ml-auto bg-brand-dark-hover border-left"
-                style={{
-                  borderLeftColor: darken(color("brand"), 0.2),
-                  padding: 17,
-                }}
+              </SidebarItem>
+              <CloseIconContainer
                 onClick={() =>
                   updateSettings({
                     type: clickBehavior.type,
@@ -754,7 +821,7 @@ function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
                 }
               >
                 <Icon name="close" size={12} />
-              </span>
+              </CloseIconContainer>
             </div>
           }
           isInitiallyOpen={clickBehavior.targetId == null}
@@ -839,9 +906,8 @@ const CustomLinkText = ({
 
 const ValuesYouCanReference = withUserAttributes(
   ({ dashcard, parameters, userAttributes }) => {
-    const columns = dashcard.card.result_metadata
-      .filter(isMappableColumn)
-      .map(c => c.name);
+    const columnMetadata = dashcard.card.result_metadata || [];
+    const columns = columnMetadata?.filter(isMappableColumn).map(c => c.name);
     const parameterNames = parameters.map(p => p.name);
     const sections = [
       {

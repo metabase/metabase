@@ -2,15 +2,9 @@ import {
   restore,
   showDashboardCardActions,
   popover,
-} from "__support__/e2e/cypress";
-
-function addTextBox(string) {
-  cy.icon("pencil").click();
-  cy.icon("string").click();
-  cy.findByPlaceholderText("Write here, and use Markdown if you'd like").type(
-    string,
-  );
-}
+  visitDashboard,
+  addTextBox,
+} from "__support__/e2e/helpers";
 
 describe("scenarios > dashboard > text-box", () => {
   beforeEach(() => {
@@ -21,7 +15,7 @@ describe("scenarios > dashboard > text-box", () => {
   describe("Editing", () => {
     beforeEach(() => {
       // Create text box card
-      cy.visit("/dashboard/1");
+      visitDashboard(1);
       addTextBox("Text *text* __text__");
     });
 
@@ -33,6 +27,16 @@ describe("scenarios > dashboard > text-box", () => {
 
       // preview mode
       cy.icon("edit_document");
+    });
+
+    it("should render visualization options (metabase#22061)", () => {
+      showDashboardCardActions(1);
+
+      // edit mode
+      cy.icon("palette").eq(1).click();
+
+      cy.findByText("Vertical Alignment");
+      cy.findByText("Horizontal Alignment");
     });
 
     it("should not render edit and preview actions when not editing", () => {
@@ -57,7 +61,7 @@ describe("scenarios > dashboard > text-box", () => {
       cy.createDashboard().then(({ body: { id } }) => {
         cy.intercept("PUT", `/api/dashboard/${id}`).as("dashboardUpdated");
 
-        cy.visit(`/dashboard/${id}`);
+        visitDashboard(id);
       });
     });
 
@@ -87,7 +91,7 @@ describe("scenarios > dashboard > text-box", () => {
 
     it("should have a scroll bar for long text (metabase#8333)", () => {
       addTextBox(
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam ut fermentum erat, nec sagittis justo. Vivamus vitae ipsum semper, consectetur odio at, rutrum nisi. Fusce maximus consequat porta. Mauris libero mi, viverra ac hendrerit quis, rhoncus quis ante. Pellentesque molestie ut felis non congue. Vivamus finibus ligula id fringilla rutrum. Donec quis dignissim ligula, vitae tempor urna.\n\nDonec quis enim porta, porta lacus vel, maximus lacus. Sed iaculis leo tortor, vel tempor velit tempus vitae. Nulla facilisi. Vivamus quis sagittis magna. Aenean eu eros augue. Sed euismod pulvinar laoreet. Morbi commodo, sem sed dictum faucibus, sem ante ultrices libero, nec ornare risus lacus eget velit. Etiam sagittis lectus non erat tristique tempor. Sed in ipsum urna. Sed venenatis turpis at orci feugiat, ut gravida lectus luctus.",
       );
       cy.findByText("Save").click();
 
@@ -95,7 +99,8 @@ describe("scenarios > dashboard > text-box", () => {
 
       // The test fails if there is no scroll bar
       cy.get(".text-card-markdown")
-        .should("have.css", "overflow", "auto")
+        .should("have.css", "overflow-x", "hidden")
+        .should("have.css", "overflow-y", "auto")
         .scrollTo("bottom");
     });
 
@@ -115,15 +120,12 @@ describe("scenarios > dashboard > text-box", () => {
   });
 
   it("should let you add a parameter to a dashboard with a text box (metabase#11927)", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     // click pencil icon to edit
     cy.icon("pencil").click();
     // add text box with text
     cy.icon("string").click();
-    cy.get(".DashCard")
-      .last()
-      .find("textarea")
-      .type("text text text");
+    cy.get(".DashCard").last().find("textarea").type("text text text");
     cy.icon("filter").click();
     popover().within(() => {
       cy.findByText("Text or Category").click();
@@ -133,6 +135,6 @@ describe("scenarios > dashboard > text-box", () => {
 
     // confirm text box and filter are still there
     cy.findByText("text text text");
-    cy.findByPlaceholderText("Text");
+    cy.findByText("Text");
   });
 });

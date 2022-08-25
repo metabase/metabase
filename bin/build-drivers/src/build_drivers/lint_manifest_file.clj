@@ -19,7 +19,11 @@
 (s/def ::description string?)
 (s/def ::info (spell/keys :req-un [::name ::version ::description]))
 
-(def ^:private property-types #{"string" "textFile" "boolean" "secret" "info" "schema-filters"})
+(s/def ::address string?)
+(s/def ::contact-info (spell/keys :req-un [::name]
+                                  :opt-un [::address]))
+
+(def ^:private property-types #{"string" "text" "textFile" "boolean" "secret" "info" "schema-filters"})
 
 (s/def ::display-name string?)
 (s/def ::default any?)
@@ -57,4 +61,4 @@
 (s/def ::init (s/coll-of (s/multi-spec init-step-type #(get % :step))))
 
 (s/def ::plugin-manifest
-  (spell/keys :req-un [::info ::driver] :opt-un [::init]))
+  (spell/keys :req-un [::info ::driver] :opt-un [::contact-info ::init]))

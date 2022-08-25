@@ -5,9 +5,9 @@
             [metabase.async.streaming-response :as streaming-response]
             [metabase.async.streaming-response.thread-pool :as thread-pool]
             [metabase.driver :as driver]
-            [metabase.http-client :as test-client]
+            [metabase.http-client :as client]
             [metabase.models :refer [Database]]
-            [metabase.query-processor.context :as context]
+            [metabase.query-processor.context :as qp.context]
             [metabase.server.protocols :as server.protocols]
             [metabase.test :as mt]
             [metabase.util :as u])
@@ -72,7 +72,7 @@
                     (reset! canceled? true)
                     (throw e))))]
     (a/go
-      (when (a/<! (context/canceled-chan context))
+      (when (a/<! (qp.context/canceled-chan context))
         (reset! canceled? true)
         (future-cancel futur)))))
 
@@ -96,9 +96,9 @@
     (with-test-driver-db
       (let [num-requests       (+ thread-pool-size 20)
             remaining          (atom num-requests)
-            session-token      (test-client/authenticate (mt/user->credentials :lucky))
-            url                (test-client/build-url "dataset" nil)
-            request            (test-client/build-request-map session-token
+            session-token      (client/authenticate (mt/user->credentials :lucky))
+            url                (client/build-url "dataset" nil)
+            request            (client/build-request-map session-token
                                                               {:database (mt/id)
                                                                :type     "native"
                                                                :native   {:query {:sleep 2000}}})]
@@ -107,7 +107,7 @@
             (future (http/post url request)))
           (Thread/sleep 100)
           (let [start-time-ms (System/currentTimeMillis)]
-            (is (= {:status "ok"} (test-client/client :get 200 "health")))
+            (is (= {:status "ok"} (client/client :get 200 "health")))
             (testing "Health endpoint should complete before the first round of queries completes"
               (is (> @remaining (inc (- num-requests thread-pool-size)))))
             (testing "Health endpoint should complete in under 500ms regardless of how many queries are running"
@@ -121,9 +121,9 @@
       (with-test-driver-db
         (reset! canceled? false)
         (with-start-execution-chan [start-chan]
-          (let [url           (test-client/build-url "dataset" nil)
-                session-token (test-client/authenticate (mt/user->credentials :lucky))
-                request       (test-client/build-request-map session-token
+          (let [url           (client/build-url "dataset" nil)
+                session-token (client/authenticate (mt/user->credentials :lucky))
+                request       (client/build-request-map session-token
                                                              {:database (mt/id)
                                                               :type     "native"
                                                               :native   {:query {:sleep 5000}}})

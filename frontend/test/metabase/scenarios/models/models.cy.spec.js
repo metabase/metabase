@@ -2,16 +2,24 @@ import {
   restore,
   modal,
   popover,
-  getNotebookStep,
   openNativeEditor,
-  openNewCollectionItemFlowFor,
   visualize,
   mockSessionProperty,
   sidebar,
   summarize,
   filter,
-} from "__support__/e2e/cypress";
+  filterField,
+  visitQuestion,
+  visitDashboard,
+  startNewQuestion,
+  openQuestionActions,
+  closeQuestionActions,
+} from "__support__/e2e/helpers";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { questionInfoButton } from "../../../__support__/e2e/helpers/e2e-ui-elements-helpers";
+
 import {
   turnIntoModel,
   assertIsModel,
@@ -20,8 +28,6 @@ import {
   selectDimensionOptionFromSidebar,
   saveQuestionBasedOnModel,
   assertIsQuestion,
-  openDetailsSidebar,
-  getDetailsSidebarActions,
 } from "./helpers/e2e-models-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -30,20 +36,24 @@ describe("scenarios > models", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("allows to turn a GUI question into a model", () => {
     cy.request("PUT", "/api/card/1", { name: "Orders Model" });
-    cy.visit("/question/1");
+    visitQuestion(1);
 
     turnIntoModel();
+    openQuestionActions();
     assertIsModel();
 
     filter();
-    selectDimensionOptionFromSidebar("Discount");
-    cy.findByText("Equal to").click();
-    selectFromDropdown("Not empty");
-    cy.button("Add filter").click();
+    filterField("Discount", {
+      operator: "Not empty",
+    });
+
+    cy.findByTestId("apply-filters").click();
+    cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",
@@ -60,9 +70,7 @@ describe("scenarios > models", () => {
       table: "Orders",
     });
 
-    cy.findAllByText("Our analytics")
-      .first()
-      .click();
+    cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
     getCollectionItemRow("Orders Model").within(() => {
       cy.icon("model");
     });
@@ -85,13 +93,16 @@ describe("scenarios > models", () => {
     );
 
     turnIntoModel();
+    openQuestionActions();
     assertIsModel();
 
     filter();
-    selectDimensionOptionFromSidebar("DISCOUNT");
-    cy.findByText("Equal to").click();
-    selectFromDropdown("Not empty");
-    cy.button("Add filter").click();
+    filterField("DISCOUNT", {
+      operator: "Not empty",
+    });
+
+    cy.findByTestId("apply-filters").click();
+    cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
       model: "Orders Model",
@@ -108,9 +119,7 @@ describe("scenarios > models", () => {
       table: "Orders",
     });
 
-    cy.findAllByText("Our analytics")
-      .first()
-      .click();
+    cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
     getCollectionItemRow("Orders Model").within(() => {
       cy.icon("model");
     });
@@ -118,11 +127,11 @@ describe("scenarios > models", () => {
       cy.icon("table");
     });
 
-    cy.url().should("not.include", "/question/1");
+    cy.location("pathname").should("eq", "/collection/root");
   });
 
   it("changes model's display to table", () => {
-    cy.visit("/question/3");
+    visitQuestion(3);
 
     cy.get(".LineAreaBarChart");
     cy.get(".TableInteractive").should("not.exist");
@@ -134,7 +143,7 @@ describe("scenarios > models", () => {
   });
 
   it("allows to undo turning a question into a model", () => {
-    cy.visit("/question/3");
+    visitQuestion(3);
     cy.get(".LineAreaBarChart");
 
     turnIntoModel();
@@ -142,6 +151,7 @@ describe("scenarios > models", () => {
     cy.findByText("Undo").click();
 
     cy.get(".LineAreaBarChart");
+    openQuestionActions();
     assertIsQuestion();
   });
 
@@ -150,15 +160,20 @@ describe("scenarios > models", () => {
     cy.intercept("PUT", "/api/card/1").as("cardUpdate");
     cy.visit("/model/1");
 
-    openDetailsSidebar();
-    cy.findByText("Turn back into a saved question").click();
+    openQuestionActions();
+    popover().within(() => {
+      cy.findByText("Turn back to saved question").click();
+    });
+
     cy.wait("@cardUpdate");
 
     cy.findByText("This is a question now.");
+    openQuestionActions();
     assertIsQuestion();
 
     cy.findByText("Undo").click();
     cy.wait("@cardUpdate");
+    openQuestionActions();
     assertIsModel();
   });
 
@@ -169,8 +184,10 @@ describe("scenarios > models", () => {
 
   it("redirects to /model URL when opening a model with /question URL", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
+    // Important - do not use visitQuestion(1) here!
     cy.visit("/question/1");
-    openDetailsSidebar();
+    cy.wait("@dataset");
+    openQuestionActions();
     assertIsModel();
     cy.url().should("include", "/model");
   });
@@ -182,8 +199,7 @@ describe("scenarios > models", () => {
     });
 
     it("transforms the data picker", () => {
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
 
       popover().within(() => {
         testDataPickerSearch({
@@ -230,9 +246,8 @@ describe("scenarios > models", () => {
     });
 
     it("allows to create a question based on a model", () => {
-      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      cy.intercept(`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as("schema");
+      startNewQuestion();
 
       popover().within(() => {
         cy.findByText("Models").click();
@@ -241,6 +256,7 @@ describe("scenarios > models", () => {
 
       cy.icon("join_left_outer").click();
       cy.wait("@schema");
+      cy.findAllByRole("option").should("have.length", 4);
       selectFromDropdown("Products");
 
       cy.findByText("Add filters to narrow your answer").click();
@@ -270,8 +286,7 @@ describe("scenarios > models", () => {
 
     it("should not display models if nested queries are disabled", () => {
       mockSessionProperty("enable-nested-queries", false);
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       popover().within(() => {
         cy.findByText("Models").should("not.exist");
         cy.findByText("Saved Questions").should("not.exist");
@@ -288,13 +303,15 @@ describe("scenarios > models", () => {
     });
 
     it("can create a question by filtering and summarizing a model", () => {
-      cy.visit("/question/1");
+      cy.visit("/model/1");
+      cy.wait("@dataset");
 
       filter();
-      selectDimensionOptionFromSidebar("Discount");
-      cy.findByText("Equal to").click();
-      selectFromDropdown("Not empty");
-      cy.button("Add filter").click();
+      filterField("Discount", {
+        operator: "Not empty",
+      });
+      cy.findByTestId("apply-filters").click();
+      cy.wait("@dataset");
 
       assertQuestionIsBasedOnModel({
         model: "Orders Model",
@@ -305,6 +322,7 @@ describe("scenarios > models", () => {
       summarize();
 
       selectDimensionOptionFromSidebar("Created At");
+      cy.wait("@dataset");
       cy.button("Done").click();
 
       assertQuestionIsBasedOnModel({
@@ -327,7 +345,8 @@ describe("scenarios > models", () => {
     });
 
     it("can create a question using table click actions", () => {
-      cy.visit("/question/1");
+      cy.visit("/model/1");
+      cy.wait("@dataset");
 
       cy.findByText("Subtotal").click();
       selectFromDropdown("Sum over time");
@@ -353,102 +372,19 @@ describe("scenarios > models", () => {
 
     it("can edit model info", () => {
       cy.intercept("PUT", "/api/card/1").as("updateCard");
-      cy.visit("/question/1");
+      cy.visit("/model/1");
+      cy.wait("@dataset");
 
-      openDetailsSidebar();
-      getDetailsSidebarActions().within(() => {
-        cy.icon("pencil").click();
-      });
-      modal().within(() => {
-        cy.findByLabelText("Name")
-          .clear()
-          .type("M1");
-        cy.findByLabelText("Description")
-          .clear()
-          .type("foo");
-        cy.button("Save").click();
-      });
+      cy.findByTestId("saved-question-header-title").clear().type("M1").blur();
       cy.wait("@updateCard");
 
-      cy.findByText("M1");
-      cy.findByText("foo");
-    });
-  });
+      questionInfoButton().click();
 
-  describe("adding a question to collection from its page", () => {
-    it("should offer to pick one of the collection's models by default", () => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
-      cy.request("PUT", "/api/card/2", { dataset: true });
+      cy.findByPlaceholderText("Add description").type("foo").blur();
+      cy.wait("@updateCard");
 
-      cy.visit("/collection/root");
-      openNewCollectionItemFlowFor("question");
-
-      cy.findByText("Orders");
-      cy.findByText("Orders, Count");
-      cy.findByText("All data");
-
-      cy.findByText("Models").should("not.exist");
-      cy.findByText("Raw Data").should("not.exist");
-      cy.findByText("Saved Questions").should("not.exist");
-      cy.findByText("Sample Database").should("not.exist");
-
-      cy.findByText("Orders").click();
-
-      getNotebookStep("data").within(() => {
-        cy.findByText("Orders");
-      });
-
-      cy.button("Visualize");
-    });
-
-    it("should open the default picker after clicking 'All data'", () => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
-      cy.request("PUT", "/api/card/2", { dataset: true });
-
-      cy.visit("/collection/root");
-      openNewCollectionItemFlowFor("question");
-
-      cy.findByText("All data").click({ force: true });
-
-      cy.findByText("Models");
-      cy.findByText("Raw Data");
-      cy.findByText("Saved Questions");
-    });
-
-    it("should automatically use the only collection model as a data source", () => {
-      cy.request("PUT", "/api/card/2", { dataset: true });
-
-      cy.visit("/collection/root");
-      openNewCollectionItemFlowFor("question");
-
-      getNotebookStep("data").within(() => {
-        cy.findByText("Orders, Count");
-      });
-      cy.button("Visualize");
-    });
-
-    it("should use correct picker if collection has no models", () => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
-
-      cy.visit("/collection/9");
-      openNewCollectionItemFlowFor("question");
-
-      cy.findByText("All data").should("not.exist");
-      cy.findByText("Models");
-      cy.findByText("Raw Data");
-      cy.findByText("Saved Questions");
-    });
-
-    it("should use correct picker if there are models at all", () => {
-      cy.visit("/collection/root");
-      openNewCollectionItemFlowFor("question");
-
-      cy.findByText("All data").should("not.exist");
-      cy.findByText("Models").should("not.exist");
-      cy.findByText("Raw Data").should("not.exist");
-
-      cy.findByText("Saved Questions");
-      cy.findByText("Sample Database");
+      cy.findByDisplayValue("M1");
+      cy.findByDisplayValue("foo");
     });
   });
 
@@ -473,8 +409,8 @@ describe("scenarios > models", () => {
       { visitQuestion: true },
     );
 
-    openDetailsSidebar();
-    getDetailsSidebarActions().within(() => {
+    openQuestionActions();
+    popover().within(() => {
       cy.icon("model").click();
     });
     modal().within(() => {
@@ -482,7 +418,9 @@ describe("scenarios > models", () => {
       cy.button("Turn this into a model").should("not.exist");
       cy.icon("close").click();
     });
+    openQuestionActions();
     assertIsQuestion();
+    closeQuestionActions();
 
     cy.findByText(/Open editor/i).click();
     cy.get(".ace_content").type(
@@ -493,11 +431,10 @@ describe("scenarios > models", () => {
     });
     selectFromDropdown("Orders");
     cy.findByText("Save").click();
-    modal()
-      .findByText("Save")
-      .click();
+    modal().findByText("Save").click();
 
     turnIntoModel();
+    openQuestionActions();
     assertIsModel();
   });
 
@@ -521,6 +458,22 @@ describe("scenarios > models", () => {
     });
   });
 
+  it("should correctly show native models for no-data users", () => {
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.createNativeQuestion({
+      name: "TEST MODEL",
+      dataset: true,
+      native: {
+        query: "select * from orders",
+      },
+    });
+    cy.signIn("nodata");
+    cy.visit("/collection/root");
+    cy.findByText("TEST MODEL").click();
+    cy.wait("@cardQuery");
+    cy.findByText(/This question is written in SQL/i).should("not.exist");
+  });
+
   describe("listing", () => {
     beforeEach(() => {
       cy.request("PUT", "/api/card/1", { name: "Orders Model", dataset: true });
@@ -528,15 +481,16 @@ describe("scenarios > models", () => {
 
     it("should allow adding models to dashboards", () => {
       cy.intercept("GET", "/api/dashboard/*").as("fetchDashboard");
+
       cy.createDashboard().then(({ body: { id: dashboardId } }) => {
-        cy.visit(`/dashboard/${dashboardId}`);
+        visitDashboard(dashboardId);
         cy.icon("pencil").click();
         cy.get(".QueryBuilder-section .Icon-add").click();
-        sidebar()
-          .findByText("Orders Model")
-          .click();
+        sidebar().findByText("Orders Model").click();
         cy.button("Save").click();
-        cy.wait("@fetchDashboard");
+        // The first fetch happened when visiting dashboard, and the second one upon saving it.
+        // We need to wait for both.
+        cy.wait(["@fetchDashboard", "@fetchDashboard"]);
         cy.findByText("Orders Model");
       });
     });
@@ -546,9 +500,7 @@ describe("scenarios > models", () => {
       openNativeEditor().type("select * from {{#}}", {
         parseSpecialCharSequences: false,
       });
-      sidebar()
-        .findByText("Pick a question or a model")
-        .click();
+      sidebar().contains("Pick a question or a model").click();
       selectFromDropdown("Orders Model");
       cy.get("@editor").contains("select * from {{#1}}");
       cy.get(".NativeQueryEditor .Icon-play").click();

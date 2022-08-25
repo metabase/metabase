@@ -1,5 +1,5 @@
 import { getDataFocusSidebar } from ".";
-import { RawDataRouteParams } from "../types";
+import { RawDataRouteParams } from "../../types";
 import { state } from "./data-permissions.unit.spec.fixtures";
 
 export const getRouteProps = ({

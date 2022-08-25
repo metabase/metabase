@@ -1,9 +1,19 @@
 import styled from "@emotion/styled";
-import { color, lighten } from "metabase/lib/colors";
+import { color, lighten, tint, isDark } from "metabase/lib/colors";
 
 export interface OptionRootProps {
   isSensible?: boolean;
 }
+
+const getOptionIconColor = ({ isSelected }: OptionIconContainerProps) => {
+  if (isSelected) {
+    return color("white");
+  } else if (isDark("brand")) {
+    return tint("brand", 0.5);
+  } else {
+    return color("brand");
+  }
+};
 
 export const OptionRoot = styled.div<OptionRootProps>`
   padding: 0.5rem;
@@ -21,10 +31,17 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  color: ${getOptionIconColor};
   background-color: ${props =>
     props.isSelected ? color("brand") : lighten("brand")};
   padding: 0.75rem;
   border-radius: 0.625rem;
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("white")};
+    background-color: ${color("brand")};
+  }
 `;
 
 export const OptionText = styled.div`

@@ -6,7 +6,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -128,7 +128,7 @@
          ExceptionInfo
          perms-error-msg
          (mt/with-temp* [Database [db]
-                         Table    [table-1 {:db_id (u/the-id db)}]
+                         Table    [_       {:db_id (u/the-id db)}]
                          Table    [table-2 {:db_id (u/the-id db)}]
                          Card     [card    {:dataset_query {:database (u/the-id db), :type :query,
                                                             :query {:source-table (u/the-id table-2)}}}]]
@@ -146,7 +146,7 @@
 
   (testing "...but it should work if user has perms [template tag referenced query]"
     (mt/with-temp* [Database [db]
-                    Table    [table-1 {:db_id (u/the-id db)}]
+                    Table    [_       {:db_id (u/the-id db)}]
                     Table    [table-2 {:db_id (u/the-id db)}]
                     Card     [card    {:dataset_query {:database (u/the-id db), :type :query,
                                                        :query {:source-table (u/the-id table-2)}}}]]
@@ -220,7 +220,7 @@
                     :ex-data  {:required-permissions (s/eq #{(perms/table-query-path (mt/id) "PUBLIC" (mt/id :venues))})
                                :actual-permissions   (s/eq #{})
                                :permissions-error?   (s/eq true)
-                               :type                 (s/eq error-type/missing-required-permissions)
+                               :type                 (s/eq qp.error-type/missing-required-permissions)
                                s/Keyword             s/Any}
                     s/Keyword s/Any}
                    (mt/suppress-output

@@ -61,6 +61,7 @@
   "Register a basic shell of a Metabase driver using the information from its Metabase plugin"
   [{:keys                                                                                            [add-to-classpath!]
     init-steps                                                                                       :init
+    contact-info                                                                                     :contact-info
     superseded-by                                                                                    :superseded-by
     {driver-name :name, :keys [abstract display-name parent], :or {abstract false}, :as driver-info} :driver}]
   {:pre [(map? driver-info)]}
@@ -80,6 +81,7 @@
     (doseq [[^MultiFn multifn, f]
             {driver/initialize!           (make-initialize! driver add-to-classpath! init-steps)
              driver/display-name          (when display-name (constantly display-name))
+             driver/contact-info          (constantly contact-info)
              driver/connection-properties (constantly connection-props)
              driver/superseded-by         (constantly (keyword superseded-by))}]
       (when f

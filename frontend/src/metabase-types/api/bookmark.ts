@@ -1,8 +1,11 @@
-interface Bookmark {
-  id: string;
-  card_id: string;
-  name: string;
-  type: string;
-}
+export type BookmarkType = "card" | "collection" | "dashboard";
 
-export type Bookmarks = Bookmark[];
+export interface Bookmark {
+  authority_level?: string;
+  card_id: string;
+  display?: string;
+  id: string;
+  item_id: number;
+  name: string;
+  type: BookmarkType;
+}

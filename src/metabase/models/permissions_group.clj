@@ -8,11 +8,13 @@
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require [clojure.string :as str]
+            [honeysql.helpers :as hh]
             [metabase.db.connection :as mdb.connection]
             [metabase.models.setting :as setting]
             [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -22,25 +24,22 @@
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
 (defn- magic-group [group-name]
-  ;; these are memoized by the application DB in case it gets swapped out/mocked
-  (let [f (memoize
-           (fn [_ _]
-             (u/prog1 (db/select-one PermissionsGroup :name group-name)
-               ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
-               ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
-               ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
-               (when-not <>
-                 (throw (ex-info (format "Fatal error: magic Permissions Group %s has gone missing." (pr-str group-name))
-                                 {:name group-name}))))))]
-    (fn []
-      (f (mdb.connection/db-type) (mdb.connection/data-source)))))
+  (mdb.connection/memoize-for-application-db
+   (fn []
+     (u/prog1 (db/select-one PermissionsGroup :name group-name)
+       ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
+       ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
+       ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
+       (when-not <>
+         (throw (ex-info (format "Fatal error: magic Permissions Group %s has gone missing." (pr-str group-name))
+                         {:name group-name})))))))
 
 (def all-users-group-name
   "The name of the \"All Users\" magic group."
   "All Users")
 
 (def ^{:arglists '([])} all-users
-  "Fetch the `All Users` permissions group, creating it if needed."
+  "Fetch the `All Users` permissions group"
   (magic-group all-users-group-name))
 
 (def admin-group-name
@@ -48,7 +47,7 @@
   "Administrators")
 
 (def ^{:arglists '([])} admin
-  "Fetch the `Administrators` permissions group, creating it if needed."
+  "Fetch the `Administrators` permissions group"
   (magic-group admin-group-name))
 
 
@@ -100,12 +99,11 @@
     (when group-name
       (check-name-not-already-taken group-name))))
 
-(u/strict-extend (class PermissionsGroup)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PermissionsGroup)
   models/IModel (merge models/IModelDefaults
-                   {:pre-delete pre-delete
-                    :pre-insert         pre-insert
-                    :pre-update         pre-update}))
-
+                   {:pre-delete  pre-delete
+                    :pre-insert  pre-insert
+                    :pre-update  pre-update}))
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
@@ -113,14 +111,22 @@
 (defn ^:hydrate members
   "Return `Users` that belong to GROUP-OR-ID, ordered by their name (case-insensitive)."
   [group-or-id]
-  (db/query {:select    [:user.first_name
-                         :user.last_name
-                         :user.email
-                         [:user.id :user_id]
-                         [:pgm.id :membership_id]]
-             :from      [[:core_user :user]]
-             :left-join [[:permissions_group_membership :pgm] [:= :user.id :pgm.user_id]]
-             :where     [:and [:= :user.is_active true]
-                              [:= :pgm.group_id (u/the-id group-or-id)]]
-             :order-by  [[:%lower.user.first_name :asc]
-                         [:%lower.user.last_name :asc]]}))
+  (db/query (cond-> {:select    [:user.first_name
+                                 :user.last_name
+                                 :user.email
+                                 [:user.id :user_id]
+                                 [:pgm.id :membership_id]]
+                     :from      [[:core_user :user]]
+                     :left-join [[:permissions_group_membership :pgm] [:= :user.id :pgm.user_id]]
+                     :where     [:and [:= :user.is_active true]
+                                 [:= :pgm.group_id (u/the-id group-or-id)]]
+                     :order-by  [[:%lower.user.first_name :asc]
+                                 [:%lower.user.last_name :asc]]}
+
+              (premium-features/enable-advanced-permissions?)
+              (hh/merge-select [:pgm.is_group_manager :is_group_manager]))))
+
+(defn non-admin-groups
+  "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
+  []
+  (db/select PermissionsGroup :name [:not= admin-group-name]))

@@ -38,6 +38,21 @@ describe("urls", () => {
           "/question?foo=bar&foo=baz%26bay",
         );
       });
+
+      it("does not include undefined params", () => {
+        expect(question(null, { query: { foo: undefined } })).toEqual(
+          "/question",
+        );
+        expect(
+          question(null, { query: { foo: undefined, bar: "bar" } }),
+        ).toEqual("/question?bar=bar");
+      });
+
+      it("includes null params", () => {
+        expect(question(null, { query: { foo: null } })).toEqual(
+          "/question?foo=null",
+        );
+      });
     });
 
     describe("question ids", () => {

@@ -15,7 +15,7 @@ function FieldPane({ field }: Props) {
         <Icon name="field" className="text-medium pr1" size={16} />
         <h3 className="text-wrap">{field.name}</h3>
       </div>
-      <DimensionInfo dimension={dimension} />
+      <DimensionInfo dimension={dimension} showAllFieldValues />
     </div>
   ) : null;
 }

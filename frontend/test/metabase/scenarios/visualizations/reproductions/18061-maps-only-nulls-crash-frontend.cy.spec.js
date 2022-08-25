@@ -3,7 +3,7 @@ import {
   visitAlias,
   popover,
   filterWidget,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -101,15 +101,10 @@ describe("issue 18061", () => {
 
       cy.window().then(w => (w.beforeReload = true));
 
-      cy.icon("filter")
-        .parent()
-        .contains("1")
-        .click();
+      cy.icon("filter").parent().contains("1").click();
       cy.findByText("ID is less than 3").click();
 
-      popover()
-        .find("input")
-        .type("{backspace}2");
+      popover().find("input").type("{backspace}2");
 
       cy.button("Update filter").click();
 
@@ -141,23 +136,20 @@ describe("issue 18061", () => {
     it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-3)", () => {
       visitAlias("@publicLink");
 
-      cy.get(".PinMap");
-
-      addFilter("Twitter");
-
-      cy.location("search").should("eq", "?category=Twitter");
-
       cy.findByText("18061D");
       cy.findByText("18061");
       cy.get(".PinMap");
+
+      addFilter("Twitter");
+      cy.location("search").should("eq", "?category=Twitter");
+      cy.findAllByTestId("no-results-image");
+      cy.get(".PinMap").should("not.exist");
     });
   });
 });
 
 function addFilter(filter) {
   filterWidget().click();
-  popover()
-    .contains(filter)
-    .click();
+  popover().contains(filter).click();
   cy.button("Add filter").click();
 }

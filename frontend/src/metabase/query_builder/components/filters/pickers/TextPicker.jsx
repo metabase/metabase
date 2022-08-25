@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import AutosizeTextarea from "react-textarea-autosize";
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
+import { TextPickerArea, TextPickerInput } from "./TextPicker.styled";
 
 export default class TextPicker extends Component {
   static propTypes = {
@@ -50,13 +49,8 @@ export default class TextPicker extends Component {
   }
 
   render() {
-    const {
-      validations,
-      multi,
-      onCommit,
-      isSingleLine,
-      autoFocus,
-    } = this.props;
+    const { validations, multi, onCommit, isSingleLine, autoFocus, prefix } =
+      this.props;
     const hasInvalidValues = _.some(validations, v => v === false);
 
     const commitOnEnter = e => {
@@ -67,12 +61,19 @@ export default class TextPicker extends Component {
 
     return (
       <div>
-        <div className="FilterInput px1 pt1 relative">
+        <div className="FilterInput px1 pt1 relative flex align-center">
+          {!!prefix && (
+            <span
+              data-testid="input-prefix"
+              className="text-medium px1"
+              style={{ marginRight: -30, width: 30, zIndex: 2 }}
+            >
+              {prefix}
+            </span>
+          )}
           {!isSingleLine && (
-            <AutosizeTextarea
-              className={cx("input block full border-purple", {
-                "border-error": hasInvalidValues,
-              })}
+            <TextPickerArea
+              className="input block full"
               type="text"
               value={this.state.fieldString}
               onChange={e => this.setValue(e.target.value)}
@@ -81,20 +82,25 @@ export default class TextPicker extends Component {
               autoFocus={autoFocus}
               style={{ resize: "none" }}
               maxRows={8}
+              hasInvalidValues={hasInvalidValues}
             />
           )}
 
           {isSingleLine && (
-            <input
-              className={cx("input block full border-purple", {
-                "border-error": hasInvalidValues,
-              })}
+            <TextPickerInput
+              className="input block full"
+              style={{
+                paddingLeft: this.props.prefix
+                  ? `${this.props.prefix.length}.2rem`
+                  : "",
+              }}
               type="text"
               value={this.state.fieldString}
               onChange={e => this.setValue(e.target.value)}
               onKeyPress={commitOnEnter}
               placeholder={this.props.placeholder}
               autoFocus={autoFocus}
+              hasInvalidValues={hasInvalidValues}
             />
           )}
         </div>

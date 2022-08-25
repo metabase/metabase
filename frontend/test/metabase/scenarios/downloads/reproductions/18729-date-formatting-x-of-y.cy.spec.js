@@ -2,7 +2,7 @@ import {
   restore,
   downloadAndAssert,
   visitQuestionAdhoc,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -34,9 +34,6 @@ describe("issue 18729", () => {
 
   ["csv", "xlsx"].forEach(fileType => {
     it(`should properly format the 'X of Y'dates in ${fileType} exports (metabase#18729)`, () => {
-      // TODO: Remove this line once the issue gets resolved
-      cy.skipOn(fileType === "xlsx");
-
       visitQuestionAdhoc(questionDetails);
 
       downloadAndAssert({ fileType }, assertion);

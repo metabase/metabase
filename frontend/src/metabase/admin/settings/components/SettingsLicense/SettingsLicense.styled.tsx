@@ -8,7 +8,7 @@ export const SectionHeader = styled.h4`
   text-transform: uppercase;
   margin-bottom: 8px;
 
-  &:not(:first-child) {
+  &:not(:first-of-type) {
     margin-top: 40px;
   }
 `;
@@ -28,9 +28,7 @@ interface ExporePaidPlansContainerProps {
   justifyContent?: string;
 }
 
-export const ExporePaidPlansContainer = styled.div<
-  ExporePaidPlansContainerProps
->`
+export const ExporePaidPlansContainer = styled.div<ExporePaidPlansContainerProps>`
   margin: 16px 0;
   display: flex;
   align-items: flex-start;

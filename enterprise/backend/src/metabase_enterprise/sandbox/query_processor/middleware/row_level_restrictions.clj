@@ -4,8 +4,10 @@
   for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
   (:require [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
             [metabase.api.common :as api :refer [*current-user* *current-user-id* *current-user-permissions-set*]]
+            [metabase.db.connection :as mdb.connection]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
@@ -24,6 +26,8 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
+
+(comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  query->gtap                                                   |
@@ -54,7 +58,7 @@
      ;; User does have segmented access
      (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/table-segmented-query-path table)))))
 
-(defn- assert-one-gtap-per-table
+(defn assert-one-gtap-per-table
   "Make sure all referenced Tables have at most one GTAP."
   [gtaps]
   (doseq [[table-id gtaps] (group-by :table_id gtaps)
@@ -84,7 +88,7 @@
   (when-let [gtaps (some->> (query->all-table-ids query)
                             ((comp seq filter) table-should-have-segmented-permissions?)
                             tables->gtaps)]
-    (u/key-by :table_id gtaps)))
+    (m/index-by :table_id gtaps)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -138,7 +142,7 @@
                         :query    source-query}
           preprocessed (binding [api/*current-user-id* nil]
                          (classloader/require 'metabase.query-processor)
-                         ((resolve 'metabase.query-processor/query->preprocessed) query))]
+                         ((resolve 'metabase.query-processor/preprocess) query))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
       (throw (ex-info (tru "Error preprocessing source query when applying GTAP: {0}" (ex-message e))
@@ -166,6 +170,8 @@
 ;; cache the original metadata for a little bit so we don't have to preprocess a query every time we apply sandboxing
 (def ^:private ^{:arglists '([table-id])} original-table-metadata
   (memoize/ttl
+   ^{::memoize/args-fn (fn [[table-id]]
+                         [(mdb.connection/unique-identifier) table-id])}
    (fn [table-id]
      (mbql-query-metadata {:source-table table-id}))
    :ttl/threshold (u/minutes->ms 1)))
@@ -173,7 +179,7 @@
 (s/defn ^:private reconcile-metadata :- (su/non-empty [su/Map])
   "Combine the metadata in `source-query-metadata` with the `table-metadata` from the Table being sandboxed."
   [source-query-metadata :- (su/non-empty [su/Map]) table-metadata]
-  (let [col-name->table-metadata (u/key-by :name table-metadata)]
+  (let [col-name->table-metadata (m/index-by :name table-metadata)]
     (vec
      (for [col   source-query-metadata
            :let  [table-col (get col-name->table-metadata (:name col))]
@@ -256,7 +262,7 @@
   (if card-id
     (qp.store/cached card-id
       (query-perms/perms-set (db/select-one-field :dataset_query Card :id card-id), :throw-exceptions? true))
-    #{(perms/table-query-path (Table table-id))}))
+    #{(perms/table-query-path (db/select-one Table :id table-id))}))
 
 (defn- gtaps->perms-set [gtaps]
   (set (mapcat gtap->perms-set gtaps)))
@@ -335,7 +341,7 @@
   final results metadata coming back matches what we'd get if the query was not running with a GTAP."
   [original-metadata metadata]
   (letfn [(merge-cols [cols]
-            (let [col-name->expected-col (u/key-by :name original-metadata)]
+            (let [col-name->expected-col (m/index-by :name original-metadata)]
               (for [col cols]
                 (merge
                  col

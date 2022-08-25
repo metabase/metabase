@@ -2,8 +2,8 @@
   (:require [clojure.test :refer :all]
             [metabase.query-processor.middleware.desugar :as desugar]))
 
-;; actual desugaring logic and tests are in the MBQL lib
-(deftest e2e-test
+;; actual desugaring logic and tests are in [[metabase.mbql.util-test]]
+(deftest ^:parallel e2e-test
   (is (= {:database 1
           :type     :query
           :query    {:source-table 1

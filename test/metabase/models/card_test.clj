@@ -1,8 +1,9 @@
 (ns metabase.models.card-test
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard]]
+            [metabase.models :refer [Action Card Collection Dashboard DashboardCard QueryAction]]
             [metabase.models.card :as card]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
@@ -18,7 +19,7 @@
       (letfn [(add-card-to-dash! [dash]
                 (db/insert! DashboardCard :card_id card-id, :dashboard_id (u/the-id dash)))
               (get-dashboard-count []
-                (card/dashboard-count (Card card-id)))]
+                (card/dashboard-count (db/select-one Card :id card-id)))]
         (is (= 0
                (get-dashboard-count)))
         (testing "add to a Dashboard"
@@ -29,37 +30,6 @@
           (add-card-to-dash! dash-2)
           (is (= 2
                  (get-dashboard-count))))))))
-
-(deftest card-dependencies-test
-  (testing "Segment dependencies"
-    (is (= {:Segment #{2 3}
-            :Metric  #{}}
-           (card/card-dependencies
-            {:dataset_query {:type  :query
-                             :query {:filter [:and
-                                              [:> [:field-id 4] "2014-10-19"]
-                                              [:= [:field-id 5] "yes"]
-                                              [:segment 2]
-                                              [:segment 3]]}}}))))
-
-  (testing "Segment and Metric dependencies"
-    (is (= {:Segment #{1}
-            :Metric  #{7}}
-           (card/card-dependencies
-            {:dataset_query {:type  :query
-                             :query {:aggregation [:metric 7]
-                                     :filter      [:and
-                                                   [:> [:field-id 4] "2014-10-19"]
-                                                   [:= [:field-id 5] "yes"]
-                                                   [:or [:segment 1] [:!= [:field-id 5] "5"]]]}}}))))
-
-  (testing "no dependencies"
-    (is (= {:Segment #{}
-            :Metric  #{}}
-           (card/card-dependencies
-            {:dataset_query {:type  :query
-                             :query {:aggregation nil
-                                     :filter      nil}}})))))
 
 (deftest remove-from-dashboards-when-archiving-test
   (testing "Test that when somebody archives a Card, it is removed from any Dashboards it belongs to"
@@ -84,7 +54,7 @@
                  (:public_uuid card))))))))
 
 (defn- dummy-dataset-query [database-id]
-  {:database (mt/id)
+  {:database database-id
    :type     :native
    :native   {:query "SELECT count(*) FROM toucan_sightings;"}})
 
@@ -139,14 +109,6 @@
            (db/update! Card (u/the-id card-a)
              (card-with-source-table (str "card__" (u/the-id card-c)))))))))
 
-(deftest extract-ids-test
-  (doseq [[ids-type expected] {:segment #{1}
-                               :metric  #{2}}]
-    (testing (pr-str (list 'extract-ids ids-type 'card))
-      (is (= expected
-             (#'card/extract-ids ids-type {:query {:fields [[:segment 1]
-                                                            [:metric 2]]}}))))))
-
 (deftest validate-collection-namespace-test
   (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Card in a non-normal Collection"
@@ -168,8 +130,8 @@
 
 (deftest normalize-result-metadata-test
   (testing "Should normalize result metadata keys when fetching a Card from the DB"
-    (let [metadata (qp/query->expected-cols (mt/mbql-query :venues))]
-      (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query :venues)
+    (let [metadata (qp/query->expected-cols (mt/mbql-query venues))]
+      (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query venues)
                                          :result_metadata metadata}]
         (is (= (mt/derecordize metadata)
                (mt/derecordize (db/select-one-field :result_metadata Card :id card-id))))))))
@@ -180,19 +142,19 @@
                         (mt/with-temp Card [{card-id :id} properties]
                           (f (db/select-one-field :result_metadata Card :id card-id))))
            "updating" (fn [changes f]
-                        (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query :checkins)
-                                                           :result_metadata (qp/query->expected-cols (mt/mbql-query :checkins))}]
+                        (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query checkins)
+                                                           :result_metadata (qp/query->expected-cols (mt/mbql-query checkins))}]
                           (db/update! Card card-id changes)
                           (f (db/select-one-field :result_metadata Card :id card-id))))}]
     (testing (format "When %s a Card\n" creating-or-updating)
       (testing "If result_metadata is empty, we should attempt to populate it"
-        (f {:dataset_query (mt/mbql-query :venues)}
+        (f {:dataset_query (mt/mbql-query venues)}
            (fn [metadata]
-             (is (= (map :name (qp/query->expected-cols (mt/mbql-query :venues)))
+             (is (= (map :name (qp/query->expected-cols (mt/mbql-query venues)))
                     (map :name metadata))))))
       (testing "Don't overwrite result_metadata that was passed in"
-        (let [metadata (take 1 (qp/query->expected-cols (mt/mbql-query :venues)))]
-          (f {:dataset_query   (mt/mbql-query :venues)
+        (let [metadata (take 1 (qp/query->expected-cols (mt/mbql-query venues)))]
+          (f {:dataset_query   (mt/mbql-query venues)
               :result_metadata metadata}
              (fn [new-metadata]
                (is (= (mt/derecordize metadata)
@@ -230,8 +192,8 @@
     (testing "Other MBQL field clauses"
       (let [original {:map.type                 "region"
                       :map.region               "us_states"
-                      :pivot_table.column_split {:rows    [["datetime-field" ["field-id" 807] "year"]],
-                                                 :columns [["fk->" ["field-id" 805] ["field-id" 808]]],
+                      :pivot_table.column_split {:rows    [["datetime-field" ["field-id" 807] "year"]]
+                                                 :columns [["fk->" ["field-id" 805] ["field-id" 808]]]
                                                  :values  [["aggregation" 0]]}}
             expected {:map.type                 "region"
                       :map.region               "us_states"
@@ -261,3 +223,141 @@
      (mt/with-temp Card [card {:visualization_settings original}]
        (is (= expected
               (db/select-one-field :visualization_settings Card :id (u/the-id card))))))))
+
+(deftest validate-template-tag-field-ids-test
+  (testing "Disallow saving a Card with native query Field filter template tags referencing a different Database (#14145)"
+    (let [test-data-db-id      (mt/id)
+          sample-dataset-db-id (mt/dataset sample-dataset (mt/id))
+          card-data            (fn [database-id]
+                                 {:database_id   database-id
+                                  :dataset_query {:database database-id
+                                                  :type     :native
+                                                  :native   {:query         "SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}"
+                                                             :template-tags {"FILTER" {:id           "_FILTER_"
+                                                                                       :name         "FILTER"
+                                                                                       :display-name "Filter"
+                                                                                       :type         :dimension
+                                                                                       :dimension    [:field (mt/id :venues :name) nil]
+                                                                                       :widget-type  :string/=
+                                                                                       :default      nil}}}}})
+          good-card-data       (card-data test-data-db-id)
+          bad-card-data        (card-data sample-dataset-db-id)]
+      (testing "Should not be able to create new Card with a filter with the wrong Database ID"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
+             (mt/with-temp Card [_ bad-card-data]))))
+      (testing "Should not be able to update a Card to have a filter with the wrong Database ID"
+        (mt/with-temp Card [{card-id :id} good-card-data]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
+               (db/update! Card card-id bad-card-data))))))))
+
+(deftest action-creation-test
+  (testing "actions are created when is_write is set"
+    (testing "during create"
+      (mt/with-temp Card [{card-id :id} (assoc (tt/with-temp-defaults Card) :is_write true)]
+        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+          (is (seq qa-rows)
+              "Inserting a card with :is_write true should create QueryAction")
+          (is (seq (db/select Action :id action_id))))))
+    (testing "during update"
+      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
+        (db/update! Card card-id {:is_write true})
+        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+          (is (seq qa-rows) "Updating a card to have :is_write true should create QueryAction")
+          (is (seq (db/select Action :id action_id)))))))
+  (testing "actions are not created when is_write is not set"
+    (testing "during create:"
+      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
+        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+          (is (empty? qa-rows) "Inserting a card with :is_write false should not create QueryAction")
+          (is (empty? (db/select Action :id action_id))))))
+    (testing "during update"
+      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
+        (db/update! Card card-id {:is_write false})
+        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+          (is (empty? qa-rows) "Updating a card to have :is_write false should delete QueryAction")
+          (is (empty? (db/select Action :id action_id)))))))
+  (testing "actions are deleted when is_write is set to false during update"
+    (mt/with-temp Card [{card-id :id} (assoc (tt/with-temp-defaults Card) :is_write true)]
+      (db/update! Card card-id {:is_write false})
+      (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+        (is (empty? qa-rows) "Updating a card to have :is_write false should create a QueryAction")
+        (is (empty? (db/select Action :id action_id)))))))
+
+;;; ------------------------------------------ Parameters tests ------------------------------------------
+
+(deftest validate-parameters-test
+  (testing "Should validate Card :parameters when"
+    (testing "creating"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #":parameters must be a sequence of maps with :id and :type keys"
+           (mt/with-temp Card [_ {:parameters {:a :b}}])))
+
+     (mt/with-temp Card [card {:parameters [{:id   "valid-id"
+                                             :type "id"}]}]
+       (is (some? card))))
+
+    (testing "updating"
+      (mt/with-temp Card [{:keys [id]} {:parameters []}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #":parameters must be a sequence of maps with :id and :type keys"
+             (db/update! Card id :parameters [{:id 100}])))
+        (is (some? (db/update! Card id :parameters [{:id   "new-valid-id"
+                                                     :type "id"}])))))))
+
+(deftest normalize-parameters-test
+  (testing ":parameters should get normalized when coming out of the DB"
+    (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
+                               [:field-id 1000]              [:field 1000 nil]}]
+      (testing (format "target = %s" (pr-str target))
+        (mt/with-temp Card [{card-id :id} {:parameter_mappings [{:parameter_id     "_CATEGORY_NAME_"
+                                                                 :target target}]}]
+
+          (is (= [{:parameter_id     "_CATEGORY_NAME_"
+                   :target expected}]
+                 (db/select-one-field :parameter_mappings Card :id card-id))))))))
+
+(deftest validate-parameter-mappings-test
+  (testing "Should validate Card :parameter_mappings when"
+    (testing "creating"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
+           (mt/with-temp Card [_ {:parameter_mappings {:a :b}}])))
+
+     (mt/with-temp Card [card {:parameter_mappings [{:parameter_id "valid-id"
+                                                     :target       [:field-id 1000]}]}]
+       (is (some? card))))
+
+    (testing "updating"
+      (mt/with-temp Card [{:keys [id]} {:parameter_mappings []}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
+             (db/update! Card id :parameter_mappings [{:parameter_id 100}])))
+
+        (is (some? (db/update! Card id :parameter_mappings [{:parameter_id "new-valid-id"
+                                                             :target       [:field-id 1000]}])))))))
+
+(deftest normalize-parameter-mappings-test
+  (testing ":parameter_mappings should get normalized when coming out of the DB"
+    (mt/with-temp Card [{card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
+                                                             :card_id      1
+                                                             :target       [:dimension [:field-id 1]]}]}]
+      (is (= [{:parameter_id "22486e00",
+               :card_id      1,
+               :target       [:dimension [:field 1 nil]]}]
+             (db/select-one-field :parameter_mappings Card :id card-id))))))
+
+(deftest identity-hash-test
+  (testing "Card hashes are composed of the name and the collection's hash"
+    (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/"}]
+                    Card        [card  {:name "the card" :collection_id (:id coll)}]]
+      (is (= "ead6cc05"
+             (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll)])
+             (serdes.hash/identity-hash card))))))

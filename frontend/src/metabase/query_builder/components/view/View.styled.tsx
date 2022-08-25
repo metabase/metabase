@@ -13,17 +13,18 @@ export const QueryBuilderViewRoot = styled.div`
   display: flex;
   flex-direction: column;
   background-color: ${color("bg-white")};
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  height: 100%;
+  position: relative;
 `;
 
 export const QueryBuilderContentContainer = styled.div`
   display: flex;
   flex: 1 0 auto;
   position: relative;
+
+  ${breakpointMaxSmall} {
+    justify-content: end;
+  }
 `;
 
 export const QueryBuilderMain = styled.main<{ isSidebarOpen: boolean }>`
@@ -38,6 +39,7 @@ export const QueryBuilderMain = styled.main<{ isSidebarOpen: boolean }>`
       css`
         display: none !important;
       `};
+    position: relative;
   }
 `;
 

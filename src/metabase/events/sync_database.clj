@@ -1,14 +1,15 @@
 (ns metabase.events.sync-database
-  (:require [clojure.core.async :as async]
+  (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase.events :as events]
             [metabase.models.database :refer [Database]]
             [metabase.sync :as sync]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]))
+            [metabase.util.i18n :refer [trs]]
+            [toucan.db :as db]))
 
-(def ^:const sync-database-topics
+(def ^:private sync-database-topics
   "The `Set` of event topics which are subscribed to for use in database syncing."
   #{:database-create
     ;; published by POST /api/database/:id/sync -- a message to start syncing the DB right away
@@ -16,7 +17,7 @@
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for database sync events."}
   sync-database-channel
-  (async/chan))
+  (a/chan))
 
 
 ;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
@@ -28,7 +29,7 @@
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
     (when event
-      (when-let [database (Database (events/object->model-id topic object))]
+      (when-let [database (db/select-one Database :id (events/object->model-id topic object))]
         ;; just kick off a sync on another thread
         (future
           (try

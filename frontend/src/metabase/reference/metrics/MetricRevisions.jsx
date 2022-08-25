@@ -45,8 +45,7 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class MetricRevisions extends Component {
+class MetricRevisions extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
     revisions: PropTypes.object.isRequired,
@@ -127,3 +126,5 @@ export default class MetricRevisions extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(MetricRevisions);

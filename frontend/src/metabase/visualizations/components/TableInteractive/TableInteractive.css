@@ -1,0 +1,146 @@
+:root {
+  --table-border-radius: 6px;
+}
+
+.TableInteractive {
+  color: #4f575d;
+  overflow: hidden;
+}
+
+.TableInteractive-headerCellData .cellData {
+  font-weight: 900;
+  font-size: 10px;
+  border: 1px solid color-mod(var(--color-brand) alpha(-80%));
+  padding: 0.25em 0.65em;
+  border-radius: 6px;
+  min-width: 35px;
+  color: var(--color-brand);
+}
+
+.TableInteractive-headerCellData .cellData:hover {
+  border: 1px solid color-mod(var(--color-brand) alpha(-44%));
+}
+
+.TableInteractive-headerCellData .Icon-chevrondown,
+.TableInteractive-headerCellData .Icon-chevronup {
+  opacity: 0.2;
+}
+
+.TableInteractive-headerCellData--sorted .Icon-chevrondown,
+.TableInteractive-headerCellData--sorted .Icon-chevronup {
+  opacity: 1;
+  transition: opacity 0.3s linear;
+}
+
+/* if the column is the one that is being sorted*/
+.TableInteractive-headerCellData--sorted {
+  color: var(--color-brand);
+}
+
+.TableInteractive-header {
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.TableInteractive .TableInteractive-cellWrapper {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+
+  border-top: 1px solid transparent;
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+  border-bottom: 1px solid color-mod(var(--color-border) alpha(-70%));
+}
+
+.TableInteractive .TableInteractive-cellWrapper--active {
+  z-index: 1;
+}
+
+.TableInteractive .TableInteractive-header,
+.TableInteractive .TableInteractive-header .TableInteractive-cellWrapper {
+  background-color: var(--color-bg-white);
+  background-image: none;
+}
+
+.TableInteractive .TableInteractive-header,
+.TableInteractive .TableInteractive-header .TableInteractive-cellWrapper {
+  background-color: var(--color-bg-white);
+}
+
+/* cell overflow ellipsis */
+.TableInteractive .cellData {
+  margin: 0 0.75em;
+  display: block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow-x: hidden;
+  font-weight: 700;
+  font-size: 12.5px;
+}
+
+/* pivot */
+.TableInteractive.TableInteractive--pivot
+  .TableInteractive-cellWrapper--firstColumn {
+  border-right: 1px solid var(--color-border);
+}
+
+.PagingButtons {
+  border: 1px solid var(--color-border);
+}
+
+.TableInteractive
+  .TableInteractive-header
+  .TableInteractive-cellWrapper.tether-enabled
+  .cellData {
+  background-color: color-mod(var(--color-brand));
+  color: white !important;
+}
+
+.TableInteractive-cellWrapper:hover {
+  background-color: color-mod(var(--color-brand) alpha(-90%));
+}
+
+.Table-ID .cellData {
+  border: 1px solid color-mod(var(--color-brand) alpha(-86%));
+  background-color: color-mod(var(--color-brand) alpha(-92%));
+  padding: 0.25em 0.65em;
+  border-radius: 99px;
+  min-width: 35px;
+  text-align: center;
+  color: var(--color-brand);
+}
+
+.TableInteractive-ID.TableInteractive-cellWrapper:hover,
+.TableInteractive-ID.TableInteractive-cellWrapper.tether-enabled {
+  background-color: transparent;
+}
+
+.TableInteractive-ID.TableInteractive-cellWrapper:hover .cellData,
+.TableInteractive-ID.TableInteractive-cellWrapper.tether-enabled .cellData {
+  background-color: var(--color-brand);
+  color: white;
+}
+
+.TableInteractive-headerCellData--sorted {
+  color: var(--color-brand);
+}
+
+.TableInteractive-cellWrapper--firstColumn.padLeft {
+  padding-left: 1.5em;
+}
+
+.TableInteractive-gutter {
+  background-color: var(--color-bg-white);
+}
+
+.TableInteractive-detailButton {
+  color: var(--color-brand);
+  transition: opacity 0.2s ease-in-out;
+  margin: 0 4px;
+  opacity: 0;
+}
+
+.show .TableInteractive-detailButton {
+  opacity: 1;
+}

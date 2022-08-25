@@ -5,30 +5,45 @@ import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 
+const tableBorder = `1px solid ${alpha(color("border"), 0.5)}`;
+
+// background with 1px of border color at the bottom
+// to work properly with sticky positioning
+const headerBackground = `linear-gradient(to top, ${alpha(
+  color("border"),
+  0.5,
+)}, ${alpha(color("border"), 0.5)} 1px, ${color("white")} 1px, ${color(
+  "white",
+)} 100%)`;
+
 export const PermissionsTableRoot = styled.table`
   border-collapse: collapse;
+  max-height: 100%;
+  overflow-y: auto;
 `;
 
 export const PermissionsTableCell = styled.td`
   vertical-align: center;
-  padding: 0.625rem 2rem;
+  padding: 0.625rem 1rem;
   box-sizing: border-box;
   min-height: 40px;
+  overflow: hidden;
 
   &:first-of-type {
-    min-width: 300px;
+    max-width: 300px;
     background: white;
     left: 0;
     top: 0;
     position: sticky;
     padding-left: 0;
+    padding-right: 1.5rem;
 
     &:after {
       position: absolute;
       right: 0;
       top: 0;
       height: 100%;
-      border-right: 1px solid ${alpha(color("border"), 0.5)};
+      border-right: ${tableBorder};
       content: " ";
     }
   }
@@ -37,7 +52,15 @@ export const PermissionsTableCell = styled.td`
 export const PermissionTableHeaderCell = styled(
   PermissionsTableCell.withComponent("th"),
 )`
+  position: sticky;
+  top: 0;
+  border: none;
+  background: ${headerBackground};
+  z-index: 1;
+
   &:first-of-type {
+    background: ${headerBackground};
+    z-index: 2;
     &:after {
       display: none;
     }
@@ -45,8 +68,7 @@ export const PermissionTableHeaderCell = styled(
 `;
 
 export const PermissionsTableRow = styled.tr`
-  border-top: 1px solid ${alpha(color("border"), 0.5)};
-  border-bottom: 1px solid ${alpha(color("border"), 0.5)};
+  border-bottom: ${tableBorder};
 `;
 
 export const EntityName = styled.span`

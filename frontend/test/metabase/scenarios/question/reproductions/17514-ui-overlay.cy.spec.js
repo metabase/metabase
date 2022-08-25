@@ -5,7 +5,8 @@ import {
   saveDashboard,
   editDashboard,
   visualize,
-} from "__support__/e2e/cypress";
+  visitDashboard,
+} from "__support__/e2e/helpers";
 
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
@@ -46,36 +47,39 @@ describe("issue 17514", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   describe("scenario 1", () => {
     beforeEach(() => {
-      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-        ({ body: card }) => {
-          const { card_id, dashboard_id } = card;
+      cy.createQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: card }) => {
+        const { card_id, dashboard_id } = card;
 
-          cy.intercept(
-            "POST",
-            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
-          ).as("cardQuery");
+        cy.intercept(
+          "POST",
+          `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
+        ).as("cardQuery");
 
-          const mapFilterToCard = {
-            parameter_mappings: [
-              {
-                parameter_id: filter.id,
-                card_id,
-                target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
-              },
-            ],
-          };
+        const mapFilterToCard = {
+          parameter_mappings: [
+            {
+              parameter_id: filter.id,
+              card_id,
+              target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
+            },
+          ],
+        };
 
-          cy.editDashboardCard(card, mapFilterToCard);
+        cy.editDashboardCard(card, mapFilterToCard);
 
-          cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
 
-          cy.wait("@cardQuery");
-        },
-      );
+        cy.wait("@cardQuery");
+        cy.findByText("110.93").should("be.visible");
+      });
     });
 
     it("should not show the run overlay when we apply dashboard filter on a question with removed column and then click through its title (metabase#17514-1)", () => {
@@ -90,11 +94,16 @@ describe("issue 17514", () => {
       saveDashboard();
 
       filterWidget().click();
-      setAdHocFilter({ timeBucket: "Years" });
+      setAdHocFilter({ timeBucket: "years" });
+
+      cy.location("search").should("eq", "?date_filter=past30years");
+      cy.wait("@cardQuery");
 
       cy.findByText("Previous 30 Years");
 
       cy.findByText("17514").click();
+      cy.wait("@dataset");
+      cy.findByTextEnsureVisible("Subtotal");
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
       cy.findByText("110.93").click();
@@ -104,8 +113,6 @@ describe("issue 17514", () => {
 
   describe("scenario 2", () => {
     beforeEach(() => {
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
       cy.createQuestion(questionDetails, { visitQuestion: true });
 
       cy.findByTestId("viz-settings-button").click();
@@ -117,6 +124,7 @@ describe("issue 17514", () => {
       removeJoinedTable();
 
       visualize();
+      cy.findByTextEnsureVisible("Subtotal");
 
       cy.findByText("Save").click();
 
@@ -125,7 +133,7 @@ describe("issue 17514", () => {
       });
     });
 
-    it("should not show the run overlay because ofth references to the orphaned fields (metabase#17514-1)", () => {
+    it("should not show the run overlay because of the references to the orphaned fields (metabase#17514-2)", () => {
       openNotebookMode();
 
       cy.findByText("Join data").click();
@@ -134,22 +142,20 @@ describe("issue 17514", () => {
       visualize();
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
-      cy.findByText("110.93").click();
-      cy.findByText("Filter by this value");
+      cy.findByTextEnsureVisible("Subtotal").click();
+      cy.findByText("Filter by this column");
     });
   });
 });
 
 function openVisualizationOptions() {
   showDashboardCardActions();
-  cy.icon("palette").click();
+  cy.icon("palette").click({ force: true });
 }
 
 function hideColumn(columnName) {
   cy.findByTestId("chartsettings-sidebar").within(() => {
-    cy.findByText(columnName)
-      .siblings(".Icon-close")
-      .click();
+    cy.findByText(columnName).siblings(".Icon-eye_filled").click();
   });
 }
 
@@ -165,6 +171,7 @@ function openNotebookMode() {
 
 function removeJoinedTable() {
   cy.findAllByText("Join data")
+    .first()
     .parent()
     .findByTestId("remove-step")
     .click({ force: true });
@@ -174,7 +181,7 @@ function moveColumnToTop(column) {
   cy.findByTestId("sidebar-left").within(() => {
     cy.findByText(column)
       .should("be.visible")
-      .closest(".cursor-grab")
+      .closest("[draggable=true]")
       .trigger("mousedown", 0, 0, { force: true })
       .trigger("mousemove", 5, 5, { force: true })
       .trigger("mousemove", 0, -600, { force: true })

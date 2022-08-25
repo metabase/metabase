@@ -1,8 +1,8 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-import moment from "moment";
-import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+import moment from "moment-timezone";
+import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
 import {
@@ -22,6 +22,8 @@ import {
   isCountry,
   isCoordinate,
   isLocation,
+  isDescription,
+  isComment,
   isDimension,
   isMetric,
   isPK,
@@ -30,9 +32,14 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
-import Dimension from "../Dimension";
+import { FieldFingerprint } from "metabase-types/api/field";
+import { Field as FieldRef } from "metabase-types/types/Query";
+import { FieldDimension } from "../Dimension";
 import Table from "./Table";
 import Base from "./Base";
+
+export const LONG_TEXT_MIN = 80;
+
 /**
  * @typedef { import("./metadata").FieldValues } FieldValues
  */
@@ -41,10 +48,26 @@ import Base from "./Base";
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 
-export default class Field extends Base {
+class FieldInner extends Base {
+  id: number | FieldRef;
   name: string;
+  description: string | null;
   semantic_type: string | null;
+  database_required: boolean;
+  fingerprint?: FieldFingerprint;
+  base_type: string | null;
   table?: Table;
+  target?: Field;
+  has_field_values?: "list" | "search" | "none";
+  values: any[];
+
+  getId() {
+    if (Array.isArray(this.id)) {
+      return this.id[1];
+    }
+
+    return this.id;
+  }
 
   parent() {
     return this.metadata ? this.metadata.field(this.parent_id) : null;
@@ -76,9 +99,7 @@ export default class Field extends Base {
     }
 
     if (includePath) {
-      displayName += this.path()
-        .map(formatField)
-        .join(": ");
+      displayName += this.path().map(formatField).join(": ");
     } else {
       displayName += formatField(this);
     }
@@ -187,6 +208,16 @@ export default class Field extends Base {
     return isEntityName(this);
   }
 
+  isLongText() {
+    return (
+      isString(this) &&
+      (isComment(this) ||
+        isDescription(this) ||
+        this?.fingerprint?.type?.["type/Text"]?.["average-length"] >=
+          LONG_TEXT_MIN)
+    );
+  }
+
   /**
    * @param {Field} field
    */
@@ -217,13 +248,26 @@ export default class Field extends Base {
     if (Array.isArray(this.id)) {
       // if ID is an array, it's a MBQL field reference, typically "field"
       return this.id;
+    } else if (this.field_ref) {
+      return this.field_ref;
     } else {
       return ["field", this.id, null];
     }
   }
 
   dimension() {
-    return Dimension.parseMBQL(this.reference(), this.metadata, this.query);
+    const ref = this.reference();
+    const fieldDimension = new FieldDimension(
+      ref[1],
+      ref[2],
+      this.metadata,
+      this.query,
+      {
+        _fieldInstance: this,
+      },
+    );
+
+    return fieldDimension;
   }
 
   sourceField() {
@@ -232,12 +276,10 @@ export default class Field extends Base {
   }
 
   // FILTERS
-  @memoize
   filterOperators(selected) {
     return getFilterOperators(this, this.table, selected);
   }
 
-  @memoize
   filterOperatorsLookup() {
     return createLookupByProperty(this.filterOperators(), "name");
   }
@@ -246,18 +288,7 @@ export default class Field extends Base {
     return this.filterOperatorsLookup()[operatorName];
   }
 
-  // @deprecated: use filterOperators
-  get filter_operators() {
-    return this.filterOperators();
-  }
-
-  // @deprecated: use filterOperatorsLookup
-  get filter_operators_lookup() {
-    return this.filterOperatorsLookup();
-  }
-
   // AGGREGATIONS
-  @memoize
   aggregationOperators() {
     return this.table
       ? this.table
@@ -270,23 +301,12 @@ export default class Field extends Base {
       : null;
   }
 
-  @memoize
   aggregationOperatorsLookup() {
     return createLookupByProperty(this.aggregationOperators(), "short");
   }
 
   aggregationOperator(short) {
     return this.aggregationOperatorsLookup()[short];
-  }
-
-  // @deprecated: use aggregationOperators
-  get aggregation_operators() {
-    return this.aggregationOperators();
-  }
-
-  // @deprecated: use aggregationOperatorsLookup
-  get aggregation_operators_lookup() {
-    return this.aggregationOperatorsLookup();
   }
 
   // BREAKOUTS
@@ -308,6 +328,10 @@ export default class Field extends Base {
         moment(fingerprint.earliest),
         "day",
       );
+
+      if (Number.isNaN(days) || this.isTime()) {
+        return "hour";
+      }
 
       if (days < 1) {
         return "minute";
@@ -427,3 +451,10 @@ export default class Field extends Base {
     this.metadata = metadata;
   }
 }
+
+export default class Field extends memoizeClass<FieldInner>(
+  "filterOperators",
+  "filterOperatorsLookup",
+  "aggregationOperators",
+  "aggregationOperatorsLookup",
+)(FieldInner) {}

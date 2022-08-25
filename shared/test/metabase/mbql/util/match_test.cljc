@@ -130,14 +130,14 @@
              (mbql.match/match {:filter [:and
                                          [:= [:field 1 nil] 4000]
                                          [:= [:field 2 nil] 5000]]}
-               (&match :guard #(integer? %))))))
+               (&match :guard integer?)))))
 
   (t/testing "can we use a predicate and bind the match at the same time?"
     (t/is (= [2 4001 3 5001]
              (mbql.match/match {:filter [:and
                                          [:= [:field 1 nil] 4000]
                                          [:= [:field 2 nil] 5000]]}
-               (i :guard #(integer? %))
+               (i :guard integer?)
                (inc i))))))
 
 (t/deftest ^:parallel match-map-test

@@ -4,7 +4,7 @@
             [metabase.automagic-dashboards.core :as magic]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.dashboard :as dashboard :refer :all]
+            [metabase.models.dashboard :as dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
             [metabase.models.database :refer [Database]]
@@ -12,11 +12,11 @@
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :refer [Table]]
             [metabase.models.user :as user]
             [metabase.test :as mt]
-            [metabase.test.data :refer :all]
-            [metabase.test.data.users :as users]
+            [metabase.test.data.users :as test.users]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -42,11 +42,11 @@
                             :id      true
                             :card_id true
                             :series  true}]}
-           (update (serialize-dashboard dashboard) :cards (fn [[{:keys [id card_id series], :as card}]]
-                                                            [(assoc card
-                                                                    :id      (= dashcard-id id)
-                                                                    :card_id (= card-id card_id)
-                                                                    :series  (= [series-id-1 series-id-2] series))]))))))
+           (update (dashboard/serialize-dashboard dashboard) :cards (fn [[{:keys [id card_id series], :as card}]]
+                                                                      [(assoc card
+                                                                              :id      (= dashcard-id id)
+                                                                              :card_id (= card-id card_id)
+                                                                              :series  (= [series-id-1 series-id-2] series))]))))))
 
 
 (deftest diff-dashboards-str-test
@@ -131,7 +131,7 @@
                                 :description "something"
                                 :cache_ttl   nil
                                 :cards       []}
-          serialized-dashboard (serialize-dashboard dashboard)]
+          serialized-dashboard (dashboard/serialize-dashboard dashboard)]
       (testing "original state"
         (is (= {:name         "Test Dashboard"
                 :description  nil
@@ -145,15 +145,15 @@
                                 :series  true}]}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
-        (dashboard-card/delete-dashboard-card! dashboard-card (users/user->id :rasta))
+        (dashboard-card/delete-dashboard-card! dashboard-card (test.users/user->id :rasta))
         (db/update! Dashboard dashboard-id
           :name        "Revert Test"
           :description "something")
         (testing "capture updated Dashboard state"
           (is (= empty-dashboard
-                 (serialize-dashboard (Dashboard dashboard-id))))))
+                 (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id))))))
       (testing "now do the reversion; state should return to original"
-        (#'dashboard/revert-dashboard! nil dashboard-id (users/user->id :crowberto) serialized-dashboard)
+        (#'dashboard/revert-dashboard! nil dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
         (is (= {:name         "Test Dashboard"
                 :description  nil
                 :cache_ttl    nil
@@ -164,11 +164,11 @@
                                 :id      false
                                 :card_id true
                                 :series  true}]}
-               (update (serialize-dashboard (Dashboard dashboard-id)) :cards check-ids))))
+               (update (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id)) :cards check-ids))))
       (testing "revert back to the empty state"
-        (#'dashboard/revert-dashboard! nil dashboard-id (users/user->id :crowberto) empty-dashboard)
+        (#'dashboard/revert-dashboard! nil dashboard-id (test.users/user->id :crowberto) empty-dashboard)
         (is (= empty-dashboard
-               (serialize-dashboard (Dashboard dashboard-id))))))))
+               (dashboard/serialize-dashboard (db/select-one Dashboard :id dashboard-id))))))))
 
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
@@ -199,7 +199,7 @@
              (db/select-one-field :collection_id Pulse :id pulse-id))))
     (testing "PulseCard syncing"
       (tt/with-temp Card [{new-card-id :id}]
-        (add-dashcard! dashboard-id new-card-id)
+        (dashboard/add-dashcard! dashboard-id new-card-id)
         (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves")
         (is (not (nil? (db/select-one PulseCard :card_id new-card-id))))))))
 
@@ -250,11 +250,11 @@
 (deftest transient-dashboards-test
   (testing "test that we save a transient dashboard"
     (tu/with-model-cleanup [Card Dashboard DashboardCard Collection]
-      (let [rastas-personal-collection (collection/user->personal-collection (users/user->id :rasta))]
-        (binding [api/*current-user-id*              (users/user->id :rasta)
-                  api/*current-user-permissions-set* (-> :rasta users/user->id user/permissions-set atom)]
-          (let [dashboard       (magic/automagic-analysis (Table (id :venues)) {})
-                saved-dashboard (save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
+      (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
+        (binding [api/*current-user-id*              (test.users/user->id :rasta)
+                  api/*current-user-permissions-set* (-> :rasta test.users/user->id user/permissions-set atom)]
+          (let [dashboard       (magic/automagic-analysis (db/select-one Table :id (mt/id :venues)) {})
+                saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (db/count DashboardCard :dashboard_id (u/the-id saved-dashboard))
                    (-> dashboard :ordered_cards count)))))))))
 
@@ -282,13 +282,13 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameters must be a sequence of maps with String :id keys"
+           #":parameters must be a sequence of maps with :id and :type keys"
            (mt/with-temp Dashboard [_ {:parameters {:a :b}}]))))
     (testing "updating"
       (mt/with-temp Dashboard [{:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameters must be a sequence of maps with String :id keys"
+             #":parameters must be a sequence of maps with :id and :type keys"
              (db/update! Dashboard id :parameters [{:id 100}])))))))
 
 (deftest normalize-parameters-test
@@ -307,3 +307,11 @@
                    :type   :category
                    :target expected}]
                  (db/select-one-field :parameters Dashboard :id dashboard-id))))))))
+
+(deftest identity-hash-test
+  (testing "Dashboard hashes are composed of the name and parent collection's hash"
+    (mt/with-temp* [Collection [c1   {:name "top level" :location "/"}]
+                    Dashboard  [dash {:name "my dashboard" :collection_id (:id c1)}]]
+      (is (= "38c0adf9"
+             (serdes.hash/raw-hash ["my dashboard" (serdes.hash/identity-hash c1)])
+             (serdes.hash/identity-hash dash))))))

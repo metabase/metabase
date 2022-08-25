@@ -18,8 +18,7 @@ const mapDispatchToProps = {
   fetchMetadata: Table.actions.fetchMetadata,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class TablePane extends React.Component {
+class TablePane extends React.Component {
   state = {
     error: null,
   };
@@ -87,6 +86,8 @@ export default class TablePane extends React.Component {
     }
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(TablePane);
 
 const ExpandableItemList = Expandable(
   ({ name, type, show, items, isExpanded, onExpand }) => (

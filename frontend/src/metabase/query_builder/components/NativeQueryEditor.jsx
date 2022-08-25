@@ -19,14 +19,13 @@ import _ from "underscore";
 import { ResizableBox } from "react-resizable";
 
 import { isEventOverElement } from "metabase/lib/dom";
-import { delay } from "metabase/lib/promise";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import { ResponsiveParametersList } from "./ResponsiveParametersList";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
 import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
@@ -39,11 +38,12 @@ import {
 } from "./NativeQueryEditor/utils";
 
 import "./NativeQueryEditor.css";
+import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
 
-@ExplicitSize()
-@Snippets.loadList({ loadingAndErrorWrapper: false })
-@SnippetCollections.loadList({ loadingAndErrorWrapper: false })
-export default class NativeQueryEditor extends Component {
+const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
+const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
+
+class NativeQueryEditor extends Component {
   _localUpdate = false;
 
   constructor(props) {
@@ -53,6 +53,7 @@ export default class NativeQueryEditor extends Component {
     this.state = {
       initialHeight: calcInitialEditorHeight({ query, viewHeight }),
       isSelectedTextPopoverOpen: false,
+      mobileShowParameterList: false,
     };
 
     // Ace sometimes fires multiple "change" events in rapid succession
@@ -175,9 +176,14 @@ export default class NativeQueryEditor extends Component {
   }, 100);
 
   handleKeyDown = e => {
-    const ENTER_KEY = 13;
-    if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey)) {
-      this.runQuery();
+    const { isRunning, cancelQuery } = this.props;
+
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      if (isRunning) {
+        cancelQuery();
+      } else {
+        this.runQuery();
+      }
     }
   };
 
@@ -189,31 +195,14 @@ export default class NativeQueryEditor extends Component {
     const selectedText = this._editor?.getSelectedText();
 
     if (selectedText) {
-      const temporaryCard = query
-        .setQueryText(selectedText)
-        .question()
-        .card();
+      const temporaryCard = query.setQueryText(selectedText).question().card();
 
       runQuestionQuery({
         overrideWithCard: temporaryCard,
         shouldUpdateUrl: false,
       });
     } else if (query.canRun()) {
-      runQuestionQuery()
-        // <hack>
-        // This is an attempt to fix a conflict between Ace and react-draggable.
-        // TableInteractive uses react-draggable for the column headers. When
-        // that's first added (as a result of runninga query), Ace freezes until
-        // the arrow keys are hit or text is deleted.
-        // Bluring and refocusing gets it out of that state. Here we try and
-        // wait until just after a table is added. That's super error prone, but
-        // we're just doing a best effort to eliminate the freezing.
-        .then(() => delay(1500))
-        .then(() => {
-          this._editor.blur();
-          this._editor.focus();
-        });
-      // </hack>
+      runQuestionQuery();
     }
   };
 
@@ -267,13 +256,31 @@ export default class NativeQueryEditor extends Component {
       showLineNumbers: true,
     });
 
+    this._lastAutoComplete = { timestamp: 0, prefix: null, results: null };
+
     aceLanguageTools.addCompleter({
-      getCompletions: async (editor, session, pos, prefix, callback) => {
+      getCompletions: async (_editor, _session, _pos, prefix, callback) => {
+        if (!this.props.autocompleteResultsFn) {
+          return callback(null, []);
+        }
+
         try {
-          // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
-          const results = await this.props.autocompleteResultsFn(prefix);
+          let { results, timestamp } = this._lastAutoComplete;
+          const cacheHit =
+            Date.now() - timestamp < AUTOCOMPLETE_CACHE_DURATION &&
+            this._lastAutoComplete.prefix === prefix;
+          if (!cacheHit) {
+            // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
+            results = await this.props.autocompleteResultsFn(prefix);
+            this._lastAutoComplete = {
+              timestamp: Date.now(),
+              prefix,
+              results,
+            };
+          }
+
           // transform results of the API call into what ACE expects
-          const js_results = results.map(function(result) {
+          const js_results = results.map(function (result) {
             return {
               name: result[0],
               value: result[0],
@@ -336,6 +343,12 @@ export default class NativeQueryEditor extends Component {
     }
   }
 
+  _retriggerAutocomplete = _.debounce(() => {
+    if (this._editor.completer?.popup?.isOpen) {
+      this._editor.execCommand("startAutocomplete");
+    }
+  }, AUTOCOMPLETE_DEBOUNCE_DURATION);
+
   onChange() {
     const { query } = this.props;
     if (this._editor && !this._localUpdate) {
@@ -347,6 +360,8 @@ export default class NativeQueryEditor extends Component {
           .update(this.props.setDatasetQuery);
       }
     }
+
+    this._retriggerAutocomplete();
   }
 
   toggleEditor = () => {
@@ -384,6 +399,12 @@ export default class NativeQueryEditor extends Component {
       .update(setDatasetQuery);
   };
 
+  handleFilterButtonClick = () => {
+    this.setState({
+      mobileShowParameterList: !this.state.mobileShowParameterList,
+    });
+  };
+
   render() {
     const {
       query,
@@ -395,6 +416,7 @@ export default class NativeQueryEditor extends Component {
       hasTopBar = true,
       hasEditingSidebar = true,
       resizableBoxProps = {},
+      snippetCollections = [],
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -405,31 +427,35 @@ export default class NativeQueryEditor extends Component {
       </div>
     );
 
+    const canSaveSnippets = snippetCollections.some(
+      collection => collection.can_write,
+    );
+
     return (
-      <div className="NativeQueryEditor bg-light full">
+      <NativeQueryEditorRoot className="NativeQueryEditor bg-light full">
         {hasTopBar && (
-          <div className="flex align-center" style={{ minHeight: 55 }}>
-            <DataSourceSelectors
-              isNativeEditorOpen={isNativeEditorOpen}
-              query={query}
-              readOnly={readOnly}
-              setDatabaseId={this.setDatabaseId}
-              setTableId={this.setTableId}
-            />
+          <div className="flex align-center" data-testid="native-query-top-bar">
+            <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
+              <DataSourceSelectors
+                isNativeEditorOpen={isNativeEditorOpen}
+                query={query}
+                readOnly={readOnly}
+                setDatabaseId={this.setDatabaseId}
+                setTableId={this.setTableId}
+              />
+            </div>
             {hasParametersList && (
-              <SyncedParametersList
-                className="mt1"
+              <ResponsiveParametersList
                 parameters={parameters}
                 setParameterValue={setParameterValue}
                 setParameterIndex={this.setParameterIndex}
-                isEditing
-                commitImmediately
               />
             )}
             {query.hasWritePermission() && (
               <VisibilityToggler
+                className={!isNativeEditorOpen ? "hide sm-show" : ""}
                 isOpen={isNativeEditorOpen}
-                readOnly={readOnly}
+                readOnly={!!readOnly}
                 toggleEditor={this.toggleEditor}
               />
             )}
@@ -459,6 +485,7 @@ export default class NativeQueryEditor extends Component {
             openSnippetModalWithSelectedText={openSnippetModalWithSelectedText}
             runQuery={this.runQuery}
             target={() => this.editor.current.querySelector(".ace_selection")}
+            canSaveSnippets={canSaveSnippets}
           />
 
           {this.props.modalSnippet && (
@@ -482,7 +509,13 @@ export default class NativeQueryEditor extends Component {
             />
           )}
         </ResizableBox>
-      </div>
+      </NativeQueryEditorRoot>
     );
   }
 }
+
+export default _.compose(
+  ExplicitSize(),
+  Snippets.loadList({ loadingAndErrorWrapper: false }),
+  SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
+)(NativeQueryEditor);

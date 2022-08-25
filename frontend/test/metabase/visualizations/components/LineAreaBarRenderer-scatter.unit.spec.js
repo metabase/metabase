@@ -33,11 +33,11 @@ describe("LineAreaBarRenderer-scatter", () => {
     ...window.document.documentElement.querySelectorAll(selector),
   ];
 
-  beforeEach(function() {
+  beforeEach(function () {
     element = createFixture();
   });
 
-  afterEach(function() {
+  afterEach(function () {
     cleanupFixture(element);
   });
 

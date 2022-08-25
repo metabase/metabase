@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 import Tooltip from "metabase/components/Tooltip";
@@ -16,6 +15,8 @@ import { performAction } from "metabase/visualizations/lib/action";
 
 import cx from "classnames";
 import _ from "underscore";
+import { Link } from "react-router";
+import { ClickActionButton } from "./ChartClickActions.styled";
 
 // These icons used to be displayed for each row section of actions.
 // We're now just using them as a way to select different sections of actions to style them uniquely.
@@ -71,8 +72,7 @@ Object.values(SECTIONS).map((section, index) => {
 const getGALabelForAction = action =>
   action ? `${action.section || ""}:${action.name || ""}` : null;
 
-@connect()
-export default class ChartClickActions extends Component {
+class ChartClickActions extends Component {
   state = {
     popoverAction: null,
   };
@@ -147,8 +147,12 @@ export default class ChartClickActions extends Component {
     }
 
     const groupedClickActions = _.groupBy(clickActions, "section");
-    if (groupedClickActions["sum"] && groupedClickActions["sum"].length === 1) {
+
+    if (groupedClickActions?.["sum"]?.length === 1) {
       // if there's only one "sum" click action, merge it into "summarize" and change its button type and icon
+      if (!groupedClickActions?.["summarize"]) {
+        groupedClickActions["summarize"] = [];
+      }
       groupedClickActions["summarize"].push({
         ...groupedClickActions["sum"][0],
         buttonType: "horizontal",
@@ -157,8 +161,8 @@ export default class ChartClickActions extends Component {
       delete groupedClickActions["sum"];
     }
     const hasOnlyOneSortAction = groupedClickActions["sort"]?.length === 1;
-    if (clicked.column?.source === "native" && hasOnlyOneSortAction) {
-      // restyle the Formatting action for SQL columns
+    if (hasOnlyOneSortAction) {
+      // restyle the Formatting action when there is only one option
       groupedClickActions["sort"][0] = {
         ...groupedClickActions["sort"][0],
         buttonType: "horizontal",
@@ -261,21 +265,16 @@ export default class ChartClickActions extends Component {
   }
 }
 
+export default connect()(ChartClickActions);
+
 export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
   // This is where all the different action button styles get applied.
   // Some of them have bespoke classes defined in ChartClickActions.css,
   // like for cases when we needed to really dial in the spacing.
   const className = cx("cursor-pointer no-decoration", {
-    "text-center sort token-blue mr1 bg-brand-hover":
-      action.buttonType === "sort",
-    "formatting-button flex-align-right text-brand-hover text-light":
-      action.buttonType === "formatting",
-    "horizontal-button p1 flex flex-auto align-center bg-brand-hover text-dark text-white-hover":
-      action.buttonType === "horizontal",
-    "text-small token token-blue text-white-hover bg-brand-hover mr1":
-      action.buttonType === "token",
-    "token token-filter text-small text-white-hover mr1":
-      action.buttonType === "token-filter",
+    sort: action.buttonType === "sort",
+    "formatting-button": action.buttonType === "formatting",
+    "horizontal-button": action.buttonType === "horizontal",
   });
   if (action.url) {
     return (
@@ -284,9 +283,11 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
           full: action.buttonType === "horizontal",
         })}
       >
-        <Link
-          to={action.url()}
+        <ClickActionButton
+          as={Link}
           className={className}
+          to={action.url()}
+          type={action.buttonType}
           onClick={() =>
             MetabaseAnalytics.trackStructEvent(
               "Actions",
@@ -296,7 +297,7 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
           }
         >
           {action.title}
-        </Link>
+        </ClickActionButton>
       </div>
     );
   } else if (
@@ -305,8 +306,9 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
   ) {
     return (
       <Tooltip tooltip={action.tooltip}>
-        <div
+        <ClickActionButton
           className={cx(className, "flex flex-row align-center")}
+          type={action.buttonType}
           onClick={() => handleClickAction(action)}
         >
           {action.icon && (
@@ -319,15 +321,16 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
               name={action.icon}
             />
           )}
-        </div>
+        </ClickActionButton>
       </Tooltip>
     );
   } else {
     return (
-      <div
+      <ClickActionButton
         className={cx(className, {
           mb1: action.buttonType === "horizontal" && !isLastItem,
         })}
+        type={action.buttonType}
         onClick={() => handleClickAction(action)}
       >
         {action.icon && (
@@ -338,7 +341,7 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
           />
         )}
         {action.title && action.title}
-      </div>
+      </ClickActionButton>
     );
   }
 };

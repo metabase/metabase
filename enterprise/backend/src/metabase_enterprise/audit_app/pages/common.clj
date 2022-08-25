@@ -7,7 +7,7 @@
             [clojure.walk :as walk]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
-            [honeysql.helpers :as h]
+            [honeysql.helpers :as hh]
             [java-time :as t]
             [medley.core :as m]
             [metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as qp.middleware.audit]
@@ -15,8 +15,8 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.query-processor.context :as context]
-            [metabase.query-processor.timezone :as qp.tz]
+            [metabase.query-processor.context :as qp.context]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [tru]]
@@ -108,10 +108,10 @@
 (defn- reduce-results* [honeysql-query context rff init]
   (let [driver         (mdb/db-type)
         [sql & params] (compile-honeysql driver honeysql-query)
-        canceled-chan  (context/canceled-chan context)]
+        canceled-chan  (qp.context/canceled-chan context)]
     ;; MySQL driver normalizies timestamps. Setting `*results-timezone-id-override*` is a shortcut
     ;; instead of mocking up a chunk of regular QP pipeline.
-    (binding [qp.tz/*results-timezone-id-override* (application-db-default-timezone)]
+    (binding [qp.timezone/*results-timezone-id-override* (application-db-default-timezone)]
       (try
         (with-open [conn (jdbc/get-connection (db/connection))
                     stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
@@ -169,9 +169,16 @@
 
      (user-full-name :u) ;; -> 'Cam Saul'"
   [user-table]
-  (hx/concat (hsql/qualify user-table :first_name)
-             (hx/literal " ")
-             (hsql/qualify user-table :last_name)))
+  (let [first-name (hsql/qualify user-table :first_name)
+        last-name  (hsql/qualify user-table :last_name)
+        email      (hsql/qualify user-table :email)]
+    (hsql/call :case
+      [:and [:= nil first-name] [:= nil last-name]]
+      email
+      [:or [:= nil first-name] [:= nil last-name]]
+      (hx/concat (hsql/call :coalesce first-name "") (hsql/call :coalesce last-name ""))
+      :else
+      (hx/concat (hsql/call :coalesce first-name "") (hx/literal " ") (hsql/call :coalesce last-name "")))))
 
 (def datetime-unit-str->base-type
   "Map of datetime unit strings (possible params for queries that accept a datetime `unit` param) to the `:base_type` we
@@ -227,28 +234,28 @@
 (defn add-45-days-clause
   "Add an appropriate `WHERE` clause to limit query to 45 days"
   [query date_column]
-  (h/merge-where query [:>
-                        (hx/cast :date date_column)
-                        (hx/cast :date (hx/literal (t/format "yyyy-MM-dd" (t/minus (t/local-date) (t/days 45)))))]))
+  (hh/merge-where query [:>
+                         (hx/cast :date date_column)
+                         (hx/cast :date (hx/literal (t/format "yyyy-MM-dd" (t/minus (t/local-date) (t/days 45)))))]))
 
 (defn add-search-clause
   "Add an appropriate `WHERE` clause to `query` to see if any of the `fields-to-search` match `query-string`.
 
-    (add-search-clause {} \"birds\" :t.name :db.name)"
+  (add-search-clause {} \"birds\" :t.name :db.name)"
   [query query-string & fields-to-search]
-  (h/merge-where query (when (seq query-string)
-                         (let [query-string (str \% (str/lower-case query-string) \%)]
-                           (cons
-                            :or
-                            (for [field fields-to-search]
-                              [:like (lowercase-field field) query-string]))))))
+  (hh/merge-where query (when (seq query-string)
+                          (let [query-string (str \% (str/lower-case query-string) \%)]
+                            (cons
+                              :or
+                              (for [field fields-to-search]
+                                [:like (lowercase-field field) query-string]))))))
 
 (defn add-sort-clause
   "Add an `ORDER BY` clause to `query` on `sort-column` and `sort-direction`.
 
   Most queries will just have explicit default `ORDER BY` clauses"
   [query sort-column sort-direction]
-  (h/merge-order-by query [(keyword sort-column) (keyword sort-direction)]))
+  (hh/merge-order-by query [(keyword sort-column) (keyword sort-direction)]))
 
 (defn card-public-url
   "Return HoneySQL for a `CASE` statement to return a Card's public URL if the `public_uuid` `field` is non-NULL."

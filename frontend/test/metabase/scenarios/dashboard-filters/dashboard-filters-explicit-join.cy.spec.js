@@ -1,4 +1,9 @@
-import { restore, filterWidget, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  filterWidget,
+  popover,
+  visitDashboard,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -66,7 +71,7 @@ describe("scenarios > dashboard > filters", () => {
 
         cy.editDashboardCard(dashboardCard, updatedCardDetails);
 
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
       },
     );
   });
@@ -74,7 +79,7 @@ describe("scenarios > dashboard > filters", () => {
   it("should work properly when connected to the explicitly joined field", () => {
     filterWidget().click();
 
-    cy.findByPlaceholderText(/^Search by/).type("Awe");
+    cy.findByPlaceholderText("Search the list").type("Awe");
 
     selectFromDropdown(["Awesome Concrete Shoes", "Awesome Iron Hat"]);
 

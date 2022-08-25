@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import Tooltip from "metabase/components/Tooltip";
 import Modal from "metabase/components/Modal";
 import ConfirmContent from "metabase/components/ConfirmContent";
+import Ellipsified from "metabase/core/components/Ellipsified";
 
 import { PermissionsSelect } from "../PermissionsSelect";
 import {
@@ -19,7 +20,12 @@ import {
 
 const propTypes = {
   entities: PropTypes.arrayOf(PropTypes.object),
-  columns: PropTypes.arrayOf(PropTypes.string),
+  columns: PropTypes.arrayOf(
+    PropTypes.shape({
+      name: PropTypes.string.isRequired,
+      hint: PropTypes.string,
+    }),
+  ),
   emptyState: PropTypes.node,
   onSelect: PropTypes.func,
   onChange: PropTypes.func,
@@ -74,10 +80,17 @@ export function PermissionsTable({
       <PermissionsTableRoot data-testid="permission-table">
         <thead>
           <tr>
-            {columns.map(column => {
+            {columns.map(({ name, hint }) => {
               return (
-                <PermissionTableHeaderCell key={column}>
-                  <ColumnName>{column}</ColumnName>
+                <PermissionTableHeaderCell key={name}>
+                  <ColumnName>
+                    {name}{" "}
+                    {hint && (
+                      <Tooltip placement="right" tooltip={hint}>
+                        <HintIcon />
+                      </Tooltip>
+                    )}
+                  </ColumnName>
                 </PermissionTableHeaderCell>
               );
             })}
@@ -85,27 +98,31 @@ export function PermissionsTable({
         </thead>
         <tbody>
           {entities.map(entity => {
+            const entityName = (
+              <span className="flex align-center">
+                <Ellipsified>{entity.name}</Ellipsified>
+                {entity.hint && (
+                  <Tooltip tooltip={entity.hint}>
+                    <HintIcon />
+                  </Tooltip>
+                )}
+              </span>
+            );
             return (
               <PermissionsTableRow key={entity.id}>
                 <PermissionsTableCell>
                   {entity.canSelect ? (
                     <EntityNameLink onClick={() => onSelect(entity)}>
-                      {entity.name}
+                      {entityName}
                     </EntityNameLink>
                   ) : (
-                    <EntityName>{entity.name}</EntityName>
-                  )}
-
-                  {entity.hint && (
-                    <Tooltip tooltip={entity.hint}>
-                      <HintIcon />
-                    </Tooltip>
+                    <EntityName>{entityName}</EntityName>
                   )}
                 </PermissionsTableCell>
 
                 {entity.permissions.map(permission => {
                   return (
-                    <PermissionsTableCell key={permission.name}>
+                    <PermissionsTableCell key={permission.type}>
                       <PermissionsSelect
                         {...permission}
                         onChange={(value, toggleState) =>

@@ -1,3 +1,8 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 import { ISO8601Time } from ".";
 import { Table } from "./Table";
 
@@ -16,7 +21,9 @@ export type DatabaseFeature =
   | "case-sensitivity-string-filter-options"
   | "binning";
 
-export type DatabaseDetails = {
+export type DatabaseDetails = Record<string, any>;
+
+export type DatabaseSettings = {
   [key: string]: any;
 };
 
@@ -32,6 +39,7 @@ export type Database = {
   tables: Table[];
 
   details: DatabaseDetails;
+  settings?: DatabaseSettings | null;
   engine: DatabaseType;
   features: DatabaseFeature[];
   is_full_sync: boolean;

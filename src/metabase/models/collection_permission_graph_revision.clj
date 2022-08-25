@@ -6,17 +6,13 @@
 
 (models/defmodel CollectionPermissionGraphRevision :collection_permission_graph_revision)
 
-(defn- pre-insert [revision]
-  (assoc revision :created_at :%now))
-
-(u/strict-extend (class CollectionPermissionGraphRevision)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class CollectionPermissionGraphRevision)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:before :json
                                    :after  :json})
-          :pre-insert pre-insert
+          :properties (constantly {:created-at-timestamped? true})
           :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a CollectionPermissionGraphRevision!"))))}))
-
 
 (defn latest-id
   "Return the ID of the newest `CollectionPermissionGraphRevision`, or zero if none have been made yet.

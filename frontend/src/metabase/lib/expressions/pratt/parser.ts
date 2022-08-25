@@ -19,6 +19,7 @@ import {
   MULDIV_OP,
   NEGATIVE,
   NUMBER,
+  BOOLEAN,
   ROOT,
   STRING,
   SUB,
@@ -82,6 +83,9 @@ export function lexify(expression: string) {
         break;
       case TOKEN.Identifier:
         type = text[0] === "[" ? FIELD : IDENTIFIER;
+        break;
+      case TOKEN.Boolean:
+        type = BOOLEAN;
         break;
       case TOKEN.Operator:
         switch (token.op) {

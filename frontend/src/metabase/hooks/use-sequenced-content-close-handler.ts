@@ -4,6 +4,7 @@ import _ from "underscore";
 type PopoverData = {
   contentEl: Element;
   backdropEl?: Element;
+  ignoreEl?: Element;
   close: (e: MouseEvent | KeyboardEvent) => void;
 };
 
@@ -36,7 +37,8 @@ export function shouldClosePopover(
       mostRecentPopover === popoverData &&
       !isEventInsideElement(e, mostRecentPopover.contentEl) &&
       (!popoverData.backdropEl ||
-        isEventInsideElement(e, popoverData.backdropEl))
+        isEventInsideElement(e, popoverData.backdropEl)) &&
+      (!popoverData.ignoreEl || !isEventInsideElement(e, popoverData.ignoreEl))
     );
   }
 
@@ -70,8 +72,8 @@ export default function useSequencedContentCloseHandler() {
       popoverDataRef.current = undefined;
     }
 
-    document.removeEventListener("mousedown", handleEvent, true);
     document.removeEventListener("keydown", handleEvent);
+    window.removeEventListener("mousedown", handleEvent, true);
   }, [handleEvent]);
 
   const setupCloseHandler = useCallback(
@@ -83,8 +85,8 @@ export default function useSequencedContentCloseHandler() {
         RENDERED_POPOVERS.push(popover);
         popoverDataRef.current = popover;
 
-        document.addEventListener("mousedown", handleEvent, true);
-        window.addEventListener("keydown", handleEvent);
+        document.addEventListener("keydown", handleEvent);
+        window.addEventListener("mousedown", handleEvent, true);
       }
     },
     [handleEvent, removeCloseHandler],

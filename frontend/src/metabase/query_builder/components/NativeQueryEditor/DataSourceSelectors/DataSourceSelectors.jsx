@@ -32,7 +32,7 @@ const DatabaseSelectorPropTypes = {
   setDatabaseId: PropTypes.func,
 };
 
-const DatabaseNameSpanPropTypes = {
+const SingleDatabaseNamePropTypes = {
   database: PropTypes.object,
 };
 
@@ -101,7 +101,9 @@ const PopulatedDataSourceSelectors = ({
       />,
     );
   } else if (database) {
-    dataSourceSelectors.push(<DatabaseNameSpan key="db" database={database} />);
+    dataSourceSelectors.push(
+      <SingleDatabaseName key="db" database={database} />,
+    );
   }
 
   if (query.requiresTable()) {
@@ -139,11 +141,11 @@ const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
 
 DatabaseSelector.propTypes = DatabaseSelectorPropTypes;
 
-const DatabaseNameSpan = ({ database }) => (
-  <span className="p2 text-bold text-grey">{database.name}</span>
+const SingleDatabaseName = ({ database }) => (
+  <div className="p2 text-bold text-grey">{database.name}</div>
 );
 
-DatabaseNameSpan.propTypes = DatabaseNameSpanPropTypes;
+SingleDatabaseName.propTypes = SingleDatabaseNamePropTypes;
 
 const TableSelector = ({ database, readOnly, selectedTable, setTableId }) => (
   <div className="GuiBuilder-section GuiBuilder-data flex align-center ml2">
@@ -161,9 +163,9 @@ const TableSelector = ({ database, readOnly, selectedTable, setTableId }) => (
 TableSelector.propTypes = TableSelectorPropTypes;
 
 const Placeholder = ({ query }) => (
-  <span className="ml2 p2 text-medium">
+  <div className="ml2 p2 text-medium">
     {t`This question is written in ${query.nativeQueryLanguage()}.`}
-  </span>
+  </div>
 );
 
 Placeholder.propTypes = PlaceholderPropTypes;

@@ -15,11 +15,11 @@
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.public-settings :as public-settings]
-            [metabase.query-processor.context :as context]
+            [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.middleware.cache-backend.db :as backend.db]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
             [metabase.query-processor.middleware.cache.impl :as impl]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]])
   (:import org.eclipse.jetty.io.EofException))
@@ -160,7 +160,7 @@
                 (when (and (= (:cache-version metadata) cache-version)
                            reducible-rows)
                   (log/tracef "Reducing cached rows...")
-                  (context/reducef (cached-results-rff rff) context metadata reducible-rows)
+                  (qp.context/reducef (cached-results-rff rff) context metadata reducible-rows)
                   (log/tracef "All cached rows reduced")
                   ::ok)))))
         ::miss)
@@ -179,7 +179,7 @@
   [qp {:keys [cache-ttl middleware], :as query} rff {:keys [reducef], :as context}]
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
-  (let [query-hash (qputil/query-hash query)
+  (let [query-hash (qp.util/query-hash query)
         result     (maybe-reduce-cached-results (:ignore-cached-results? middleware) query-hash cache-ttl rff context)]
     (when (= result ::miss)
       (let [start-time-ms (System/currentTimeMillis)]

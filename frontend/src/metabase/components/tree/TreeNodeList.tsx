@@ -1,45 +1,48 @@
 import React from "react";
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
-import { ColorScheme, ITreeNodeItem } from "./types";
-import { TreeNode } from "./TreeNode";
+import { ITreeNodeItem, TreeNodeComponent } from "./types";
 
 interface TreeNodeListProps {
   items: ITreeNodeItem[];
-  onToggleExpand: (id: ITreeNodeItem["id"]) => void;
-  onSelect: (item: ITreeNodeItem) => void;
   expandedIds: Set<ITreeNodeItem["id"]>;
   selectedId?: ITreeNodeItem["id"];
   depth: number;
-  colorScheme: ColorScheme;
+  role?: string;
+  onToggleExpand: (id: ITreeNodeItem["id"]) => void;
+  onSelect?: (item: ITreeNodeItem) => void;
+  TreeNode: TreeNodeComponent;
 }
 
 export function TreeNodeList({
   items,
-  onToggleExpand,
-  onSelect,
+  role,
   expandedIds,
   selectedId,
   depth,
-  colorScheme,
+  onSelect,
+  onToggleExpand,
+  TreeNode,
 }: TreeNodeListProps) {
   const selectedRef = useScrollOnMount();
 
   return (
-    <ul role="menu">
+    <ul role={role}>
       {items.map(item => {
         const isSelected = selectedId === item.id;
         const hasChildren =
           Array.isArray(item.children) && item.children.length > 0;
         const isExpanded = hasChildren && expandedIds.has(item.id);
+        const onItemSelect =
+          typeof onSelect === "function" ? () => onSelect(item) : undefined;
+        const onItemToggle = () => onToggleExpand(item.id);
 
         return (
           <React.Fragment key={item.id}>
             <TreeNode
               ref={isSelected ? selectedRef : null}
-              colorScheme={colorScheme}
               item={item}
-              onToggleExpand={onToggleExpand}
-              onSelect={onSelect}
+              onSelect={onItemSelect}
+              onToggleExpand={onItemToggle}
               isSelected={isSelected}
               isExpanded={isExpanded}
               hasChildren={hasChildren}
@@ -47,14 +50,14 @@ export function TreeNodeList({
             />
             {isExpanded && (
               <TreeNodeList
-                colorScheme={colorScheme}
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 items={item.children!}
-                onToggleExpand={onToggleExpand}
-                onSelect={onSelect}
                 expandedIds={expandedIds}
                 selectedId={selectedId}
                 depth={depth + 1}
+                onSelect={onSelect}
+                onToggleExpand={onToggleExpand}
+                TreeNode={TreeNode}
               />
             )}
           </React.Fragment>

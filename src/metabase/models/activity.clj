@@ -3,7 +3,7 @@
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.metric :refer [Metric]]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.segment :refer [Segment]]
@@ -52,16 +52,19 @@
                   :details   {}}]
     (merge defaults activity)))
 
-(u/strict-extend (class Activity)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Activity)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:details :json, :topic :keyword})
-          :pre-insert pre-insert})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:can-read?  (partial can-? i/can-read?)
-          ;; TODO - when do people *write* activities?
-          :can-write? (partial can-? i/can-write?)}))
+          :pre-insert pre-insert}))
+
+(defmethod mi/can-read? Activity
+  [& args]
+  (apply can-? mi/can-read? args))
+
+(defmethod mi/can-write? Activity
+  [& args]
+  (apply can-? mi/can-write? args))
 
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------

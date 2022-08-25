@@ -74,7 +74,7 @@ for (let i = 0; i < MAX_SERIES; i++) {
   addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
 }
 
-import { normal } from "metabase/lib/colors";
+import { getAccentColors } from "metabase/lib/colors/groups";
 
 export default class LineAreaBarChart extends Component {
   static noHeader = true;
@@ -297,7 +297,7 @@ export default class LineAreaBarChart extends Component {
       : series.map(single => single.card.name);
     const colors = seriesSettings
       ? seriesSettings.map(s => s.color)
-      : Object.values(normal);
+      : Object.values(getAccentColors());
 
     return {
       title,
@@ -492,6 +492,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         ]
           .filter(n => n)
           .join(": "),
+        originalCardName: card.name,
         _breakoutValue: breakoutValue,
         _breakoutColumn: cols[seriesColumnIndex],
       },
@@ -535,6 +536,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         card: {
           ...card,
           name: name,
+          originalCardName: card.name,
           _seriesIndex: seriesIndex,
           // use underlying column name as the seriesKey since it should be unique
           // EXCEPT for dashboard multiseries, so check seriesIndex == 0

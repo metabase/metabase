@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 
 import { nestedSettings } from "./nested";
@@ -24,12 +24,11 @@ function getVisualizationRaw(...args) {
 import {
   formatColumn,
   numberFormatterForOptions,
-} from "metabase/lib/formatting";
-import {
+  getCurrencySymbol,
   getDateFormatFromStyle,
-  hasDay,
-  hasHour,
-} from "metabase/lib/formatting/date";
+} from "metabase/lib/formatting";
+
+import { hasDay, hasHour } from "metabase/lib/formatting/datetime-utils";
 
 import { currency } from "cljs/metabase.shared.util.currency";
 
@@ -153,6 +152,32 @@ function timeStyleOption(style, description) {
   };
 }
 
+function getTimeEnabledOptionsForUnit(unit) {
+  const options = [
+    { name: t`Off`, value: null },
+    { name: t`HH:MM`, value: "minutes" },
+  ];
+
+  if (
+    !unit ||
+    unit === "default" ||
+    unit === "second" ||
+    unit === "millisecond"
+  ) {
+    options.push({ name: t`HH:MM:SS`, value: "seconds" });
+  }
+
+  if (!unit || unit === "default" || unit === "millisecond") {
+    options.push({ name: t`HH:MM:SS.MS`, value: "milliseconds" });
+  }
+
+  if (options.length === 2) {
+    options[1].name = t`On`;
+  }
+
+  return options;
+}
+
 export const DATE_COLUMN_SETTINGS = {
   date_style: {
     title: t`Date style`,
@@ -207,26 +232,12 @@ export const DATE_COLUMN_SETTINGS = {
   time_enabled: {
     title: t`Show the time`,
     widget: "radio",
-    isValid: ({ unit }, settings) => !settings["time_enabled"] || hasHour(unit),
+    isValid: ({ unit }, settings) => {
+      const options = getTimeEnabledOptionsForUnit(unit);
+      return !!_.findWhere(options, { value: settings["time_enabled"] });
+    },
     getProps: ({ unit }, settings) => {
-      const options = [
-        { name: t`Off`, value: null },
-        { name: t`HH:MM`, value: "minutes" },
-      ];
-      if (
-        !unit ||
-        unit === "default" ||
-        unit === "second" ||
-        unit === "millisecond"
-      ) {
-        options.push({ name: t`HH:MM:SS`, value: "seconds" });
-      }
-      if (!unit || unit === "default" || unit === "millisecond") {
-        options.push({ name: t`HH:MM:SS.MS`, value: "milliseconds" });
-      }
-      if (options.length === 2) {
-        options[1].name = t`On`;
-      }
+      const options = getTimeEnabledOptionsForUnit(unit);
       return { options };
     },
     getHidden: (column, settings) =>
@@ -302,7 +313,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "radio",
     getProps: (column, settings) => {
       const c = settings["currency"] || "USD";
-      const symbol = getCurrency(c, "symbol");
+      const symbol = getCurrencySymbol(c);
       const code = getCurrency(c, "code");
       const name = getCurrency(c, "name");
       return {
@@ -328,7 +339,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
     getDefault: (column, settings) => {
       const c = settings["currency"] || "USD";
-      return getCurrency(c, "symbol") !== getCurrency(c, "code")
+      return getCurrencySymbol(c) !== getCurrency(c, "code")
         ? "symbol"
         : "code";
     },
@@ -401,6 +412,9 @@ export const NUMBER_COLUMN_SETTINGS = {
         settings["number_style"] === "currency" &&
         settings["currency_in_header"]
       ) {
+        if (settings["currency_style"] === "symbol") {
+          return getCurrencySymbol(settings["currency"]);
+        }
         return getCurrency(settings["currency"], settings["currency_style"]);
       }
       return null;

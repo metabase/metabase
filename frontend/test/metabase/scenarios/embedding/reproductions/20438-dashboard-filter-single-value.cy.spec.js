@@ -1,4 +1,10 @@
-import { restore, filterWidget, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  filterWidget,
+  popover,
+  visitDashboard,
+  visitIframe,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -68,35 +74,29 @@ describe("issue 20438", () => {
           embedding_params: { [filter.slug]: "enabled" },
         });
 
-        cy.visit(`/dashboard/${dashboard_id}`);
+        visitDashboard(dashboard_id);
       },
     );
   });
 
   it("dashboard filter connected to the field filter should work with a single value in embedded dashboards (metabase#20438)", () => {
     cy.icon("share").click();
-    cy.findByText("Sharing and embedding").click();
     cy.findByText("Embed this dashboard in an application").click();
 
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
-      cy.visit(iframe.src);
-    });
+    visitIframe();
 
     cy.wait("@getEmbed");
 
     filterWidget().click();
     cy.wait("@getEmbed");
 
-    popover()
-      .contains("Doohickey")
-      .click();
+    popover().contains("Doohickey").click();
     cy.wait("@getEmbed");
 
     cy.button("Add filter").click();
     cy.wait("@getEmbed");
 
-    cy.get(".cellData")
+    cy.findAllByTestId("cell-data")
       // One of product titles for Doohickey
       .should("contain", "Small Marble Shoes")
       // One of product titles for Gizmo

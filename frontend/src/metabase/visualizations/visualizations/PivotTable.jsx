@@ -6,11 +6,11 @@ import _ from "underscore";
 import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 
-import { color, lighten } from "metabase/lib/colors";
-import "metabase/visualizations/components/TableInteractive.css";
+import { darken, lighten } from "metabase/lib/colors";
+import "metabase/visualizations/components/TableInteractive/TableInteractive.css";
 import { getScrollBarSize } from "metabase/lib/dom";
 
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import { isDimension } from "metabase/lib/schema_metadata";
 import {
@@ -25,9 +25,25 @@ import { formatColumn } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { findDOMNode } from "react-dom";
+import { connect } from "react-redux";
+import { PLUGIN_SELECTORS } from "metabase/plugins";
+import { RowToggleIconRoot } from "./PivotTable.styled";
 
-const getBgLightColor = () => lighten(color("brand"), 0.65);
-const getBgDarkColor = () => lighten(color("brand"), 0.6);
+const getBgLightColor = (hasCustomColors, isNightMode) => {
+  if (isNightMode) {
+    return lighten("bg-black", 0.3);
+  }
+
+  return hasCustomColors ? darken("white", 0.01) : lighten("brand", 0.65);
+};
+
+const getBgDarkColor = (hasCustomColors, isNightMode) => {
+  if (isNightMode) {
+    return lighten("bg-black", 0.1);
+  }
+
+  return hasCustomColors ? darken("white", 0.035) : lighten("brand", 0.6);
+};
 
 const partitions = [
   {
@@ -60,7 +76,11 @@ const CELL_HEIGHT = 25;
 const LEFT_HEADER_LEFT_SPACING = 24;
 const LEFT_HEADER_CELL_WIDTH = 145;
 
-export default class PivotTable extends Component {
+const mapStateToProps = state => ({
+  hasCustomColors: PLUGIN_SELECTORS.getHasCustomColors(state),
+});
+
+class PivotTable extends Component {
   static uiName = t`Pivot Table`;
   static identifier = "pivot";
   static iconName = "pivot_table";
@@ -230,7 +250,14 @@ export default class PivotTable extends Component {
   }
 
   render() {
-    const { settings, data, width, onUpdateVisualizationSettings } = this.props;
+    const {
+      settings,
+      data,
+      width,
+      hasCustomColors,
+      onUpdateVisualizationSettings,
+      isNightMode,
+    } = this.props;
     if (data == null || !data.cols.some(isPivotGroupColumn)) {
       return null;
     }
@@ -286,7 +313,10 @@ export default class PivotTable extends Component {
       return (
         <div
           key={key}
-          style={{ ...style, backgroundColor: getBgLightColor() }}
+          style={{
+            ...style,
+            backgroundColor: getBgLightColor(hasCustomColors, isNightMode),
+          }}
           className={cx("overflow-hidden", {
             "border-right border-medium": !hasChildren,
           })}
@@ -296,7 +326,9 @@ export default class PivotTable extends Component {
             value={value}
             isSubtotal={isSubtotal}
             isGrandTotal={isGrandTotal}
+            hasCustomColors={hasCustomColors}
             onClick={this.getCellClickHander(clicked)}
+            isNightMode={isNightMode}
             icon={
               (isSubtotal || hasSubtotal) && (
                 <RowToggleIcon
@@ -305,6 +337,7 @@ export default class PivotTable extends Component {
                   updateSettings={onUpdateVisualizationSettings}
                   hideUnlessCollapsed={isSubtotal}
                   rowIndex={rowIndex} // used to get a list of "other" paths when open one item in a collapsed column
+                  isNightMode={isNightMode}
                 />
               )
             }
@@ -378,6 +411,8 @@ export default class PivotTable extends Component {
               value={value}
               isSubtotal={isSubtotal}
               isGrandTotal={isGrandTotal}
+              hasCustomColors={hasCustomColors}
+              isNightMode={isNightMode}
               isBody
               onClick={this.getCellClickHander(clicked)}
             />
@@ -398,7 +433,10 @@ export default class PivotTable extends Component {
                     "border-right border-bottom border-medium": leftHeaderWidth,
                   })}
                   style={{
-                    backgroundColor: getBgLightColor(),
+                    backgroundColor: getBgLightColor(
+                      hasCustomColors,
+                      isNightMode,
+                    ),
                     // add left spacing unless the header width is 0
                     paddingLeft: leftHeaderWidth && LEFT_HEADER_LEFT_SPACING,
                     width: leftHeaderWidth,
@@ -410,6 +448,8 @@ export default class PivotTable extends Component {
                       key={rowIndex}
                       value={this.getColumnTitle(rowIndex)}
                       style={{ width: LEFT_HEADER_CELL_WIDTH }}
+                      hasCustomColors={hasCustomColors}
+                      isNightMode={isNightMode}
                       icon={
                         // you can only collapse before the last column
                         index < rowIndexes.length - 1 &&
@@ -418,6 +458,8 @@ export default class PivotTable extends Component {
                             value={index + 1}
                             settings={settings}
                             updateSettings={onUpdateVisualizationSettings}
+                            hasCustomColors={hasCustomColors}
+                            isNightMode={isNightMode}
                           />
                         )
                       }
@@ -502,12 +544,16 @@ export default class PivotTable extends Component {
   }
 }
 
+export default connect(mapStateToProps)(PivotTable);
+
 function RowToggleIcon({
   value,
   settings,
   updateSettings,
   hideUnlessCollapsed,
   rowIndex,
+  hasCustomColors,
+  isNightMode,
 }) {
   if (value == null) {
     return null;
@@ -558,14 +604,13 @@ function RowToggleIcon({
         settingValue => settingValue.concat(ref);
 
   return (
-    <div
-      className={cx(
-        "flex align-center cursor-pointer text-brand-hover text-light",
-      )}
+    <RowToggleIconRoot
       style={{
         padding: "4px",
         borderRadius: "4px",
-        backgroundColor: isCollapsed ? getBgLightColor() : getBgDarkColor(),
+        backgroundColor: isCollapsed
+          ? getBgLightColor(hasCustomColors, isNightMode)
+          : getBgDarkColor(hasCustomColors, isNightMode),
       }}
       onClick={e => {
         e.stopPropagation();
@@ -575,7 +620,7 @@ function RowToggleIcon({
       }}
     >
       <Icon name={isCollapsed ? "add" : "dash"} size={8} />
-    </div>
+    </RowToggleIconRoot>
   );
 }
 
@@ -588,6 +633,8 @@ function Cell({
   isBody = false,
   className,
   icon,
+  hasCustomColors,
+  isNightMode,
 }) {
   return (
     <div
@@ -595,7 +642,11 @@ function Cell({
         lineHeight: `${CELL_HEIGHT}px`,
         ...(isGrandTotal ? { borderTop: "1px solid white" } : {}),
         ...style,
-        ...(isSubtotal ? { backgroundColor: getBgDarkColor() } : {}),
+        ...(isSubtotal
+          ? {
+              backgroundColor: getBgDarkColor(hasCustomColors, isNightMode),
+            }
+          : {}),
       }}
       className={cx(
         "shrink-below-content-size flex-full flex-basis-none TableInteractive-cellWrapper",
@@ -617,9 +668,9 @@ function Cell({
 
 function updateValueWithCurrentColumns(storedValue, columns) {
   const currentQueryFieldRefs = columns.map(c => JSON.stringify(c.field_ref));
-  const currentSettingFieldRefs = Object.values(
-    storedValue,
-  ).flatMap(fieldRefs => fieldRefs.map(field_ref => JSON.stringify(field_ref)));
+  const currentSettingFieldRefs = Object.values(storedValue).flatMap(
+    fieldRefs => fieldRefs.map(field_ref => JSON.stringify(field_ref)),
+  );
   const toAdd = _.difference(currentQueryFieldRefs, currentSettingFieldRefs);
   const toRemove = _.difference(currentSettingFieldRefs, currentQueryFieldRefs);
 

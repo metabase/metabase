@@ -19,7 +19,7 @@ export const TabHintToastContainer = styled.div`
 `;
 
 export const DatasetEditBar = styled(EditBar)`
-  background-color: ${color("nav")};
+  background-color: ${color("brand")};
 `;
 
 export const TableHeaderColumnName = styled.div`
@@ -82,11 +82,14 @@ FieldTypeIcon.defaultProps = { size: 14 };
 
 // Mirrors styling of some QB View div elements
 
+const EDIT_BAR_HEIGHT = "49px";
+
 export const Root = styled.div`
   display: flex;
   flex: 1 0 auto;
   position: relative;
   background-color: ${color("bg-white")};
+  height: calc(100vh - ${EDIT_BAR_HEIGHT});
 `;
 
 export const MainContainer = styled.div`

@@ -3,11 +3,13 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 
 import { color } from "metabase/lib/colors";
-
 import Icon from "metabase/components/Icon";
-import Popover from "metabase/components/Popover";
 
-import { ListItemStyled, UlStyled } from "./ExpressionEditorSuggestions.styled";
+import {
+  ExpressionListItem,
+  ExpressionList,
+  ExpressionPopover,
+} from "./ExpressionEditorSuggestions.styled";
 
 import { isObscured } from "metabase/lib/dom";
 
@@ -54,6 +56,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
     suggestions: PropTypes.array,
     onSuggestionMouseDown: PropTypes.func, // signature is f(index)
     highlightedIndex: PropTypes.number.isRequired,
+    target: PropTypes.instanceOf(Element).isRequired,
   };
 
   componentDidUpdate(prevProps, prevState) {
@@ -75,53 +78,53 @@ export default class ExpressionEditorSuggestions extends React.Component {
   }
 
   render() {
-    const { suggestions, highlightedIndex } = this.props;
+    const { suggestions, highlightedIndex, target } = this.props;
 
     if (!suggestions.length) {
       return null;
     }
 
     return (
-      <Popover
-        className="not-rounded border-dark"
-        hasArrow={false}
-        tetherOptions={{
-          attachment: "top left",
-          targetAttachment: "bottom left",
-        }}
-        targetOffsetY={0}
+      <ExpressionPopover
+        placement="bottom-start"
         sizeToFit
-      >
-        <UlStyled data-testid="expression-suggestions-list" className="pb1">
-          {suggestions.map((suggestion, i) => {
-            const isHighlighted = i === highlightedIndex;
-            const { icon } = suggestion;
-            const { normal, highlighted } = colorForIcon(icon);
+        visible
+        reference={target}
+        content={
+          <ExpressionList
+            data-testid="expression-suggestions-list"
+            className="pb1"
+          >
+            {suggestions.map((suggestion, i) => {
+              const isHighlighted = i === highlightedIndex;
+              const { icon } = suggestion;
+              const { normal, highlighted } = colorForIcon(icon);
 
-            const key = `$suggstion-${i}`;
-            const listItem = (
-              <ListItemStyled
-                onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
-                isHighlighted={isHighlighted}
-                className="flex align-center px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit"
-              >
-                <Icon
-                  name={icon}
-                  color={isHighlighted ? highlighted : normal}
-                  size="14"
-                  className="mr1"
-                />
-                <SuggestionSpan
-                  suggestion={suggestion}
+              const key = `$suggstion-${i}`;
+              const listItem = (
+                <ExpressionListItem
+                  onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
                   isHighlighted={isHighlighted}
-                />
-              </ListItemStyled>
-            );
+                  className="hover-parent hover--inherit"
+                >
+                  <Icon
+                    name={icon}
+                    color={isHighlighted ? highlighted : normal}
+                    size="14"
+                    className="mr1"
+                  />
+                  <SuggestionSpan
+                    suggestion={suggestion}
+                    isHighlighted={isHighlighted}
+                  />
+                </ExpressionListItem>
+              );
 
-            return <React.Fragment key={key}>{listItem}</React.Fragment>;
-          })}
-        </UlStyled>
-      </Popover>
+              return <React.Fragment key={key}>{listItem}</React.Fragment>;
+            })}
+          </ExpressionList>
+        }
+      />
     );
   }
 }

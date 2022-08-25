@@ -174,8 +174,7 @@
        "INSERT ALL %s SELECT * FROM dual"
        (str/join
         " "
-        (for [row  (u/one-or-many row-or-rows)
-              :let [columns (keys row)]]
+        (for [row (u/one-or-many row-or-rows)]
           (str/replace
            (hformat/to-sql
             ((get-method ddl/insert-rows-honeysql-form :sql/test-extensions) driver table-identifier row))

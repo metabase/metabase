@@ -12,13 +12,12 @@ jobs:
   test-build-scripts:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Prepare back-end environment
+      timeout-minutes: 5
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: 'build-scripts'
-    - name: Compile Java & AOT Sources
-      run: source ./bin/prep.sh && prep_deps
 
     - name: Run metabuild-common build script tests
       run: clojure -M:test

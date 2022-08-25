@@ -13,9 +13,7 @@ const EXAMPLE_JOIN = {
 describe("StructuredQuery nesting", () => {
   describe("parentDimension", () => {
     it("should return the correct dimension", () => {
-      const j = ORDERS.query()
-        .join(EXAMPLE_JOIN)
-        .joins()[0];
+      const j = ORDERS.query().join(EXAMPLE_JOIN).joins()[0];
       expect(j.parentDimensions()[0].mbql()).toEqual([
         "field",
         ORDERS.PRODUCT_ID.id,
@@ -25,9 +23,7 @@ describe("StructuredQuery nesting", () => {
   });
   describe("joinDimension", () => {
     it("should return the correct dimension", () => {
-      const j = ORDERS.query()
-        .join(EXAMPLE_JOIN)
-        .joins()[0];
+      const j = ORDERS.query().join(EXAMPLE_JOIN).joins()[0];
       expect(j.joinDimensions()[0].mbql()).toEqual([
         "field",
         PRODUCTS.ID.id,
@@ -37,18 +33,13 @@ describe("StructuredQuery nesting", () => {
   });
   describe("parentDimensionOptions", () => {
     it("should return correct dimensions for a source-table", () => {
-      const j = ORDERS.query()
-        .join({ alias: "join0" })
-        .joins()[0];
+      const j = ORDERS.query().join({ alias: "join0" }).joins()[0];
       const options = j.parentDimensionOptions();
       expect(options.count).toBe(7);
       expect(options.dimensions[0].mbql()).toEqual(["field", 1, null]);
     });
     it("should return correct dimensions for a source-query", () => {
-      const j = ORDERS.query()
-        .nest()
-        .join({ alias: "join0" })
-        .joins()[0];
+      const j = ORDERS.query().nest().join({ alias: "join0" }).joins()[0];
       const options = j.parentDimensionOptions();
       expect(options.count).toBe(7);
       expect(options.dimensions[0].mbql()).toEqual([

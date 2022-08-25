@@ -1,4 +1,4 @@
-import { restore, openNativeEditor } from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/helpers";
 
 import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
@@ -12,19 +12,13 @@ describe("issue 11580", () => {
     openNativeEditor();
     SQLFilter.enterParameterizedQuery("{{foo}} {{bar}}");
 
-    cy.findByTestId("sidebar-right")
-      .find(".text-brand")
-      .as("variableLabels");
+    cy.findAllByText("Variable name").next().as("variableLabels");
 
     // ensure they're in the right order to start
     assertVariablesOrder();
 
     // change the parameter to a number.
-    cy.contains("Variable type")
-      .first()
-      .next()
-      .as("variableType")
-      .click();
+    cy.contains("Variable type").first().next().as("variableType").click();
     SQLFilter.chooseType("Number");
 
     cy.get("@variableType").should("have.text", "Number");
@@ -35,10 +29,6 @@ describe("issue 11580", () => {
 });
 
 function assertVariablesOrder() {
-  cy.get("@variableLabels")
-    .first()
-    .should("have.text", "foo");
-  cy.get("@variableLabels")
-    .last()
-    .should("have.text", "bar");
+  cy.get("@variableLabels").first().should("have.text", "foo");
+  cy.get("@variableLabels").last().should("have.text", "bar");
 }

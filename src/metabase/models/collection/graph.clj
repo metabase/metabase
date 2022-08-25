@@ -2,7 +2,6 @@
   "Code for generating and updating the Collection permissions graph. See [[metabase.models.permissions]] for more
   details and for the code for generating and updating the *data* permissions graph."
   (:require [clojure.data :as data]
-            [metabase.api.common :as api :refer [*current-user-id*]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.collection-permission-graph-revision :as c-perm-revision
              :refer [CollectionPermissionGraphRevision]]
@@ -116,26 +115,10 @@
   (doseq [[collection-id new-perms] new-group-perms]
     (update-collection-permissions! collection-namespace group-id collection-id new-perms)))
 
-(defn- save-perms-revision!
-  "Save changes made to the collection permissions graph for logging/auditing purposes. This doesn't do anything if
-  `*current-user-id*` is unset (e.g. for testing or REPL usage).
-
-  *  `before-graph`-- the entire graph as it existed before the revision.
-  *  `changes` -- set of changes applied in this revision."
-  [collection-namespace current-revision before-graph changes]
-  (when *current-user-id*
-    ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
-    ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
-    (db/insert! CollectionPermissionGraphRevision
-      :id     (inc current-revision)
-      :before  (assoc before-graph :namespace collection-namespace)
-      :after   changes
-      :user_id *current-user-id*)))
-
 (s/defn update-graph!
   "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
-  namespace). This works just like the function of the same name in `metabase.models.permissions`, but for
-  Collections; refer to that function's extensive documentation to get a sense for how this works."
+  namespace). This works just like [[metabase.models.permission/update-data-perms-graph!]], but for Collections;
+  refer to that function's extensive documentation to get a sense for how this works."
   ([new-graph]
    (update-graph! nil new-graph))
 
@@ -155,4 +138,5 @@
        (db/transaction
          (doseq [[group-id changes] changes]
            (update-group-permissions! collection-namespace group-id changes))
-         (save-perms-revision! collection-namespace (:revision old-graph) old-graph changes))))))
+         (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
+                                      (assoc old-graph :namespace collection-namespace) changes))))))

@@ -13,6 +13,7 @@ const collection = {
   can_write: true,
   id: 1,
   name: "Collection Foo",
+  description: null,
   archived: false,
 };
 
@@ -38,7 +39,7 @@ Question.args = {
     setArchived: action("setArchived"),
     setPinned: action("setPinned"),
     copy: true,
-    setCollection: true,
+    setCollection: action("setCollection"),
   },
   onCopy,
   onMove,

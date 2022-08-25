@@ -6,9 +6,10 @@ import { t } from "ttag";
 import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 import ViewPill from "./ViewPill";
-import ViewButton from "./ViewButton";
+
 import {
   HeaderButton,
   FilterHeaderContainer,
@@ -110,14 +111,14 @@ export function FilterHeaderToggle({
   );
 }
 
-export function FilterHeader({ className, question, expanded }) {
+export function FilterHeader({ question, expanded }) {
   const query = question.query();
   const filters = query.topLevelFilters();
   if (filters.length === 0 || !expanded) {
     return null;
   }
   return (
-    <FilterHeaderContainer className={className}>
+    <FilterHeaderContainer data-testid="qb-filters-panel">
       <div className="flex flex-wrap align-center">
         {filters.map((filter, index) => (
           <PopoverWithTrigger
@@ -148,45 +149,19 @@ export function FilterHeader({ className, question, expanded }) {
   );
 }
 
-export function QuestionFilterWidget({
-  isShowingFilterSidebar,
-  onAddFilter,
-  onCloseFilter,
-  ...props
-}) {
+export function QuestionFilterWidget({ onOpenModal, className }) {
   return (
     <HeaderButton
       large
       labelBreakpoint="sm"
+      className={className}
       color={color("filter")}
-      onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}
-      active={isShowingFilterSidebar}
-      {...props}
+      onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
+      aria-label={t`Show more filters`}
+      data-metabase-event="View Mode; Open Filter Modal"
     >
       {t`Filter`}
     </HeaderButton>
-  );
-}
-
-export function MobileQuestionFilterWidget({
-  isShowingFilterSidebar,
-  onAddFilter,
-  onCloseFilter,
-  ...props
-}) {
-  return (
-    <ViewButton
-      large
-      primary
-      color={color("filter")}
-      labelBreakpoint="sm"
-      icon="filter"
-      onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}
-      active={isShowingFilterSidebar}
-      {...props}
-    >
-      &nbsp;
-    </ViewButton>
   );
 }
 
@@ -205,8 +180,10 @@ QuestionFilterWidget.shouldRender = ({
   question,
   queryBuilderMode,
   isObjectDetail,
+  isActionListVisible,
 }) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
   question.query().isEditable() &&
-  !isObjectDetail;
+  !isObjectDetail &&
+  isActionListVisible;

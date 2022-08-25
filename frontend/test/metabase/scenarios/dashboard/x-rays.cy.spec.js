@@ -4,19 +4,15 @@ import {
   visitQuestionAdhoc,
   popover,
   summarize,
-} from "__support__/e2e/cypress";
+  visualize,
+  startNewQuestion,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  PEOPLE,
-  PEOPLE_ID,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > x-rays", () => {
   beforeEach(() => {
@@ -24,24 +20,7 @@ describe("scenarios > x-rays", () => {
     cy.signInAsAdmin();
   });
 
-  it("should exist on homepage when person first signs in", () => {
-    cy.visit("/");
-    cy.contains("A look at your People table");
-    cy.contains("A look at your Orders table");
-    cy.contains("A look at your Products table");
-    cy.contains("A look at your Reviews table");
-  });
-
-  it("should be populated", () => {
-    cy.visit("/");
-    cy.findByText("People table").click();
-
-    cy.findByText("Something's gone wrong").should("not.exist");
-    cy.findByText("Here's an overview of the people in your People table");
-    cy.findByText("Overview");
-    cy.findByText("Per state");
-    cy.get(".Card").should("have.length", 11);
-  });
+  const XRAY_DATASETS = 11; // enough to load most questions
 
   it.skip("should work on questions with explicit joins (metabase#13112)", () => {
     const PRODUCTS_ALIAS = "Products";
@@ -91,29 +70,37 @@ describe("scenarios > x-rays", () => {
 
   ["X-ray", "Compare to the rest"].forEach(action => {
     it(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
-      cy.skipOn(action === "Compare to the rest");
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
+
       cy.createNativeQuestion({
         name: "15655",
         native: { query: "select * from people" },
       });
 
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("15655").click();
+      visualize();
       summarize();
       getDimensionByName({ name: "SOURCE" }).click();
+
+      cy.intercept("POST", "/api/dataset").as("postDataset");
+
       cy.button("Done").click();
-      cy.get(".bar")
-        .first()
-        .click({ force: true });
+      cy.get(".bar").first().click({ force: true });
       cy.findByText(action).click();
+
       cy.wait("@xray").then(xhr => {
+        for (let c = 0; c < XRAY_DATASETS; ++c) {
+          cy.wait("@postDataset");
+        }
         expect(xhr.response.body.cause).not.to.exist;
         expect(xhr.response.statusCode).not.to.eq(500);
       });
-      cy.findByText(/A closer look at the number of/);
+
+      cy.findByTextEnsureVisible("A look at the number of 15655");
+
+      cy.findByRole("heading", { name: /^A look at the number of/ });
       cy.get(".DashCard");
     });
 
@@ -133,9 +120,7 @@ describe("scenarios > x-rays", () => {
         display: "bar",
       });
 
-      cy.get(".bar")
-        .first()
-        .click();
+      cy.get(".bar").first().click();
       cy.findByText(action).click();
       cy.wait("@xray");
       cy.contains("null").should("not.exist");
@@ -143,11 +128,11 @@ describe("scenarios > x-rays", () => {
   });
 
   it("should be able to save an x-ray as a dashboard and visit it immediately (metabase#18028)", () => {
-    cy.visit("/");
-    cy.contains("A look at your Orders table").click();
+    cy.intercept("GET", "/app/assets/geojson/**").as("geojson");
 
-    // There are a lot of spinners in this dashboard. Give them some time to disappear.
-    cy.findByTestId("loading-spinner", { timeout: 10000 }).should("not.exist");
+    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
+
+    cy.wait("@geojson", { timeout: 10000 });
 
     cy.button("Save this").click();
 
@@ -160,11 +145,10 @@ describe("scenarios > x-rays", () => {
     cy.findByText("How these transactions are distributed");
   });
 
-  it("should be able to click the title of an x-ray dashcard to see it in the query builder", () => {
+  it("should be able to click the title of an x-ray dashcard to see it in the query builder (metabase#19405)", () => {
     const timeout = { timeout: 10000 };
 
-    cy.visit("/");
-    cy.contains("A look at your Orders table").click();
+    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
 
     // confirm results of "Total transactions" card are present
     cy.findByText("18,760", timeout);

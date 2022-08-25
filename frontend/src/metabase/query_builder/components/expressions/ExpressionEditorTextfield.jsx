@@ -25,8 +25,6 @@ import {
 
 import ExpressionMode from "./ExpressionMode";
 
-import "./expressions.css";
-
 import * as ace from "ace-builds/src-noconflict/ace";
 
 ace.config.set("basePath", "/assets/ui/");
@@ -43,11 +41,11 @@ const ErrorMessage = ({ error }) => {
   );
 };
 
-@ExplicitSize()
-export default class ExpressionEditorTextfield extends React.Component {
+class ExpressionEditorTextfield extends React.Component {
   constructor() {
     super();
     this.input = React.createRef();
+    this.suggestionTarget = React.createRef();
   }
 
   static propTypes = {
@@ -56,10 +54,12 @@ export default class ExpressionEditorTextfield extends React.Component {
       PropTypes.number,
       PropTypes.array,
     ]),
+    name: PropTypes.string,
     onChange: PropTypes.func.isRequired,
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
     onBlankChange: PropTypes.func,
+    helpTextTarget: PropTypes.instanceOf(Element).isRequired,
   };
 
   static defaultProps = {
@@ -277,22 +277,22 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   compileExpression() {
     const { source } = this.state;
+    const { query, startRule, name } = this.props;
     if (!source || source.length === 0) {
       return null;
     }
-    const { query, startRule } = this.props;
-    const { expression } = processSource({ source, query, startRule });
+    const { expression } = processSource({ name, source, query, startRule });
 
     return expression;
   }
 
   diagnoseExpression() {
     const { source } = this.state;
+    const { query, startRule, name } = this.props;
     if (!source || source.length === 0) {
       return { message: "Empty expression" };
     }
-    const { query, startRule } = this.props;
-    return diagnose(source, startRule, query);
+    return diagnose(source, startRule, query, name);
   }
 
   commitExpression() {
@@ -409,7 +409,11 @@ export default class ExpressionEditorTextfield extends React.Component {
 
     return (
       <React.Fragment>
-        <EditorContainer isFocused={isFocused} hasError={Boolean(errorMessage)}>
+        <EditorContainer
+          isFocused={isFocused}
+          hasError={Boolean(errorMessage)}
+          ref={this.suggestionTarget}
+        >
           <EditorEqualsSign>=</EditorEqualsSign>
           <AceEditor
             commands={this.commands}
@@ -439,14 +443,21 @@ export default class ExpressionEditorTextfield extends React.Component {
             width="100%"
           />
           <ExpressionEditorSuggestions
+            target={this.suggestionTarget.current}
             suggestions={suggestions}
             onSuggestionMouseDown={this.onSuggestionSelected}
             highlightedIndex={this.state.highlightedSuggestionIndex}
           />
         </EditorContainer>
         <ErrorMessage error={errorMessage} />
-        <HelpText helpText={this.state.helpText} width={this.props.width} />
+        <HelpText
+          target={this.props.helpTextTarget}
+          helpText={this.state.helpText}
+          width={this.props.width}
+        />
       </React.Fragment>
     );
   }
 }
+
+export default ExplicitSize()(ExpressionEditorTextfield);

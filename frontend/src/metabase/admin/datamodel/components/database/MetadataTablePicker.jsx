@@ -4,22 +4,13 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import Tables from "metabase/entities/tables";
 import { isSyncInProgress } from "metabase/lib/syncing";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import MetadataTableList from "./MetadataTableList";
 import MetadataSchemaList from "./MetadataSchemaList";
 
 const RELOAD_INTERVAL = 2000;
 
-@Tables.loadList({
-  query: (state, { databaseId }) => ({
-    dbId: databaseId,
-    include_hidden: true,
-  }),
-  reloadInterval: (state, props, tables = []) => {
-    return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
-  },
-  selectorName: "getListUnfiltered",
-})
-export default class MetadataTablePicker extends Component {
+class MetadataTablePicker extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -71,3 +62,15 @@ export default class MetadataTablePicker extends Component {
     );
   }
 }
+
+export default Tables.loadList({
+  query: (state, { databaseId }) => ({
+    dbId: databaseId,
+    include_hidden: true,
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  }),
+  reloadInterval: (state, props, tables = []) => {
+    return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
+  },
+  selectorName: "getListUnfiltered",
+})(MetadataTablePicker);

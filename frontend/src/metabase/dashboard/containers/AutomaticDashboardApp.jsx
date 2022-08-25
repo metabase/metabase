@@ -3,6 +3,7 @@ import React from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import cx from "classnames";
+import _ from "underscore";
 
 import title from "metabase/hoc/Title";
 import withToast from "metabase/hoc/Toast";
@@ -21,7 +22,9 @@ import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsHeaderVisible } from "metabase/dashboard/selectors";
 
+import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -36,6 +39,7 @@ import {
   ListRoot,
   SidebarHeader,
   SidebarRoot,
+  XrayIcon,
 } from "./AutomaticDashboardApp.styled";
 
 const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
@@ -44,17 +48,15 @@ const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
 const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state),
   dashboardId: getDashboardId(state, props),
+  isHeaderVisible: getIsHeaderVisible(state),
 });
 
 const mapDispatchToProps = {
   saveDashboard: Dashboards.actions.save,
+  invalidateCollections: Collections.actions.invalidateLists,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@DashboardData
-@withToast
-@title(({ dashboard }) => dashboard && dashboard.name)
-class AutomaticDashboardApp extends React.Component {
+class AutomaticDashboardAppInner extends React.Component {
   state = {
     savedDashboardId: null,
   };
@@ -67,11 +69,13 @@ class AutomaticDashboardApp extends React.Component {
   }
 
   save = async () => {
-    const { dashboard, triggerToast, saveDashboard } = this.props;
+    const { dashboard, triggerToast, saveDashboard, invalidateCollections } =
+      this.props;
     // remove the transient id before trying to save
     const { payload: newDashboard } = await saveDashboard(
       dissoc(dashboard, "id"),
     );
+    invalidateCollections();
     triggerToast(
       <div className="flex align-center">
         {t`Your dashboard was saved`}
@@ -99,6 +103,7 @@ class AutomaticDashboardApp extends React.Component {
       parameters,
       parameterValues,
       setParameterValue,
+      isHeaderVisible,
     } = this.props;
     const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
@@ -114,34 +119,36 @@ class AutomaticDashboardApp extends React.Component {
         })}
       >
         <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
-          <div className="bg-white border-bottom py2">
-            <div className="wrapper flex align-center">
-              <Icon name="bolt" className="text-gold mr2" size={24} />
-              <div>
-                <h2 className="text-wrap mr2">
-                  {dashboard && <TransientTitle dashboard={dashboard} />}
-                </h2>
-                {dashboard && dashboard.transient_filters && (
-                  <TransientFilters
-                    filter={dashboard.transient_filters}
-                    metadata={this.props.metadata}
-                  />
+          {isHeaderVisible && (
+            <div className="bg-white border-bottom py2">
+              <div className="wrapper flex align-center">
+                <XrayIcon name="bolt" size={24} />
+                <div>
+                  <h2 className="text-wrap mr2">
+                    {dashboard && <TransientTitle dashboard={dashboard} />}
+                  </h2>
+                  {dashboard && dashboard.transient_filters && (
+                    <TransientFilters
+                      filter={dashboard.transient_filters}
+                      metadata={this.props.metadata}
+                    />
+                  )}
+                </div>
+                {savedDashboardId != null ? (
+                  <Button className="ml-auto" disabled>{t`Saved`}</Button>
+                ) : (
+                  <ActionButton
+                    className="ml-auto text-nowrap"
+                    success
+                    borderless
+                    actionFn={this.save}
+                  >
+                    {t`Save this`}
+                  </ActionButton>
                 )}
               </div>
-              {savedDashboardId != null ? (
-                <Button className="ml-auto" disabled>{t`Saved`}</Button>
-              ) : (
-                <ActionButton
-                  className="ml-auto text-nowrap"
-                  success
-                  borderless
-                  actionFn={this.save}
-                >
-                  {t`Save this`}
-                </ActionButton>
-              )}
             </div>
-          </div>
+          )}
 
           <div className="wrapper pb4">
             {parameters && parameters.length > 0 && (
@@ -184,6 +191,13 @@ class AutomaticDashboardApp extends React.Component {
     );
   }
 }
+
+const AutomaticDashboardApp = _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  DashboardData,
+  withToast,
+  title(({ dashboard }) => dashboard && dashboard.name),
+)(AutomaticDashboardAppInner);
 
 const TransientTitle = ({ dashboard }) =>
   dashboard.transient_name ? (

@@ -1,7 +1,7 @@
 (ns metabase.test.data.druid
   (:require [clojure.string :as str]
             [metabase.driver.druid.client :as druid.client]
-            [metabase.test.data.impl :as tx.impl]
+            [metabase.test.data.impl :as data.impl]
             [metabase.test.data.interface :as tx]
             [metabase.util :as u]))
 
@@ -38,7 +38,7 @@
 
 (defmethod tx/create-db! :druid
   [_ dbdef & _]
-  (let [{:keys [database-name table-definitions], :as dbdef} (tx/get-dataset-definition dbdef)]
+  (let [{:keys [database-name], :as _dbdef} (tx/get-dataset-definition dbdef)]
     (assert (= database-name "checkins")
       "Druid tests currently only support the flattened test-data dataset.")
     (assert (contains? (already-loaded) "checkins")
@@ -52,6 +52,6 @@
 
 ;; no-op -- because the names of the columns actually loaded by Druid differ from ones in the database definition, the
 ;; default impl will fail. TODO -- we should write an implementation that works for Druid
-(defmethod tx.impl/verify-data-loaded-correctly :druid
+(defmethod data.impl/verify-data-loaded-correctly :druid
   [_ _ _]
   nil)

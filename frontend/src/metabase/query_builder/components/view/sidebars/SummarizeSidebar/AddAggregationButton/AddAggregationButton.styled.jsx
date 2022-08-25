@@ -7,7 +7,7 @@ export const AddAggregationButtonRoot = styled.button`
   justify-content: center;
   padding: 0.625rem;
   transition: all 0.2s linear;
-  color: ${color("accent1")};
+  color: ${color("summarize")};
   background-color: ${color("bg-light")};
   border-radius: 8px;
   font-weight: 700;

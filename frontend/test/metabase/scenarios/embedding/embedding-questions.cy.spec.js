@@ -1,4 +1,9 @@
-import { restore, visitQuestion, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestion,
+  popover,
+  visitIframe,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 import {
@@ -39,12 +44,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.icon("share").click();
     cy.findByText("Embed this question in an application").click();
 
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
-
-      cy.signOut();
-      cy.visit(iframe.src);
-    });
+    visitIframe();
 
     cy.findByText(title);
 
@@ -80,12 +80,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.icon("share").click();
     cy.findByText("Embed this question in an application").click();
 
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
-
-      cy.signOut();
-      cy.visit(iframe.src);
-    });
+    visitIframe();
 
     assertOnXYAxisLabels({ xLabel: "Created At", yLabel: "Count" });
 
@@ -96,9 +91,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.get(".y.axis .tick").should("contain", "60");
 
     // Check the tooltip for the last point on the line
-    cy.get(".dot")
-      .last()
-      .realHover();
+    cy.get(".dot").last().realHover();
 
     popover().within(() => {
       testPairedTooltipValues("Created At", "Aug, 2016");
@@ -123,12 +116,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.icon("share").click();
     cy.findByText("Embed this question in an application").click();
 
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
-
-      cy.signOut();
-      cy.visit(iframe.src);
-    });
+    visitIframe();
 
     // Global (Data model) settings should be preserved
     cy.findByText("Product ID as Title");
@@ -158,12 +146,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.icon("share").click();
     cy.findByText("Embed this question in an application").click();
 
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
-
-      cy.signOut();
-      cy.visit(iframe.src);
-    });
+    visitIframe();
 
     // Base question assertions
     cy.findByText("Product ID as Title");
@@ -183,21 +166,37 @@ describe("scenarios > embedding > questions ", () => {
 
     cy.contains("October 7, 2017, 1:34 AM");
   });
+
+  it("should display according to `locale` parameter metabase#22561", () => {
+    const CARD_ID = 1;
+    cy.request("PUT", `/api/card/${CARD_ID}`, { enable_embedding: true });
+
+    visitQuestion(CARD_ID);
+
+    cy.icon("share").click();
+    cy.findByText("Embed this question in an application").click();
+
+    visitIframe();
+
+    cy.url().then(url => {
+      cy.visit({
+        url,
+        qs: {
+          locale: "de",
+        },
+      });
+    });
+
+    cy.findByText("Februar 11, 2019, 9:40 PM");
+  });
 });
 
 function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1)
-    .closest("td")
-    .siblings("td")
-    .findByText(val2);
+  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  cy.get(".x-axis-label")
-    .invoke("text")
-    .should("eq", xLabel);
+  cy.get(".x-axis-label").invoke("text").should("eq", xLabel);
 
-  cy.get(".y-axis-label")
-    .invoke("text")
-    .should("eq", yLabel);
+  cy.get(".y-axis-label").invoke("text").should("eq", yLabel);
 }

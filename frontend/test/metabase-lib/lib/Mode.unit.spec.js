@@ -22,10 +22,7 @@ describe("Mode", () => {
       });
 
       it("returns `metric` mode with >= 1 aggregations", () => {
-        const mode = rawDataQuery
-          .aggregate(["count"])
-          .question()
-          .mode();
+        const mode = rawDataQuery.aggregate(["count"]).question().mode();
         expect(mode && mode.name()).toEqual("metric");
       });
 
@@ -82,12 +79,12 @@ describe("Mode", () => {
         expect(mode && mode.name()).toEqual("pivot");
       });
 
-      it("returns `object` mode with pk filter", () => {
+      it("returns `segment` mode with pk filter", () => {
         const mode = rawDataQuery
           .filter(["=", ["field", ORDERS.ID.id, null], 42])
           .question()
           .mode();
-        expect(mode && mode.name()).toEqual("object");
+        expect(mode && mode.name()).toEqual("segment");
       });
 
       it("returns `default` mode with >=0 aggregations and >=3 breakouts", () => {

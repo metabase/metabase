@@ -75,7 +75,7 @@
                          Card                [card2 {:display :whatever}]
                          Dashboard           [dashboard]
                          DashboardCard       [dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}]
-                         DashboardCardSeries [dcs1 {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]]
+                         DashboardCardSeries [_   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]]
            (render/detect-pulse-chart-type card1
                                            dc1
                                            {:cols [{:base_type :type/Temporal}
@@ -113,3 +113,19 @@
                                                  {:base_type :type/Number}]
                                           :rows [["apple" 3]
                                                  ["banana" 4]]}))))
+
+(deftest make-description-if-needed-test
+  (testing "Use Visualization Settings's description if it exists"
+    (mt/with-temp* [Card          [card {:description "Card description"}]
+                    Dashboard     [dashboard]
+                    DashboardCard [dc1 {:dashboard_id (:id dashboard) :card_id (:id card)
+                                        :visualization_settings {:card.description "Visualization description"}}]]
+      (binding [render/*include-description* true]
+        (is (= "Visualization description" (last (:content (#'render/make-description-if-needed dc1 card))))))))
+
+  (testing "Fallback to Card's description if Visualization Settings's description not exists"
+    (mt/with-temp* [Card          [card {:description "Card description"}]
+                    Dashboard     [dashboard]
+                    DashboardCard [dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]]
+      (binding [render/*include-description* true]
+        (is (= "Card description" (last (:content (#'render/make-description-if-needed dc1 card)))))))))

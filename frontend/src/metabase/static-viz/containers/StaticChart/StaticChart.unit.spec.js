@@ -12,10 +12,6 @@ describe("StaticChart", () => {
             ["Gadget", 20],
             ["Widget", 31],
           ],
-          accessors: {
-            x: row => row[0],
-            y: row => row[1],
-          },
           settings: {
             y: {
               number_style: "currency",
@@ -46,10 +42,6 @@ describe("StaticChart", () => {
             ["Gadget", 20],
             ["Widget", 31],
           ],
-          accessors: {
-            x: row => row[0],
-            y: row => row[1],
-          },
           settings: {
             y: {
               number_style: "currency",
@@ -80,10 +72,6 @@ describe("StaticChart", () => {
             ["Gadget", 20],
             ["Widget", 31],
           ],
-          accessors: {
-            x: row => row[0],
-            y: row => row[1],
-          },
           settings: {
             y: {
               number_style: "currency",
@@ -118,10 +106,6 @@ describe("StaticChart", () => {
             donut: "#509EE3",
             cronut: "#DDECFA",
           },
-          accessors: {
-            dimension: row => row[0],
-            metric: row => row[1],
-          },
           settings: {
             metric: {
               number_style: "currency",
@@ -146,10 +130,6 @@ describe("StaticChart", () => {
             ["2010-11-07", 20],
             ["2020-11-08", 30],
           ],
-          accessors: {
-            x: row => new Date(row[0]).valueOf(),
-            y: row => row[1],
-          },
           settings: {
             x: {
               date_style: "dddd",
@@ -176,10 +156,6 @@ describe("StaticChart", () => {
             ["2010-11-07", 20],
             ["2020-11-08", 30],
           ],
-          accessors: {
-            x: row => new Date(row[0]).valueOf(),
-            y: row => row[1],
-          },
           settings: {
             x: {
               date_style: "MMM",
@@ -206,10 +182,6 @@ describe("StaticChart", () => {
             ["2010-11-07", 20],
             ["2020-11-08", 30],
           ],
-          accessors: {
-            x: row => new Date(row[0]).valueOf(),
-            y: row => row[1],
-          },
           settings: {
             x: {
               date_style: "dddd",

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color, lighten } from "metabase/lib/colors";
+import { color, lighten, tint, isDark } from "metabase/lib/colors";
 import { RadioColorScheme, RadioVariant } from "./types";
 
 export interface RadioGroupProps {
@@ -71,7 +71,7 @@ export const RadioContainer = styled.div<RadioContainerProps>`
   }
 
   ${RadioInput}:focus + & {
-    outline: 2px solid ${color("focus")};
+    outline: 2px solid ${() => color("focus")};
   }
 
   ${RadioInput}:focus:not(:focus-visible) + & {
@@ -96,13 +96,17 @@ export const RadioContainerBubble = styled(RadioContainer)`
   border-radius: 10rem;
   font-weight: bold;
   color: ${props =>
-    props.checked ? color("white") : getSchemeColor(props.colorScheme)};
+    props.checked ? color("white") : getContrastSchemeColor(props.colorScheme)};
   background-color: ${props =>
     props.checked
       ? getSchemeColor(props.colorScheme)
       : lighten(getSchemeColor(props.colorScheme))};
 
   &:hover {
+    color: ${props =>
+      !props.checked && !props.showButtons
+        ? getContrastSchemeColor(props.colorScheme)
+        : ""};
     background-color: ${props =>
       props.checked ? "" : lighten(getSchemeColor(props.colorScheme), 0.38)};
     transition: background-color 300ms linear;
@@ -138,6 +142,11 @@ const getSchemeColor = (colorScheme: RadioColorScheme): string => {
     case "default":
       return color("brand");
     case "accent7":
-      return color("accent7");
+      return color("filter");
   }
+};
+
+const getContrastSchemeColor = (colorScheme: RadioColorScheme) => {
+  const schemeColor = getSchemeColor(colorScheme);
+  return isDark(schemeColor) ? tint(schemeColor, 0.5) : schemeColor;
 };

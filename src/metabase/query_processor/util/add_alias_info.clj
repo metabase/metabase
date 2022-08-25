@@ -1,5 +1,5 @@
 (ns metabase.query-processor.util.add-alias-info
-  "Walks query and adds generates appropriate aliases for every selected column; and adds extra keys to the
+  "Walks query and generates appropriate aliases for every selected column; and adds extra keys to the
   corresponding MBQL clauses with this information. Deduplicates aliases and calls [[metabase.driver/escape-alias]]
   with the generated aliases. Adds information about the aliases in source queries and joins that correspond to
   columns in the parent level.
@@ -186,7 +186,7 @@
 
 (defn- exports [query]
   (into #{} (mbql.u/match (dissoc query :source-query :source-metadata :joins)
-              [(_ :guard #{:field :expression :aggregation}) _ (_ :guard (every-pred map? ::position))])))
+              [(_ :guard #{:field :expression :aggregation-options}) _ (_ :guard (every-pred map? ::position))])))
 
 (defn- join-with-alias [{:keys [joins]} join-alias]
   (some (fn [join]
@@ -196,21 +196,36 @@
 
 (defn- matching-field-in-source-query* [source-query field-clause & {:keys [normalize-fn]
                                                                      :or   {normalize-fn normalize-clause}}]
-  (let [normalized (normalize-fn field-clause)
-        exports    (filter (partial mbql.u/is-clause? :field)
-                           (exports source-query))]
+  (let [normalized    (normalize-fn field-clause)
+        all-exports   (exports source-query)
+        field-exports (filter (partial mbql.u/is-clause? :field)
+                              all-exports)]
     ;; first look for an EXACT match in the `exports`
     (or (some (fn [a-clause]
                 (when (= (normalize-fn a-clause) normalized)
                   a-clause))
-              exports)
+              field-exports)
         ;; if there is no EXACT match, attempt a 'fuzzy' match by disregarding the `:temporal-unit` and `:binning`
         (let [fuzzify          (fn [clause] (mbql.u/update-field-options clause dissoc :temporal-unit :binning))
               fuzzy-normalized (fuzzify normalized)]
           (some (fn [a-clause]
                   (when (= (fuzzify (normalize-fn a-clause)) fuzzy-normalized)
                     a-clause))
-                exports)))))
+                field-exports))
+        ;; look for a matching expression clause with the same name if still no match
+        (when-let [field-name (let [[_ id-or-name] field-clause]
+                                (when (string? id-or-name)
+                                  id-or-name))]
+          (or (some
+               (fn [[_ expression-name :as expression-clause]]
+                 (when (= expression-name field-name)
+                   expression-clause))
+               (filter (partial mbql.u/is-clause? :expression) all-exports))
+              (some
+               (fn [[_ _ opts :as aggregation-options-clause]]
+                 (when (= (::source-alias opts) field-name)
+                   aggregation-options-clause))
+               (filter (partial mbql.u/is-clause? :aggregation-options) all-exports)))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
@@ -274,9 +289,9 @@
     ;; suffix to escaped identifiers.)
     ;;
     ;; We'll have to look into this more in the future. For now, it seems to work for everything we try it with.
-    (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
     (and join-is-this-level? alias-from-join)  alias-from-join
     alias-from-source-query                    alias-from-source-query
+    (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
     :else                                      field-name))
 
 (defn- field-desired-alias
@@ -336,6 +351,7 @@
         unique-alias (unique-alias-fn position original-ag-name)]
     [:aggregation-options wrapped-ag-clause (assoc opts
                                                    :name           unique-alias
+                                                   ::source-alias  original-ag-name
                                                    ::position      position
                                                    ::desired-alias unique-alias)]))
 

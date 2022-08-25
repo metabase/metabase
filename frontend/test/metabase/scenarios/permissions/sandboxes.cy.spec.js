@@ -12,7 +12,10 @@ import {
   summarize,
   filter,
   visitQuestion,
-} from "__support__/e2e/cypress";
+  visitDashboard,
+  startNewQuestion,
+} from "__support__/e2e/helpers";
+
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -39,9 +42,7 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it("should add key attributes to an existing user", () => {
-      cy.icon("ellipsis")
-        .last()
-        .click();
+      cy.icon("ellipsis").last().click();
       cy.findByText("Edit user").click();
       cy.findByText("Add an attribute").click();
       cy.findByPlaceholderText("Key").type("User ID");
@@ -53,7 +54,7 @@ describeEE("formatting > sandboxes", () => {
       cy.findByText("Invite someone").click();
       cy.findByPlaceholderText("Johnny").type("John");
       cy.findByPlaceholderText("Appleseed").type("Smith");
-      cy.findByPlaceholderText("youlooknicetoday@email.com").type(
+      cy.findByPlaceholderText("nicetoseeyou@email.com").type(
         "john@smith.test",
       );
       cy.findByText("Add an attribute").click();
@@ -131,8 +132,9 @@ describeEE("formatting > sandboxes", () => {
     describe("question with joins", () => {
       it("should be sandboxed even after applying a filter to the question", () => {
         cy.log("Open saved question with joins");
-        cy.visit("/collection/root");
-        cy.findByText(QUESTION_NAME).click();
+        cy.get("@questionId").then(id => {
+          visitQuestion(id);
+        });
 
         cy.log("Make sure user is initially sandboxed");
         cy.get(".TableInteractive-cellWrapper--firstColumn").should(
@@ -215,13 +217,9 @@ describeEE("formatting > sandboxes", () => {
           .contains(/Orders?/)
           .click();
 
-        cy.get(".List-section-header")
-          .contains("User")
-          .click();
+        cy.get(".List-section-header").contains("User").click();
 
-        cy.get(".List-item")
-          .contains("ID")
-          .click();
+        cy.get(".List-item").contains("ID").click();
       });
 
       visualize();
@@ -335,9 +333,7 @@ describeEE("formatting > sandboxes", () => {
         // Drill-through
         cy.get(".Visualization").within(() => {
           // Click on the first bar in a graph (Category: "Doohickey")
-          cy.get(".bar")
-            .eq(0)
-            .click({ force: true });
+          cy.get(".bar").eq(0).click({ force: true });
         });
         cy.findByText("View these Orders").click();
 
@@ -411,9 +407,7 @@ describeEE("formatting > sandboxes", () => {
       // Drill-through
       cy.get(".Visualization").within(() => {
         // Click on the first bar in a graph (Category: "Doohickey")
-        cy.get(".bar")
-          .eq(0)
-          .click({ force: true });
+        cy.get(".bar").eq(0).click({ force: true });
       });
       cy.findByText("View these Orders").click();
 
@@ -482,15 +476,14 @@ describeEE("formatting > sandboxes", () => {
           callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
 
-        cy.get(".cellData")
-          .contains("Awesome Concrete Shoes")
-          .click();
+        cy.get(".cellData").contains("Awesome Concrete Shoes").click();
         cy.findByText(/View details/i).click();
 
         cy.log(
           "It should show object details instead of filtering by this Product ID",
         );
-        cy.findByText("McClure-Lockman");
+        cy.findByTestId("object-detail");
+        cy.findAllByText("McClure-Lockman");
       });
 
       /**
@@ -583,16 +576,15 @@ describeEE("formatting > sandboxes", () => {
           cy.log(
             "It should show remapped Display Values instead of Product ID",
           );
-          cy.get(".cellData")
-            .contains("Awesome Concrete Shoes")
-            .click();
+          cy.get(".cellData").contains("Awesome Concrete Shoes").click();
           cy.findByText(/View details/i).click();
 
           cy.log(
             "It should show object details instead of filtering by this Product ID",
           );
           // The name of this Vendor is visible in "details" only
-          cy.findByText("McClure-Lockman");
+          cy.findByTestId("object-detail");
+          cy.findAllByText("McClure-Lockman");
 
           /**
            * Helper function related to this test only!
@@ -709,9 +701,7 @@ describeEE("formatting > sandboxes", () => {
         // Drill-through
         cy.get(".Visualization").within(() => {
           // Click on the second bar in a graph (Category: "Widget")
-          cy.get(".bar")
-            .eq(1)
-            .click({ force: true });
+          cy.get(".bar").eq(1).click({ force: true });
         });
         cy.findByText("View these Orders").click();
 
@@ -737,7 +727,9 @@ describeEE("formatting > sandboxes", () => {
         native: { query: "SELECT CAST(ID AS VARCHAR) AS ID FROM ORDERS;" },
       });
 
-      cy.visit("/admin/permissions/data/database/1/schema/PUBLIC/table/2");
+      cy.visit(
+        `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
+      );
       cy.wait("@tablePermissions");
       cy.icon("eye")
         .eq(1) // No better way of doing this, undfortunately (see table above)
@@ -759,13 +751,9 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it("should be able to use summarize columns from joined table based on a saved question (metabase#14766)", () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-
       createJoinedQuestion("14766_joined");
 
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("14766_joined").click();
       cy.findByText("Pick the metric you want to see").click();
@@ -801,25 +789,18 @@ describeEE("formatting > sandboxes", () => {
 
       cy.signOut();
       cy.signInAsSandboxedUser();
-      createJoinedQuestion("14841").then(({ body: { id: QUESTION_ID } }) => {
-        visitQuestion(QUESTION_ID);
-      });
+      createJoinedQuestion("14841", { visitQuestion: true });
 
       cy.findByText("Settings").click();
       cy.findByTestId("sidebar-left")
         .should("be.visible")
         .within(() => {
           // Remove the "Subtotal" column from within sidebar
-          cy.findByText("Subtotal")
-            .parent()
-            .find(".Icon-close")
-            .click();
+          cy.findByText("Subtotal").parent().find(".Icon-eye_filled").click();
         });
       cy.button("Done").click();
       // Rerun the query
-      cy.icon("play")
-        .last()
-        .click();
+      cy.icon("play").last().click();
 
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
@@ -902,9 +883,8 @@ describeEE("formatting > sandboxes", () => {
       });
 
       cy.signInAsSandboxedUser();
-      cy.visit("/dashboard/1");
-      cy.icon("share").click();
-      cy.findByText("Dashboard subscriptions").click();
+      visitDashboard(1);
+      cy.icon("subscription").click();
       // We're starting without email or Slack being set up so it's expected to see the following:
       cy.findByText("Create a dashboard subscription");
       cy.findAllByRole("link", { name: "set up email" });
@@ -1018,6 +998,8 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it("sandboxed user should receive sandboxed dashboard subscription", () => {
+      cy.intercept("POST", "/api/pulse/test").as("emailSent");
+
       setupSMTP();
 
       cy.sandboxTable({
@@ -1028,14 +1010,13 @@ describeEE("formatting > sandboxes", () => {
       });
 
       cy.signInAsSandboxedUser();
-      cy.visit("/dashboard/1");
-      cy.icon("share").click();
-      cy.findByText("Dashboard subscriptions").click();
+      visitDashboard(1);
+      cy.icon("subscription").click();
       cy.findByText("Email it").click();
       cy.findByPlaceholderText("Enter user names or email addresses").click();
       cy.findByText("User 1").click();
       cy.findByText("Send email now").click();
-      cy.findByText("Email sent");
+      cy.wait("@emailSent");
       cy.request("GET", "http://localhost:80/email").then(({ body }) => {
         expect(body[0].html).to.include("Orders in a dashboard");
         expect(body[0].html).to.include("37.65");
@@ -1045,24 +1026,27 @@ describeEE("formatting > sandboxes", () => {
   });
 });
 
-function createJoinedQuestion(name) {
-  return cy.createQuestion({
-    name,
+function createJoinedQuestion(name, { visitQuestion = false } = {}) {
+  return cy.createQuestion(
+    {
+      name,
 
-    query: {
-      "source-table": ORDERS_ID,
-      joins: [
-        {
-          fields: "all",
-          "source-table": PRODUCTS_ID,
-          condition: [
-            "=",
-            ["field", ORDERS.PRODUCT_ID, null],
-            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-          ],
-          alias: "Products",
-        },
-      ],
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+            ],
+            alias: "Products",
+          },
+        ],
+      },
     },
-  });
+    { wrapId: true, visitQuestion },
+  );
 }

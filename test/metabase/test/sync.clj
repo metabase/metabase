@@ -12,7 +12,7 @@
   []
   (data/with-temp-copy-of-db
     ;; `sync-database!` does both sync an analysis steps
-    (sync/sync-database! (Database (data/id)))
+    (sync/sync-database! (db/select-one Database :id (data/id)))
     (db/count TaskHistory :db_id (data/id))))
 
 (defn crash-fn

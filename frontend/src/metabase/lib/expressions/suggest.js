@@ -48,6 +48,25 @@ export function suggest({
     return { suggestions };
   }
 
+  suggestions.push(
+    {
+      type: "literal",
+      name: "True",
+      text: "True",
+      index: targetOffset,
+      icon: "io",
+      order: 1,
+    },
+    {
+      type: "literal",
+      name: "False",
+      text: "False",
+      index: targetOffset,
+      icon: "io",
+      order: 1,
+    },
+  );
+
   const database = query.database();
   if (_.first(matchPrefix) !== "[") {
     suggestions.push({
@@ -61,7 +80,7 @@ export function suggest({
     suggestions.push(
       ...Array.from(EXPRESSION_FUNCTIONS)
         .map(name => MBQL_CLAUSES[name])
-        .filter(clause => database.hasFeature(clause.requiresFeature))
+        .filter(clause => clause && database.hasFeature(clause.requiresFeature))
         .map(func => ({
           type: "functions",
           name: func.displayName,
@@ -75,7 +94,9 @@ export function suggest({
       suggestions.push(
         ...Array.from(AGGREGATION_FUNCTIONS)
           .map(name => MBQL_CLAUSES[name])
-          .filter(clause => database.hasFeature(clause.requiresFeature))
+          .filter(
+            clause => clause && database.hasFeature(clause.requiresFeature),
+          )
           .map(func => ({
             type: "aggregations",
             name: func.displayName,

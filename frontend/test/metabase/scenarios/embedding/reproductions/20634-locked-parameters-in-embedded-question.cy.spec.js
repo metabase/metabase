@@ -1,28 +1,28 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitIframe } from "__support__/e2e/helpers";
 
 describe("locked parameters in embedded question (metabase#20634)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion({
-      name: "20634",
-      native: {
-        query: "select {{text}}",
-        "template-tags": {
-          text: {
-            id: "abc-123",
-            name: "text",
-            "display-name": "Text",
-            type: "text",
-            default: null,
+    cy.createNativeQuestion(
+      {
+        name: "20634",
+        native: {
+          query: "select {{text}}",
+          "template-tags": {
+            text: {
+              id: "abc-123",
+              name: "text",
+              "display-name": "Text",
+              type: "text",
+              default: null,
+            },
           },
         },
       },
-    }).then(({ body: { id } }) => {
-      cy.visit(`/question/${id}`);
-      cy.findByTestId("loading-spinner").should("not.exist");
-    });
+      { visitQuestion: true },
+    );
   });
 
   it("should let the user lock parameters to specific values", () => {
@@ -49,10 +49,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     });
 
     // directly navigate to the embedded question
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
-      cy.visit(iframe.src);
-    });
+    visitIframe();
 
     // verify that the Text parameter doesn't show up but that its value is reflected in the dashcard
     cy.findByText("Text").should("not.exist");

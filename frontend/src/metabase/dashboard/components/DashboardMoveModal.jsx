@@ -3,6 +3,7 @@ import React from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
+import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
@@ -18,9 +19,7 @@ const mapDispatchToProps = {
   setDashboardCollection: Dashboards.actions.setCollection,
 };
 
-@withRouter
-@connect(null, mapDispatchToProps)
-class DashboardMoveModal extends React.Component {
+class DashboardMoveModalInner extends React.Component {
   render() {
     const { params, onClose, setDashboardCollection } = this.props;
     const dashboardId = Urls.extractEntityId(params.slug);
@@ -44,6 +43,11 @@ class DashboardMoveModal extends React.Component {
     );
   }
 }
+
+const DashboardMoveModal = _.compose(
+  withRouter,
+  connect(null, mapDispatchToProps),
+)(DashboardMoveModalInner);
 
 export default DashboardMoveModal;
 

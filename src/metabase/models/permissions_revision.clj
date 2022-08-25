@@ -6,15 +6,12 @@
 
 (models/defmodel PermissionsRevision :permissions_revision)
 
-(defn- pre-insert [revision]
-  (assoc revision :created_at :%now))
-
-(u/strict-extend (class PermissionsRevision)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PermissionsRevision)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:before :json
                                    :after  :json})
-          :pre-insert pre-insert
+          :properties (constantly {:created-at-timestamped? true})
           :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a PermissionsRevision!"))))}))
 
 (defn latest-id

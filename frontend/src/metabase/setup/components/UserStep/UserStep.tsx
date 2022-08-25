@@ -2,6 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import Users from "metabase/entities/users";
+import { UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import {
@@ -10,7 +11,6 @@ import {
   StepDescription,
 } from "./UserStep.styled";
 import { FormProps } from "./types";
-import { UserInfo } from "../../types";
 
 export interface UserStepProps {
   user?: UserInfo;
@@ -80,7 +80,7 @@ const UserForm = ({ user, onSubmit, onPasswordChange }: UserFormProps) => {
 
   return (
     <UserFormRoot
-      form={Users.forms.setup}
+      form={Users.forms.setup()}
       user={user}
       asyncValidate={handleAsyncValidate}
       asyncBlurFields={["password"]}
@@ -104,8 +104,9 @@ const UserForm = ({ user, onSubmit, onPasswordChange }: UserFormProps) => {
 };
 
 const getStepTitle = (user: UserInfo | undefined, isStepCompleted: boolean) => {
+  const namePart = user?.first_name ? `, ${user.first_name}` : "";
   return isStepCompleted
-    ? t`Hi, ${user?.first_name}. Nice to meet you!`
+    ? t`Hi${namePart}. Nice to meet you!`
     : t`What should we call you?`;
 };
 

@@ -3,15 +3,16 @@
   (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [java-time :as t]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Dimension Field Metric Segment Table]]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.interface :as models]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.query.permissions :as query-perms]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
@@ -70,7 +71,7 @@
             native-source?
             (-> (assoc :field_ref [:field "PRICE" {:base-type :type/Integer}]
                        :effective_type :type/Integer)
-                (dissoc :description :parent_id :visibility_type))
+                (dissoc :description :parent_id :nfc_path :visibility_type))
 
             (not has-source-metadata?)
             (dissoc :id :semantic_type :settings :fingerprint :table_id :coercion_strategy))
@@ -150,7 +151,7 @@
   (testing "Aggregations in both nested and outer query have correct metadata (#19403)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
       (mt/dataset sample-dataset
-        (mt/with-temp* [Card [{card-id :id :as card}
+        (mt/with-temp* [Card [{card-id :id}
                               {:dataset_query
                                (mt/$ids :products
                                         {:type     :query
@@ -227,6 +228,31 @@
   ([card k v & {:as more}]
    (query-with-source-card card (merge {k v} more))))
 
+(deftest multilevel-nested-questions-with-joins
+  (testing "Multilevel nested questions with joins work (#22859)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset sample-dataset
+        (mt/with-temp* [Card [inner-card
+                              {:dataset_query
+                               (mt/mbql-query reviews
+                                 {:fields [$id]
+                                  :joins [{:source-table $$products
+                                           :alias "P"
+                                           :fields [&P.products.id &P.products.ean]
+                                           :condition [:= $product_id &P.products.id]}]})}]
+                        Card [outer-card
+                              {:dataset_query
+                               (mt/mbql-query orders
+                                 {:fields [$id]
+                                  :joins [{:source-table (str "card__" (:id inner-card))
+                                           :alias "RP"
+                                           :fields [&RP.reviews.id &RP.products.id &RP.products.ean]
+                                           :condition [:= $product_id &RP.products.id]}]})}]]
+          (is (= :completed
+                 (-> (query-with-source-card outer-card :limit 1)
+                     qp/process-query
+                     :status))))))))
+
 (deftest source-card-id-test
   (testing "Make sure we can run queries using source table `card__id` format."
     ;; This is the format that is actually used by the frontend; it gets translated to the normal `source-query`
@@ -240,6 +266,20 @@
                     (mt/$ids venues
                       {:aggregation [:count]
                        :breakout    [$price]}))))))))))
+
+(deftest grouped-expression-in-card-test
+  (testing "Nested grouped expressions work (#23862)."
+    (mt/with-temp Card [card {:dataset_query
+                              (mt/mbql-query venues
+                                {:aggregation [[:count]]
+                                 :breakout [[:expression "Price level"]]
+                                 :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
+                                 :limit 2})}]
+      (is (= [["budget"    81]
+              ["expensive" 19]]
+             (mt/rows
+              (qp/process-query
+               (query-with-source-card card))))))))
 
 (deftest card-id-native-source-queries-test
   (let [run-native-query
@@ -446,7 +486,7 @@
                 ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
                 ;; the usual extra keys
                 (dissoc :semantic_type :coercion_strategy :table_id
-                        :id :settings :fingerprint))
+                        :id :settings :fingerprint :nfc_path))
             (qp.test/aggregate-col :count)]
            (mt/cols
              (mt/with-temp Card [card {:dataset_query {:database (mt/id)
@@ -553,7 +593,7 @@
     (testing "You should be able to read a Card with a source Card if you can read that Card and their Collections (#12354)\n"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp-copy-of-db
-          (perms/revoke-data-perms! (group/all-users) (mt/id))
+          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
           (mt/with-temp* [Collection [collection]
                           Card       [card-1 {:collection_id (u/the-id collection)
                                               :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})}]
@@ -561,9 +601,9 @@
                                               :dataset_query (mt/mbql-query nil
                                                                {:source-table (format "card__%d" (u/the-id card-1))})}]]
             (testing "read perms for both Cards should be the same as reading the parent collection")
-            (is (= (models/perms-objects-set collection :read)
-                   (models/perms-objects-set card-1 :read)
-                   (models/perms-objects-set card-2 :read)))
+            (is (= (mi/perms-objects-set collection :read)
+                   (mi/perms-objects-set card-1 :read)
+                   (mi/perms-objects-set card-2 :read)))
 
             (testing "\nSanity check: shouldn't be able to read before we grant permissions\n"
               (doseq [[object-name object] {"Collection" collection
@@ -572,17 +612,17 @@
                 (mt/with-test-user :rasta
                   (testing object-name
                     (is (= false
-                           (models/can-read? object)))))))
+                           (mi/can-read? object)))))))
 
             (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
-              (perms/grant-collection-read-permissions! (group/all-users) collection)
+              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
               (mt/with-test-user :rasta
                 (doseq [[object-name object] {"Collection" collection
                                               "Card 1"     card-1
                                               "Card 2"     card-2}]
                   (testing object-name
                     (is (= true
-                           (models/can-read? object)))))
+                           (mi/can-read? object)))))
 
                 (testing "\nshould be able to run the query"
                   (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
@@ -617,15 +657,15 @@
                     "the Source Card is in, and write permissions for the Collection you're trying to save the new Card in")
         (mt/with-temp* [Collection [source-card-collection]
                         Collection [dest-card-collection]]
-          (perms/grant-collection-read-permissions!      (group/all-users) source-card-collection)
-          (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
-          (is (some? (save-card-via-API-with-native-source-query! 202 (mt/db) source-card-collection dest-card-collection)))))
+          (perms/grant-collection-read-permissions!      (perms-group/all-users) source-card-collection)
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
+          (is (some? (save-card-via-API-with-native-source-query! 200 (mt/db) source-card-collection dest-card-collection)))))
 
       (testing (str "however, if we do *not* have read permissions for the source Card's collection we shouldn't be "
                     "allowed to save the query. This API call should fail")
         (testing "Card in the Root Collection"
           (mt/with-temp Collection [dest-card-collection]
-            (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
             (is (schema= {:message  (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                           s/Keyword s/Any}
                          (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
@@ -633,7 +673,7 @@
         (testing "Card in a different Collection for which we do not have perms"
           (mt/with-temp* [Collection [source-card-collection]
                           Collection [dest-card-collection]]
-            (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
             (is (schema= {:message  (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                           s/Keyword s/Any}
                          (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
@@ -641,7 +681,7 @@
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"
             (mt/with-temp Collection [source-card-collection]
-              (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
+              (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
               (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
                             s/Keyword s/Any}
                            (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
@@ -649,7 +689,7 @@
           (testing "Try to save in a different Collection for which we do not have perms"
             (mt/with-temp* [Collection [source-card-collection]
                             Collection [dest-card-collection]]
-              (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
+              (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
               (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
                             s/Keyword s/Any}
                            (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
@@ -864,7 +904,7 @@
       (letfn [(ean-metadata [result]
                 (as-> result result
                   (get-in result [:data :results_metadata :columns])
-                  (u/key-by :name result)
+                  (m/index-by :name result)
                   (get result "EAN")
                   (select-keys result [:name :display_name :base_type :id :field_ref])))]
         (testing "Make sure metadata is correct for the 'EAN' column with"

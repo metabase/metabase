@@ -10,17 +10,18 @@
             [metabase.query-processor :as qp]
             [metabase.sync :as sync]
             [metabase.test :as mt]
-            [metabase.test.data.dataset-definitions :as dataset-defs]
+            [metabase.test.data.dataset-definitions :as defs]
+            [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql.ddl :as ddl]
             [metabase.util :as u]
             [toucan.db :as db]))
 
-(deftest ddl-statements-test
+(deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
     (testing "Create DB DDL statements"
       (is (= "DROP DATABASE IF EXISTS \"v3_test-data\"; CREATE DATABASE \"v3_test-data\";"
-             (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition dataset-defs/test-data)))))
+             (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
 
     (testing "Create Table DDL statements"
       (is (= (map
@@ -29,7 +30,7 @@
                "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
                 \"last_login\" TIMESTAMP_LTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
                "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"categories\";"
-               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT NOT NULL,
                 PRIMARY KEY (\"id\")) ;"
                "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"venues\";"
                "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
@@ -43,7 +44,7 @@
                 FOREIGN KEY (\"user_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\");"
                "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ins_venue_id_venues_-833167948\"
                 FOREIGN KEY (\"venue_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
-             (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition dataset-defs/test-data)
+             (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition defs/test-data)
                                                                  (update :database-name #(str "v3_" %)))))))))
 
 ;; TODO -- disabled because these are randomly failing, will figure out when I'm back from vacation. I think it's a
@@ -102,12 +103,14 @@
                          :database-type     "NUMBER"
                          :base-type         :type/Number
                          :pk?               true
-                         :database-position 0}
+                         :database-position 0
+                         :database-required false}
                         {:name              "name"
                          :database-type     "VARCHAR"
                          :base-type         :type/Text
-                         :database-position 1}}}
-             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (Table (mt/id :categories))))))))
+                         :database-position 1
+                         :database-required false}}}
+             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (db/select-one Table :id (mt/id :categories))))))))
 
 (deftest describe-table-fks-test
   (mt/test-driver :snowflake
@@ -115,19 +118,32 @@
       (is (= #{{:fk-column-name   "category_id"
                 :dest-table       {:name "categories", :schema "PUBLIC"}
                 :dest-column-name "id"}}
-             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (Table (mt/id :venues))))))))
+             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (db/select-one Table :id (mt/id :venues))))))))
+
+(defn- format-env-key [env-key]
+  (let [[_ header body footer]
+        (re-find #"(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
+    (str header (str/replace body #"\s+" "\n") footer)))
 
 (deftest can-connect-test
   (mt/test-driver :snowflake
-    (letfn [(can-connect? [details]
-              (driver/can-connect? :snowflake details))]
+    (let [can-connect? (partial driver/can-connect? :snowflake)]
       (is (= true
              (can-connect? (:details (mt/db))))
           "can-connect? should return true for normal Snowflake DB details")
-      (is (thrown? net.snowflake.client.jdbc.SnowflakeSQLException
-                   (mt/suppress-output
-                    (can-connect? (assoc (:details (mt/db)) :db (mt/random-name)))))
-          "can-connect? should throw for Snowflake databases that don't exist (#9511)"))))
+      (is (thrown?
+           net.snowflake.client.jdbc.SnowflakeSQLException
+           (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
+          "can-connect? should throw for Snowflake databases that don't exist (#9511)")
+      (let [pk-user (tx/db-test-env-var-or-throw :snowflake :pk-user)
+            pk-key  (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))]
+        (is (= true
+               (-> (:details (mt/db))
+                   (dissoc :password)
+                   (assoc :user pk-user
+                          :private-key-value pk-key)
+                   can-connect?))
+            "can-connect? should return true when authenticating with private key")))))
 
 (deftest report-timezone-test
   (mt/test-driver :snowflake
@@ -180,40 +196,42 @@
 (deftest week-start-test
   (mt/test-driver :snowflake
     (testing "The WEEK_START session setting is correctly incorporated"
-      (letfn [(invalidate-pool! []
-                (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))
-              (run-dayofweek-query [date-str]
+      (letfn [(run-dayofweek-query [date-str]
                 (-> (mt/rows
-                      (qp/process-query {:database   (mt/id)
-                                         :type       :native
-                                         :native     {:query         (str "SELECT DAYOFWEEK({{filter_date}})")
-                                                      :template-tags {:filter_date {:name         "filter_date"
-                                                                                    :display_name "Just A Date"
-                                                                                    :type         "date"}}}
-                                         :parameters [{:type   "date/single"
-                                                       :target ["variable" ["template-tag" "filter_date"]]
-                                                       :value  date-str}]}))
+                     (qp/process-query {:database   (mt/id)
+                                        :type       :native
+                                        :native     {:query         (str "SELECT DAYOFWEEK({{filter_date}})")
+                                                     :template-tags {:filter_date {:name         "filter_date"
+                                                                                   :display_name "Just A Date"
+                                                                                   :type         "date"}}}
+                                        :parameters [{:type   "date/single"
+                                                      :target ["variable" ["template-tag" "filter_date"]]
+                                                      :value  date-str}]}))
                     ffirst))]
-        (try
-          (testing " under the default value of 7 (Sunday)"
-            (is (= 1 (run-dayofweek-query "2021-01-10"))) ; Sunday (first day of the week)
-            (is (= 2 (run-dayofweek-query "2021-01-11")))) ; Monday (second day of the week)
-          (testing " when we control it via the Metabase setting value"
-            (mt/with-temporary-setting-values [start-of-week :monday]
-              (invalidate-pool!) ; have to invalidate pool to force new connection creation to pick up changed setting
-              (is (= 7 (run-dayofweek-query "2021-01-10"))) ; Sunday (last day of week now)
-              (is (= 1 (run-dayofweek-query "2021-01-11"))) ; Monday (first day of week now)
-              (testing " when we put it in the additional-options (connection string)"
-                (mt/with-temp Database [db (-> (select-keys (mt/db) [:details :engine])
-                                               (assoc :name "Test WEEK_START Connection String")
-                                               ;; set WEEK_START as 3 (Wednesday) in connection string
-                                               ;; this should take precedence over the start-of-week setting in effect
-                                               (update :details assoc :additional-options "WEEK_START=3"))]
-                  (mt/with-db db
-                    (is (= 7 (run-dayofweek-query "2021-01-12"))) ; Tuesday (last day of week now)
-                    (is (= 1 (run-dayofweek-query "2021-01-13")))))))) ; Wednesday (first day of week now)
-          ;; invalidate pool again after the test to ensure the connection cache forgets the temp setting version
-          (finally (invalidate-pool!)))))))
+        (testing "under the default value of 7 (Sunday)"
+          (mt/with-temporary-setting-values [start-of-week :sunday]
+            (is (= 1 (run-dayofweek-query "2021-01-10")) "Sunday (first day of the week)")
+            (is (= 2 (run-dayofweek-query "2021-01-11")) "Monday (second day of the week)")))
+        (testing "when we control it via the Metabase setting value"
+          (mt/with-temporary-setting-values [start-of-week :monday]
+            (is (= 7 (run-dayofweek-query "2021-01-10")) "Sunday (last day of week now)")
+            (is (= 1 (run-dayofweek-query "2021-01-11")) "Monday (first day of week now)")))))))
+
+(deftest first-day-of-week-test
+  (mt/test-driver :snowflake
+    (testing "Day-of-week should work correctly regardless of what the `start-of-week` Setting is set to (#20999)"
+      (mt/dataset sample-dataset
+        (doseq [[start-of-week friday-int] [[:friday 1]
+                                            [:monday 5]
+                                            [:sunday 6]]]
+          (mt/with-temporary-setting-values [start-of-week start-of-week]
+            (let [query (mt/mbql-query people
+                          {:breakout    [!day-of-week.birth_date]
+                           :aggregation [[:count]]
+                           :filter      [:= $birth_date "1986-12-12"]})]
+              (mt/with-native-query-testing-context query
+                (is (= [[friday-int 1]]
+                       (mt/rows (qp/process-query query))))))))))))
 
 (deftest normalize-test
   (mt/test-driver :snowflake

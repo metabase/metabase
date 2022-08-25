@@ -1,7 +1,8 @@
 // NOTE: this file is used on the frontend and backend and there are some
 // limitations. See frontend/src/metabase-shared/color_selector for details
 
-import { alpha, getColorScale, roundColor } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
+import { getColorScale, getSafeColor } from "metabase/lib/colors/scales";
 
 const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
@@ -25,7 +26,7 @@ export function makeCellBackgroundGetter(rows, cols, settings) {
   if (Object.keys(formatters).length === 0 && rowFormatters.length === 0) {
     return () => null;
   } else {
-    return function(value, rowIndex, colName) {
+    return function (value, rowIndex, colName) {
       if (formatters[colName]) {
         // const value = rows[rowIndex][colIndexes[colName]];
         for (let i = 0; i < formatters[colName].length; i++) {
@@ -59,6 +60,11 @@ function getColumnIndexesByName(cols) {
   return colIndexes;
 }
 
+export const canCompareSubstrings = (a, b) =>
+  typeof a === "string" && typeof b === "string" && !!a.length && !!b.length;
+
+export const isEmptyString = val => typeof val === "string" && !val.length;
+
 export const OPERATOR_FORMATTER_FACTORIES = {
   "<": (value, color) => v =>
     typeof value === "number" && v < value ? color : null,
@@ -68,26 +74,19 @@ export const OPERATOR_FORMATTER_FACTORIES = {
     typeof value === "number" && v >= value ? color : null,
   ">": (value, color) => v =>
     typeof value === "number" && v > value ? color : null,
-  "=": (value, color) => v => (v === value ? color : null),
-  "!=": (value, color) => v => (v !== value ? color : null),
-  "is-null": (_value, color) => v => (v === null ? color : null),
-  "not-null": (_value, color) => v => (v !== null ? color : null),
+  "=": (value, color) => v => v === value ? color : null,
+  "!=": (value, color) => v =>
+    !isEmptyString(value) && v !== value ? color : null,
+  "is-null": (_value, color) => v => v === null ? color : null,
+  "not-null": (_value, color) => v => v !== null ? color : null,
   contains: (value, color) => v =>
-    typeof value === "string" && typeof v === "string" && v.indexOf(value) >= 0
-      ? color
-      : null,
+    canCompareSubstrings(value, v) && v.indexOf(value) >= 0 ? color : null,
   "does-not-contain": (value, color) => v =>
-    typeof value === "string" && typeof v === "string" && v.indexOf(value) < 0
-      ? color
-      : null,
+    canCompareSubstrings(value, v) && v.indexOf(value) < 0 ? color : null,
   "starts-with": (value, color) => v =>
-    typeof value === "string" && typeof v === "string" && v.startsWith(value)
-      ? color
-      : null,
+    canCompareSubstrings(value, v) && v.startsWith(value) ? color : null,
   "ends-with": (value, color) => v =>
-    typeof value === "string" && typeof v === "string" && v.endsWith(value)
-      ? color
-      : null,
+    canCompareSubstrings(value, v) && v.endsWith(value) ? color : null,
 };
 
 export function compileFormatter(
@@ -135,7 +134,7 @@ export function compileFormatter(
       [min, max],
       format.colors.map(c => alpha(c, GRADIENT_ALPHA)),
     ).clamp(true);
-    return value => roundColor(scale(value));
+    return value => getSafeColor(scale(value));
   } else {
     console.warn("Unknown format type", format.type);
     return () => null;

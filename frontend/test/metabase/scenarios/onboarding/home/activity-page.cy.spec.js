@@ -1,4 +1,3 @@
-//Replaces HomepageApp.e2e.spec.js
 import {
   restore,
   openProductsTable,
@@ -6,7 +5,13 @@ import {
   sidebar,
   editDashboard,
   saveDashboard,
-} from "__support__/e2e/cypress";
+  visitDashboard,
+  getFullName,
+} from "__support__/e2e/helpers";
+
+import { USERS } from "__support__/e2e/cypress_data";
+
+const { normal } = USERS;
 
 describe("metabase > scenarios > home > activity-page", () => {
   beforeEach(() => {
@@ -30,13 +35,11 @@ describe("metabase > scenarios > home > activity-page", () => {
     popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByPlaceholderText("Enter a number").type("5");
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
     });
     cy.findByText("Save").click();
     cy.get("[value='Products, Filtered by Rating']");
-    cy.findAllByText("Save")
-      .last()
-      .click();
+    cy.findAllByText("Save").last().click();
     cy.findByText("Not now").click();
 
     // View a dashboard
@@ -51,21 +54,19 @@ describe("metabase > scenarios > home > activity-page", () => {
     cy.visit("/activity");
 
     cy.findAllByText("joined!").should("have.length", 2);
-    cy.findAllByText("Robert").should("have.length", 2);
+    cy.findAllByText(getFullName(normal)).should("have.length", 2);
     cy.findByText("Products, Filtered by Rating");
   });
 
   it("should respect the (added to dashboard) card id in the link (metabase#18547)", () => {
     cy.intercept("GET", `/api/dashboard/1`).as("dashboard");
 
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     cy.wait("@dashboard");
 
     editDashboard();
 
-    cy.icon("add")
-      .last()
-      .click();
+    cy.icon("add").last().click();
 
     sidebar().within(() => {
       cy.findByTestId("loading-spinner").should("not.exist");

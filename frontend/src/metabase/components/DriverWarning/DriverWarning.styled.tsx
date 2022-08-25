@@ -6,6 +6,8 @@ export interface WarningRootProps {
 }
 
 export const WarningRoot = styled.div<WarningRootProps>`
+  display: flex;
+  align-items: center;
   margin-bottom: 2rem;
   padding: 1rem 0.75rem;
   color: ${color("text-medium")};

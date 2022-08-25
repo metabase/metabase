@@ -1,4 +1,8 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestionAdhoc,
+  ensureDcChartVisibility,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -38,7 +42,8 @@ describe("visual tests > visualizations > line", () => {
       },
     });
 
-    cy.percySnapshot();
+    ensureDcChartVisibility();
+    cy.createPercySnapshot();
   });
 
   it("with vertical legends", () => {
@@ -61,7 +66,7 @@ describe("visual tests > visualizations > line", () => {
               "field",
               PEOPLE.STATE,
               {
-                "source-field": 11,
+                "source-field": ORDERS.USER_ID,
               },
             ],
           ],
@@ -74,7 +79,8 @@ describe("visual tests > visualizations > line", () => {
       },
     });
 
-    cy.percySnapshot();
+    ensureDcChartVisibility();
+    cy.createPercySnapshot();
   });
 
   it("with vertical legends", () => {
@@ -97,7 +103,7 @@ describe("visual tests > visualizations > line", () => {
               "field",
               PEOPLE.STATE,
               {
-                "source-field": 11,
+                "source-field": ORDERS.USER_ID,
               },
             ],
           ],
@@ -110,7 +116,8 @@ describe("visual tests > visualizations > line", () => {
       },
     });
 
-    cy.percySnapshot();
+    ensureDcChartVisibility();
+    cy.createPercySnapshot();
   });
 
   it("with multiple series and different display types (metabase#11216)", () => {
@@ -149,7 +156,8 @@ describe("visual tests > visualizations > line", () => {
       },
     });
 
-    cy.percySnapshot();
+    ensureDcChartVisibility();
+    cy.createPercySnapshot();
   });
 
   it("with missing values and duplicate x (metabase#11076)", () => {
@@ -189,6 +197,7 @@ describe("visual tests > visualizations > line", () => {
       },
     });
 
-    cy.percySnapshot();
+    ensureDcChartVisibility();
+    cy.createPercySnapshot();
   });
 });

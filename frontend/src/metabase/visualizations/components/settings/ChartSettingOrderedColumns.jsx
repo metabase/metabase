@@ -116,7 +116,6 @@ export default class ChartSettingOrderedColumns extends Component {
 
     return (
       <div className="list">
-        <div>{t`Click and drag to change their order`}</div>
         {enabledColumns.length > 0 ? (
           <SortableColumnList
             columnSettings={enabledColumns}
@@ -132,7 +131,7 @@ export default class ChartSettingOrderedColumns extends Component {
           </div>
         )}
         {disabledColumns.length > 0 || additionalFieldOptions.count > 0 ? (
-          <h4 className="mb2 mt4 pt4 border-top">{`More columns`}</h4>
+          <h4 className="mb2 mt4 pt4 border-top">{t`More columns`}</h4>
         ) : null}
         {disabledColumns.map((columnSetting, index) => (
           <ColumnItem

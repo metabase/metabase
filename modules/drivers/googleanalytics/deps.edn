@@ -1,8 +1,10 @@
 {:paths ["src" "resources"]
 
  :deps
- ;; ensure the version of google-http-client transitively depended on here matches that of bigquery-cloud-sdk
- ;; (which, at the moment, is 1.39.2)
- {com.google.apis/google-api-services-analytics {:mvn/version "v3-rev20190807-1.32.1"}}
-
- :metabase.driver/parents #{:google}}
+ {com.google.apis/google-api-services-analytics      {:mvn/version "v3-rev20190807-1.32.1"}
+  ;; CVE on 2.8.7 from google api services (NB: also in bigquery-cloud-sdk)
+  com.google.code.gson/gson                          {:mvn/version "2.8.9"}
+  com.google.oauth-client/google-oauth-client        {:mvn/version "1.33.3"}
+  ;; for some reason, Google stopped depending on google-http-client-jackson2 from google-api-client somewhere between
+  ;; 1.30.7 and 1.32.1, so we must explicitly bring it in because the google driver uses it directly
+  com.google.http-client/google-http-client-jackson2 {:mvn/version "1.39.2-sp.1"}}}

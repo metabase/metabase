@@ -3,9 +3,9 @@
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
-            [metabase.api.query-description :as qd]
+            [metabase.api.query-description :as api.qd]
             [metabase.events :as events]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models.interface :as mi]
             [metabase.models.revision :as revision]
             [metabase.models.segment :as segment :refer [Segment]]
@@ -38,17 +38,17 @@
         (hydrate :creator))))
 
 (s/defn ^:private hydrated-segment [id :- su/IntGreaterThanZero]
-  (-> (api/read-check (Segment id))
+  (-> (api/read-check (db/select-one Segment :id id))
       (hydrate :creator)))
 
 (defn- add-query-descriptions
   [segments] {:pre [(coll? segments)]}
   (when (some? segments)
     (for [segment segments]
-      (let [table (Table (:table_id segment))]
+      (let [table (db/select-one Table :id (:table_id segment))]
         (assoc segment
                :query_description
-               (qd/generate-query-description table (:definition segment)))))))
+               (api.qd/generate-query-description table (:definition segment)))))))
 
 (api/defendpoint GET "/:id"
   "Fetch `Segment` with ID."
@@ -71,7 +71,7 @@
         clean-body (u/select-keys-when body
                      :present #{:description :caveats :points_of_interest}
                      :non-nil #{:archived :definition :name :show_in_getting_started})
-        new-def    (->> clean-body :definition (normalize/normalize-fragment []))
+        new-def    (->> clean-body :definition (mbql.normalize/normalize-fragment []))
         new-body   (merge
                      (dissoc clean-body :revision_message)
                      (when new-def {:definition new-def}))
@@ -130,7 +130,6 @@
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (-> id Segment api/read-check related/related))
-
+  (-> (db/select-one Segment :id id) api/read-check related/related))
 
 (api/define-routes)

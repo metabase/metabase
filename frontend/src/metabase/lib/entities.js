@@ -208,6 +208,8 @@ export function createEntity(def) {
     return entity.actionDecorators[action] || (_ => _);
   }
 
+  // `objectActions` are for actions that accept an entity as their first argument,
+  // and they are bound to instances when `wrapped: true` is passed to `EntityListLoader`
   entity.objectActions = {
     fetch: compose(
       withAction(FETCH_ACTION),
@@ -217,8 +219,10 @@ export function createEntity(def) {
         entityQuery => getQueryKey(entityQuery),
       ),
       withEntityActionDecorators("fetch"),
-    )((entityQuery, options = {}) => async (dispatch, getState) =>
-      entity.normalize(await entity.api.get(entityQuery, options)),
+    )(
+      (entityQuery, options = {}) =>
+        async (dispatch, getState) =>
+          entity.normalize(await entity.api.get(entityQuery, options)),
     ),
 
     create: compose(
@@ -238,54 +242,50 @@ export function createEntity(def) {
       withEntityRequestState(object => [object.id, "update"]),
       withEntityActionDecorators("update"),
     )(
-      (entityObject, updatedObject = null, { notify } = {}) => async (
-        dispatch,
-        getState,
-      ) => {
-        // save the original object for undo
-        const originalObject = entity.selectors.getObject(getState(), {
-          entityId: entityObject.id,
-        });
-        // If a second object is provided just take the id from the first and
-        // update it with all the properties in the second
-        // NOTE: this is so that the object.update(updatedObject) method on
-        // the default entity wrapper class works correctly
-        if (updatedObject) {
-          entityObject = { id: entityObject.id, ...updatedObject };
-        }
-
-        const result = entity.normalize(
-          await entity.api.update(getWritableProperties(entityObject)),
-        );
-
-        if (notify) {
-          // pick only the attributes that were updated
-          const undoObject = _.pick(
-            originalObject,
-            ...Object.keys(updatedObject || {}),
-          );
-          // https://github.com/metabase/metabase/pull/20874#pullrequestreview-902384264
-          const canUndo = !hasCircularReference(undoObject);
-          if (notify.undo && canUndo) {
-            dispatch(
-              addUndo({
-                actions: [
-                  entity.objectActions.update(
-                    entityObject,
-                    undoObject,
-                    // don't show an undo for the undo
-                    { notify: false },
-                  ),
-                ],
-                ...notify,
-              }),
-            );
-          } else {
-            dispatch(addUndo(notify));
+      (entityObject, updatedObject = null, { notify } = {}) =>
+        async (dispatch, getState) => {
+          // save the original object for undo
+          const originalObject = entity.selectors.getObject(getState(), {
+            entityId: entityObject.id,
+          });
+          // If a second object is provided just take the id from the first and
+          // update it with all the properties in the second
+          // NOTE: this is so that the object.update(updatedObject) method on
+          // the default entity wrapper class works correctly
+          if (updatedObject) {
+            entityObject = { id: entityObject.id, ...updatedObject };
           }
-        }
-        return result;
-      },
+
+          const result = entity.normalize(
+            await entity.api.update(getWritableProperties(entityObject)),
+          );
+
+          if (notify) {
+            if (notify.undo) {
+              // pick only the attributes that were updated
+              const undoObject = _.pick(
+                originalObject,
+                ...Object.keys(updatedObject || {}),
+              );
+              dispatch(
+                addUndo({
+                  actions: [
+                    entity.objectActions.update(
+                      entityObject,
+                      undoObject,
+                      // don't show an undo for the undo
+                      { notify: false },
+                    ),
+                  ],
+                  ...notify,
+                }),
+              );
+            } else {
+              dispatch(addUndo(notify));
+            }
+          }
+          return result;
+        },
     ),
 
     delete: compose(
@@ -294,7 +294,7 @@ export function createEntity(def) {
       withEntityRequestState(object => [object.id, "delete"]),
       withEntityActionDecorators("delete"),
     )(entityObject => async (dispatch, getState) => {
-      await entity.api.delete({ id: entityObject.id });
+      await entity.api.delete(entityObject);
       return {
         entities: { [entity.name]: { [entityObject.id]: null } },
         result: entityObject.id,
@@ -339,6 +339,11 @@ export function createEntity(def) {
         entityQuery,
       };
     }),
+
+    invalidateLists: compose(
+      withAction(INVALIDATE_LISTS_ACTION),
+      withEntityActionDecorators("invalidateLists"),
+    )(() => null),
 
     // user defined actions should override defaults
     ...entity.objectActions,
@@ -388,7 +393,7 @@ export function createEntity(def) {
   const getObject = createCachedSelector(
     [getEntities, getEntityId],
     (entities, entityId) => denormalize(entityId, entity.schema, entities),
-  )((state, { entityId }) =>
+  )((state, { entityId } = {}) =>
     typeof entityId === "object" ? JSON.stringify(entityId) : entityId,
   ); // must stringify objects
 
@@ -417,15 +422,17 @@ export function createEntity(def) {
     entities => entities && entities.metadata,
   );
 
-  const getList = createSelector(
-    [state => state, getEntityIds],
+  const getList = createCachedSelector(
+    [getEntities, getEntityIds],
     // delegate to getObject
-    (state, entityIds) =>
+    (entities, entityIds) =>
       entityIds &&
       entityIds
-        .map(entityId => entity.selectors.getObject(state, { entityId }))
-        .filter(e => e != null), // deleted entities might remain in lists
-  );
+        .map(entityId => entity.selectors.getObject({ entities }, { entityId }))
+        .filter(e => e != null), // deleted entities might remain in lists,
+  )((state, { entityQuery } = {}) => {
+    return entityQuery ? JSON.stringify(entityQuery) : "";
+  });
 
   // REQUEST STATE SELECTORS
 
@@ -583,7 +590,7 @@ export function createEntity(def) {
     // object selectors
     for (const [methodName, method] of Object.entries(entity.objectSelectors)) {
       if (method) {
-        EntityWrapper.prototype[methodName] = function(...args) {
+        EntityWrapper.prototype[methodName] = function (...args) {
           return method(this, ...args);
         };
       }
@@ -591,7 +598,7 @@ export function createEntity(def) {
     // object actions
     for (const [methodName, method] of Object.entries(entity.objectActions)) {
       if (method) {
-        EntityWrapper.prototype[methodName] = function(...args) {
+        EntityWrapper.prototype[methodName] = function (...args) {
           if (this._dispatch) {
             // if dispatch was provided to the constructor go ahead and dispatch
             return this._dispatch(method(this, ...args));
@@ -611,16 +618,6 @@ export function createEntity(def) {
   require("metabase/entities/containers").addEntityContainers(entity);
 
   return entity;
-}
-
-function hasCircularReference(object) {
-  try {
-    JSON.stringify(object);
-  } catch (error) {
-    return true;
-  }
-
-  return false;
 }
 
 export function combineEntities(entities) {

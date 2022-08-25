@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useState,
 } from "react";
-import { Moment } from "moment";
+import { Moment } from "moment-timezone";
 import DateInput from "metabase/core/components/DateInput";
 import DateSelector from "metabase/core/components/DateSelector";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -24,6 +24,7 @@ export interface DateWidgetProps extends DateWidgetAttributes {
   error?: boolean;
   fullWidth?: boolean;
   onChange?: (date?: Moment) => void;
+  onHasTimeChange?: (hasTime: boolean) => void;
 }
 
 const DateWidget = forwardRef(function DateWidget(
@@ -36,6 +37,7 @@ const DateWidget = forwardRef(function DateWidget(
     error,
     fullWidth,
     onChange,
+    onHasTimeChange,
     ...props
   }: DateWidgetProps,
   ref: Ref<HTMLDivElement>,
@@ -60,6 +62,7 @@ const DateWidget = forwardRef(function DateWidget(
           hasTime={hasTime}
           is24HourMode={is24HourMode}
           onChange={onChange}
+          onHasTimeChange={onHasTimeChange}
           onSubmit={handleClose}
         />
       }

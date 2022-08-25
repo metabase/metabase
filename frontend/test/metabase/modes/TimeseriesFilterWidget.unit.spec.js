@@ -11,6 +11,7 @@ import {
 
 const getTimeseriesFilterWidget = question => (
   <TimeseriesFilterWidget
+    question={question}
     card={question.card()}
     query={question.query()}
     setDatasetQuery={() => {}}

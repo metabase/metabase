@@ -58,13 +58,6 @@ function githubIssueLink(bugReportDetails) {
   );
 }
 
-function discourseLink(bugReportDetails) {
-  return (
-    "https://discourse.metabase.com/new-topic?category_id=7&body=" +
-    encodeURIComponent("```json\n" + bugReportDetails + "\n```")
-  );
-}
-
 const HelpLink = ({ title, description, link }) => (
   <li className="mb2">
     <ExternalLink
@@ -106,33 +99,29 @@ export default class Help extends Component {
   render() {
     const { details } = this.state;
     const detailString = JSON.stringify(details, null, 2);
+    const { tag } = MetabaseSettings.get("version");
+    const compactDetailStringForUrl = encodeURIComponent(
+      JSON.stringify(details),
+    );
     return (
       <HelpRoot>
         <AdminHeader title={t`Help`} className="mb2" />
         <HelpLinks>
           <ol>
             <HelpLink
-              title={t`Metabase Documentation`}
-              description={t`Includes a troubleshooting guide`}
-              link={MetabaseSettings.docsUrl()}
-            />
-            <HelpLink
-              title={t`Post on the Metabase support forum`}
-              description={t`A community forum for all things Metabase`}
-              link={discourseLink(detailString)}
+              title={t`Get Help`}
+              description={t`Resources and support`}
+              link={
+                MetabaseSettings.isPaidPlan()
+                  ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}&diag=${compactDetailStringForUrl}`
+                  : `https://www.metabase.com/help?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}`
+              }
             />
             <HelpLink
               title={t`File a bug report`}
               description={t`Create a GitHub issue (includes the diagnostic info below)`}
               link={githubIssueLink(detailString)}
             />
-            {MetabaseSettings.isPaidPlan() && (
-              <HelpLink
-                title={t`Contact support`}
-                description={t`Our team is ready to help you`}
-                link="mailto:support@metabase.com"
-              />
-            )}
           </ol>
         </HelpLinks>
 

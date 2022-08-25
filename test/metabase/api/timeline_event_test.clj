@@ -1,21 +1,21 @@
 (ns metabase.api.timeline-event-test
   "Tests for /api/timeline-event endpoints"
   (:require [clojure.test :refer :all]
-            [metabase.http-client :as http]
+            [metabase.http-client :as client]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.timeline :refer [Timeline]]
             [metabase.models.timeline-event :refer [TimelineEvent]]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]))
 
 (deftest auth-tests
   (testing "Authentication"
-    (is (= (get middleware.u/response-unauthentic :body)
-           (http/client :get 401 "/timeline-event")))
-    (is (= (get middleware.u/response-unauthentic :body)
-           (http/client :get 401 "/timeline-event/1")))))
+    (is (= (get mw.util/response-unauthentic :body)
+           (client/client :get 401 "/timeline-event")))
+    (is (= (get mw.util/response-unauthentic :body)
+           (client/client :get 401 "/timeline-event/1")))))
 
 (deftest get-timeline-event-test
   (testing "GET /api/timeline-event/:id"

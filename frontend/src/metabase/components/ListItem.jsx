@@ -2,12 +2,11 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
+import cx from "classnames";
+import Ellipsified from "metabase/core/components/Ellipsified";
+import Card from "metabase/components/Card";
 import S from "./List.css";
 import Icon from "./Icon";
-import Ellipsified from "./Ellipsified";
-
-import cx from "classnames";
-import Card from "metabase/components/Card";
 
 //TODO: extend this to support functionality required for questions
 const ListItem = ({ index, name, description, placeholder, url, icon }) => (

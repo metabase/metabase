@@ -10,6 +10,10 @@
   `(let [tb# (org.quartz.TriggerBuilder/newTrigger)]
      (clojurewerkz.quartzite.triggers/finalize (-> tb# ~@body))))
 
+(defmacro simple-schedule
+  [& body]
+  `(-> {} ~@body))
+
 (defmacro schedule
   [& body]
   `(let [s# ~(first body)]

@@ -1,6 +1,11 @@
 (ns metabase.models.timeline-event
-  (:require [metabase.models.interface :as i]
+  (:require [java-time :as t]
+            [metabase.models.interface :as mi]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s]
             [toucan.db :as db]
@@ -9,19 +14,24 @@
 
 (models/defmodel TimelineEvent :timeline_event)
 
+(doto TimelineEvent
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
 ;;;; schemas
 
-(def Icons
-  "Timeline and TimelineEvent icon string Schema"
-  (s/enum "star" "balloons" "mail" "warning" "bell" "cloud"))
+(def Sources
+  "Timeline Event Source Schema. For Snowplow Events, where the Event is created from is important.
+  Events are added from one of three sources: `collections`, `questions` (cards in backend code), or directly with an API call. An API call is indicated by having no source key in the `timeline-event` request."
+  (s/enum "collections" "question"))
 
 ;;;; permissions
 
-(defn- perms-objects-set
+(defmethod mi/perms-objects-set TimelineEvent
   [event read-or-write]
   (let [timeline (or (:timeline event)
                      (db/select-one 'Timeline :id (:timeline_id event)))]
-    (i/perms-objects-set timeline read-or-write)))
+    (mi/perms-objects-set timeline read-or-write)))
 
 ;;;; hydration
 
@@ -75,16 +85,40 @@
 
 ;;;; model
 
-(u/strict-extend (class TimelineEvent)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class TimelineEvent)
   models/IModel
   (merge
    models/IModelDefaults
    ;; todo: add hydration keys??
    {:properties (constantly {:timestamped? true})})
 
-  i/IObjectPermissions
-  (merge
-   i/IObjectPermissionsDefaults
-   {:perms-objects-set perms-objects-set
-    :can-read?         (partial i/current-user-has-full-permissions? :read)
-    :can-write?        (partial i/current-user-has-full-permissions? :write)}))
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name :timestamp (serdes.hash/hydrated-hash :timeline)])})
+
+;;;; serialization
+(defmethod serdes.base/serdes-entity-id "TimelineEvent" [_model-name {:keys [timestamp]}]
+  (u.date/format (t/offset-date-time timestamp)))
+
+(defmethod serdes.base/serdes-generate-path "TimelineEvent"
+  [_ event]
+  (let [timeline (db/select-one 'Timeline :id (:timeline_id event))
+        self     (serdes.base/infer-self-path "TimelineEvent" event)]
+    (conj (serdes.base/serdes-generate-path "Timeline" timeline)
+          (assoc self :label (:name event)))))
+
+(defmethod serdes.base/extract-one "TimelineEvent"
+  [_model-name _opts event]
+  (-> (serdes.base/extract-one-basics "TimelineEvent" event)
+      (update :timeline_id serdes.util/export-fk 'Timeline)
+      (update :creator_id  serdes.util/export-fk-keyed 'User :email)
+      (update :timestamp   #(u.date/format (t/offset-date-time %)))))
+
+(defmethod serdes.base/load-xform "TimelineEvent" [event]
+  (-> event
+      serdes.base/load-xform-basics
+      (update :timeline_id serdes.util/import-fk 'Timeline)
+      (update :creator_id  serdes.util/import-fk-keyed 'User :email)
+      (update :timestamp   u.date/parse)))
+
+(defmethod serdes.base/serdes-dependencies "TimelineEvent" [{:keys [timeline_id]}]
+  [[{:model "Timeline" :id timeline_id}]])

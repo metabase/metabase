@@ -1,4 +1,5 @@
 import {
+  checkIfTimeSpanTooGreat,
   parseTime,
   parseTimestamp,
   getRelativeTimeAbbreviated,
@@ -7,7 +8,7 @@ import {
   msToHours,
   hoursToSeconds,
 } from "metabase/lib/time";
-import moment from "moment";
+import moment from "moment-timezone";
 
 describe("time", () => {
   describe("parseTimestamp", () => {
@@ -21,6 +22,7 @@ describe("time", () => {
       ["2015-01-01T00:00:00.000+00:00", 0, NY15_UTC],
       ["2015-01-01T00:00:00.000+0000", 0, NY15_UTC],
       ["2015-01-01T00:00:00Z", 0, NY15_UTC],
+      [2015, 0, NY15_UTC],
 
       ["2015-01-01T00:00:00.000+09:00", 540, NY15_TOKYO],
       ["2015-01-01T00:00:00.000+0900", 540, NY15_TOKYO],
@@ -59,47 +61,42 @@ describe("time", () => {
   });
 
   describe("parseTime", () => {
-    it("parse timezones", () => {
-      const result = parseTime("01:02:03.456+07:00");
+    const PARSE_TIME_TESTS = [
+      ["01:02:03.456+07:00", "1:02 AM"],
+      ["01:02", "1:02 AM"],
+      ["22:29:59.26816+01:00", "10:29 PM"],
+      ["22:29:59.412459+01:00", "10:29 PM"],
+      ["19:14:42.926221+01:00", "7:14 PM"],
+      ["19:14:42.13202+01:00", "7:14 PM"],
+      ["13:38:58.987352+01:00", "1:38 PM"],
+      ["13:38:58.001001+01:00", "1:38 PM"],
+      ["17:01:23+01:00", "5:01 PM"],
+    ];
 
-      expect(moment.isMoment(result)).toBe(true);
-      expect(result.format("h:mm A")).toBe("1:02 AM");
-    });
-
-    it("parse time without seconds", () => {
-      const result = parseTime("01:02");
-
-      expect(moment.isMoment(result)).toBe(true);
-      expect(result.format("h:mm A")).toBe("1:02 AM");
-    });
+    test.each(PARSE_TIME_TESTS)(
+      `parseTime(%p) to be %p`,
+      (value, resultStr) => {
+        const result = parseTime(value);
+        expect(moment.isMoment(result)).toBe(true);
+        expect(result.format("h:mm A")).toBe(resultStr);
+      },
+    );
   });
 
   describe("getRelativeTimeAbbreviated", () => {
     it("should show 'just now' for timestamps from the immediate past", () => {
       expect(
-        getRelativeTimeAbbreviated(
-          moment()
-            .subtract(30, "s")
-            .toString(),
-        ),
+        getRelativeTimeAbbreviated(moment().subtract(30, "s").toString()),
       ).toEqual("just now");
     });
 
     it("should show a shortened string for times 1 minute+", () => {
       expect(
-        getRelativeTimeAbbreviated(
-          moment()
-            .subtract(61, "s")
-            .toString(),
-        ),
+        getRelativeTimeAbbreviated(moment().subtract(61, "s").toString()),
       ).toEqual("1 m");
 
       expect(
-        getRelativeTimeAbbreviated(
-          moment()
-            .subtract(5, "d")
-            .toString(),
-        ),
+        getRelativeTimeAbbreviated(moment().subtract(5, "d").toString()),
       ).toEqual("5 d");
     });
   });
@@ -153,6 +150,18 @@ describe("time", () => {
       it(`returns ${expected} for ${value}`, () => {
         expect(hoursToSeconds(value)).toBe(expected);
       });
+    });
+  });
+
+  describe("checkIfTimeSpanTooGreat", () => {
+    it(`returns false for small time spans`, () => {
+      const isTimeSpanTooGreat = checkIfTimeSpanTooGreat(10, "days");
+      expect(isTimeSpanTooGreat).toBeFalsy();
+    });
+
+    it(`returns truthy for large time spans`, () => {
+      const isTimeSpanTooGreat = checkIfTimeSpanTooGreat(1000000000, "years");
+      expect(isTimeSpanTooGreat).toBeTruthy();
     });
   });
 });

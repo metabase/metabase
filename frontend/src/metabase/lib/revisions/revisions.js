@@ -214,6 +214,7 @@ export const REVISION_EVENT_ICON = "pencil";
 export function getRevisionEventsForTimeline(
   revisions = [],
   { currentUser, canWrite = false },
+  revertFn,
 ) {
   return revisions
     .filter(isValidRevision)
@@ -245,7 +246,9 @@ export function getRevisionEventsForTimeline(
       // If only one field is changed, we just show everything in the title
       // like "John added a description"
       if (isChangeEvent && isMultipleFieldsChange) {
-        event.title = t`${username} edited this`;
+        event.title = (
+          <RevisionTitle username={username} message={t`edited this`} />
+        );
         event.description = (
           <RevisionBatchedDescription
             changes={changes}

@@ -25,8 +25,7 @@ const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),
 });
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class SegmentPane extends Component {
+class SegmentPane extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -156,3 +155,5 @@ export default class SegmentPane extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(SegmentPane);

@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.field-visibility-test
   "Tests for behavior of fields with different visibility settings."
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor-test :as qp.test]
             [metabase.test :as mt]
@@ -20,16 +21,16 @@
 (deftest details-only-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "sanity check -- everything should be returned before making changes"
-      (is (= (u/key-by :id (qp.test/expected-cols :venues))
-             (u/key-by :id (venues-cols-from-query)))))
+      (is (= (m/index-by :id (qp.test/expected-cols :venues))
+             (m/index-by :id (venues-cols-from-query)))))
 
     (testing ":details-only fields should not be returned in normal queries"
       (tu/with-temp-vals-in-db Field (mt/id :venues :price) {:visibility_type :details-only}
-        (is (= (u/key-by :id (for [col (qp.test/expected-cols :venues)]
+        (is (= (m/index-by :id (for [col (qp.test/expected-cols :venues)]
                                (if (= (mt/id :venues :price) (u/the-id col))
                                  (assoc col :visibility_type :details-only)
                                  col)))
-               (u/key-by :id (venues-cols-from-query))))))))
+               (m/index-by :id (venues-cols-from-query))))))))
 
 
 ;;; ----------------------------------------------- :sensitive fields ------------------------------------------------

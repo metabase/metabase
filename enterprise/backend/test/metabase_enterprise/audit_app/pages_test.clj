@@ -3,21 +3,22 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer :all]
-            [clojure.tools.namespace.find :as ns-find]
+            [clojure.tools.namespace.find :as ns.find]
             [clojure.tools.reader :as tools.reader]
             [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase.models :refer [Card Dashboard DashboardCard Database Table]]
+            [metabase.models :refer [Card Dashboard DashboardCard Database Table User]]
+            [metabase.models.permissions :as perms]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.util :as qp-util]
+            [metabase.query-processor.util :as qp.util]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [ring.util.codec :as codec]
             [schema.core :as s]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest preconditions-test
   (classloader/require 'metabase-enterprise.audit-app.pages.dashboards)
@@ -38,13 +39,33 @@
              (-> (mt/user-http-request :crowberto :post 202 "dataset"
                                        {:type :internal
                                         :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
-                 (select-keys [:status :error])))))))
+                 (select-keys [:status :error]))))))
+
+  (testing "non-admin users with monitoring permissions"
+    (mt/with-user-in-groups [group {:name "New Group"}
+                             user  [group]]
+      (perms/grant-application-permissions! group :monitoring)
+      (testing "still fail if advanced-permissions is disabled"
+        (premium-features-test/with-premium-features #{:audit-app}
+          (is (= {:status "failed", :error "You don't have permissions to do that."}
+                 (-> (mt/user-http-request user :post 202 "dataset"
+                                           {:type :internal
+                                            :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
+                     (select-keys [:status :error]))))))
+
+      (testing "run successfully if advanced-permissions enabled)"
+        (premium-features-test/with-premium-features #{:audit-app :advanced-permissions}
+          (is (= {:status "completed"}
+                 (-> (mt/user-http-request user :post 202 "dataset"
+                                           {:type :internal
+                                            :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
+                     (select-keys [:status])))))))))
 
 (defn- all-query-methods
   "Return a set of all audit/internal query types (excluding test/`:default` impls)."
   []
   ;; load all `metabase-enterprise.audit-app.pages` namespaces.
-  (doseq [ns-symb  (ns-find/find-namespaces (classpath/system-classpath))
+  (doseq [ns-symb  (ns.find/find-namespaces (classpath/system-classpath))
           :when    (and (str/starts-with? (name ns-symb) "metabase-enterprise.audit-app.pages")
                         (not (str/ends-with? (name ns-symb) "-test")))]
     (classloader/require ns-symb))
@@ -128,7 +149,7 @@
                :database-id       (u/the-id database)
                :table-id          (u/the-id table)
                :model             "card"
-               :query-hash        (codec/base64-encode (qp-util/query-hash {:database 1, :type :native}))
+               :query-hash        (codec/base64-encode (qp.util/query-hash {:database 1, :type :native}))
                :query-string      "toucans"
                :question-filter   "bird sales"
                :collection-filter "coin collection"
@@ -167,3 +188,19 @@
         (doseq [query-type (all-query-methods)]
           (testing query-type
             (do-tests-for-query-type query-type objects)))))))
+
+(deftest user-full-name-test
+  (testing "User name fallback to email, implemented in `metabase-enterprise.audit-app.pages.common/user-full-name` works in audit queries."
+    (mt/with-test-user :crowberto
+      (premium-features-test/with-premium-features #{:audit-app}
+        (mt/with-temp* [User [a {:first_name "a" :last_name nil :email "a@metabase.com"}]
+                        User [b {:first_name nil :last_name "b" :email "b@metabase.com"}]
+                        User [c {:first_name nil :last_name nil :email "c@metabase.com"}]]
+          (is (= #{"a" "b" "c@metabase.com"}
+                 (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
+                                                    {:type :internal
+                                                     :fn   "metabase-enterprise.audit-app.pages.users/table"})
+                              [:data :rows])
+                      (filter #((set (map u/the-id [a b c])) (first %)))
+                      (map second)
+                      set))))))))

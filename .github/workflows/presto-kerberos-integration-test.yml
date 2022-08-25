@@ -30,15 +30,14 @@ jobs:
             && sudo ./install \
             && cd -
       - name: Checkout Metabase repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check out Presto Kerberos Docker Compose
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: metabase/presto-kerberos-docker
-          # use a custom branch if/until upstream (mik-laj/presto-kerberos-docker) can be fixed with PRs 23 and 24
-          ref: hacked-dec-2021
+          ref: master
           token: ${{ secrets.GITHUB_TOKEN }}
           path: presto-kerberos-docker
       - name: Bring up Presto+Kerberos cluster
@@ -54,7 +53,7 @@ jobs:
       - name: Copy client.keytab file to resources
         run: docker cp presto-kerberos:/home/presto/client.keytab resources
       - name: Checkout mba
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: metabase/mba
           ref: master

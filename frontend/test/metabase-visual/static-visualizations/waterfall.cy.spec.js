@@ -3,7 +3,8 @@ import {
   setupSMTP,
   openEmailPage,
   sendSubscriptionsEmail,
-} from "__support__/e2e/cypress";
+  visitDashboard,
+} from "__support__/e2e/helpers";
 
 import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
@@ -26,12 +27,12 @@ describe("static visualizations", () => {
         createWaterfallQuestion({ showTotal: false }),
       ],
     }).then(({ dashboard }) => {
-      cy.visit(`/dashboard/${dashboard.id}`);
+      visitDashboard(dashboard.id);
 
       sendSubscriptionsEmail(`${admin.first_name} ${admin.last_name}`);
 
       openEmailPage(dashboardName).then(() => {
-        cy.percySnapshot();
+        cy.createPercySnapshot();
       });
     });
   });

@@ -7,8 +7,8 @@ export const createMockTimeline = (opts?: Partial<Timeline>): Timeline => ({
   name: "Events",
   description: "A timeline of events",
   icon: "star",
+  default: false,
   archived: false,
-  events: [],
   ...opts,
 });
 

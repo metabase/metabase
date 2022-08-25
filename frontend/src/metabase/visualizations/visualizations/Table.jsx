@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import TableInteractive from "../components/TableInteractive.jsx";
+import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 import TableSimple from "../components/TableSimple";
 import { t } from "ttag";
 import * as DataGrid from "metabase/lib/data_grid";
@@ -84,8 +84,9 @@ export default class Table extends Component {
     ...columnSettings({ hidden: true }),
     "table.pivot": {
       section: t`Columns`,
-      title: t`Pivot the table`,
+      title: t`Pivot table`,
       widget: "toggle",
+      inline: true,
       getHidden: ([{ card, data }]) => data && data.cols.length !== 3,
       getDefault: ([{ card, data }]) =>
         data &&
@@ -163,7 +164,7 @@ export default class Table extends Component {
     //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
     "table.columns": {
       section: t`Columns`,
-      title: t`Visible columns`,
+      title: t`Columns`,
       widget: ChartSettingOrderedColumns,
       getHidden: (series, vizSettings) => vizSettings["table.pivot"],
       isValid: ([{ card, data }]) =>
@@ -351,7 +352,10 @@ export default class Table extends Component {
       const { cols, rows } = data;
       const columnSettings = settings["table.columns"];
       const columnIndexes = columnSettings
-        .filter(columnSetting => columnSetting.enabled)
+        .filter(
+          columnSetting =>
+            columnSetting.enabled || this.props.isShowingDetailsOnlyColumns,
+        )
         .map(columnSetting =>
           findColumnIndexForColumnSetting(cols, columnSetting),
         )
@@ -391,8 +395,7 @@ export default class Table extends Component {
     const [{ card }] = series;
     const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
     const isPivoted = Table.isPivoted(series, settings);
-    const columnSettings = settings["table.columns"] || [];
-    const areAllColumnsHidden = !columnSettings.some(f => f.enabled);
+    const areAllColumnsHidden = data.cols.length === 0;
     const TableComponent = isDashboard ? TableSimple : TableInteractive;
 
     if (!data) {

@@ -3,7 +3,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.util :as u]
-            [metabase.util.files :as files]
+            [metabase.util.files :as u.files]
             [metabase.util.i18n :refer [trs]]
             [yaml.core :as yaml])
   (:import [java.nio.file Files Path]))
@@ -32,7 +32,7 @@
   "Load and parse all YAMLs in `dir`. Optionally pass each resulting data structure through `constructor-fn`."
   ([dir] (load-dir dir identity))
   ([dir constructor]
-   (files/with-open-path-to-resource [dir dir]
+   (u.files/with-open-path-to-resource [dir dir]
      (with-open [ds (Files/newDirectoryStream dir)]
        (->> ds
             (filter (comp #(str/ends-with? % ".yaml") str/lower-case (memfn ^Path getFileName)))

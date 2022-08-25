@@ -7,6 +7,7 @@ import Tooltip from "metabase/components/Tooltip";
 import { loadIcon } from "metabase/icon_paths";
 import { color as c } from "metabase/lib/colors";
 import { stripLayoutProps } from "metabase/lib/utils";
+import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
 
 const MISSING_ICON_NAME = "unknown";
 
@@ -22,25 +23,28 @@ export const IconWrapper = styled.div<IconWrapperProps>`
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 99px;
+  border-radius: 6px;
   cursor: pointer;
   color: ${props => (props.open ? c("brand") : "inherit")};
   // special cases for certain icons
   // Icon-share has a taller viewbox than most so to optically center
   // the icon we need to translate it upwards
-  "> .icon.icon-share": {
+  & > .icon.icon-share {
     transform: translateY(-2px);
   }
-  ${hover};
-  transition: all 300ms ease-in-out;
-`;
 
-IconWrapper.defaultProps = {
-  hover: {
-    backgroundColor: c("bg-medium"),
-    color: c("brand"),
-  },
-};
+  &:hover {
+    color: ${({ hover }) => hover?.color ?? c("brand")};
+    background-color: ${({ hover }) =>
+      hover?.backgroundColor ?? c("bg-medium")};
+  }
+
+  transition: all 300ms ease-in-out;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
+`;
 
 const stringOrNumberPropType = PropTypes.oneOfType([
   PropTypes.number,
@@ -57,6 +61,7 @@ export const iconPropTypes = {
   tooltip: PropTypes.string,
   className: PropTypes.string,
   onClick: PropTypes.func,
+  style: PropTypes.object,
 };
 
 export type IconProps = PropTypes.InferProps<typeof iconPropTypes> & {
@@ -115,7 +120,7 @@ class BaseIcon extends Component<IconProps> {
       );
     } else if (icon.svg) {
       return (
-        <svg
+        <StyledSVG
           {...svgProps}
           dangerouslySetInnerHTML={{ __html: icon.svg }}
           ref={forwardedRef}
@@ -123,9 +128,9 @@ class BaseIcon extends Component<IconProps> {
       );
     } else if (icon.path) {
       return (
-        <svg {...svgProps} ref={forwardedRef}>
+        <StyledSVG {...svgProps} ref={forwardedRef}>
           <path d={icon.path} />
-        </svg>
+        </StyledSVG>
       );
     } else {
       console.warn(`Icon "${name}" must have an img, svg, or path`);
@@ -133,6 +138,10 @@ class BaseIcon extends Component<IconProps> {
     }
   }
 }
+
+const StyledSVG = styled("svg", {
+  shouldForwardProp: shouldForwardNonTransientProp,
+})``;
 
 const BaseIconWithRef = forwardRef<HTMLElement, IconProps>(
   function BaseIconWithRef(props, ref) {
@@ -160,4 +169,6 @@ const Icon = forwardRef(function Icon(
   );
 });
 
-export default Icon;
+export default Object.assign(Icon, {
+  Root: StyledIcon,
+});

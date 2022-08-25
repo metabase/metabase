@@ -2,7 +2,7 @@
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
   (:require [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [honeysql.helpers :as h]
+            [honeysql.helpers :as hh]
             [java-time :as t]
             [metabase.config :as config]
             [metabase.driver :as driver]
@@ -18,9 +18,8 @@
             [metabase.query-processor.interface :as qp.i]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])
-  (:import [java.sql Connection ResultSet Time Types]
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           java.util.Date))
+  (:import [java.sql Connection ResultSet Time]
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
@@ -294,7 +293,7 @@
     breakout-clauses)))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :breakout]
-  [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
+  [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
   ;; this is basically the same implementation as the default one in the `sql.qp` namespace, the only difference is
   ;; that we optimize the fields in the GROUP BY clause using `optimize-breakout-clauses`.
   (let [optimized      (optimize-breakout-clauses breakout-fields)
@@ -303,14 +302,14 @@
       ;; we can still use the "unoptimized" version of the breakout for the SELECT... e.g.
       ;;
       ;;    SELECT DateFromParts(year(field), month(field), 1)
-      (apply h/merge-select new-hsql (->> breakout-fields
-                                          (remove (set fields-fields))
-                                          (mapv (fn [field-clause]
-                                                  (sql.qp/as driver field-clause unique-name-fn)))))
+      (apply hh/merge-select new-hsql (->> breakout-fields
+                                           (remove (set fields-fields))
+                                           (mapv (fn [field-clause]
+                                                   (sql.qp/as driver field-clause unique-name-fn)))))
       ;; For the GROUP BY, we replace the unoptimized fields with the optimized ones, e.g.
       ;;
       ;;    GROUP BY year(field), month(field)
-      (apply h/group new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
+      (apply hh/group new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
 
 (defn- optimize-order-by-subclauses
   "Optimize `:order-by` `subclauses` using [[optimized-temporal-buckets]], if possible."
@@ -325,7 +324,7 @@
     subclauses)))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :order-by]
-  [driver _ honeysql-form {:keys [limit], :as query}]
+  [driver _ honeysql-form query]
   ;; similar to the way we optimize GROUP BY above, optimize temporal bucketing in the ORDER BY if possible, because
   ;; year(), month(), and day() can make use of indexes while DateFromParts() cannot.
   (let [query         (update query :order-by optimize-order-by-subclauses)

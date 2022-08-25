@@ -1,20 +1,17 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import cx from "classnames";
+import { getAccentColors } from "metabase/lib/colors/groups";
+import Icon, { iconPropTypes } from "metabase/components/Icon";
+import ExplicitSize from "../../components/ExplicitSize";
+import LegendItem from "./LegendItem";
 import styles from "./Legend.css";
 
-import ExplicitSize from "../../components/ExplicitSize";
-import Icon, { iconPropTypes } from "metabase/components/Icon";
-import LegendItem from "./LegendItem";
-
-import cx from "classnames";
-
-import { normal } from "metabase/lib/colors";
-const DEFAULT_COLORS = Object.values(normal);
+const DEFAULT_COLORS = getAccentColors();
 const MIN_WIDTH_PER_SERIES = 100;
 
-@ExplicitSize()
-export default class LegendHeader extends Component {
+class LegendHeader extends Component {
   static propTypes = {
     series: PropTypes.array.isRequired,
     hovered: PropTypes.object,
@@ -147,3 +144,5 @@ export default class LegendHeader extends Component {
     );
   }
 }
+
+export default ExplicitSize({ refreshMode: "debounce" })(LegendHeader);

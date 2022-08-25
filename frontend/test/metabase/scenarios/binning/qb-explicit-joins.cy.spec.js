@@ -3,17 +3,12 @@ import {
   visualize,
   changeBinningForDimension,
   summarize,
-} from "__support__/e2e/cypress";
+  startNewQuestion,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const {
-  ORDERS_ID,
-  ORDERS,
-  PEOPLE_ID,
-  PEOPLE,
-  PRODUCTS_ID,
-  PRODUCTS,
-} = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
+  SAMPLE_DATABASE;
 
 /**
  * The list of issues this spec covers:
@@ -64,13 +59,13 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  context("via simple question", () => {
+  context("via simple mode", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("QB Binning").click();
-      cy.wait("@dataset");
+
+      visualize();
       summarize();
     });
 
@@ -88,9 +83,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.findAllByTestId("select-button-content")
-        .contains("Year")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Year").click();
       cy.findByText("Quarter").click();
 
       cy.wait("@dataset");
@@ -127,10 +120,9 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     });
   });
 
-  context("via custom question", () => {
+  context("via notebook mode", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("QB Binning").click();
 
@@ -154,9 +146,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.findAllByTestId("select-button-content")
-        .contains("Year")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Year").click();
       cy.findByText("Quarter").click();
 
       cy.wait("@dataset");
@@ -197,10 +187,10 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
   context("via column popover", () => {
     beforeEach(() => {
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("QB Binning").click();
+      visualize();
     });
 
     it("should work for time series", () => {
@@ -220,9 +210,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.get("circle");
 
       // Make sure time series footer works as well
-      cy.findAllByTestId("select-button-content")
-        .contains("Month")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Month").click();
       cy.findByText("Quarter").click();
 
       // Reproduces metabase#16693
@@ -270,13 +258,9 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 });
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  cy.get(".x-axis-label")
-    .invoke("text")
-    .should("eq", xLabel);
+  cy.get(".x-axis-label").invoke("text").should("eq", xLabel);
 
-  cy.get(".y-axis-label")
-    .invoke("text")
-    .should("eq", yLabel);
+  cy.get(".y-axis-label").invoke("text").should("eq", yLabel);
 }
 
 function waitAndAssertOnRequest(requestAlias) {
@@ -297,6 +281,8 @@ function assertQueryBuilderState({
   cy.get(visualizaitonSelector);
 
   cy.findByText(title);
+
+  cy.get(".y-axis-label").invoke("text").should("eq", "Count");
 
   values &&
     cy.get(".axis.x").within(() => {

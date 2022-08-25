@@ -1,5 +1,6 @@
 import _ from "underscore";
-import { Locale, LocaleData } from "./types";
+import { LocaleData } from "metabase-types/api";
+import { Locale } from "metabase-types/store";
 
 export const getLocales = (
   localeData: LocaleData[] = [["en", "English"]],

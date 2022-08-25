@@ -1,4 +1,12 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  visitDashboard,
+  visitQuestion,
+  isEE,
+} from "__support__/e2e/helpers";
+
+import { JS_CODE, IFRAME_CODE } from "./embedding-snippets";
 
 describe("scenarios > embedding > code snippets", () => {
   beforeEach(() => {
@@ -7,10 +15,9 @@ describe("scenarios > embedding > code snippets", () => {
   });
 
   it("dashboard should have the correct embed snippet", () => {
-    cy.visit("/dashboard/1");
+    visitDashboard(1);
     cy.icon("share").click();
-    cy.findByText("Sharing and embedding").click();
-    cy.contains(/Embed this .* in an application/).click();
+    cy.contains("Embed this dashboard in an application").click();
     cy.contains("Code").click();
 
     cy.findByText("To embed this dashboard in your application:");
@@ -18,49 +25,26 @@ describe("scenarios > embedding > code snippets", () => {
       "Insert this code snippet in your server code to generate the signed embedding URL",
     );
 
-    const JS_CODE = new RegExp(
-      `// you will need to install via 'npm install jsonwebtoken' or in your package.json
-
-var jwt = require("jsonwebtoken");
-
-var METABASE_SITE_URL = "http://localhost:PORTPORTPORT";
-var METABASE_SECRET_KEY = "KEYKEYKEY";
-var payload = {
-  resource: { dashboard: 1 },
-  params: {},
-  exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration
-};
-var token = jwt.sign(payload, METABASE_SECRET_KEY);
-
-var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=true&titled=true";`
-        .split("\n")
-        .join("")
-        .replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
-        .replace("KEYKEYKEY", ".*")
-        .replace("PORTPORTPORT", ".*"),
-    );
-
-    const IFRAME_CODE = `<iframe
-    src="{{iframeUrl}}"
-    frameborder="0"
-    width="800"
-    height="600"
-    allowtransparency
-></iframe>`
-      .split("\n")
-      .join("");
-
     cy.get(".ace_content")
       .first()
       .invoke("text")
-      .should("match", JS_CODE);
+      .should("match", JS_CODE({ type: "dashboard" }));
 
+    // set transparent background metabase#23477
+    cy.findByText("Transparent").click();
     cy.get(".ace_content")
-      .last()
-      .should("have.text", IFRAME_CODE);
-
-    cy.findAllByTestId("select-button")
       .first()
+      .invoke("text")
+      .should("match", JS_CODE({ type: "dashboard", theme: "transparent" }));
+
+    // No download button for dashboards even for pro/enterprise users metabase#23477
+    cy.findByLabelText("Enable users to download data from this embed?").should(
+      "not.exist",
+    );
+
+    cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
+
+    cy.findAllByTestId("embed-backend-select-button")
       .should("contain", "Node.js")
       .click();
 
@@ -70,8 +54,72 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
       .and("contain", "Python")
       .and("contain", "Clojure");
 
-    cy.findAllByTestId("select-button")
-      .last()
+    cy.findAllByTestId("embed-frontend-select-button")
+      .should("contain", "Mustache")
+      .click();
+
+    popover()
+      .should("contain", "Mustache")
+      .and("contain", "Pug / Jade")
+      .and("contain", "ERB")
+      .and("contain", "JSX");
+  });
+
+  it("question should have the correct embed snippet", () => {
+    visitQuestion(1);
+    cy.icon("share").click();
+    cy.contains("Embed this question in an application").click();
+    cy.contains("Code").click();
+
+    cy.findByText("To embed this question in your application:");
+    cy.findByText(
+      "Insert this code snippet in your server code to generate the signed embedding URL",
+    );
+
+    cy.get(".ace_content")
+      .first()
+      .invoke("text")
+      .should("match", JS_CODE({ type: "question" }));
+
+    // set transparent background metabase#23477
+    cy.findByText("Transparent").click();
+    cy.get(".ace_content")
+      .first()
+      .invoke("text")
+      .should("match", JS_CODE({ type: "question", theme: "transparent" }));
+
+    // hide download button for pro/enterprise users metabase#23477
+    if (isEE) {
+      cy.findByLabelText(
+        "Enable users to download data from this embed?",
+      ).click();
+
+      cy.get(".ace_content")
+        .first()
+        .invoke("text")
+        .should(
+          "match",
+          JS_CODE({
+            type: "question",
+            theme: "transparent",
+            hideDownloadButton: true,
+          }),
+        );
+    }
+
+    cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
+
+    cy.findAllByTestId("embed-backend-select-button")
+      .should("contain", "Node.js")
+      .click();
+
+    popover()
+      .should("contain", "Node.js")
+      .and("contain", "Ruby")
+      .and("contain", "Python")
+      .and("contain", "Clojure");
+
+    cy.findAllByTestId("embed-frontend-select-button")
       .should("contain", "Mustache")
       .click();
 

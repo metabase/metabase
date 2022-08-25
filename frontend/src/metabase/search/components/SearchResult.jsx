@@ -94,12 +94,14 @@ export default function SearchResult({
   compact,
   hasDescription = true,
   onClick,
+  isSelected,
 }) {
   const active = isItemActive(result);
   const loading = isItemLoading(result);
 
   return (
     <ResultLink
+      isSelected={isSelected}
       active={active}
       compact={compact}
       to={!onClick ? result.getUrl() : ""}

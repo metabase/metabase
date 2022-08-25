@@ -3,7 +3,7 @@
   (:require [cheshire.core :as json]
             [clojure.set :as set]
             [clojure.test :refer :all]
-            [metabase.api.tiles :as tiles]
+            [metabase.api.tiles :as api.tiles]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [schema.core :as s]))
@@ -58,10 +58,10 @@
                           :filter [:inside [:field 574 nil] [:field 576 nil]]}
                   :type :query
                   :async? false}
-                 (clean (#'tiles/query->tiles-query query
-                                                    {:zoom 2 :x 3 :y 1
-                                                     :lat-field [:field 574 nil]
-                                                     :lon-field [:field 576 nil]})))))))
+                 (clean (#'api.tiles/query->tiles-query query
+                                                        {:zoom 2 :x 3 :y 1
+                                                         :lat-field [:field 574 nil]
+                                                         :lon-field [:field 576 nil]})))))))
     (testing "native"
       (testing "nests the query, selects fields"
         (let [query {:type :native
@@ -78,16 +78,16 @@
                           :limit  2000}
                   :type :query
                   :async? false}
-                 (clean (@#'tiles/query->tiles-query query
-                                                     {:zoom 2 :x 2 :y 1
-                                                      :lat-field [:field "latitude" {:base-type :type/Float}]
-                                                      :lon-field [:field "longitude" {:base-type :type/Float}]})))))))))
+                 (clean (@#'api.tiles/query->tiles-query query
+                                                         {:zoom 2 :x 2 :y 1
+                                                          :lat-field [:field "latitude" {:base-type :type/Float}]
+                                                          :lon-field [:field "longitude" {:base-type :type/Float}]})))))))))
 
 (deftest breakout-query-test
   (testing "the appropriate lat/lon fields are selected from the results, if the query contains a :breakout clause (#20182)"
     (mt/dataset sample-dataset
-      (with-redefs [tiles/create-tile (fn [_ points] points)
-                    tiles/tile->byte-array identity]
+      (with-redefs [api.tiles/create-tile (fn [_ points] points)
+                    api.tiles/tile->byte-array identity]
         (let [result (mt/user-http-request
                       :rasta :get 200 (format "tiles/7/30/49/%d/%d"
                                               (mt/id :people :latitude)
@@ -129,6 +129,6 @@
 (deftest field-ref-test
   (testing "Field refs can be constructed from strings representing integer field IDs or field names"
     (is (= [:field 1 nil]
-           (@#'tiles/field-ref "1")))
+           (@#'api.tiles/field-ref "1")))
     (is (= [:field "Latitude" {:base-type :type/Float}]
-           (@#'tiles/field-ref "Latitude")))))
+           (@#'api.tiles/field-ref "Latitude")))))

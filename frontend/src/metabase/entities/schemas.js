@@ -27,7 +27,7 @@ export default createEntity({
       }
       const schemaNames = await listDatabaseSchemas({ dbId });
       return schemaNames.map(schemaName => ({
-        // NOTE: needs unqiue IDs for entities to work correctly
+        // NOTE: needs unique IDs for entities to work correctly
         id: generateSchemaId(dbId, schemaName),
         name: schemaName,
         database: { id: dbId },
@@ -50,27 +50,56 @@ export default createEntity({
     },
   },
 
-  reducer: (state = {}, { type, payload }) => {
-    if (type === Questions.actionTypes.CREATE) {
-      const { question } = payload;
-      const schema = getCollectionVirtualSchemaId(question.collection);
-      if (!state[schema]) {
-        return state;
+  reducer: (state = {}, { type, payload, error }) => {
+    if (type === Questions.actionTypes.CREATE && !error) {
+      const { question, status, data } = payload;
+      if (question) {
+        const schema = getCollectionVirtualSchemaId(question.collection);
+        if (!state[schema]) {
+          return state;
+        }
+        const virtualQuestionId = getQuestionVirtualTableId(question);
+        return updateIn(state, [schema, "tables"], tables =>
+          addTableAvoidingDuplicates(tables, virtualQuestionId),
+        );
       }
-      const virtualQuestionId = getQuestionVirtualTableId(question);
-      return updateIn(state, [schema, "tables"], tables =>
-        addTableAvoidingDuplicates(tables, virtualQuestionId),
-      );
+      // IF there is no question
+      // AND if the request has failed,
+      // throw the error message to display
+      else if (status === 400 && data?.message) {
+        throw new Error(data.message);
+      }
     }
 
-    if (type === Questions.actionTypes.UPDATE) {
+    if (type === Questions.actionTypes.UPDATE && !error) {
       const { question } = payload;
-      const schema = getCollectionVirtualSchemaId(question.collection);
-      if (!state[schema]) {
+      const schemaId = getCollectionVirtualSchemaId(question.collection);
+
+      const virtualQuestionId = getQuestionVirtualTableId(question);
+      const previousSchemaContainingTheQuestion =
+        getPreviousSchemaContainingTheQuestion(
+          state,
+          schemaId,
+          virtualQuestionId,
+        );
+
+      if (previousSchemaContainingTheQuestion) {
+        state = removeVirtualQuestionFromSchema(
+          state,
+          previousSchemaContainingTheQuestion.id,
+          virtualQuestionId,
+        );
+      }
+
+      if (!state[schemaId]) {
         return state;
       }
-      const virtualQuestionId = getQuestionVirtualTableId(question);
-      return updateIn(state, [schema, "tables"], tables => {
+
+      return updateIn(state, [schemaId, "tables"], tables => {
+        if (!tables) {
+          return tables;
+        }
+
         if (question.archived) {
           return tables.filter(id => id !== virtualQuestionId);
         }
@@ -81,6 +110,26 @@ export default createEntity({
     return state;
   },
 });
+
+function getPreviousSchemaContainingTheQuestion(
+  state,
+  schemaId,
+  virtualQuestionId,
+) {
+  return Object.values(state).find(schema => {
+    if (schema.id === schemaId) {
+      return false;
+    }
+
+    return (schema.tables || []).includes(virtualQuestionId);
+  });
+}
+
+function removeVirtualQuestionFromSchema(state, schemaId, virtualQuestionId) {
+  return updateIn(state, [schemaId, "tables"], tables =>
+    tables.filter(tableId => tableId !== virtualQuestionId),
+  );
+}
 
 function addTableAvoidingDuplicates(tables, tableId) {
   if (!Array.isArray(tables)) {

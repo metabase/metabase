@@ -38,17 +38,6 @@ export const FullHeightContainer = styled.div`
   overflow: hidden;
 `;
 
-export const HelpButton = styled.button`
-  font-family: var(--default-font-family);
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  color: ${color("text-dark")};
-  padding: 0.25rem 1.5rem;
-  font-size: 14px;
-  font-weight: 700;
-`;
-
 export const CloseSidebarButton = styled(Icon)`
   top: 24px;
   right: 24px;
@@ -63,3 +52,9 @@ export const CloseSidebarButton = styled(Icon)`
 `;
 
 CloseSidebarButton.defaultProps = { name: "close" };
+
+export const ToolbarButtonsContainer = styled.div`
+  display: flex;
+  flex-direction: row;
+  padding: 0 1rem;
+`;

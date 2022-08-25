@@ -3,16 +3,17 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
-            [metabase.db.jdbc-protocols :as jdbc-protocols]
-            [metabase.db.spec :as dbspec]
+            [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
+            [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.h2.actions :as h2.actions]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -20,6 +21,9 @@
             [metabase.util.ssh :as ssh])
   (:import [java.sql Clob ResultSet ResultSetMetaData]
            java.time.OffsetTime))
+
+;; method impls live in this namespace
+(comment h2.actions/keep-me)
 
 (driver/register! :h2, :parent :sql-jdbc)
 
@@ -29,8 +33,12 @@
 
 (doseq [[feature supported?] {:full-join               false
                               :regex                   false
-                              :percentile-aggregations false}]
-  (defmethod driver/supports? [:h2 feature] [_ _] supported?))
+                              :percentile-aggregations false
+                              :actions                 true
+                              :actions/custom          true}]
+  (defmethod driver/database-supports? [:h2 feature]
+    [_driver _feature _database]
+    supported?))
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -49,7 +57,6 @@
 (defmethod driver/db-start-of-week :h2
   [_]
   :monday)
-
 
 ;; TODO - it would be better not to put all the options in the connection string in the first place?
 (defn- connection-string->file+options
@@ -82,7 +89,7 @@
                   (= user "sa"))        ; "sa" is the default USER
           (throw
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
-             {:type error-type/db})))))))
+             {:type qp.error-type/db})))))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
@@ -108,15 +115,14 @@
   [_ message]
   (condp re-matches message
     #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :implicitly-relative-db-file-path
 
     #"^Database .* not found .*$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :db-file-not-found
 
     #"^Wrong user name or password .*$"
-    (driver.common/connection-error-messages :username-or-password-incorrect)
+    :username-or-password-incorrect
 
-    #".*"                               ; default
     message))
 
 (def ^:private date-format-str "yyyy-MM-dd HH:mm:ss.SSS zzz")
@@ -306,7 +312,7 @@
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
   {:pre [(map? details)]}
-  (dbspec/spec :h2 (update details :db connection-string-set-safe-options)))
+  (mdb.spec/spec :h2 (update details :db connection-string-set-safe-options)))
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]
@@ -331,7 +337,7 @@
                           (Class/forName true (classloader/the-classloader)))]
     (if (isa? classname Clob)
       (fn []
-        (jdbc-protocols/clob->str (.getObject rs i)))
+        (mdb.jdbc-protocols/clob->str (.getObject rs i)))
       (fn []
         (.getObject rs i)))))
 

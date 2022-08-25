@@ -1,4 +1,12 @@
-import { restore, setupSMTP, visitQuestion } from "__support__/e2e/cypress";
+import {
+  restore,
+  setupSMTP,
+  visitQuestion,
+  getFullName,
+} from "__support__/e2e/helpers";
+import { USERS } from "__support__/e2e/cypress_data";
+
+const { normal, admin } = USERS;
 
 describe("scenarios > alert > alert permissions", () => {
   // Intentional use of before (not beforeEach) hook because the setup is quite long.
@@ -67,7 +75,7 @@ describe("scenarios > alert > alert permissions", () => {
       visitQuestion(2);
       cy.icon("bell").click();
 
-      cy.findByText("You're receiving Bobby's alerts");
+      cy.findByText(`You're receiving ${getFullName(admin)}'s alerts`);
       cy.findByText("Set up your own alert");
     });
 
@@ -104,12 +112,8 @@ function createBasicAlert({ firstAlert, includeNormal } = {}) {
   }
 
   if (includeNormal) {
-    cy.findByText("Email alerts to:")
-      .parent()
-      .children()
-      .last()
-      .click();
-    cy.findByText("Robert Tableton").click();
+    cy.findByText("Email alerts to:").parent().children().last().click();
+    cy.findByText(getFullName(normal)).click();
   }
   cy.findByText("Done").click();
   cy.findByText("Let's set up your alert").should("not.exist");

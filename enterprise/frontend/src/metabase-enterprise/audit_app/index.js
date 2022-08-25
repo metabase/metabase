@@ -9,7 +9,11 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import getAuditRoutes, { getUserMenuRotes } from "./routes";
 
 if (hasPremiumFeature("audit_app")) {
-  PLUGIN_ADMIN_NAV_ITEMS.push({ name: t`Audit`, path: "/admin/audit" });
+  PLUGIN_ADMIN_NAV_ITEMS.push({
+    name: t`Audit`,
+    path: "/admin/audit",
+    key: "audit",
+  });
   PLUGIN_ADMIN_ROUTES.push(getAuditRoutes);
 
   PLUGIN_ADMIN_USER_MENU_ITEMS.push(user => [

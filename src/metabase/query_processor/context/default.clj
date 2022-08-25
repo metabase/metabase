@@ -3,8 +3,8 @@
             [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.driver :as driver]
-            [metabase.query-processor.context :as context]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.context :as qp.context]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]))
 
@@ -43,7 +43,7 @@
        result))))
 
 (defn- default-reducedf [reduced-result context]
-  (context/resultf reduced-result context))
+  (qp.context/resultf reduced-result context))
 
 (defn default-reducef
   "Default implementation of `reducef`. When using a custom implementation of `reducef` it's easiest to call this
@@ -56,40 +56,40 @@
     (when-let [reduced-rows (try
                               (transduce identity rf reducible-rows)
                               (catch Throwable e
-                                (context/raisef (ex-info (tru "Error reducing result rows")
-                                                         {:type error-type/qp}
-                                                         e)
-                                                context)))]
-      (context/reducedf reduced-rows context))))
+                                (qp.context/raisef (ex-info (tru "Error reducing result rows")
+                                                            {:type qp.error-type/qp}
+                                                            e)
+                                                   context)))]
+      (qp.context/reducedf reduced-rows context))))
 
-(defn- default-runf [query rf context]
+(defn- default-runf [query rff context]
   (try
-    (context/executef driver/*driver* query context (fn respond* [metadata reducible-rows]
-                                                      (context/reducef rf context metadata reducible-rows)))
+    (qp.context/executef driver/*driver* query context (fn respond* [metadata reducible-rows]
+                                                         (qp.context/reducef rff context metadata reducible-rows)))
     (catch Throwable e
-      (context/raisef e context))))
+      (qp.context/raisef e context))))
 
 (defn- default-raisef [e context]
   {:pre [(instance? Throwable e)]}
-  (context/resultf e context))
+  (qp.context/resultf e context))
 
 (defn- default-resultf [result context]
   (if (nil? result)
     (do
       (log/error (ex-info (trs "Unexpected nil result") {}))
       (recur false context))
-    (let [out-chan (context/out-chan context)]
+    (let [out-chan (qp.context/out-chan context)]
       (a/>!! out-chan result)
       (a/close! out-chan))))
 
 (defn- default-timeoutf
   [context]
-  (let [timeout (context/timeout context)]
+  (let [timeout (qp.context/timeout context)]
     (log/debug (trs "Query timed out after {0}, raising timeout exception." (u/format-milliseconds timeout)))
-    (context/raisef (ex-info (tru "Timed out after {0}." (u/format-milliseconds timeout))
-                      {:status :timed-out
-                       :type   error-type/timed-out})
-                    context)))
+    (qp.context/raisef (ex-info (tru "Timed out after {0}." (u/format-milliseconds timeout))
+                                {:status :timed-out
+                                 :type   qp.error-type/timed-out})
+                       context)))
 
 (defn default-context
   "Return a new context for executing queries using the default values. These can be overrided as needed."

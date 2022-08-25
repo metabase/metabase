@@ -8,19 +8,15 @@ import {
   visualize,
   summarize,
   visitQuestion,
-} from "__support__/e2e/cypress";
+  visitDashboard,
+  startNewQuestion,
+} from "__support__/e2e/helpers";
 
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  PEOPLE,
-  PEOPLE_ID,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
@@ -166,7 +162,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               });
             });
 
-            cy.visit(`/dashboard/${DASHBOARD_ID}`);
+            visitDashboard(DASHBOARD_ID);
 
             cy.log("The first series line");
             cy.get(".sub.enable-dots._0")
@@ -248,7 +244,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               });
             });
 
-            cy.visit(`/dashboard/${DASHBOARD_ID}`);
+            visitDashboard(DASHBOARD_ID);
 
             cy.log("The first series line");
             cy.get(".sub.enable-dots._0")
@@ -280,8 +276,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // There's a slight hiccup in the UI with nested questions when we Summarize by City below.
     // Because there's only 5 rows, it automatically switches to the chart, but issues another
     // dataset request. So we wait for the dataset to load.
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     // People in CA
     cy.createQuestion({
@@ -289,25 +284,18 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       query: { "source-table": PEOPLE_ID, limit: 5 },
     });
     // Build a new question off that grouping by City
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
+    startNewQuestion();
     cy.contains("Saved Questions").click();
     cy.contains("CA People").click();
     cy.contains("Hudson Borer");
     summarize();
-    cy.contains("Summarize by")
-      .parent()
-      .parent()
-      .contains("City")
-      .click();
+    cy.contains("Summarize by").parent().parent().contains("City").click();
 
     // wait for chart to load
     cy.wait("@dataset");
     cy.contains("Count by City");
     // drill into the first bar
-    cy.get(".bar")
-      .first()
-      .click({ force: true });
+    cy.get(".bar").first().click({ force: true });
     cy.contains("View this CA People").click();
 
     // check that filter is applied and person displayed
@@ -332,9 +320,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("January, 2019");
 
     // drill into a recent week
-    cy.get(".dot")
-      .eq(-4)
-      .click({ force: true });
+    cy.get(".dot").eq(-4).click({ force: true });
     cy.contains("View these Orders").click();
 
     // check that filter is applied and rows displayed
@@ -359,9 +345,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText("Equal to").click();
     });
     cy.findByText("Greater than").click();
-    cy.findByPlaceholderText("Enter a number")
-      .click()
-      .type("1");
+    cy.findByPlaceholderText("Enter a number").click().type("1");
     cy.findByText("Add filter").click();
 
     visualize();
@@ -402,13 +386,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     clickLineDot({ index: 0 });
     popover().within(() => {
-      cy.findByText("January 1, 2020");
+      cy.findByText("January 1, 2020, 12:00 AM");
       cy.findByText("10");
     });
 
     clickLineDot({ index: 1 });
     popover().within(() => {
-      cy.findByText("January 2, 2020");
+      cy.findByText("January 2, 2020, 12:00 AM");
       cy.findByText("5");
     });
   });
@@ -430,9 +414,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
     });
 
-    cy.get(".bar")
-      .last()
-      .trigger("mousemove");
+    cy.get(".bar").last().trigger("mousemove");
     popover().findByText("12");
   });
 
@@ -496,9 +478,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         visitQuestion(QUESTION_ID);
 
         // Initial visualization has rendered and we can now drill-through
-        cy.get(".Visualization .bar")
-          .eq(4)
-          .click({ force: true });
+        cy.get(".Visualization .bar").eq(4).click({ force: true });
         cy.findByText(/View these People/i).click();
 
         // We should see the resulting dataset of that drill-through
@@ -559,7 +539,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     // count number of distinct values in the Discount column
     cy.findByText("Discount ($)").click();
-    cy.findByText("Distincts").click();
+    cy.findByText("Distinct values").click();
 
     // there should be 0 distinct values since they are all null
     cy.get(".TableInteractive-cellWrapper").contains("0");
@@ -603,7 +583,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           });
         });
 
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+        visitDashboard(DASHBOARD_ID);
       });
     });
 
@@ -630,9 +610,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       });
 
       // Drill-through the last bar (Widget)
-      cy.get(".bar")
-        .last()
-        .click({ force: true });
+      cy.get(".bar").last().click({ force: true });
       cy.findByText("View these Products").click();
     });
 
@@ -650,7 +628,5 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 });
 
 function clickLineDot({ index } = {}) {
-  cy.get(".Visualization .dot")
-    .eq(index)
-    .click({ force: true });
+  cy.get(".Visualization .dot").eq(index).click({ force: true });
 }

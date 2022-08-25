@@ -23,7 +23,7 @@ export default class SavedQuestionIntroModal extends Component {
           <div className="px2 pb2 text-paragraph">{message}</div>
           <div className="Form-actions flex justify-center py1">
             <button
-              data-metabase-event={"QueryBuilder;IntroModal"}
+              data-metabase-event="QueryBuilder;IntroModal"
               className="Button Button--primary"
               onClick={onClose}
             >

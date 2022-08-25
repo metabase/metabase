@@ -1,9 +1,24 @@
 import styled from "@emotion/styled";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
-import { GridItem } from "metabase/components/Grid";
+import { color } from "metabase/lib/colors";
+
+import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
+
+export const FixedBottomBar = styled.div<{ isNavbarOpen: boolean }>`
+  position: fixed;
+  bottom: 0;
+  left: ${props => (props.isNavbarOpen ? NAV_SIDEBAR_WIDTH : 0)};
+  right: 0;
+  border-top: 1px solid ${color("border")};
+  background-color: ${color("white")};
+`;
 
 export const ActionBarContent = styled.div`
   padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  width: 90%;
+  margin: 0 auto;
 
   ${breakpointMinSmall} {
     padding-left: 2rem;
@@ -17,31 +32,4 @@ export const ActionBarText = styled.div`
 
 export const ActionControlsRoot = styled.div`
   margin-left: 0.5rem;
-`;
-
-export const ActionGridItem = styled(GridItem)`
-  width: 100%;
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
-
-  ${breakpointMinSmall} {
-    width: 66.66%;
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-`;
-
-export const ActionGridItemContent = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 0 1rem;
-`;
-
-export const ActionGridPlaceholder = styled.div`
-  width: 100%;
-
-  ${breakpointMinSmall} {
-    width: 33.33%;
-  }
 `;

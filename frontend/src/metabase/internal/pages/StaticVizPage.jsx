@@ -66,14 +66,6 @@ import {
   LINE_AREA_BAR_DEFAULT_OPTIONS_7,
 } from "../../static-viz/components/LineAreaBarChart/constants";
 
-function setAccessorsForChartOptions(index, options) {
-  const optionsCopy = { ...options };
-  if (STATIC_CHART_DEFAULT_OPTIONS[index].accessors) {
-    optionsCopy.accessors = STATIC_CHART_DEFAULT_OPTIONS[index].accessors;
-  }
-  return optionsCopy;
-}
-
 function chartOptionsToStr(options) {
   if (typeof options === "object") {
     return JSON.stringify(options, null, 2);
@@ -82,17 +74,14 @@ function chartOptionsToStr(options) {
 }
 
 export default function StaticVizPage() {
-  const [staticChartTypeIndex, setStaticChartTypeIndex] = useState(-1);
   const [staticChartType, setStaticChartType] = useState(null);
-  const [staticChartCustomOptions, setStaticChartCustomOptions] = useState(
-    null,
-  );
+  const [staticChartCustomOptions, setStaticChartCustomOptions] =
+    useState(null);
   const [staticChartError, setStaticChartError] = useState(null);
 
   function chartOptionsToObj(optionsStr) {
     try {
       const chartOptions = JSON.parse(optionsStr);
-      delete chartOptions["accessors"];
       setStaticChartError(null);
       return chartOptions;
     } catch (err) {
@@ -121,11 +110,10 @@ export default function StaticVizPage() {
             className="w-full mt1"
             onChange={e => {
               const index = parseInt(e.target.value);
-              setStaticChartTypeIndex(index);
               setStaticChartType(STATIC_CHART_TYPES[index]);
-              const chartOptions = { ...STATIC_CHART_DEFAULT_OPTIONS[index] };
-              delete chartOptions["accessors"];
-              setStaticChartCustomOptions(chartOptions);
+              setStaticChartCustomOptions({
+                ...STATIC_CHART_DEFAULT_OPTIONS[index],
+              });
             }}
           >
             <option id="">---</option>
@@ -162,10 +150,7 @@ export default function StaticVizPage() {
             <div className="text-code-plain w-full mt1">
               <StaticChart
                 type={staticChartType}
-                options={setAccessorsForChartOptions(
-                  staticChartTypeIndex,
-                  staticChartCustomOptions,
-                )}
+                options={{ ...staticChartCustomOptions }}
               />
             </div>
           )}

@@ -1,3 +1,4 @@
+import Dimension from "metabase-lib/lib/Dimension";
 import { isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 
 export function getTableClickedObjectRowData(
@@ -74,7 +75,12 @@ export function getTableCellClickedObject(
   }
 }
 
-export function getTableHeaderClickedObject(data, columnIndex, isPivoted) {
+export function getTableHeaderClickedObject(
+  data,
+  columnIndex,
+  isPivoted,
+  query,
+) {
   const column = data.cols[columnIndex];
   if (isPivoted) {
     // if it's a pivot table, the first column is
@@ -84,7 +90,14 @@ export function getTableHeaderClickedObject(data, columnIndex, isPivoted) {
       return null; // FIXME?
     }
   } else {
-    return { column };
+    return {
+      column,
+      dimension: Dimension.parseMBQL(
+        column?.field_ref,
+        query?.metadata(),
+        query,
+      ),
+    };
   }
 }
 

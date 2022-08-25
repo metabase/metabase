@@ -20,6 +20,8 @@ import {
   DEFAULT_CARD_SIZE,
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
+import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import { DashboardCard } from "./DashboardGrid.styled";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -30,8 +32,9 @@ import AddSeriesModal from "./AddSeriesModal/AddSeriesModal";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
 import DashCard from "./DashCard";
 
-@ExplicitSize()
-export default class DashboardGrid extends Component {
+class DashboardGrid extends Component {
+  static contextType = ContentViewportContext;
+
   constructor(props, context) {
     super(props, context);
 
@@ -41,6 +44,7 @@ export default class DashboardGrid extends Component {
       removeModalDashCard: null,
       addSeriesModalDashCard: null,
       isDragging: false,
+      isAnimationPaused: true,
     };
   }
 
@@ -48,6 +52,7 @@ export default class DashboardGrid extends Component {
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
+    isNightMode: PropTypes.bool,
     dashboard: PropTypes.object.isRequired,
     parameterValues: PropTypes.object.isRequired,
 
@@ -68,6 +73,19 @@ export default class DashboardGrid extends Component {
     isEditing: false,
     isEditingParameter: false,
   };
+
+  componentDidMount() {
+    // In order to skip the initial cards animation we must let the grid layout calculate
+    // the initial card positions. The timer is necessary to enable animation only
+    // after the grid layout has been calculated and applied to the DOM.
+    this._pauseAnimationTimer = setTimeout(() => {
+      this.setState({ isAnimationPaused: false });
+    }, 0);
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this._pauseAnimationTimer);
+  }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
     this.setState({
@@ -92,9 +110,10 @@ export default class DashboardGrid extends Component {
         card => String(card.id) === layoutItem.i,
       );
 
+      const keys = ["h", "w", "x", "y"];
       const changed = !_.isEqual(
-        layoutItem,
-        this.getLayoutForDashCard(dashboardCard),
+        _.pick(layoutItem, keys),
+        _.pick(this.getLayoutForDashCard(dashboardCard), keys),
       );
 
       if (changed) {
@@ -172,7 +191,11 @@ export default class DashboardGrid extends Component {
   getRowHeight() {
     const { width } = this.props;
 
-    const hasScroll = window.innerWidth > document.documentElement.offsetWidth;
+    const contentViewportElement = this.context;
+    const hasScroll =
+      contentViewportElement?.clientHeight <
+      contentViewportElement?.scrollHeight;
+
     const aspectHeight = width / GRID_WIDTH / GRID_ASPECT_RATIO;
     const actualHeight = Math.max(aspectHeight, MIN_ROW_HEIGHT);
 
@@ -264,7 +287,7 @@ export default class DashboardGrid extends Component {
     }
   };
 
-  renderDashCard(dc, { isMobile, gridItemWidth }) {
+  renderDashCard(dc, { isMobile, gridItemWidth, totalNumGridCols }) {
     return (
       <DashCard
         dashcard={dc}
@@ -274,11 +297,14 @@ export default class DashboardGrid extends Component {
         slowCards={this.props.slowCards}
         fetchCardData={this.props.fetchCardData}
         gridItemWidth={gridItemWidth}
+        totalNumGridCols={totalNumGridCols}
         markNewCardSeen={this.props.markNewCardSeen}
         isEditing={this.props.isEditing}
         isEditingParameter={this.props.isEditingParameter}
         isFullscreen={this.props.isFullscreen}
+        isNightMode={this.props.isNightMode}
         isMobile={isMobile}
+        isDataApp={this.props.isDataApp}
         onRemove={this.onDashCardRemove.bind(this, dc)}
         onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
         onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(
@@ -303,23 +329,30 @@ export default class DashboardGrid extends Component {
   }
 
   get isEditingLayout() {
-    const {
-      isEditing,
-      isEditingParameter,
-      clickBehaviorSidebarDashcard,
-    } = this.props;
+    const { isEditing, isEditingParameter, clickBehaviorSidebarDashcard } =
+      this.props;
     return (
       isEditing && !isEditingParameter && clickBehaviorSidebarDashcard == null
     );
   }
 
-  renderGridItem = ({ item: dc, breakpoint, gridItemWidth }) => (
-    <div key={String(dc.id)} className="DashCard">
+  renderGridItem = ({
+    item: dc,
+    breakpoint,
+    gridItemWidth,
+    totalNumGridCols,
+  }) => (
+    <DashboardCard
+      key={String(dc.id)}
+      className="DashCard"
+      isAnimationDisabled={this.state.isAnimationPaused}
+    >
       {this.renderDashCard(dc, {
         isMobile: breakpoint === "mobile",
         gridItemWidth,
+        totalNumGridCols,
       })}
-    </div>
+    </DashboardCard>
   );
 
   renderGrid() {
@@ -361,3 +394,5 @@ export default class DashboardGrid extends Component {
     );
   }
 }
+
+export default ExplicitSize()(DashboardGrid);

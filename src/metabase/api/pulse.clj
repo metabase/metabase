@@ -1,8 +1,11 @@
 (ns metabase.api.pulse
   "/api/pulse endpoints."
-  (:require [compojure.core :refer [GET POST PUT]]
+  (:require [clojure.set :refer [difference]]
+            [compojure.core :refer [GET POST PUT]]
             [hiccup.core :refer [html]]
+            [metabase.api.alert :as api.alert]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.email :as email]
             [metabase.integrations.slack :as slack]
             [metabase.models.card :refer [Card]]
@@ -13,11 +16,13 @@
             [metabase.models.pulse-channel :as pulse-channel :refer [channel-types PulseChannel]]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.pulse :as p]
+            [metabase.public-settings.premium-features :as premium-features]
+            metabase.pulse
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [metabase.util.urls :as urls]
             [schema.core :as s]
@@ -25,7 +30,8 @@
             [toucan.hydrate :refer [hydrate]])
   (:import java.io.ByteArrayInputStream))
 
-(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
+(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
+                                          'metabase-enterprise.advanced-permissions.common))
 
 (api/defendpoint GET "/"
   "Fetch all Pulses. If `dashboard_id` is specified, restricts results to dashboard subscriptions
@@ -60,6 +66,7 @@
    collection_position (s/maybe su/IntGreaterThanZero)
    dashboard_id        (s/maybe su/IntGreaterThanZero)
    parameters          [su/Map]}
+  (validation/check-has-application-permission :subscription false)
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
   ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
@@ -84,7 +91,6 @@
       (api/check-500
        (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
 
-
 (api/defendpoint GET "/:id"
   "Fetch `Pulse` with ID."
   [id]
@@ -102,24 +108,47 @@
    archived      (s/maybe s/Bool)
    parameters    [su/Map]}
   ;; do various perms checks
-  (let [pulse-before-update (api/write-check Pulse id)]
+  (try
+   (validation/check-has-application-permission :monitoring)
+   (catch clojure.lang.ExceptionInfo _e
+     (validation/check-has-application-permission :subscription false)))
+
+  (let [pulse-before-update (api/write-check (pulse/retrieve-pulse id))]
     (check-card-read-permissions cards)
     (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
+
+    ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
+    ;; update pulse's recipients
+    (when (premium-features/enable-advanced-permissions?)
+      (let [to-add-recipients (difference (set (map :id (:recipients (api.alert/email-channel pulse-updates))))
+                                          (set (map :id (:recipients (api.alert/email-channel pulse-before-update)))))
+            current-user-has-application-permissions?
+            (and (premium-features/enable-advanced-permissions?)
+                 (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))
+            has-subscription-perms?
+            (and current-user-has-application-permissions?
+                 (current-user-has-application-permissions? :subscription))]
+        (api/check (or api/*is-superuser?*
+                       has-subscription-perms?
+                       (empty? to-add-recipients))
+                   [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")])))
+
     (db/transaction
-      ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
-      ;; depending on what changed.
-      (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
-      ;; ok, now update the Pulse
-      (pulse/update-pulse!
-       (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
-                                          :archived :parameters])
-              :id id))))
+     ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
+     ;; depending on what changed.
+     (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
+     ;; ok, now update the Pulse
+     (pulse/update-pulse!
+      (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
+                                         :archived :parameters])
+             :id id))))
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
 (api/defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
+  (validation/check-has-application-permission :subscription false)
   (let [chan-types (-> channel-types
                        (assoc-in [:slack :configured] (slack/slack-configured?))
                        (assoc-in [:email :configured] (email/email-configured?)))]
@@ -132,14 +161,15 @@
                  (not (get-in chan-types [:slack :configured]))
                  chan-types
 
-                 ;; if we have Slack enabled build a dynamic list of channels/users
+                 ;; if we have Slack enabled return cached channels and users
                  :else
                  (try
-                   (let [slack-channels (for [channel (slack/conversations-list)]
-                                          (str \# (:name channel)))
-                         slack-users    (for [user (slack/users-list)]
-                                          (str \@ (:name user)))]
-                     (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
+                   (future (slack/refresh-channels-and-usernames-when-needed!))
+                   (assoc-in chan-types
+                             [:slack :fields 0 :options]
+                             (->> (slack/slack-cached-channels-and-usernames)
+                                  :channels
+                                  (map :display-name)))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
@@ -148,7 +178,10 @@
   [{query :dataset_query, card-id :id}]
   (binding [qp.perms/*card-id* card-id]
     (qp/process-query-and-save-execution!
-     (assoc query :async? false)
+     (assoc query
+            :async? false
+            :middleware {:process-viz-settings? true
+                         :js-int-to-string?     false})
      {:executed-by api/*current-user-id*
       :context     :pulse
       :card-id     card-id})))
@@ -164,7 +197,7 @@
                [:body {:style "margin: 0;"}
                 (binding [render/*include-title*   true
                           render/*include-buttons* true]
-                  (render/render-pulse-card-for-display (p/defaulted-timezone card) card result))]])}))
+                  (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result))]])}))
 
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
@@ -174,7 +207,7 @@
         data      (:data result)
         card-type (render/detect-pulse-chart-type card nil data)
         card-html (html (binding [render/*include-title* true]
-                          (render/render-pulse-card-for-display (p/defaulted-timezone card) card result)))]
+                          (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result)))]
     {:id              id
      :pulse_card_type card-type
      :pulse_card_html card-html
@@ -191,7 +224,7 @@
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)
         ba     (binding [render/*include-title* true]
-                 (render/render-pulse-card-to-png (p/defaulted-timezone card) card result preview-card-width))]
+                 (render/render-pulse-card-to-png (metabase.pulse/defaulted-timezone card) card result preview-card-width))]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
 (api/defendpoint POST "/test"
@@ -208,7 +241,7 @@
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
-  (p/send-pulse! (assoc body :creator_id api/*current-user-id*))
+  (metabase.pulse/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 
 (api/defendpoint DELETE "/:id/subscription"

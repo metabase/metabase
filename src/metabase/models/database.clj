@@ -2,14 +2,16 @@
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.api.common :refer [*current-user*]]
             [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
+            [metabase.driver.impl :as driver.impl]
             [metabase.driver.util :as driver.u]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perm-group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.secret :as secret :refer [Secret]]
+            [metabase.models.serialization.base :as serdes.base]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
@@ -19,6 +21,10 @@
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Database :metabase_database)
+
+(doto Database
+  (derive ::mi/read-policy.partial-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
 
 (defn- schedule-tasks!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
@@ -44,20 +50,21 @@
 
 (defn- post-insert [database]
   (u/prog1 database
-    ;; add this database to the All Users permissions groups
-    (perms/grant-full-db-permissions! (perm-group/all-users) database)
+    ;; add this database to the All Users permissions group
+    (perms/grant-full-data-permissions! (perms-group/all-users) database)
+    ;; give full download perms for this database to the All Users permissions group
+    (perms/grant-full-download-permissions! (perms-group/all-users) database)
     ;; schedule the Database sync & analyze tasks
     (schedule-tasks! database)))
 
 (defn- post-select [{driver :engine, :as database}]
   (cond-> database
-    (driver/initialized? driver)
     ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
-    (as-> db* ; database from outer cond->
-        (assoc db* :features (driver.u/features driver database))
-        (if (:details db*)
-          (driver/normalize-db-details driver db*)
-          db*))))
+    (driver.impl/registered? driver)
+    (assoc :features (driver.u/features driver database))
+
+    (and (driver.impl/registered? driver) (:details database))
+    (->> (driver/normalize-db-details driver))))
 
 (defn- delete-orphaned-secrets!
   "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
@@ -84,9 +91,7 @@
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (db/execute! {:delete-from (db/resolve-model 'Permissions)
-                :where       [:or
-                              [:like :object (str (perms/data-perms-path id) "%")]
-                              [:= :object (perms/database-block-perms-path id)]]})
+                :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
   (delete-orphaned-secrets! database)
   (try
     (driver/notify-database-updated driver database)
@@ -183,10 +188,13 @@
       handle-secrets-changes
       (assoc :initial_sync_status "incomplete")))
 
-(defn- perms-objects-set [database _]
-  #{(perms/data-perms-path (u/the-id database))})
+(defmethod mi/perms-objects-set Database
+  [{db-id :id} read-or-write]
+  #{(case read-or-write
+      :read  (perms/data-perms-path db-id)
+      :write (perms/db-details-write-perms-path db-id))})
 
-(u/strict-extend (class Database)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Database)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:database :db])
@@ -203,11 +211,9 @@
           :pre-insert     pre-insert
           :pre-update     pre-update
           :pre-delete     pre-delete})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:perms-objects-set perms-objects-set
-          :can-read?         (partial i/current-user-has-partial-permissions? :read)
-          :can-write?        i/superuser?}))
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name :engine])})
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
@@ -257,13 +263,15 @@
             driver.u/default-sensitive-fields))
       driver.u/default-sensitive-fields))
 
-;; when encoding a Database as JSON remove the `details` and `settings` for any non-admin User. For admin users they can
-;; still see the `details` but remove anything resembling a password. No one gets to see this in an API response!
+;; when encoding a Database as JSON remove the `details` and `settings` for any User without write perms for the DB.
+;; Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
+;; an API response!
 (add-encoder
+ #_{:clj-kondo/ignore [:unresolved-symbol]}
  DatabaseInstance
  (fn [db json-generator]
    (encode-map
-    (if (not (:is_superuser @*current-user*))
+    (if (not (mi/can-write? db))
       (dissoc db :details :settings)
       (update db :details (fn [details]
                             (reduce
@@ -271,3 +279,29 @@
                              details
                              (sensitive-fields-for-db db)))))
     json-generator)))
+
+;;; ------------------------------------------------ Serialization ----------------------------------------------------
+
+(defmethod serdes.base/extract-one "Database"
+  [_model-name {secrets :database/secrets :or {secrets :exclude}} entity]
+  ;; TODO Support alternative encryption of secret database details.
+  ;; There's one optional foreign key: creator_id. Resolve it as an email.
+  (cond-> (serdes.base/extract-one-basics "Database" entity)
+    (:creator_id entity) (assoc :creator_id (db/select-one-field :email 'User :id (:creator_id entity)))
+    (= :exclude secrets) (dissoc :details)))
+
+(defmethod serdes.base/serdes-entity-id "Database"
+  [_ {:keys [name]}]
+  name)
+
+(defmethod serdes.base/serdes-generate-path "Database"
+  [_ {:keys [name]}]
+  [{:model "Database" :id name}])
+
+(defmethod serdes.base/load-find-local "Database"
+  [[{:keys [id]}]]
+  (db/select-one-field :id Database :name id))
+
+(defmethod serdes.base/load-xform "Database" [{:keys [creator_id] :as entity}]
+  (cond-> (serdes.base/load-xform-basics entity)
+    creator_id (assoc :creator_id (db/select-one-field :id 'User :email creator_id))))

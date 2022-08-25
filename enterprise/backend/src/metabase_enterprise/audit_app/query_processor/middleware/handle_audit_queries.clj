@@ -39,10 +39,10 @@
      :xform    ...}"
   (:require [clojure.data :as data]
             [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.public-settings.premium-features :as premium-features]
-            [metabase.query-processor.context :as context]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.context :as qp.context]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
@@ -95,13 +95,13 @@
                          (xform (rff metadata)))]
     (assert (some? cols))
     (assert (instance? clojure.lang.IReduceInit reducible-rows))
-    (context/reducef rff* context {:cols cols} reducible-rows)))
+    (qp.context/reducef rff* context {:cols cols} reducible-rows)))
 
 (defn- reduce-legacy-results [rff context results]
   (let [{:keys [cols rows]} (format-results results)]
     (assert (some? cols))
     (assert (some? rows))
-    (context/reducef rff context {:cols cols} rows)))
+    (qp.context/reducef rff context {:cols cols} rows)))
 
 (defn- reduce-results [rff context {rows :results, :as results}]
   ((if (fn? rows)
@@ -110,13 +110,13 @@
 
 (s/defn ^:private process-internal-query
   [{qualified-fn-str :fn, args :args, :as query} :- InternalQuery rff context]
-  ;; Make sure current user is a superuser
-  (api/check-superuser)
+  ;; Make sure current user is a superuser or has monitoring permissions
+  (validation/check-has-application-permission :monitoring)
   ;; Make sure audit app is enabled (currently the only use case for internal queries). We can figure out a way to
   ;; allow non-audit-app queries if and when we add some
   (when-not (premium-features/enable-audit-app?)
     (throw (ex-info (tru "Audit App queries are not enabled on this instance.")
-                    {:type error-type/invalid-query})))
+                    {:type qp.error-type/invalid-query})))
   (binding [*additional-query-params* (dissoc query :fn :args)]
     (let [resolved (apply audit.i/resolve-internal-query qualified-fn-str args)]
       (reduce-results rff context resolved))))

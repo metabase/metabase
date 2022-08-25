@@ -17,7 +17,7 @@
 
 .LineAreaBarChart .dc-chart .axis text {
   font-size: 12px;
-  font-family: "Lato", sans-serif;
+  font-family: var(--default-font-family), sans-serif;
   font-weight: 900;
 }
 
@@ -179,6 +179,10 @@
   transition: opacity 0.25s linear;
 }
 
+.LineAreaBarChart .dc-chart .event-line {
+  transition: stroke 0.15s linear;
+}
+
 /* .mute-* selectors dynamically generated in LineAreaBarChart.js*/
 
 .LineAreaBarChart.mute-yl .dc-chart .axis.y,
@@ -192,8 +196,11 @@
 }
 
 .LineAreaBarChart .dc-chart .voronoi {
-  cursor: pointer;
   fill: transparent;
+}
+
+.LineAreaBarChart .dc-chart .voronoi-drill {
+  cursor: pointer;
 }
 
 /* we put the brush behind everything so this isn't necessary
@@ -221,17 +228,8 @@
   stroke-dasharray: 5, 5;
 }
 
-text.value-label-outline,
 text.value-label {
   pointer-events: none;
-}
-
-text.value-label-outline {
-  font-weight: 800;
-  font-size: 12px;
-  letter-spacing: 0.5px;
-  stroke-width: 3px;
-  stroke: var(--color-text-white);
 }
 
 text.value-label {
@@ -239,9 +237,51 @@ text.value-label {
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.5px;
+  stroke: var(--color-text-white);
+  stroke-width: 3px;
+  paint-order: stroke;
 }
 
 text.value-label-white {
   fill: var(--color-text-white);
   font-weight: 800;
+  stroke: var(--color-text-dark);
+  stroke-width: 3px;
+  paint-order: stroke;
+}
+
+/* timeline events */
+
+.LineAreaBarChart .dc-chart .event-axis .event-tick {
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.LineAreaBarChart .dc-chart .event-axis .event-icon {
+  fill: var(--color-text-light);
+  stroke: var(--color-text-light);
+  shape-rendering: geometricPrecision;
+}
+
+.LineAreaBarChart .dc-chart .event-axis .event-text {
+  fill: var(--color-text-light);
+}
+
+.LineAreaBarChart .dc-chart .event-axis .event-tick.hover .event-icon {
+  fill: var(--color-brand);
+  stroke: var(--color-brand);
+}
+
+.LineAreaBarChart .dc-chart .event-axis .event-tick.hover .event-text {
+  fill: var(--color-brand);
+}
+
+.LineAreaBarChart .dc-chart .event-line {
+  stroke: color-mod(var(--color-text-medium) alpha(-80%));
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.LineAreaBarChart .dc-chart .event-line.hover {
+  stroke: var(--color-brand);
 }

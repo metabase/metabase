@@ -3,13 +3,14 @@
             [clojure.tools.logging :as log]
             [clojure.tools.reader.edn :as edn]
             [java-time :as t]
-            [metabase.driver.googleanalytics.metadata :as metadata]
+            [metabase.driver.googleanalytics.metadata :as ga.metadata]
             [metabase.models :refer [Database]]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.date-2.common :as u.date.common]
             [metabase.util.date-2.parse :as u.date.parse]
-            [metabase.util.date-2.parse.builder :as u.date.builder])
+            [metabase.util.date-2.parse.builder :as u.date.builder]
+            [toucan.db :as db])
   (:import [com.google.api.services.analytics.model Column GaData GaData$ColumnHeaders]
            java.time.DayOfWeek
            java.time.format.DateTimeFormatter
@@ -19,14 +20,14 @@
   (some (fn [^Column column]
           (when (= (.getId column) (name column-name))
             column))
-        (metadata/columns (Database (u/the-id database-or-id)) {:status "PUBLIC"})))
+        (ga.metadata/columns (db/select-one Database :id (u/the-id database-or-id)) {:status "PUBLIC"})))
 
 (defn- column-metadata [database-id column-name]
   (when-let [ga-column (column-with-name database-id column-name)]
     (merge
-     {:display_name (metadata/column-attribute ga-column :uiName)
-      :description  (metadata/column-attribute ga-column :description)}
-     (let [data-type (metadata/column-attribute ga-column :dataType)]
+     {:display_name (ga.metadata/column-attribute ga-column :uiName)
+      :description  (ga.metadata/column-attribute ga-column :description)}
+     (let [data-type (ga.metadata/column-attribute ga-column :dataType)]
        (when-let [base-type (cond
                               (= column-name "ga:date") :type/Date
                               (= data-type "INTEGER")   :type/Integer

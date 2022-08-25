@@ -44,12 +44,11 @@
                 :first-name "Fred"
                 :last-name  "Taylor"
                 :email      "fred.taylor@metabase.com"
-                :attributes {:uid       "ftaylor300"
-                             :mail      "fred.taylor@metabase.com"
+                :attributes {:mail      "fred.taylor@metabase.com"
                              :cn        "Fred Taylor"
                              :givenname "Fred"
                              :sn        "Taylor"}
-                :groups     []}
+                :groups     ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
                (ldap/find-user "fred.taylor@metabase.com"))))
 
       (testing "find by email, no givenName"
@@ -227,11 +226,11 @@
          (finally (db/delete! User :email "john.smith@metabase.com"))))
 
       (try
-       (testing "a user without a givenName attribute defaults to Unknown"
+       (testing "a user without a givenName attribute has `nil` for that attribute"
          (ldap/fetch-or-create-user! (ldap/find-user "jmiller"))
-         (is (= {:first_name       "Unknown"
+         (is (= {:first_name       nil
                  :last_name        "Miller"
-                 :common_name      "Unknown Miller"}
+                 :common_name      "Miller"}
                 (into {} (db/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
 
        (testing "when givenName or sn attributes change in LDAP, they are updated in Metabase on next login"
@@ -241,10 +240,10 @@
                  :common_name      "Jane Doe"}
                 (into {} (db/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
 
-       (testing "if givenName or sn attributes are removed, values stored in Metabase are not overwritten on next login"
+       (testing "if givenName or sn attributes are removed, values stored in Metabase are updated to `nil` to respect the IdP response."
          (ldap/fetch-or-create-user! (assoc (ldap/find-user "jmiller") :first-name nil :last-name nil))
-         (is (= {:first_name       "Jane"
-                 :last_name        "Doe"
-                 :common_name      "Jane Doe"}
-                (into {} (db/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
+         (is (= {:first_name       nil
+                 :last_name        nil
+                 :common_name      "jane.miller@metabase.com"}
+                (select-keys (db/select-one User :email "jane.miller@metabase.com") [:first_name :last_name :common_name]))))
        (finally (db/delete! User :email "jane.miller@metabase.com"))))))

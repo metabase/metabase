@@ -5,7 +5,7 @@
   (:require [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.sync.analyze.query-results :as analyze.results]
+            [metabase.sync.analyze.query-results :as qr]
             [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
 
@@ -49,7 +49,7 @@
      (merge
       (select-keys final-col [:id :description :display_name :semantic_type :fk_target_field_id
                               :settings :field_ref :name :base_type :effective_type
-                              :coercion_strategy :semantic_type])
+                              :coercion_strategy :visibility_type])
       insights-col
       (when (= our-base-type :type/*)
         {:base_type final-base-type})))
@@ -59,7 +59,7 @@
 (defn- insights-xform [orig-metadata record! rf]
   (qp.reducible/combine-additional-reducing-fns
    rf
-   [(analyze.results/insights-rf orig-metadata)]
+   [(qr/insights-rf orig-metadata)]
    (fn combine [result {:keys [metadata insights]}]
      (let [metadata (merge-final-column-metadata (-> result :data :cols) metadata)]
        (record! metadata)

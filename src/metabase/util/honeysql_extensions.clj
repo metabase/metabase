@@ -26,7 +26,7 @@
 
 ;; Add an `:h2` quote style that uppercases the identifier
 (let [{ansi-quote-fn :ansi} @#'honeysql.format/quote-fns]
-  (alter-var-root #'honeysql.format/quote-fns assoc :h2 (comp english-upper-case ansi-quote-fn)))
+  (alter-var-root #'hformat/quote-fns assoc :h2 (comp english-upper-case ansi-quote-fn)))
 
 ;; register the `extract` function with HoneySQL
 ;; (hsql/format (hsql/call :extract :a :b)) -> "extract(a from b)"
@@ -136,16 +136,6 @@
   DON'T USE `LITERAL` FOR THINGS THAT MIGHT BE WACKY (USER INPUT). Only use it for things that are hardcoded."
   [s]
   (Literal. (u/qualified-name s)))
-
-
-(def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between `exprs` and wrap in parentheses." (partial hsql/call :+))
-(def ^{:arglists '([& exprs])}  -  "Math operator. Interpose `-` between `exprs` and wrap in parentheses." (partial hsql/call :-))
-(def ^{:arglists '([& exprs])}  /  "Math operator. Interpose `/` between `exprs` and wrap in parentheses." (partial hsql/call :/))
-(def ^{:arglists '([& exprs])}  *  "Math operator. Interpose `*` between `exprs` and wrap in parentheses." (partial hsql/call :*))
-(def ^{:arglists '([& exprs])} mod "Math operator. Interpose `%` between `exprs` and wrap in parentheses." (partial hsql/call :%))
-
-(defn inc "Add 1 to `x`."        [x] (+ x 1))
-(defn dec "Subtract 1 from `x`." [x] (- x 1))
 
 (p.types/defprotocol+ TypedHoneySQL
   "Protocol for a HoneySQL form that has type information such as `::database-type`. See #15115 for background."
@@ -267,10 +257,28 @@
     (cast-unless-type-in \"timestamp\" #{\"timestamp\" \"timestamptz\" \"date\"} form)"
   {:added "0.42.0"}
   [desired-type acceptable-types expr]
+  {:pre [(string? desired-type) (set? acceptable-types)]}
   (if (some (partial is-of-type? expr)
             acceptable-types)
     expr
     (cast desired-type expr)))
+
+(defn- math-operator [operator]
+  (fn [& args]
+    (let [arg-db-type (some (fn [arg]
+                              (-> arg type-info type-info->db-type))
+                            args)]
+      (cond-> (apply hsql/call operator args)
+        arg-db-type (with-database-type-info arg-db-type)))))
+
+(def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between `exprs` and wrap in parentheses." (math-operator :+))
+(def ^{:arglists '([& exprs])}  -  "Math operator. Interpose `-` between `exprs` and wrap in parentheses." (math-operator :-))
+(def ^{:arglists '([& exprs])}  /  "Math operator. Interpose `/` between `exprs` and wrap in parentheses." (math-operator :/))
+(def ^{:arglists '([& exprs])}  *  "Math operator. Interpose `*` between `exprs` and wrap in parentheses." (math-operator :*))
+(def ^{:arglists '([& exprs])} mod "Math operator. Interpose `%` between `exprs` and wrap in parentheses." (math-operator :%))
+
+(defn inc "Add 1 to `x`."        [x] (+ x 1))
+(defn dec "Subtract 1 from `x`." [x] (- x 1))
 
 (defn format
   "SQL `format` function."
@@ -316,3 +324,9 @@
 (defmethod pprint/simple-dispatch honeysql.types.SqlCall
   [call]
   (pprint/write-out (pretty/pretty call)))
+
+(defmethod hformat/format-clause :returning [[_ fields] _]
+  (->> (flatten fields)
+       (map hformat/to-sql)
+       (hformat/comma-join)
+       (str "RETURNING ")))

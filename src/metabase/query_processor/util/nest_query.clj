@@ -5,7 +5,8 @@
 
    (This namespace is here rather than in the shared MBQL lib because it relies on other QP-land utils like the QP
   refs stuff.)"
-  (:require [medley.core :as m]
+  (:require [clojure.walk :as walk]
+            [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.mbql.util :as mbql.u]
             [metabase.plugins.classloader :as classloader]
@@ -17,7 +18,11 @@
 (defn- joined-fields [inner-query]
   (m/distinct-by
    add/normalize-clause
-   (mbql.u/match (dissoc inner-query :source-query :source-metadata)
+   (mbql.u/match (walk/prewalk (fn [x]
+                                 (if (map? x)
+                                   (dissoc x :source-query :source-metadata)
+                                   x))
+                               inner-query)
      [:field _ (_ :guard :join-alias)]
      &match)))
 
@@ -33,9 +38,9 @@
                  ;; here in the first place we already had to do perms checks to make sure the query we're transforming
                  ;; is itself ok, so we don't need to run another check
                  (binding [api/*current-user-id* nil]
-                   ((resolve 'metabase.query-processor/query->preprocessed) {:database (u/the-id (qp.store/database))
-                                                                             :type     :query
-                                                                             :query    source}))
+                   ((resolve 'metabase.query-processor/preprocess) {:database (u/the-id (qp.store/database))
+                                                                    :type     :query
+                                                                    :query    source}))
                  (add/add-alias-info source)
                  (:query source)
                  (dissoc source :limit)
@@ -95,13 +100,14 @@
   "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a
   `:source-query` and updates `:expression` references and `:field` clauses with `:join-alias`es accordingly. See
   tests for examples. This is used by the SQL QP to make sure expressions happen in a subselect."
-  [{:keys [expressions], :as query}]
-  (if (empty? expressions)
-    query
-    (let [{:keys [source-query], :as query} (nest-source query)
-          query                             (rewrite-fields-and-expressions query)
-          source-query                      (assoc source-query :expressions expressions)]
-      (-> query
-          (dissoc :source-query :expressions)
-          (assoc :source-query source-query)
-          add/add-alias-info))))
+  [query]
+  (let [{:keys [expressions], :as query} (m/update-existing query :source-query nest-expressions)]
+    (if (empty? expressions)
+      query
+      (let [{:keys [source-query], :as query} (nest-source query)
+            query                             (rewrite-fields-and-expressions query)
+            source-query                      (assoc source-query :expressions expressions)]
+        (-> query
+            (dissoc :source-query :expressions)
+            (assoc :source-query source-query)
+            add/add-alias-info)))))

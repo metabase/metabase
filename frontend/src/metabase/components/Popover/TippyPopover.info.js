@@ -119,5 +119,5 @@ export const examples = {
       {target}
     </TippyPopover>
   ),
-  extra_space: <div style={{ height: 250 }} />,
+  extra_space: <div style={{ height: 400 }} />,
 };

@@ -6,13 +6,13 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.test.automagic-dashboards :refer :all]
-            [metabase.test.domain-entities :as de.test]
+            [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
+            [metabase.test.domain-entities :as test.de]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.transforms :as transforms.test]
-            [metabase.transforms.core :as transforms]
-            [metabase.transforms.materialize :as transforms.materialize]
-            [metabase.transforms.specs :as transforms.specs]
+            [metabase.transforms.core :as tf]
+            [metabase.transforms.materialize :as tf.materialize]
+            [metabase.transforms.specs :as tf.specs]
             [toucan.util.test :as tt]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
@@ -122,8 +122,8 @@
 
 (def ^:private segment
   (delay
-   {:table_id   (mt/id :venues)
-    :definition {:filter [:> [:field-id (mt/id :venues :price)] 10]}}))
+    {:table_id   (mt/id :venues)
+     :definition {:filter [:> [:field-id (mt/id :venues :price)] 10]}}))
 
 (deftest comparisons-test
   (tt/with-temp Segment [{segment-id :id} @segment]
@@ -147,6 +147,33 @@
                            (#'magic/encode-base64-json))
                       segment-id]))))))
 
+(deftest compare-nested-query-test
+  (testing "Ad-hoc X-Rays should work for queries have Card source queries (#15655)"
+    (mt/dataset sample-dataset
+      (let [card-query      (mt/native-query {:query "select * from people"})
+            result-metadata (get-in (qp/process-query card-query) [:data :results_metadata :columns]) ]
+        (mt/with-temp* [Collection [{collection-id :id}]
+                        Card       [{card-id :id} {:name            "15655_Q1"
+                                                   :collection_id   collection-id
+                                                   :dataset_query   card-query
+                                                   :result_metadata result-metadata}]]
+          (let [query      {:database (mt/id)
+                            :type     :query
+                            :query    {:source-table (format "card__%d" card-id)
+                                       :breakout     [[:field "SOURCE" {:base-type :type/Text}]]
+                                       :aggregation  [[:count]]}}
+                cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"]]
+            (testing "X-Ray"
+              (is (some? (api-call "adhoc/%s/cell/%s"
+                                   (map #'magic/encode-base64-json [query cell-query])
+                                   #(revoke-collection-permissions! collection-id)))))
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+            (testing "Compare"
+              (is (some? (api-call "adhoc/%s/cell/%s/compare/table/%s"
+                                   (concat (map #'magic/encode-base64-json [query cell-query])
+                                           [(format "card__%d" card-id)])
+                                   #(revoke-collection-permissions! collection-id)))))))))))
+
 
 ;;; ------------------- Transforms -------------------
 
@@ -154,15 +181,15 @@
   (testing "GET /api/automagic-dashboards/transform/:id"
     (mt/with-test-user :rasta
       (transforms.test/with-test-transform-specs
-        (de.test/with-test-domain-entity-specs
+        (test.de/with-test-domain-entity-specs
           (mt/with-model-cleanup [Card Collection]
-            (transforms/apply-transform! (mt/id) "PUBLIC" (first @transforms.specs/transform-specs))
+            (tf/apply-transform! (mt/id) "PUBLIC" (first @tf.specs/transform-specs))
             (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 1.5 4 3 2 1]
                     [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 2.0 11 2 1 1]
                     [3 "The Apple Pan" 11 34.0406 -118.428 2 2.0 11 2 1 1]]
                    (api-call "transform/%s" ["Test transform"]
                              #(revoke-collection-permissions!
-                               (transforms.materialize/get-collection "Test transform"))
+                               (tf.materialize/get-collection "Test transform"))
                              (fn [dashboard]
                                (->> dashboard
                                     :ordered_cards

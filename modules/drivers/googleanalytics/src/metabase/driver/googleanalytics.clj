@@ -4,17 +4,16 @@
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.google :as google]
-            [metabase.driver.googleanalytics.client :as client]
-            [metabase.driver.googleanalytics.execute :as execute]
-            [metabase.driver.googleanalytics.metadata :as metadata]
-            [metabase.driver.googleanalytics.query-processor :as qp]
+            [metabase.driver.googleanalytics.client :as ga.client]
+            [metabase.driver.googleanalytics.execute :as ga.execute]
+            [metabase.driver.googleanalytics.metadata :as ga.metadata]
+            [metabase.driver.googleanalytics.query-processor :as ga.qp]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]])
   (:import [com.google.api.services.analytics Analytics Analytics$Data$Ga$Get]
-           [com.google.api.services.analytics.model Column Profile Profiles Webproperties Webproperty]
-           java.util.Date))
+           [com.google.api.services.analytics.model Column Profile Profiles Webproperties Webproperty]))
 
-(driver/register! :googleanalytics, :parent :google)
+(driver/register! :googleanalytics)
 
 (defmethod driver/supports? [:googleanalytics :basic-aggregations] [_ _] false)
 
@@ -32,7 +31,7 @@
 (defn- properties+profiles
   "Return a set of tuples of `Webproperty` and `Profile` for `database`."
   [{{:keys [account-id]} :details, :as database}]
-  (let [client (client/database->client database)]
+  (let [client (ga.client/database->client database)]
     (set (for [^Webproperty property (.getItems (fetch-properties client account-id))
                ^Profile     profile  (.getItems (fetch-profiles client account-id (.getId property)))]
            [property profile]))))
@@ -54,12 +53,12 @@
 ;;; ------------------------------------------------- describe-table -------------------------------------------------
 
 (defn- describe-columns [database]
-  (set (for [[idx ^Column column] (m/indexed (metadata/columns database))
-             :let [ga-type (metadata/column-attribute column :dataType)]]
+  (set (for [[idx ^Column column] (m/indexed (ga.metadata/columns database))
+             :let [ga-type (ga.metadata/column-attribute column :dataType)]]
          {:name              (.getId column)
           :base-type         (if (= (.getId column) "ga:date")
                                :type/Date
-                               (execute/ga-type->base-type ga-type))
+                               (ga.execute/ga-type->base-type ga-type))
           :database-type     ga-type
           :database-position idx})))
 
@@ -98,11 +97,11 @@
            (cons {:keypath (str (.getId profile) ".display_name")
                   :value   (property+profile->display-name property profile)}
                  ;; set display_name and description for each column for this table
-                 (apply concat (for [^Column column (metadata/columns database)]
+                 (apply concat (for [^Column column (ga.metadata/columns database)]
                                  [{:keypath (str (.getId profile) \. (.getId column) ".display_name")
-                                   :value   (metadata/column-attribute column :uiName)}
+                                   :value   (ga.metadata/column-attribute column :uiName)}
                                   {:keypath (str (.getId profile) \. (.getId column) ".description")
-                                   :value   (metadata/column-attribute column :description)}]))))))
+                                   :value   (ga.metadata/column-attribute column :description)}]))))))
 
 (defmethod driver/can-connect? :googleanalytics
   [_ details-map]
@@ -113,7 +112,7 @@
   (let [query  (if (string? query)
                  (json/parse-string query keyword)
                  query)
-        client (client/database->client database)]
+        client (ga.client/database->client database)]
     (assert (not (str/blank? (:metrics query)))
             ":metrics is required in a Google Analytics query")
     ;; `end-date` is inclusive!!!
@@ -146,7 +145,7 @@
 
 (defmethod driver/mbql->native :googleanalytics
   [_ query]
-  (qp/mbql->native query))
+  (ga.qp/mbql->native query))
 
 (defn- execute*
   [query]
@@ -154,4 +153,4 @@
 
 (defmethod driver/execute-reducible-query :googleanalytics
   [_ query _ respond]
-  (execute/execute-reducible-query execute* query respond))
+  (ga.execute/execute-reducible-query execute* query respond))

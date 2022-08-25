@@ -3,7 +3,7 @@ import {
   openNativeEditor,
   filterWidget,
   popover,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
@@ -119,6 +119,35 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         cy.findByText("No results!");
       });
     });
+  });
+
+  it("displays parameter field on desktop and mobile", () => {
+    SQLFilter.enterParameterizedQuery(
+      "SELECT * FROM products WHERE products.category = {{testingparamvisbility77}}",
+    );
+
+    SQLFilter.setWidgetValue("Gizmo");
+    SQLFilter.runQuery();
+
+    cy.get("fieldset")
+      .findByText("Testingparamvisbility77")
+      .should("be.visible");
+
+    // close sidebar
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.get(".Icon-close").click();
+    });
+
+    cy.icon("contract").click();
+
+    // resize window to mobile form factor
+    cy.viewport(480, 800);
+
+    cy.findByText("1 active filter").click();
+
+    cy.get("fieldset")
+      .findByText("Testingparamvisbility77")
+      .should("be.visible");
   });
 
   // flaky test (#19454)

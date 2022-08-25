@@ -1,10 +1,20 @@
 import cx from "classnames";
-import React, { ButtonHTMLAttributes, forwardRef, ReactNode, Ref } from "react";
+import React, {
+  ButtonHTMLAttributes,
+  forwardRef,
+  ReactNode,
+  Ref,
+  ElementType,
+} from "react";
 import styled from "@emotion/styled";
 import { color, space } from "styled-system";
 import _ from "underscore";
 import Icon from "metabase/components/Icon";
-import { ButtonContent, ButtonRoot } from "./Button.styled";
+import {
+  ButtonContent,
+  ButtonRoot,
+  ButtonTextContainer,
+} from "./Button.styled";
 
 const BUTTON_VARIANTS = [
   "small",
@@ -24,8 +34,12 @@ const BUTTON_VARIANTS = [
 ] as const;
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
+  as?: ElementType;
   className?: string;
-  icon?: string;
+  to?: string;
+  href?: string;
+
+  icon?: string | ReactNode;
   iconSize?: number;
   iconColor?: string;
   iconRight?: string;
@@ -54,12 +68,13 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const BaseButton = forwardRef(function BaseButton(
   {
+    as,
     className,
     icon,
     iconRight,
     iconSize,
     iconColor,
-    iconVertical,
+    iconVertical = false,
     labelBreakpoint,
     children,
     ...props
@@ -72,26 +87,31 @@ const BaseButton = forwardRef(function BaseButton(
 
   return (
     <ButtonRoot
+      ref={ref}
+      as={as}
       {..._.omit(props, ...BUTTON_VARIANTS)}
       className={cx("Button", className, variantClasses, {
         p1: !children,
       })}
-      ref={ref}
+      purple={props.purple}
     >
       <ButtonContent iconVertical={iconVertical}>
-        {icon && (
+        {icon && typeof icon === "string" ? (
           <Icon color={iconColor} name={icon} size={iconSize ? iconSize : 14} />
+        ) : (
+          icon
         )}
         {children && (
-          <div
+          <ButtonTextContainer
+            hasIcon={!!icon}
+            hasRightIcon={!!iconRight}
+            iconVertical={iconVertical}
             className={cx({
-              [iconVertical ? "mt1" : "ml1"]: icon,
-              [iconVertical ? "mb1" : "mr1"]: iconRight,
               [`hide ${labelBreakpoint}-show`]: !!labelBreakpoint,
             })}
           >
             {children}
-          </div>
+          </ButtonTextContainer>
         )}
         {iconRight && (
           <Icon
@@ -115,4 +135,5 @@ Button.displayName = "Button";
 export default Object.assign(Button, {
   Root: ButtonRoot,
   Content: ButtonContent,
+  TextContainer: ButtonTextContainer,
 });

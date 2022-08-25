@@ -111,6 +111,3 @@
   {:added "0.43.0", :arglists '([driver database table])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
-
-(defmethod describe-nested-field-columns :sql-jdbc [_ _ _]
-  nil)

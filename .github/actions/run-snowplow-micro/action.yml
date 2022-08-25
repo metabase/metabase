@@ -1,0 +1,13 @@
+name: Run Snowplow micro
+runs:
+  using: "composite"
+  steps:
+    - name: Download Snowplow micro JAR
+      run: curl -L -o snowplow-micro.jar https://github.com/snowplow-incubator/snowplow-micro/releases/download/micro-1.2.1/snowplow-micro-1.2.1.jar
+      shell: bash
+    - name: Launch Snowplow micro
+      run: java -cp snowplow-micro.jar:snowplow com.snowplowanalytics.snowplow.micro.Main --collector-config snowplow/micro.conf --iglu snowplow/iglu.json &
+      shell: bash
+    - name: Wait until Snowplow micro is ready
+      run: while ! curl -s 'http://localhost:9090' | grep '404'; do sleep 1; done
+      shell: bash

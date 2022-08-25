@@ -1,4 +1,8 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestionAdhoc,
+  ensureDcChartVisibility,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -37,6 +41,62 @@ describe("visual tests > visualizations > scatter", () => {
       },
     });
 
-    cy.percySnapshot();
+    ensureDcChartVisibility();
+    cy.createPercySnapshot();
+  });
+
+  it("with log axes", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select 1 x, 1 y
+                  union all select 10 x, 10 y
+                  union all select 100 x, 100 y
+                  union all select 200 x, 200 y
+                  union all select 10000 x, 10000 y`,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "scatter",
+
+      displayIsLocked: true,
+      visualization_settings: {
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"],
+        "graph.x_axis.scale": "log",
+        "graph.y_axis.scale": "log",
+      },
+    });
+
+    ensureDcChartVisibility();
+    cy.createPercySnapshot();
+  });
+
+  it("with negative values and various bubble sizes", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select 1 X, 1 Y, 20 SIZE
+union all select 2, 10, 10
+union all select 3, -9, 6
+union all select 4, 100, 30
+union all select 5, -20, 70`,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "scatter",
+
+      displayIsLocked: true,
+      visualization_settings: {
+        "scatter.bubble": "SIZE",
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"],
+      },
+    });
+
+    ensureDcChartVisibility();
+    cy.createPercySnapshot();
   });
 });

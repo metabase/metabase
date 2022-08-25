@@ -3,7 +3,7 @@ import {
   popover,
   openPeopleTable,
   summarize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { LONGITUDE_OPTIONS } from "./constants";
 
@@ -28,7 +28,6 @@ describe("scenarios > binning > correctness > longitude", () => {
           .and("contain", selected);
 
         cy.findByText("Done").click();
-        cy.findByTestId("sidebar-right").should("not.be.visible");
 
         getTitle(`Count by Longitude: ${selected}`);
         cy.get(".bar");
@@ -49,7 +48,6 @@ describe("scenarios > binning > correctness > longitude", () => {
       .and("contain", "Unbinned");
 
     cy.findByText("Done").click();
-    cy.findByTestId("sidebar-right").should("not.be.visible");
 
     getTitle("Count by Longitude");
     cy.get(".cellData")
@@ -78,12 +76,8 @@ function getTitle(title) {
 }
 
 function assertOnXYAxisLabels() {
-  cy.get(".y-axis-label")
-    .invoke("text")
-    .should("eq", "Count");
-  cy.get(".x-axis-label")
-    .invoke("text")
-    .should("eq", "Longitude");
+  cy.get(".y-axis-label").invoke("text").should("eq", "Count");
+  cy.get(".x-axis-label").invoke("text").should("eq", "Longitude");
 }
 
 function assertOnXAxisTicks(values) {
