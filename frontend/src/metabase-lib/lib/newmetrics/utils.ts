@@ -80,7 +80,6 @@ export function generateFakeMetricFromQuestion(
     granularities: ["quarter", "week", "month", "year"],
     default_granularity: "month",
     collection_id: null,
-    display_name: "", // remove, eventually
   };
 }
 
