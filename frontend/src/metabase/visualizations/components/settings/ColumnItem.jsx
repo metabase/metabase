@@ -20,7 +20,15 @@ const ActionIcon = ({ icon, onClick }) => (
   />
 );
 
-const ColumnItem = ({ title, onAdd, onRemove, onClick, onEdit, draggable }) => (
+const ColumnItem = ({
+  title,
+  onAdd,
+  onRemove,
+  onClick,
+  onEdit,
+  onEnable,
+  draggable,
+}) => (
   <ColumnItemRoot draggable={draggable} onClick={onClick}>
     <ColumnItemContainer>
       {draggable && <ColumnItemDragHandle name="grabber2" />}
@@ -29,6 +37,7 @@ const ColumnItem = ({ title, onAdd, onRemove, onClick, onEdit, draggable }) => (
         {onEdit && <ActionIcon icon="ellipsis" onClick={onEdit} />}
         {onAdd && <ActionIcon icon="add" onClick={onAdd} />}
         {onRemove && <ActionIcon icon="eye_filled" onClick={onRemove} />}
+        {onEnable && <ActionIcon icon="eye_crossed_out" onClick={onEnable} />}
       </ColumnItemContent>
     </ColumnItemContainer>
   </ColumnItemRoot>
