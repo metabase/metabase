@@ -9,7 +9,11 @@ set -o pipefail
 ##
 ## metabase で解析する postgres データベースに uuuo-web 環境のデータベースからデータをコピーするスクリプト。
 ## スクリプトは heroku Addons Schedular から実行。
-## 注意：uuuo-metabase は２基データベースを持つ。解析側（HEROKU_POSTGRESQL_BLUE_URL 現在27/4/2022）を指定すること。
+## 注意：uuuo-metabase は２基データベースを持つ。解析側データベースを環境変数TARGET_POSTGRESQL_COLORに指定すること。
+## 例）TARGET_POSTGRESQL_COLOR=HEROKU_POSTGRESQL_AMBER_URL
+## 例）SOURCE_POSTGRESQL_COLOR=uuuo-web::HEROKU_POSTGRESQL_CHARCOAL_URL
+TARGET=$TARGET_POSTGRESQL_COLOR
+SOURCE=$SOURCE_POSTGRESQL_COLOR
 ##
 ## 結果を Slack へ通知する。成功は1日1回、失敗は常に通知。
 ## WEBHOOKURL は heroku 環境変数に事前に設定する事。
@@ -38,8 +42,8 @@ trap 'err ${LINENO[0]}' ERR
 echo -e "\n`date -R`"
 echo -e "<<<<<  Copying DB from uuuo-web to uuuo-metabase. >>>>>"
 
-heroku pg:reset HEROKU_POSTGRESQL_BLUE_URL -a uuuo-metabase --confirm uuuo-metabase
-heroku pg:copy uuuo-web::HEROKU_POSTGRESQL_CHARCOAL_URL HEROKU_POSTGRESQL_BLUE_URL --app uuuo-metabase --confirm uuuo-metabase
+heroku pg:reset $TARGET -a uuuo-metabase --confirm uuuo-metabase
+heroku pg:copy $SOURCE $TARGET --app uuuo-metabase --confirm uuuo-metabase
 
 ## 成功はSlackに通知する。
 ## 通知頻度を指定：　現時刻が Heroku 環境変数（NOTIFY_WHEN_SUCCESS）の条件に合えば通知する。
