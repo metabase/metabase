@@ -127,16 +127,8 @@ export const LoadingTitle = styled.h2`
   margin-top: ${space(1)};
 `;
 
-export const HomePageLink = styled(SidebarLink)`
-  padding-left: 12px;
-`;
-
-export const BrowseLink = styled(SidebarLink)`
-  padding-left: 14px;
-`;
-
-export const DataAppLink = styled(SidebarLink)`
-  padding-left: 14px;
+export const PaddedSidebarLink = styled(SidebarLink)`
+  padding-left: ${space(2)};
 `;
 
 export const AddYourOwnDataLink = styled(SidebarLink)`

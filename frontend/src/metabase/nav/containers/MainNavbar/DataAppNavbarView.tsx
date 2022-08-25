@@ -7,11 +7,11 @@ import { DataApp } from "metabase-types/api";
 
 import { MainNavbarProps, SelectedItem } from "./types";
 import {
+  PaddedSidebarLink,
   SidebarContentRoot,
   SidebarHeading,
   SidebarHeadingWrapper,
   SidebarSection,
-  DataAppLink,
 } from "./MainNavbar.styled";
 
 interface Props extends MainNavbarProps {
@@ -38,13 +38,13 @@ function DataAppNavbarView({ dataApp, items, selectedItems }: Props) {
           <SidebarHeading>{dataApp.collection.name}</SidebarHeading>
         </SidebarHeadingWrapper>
         {appPages.map(page => (
-          <DataAppLink
+          <PaddedSidebarLink
             key={page.id}
             url={Urls.dataAppPage(dataApp, page)}
             isSelected={dataAppPage?.id === page.id}
           >
             {page.name}
-          </DataAppLink>
+          </PaddedSidebarLink>
         ))}
       </SidebarSection>
     </SidebarContentRoot>

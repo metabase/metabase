@@ -21,12 +21,10 @@ import BookmarkList from "./BookmarkList";
 import { SidebarCollectionLink, SidebarLink } from "./SidebarItems";
 import {
   AddYourOwnDataLink,
-  BrowseLink,
   CollectionMenuList,
   CollectionsMoreIcon,
   CollectionsMoreIconContainer,
-  DataAppLink,
-  HomePageLink,
+  PaddedSidebarLink,
   SidebarContentRoot,
   SidebarHeading,
   SidebarHeadingWrapper,
@@ -97,14 +95,14 @@ function MainNavbarView({
       <div>
         <SidebarSection>
           <ul>
-            <HomePageLink
+            <PaddedSidebarLink
               isSelected={nonEntityItem?.url === "/"}
               icon="home"
               onClick={onItemSelect}
               url="/"
             >
               {t`Home`}
-            </HomePageLink>
+            </PaddedSidebarLink>
           </ul>
         </SidebarSection>
 
@@ -142,14 +140,14 @@ function MainNavbarView({
             </SidebarHeadingWrapper>
             <ul>
               {dataApps.map(app => (
-                <DataAppLink
+                <PaddedSidebarLink
                   key={`app-${app.id}`}
                   icon={getDataAppIcon(app)}
                   url={Urls.dataAppPreview(app)}
                   isSelected={dataAppItem?.id === app.id}
                 >
                   {app.collection.name}
-                </DataAppLink>
+                </PaddedSidebarLink>
               ))}
             </ul>
           </SidebarSection>
@@ -161,7 +159,7 @@ function MainNavbarView({
               <SidebarHeading>{t`Data`}</SidebarHeading>
             </SidebarHeadingWrapper>
             <ul>
-              <BrowseLink
+              <PaddedSidebarLink
                 icon="database"
                 url={BROWSE_URL}
                 isSelected={nonEntityItem?.url?.startsWith(BROWSE_URL)}
@@ -169,7 +167,7 @@ function MainNavbarView({
                 data-metabase-event="NavBar;Data Browse"
               >
                 {t`Browse data`}
-              </BrowseLink>
+              </PaddedSidebarLink>
               {!hasOwnDatabase && isAdmin && (
                 <AddYourOwnDataLink
                   icon="add"
