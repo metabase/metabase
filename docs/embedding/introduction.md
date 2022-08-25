@@ -25,8 +25,10 @@ You'll need to put an iframe on your website to act as a window to your Metabase
 |                                                                          | [Public](../questions/sharing/public-links#public-embed) | [Signed](./signed-embedding) | [Full-app](./full-app-embedding) |
 | ------------------------------------------------------------------------ | -------------------------------------------------------- | ---------------------------- | -------------------------------- |
 | Display charts and dashboards                                            | ✅                                                       | ✅                           | ✅                               |
-| Pass parameters to filters                                               | ❌                                                       | ✅                           | ✅                               |
-| Remember user attributes for [sandboxing](../permissions/data-sandboxes) | ❌                                                       | ❌                           | ✅                               |
+| Display interactive [filter widgets](/glossary/filter_widget)            | ✅                                                       | ✅                           | ✅                               |
+| Restrict data with locked filters (no widget)                            | ❌                                                       | ✅                           | ✅                               |
+| Remember user session for [sandboxing](../permissions/data-sandboxes)    | ❌                                                       | ❌                           | ✅                               |
+| Drill-down using the [action menu](/glossary/action_menu)                | ❌                                                       | ❌                           | ✅                               |
 | Self-serve via [query builder](/glossary/query_builder)                  | ❌                                                       | ❌                           | ✅                               |
 
 ## Further reading
